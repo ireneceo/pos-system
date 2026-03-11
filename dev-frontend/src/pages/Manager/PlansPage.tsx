@@ -449,7 +449,7 @@ const PlansPage: React.FC = () => {
               <ToggleKnob annual={isAnnual} />
             </ToggleSwitch>
             <BillingLabel active={isAnnual}>Annual</BillingLabel>
-            {isAnnual && <SavingBadge>Save up to 17%</SavingBadge>}
+            {isAnnual && plans.length > 0 && <SavingBadge>Save up to {Math.max(...plans.map(p => getAnnualSaving(p.monthlyPrice, p.annualPrice)))}%</SavingBadge>}
           </BillingToggle>
 
           <PlansGrid>

@@ -522,14 +522,14 @@ const PricingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
   const [allModules, setAllModules] = useState<Array<{ module_code: string; name: string; category: string; target_user_type: string }>>([]);
-  const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [selectedCurrency, setSelectedCurrency] = useState('MYR');
 
   // 브라우저 언어 기반 통화 감지 (fallback용)
   const detectCurrencyFromBrowserLanguage = (): string => {
     try {
       const locale = navigator.language || 'en-US';
       const regionCode = locale.split('-')[1]?.toUpperCase() || '';
-      return countryToCurrency[regionCode] || 'USD';
+      return countryToCurrency[regionCode] || 'MYR';
     } catch {
       return 'USD';
     }
@@ -618,7 +618,6 @@ const PricingPage: React.FC = () => {
       console.error('Failed to load currencies:', error);
       // 기본 통화 설정
       const defaultCurrencies = [
-        { code: 'USD', symbol: '$', name: 'US Dollar', decimals: 2 },
         { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit', decimals: 2 },
         { code: 'KRW', symbol: '₩', name: 'Korean Won', decimals: 0 }
       ];

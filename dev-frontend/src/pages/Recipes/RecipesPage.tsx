@@ -811,12 +811,12 @@ const RecipesPage: React.FC = () => {
           </StatCard>
           <StatCard>
             <StatLabel>Average Cost</StatLabel>
-            <StatValue>{formatCurrency(avgCost, selectedCurrency || 'USD')}</StatValue>
+            <StatValue>{formatCurrency(avgCost, selectedCurrency || 'MYR')}</StatValue>
             <StatDescription>per recipe</StatDescription>
           </StatCard>
           <StatCard>
             <StatLabel>Total Value</StatLabel>
-            <StatValue>{formatCurrency(totalCost, selectedCurrency || 'USD')}</StatValue>
+            <StatValue>{formatCurrency(totalCost, selectedCurrency || 'MYR')}</StatValue>
             <StatDescription>all recipes</StatDescription>
           </StatCard>
         </StatsGrid>
@@ -916,11 +916,11 @@ const RecipesPage: React.FC = () => {
                   <RecipeCosts>
                     <CostItem>
                       <CostLabel>Cost</CostLabel>
-                      <CostValue>{formatCurrency(recipe.total_ingredient_cost || 0, selectedCurrency || 'USD')}</CostValue>
+                      <CostValue>{formatCurrency(recipe.total_ingredient_cost || 0, selectedCurrency || 'MYR')}</CostValue>
                     </CostItem>
                     <CostItem>
                       <CostLabel>Suggested</CostLabel>
-                      <CostValue>{formatCurrency(recipe.suggested_price || 0, selectedCurrency || 'USD')}</CostValue>
+                      <CostValue>{formatCurrency(recipe.suggested_price || 0, selectedCurrency || 'MYR')}</CostValue>
                     </CostItem>
                   </RecipeCosts>
 
@@ -1056,7 +1056,7 @@ const RecipesPage: React.FC = () => {
                 />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>Suggested Price ({getCurrencySymbol(selectedCurrency || 'USD')})</FormLabel>
+                <FormLabel>Suggested Price ({getCurrencySymbol(selectedCurrency || 'MYR')})</FormLabel>
                 <FormInput
                   type="number"
                   step="0.01"
@@ -1129,7 +1129,7 @@ const RecipesPage: React.FC = () => {
                         <option value={0}>Select ingredient...</option>
                         {ingredients.map(ing => (
                           <option key={ing.id} value={ing.id}>
-                            {ing.name} ({formatCurrency(ing.unit_cost, selectedCurrency || 'USD')}/{ing.unit})
+                            {ing.name} ({formatCurrency(ing.unit_cost, selectedCurrency || 'MYR')}/{ing.unit})
                           </option>
                         ))}
                       </FormSelect>
@@ -1185,7 +1185,7 @@ const RecipesPage: React.FC = () => {
               {recipeIngredients.length > 0 && (
                 <CostSummary>
                   <CostSummaryLabel>Total Ingredient Cost</CostSummaryLabel>
-                  <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency || 'USD')}</CostSummaryValue>
+                  <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency || 'MYR')}</CostSummaryValue>
                 </CostSummary>
               )}
             </div>

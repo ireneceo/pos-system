@@ -108,9 +108,9 @@ Brand.init({
   },
   currency: {
     type: DataTypes.STRING(10),
-    defaultValue: 'RM',
+    defaultValue: 'MYR',
     allowNull: false,
-    comment: 'Default currency for brand restaurants (RM, USD, SGD, JPY, THB, KRW)'
+    comment: 'Default currency for brand restaurants (MYR, USD, SGD, KRW, THB)'
   },
   // Operation Settings
   operation_settings: {
@@ -221,8 +221,8 @@ Brand.init({
   // Default Currency (이미 currency 필드가 있으므로 이것을 default로 사용)
   // Subscription Info (System Admin이 발행한 Invoice 결제용)
   subscription_status: {
-    type: DataTypes.ENUM('active', 'trial', 'expired', 'suspended', 'cancelled'),
-    defaultValue: 'active',
+    type: DataTypes.ENUM('active', 'trial', 'overdue', 'expired', 'suspended', 'cancelled'),
+    defaultValue: 'trial',
     comment: 'Brand subscription status'
   },
   subscription_start: {
@@ -233,10 +233,36 @@ Brand.init({
     type: DataTypes.DATE,
     allowNull: true
   },
+  trial_end_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Trial period end date'
+  },
+  grace_period_start: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Grace period start date (when overdue begins)'
+  },
   plan_type: {
     type: DataTypes.STRING(100),
     allowNull: true,
     comment: 'Brand plan type (e.g., Brand Basic, Brand Professional)'
+  },
+  plan_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Current subscription plan amount'
+  },
+  billing_cycle: {
+    type: DataTypes.ENUM('monthly', 'annual'),
+    defaultValue: 'monthly',
+    comment: 'Billing cycle for subscription'
+  },
+  is_demo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Demo brand flag - excluded from real revenue statistics'
   }
 }, {
   sequelize: database.sequelize,

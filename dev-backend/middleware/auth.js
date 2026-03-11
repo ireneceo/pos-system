@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Restaurant = require('../models/Restaurant');
 const RestaurantManager = require('../models/RestaurantManager');
+const Brand = require('../models/Brand');
+const Foodcourt = require('../models/Foodcourt');
 
 const authenticateToken = async (req, res, next) => {
   try {
@@ -182,6 +184,56 @@ const optionalAuthenticateToken = async (req, res, next) => {
   }
 };
 
+// Check subscription status - block suspended users from most API access
+const checkSubscriptionStatus = async (req, res, next) => {
+  if (!req.user) return next();
+
+  // System Admin is never restricted
+  if (req.user.role === 'System Admin') return next();
+
+  // Always allow access to these paths
+  const allowedPaths = ['/subscription-status', '/invoices', '/profile', '/auth', '/health'];
+  if (allowedPaths.some(p => req.originalUrl.includes(p))) return next();
+
+  try {
+    let subscriptionStatus = 'active';
+
+    if (req.user.role === 'Restaurant Admin' || req.user.role === 'Staff') {
+      if (req.user.restaurant_id) {
+        const restaurant = await Restaurant.findByPk(req.user.restaurant_id, { attributes: ['status'] });
+        if (restaurant) subscriptionStatus = restaurant.status || 'active';
+      }
+    } else if (req.user.role === 'Brand General' || req.user.role === 'Brand Manager') {
+      if (req.user.brand_id) {
+        const brand = await Brand.findByPk(req.user.brand_id, { attributes: ['subscription_status'] });
+        if (brand) subscriptionStatus = brand.subscription_status || 'active';
+      }
+    } else if (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') {
+      if (req.user.foodcourt_id) {
+        const foodcourt = await Foodcourt.findByPk(req.user.foodcourt_id, { attributes: ['subscription_status'] });
+        if (foodcourt) subscriptionStatus = foodcourt.subscription_status || 'active';
+      }
+    } else if (req.user.role === 'Restaurant Owner') {
+      const user = await User.findByPk(req.user.id, { attributes: ['subscription_status'] });
+      if (user) subscriptionStatus = user.subscription_status || 'active';
+    }
+
+    if (subscriptionStatus === 'suspended') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your subscription is suspended. Please pay outstanding invoices to restore access.',
+        code: 'SUBSCRIPTION_SUSPENDED'
+      });
+    }
+
+    next();
+  } catch (error) {
+    // Don't block on errors — allow access
+    console.error('[AUTH] Subscription check error:', error.message);
+    next();
+  }
+};
+
 // Block demo accounts from modifying their own account (password, email, profile)
 const demoProtection = (req, res, next) => {
   if (req.user && req.user.is_demo) {
@@ -198,5 +250,6 @@ module.exports = {
   optionalAuthenticateToken,
   requireRole,
   checkRestaurantAccess,
+  checkSubscriptionStatus,
   demoProtection
 };

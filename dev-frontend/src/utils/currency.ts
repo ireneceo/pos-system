@@ -158,12 +158,67 @@ export function normalizeCurrencyCode(currency: string): string {
 }
 
 /**
+ * Get plan price for a specific currency from currency_prices
+ * Falls back to base_price if currency not found
+ */
+export function getPlanPrice(
+  plan: { base_price_monthly?: string | number; base_price_annual?: string | number; currency_prices?: Record<string, { monthly: number; annual: number }> },
+  currency: string,
+  cycle: 'monthly' | 'annual' = 'monthly'
+): number {
+  const normalized = normalizeCurrencyCode(currency);
+  const prices = plan.currency_prices?.[normalized];
+  if (prices) {
+    return cycle === 'annual' ? prices.annual : prices.monthly;
+  }
+  // Fallback to base price (USD)
+  const base = cycle === 'annual' ? plan.base_price_annual : plan.base_price_monthly;
+  return typeof base === 'string' ? parseFloat(base) || 0 : (base || 0);
+}
+
+/**
+ * Format plan price with currency symbol
+ */
+export function formatPlanPrice(
+  plan: { base_price_monthly?: string | number; base_price_annual?: string | number; currency_prices?: Record<string, { monthly: number; annual: number }> },
+  currency: string,
+  cycle: 'monthly' | 'annual' = 'monthly'
+): string {
+  const price = getPlanPrice(plan, currency, cycle);
+  return formatCurrency(price, normalizeCurrencyCode(currency));
+}
+
+// Default plan currencies (fallback when plans data not available)
+export const DEFAULT_PLAN_CURRENCIES = ['MYR', 'KRW'] as const;
+
+// Extract active plan currencies from plans API response
+export function getActivePlanCurrencies(plans: Array<{ currency_prices?: Record<string, unknown> }>): string[] {
+  const currencies = new Set<string>();
+  plans.forEach(plan => {
+    if (plan.currency_prices) {
+      Object.keys(plan.currency_prices).forEach(cur => currencies.add(cur));
+    }
+  });
+  return currencies.size > 0 ? Array.from(currencies).sort() : [...DEFAULT_PLAN_CURRENCIES];
+}
+
+// Backward compat alias
+export const PLAN_CURRENCIES = DEFAULT_PLAN_CURRENCIES;
+
+// Country to currency mapping
+export const COUNTRY_TO_CURRENCY: Record<string, string> = {
+  MY: 'MYR', US: 'USD', KR: 'KRW', SG: 'SGD', TH: 'THB',
+  JP: 'JPY', CN: 'CNY', IN: 'INR', PH: 'PHP', VN: 'VND',
+  ID: 'IDR', TW: 'TWD', HK: 'HKD', AU: 'AUD', GB: 'GBP'
+};
+
+/**
  * Parse amount for currency (respecting decimals)
  * @param amount - Amount to parse
  * @param currencyCode - Currency code
  * @returns Parsed number
  */
-export function parseAmount(amount: string | number, currencyCode: string = 'USD'): number {
+export function parseAmount(amount: string | number, currencyCode: string = 'MYR'): number {
   const decimals = getCurrencyDecimals(currencyCode);
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
 

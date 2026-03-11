@@ -8,7 +8,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend , Modal as CommonM
 // 매니저는 브랜드 테마 적용 안함
 import { BaseRestaurant } from '../../interfaces/Restaurant';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getPlanPrice, formatPlanPrice, normalizeCurrencyCode } from '../../utils/currency';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 
@@ -541,6 +541,7 @@ const ManagerRestaurantsPage: React.FC = () => {
     cuisine: '',
     planType: 'Basic Plan',
     planAmount: '29.00',
+    currency: 'MYR',
     status: 'active' as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
     billingCycle: 'monthly' as 'monthly' | 'annual',
     paymentModel: 'manager' as 'manager' | 'restaurant',
@@ -564,6 +565,7 @@ const ManagerRestaurantsPage: React.FC = () => {
   const [restaurantToDelete, setRestaurantToDelete] = useState<Restaurant | null>(null);
   // Inline error messages (no browser alert!)
   const [formError, setFormError] = useState('');
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
 
   // Filter Brand Search Functions
   const handleFilterBrandSearch = (query: string) => {
@@ -615,6 +617,27 @@ const ManagerRestaurantsPage: React.FC = () => {
       }
     };
     fetchBrands();
+
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch('/api/plans');
+        if (response.ok) {
+          const plans = await response.json();
+          const restaurantPlans = plans.filter((p: any) => p.plan_target === 'restaurant' && p.is_active);
+          setAvailablePlans(restaurantPlans);
+          if (restaurantPlans.length > 0) {
+            setNewRestaurant(prev => ({
+              ...prev,
+              planType: restaurantPlans[0].display_name,
+              planAmount: String(getPlanPrice(restaurantPlans[0], normalizeCurrencyCode(selectedCurrency)))
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+      }
+    };
+    fetchPlans();
 
     // URL 파라미터에서 브랜드 ID를 읽어서 필터 설정
     const brandId = searchParams.get('brandId');
@@ -735,6 +758,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       cuisine: '',
       planType: 'Basic Plan',
       planAmount: '29.00',
+      currency: 'MYR',
       status: 'active',
       billingCycle: 'monthly',
       paymentModel: 'manager',
@@ -828,6 +852,7 @@ const ManagerRestaurantsPage: React.FC = () => {
         adminAction,
         plan_type: newRestaurant.planType,
         plan_amount: parseFloat(newRestaurant.planAmount),
+        currency: newRestaurant.currency,
         status: 'active',
         billing_cycle: newRestaurant.billingCycle,
         payment_model: newRestaurant.paymentModel === 'manager'
@@ -919,6 +944,7 @@ const ManagerRestaurantsPage: React.FC = () => {
           cuisine: '',
           planType: 'Basic Plan',
           planAmount: '29.00',
+          currency: 'MYR',
           status: 'active',
           billingCycle: 'monthly',
           paymentModel: 'manager',
@@ -1013,8 +1039,9 @@ const ManagerRestaurantsPage: React.FC = () => {
       cuisine: restaurant.cuisine,
       planType: restaurant.plan === 'basic' ? 'Basic Plan' : restaurant.plan === 'professional' ? 'Professional Plan' : 'Enterprise Plan',
       planAmount: restaurant.monthlyFee?.toString() || '29.00',
+      currency: (restaurant as any).currency || 'MYR',
       status: restaurant.status || 'active',
-      billingCycle: 'monthly',
+      billingCycle: (restaurant as any).billing_cycle || (restaurant as any).billingCycle || 'monthly',
       paymentModel: mappedPaymentModel,
       subscriptionStart: '',
       subscriptionEnd: '',
@@ -1044,6 +1071,8 @@ const ManagerRestaurantsPage: React.FC = () => {
           cuisine: newRestaurant.cuisine,
           plan_type: newRestaurant.planType,
           plan_amount: parseFloat(newRestaurant.planAmount),
+          currency: newRestaurant.currency,
+          billing_cycle: newRestaurant.billingCycle,
           payment_model: newRestaurant.paymentModel === 'manager'
             ? (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ? 'foodcourt_manager' : 'brand_manager')
             : 'restaurant'
@@ -1546,21 +1575,19 @@ const ManagerRestaurantsPage: React.FC = () => {
                   <FormSelect
                     value={newRestaurant.planType}
                     onChange={(e) => {
-                      const planAmounts: Record<string, string> = {
-                        'Basic Plan': '29.00',
-                        'Professional Plan': '99.00',
-                        'Enterprise Plan': '199.00'
-                      };
+                      const selectedPlan = availablePlans.find((p: any) => p.display_name === e.target.value);
                       setNewRestaurant({
                         ...newRestaurant,
                         planType: e.target.value,
-                        planAmount: planAmounts[e.target.value] || '29.00'
+                        planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, normalizeCurrencyCode(selectedCurrency))) : '0'
                       });
                     }}
                   >
-                    <option value="Basic Plan">Basic Plan ({formatCurrency(29, selectedCurrency)}/month)</option>
-                    <option value="Professional Plan">Professional Plan ({formatCurrency(99, selectedCurrency)}/month)</option>
-                    <option value="Enterprise Plan">Enterprise Plan ({formatCurrency(199, selectedCurrency)}/month)</option>
+                    {availablePlans.map((plan: any) => (
+                      <option key={plan.id} value={plan.display_name}>
+                        {plan.display_name} ({formatPlanPrice(plan, normalizeCurrencyCode(selectedCurrency))}/month)
+                      </option>
+                    ))}
                   </FormSelect>
                 </FormGroup>
 
@@ -1570,21 +1597,18 @@ const ManagerRestaurantsPage: React.FC = () => {
                     value={newRestaurant.billingCycle}
                     onChange={(e) => {
                       const cycle = e.target.value as 'monthly' | 'annual';
-                      const planAmounts: Record<string, Record<string, string>> = {
-                        'Basic Plan': { monthly: '29.00', annual: '290.00' },
-                        'Professional Plan': { monthly: '99.00', annual: '990.00' },
-                        'Enterprise Plan': { monthly: '199.00', annual: '2190.00' }
-                      };
-                      const amounts = planAmounts[newRestaurant.planType] || planAmounts['Basic Plan'];
+                      const selectedPlan = availablePlans.find((p: any) => p.display_name === newRestaurant.planType);
+                      const cur = normalizeCurrencyCode(selectedCurrency);
+                      const price = selectedPlan ? getPlanPrice(selectedPlan, cur, cycle) : 0;
                       setNewRestaurant({
                         ...newRestaurant,
                         billingCycle: cycle,
-                        planAmount: amounts[cycle]
+                        planAmount: price.toFixed(2)
                       });
                     }}
                   >
                     <option value="monthly">Monthly</option>
-                    <option value="annual">Annual (10% discount)</option>
+                    <option value="annual">Annual</option>
                   </FormSelect>
                 </FormGroup>
 
@@ -1636,7 +1660,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     <strong>Summary:</strong>
                   </div>
                   <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
-                    {newRestaurant.planType} - ${newRestaurant.planAmount} ({newRestaurant.billingCycle})
+                    {newRestaurant.planType} - {formatCurrency(parseFloat(newRestaurant.planAmount) || 0, newRestaurant.currency || 'MYR')} ({newRestaurant.billingCycle})
                   </div>
                   <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
                     Paid by: {newRestaurant.paymentModel === 'manager' ? 'Manager' : 'Restaurant'}
@@ -1776,21 +1800,19 @@ const ManagerRestaurantsPage: React.FC = () => {
                   <FormSelect
                     value={newRestaurant.planType}
                     onChange={(e) => {
-                      const planAmounts: Record<string, string> = {
-                        'Basic Plan': '29.00',
-                        'Professional Plan': '99.00',
-                        'Enterprise Plan': '199.00'
-                      };
+                      const selectedPlan = availablePlans.find((p: any) => p.display_name === e.target.value);
                       setNewRestaurant({
                         ...newRestaurant,
                         planType: e.target.value,
-                        planAmount: planAmounts[e.target.value] || '29.00'
+                        planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, normalizeCurrencyCode(selectedCurrency))) : '0'
                       });
                     }}
                   >
-                    <option value="Basic Plan">Basic Plan ({formatCurrency(29, selectedCurrency)}/month)</option>
-                    <option value="Professional Plan">Professional Plan ({formatCurrency(99, selectedCurrency)}/month)</option>
-                    <option value="Enterprise Plan">Enterprise Plan ({formatCurrency(199, selectedCurrency)}/month)</option>
+                    {availablePlans.map((plan: any) => (
+                      <option key={plan.id} value={plan.display_name}>
+                        {plan.display_name} ({formatPlanPrice(plan, normalizeCurrencyCode(selectedCurrency))}/month)
+                      </option>
+                    ))}
                   </FormSelect>
                 </FormGroup>
 
@@ -1800,21 +1822,18 @@ const ManagerRestaurantsPage: React.FC = () => {
                     value={newRestaurant.billingCycle}
                     onChange={(e) => {
                       const cycle = e.target.value as 'monthly' | 'annual';
-                      const planAmounts: Record<string, Record<string, string>> = {
-                        'Basic Plan': { monthly: '29.00', annual: '290.00' },
-                        'Professional Plan': { monthly: '99.00', annual: '990.00' },
-                        'Enterprise Plan': { monthly: '199.00', annual: '2190.00' }
-                      };
-                      const amounts = planAmounts[newRestaurant.planType] || planAmounts['Basic Plan'];
+                      const selectedPlan = availablePlans.find((p: any) => p.display_name === newRestaurant.planType);
+                      const cur = normalizeCurrencyCode(selectedCurrency);
+                      const price = selectedPlan ? getPlanPrice(selectedPlan, cur, cycle) : 0;
                       setNewRestaurant({
                         ...newRestaurant,
                         billingCycle: cycle,
-                        planAmount: amounts[cycle]
+                        planAmount: price.toFixed(2)
                       });
                     }}
                   >
                     <option value="monthly">Monthly</option>
-                    <option value="annual">Annual (10% discount)</option>
+                    <option value="annual">Annual</option>
                   </FormSelect>
                 </FormGroup>
 
@@ -1866,7 +1885,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     <strong>Summary:</strong>
                   </div>
                   <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
-                    {newRestaurant.planType} - ${newRestaurant.planAmount} ({newRestaurant.billingCycle})
+                    {newRestaurant.planType} - {formatCurrency(parseFloat(newRestaurant.planAmount) || 0, newRestaurant.currency || 'MYR')} ({newRestaurant.billingCycle})
                   </div>
                   <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
                     Paid by: {newRestaurant.paymentModel === 'manager' ? 'Manager' : 'Restaurant'}

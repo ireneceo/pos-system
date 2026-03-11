@@ -3784,7 +3784,7 @@ const BrandInvoicesPage: React.FC = () => {
                     </SummaryRow>
                     <SummaryRow highlight>
                       <span><strong>Payment Amount:</strong></span>
-                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</strong></span>
+                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>
                     </SummaryRow>
                   </InvoiceSummary>
                 </FormGroup>
@@ -4180,7 +4180,7 @@ const BrandInvoicesPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</span>
+                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
                     </div>
                   </div>
                 </div>
@@ -4280,7 +4280,7 @@ const BrandInvoicesPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</span>
+                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
                     </div>
                   </div>
                 </div>

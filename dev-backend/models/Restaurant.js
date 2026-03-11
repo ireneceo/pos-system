@@ -491,9 +491,9 @@ Restaurant.init({
   },
   currency: {
     type: DataTypes.STRING(10),
-    defaultValue: 'RM',
+    defaultValue: 'MYR',
     allowNull: false,
-    comment: 'Currency code (RM, USD, SGD, JPY, THB)'
+    comment: 'Currency code (MYR, USD, SGD, KRW, THB)'
   },
   cash_rounding: {
     type: DataTypes.DECIMAL(4, 2),
@@ -536,6 +536,12 @@ Restaurant.init({
     type: DataTypes.STRING(255),
     allowNull: true,
     comment: 'Reason for discount'
+  },
+  is_demo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Demo restaurant flag - excluded from real revenue statistics'
   }
 }, {
   sequelize: database.sequelize,

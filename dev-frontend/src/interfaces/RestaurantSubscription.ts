@@ -9,7 +9,7 @@ export interface RestaurantSubscription {
   managerName: string;
 
   // 구독 정보
-  planType: 'basic' | 'professional' | 'enterprise';
+  planType: string;
   status: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled';
   startDate: string;
   endDate: string;

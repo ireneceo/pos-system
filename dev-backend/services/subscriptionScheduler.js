@@ -13,6 +13,9 @@ const cron = require('node-cron');
 const { Op } = require('sequelize');
 const Restaurant = require('../models/Restaurant');
 const Invoice = require('../models/Invoice');
+const Brand = require('../models/Brand');
+const Foodcourt = require('../models/Foodcourt');
+const User = require('../models/User');
 
 // Configuration
 const TRIAL_PERIOD_DAYS = 7;
@@ -54,11 +57,15 @@ class SubscriptionScheduler {
       // 3. Process Active -> Overdue transitions (missed payment)
       const paymentResults = await this.processOverduePayments();
 
+      // 4. Process Brand/Foodcourt/Owner subscription transitions
+      const entityResults = await this.processEntitySubscriptions();
+
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       console.log(`✅ [SUBSCRIPTION SCHEDULER] Completed in ${duration}s`);
       console.log(`   - Trial expired: ${trialResults.updated} restaurants`);
       console.log(`   - Grace period expired: ${graceResults.updated} restaurants`);
       console.log(`   - Overdue payments: ${paymentResults.updated} restaurants`);
+      console.log(`   - Entity subscriptions: ${entityResults.updated} entities`);
 
       return {
         success: true,
@@ -83,10 +90,11 @@ class SubscriptionScheduler {
     today.setHours(0, 0, 0, 0);
 
     try {
-      // Find restaurants with trial status and expired trial_end_date
+      // Find restaurants with trial status and expired trial_end_date (skip demo)
       const expiredTrials = await Restaurant.findAll({
         where: {
           status: 'trial',
+          is_demo: { [Op.ne]: true },
           trial_end_date: {
             [Op.lt]: today  // Trial end date is before today
           }
@@ -143,10 +151,11 @@ class SubscriptionScheduler {
     gracePeriodCutoff.setDate(gracePeriodCutoff.getDate() - GRACE_PERIOD_DAYS);
 
     try {
-      // Find restaurants with overdue status and grace_period_start older than 7 days
+      // Find restaurants with overdue status and grace_period_start older than 7 days (skip demo)
       const expiredGracePeriods = await Restaurant.findAll({
         where: {
           status: 'overdue',
+          is_demo: { [Op.ne]: true },
           grace_period_start: {
             [Op.lte]: gracePeriodCutoff  // Grace period started 7+ days ago
           }
@@ -198,10 +207,11 @@ class SubscriptionScheduler {
     today.setHours(0, 0, 0, 0);
 
     try {
-      // Find active restaurants
+      // Find active restaurants (skip demo)
       const activeRestaurants = await Restaurant.findAll({
         where: {
           status: 'active',
+          is_demo: { [Op.ne]: true },
           subscription_start: { [Op.ne]: null }
         }
       });
@@ -270,6 +280,100 @@ class SubscriptionScheduler {
       }
     });
 
+    return !!paidInvoice;
+  }
+
+  /**
+   * Process Brand/Foodcourt/Owner subscription transitions
+   * Same logic as restaurants: trial->overdue->suspended
+   */
+  async processEntitySubscriptions() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const graceCutoff = new Date(today);
+    graceCutoff.setDate(graceCutoff.getDate() - GRACE_PERIOD_DAYS);
+
+    let updated = 0;
+
+    // Helper: process a list of entities
+    const processEntities = async (entities, entityType) => {
+      for (const entity of entities) {
+        try {
+          const status = entity.subscription_status;
+
+          if (status === 'trial' && entity.trial_end_date && new Date(entity.trial_end_date) < today) {
+            // Check for paid invoice
+            const hasPaid = await this.hasEntityPaidInvoice(entity.id, entityType);
+            if (hasPaid) {
+              await entity.update({ subscription_status: 'active', trial_end_date: null });
+              console.log(`✅ ${entityType} ${entity.name || entity.username}: Trial -> Active`);
+            } else {
+              await entity.update({ subscription_status: 'overdue', grace_period_start: today });
+              console.log(`⚠️ ${entityType} ${entity.name || entity.username}: Trial -> Overdue`);
+            }
+            updated++;
+          } else if (status === 'overdue' && entity.grace_period_start && new Date(entity.grace_period_start) <= graceCutoff) {
+            const hasPaid = await this.hasEntityPaidInvoice(entity.id, entityType);
+            if (hasPaid) {
+              await entity.update({ subscription_status: 'active', grace_period_start: null });
+              console.log(`✅ ${entityType} ${entity.name || entity.username}: Overdue -> Active`);
+            } else {
+              await entity.update({ subscription_status: 'suspended' });
+              console.log(`🚫 ${entityType} ${entity.name || entity.username}: Overdue -> Suspended`);
+            }
+            updated++;
+          }
+        } catch (e) {
+          console.error(`❌ Error processing ${entityType} ${entity.id}:`, e.message);
+        }
+      }
+    };
+
+    try {
+      // Brands (skip demo)
+      const brands = await Brand.findAll({
+        where: { subscription_status: { [Op.in]: ['trial', 'overdue'] }, is_demo: { [Op.ne]: true } }
+      });
+      await processEntities(brands, 'brand');
+
+      // Foodcourts (skip demo)
+      const foodcourts = await Foodcourt.findAll({
+        where: { subscription_status: { [Op.in]: ['trial', 'overdue'] }, is_demo: { [Op.ne]: true } }
+      });
+      await processEntities(foodcourts, 'foodcourt');
+
+      // Owners (skip demo)
+      const owners = await User.findAll({
+        where: { role: 'Restaurant Owner', subscription_status: { [Op.in]: ['trial', 'overdue'] }, is_demo: { [Op.ne]: true } }
+      });
+      await processEntities(owners, 'owner');
+
+    } catch (e) {
+      console.error('❌ Error in processEntitySubscriptions:', e.message);
+    }
+
+    return { updated };
+  }
+
+  /**
+   * Check if an entity (brand/foodcourt/owner) has a paid invoice
+   */
+  async hasEntityPaidInvoice(entityId, entityType) {
+    const { Op } = require('sequelize');
+    const where = { status: 'paid', invoice_category: { [Op.in]: ['subscription', 'pos_subscription'] } };
+    if (entityType === 'brand') {
+      where.payer_type = 'brand_manager';
+      where.payer_id = entityId;
+    } else if (entityType === 'foodcourt') {
+      where.payer_type = 'foodcourt_manager';
+      where.payer_id = entityId;
+    } else {
+      // owner - payer_id
+      where.payer_id = entityId;
+      where.payer_type = 'restaurant_owner';
+    }
+
+    const paidInvoice = await Invoice.findOne({ where });
     return !!paidInvoice;
   }
 

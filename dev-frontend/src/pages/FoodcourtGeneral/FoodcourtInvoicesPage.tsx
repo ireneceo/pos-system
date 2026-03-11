@@ -2358,12 +2358,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 <MobileValue className="col-amount">
                   <MobileLabel>Amount</MobileLabel>
-                  <Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount>
+                  <Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount>
                 </MobileValue>
 
                 <MobileValue className="col-total">
                   <MobileLabel>Total</MobileLabel>
-                  <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
+                  <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                 </MobileValue>
               </MobileGrid>
 
@@ -2611,12 +2611,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                       <MobileValue className="col-amount">
                         <MobileLabel>Amount</MobileLabel>
-                        <Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount>
+                        <Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
 
                       <MobileValue className="col-total">
                         <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
+                        <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
                     </MobileGrid>
 
@@ -2724,12 +2724,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                       <MobileValue className="col-amount">
                         <MobileLabel>Amount</MobileLabel>
-                        <Amount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</Amount>
+                        <Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
 
                       <MobileValue className="col-total">
                         <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</Amount>
+                        <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
                     </MobileGrid>
 
@@ -3442,7 +3442,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </SummaryRow>
                     <SummaryRow highlight>
                       <span><strong>Payment Amount:</strong></span>
-                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</strong></span>
+                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>
                     </SummaryRow>
                   </InvoiceSummary>
                 </FormGroup>
@@ -3834,7 +3834,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</span>
+                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
                     </div>
                   </div>
                 </div>
@@ -3934,7 +3934,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</span>
+                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
                     </div>
                   </div>
                 </div>

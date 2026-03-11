@@ -268,6 +268,16 @@ else
     warn "Could not export seed data (non-critical)"
 fi
 
+# Mark demo accounts (is_demo flag)
+log "Marking demo accounts on production..."
+DEMO_MARK=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node scripts/mark-demo-accounts.js 2>&1") || true
+if echo "$DEMO_MARK" | grep -q "Demo marking complete"; then
+    success "Demo accounts marked"
+else
+    warn "Demo marking had issues:"
+    echo "$DEMO_MARK" | head -5
+fi
+
 # ──────────────────────────────────────────
 # 10. Post-sync: Verify schema parity
 # ──────────────────────────────────────────

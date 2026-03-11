@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { formatCurrency } from '../../utils/currency';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-// Owner has no company-info page yet, so no setup guide for now
+import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
 
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -379,8 +379,22 @@ interface RestaurantSummary {
   monthRevenue: number;
 }
 
+const SubscriptionBanner = styled.div<{ $type: 'trial' | 'warning' | 'danger' }>`
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  background: ${p => p.$type === 'danger' ? '#FEF2F2' : p.$type === 'warning' ? '#FFFBEB' : '#EFF6FF'};
+  border: 1px solid ${p => p.$type === 'danger' ? '#FECACA' : p.$type === 'warning' ? '#FDE68A' : '#BFDBFE'};
+  color: ${p => p.$type === 'danger' ? '#991B1B' : p.$type === 'warning' ? '#92400E' : '#1E40AF'};
+`;
+
 const OwnerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { paymentStatus } = usePaymentStatus();
   const [loading, setLoading] = useState(true);
   const [chartPeriod, setChartPeriod] = useState('month');
 
@@ -554,6 +568,25 @@ const OwnerDashboardPage: React.FC = () => {
       </Header>
 
       <Content>
+        {/* Subscription Status Banner */}
+        {paymentStatus.subscriptionStatus === 'trial' && paymentStatus.trialEndDate && (
+          <SubscriptionBanner $type="trial">
+            Trial period active — expires {new Date(paymentStatus.trialEndDate).toLocaleDateString()}. Please pay your invoice to continue service.
+          </SubscriptionBanner>
+        )}
+        {paymentStatus.restrictionLevel === 'warning' && (
+          <SubscriptionBanner $type="warning">
+            Payment overdue ({paymentStatus.overdueDays} days). Please pay {paymentStatus.currency ? formatCurrency(paymentStatus.overdueAmount, paymentStatus.currency) : `$${paymentStatus.overdueAmount}`} to avoid service restrictions.
+          </SubscriptionBanner>
+        )}
+        {(paymentStatus.restrictionLevel === 'partial' || paymentStatus.restrictionLevel === 'blocked') && (
+          <SubscriptionBanner $type="danger">
+            {paymentStatus.restrictionLevel === 'blocked'
+              ? 'Your subscription is suspended. Pay outstanding invoices to restore access.'
+              : `Service partially restricted due to overdue payment (${paymentStatus.overdueDays} days). Some features are disabled.`}
+          </SubscriptionBanner>
+        )}
+
         {/* KPI Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#635BFF">

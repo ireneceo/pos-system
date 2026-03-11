@@ -174,7 +174,7 @@ Brand와 동일 구조. `issuer_type: 'foodcourt'`, 인보이스 번호 `INV-FC{
 |------|------|
 | **실행 시간** | 매일 02:00 AM |
 | **파일** | `services/invoiceScheduler.js` |
-| **2가지 작업** | 구독 인보이스 + Entity Plan 인보이스 |
+| **3가지 작업** | 구독 인보이스 + Entity Plan 인보이스 + Entity 구독 인보이스 |
 
 #### 2.5.1 구독 인보이스 자동 생성 (`generateSubscriptionInvoices`)
 
@@ -190,7 +190,18 @@ Brand와 동일 구조. `issuer_type: 'foodcourt'`, 인보이스 번호 `INV-FC{
 - 전월 1일~말일 기간의 매출 조회 → `calculatePlanCharges()` → 인보이스 생성
 - Brand/Foodcourt 구분: `entity_type` 필드로 자동 분기
 
-#### 2.5.3 Trial 시작 시 첫 인보이스 생성
+#### 2.5.3 Entity 구독 인보이스 자동 생성 (`generateEntitySubscriptionInvoices`)
+
+- Brand, Foodcourt, Restaurant Owner의 **POS 구독료** 인보이스 자동 생성
+- 대상: `subscription_status = 'active'`, `is_demo != true`, `subscription_start IS NOT NULL`, `plan_type IS NOT NULL`
+- Brand/Foodcourt: 각 테이블의 구독 필드 사용, Owner: users 테이블의 구독 필드 사용
+- `isTodayAdvanceOf` (14일 전 생성), `getTargetBillingMonth` 로직 동일
+- annual billing: 구독 시작 월에만 생성
+- 중복 체크: `payer_type + payer_id + billing_period_start + type='automatic' + invoice_category='subscription' + issuer_type='system_admin'`
+- Invoice 번호: `INV-{BRD|FC|OWN}-{dateStr}-{entity.id}`
+- `plan_amount <= 0`이면 skip
+
+#### 2.5.5 Trial 시작 시 첫 인보이스 생성
 
 - **파일**: `services/subscriptionScheduler.js` → `invoiceScheduler.createSubscriptionInvoice()`
 - 레스토랑 생성(Trial 시작) 시 첫 구독 인보이스를 **즉시 생성**
@@ -198,7 +209,7 @@ Brand와 동일 구조. `issuer_type: 'foodcourt'`, 인보이스 번호 `INV-FC{
 - Trial 7일 → Invoice 마감일 = Trial 종료일, 이후 Grace Period 7일
 - **목적**: Trial 종료 후 결제 없는 공백 기간(gap) 방지
 
-#### 2.5.4 할인(Discount) 처리
+#### 2.5.6 할인(Discount) 처리
 
 - 인보이스 생성 시 레스토랑의 `discount_type`, `discount_value` 적용
 - `percentage`: subtotal × (discount_value / 100)

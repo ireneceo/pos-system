@@ -6,14 +6,44 @@ const Restaurant = require('../models/Restaurant');
 const { Op } = require('sequelize');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
-// Get all plans
+// Get all plans (with currency_prices)
 router.get('/', async (req, res) => {
   try {
-    // Fetch all plans (not just active ones) for admin interface
     const plans = await PlanTemplate.findAll({
       order: [['sort_order', 'ASC'], ['id', 'ASC']]
     });
-    res.json(plans);
+
+    const plansWithPrices = await Promise.all(plans.map(async (plan) => {
+      const prices = await PlanPrice.findAll({
+        where: { plan_id: plan.id, is_active: true },
+        attributes: ['currency', 'monthly_price', 'annual_price']
+      });
+
+      const planData = plan.toJSON();
+      let features = planData.features;
+      if (typeof features === 'string') {
+        try { features = JSON.parse(features); } catch { features = []; }
+      }
+      let included_modules = planData.included_modules;
+      if (typeof included_modules === 'string') {
+        try { included_modules = JSON.parse(included_modules); } catch { included_modules = []; }
+      }
+
+      return {
+        ...planData,
+        features: Array.isArray(features) ? features : [],
+        included_modules: Array.isArray(included_modules) ? included_modules : [],
+        currency_prices: prices.reduce((acc, p) => {
+          acc[p.currency] = {
+            monthly: parseFloat(p.monthly_price),
+            annual: parseFloat(p.annual_price)
+          };
+          return acc;
+        }, {})
+      };
+    }));
+
+    res.json(plansWithPrices);
   } catch (error) {
     console.error('Error fetching plans:', error);
     res.status(500).json({ error: 'Failed to fetch plans' });

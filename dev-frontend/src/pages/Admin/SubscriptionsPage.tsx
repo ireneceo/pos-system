@@ -23,6 +23,7 @@ import {
   IconButton as CommonIconButton
 , Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { getPlanPrice, formatPlanPrice, normalizeCurrencyCode, formatCurrency } from '../../utils/currency';
 
 interface RestaurantSubscription {
   id: string;
@@ -339,7 +340,7 @@ const SubscriptionsPage: React.FC = () => {
       const restaurants = Array.isArray(restaurantsData) ? restaurantsData : [];
       
       const formattedSubscriptions: RestaurantSubscription[] = restaurants.map((restaurant: any, index: number) => {
-        const planType = restaurant.plan_type || 'Basic Plan';
+        const planType = restaurant.planType || restaurant.plan_type || 'Basic Plan';
         
         // Map restaurant status to subscription status
         let subscriptionStatus: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled' = 'active';
@@ -359,23 +360,23 @@ const SubscriptionsPage: React.FC = () => {
           id: `sub-${restaurant.id}`,
           restaurantId: restaurant.id?.toString() || `rest-${index}`,
           restaurantName: restaurant.name || 'Restaurant Name',
-          currency: restaurant.currency || 'RM',
+          currency: restaurant.currency || 'MYR',
           managerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
           managerName: restaurant.managerName || restaurant.admin_name || 'No Manager Assigned',
           planType: planType,
           status: subscriptionStatus,
-          startDate: restaurant.subscription_start ? new Date(restaurant.subscription_start).toISOString().split('T')[0] : '2024-01-01',
-          endDate: restaurant.subscription_end ? new Date(restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
-          monthlyFee: parseFloat(restaurant.plan_amount) || 29,
-          billingCycle: 'monthly' as 'monthly' | 'annual',
+          startDate: (restaurant.subscriptionStart || restaurant.subscription_start) ? new Date(restaurant.subscriptionStart || restaurant.subscription_start).toISOString().split('T')[0] : '2024-01-01',
+          endDate: (restaurant.subscriptionEnd || restaurant.subscription_end) ? new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
+          monthlyFee: parseFloat(restaurant.planAmount || restaurant.plan_amount) || 29,
+          billingCycle: (restaurant.billingCycle || restaurant.billing_cycle || 'monthly') as 'monthly' | 'annual',
           paymentModel: 'manager' as 'manager' | 'restaurant',
           payerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
           payerName: restaurant.managerName || restaurant.admin_name || 'No Manager',
           menuItemLimit: planLimits[limitKey] || 50,
           currentMenuItems: Math.floor(Math.random() * ((planLimits[limitKey] || 50) > 0 ? (planLimits[limitKey] || 50) * 0.7 : 150)) + 10,
           features: [],
-          lastPayment: restaurant.subscription_start ? new Date(restaurant.subscription_start).toISOString().split('T')[0] : '-',
-          nextPayment: restaurant.subscription_end ? new Date(restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+          lastPayment: (restaurant.subscriptionStart || restaurant.subscription_start) ? new Date(restaurant.subscriptionStart || restaurant.subscription_start).toISOString().split('T')[0] : '-',
+          nextPayment: (restaurant.subscriptionEnd || restaurant.subscription_end) ? new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
           autoRenew: restaurant.auto_renew !== undefined ? restaurant.auto_renew : subscriptionStatus === 'active',
           location: restaurant.address || 'Location not specified',
           discountType: restaurant.discount_type || 'none',
@@ -463,7 +464,7 @@ const SubscriptionsPage: React.FC = () => {
       email: '',
       phone: '',
       address: '',
-      monthlyFee: firstPlan ? parseFloat(firstPlan.base_price_monthly) : 29,
+      monthlyFee: firstPlan ? getPlanPrice(firstPlan, 'MYR') : 49,
       startDate: new Date().toISOString().split('T')[0],
       endDate: ''
     });
@@ -601,13 +602,13 @@ const SubscriptionsPage: React.FC = () => {
     const cycle = e.target.value as 'monthly' | 'annual';
     // Find matching plan from availablePlans
     const selectedPlan = availablePlans.find(p => p.display_name === newSubscription.customPlanName);
-    const monthlyPrice = parseFloat(selectedPlan?.base_price_monthly) || newSubscription.monthlyFee;
-    const annualPrice = parseFloat(selectedPlan?.base_price_annual) || monthlyPrice * 10;
+    const cur = normalizeCurrencyCode(selectedTarget?.data?.currency || 'MYR');
+    const price = selectedPlan ? getPlanPrice(selectedPlan, cur, cycle) : newSubscription.monthlyFee;
 
     setNewSubscription({
       ...newSubscription,
       billingCycle: cycle,
-      monthlyFee: cycle === 'annual' ? annualPrice : monthlyPrice
+      monthlyFee: price
     });
   };
 
@@ -872,11 +873,11 @@ const SubscriptionsPage: React.FC = () => {
 
         setSuccessMessage('Subscription deleted successfully');
       } else if (confirmAction === 'suspend') {
-        // Suspend subscription - set status to inactive
+        // Suspend subscription
         const response = await fetch(`/api/restaurants/${selectedSubscription.restaurantId}`, {
           method: 'PUT',
           headers,
-          body: JSON.stringify({ status: 'inactive' })
+          body: JSON.stringify({ status: 'suspended' })
         });
 
         if (!response.ok) {
@@ -1139,7 +1140,7 @@ const SubscriptionsPage: React.FC = () => {
                   <CommonActionButton onClick={() => handleEditSubscription(subscription)}>Edit</CommonActionButton>
                   <CommonIconButton
                     onClick={() => handleToggleStatus(subscription)}
-                    title={subscription.status === 'active' ? 'Suspend Subscription' : 'Activate Subscription'}
+                    title={subscription.status === 'active' ? 'Suspend' : (subscription.status === 'suspended' || subscription.status === 'overdue') ? 'Restore Subscription' : 'Activate'}
                   >
                     <IconSymbol>{subscription.status === 'active' ? '⊗' : '◉'}</IconSymbol>
                   </CommonIconButton>
@@ -1344,7 +1345,7 @@ const SubscriptionsPage: React.FC = () => {
                               ...newSubscription,
                               planType: 'custom',
                               customPlanName: selectedValue,
-                              monthlyFee: parseFloat(selectedPlan?.base_price_monthly) || 0
+                              monthlyFee: selectedPlan ? getPlanPrice(selectedPlan, normalizeCurrencyCode(selectedTarget?.data?.currency || 'MYR')) : 0
                             });
                           } else {
                             setNewSubscription({
@@ -1361,7 +1362,7 @@ const SubscriptionsPage: React.FC = () => {
                           .filter(p => p.plan_target === userType)
                           .map((plan) => (
                             <option key={plan.id} value={plan.display_name}>
-                              {plan.display_name} - RM {plan.base_price_monthly}
+                              {plan.display_name} - {formatPlanPrice(plan, normalizeCurrencyCode(selectedTarget?.data?.currency || 'MYR'))}
                             </option>
                           ))}
                         <option value="others">Others</option>
@@ -1463,7 +1464,7 @@ const SubscriptionsPage: React.FC = () => {
                         onChange={handleBillingCycleChange}
                       >
                         <option value="monthly">Monthly</option>
-                        <option value="annual">Annual (10% discount)</option>
+                        <option value="annual">Annual</option>
                       </FormSelect>
                     </FormGroup>
 
@@ -1507,7 +1508,7 @@ const SubscriptionsPage: React.FC = () => {
                         {newSubscription.planType === 'custom'
                           ? (newSubscription.customPlanName || 'Custom Plan')
                           : (newSubscription.planType === 'basic' ? 'Basic' : newSubscription.planType === 'professional' ? 'Professional' : 'Enterprise')
-                        } Plan - RM {newSubscription.monthlyFee || 29} ({newSubscription.billingCycle || 'monthly'})
+                        } Plan - {formatCurrency(newSubscription.monthlyFee || 29, normalizeCurrencyCode(selectedTarget?.data?.currency || 'MYR'))} ({newSubscription.billingCycle || 'monthly'})
                       </div>
                       <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
                         Paid by: {
@@ -1570,22 +1571,32 @@ const SubscriptionsPage: React.FC = () => {
                             });
                           } else if (selectedValue) {
                             const selectedPlan = availablePlans.find(p => p.display_name === selectedValue);
-                            setEditingSubscription({
-                              ...editingSubscription,
-                              planType: selectedValue as any,
-                              monthlyFee: parseFloat(selectedPlan?.base_price_monthly) || 0
-                            });
+                            if (selectedPlan) {
+                              const cur = normalizeCurrencyCode(editingSubscription.currency || 'MYR');
+                              setEditingSubscription({
+                                ...editingSubscription,
+                                planType: selectedValue as any,
+                                monthlyFee: getPlanPrice(selectedPlan, cur)
+                              });
+                            }
                           }
                         }}
                       >
                         <option value="">Select Plan</option>
                         {availablePlans
                           .filter(p => p.plan_target === 'restaurant')
-                          .map((plan) => (
-                            <option key={plan.id} value={plan.display_name}>
-                              {plan.display_name} - RM {plan.base_price_monthly}
-                            </option>
-                          ))}
+                          .map((plan) => {
+                            const cur = normalizeCurrencyCode(editingSubscription.currency || 'MYR');
+                            const isCurrentPlan = plan.display_name === editingSubscription.planType;
+                            const currentAmount = editingSubscription.monthlyFee;
+                            const latestAmount = getPlanPrice(plan, cur);
+                            const hasDiff = isCurrentPlan && currentAmount !== latestAmount;
+                            return (
+                              <option key={plan.id} value={plan.display_name}>
+                                {plan.display_name} - {formatPlanPrice(plan, cur)}{hasDiff ? ` (current: ${currentAmount})` : ''}
+                              </option>
+                            );
+                          })}
                         <option value="others">Others</option>
                       </FormSelect>
                     </FormGroup>
@@ -1604,7 +1615,7 @@ const SubscriptionsPage: React.FC = () => {
                     )}
 
                     <FormGroup>
-                      <FormLabel>Monthly Fee (RM) *</FormLabel>
+                      <FormLabel>Monthly Fee ({editingSubscription.currency || 'MYR'}) *</FormLabel>
                       <FormInput
                         type="number"
                         step="0.01"
@@ -1644,7 +1655,7 @@ const SubscriptionsPage: React.FC = () => {
                         onChange={(e) => setEditingSubscription({...editingSubscription, billingCycle: e.target.value as 'monthly' | 'annual'})}
                       >
                         <option value="monthly">Monthly</option>
-                        <option value="annual">Annual (10% discount)</option>
+                        <option value="annual">Annual</option>
                       </FormSelect>
                     </FormGroup>
 

@@ -195,26 +195,42 @@ async function signup(data) {
         planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly',
         dashboardUrl: `https://purplehere.com/restaurant/${restaurant.id}/dashboard`
       });
+      notifyAdminNewSignup({ user, role: 'Restaurant', entityName: data.restaurant_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
 
       return response;
 
     } else if (data.role === 'Brand General') {
-      // Create brand first, then user
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 7);
+
       const brand = await Brand.create({
         name: data.brand_name,
         status: 'active',
         subscription_status: 'trial',
         plan_type: plan.display_name || plan.name,
-        currency: currency
+        plan_amount: planAmount,
+        billing_cycle: data.billing_cycle || 'monthly',
+        currency: currency,
+        subscription_start: new Date(),
+        trial_end_date: trialEndDate
       }, { transaction });
 
       userFields.brand_id = brand.id;
       const user = await User.create(userFields, { transaction });
 
-      // Link brand owner
       await brand.update({ owner_id: user.id }, { transaction });
 
       await transaction.commit();
+
+      // Generate first invoice (non-blocking, after commit)
+      try {
+        const invoiceScheduler = require('./invoiceScheduler');
+        await invoiceScheduler.createEntitySubscriptionInvoice(brand, 'brand', plan, currency, trialEndDate);
+        console.log(`[Signup] Brand invoice generated for ${brand.name}`);
+      } catch (e) {
+        console.error('[Signup] Brand invoice generation failed:', e.message);
+      }
+
       const response = generateSignupResponse(user, { brand_id: brand.id });
 
       sendSignupWelcomeEmail({
@@ -222,26 +238,43 @@ async function signup(data) {
         planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly',
         dashboardUrl: 'https://purplehere.com/pos/brand/general/dashboard'
       });
+      notifyAdminNewSignup({ user, role: 'Brand General', entityName: data.brand_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
 
       return response;
 
     } else if (data.role === 'Foodcourt General') {
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 7);
+
       const foodcourt = await Foodcourt.create({
         name: data.foodcourt_name,
         address: data.foodcourt_address || null,
         status: 'active',
         subscription_status: 'trial',
         plan_type: plan.display_name || plan.name,
-        currency: currency
+        plan_amount: planAmount,
+        billing_cycle: data.billing_cycle || 'monthly',
+        currency: currency,
+        subscription_start: new Date(),
+        trial_end_date: trialEndDate
       }, { transaction });
 
       userFields.foodcourt_id = foodcourt.id;
       const user = await User.create(userFields, { transaction });
 
-      // Link foodcourt owner
       await foodcourt.update({ owner_id: user.id }, { transaction });
 
       await transaction.commit();
+
+      // Generate first invoice (non-blocking, after commit)
+      try {
+        const invoiceScheduler = require('./invoiceScheduler');
+        await invoiceScheduler.createEntitySubscriptionInvoice(foodcourt, 'foodcourt', plan, currency, trialEndDate);
+        console.log(`[Signup] Foodcourt invoice generated for ${foodcourt.name}`);
+      } catch (e) {
+        console.error('[Signup] Foodcourt invoice generation failed:', e.message);
+      }
+
       const response = generateSignupResponse(user, { foodcourt_id: foodcourt.id });
 
       sendSignupWelcomeEmail({
@@ -249,17 +282,32 @@ async function signup(data) {
         planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly',
         dashboardUrl: 'https://purplehere.com/pos/foodcourt/general/dashboard'
       });
+      notifyAdminNewSignup({ user, role: 'Foodcourt General', entityName: data.foodcourt_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
 
       return response;
 
     } else if (data.role === 'Restaurant Owner') {
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 7);
+
       userFields.company_name = data.company_name || null;
       userFields.plan_type = plan.display_name || plan.name;
       userFields.subscription_status = 'trial';
       userFields.subscription_start = new Date();
+      userFields.trial_end_date = trialEndDate;
       const user = await User.create(userFields, { transaction });
 
       await transaction.commit();
+
+      // Generate first invoice (non-blocking, after commit)
+      try {
+        const invoiceScheduler = require('./invoiceScheduler');
+        await invoiceScheduler.createEntitySubscriptionInvoice(user, 'owner', plan, currency, trialEndDate);
+        console.log(`[Signup] Owner invoice generated for ${user.username}`);
+      } catch (e) {
+        console.error('[Signup] Owner invoice generation failed:', e.message);
+      }
+
       const response = generateSignupResponse(user, {});
 
       sendSignupWelcomeEmail({
@@ -267,6 +315,7 @@ async function signup(data) {
         planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly',
         dashboardUrl: 'https://purplehere.com/pos/owner/dashboard'
       });
+      notifyAdminNewSignup({ user, role: 'Restaurant Owner', entityName: data.company_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
 
       return response;
 
@@ -342,6 +391,49 @@ function sendSignupWelcomeEmail({ user, role, entityName, planName, billingCycle
     });
   } catch (err) {
     console.error('[Signup] Welcome email setup failed:', err.message);
+  }
+}
+
+/**
+ * Notify System Admin about new signup (non-blocking)
+ */
+function notifyAdminNewSignup({ user, role, entityName, planName, billingCycle }) {
+  try {
+    const { sendPlatformEmail } = require('../utils/emailService');
+    const User = require('../models/User');
+
+    // Find System Admin emails
+    User.findAll({ where: { role: 'System Admin' }, attributes: ['email'] }).then(admins => {
+      if (!admins.length) return;
+
+      const adminEmails = admins.map(a => a.email).join(', ');
+      const html = `
+        <h2>New Signup Notification</h2>
+        <p>A new user has registered on PurpleHere POS:</p>
+        <table style="border-collapse:collapse;width:100%;max-width:500px;">
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Name</td><td style="padding:8px;border:1px solid #ddd;">${user.full_name}</td></tr>
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Email</td><td style="padding:8px;border:1px solid #ddd;">${user.email}</td></tr>
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Role</td><td style="padding:8px;border:1px solid #ddd;">${role}</td></tr>
+          ${entityName ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Entity</td><td style="padding:8px;border:1px solid #ddd;">${entityName}</td></tr>` : ''}
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Plan</td><td style="padding:8px;border:1px solid #ddd;">${planName} (${billingCycle})</td></tr>
+          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Trial Ends</td><td style="padding:8px;border:1px solid #ddd;">${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</td></tr>
+        </table>
+        <p style="margin-top:16px;color:#666;">This is an automated notification from PurpleHere POS.</p>
+      `;
+
+      sendPlatformEmail({
+        to: adminEmails,
+        subject: `[PurpleHere] New Signup: ${user.full_name} (${role})`,
+        html,
+        text: `New signup: ${user.full_name} (${user.email}) as ${role}. Plan: ${planName} (${billingCycle}).`
+      }).catch(err => {
+        console.error('[Signup] Admin notification email failed:', err.message);
+      });
+    }).catch(err => {
+      console.error('[Signup] Failed to find admins:', err.message);
+    });
+  } catch (err) {
+    console.error('[Signup] Admin notification setup failed:', err.message);
   }
 }
 

@@ -994,7 +994,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewRestaurant(prev => ({...prev, billingCycle: e.target.value as 'monthly' | 'annual'}))}
                   >
                     <option value="monthly">Monthly</option>
-                    <option value="annual">Annual (10% discount)</option>
+                    <option value="annual">Annual</option>
                   </FilterSelect>
                 </FormGroup>
                 <div style={{color: '#059669', fontSize: '14px', padding: '12px', background: '#ECFDF5', borderRadius: '8px', marginTop: '16px'}}>

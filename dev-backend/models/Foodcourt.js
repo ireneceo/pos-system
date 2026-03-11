@@ -108,9 +108,9 @@ Foodcourt.init({
   },
   currency: {
     type: DataTypes.STRING(10),
-    defaultValue: 'RM',
+    defaultValue: 'MYR',
     allowNull: false,
-    comment: 'Default currency for foodcourt restaurants (RM, USD, SGD, JPY, THB, KRW)'
+    comment: 'Default currency for foodcourt restaurants (MYR, USD, SGD, KRW, THB)'
   },
   // Operation Settings
   operation_settings: {
@@ -220,8 +220,8 @@ Foodcourt.init({
   },
   // Subscription Info (System Admin이 발행한 Invoice 결제용)
   subscription_status: {
-    type: DataTypes.ENUM('active', 'trial', 'expired', 'suspended', 'cancelled'),
-    defaultValue: 'active',
+    type: DataTypes.ENUM('active', 'trial', 'overdue', 'expired', 'suspended', 'cancelled'),
+    defaultValue: 'trial',
     comment: 'Foodcourt subscription status'
   },
   subscription_start: {
@@ -232,10 +232,36 @@ Foodcourt.init({
     type: DataTypes.DATE,
     allowNull: true
   },
+  trial_end_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Trial period end date'
+  },
+  grace_period_start: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Grace period start date (when overdue begins)'
+  },
   plan_type: {
     type: DataTypes.STRING(100),
     allowNull: true,
     comment: 'Foodcourt plan type (e.g., Foodcourt Basic, Foodcourt Professional)'
+  },
+  plan_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Current subscription plan amount'
+  },
+  billing_cycle: {
+    type: DataTypes.ENUM('monthly', 'annual'),
+    defaultValue: 'monthly',
+    comment: 'Billing cycle for subscription'
+  },
+  is_demo: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Demo foodcourt flag - excluded from real revenue statistics'
   }
 }, {
   sequelize: database.sequelize,

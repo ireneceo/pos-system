@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Brand = require('../models/Brand');
+const Foodcourt = require('../models/Foodcourt');
 const bcrypt = require('bcrypt');
 const { authenticateToken, demoProtection } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
@@ -30,9 +32,19 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 
     const users = await sequelize.query(`
-      SELECT u.*, r.name as restaurant_name
+      SELECT u.*, r.name as restaurant_name,
+        b.plan_type as brand_plan_type, b.plan_amount as brand_plan_amount,
+        b.billing_cycle as brand_billing_cycle, b.subscription_status as brand_subscription_status,
+        b.subscription_start as brand_subscription_start, b.subscription_end as brand_subscription_end,
+        b.currency as brand_currency, b.id as brand_entity_id, b.name as brand_name,
+        f.plan_type as fc_plan_type, f.plan_amount as fc_plan_amount,
+        f.billing_cycle as fc_billing_cycle, f.subscription_status as fc_subscription_status,
+        f.subscription_start as fc_subscription_start, f.subscription_end as fc_subscription_end,
+        f.currency as fc_currency, f.id as fc_entity_id, f.name as fc_name
       FROM users u
       LEFT JOIN restaurants r ON u.restaurant_id = r.id
+      LEFT JOIN brands b ON b.owner_id = u.id AND u.role = 'Brand General'
+      LEFT JOIN foodcourts f ON f.owner_id = u.id AND u.role = 'Foodcourt General'
       ${roleFilter}
       ORDER BY u.full_name
     `, {
@@ -203,7 +215,23 @@ router.post('/', authenticateToken, async (req, res) => {
       (first_name && last_name ? `${first_name} ${last_name}` :
        first_name || last_name || null);
 
-    const user = await User.create({
+    // Subscription fields from request
+    const { plan_type, plan_amount, billing_cycle, currency, subscription_start, subscription_end } = req.body;
+
+    // Calculate subscription_end from start + billing_cycle if not provided
+    let calcSubscriptionEnd = subscription_end || null;
+    if (subscription_start && !subscription_end && billing_cycle) {
+      const startDate = new Date(subscription_start);
+      if (billing_cycle === 'annual') {
+        startDate.setFullYear(startDate.getFullYear() + 1);
+      } else {
+        startDate.setMonth(startDate.getMonth() + 1);
+      }
+      calcSubscriptionEnd = startDate.toISOString().split('T')[0];
+    }
+
+    // Build user create data
+    const userCreateData = {
       username,
       email,
       password: hashedPassword,
@@ -216,7 +244,51 @@ router.post('/', authenticateToken, async (req, res) => {
       company_name: company_name || null,
       manager_id: manager_id || null,
       pin_code: pin_code || null
-    });
+    };
+
+    // For Restaurant Owner: store subscription on user directly
+    if (role === 'Restaurant Owner') {
+      userCreateData.plan_type = plan_type || null;
+      userCreateData.subscription_status = subscription_start ? 'active' : 'trial';
+      userCreateData.subscription_start = subscription_start || new Date();
+      userCreateData.subscription_end = calcSubscriptionEnd;
+    }
+
+    const user = await User.create(userCreateData);
+
+    // For Brand General: create Brand entity with subscription
+    if (role === 'Brand General') {
+      const brand = await Brand.create({
+        name: company_name || `${generatedFullName}'s Brand`,
+        owner_id: user.id,
+        status: 'active',
+        subscription_status: subscription_start ? 'active' : 'trial',
+        plan_type: plan_type || null,
+        plan_amount: plan_amount || null,
+        billing_cycle: billing_cycle || 'monthly',
+        currency: currency || 'MYR',
+        subscription_start: subscription_start || new Date(),
+        subscription_end: calcSubscriptionEnd
+      });
+      await user.update({ brand_id: brand.id });
+    }
+
+    // For Foodcourt General: create Foodcourt entity with subscription
+    if (role === 'Foodcourt General') {
+      const foodcourt = await Foodcourt.create({
+        name: company_name || `${generatedFullName}'s Foodcourt`,
+        owner_id: user.id,
+        status: 'active',
+        subscription_status: subscription_start ? 'active' : 'trial',
+        plan_type: plan_type || null,
+        plan_amount: plan_amount || null,
+        billing_cycle: billing_cycle || 'monthly',
+        currency: currency || 'MYR',
+        subscription_start: subscription_start || new Date(),
+        subscription_end: calcSubscriptionEnd
+      });
+      await user.update({ foodcourt_id: foodcourt.id });
+    }
 
     console.log('✅ User created successfully:', user.id, user.username);
 
@@ -306,7 +378,43 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
       }
     }
 
+    // Extract subscription fields — these go to entity tables, not user table
+    const subscriptionFields = ['plan_type', 'plan_amount', 'billing_cycle', 'currency', 'subscription_start', 'subscription_end', 'subscription_status'];
+    const entityUpdateData = {};
+    for (const field of subscriptionFields) {
+      if (updateData[field] !== undefined) {
+        entityUpdateData[field] = updateData[field];
+        // Remove from user updateData (except for Owner who stores on user)
+        if (user.role !== 'Restaurant Owner') {
+          delete updateData[field];
+        }
+      }
+    }
+
+    // Auto-calculate subscription_end if start + billing_cycle provided
+    if (entityUpdateData.subscription_start && entityUpdateData.billing_cycle && !entityUpdateData.subscription_end) {
+      const startDate = new Date(entityUpdateData.subscription_start);
+      if (entityUpdateData.billing_cycle === 'annual') {
+        startDate.setFullYear(startDate.getFullYear() + 1);
+      } else {
+        startDate.setMonth(startDate.getMonth() + 1);
+      }
+      entityUpdateData.subscription_end = startDate.toISOString().split('T')[0];
+      if (user.role === 'Restaurant Owner') {
+        updateData.subscription_end = entityUpdateData.subscription_end;
+      }
+    }
+
     await user.update(updateData);
+
+    // Update subscription on entity table (Brand/Foodcourt)
+    if (Object.keys(entityUpdateData).length > 0) {
+      if (user.role === 'Brand General' && user.brand_id) {
+        await Brand.update(entityUpdateData, { where: { id: user.brand_id } });
+      } else if (user.role === 'Foodcourt General' && user.foodcourt_id) {
+        await Foodcourt.update(entityUpdateData, { where: { id: user.foodcourt_id } });
+      }
+    }
 
     logActivity(req, {
       action_type: 'update',

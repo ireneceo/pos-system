@@ -103,7 +103,7 @@ User.init({
     comment: 'Subscription plan type for Restaurant Owner (matches PlanTemplate.display_name)'
   },
   subscription_status: {
-    type: DataTypes.ENUM('active', 'trial', 'expired', 'suspended', 'cancelled'),
+    type: DataTypes.ENUM('active', 'trial', 'overdue', 'expired', 'suspended', 'cancelled'),
     allowNull: true,
     comment: 'Subscription status for Restaurant Owner'
   },
@@ -114,6 +114,16 @@ User.init({
   subscription_end: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  trial_end_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Trial period end date for Owner'
+  },
+  grace_period_start: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Grace period start date for Owner'
   },
   is_demo: {
     type: DataTypes.BOOLEAN,

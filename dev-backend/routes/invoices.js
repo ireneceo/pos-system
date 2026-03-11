@@ -429,12 +429,18 @@ router.get('/', authenticateToken, async (req, res) => {
 
     console.log(`📋 GET /api/invoices - User: ${req.user.email} (${role}), Where:`, whereClause);
 
+    // Demo filter: System Admin excludes demo restaurants by default
+    const includeDemo = req.query.includeDemo === 'true';
+    const restaurantWhere = (role === 'System Admin' && !includeDemo) ? { is_demo: false } : {};
+
     const invoices = await Invoice.findAll({
       where: whereClause,
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'admin_id', 'admin_name', 'plan_type', 'phone', 'email', 'subscription_snapshot', 'billing_cycle']
+        where: Object.keys(restaurantWhere).length > 0 ? restaurantWhere : undefined,
+        attributes: ['id', 'name', 'admin_id', 'admin_name', 'plan_type', 'phone', 'email', 'subscription_snapshot', 'billing_cycle', 'is_demo'],
+        required: Object.keys(restaurantWhere).length > 0
       }, {
         model: InvoiceItem,
         as: 'items',
@@ -569,7 +575,9 @@ router.get('/', authenticateToken, async (req, res) => {
             : null,
         // Modification tracking
         isModified: invoice.is_modified || false,
-        modificationHistory: invoice.modification_history || []
+        modificationHistory: invoice.modification_history || [],
+        // Demo flag
+        isDemo: invoice.restaurant?.is_demo || false
       };
     });
 
@@ -3074,6 +3082,39 @@ router.post('/trigger-daily-generation', authenticateToken, async (req, res) => 
   } catch (error) {
     console.error('Error triggering daily generation:', error);
     res.status(500).json({ error: 'Failed to trigger daily generation' });
+  }
+});
+
+// Bulk generate missing invoices for all active restaurants (System Admin)
+router.post('/generate-missing-bulk', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, message: 'System Admin only' });
+    }
+
+    console.log('📊 [BULK] Generating missing invoices for all active restaurants...');
+
+    const subResult = await invoiceScheduler.generateSubscriptionInvoices();
+    const entityResult = await invoiceScheduler.generateEntityPlanInvoices();
+    const entitySubResult = await invoiceScheduler.generateEntitySubscriptionInvoices();
+
+    const totalGenerated = (subResult.generated || 0) + (entityResult.generated || 0) + (entitySubResult.generated || 0);
+    const totalSkipped = (subResult.skipped || 0) + (entityResult.skipped || 0) + (entitySubResult.skipped || 0);
+
+    res.json({
+      success: true,
+      message: totalGenerated > 0
+        ? `Generated ${totalGenerated} missing invoices (${subResult.generated || 0} restaurant, ${entityResult.generated || 0} entity plan, ${entitySubResult.generated || 0} entity subscription)`
+        : 'No missing invoices found. All invoices are up to date.',
+      subscription: subResult,
+      entityPlan: entityResult,
+      entitySubscription: entitySubResult,
+      totalGenerated,
+      totalSkipped
+    });
+  } catch (error) {
+    console.error('Error bulk generating missing invoices:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate missing invoices' });
   }
 });
 

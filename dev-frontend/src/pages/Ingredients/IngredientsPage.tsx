@@ -404,7 +404,7 @@ const IngredientsPage: React.FC = () => {
           </StatCard>
           <StatCard>
             <StatLabel>Average Cost</StatLabel>
-            <StatValue>{formatCurrency(avgCost, selectedCurrency || 'USD')}</StatValue>
+            <StatValue>{formatCurrency(avgCost, selectedCurrency || 'MYR')}</StatValue>
             <StatDescription>per unit</StatDescription>
           </StatCard>
           <StatCard>
@@ -488,7 +488,7 @@ const IngredientsPage: React.FC = () => {
                   <IngredientInfo>
                     <InfoRow>
                       <InfoLabel>Unit Cost</InfoLabel>
-                      <InfoValue>{formatCurrency(ingredient.unit_cost, selectedCurrency || 'USD')}</InfoValue>
+                      <InfoValue>{formatCurrency(ingredient.unit_cost, selectedCurrency || 'MYR')}</InfoValue>
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>Unit</InfoLabel>
@@ -592,7 +592,7 @@ const IngredientsPage: React.FC = () => {
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Unit Cost ({getCurrencySymbol(selectedCurrency || 'USD')}) *</FormLabel>
+              <FormLabel>Unit Cost ({getCurrencySymbol(selectedCurrency || 'MYR')}) *</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"

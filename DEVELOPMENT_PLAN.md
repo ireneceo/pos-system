@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-11
+> **최종 업데이트:** 2026-03-12
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -1692,6 +1692,47 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/components/Layout/MainLayout.tsx` (API fetch 제거 → 정적 경로 + 캐시버스트)
 - `dev-frontend/src/pages/Login/LoginPage.tsx` (API fetch 제거 → 정적 경로)
 - `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx` (API fetch 제거 → 정적 경로 + 캐시버스트)
+
+---
+
+## ✅ 완료: Footer Company 섹션 + ScrollToTop 개선 (2026-03-11)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Footer 웹링크 전체 URL 표시 | `gitconsulting.group` → `https://gitconsulting.group`으로 변경 | ✅ 완료 |
+| ScrollToTop 모바일 대응 | useLayoutEffect + document.body.scrollTop 추가로 모바일 스크롤 컨테이너 대응 | ✅ 완료 |
+| 운영서버 배포 | Footer + ScrollToTop 수정 반영 (2회 배포) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/components/Landing/LandingFooter.tsx`
+- `dev-frontend/src/components/ScrollToTop.tsx`
+
+---
+
+## ✅ 완료: 인보이스 시스템 확장 + 매니저 구독 관리 (2026-03-12)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 인보이스 일괄 생성 버튼 | Admin InvoicesPage에 "Generate Missing Invoices" 버튼 추가 (연회색) | ✅ 완료 |
+| RestaurantsPage +Invoice 버튼 제거 | 불필요한 개별 인보이스 생성 버튼 제거 | ✅ 완료 |
+| Brand/Foodcourt/Owner 구독 인보이스 자동발행 | invoiceScheduler에 generateEntitySubscriptionInvoices() 추가 | ✅ 완료 |
+| ManagersPage Edit 구독 데이터 표시 | GET /api/users에 Brand/Foodcourt 테이블 JOIN, Edit 팝업에 실제 데이터 로드 | ✅ 완료 |
+| ManagersPage Add/Edit 구독 저장 | POST/PUT /api/users에 구독 필드 전송 + Brand/Foodcourt entity 자동 생성 | ✅ 완료 |
+| Subscription End Date 자동 계산 | Start Date + Billing Cycle(monthly/annual)로 End Date 자동 계산 | ✅ 완료 |
+| ManagersPage 팝업 레이아웃 정돈 | FormLabel/FormInput/FormGrid 스타일 통일 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/routes/users.js` (GET join, POST entity 생성, PUT 구독 업데이트)
+- `dev-backend/routes/invoices.js` (bulk generate endpoint)
+- `dev-backend/services/invoiceScheduler.js` (generateEntitySubscriptionInvoices)
+- `dev-backend/services/authService.js` (signup invoice 연동)
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx` (bulk 생성 버튼)
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` (+Invoice 버튼 제거)
+- `dev-frontend/src/pages/Admin/ManagersPage.tsx` (구독 데이터 CRUD + 레이아웃)
 
 ---
 
@@ -3903,6 +3944,12 @@ CREATE TABLE purchase_order_items (
 - 공급업체 관리 (브랜드 자동 + 외부 수동)
 - 발주서 생성/승인/입고 프로세스
 - 입고 시 재고 자동 증가
+- **원가 이력 관리 (Cost History)**
+  - 재료 원가 변경 시 이전 원가 이력 저장 (`ingredient_cost_history` 테이블)
+  - 입고 단가 변경 시 재료 원가 자동 업데이트 옵션
+  - 원가 변동 추이 리포트 (이전 vs 현재 비교)
+  - 레시피 코스트 계산 시 해당 시점의 원가 적용 (Point-in-Time 방식)
+  - 마진율 분석: 원가 변동에 따른 메뉴별 마진 변화 추적
 
 ---
 
@@ -4644,6 +4691,10 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 | 6-13 | InventoryBatch 자동 생성 | 입고 완료 시 Batch 생성 확인 | ⬜ |
 | 6-14 | InventoryTransaction 생성 | type='purchase' 트랜잭션 확인 | ⬜ |
 | 6-15 | current_stock 업데이트 | Ingredient 재고 증가 확인 | ⬜ |
+| 6-16 | 원가 이력 테이블 | ingredient_cost_history 모델 + 마이그레이션 | ⬜ |
+| 6-17 | 원가 변경 이력 저장 | 입고 단가 변경 시 이전 원가 자동 기록 | ⬜ |
+| 6-18 | 원가 변동 리포트 | 재료별 원가 추이 차트 + 이전 vs 현재 비교 | ⬜ |
+| 6-19 | Point-in-Time 코스트 | 레시피 코스트 조회 시 해당 시점 원가 적용 | ⬜ |
 
 #### Phase 7: 청구/결제 시스템
 

@@ -499,7 +499,8 @@ const AdminStaffManagementPage: React.FC = () => {
                        user.role === 'Restaurant Admin' ? 5000 : 3000,
                 permissions: user.role === 'System Admin' ? ['all'] :
                             user.role === 'Restaurant Admin' ? ['pos', 'inventory', 'reports'] :
-                            ['pos']
+                            ['pos'],
+                is_demo: user.is_demo || false
               };
             });
 
@@ -1447,7 +1448,7 @@ const AdminStaffManagementPage: React.FC = () => {
                       {getInitials(staff.name)}
                     </StaffAvatar>
                     <StaffDetails>
-                      <StaffName>{staff.name}</StaffName>
+                      <StaffName>{staff.name}{staff.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}</StaffName>
                       <StaffEmail>{staff.email}</StaffEmail>
                     </StaffDetails>
                   </StaffInfo>

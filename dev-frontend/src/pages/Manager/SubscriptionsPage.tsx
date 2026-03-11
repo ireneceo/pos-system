@@ -4,7 +4,7 @@ import { Modal as CommonModal } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { API_BASE_URL } from '../../config/api';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getPlanPrice, formatPlanPrice, normalizeCurrencyCode } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import ConfirmModal from '../../components/ConfirmModal';
 
@@ -578,8 +578,9 @@ const ManagerSubscriptionsPage: React.FC = () => {
     console.log('🍽️ availableRestaurants state changed:', availableRestaurants);
   }, [availableRestaurants]);
   const [selectedRestaurant, setSelectedRestaurant] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState<'basic' | 'professional' | 'enterprise'>('basic');
+  const [selectedPlan, setSelectedPlan] = useState<string>('basic');
   const [selectedBilling, setSelectedBilling] = useState<'monthly' | 'annual'>('monthly');
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
   const [selectedPaymentModel, setSelectedPaymentModel] = useState<'manager' | 'self'>('manager');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmTargetId, setConfirmTargetId] = useState<string>('');
@@ -608,8 +609,22 @@ const ManagerSubscriptionsPage: React.FC = () => {
       }
     };
     
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch('/api/plans');
+        if (response.ok) {
+          const plans = await response.json();
+          const restaurantPlans = plans.filter((p: any) => p.plan_target === 'restaurant' && p.is_active);
+          setAvailablePlans(restaurantPlans);
+        }
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+      }
+    };
+
     if (user) {
       fetchAvailableRestaurants();
+      fetchPlans();
     }
   }, [user]);
 
@@ -675,20 +690,20 @@ const ManagerSubscriptionsPage: React.FC = () => {
   const handleConfirmUpgrade = () => {
     if (!selectedSubscription) return;
 
-    const planPrices = {
-      basic: { monthly: 29, annual: 290, orderLimit: 1000 },
-      professional: { monthly: 99, annual: 990, orderLimit: 10000 },
-      enterprise: { monthly: 199, annual: 2190, orderLimit: -1 }
-    };
+    const matchedPlan = availablePlans.find((p: any) => p.name === selectedPlan || p.display_name?.toLowerCase().includes(selectedPlan));
+    const cur = normalizeCurrencyCode(selectedSubscription.currency || selectedCurrency || 'MYR');
+    const monthly = matchedPlan ? getPlanPrice(matchedPlan, cur, 'monthly') : 0;
+    const annual = matchedPlan ? getPlanPrice(matchedPlan, cur, 'annual') : 0;
+    const orderLimit = matchedPlan?.order_limit || -1;
 
-    setSubscriptions(subscriptions.map(sub => 
-      sub.id === selectedSubscription.id 
-        ? { 
-            ...sub, 
+    setSubscriptions(subscriptions.map(sub =>
+      sub.id === selectedSubscription.id
+        ? {
+            ...sub,
             planType: selectedPlan,
-            monthlyFee: planPrices[selectedPlan].monthly,
-            annualFee: planPrices[selectedPlan].annual,
-            orderLimit: planPrices[selectedPlan].orderLimit,
+            monthlyFee: monthly,
+            annualFee: annual,
+            orderLimit: orderLimit,
             nextPayment: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
           }
         : sub
@@ -936,44 +951,23 @@ const ManagerSubscriptionsPage: React.FC = () => {
           <FormGroup>
             <FormLabel>Select Plan</FormLabel>
             <RadioGroup>
-              <PlanCard 
-                selected={selectedPlan === 'basic'}
-                onClick={() => setSelectedPlan('basic')}
-              >
-                <PlanTitle>Basic</PlanTitle>
-                <ModalPlanPrice>{formatCurrency(29, selectedCurrency)}/month</ModalPlanPrice>
-                <PlanFeatures>
-                  <li>Up to 1,000 orders/month</li>
-                  <li>Basic analytics</li>
-                  <li>5 staff accounts</li>
-                </PlanFeatures>
-              </PlanCard>
-
-              <PlanCard 
-                selected={selectedPlan === 'professional'}
-                onClick={() => setSelectedPlan('professional')}
-              >
-                <PlanTitle>Professional</PlanTitle>
-                <ModalPlanPrice>{formatCurrency(99, selectedCurrency)}/month</ModalPlanPrice>
-                <PlanFeatures>
-                  <li>Up to 10,000 orders/month</li>
-                  <li>Advanced analytics</li>
-                  <li>Unlimited staff accounts</li>
-                </PlanFeatures>
-              </PlanCard>
-
-              <PlanCard 
-                selected={selectedPlan === 'enterprise'}
-                onClick={() => setSelectedPlan('enterprise')}
-              >
-                <PlanTitle>Enterprise</PlanTitle>
-                <ModalPlanPrice>{formatCurrency(199, selectedCurrency)}/month</ModalPlanPrice>
-                <PlanFeatures>
-                  <li>Unlimited orders</li>
-                  <li>Custom analytics</li>
-                  <li>Priority support</li>
-                </PlanFeatures>
-              </PlanCard>
+              {availablePlans.filter((p: any) => p.plan_target === 'restaurant' && p.is_active).map((plan: any) => (
+                <PlanCard
+                  key={plan.id}
+                  selected={selectedPlan === plan.name}
+                  onClick={() => setSelectedPlan(plan.name)}
+                >
+                  <PlanTitle>{plan.display_name}</PlanTitle>
+                  <ModalPlanPrice>{formatPlanPrice(plan, normalizeCurrencyCode(selectedCurrency))}/month</ModalPlanPrice>
+                  <PlanFeatures>
+                    <li>{plan.order_limit === -1 ? 'Unlimited' : `Up to ${plan.order_limit?.toLocaleString()}`} orders/month</li>
+                    <li>{plan.staff_limit === -1 ? 'Unlimited' : `${plan.staff_limit}`} staff accounts</li>
+                    {Array.isArray(plan.features) && plan.features.slice(0, 2).map((f: string, i: number) => (
+                      <li key={i}>{f}</li>
+                    ))}
+                  </PlanFeatures>
+                </PlanCard>
+              ))}
             </RadioGroup>
           </FormGroup>
 
@@ -996,7 +990,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                   checked={selectedBilling === 'annual'}
                   onChange={() => setSelectedBilling('annual')}
                 />
-                Annual Billing (Save 17%)
+                Annual Billing
               </RadioLabel>
             </RadioGroup>
           </FormGroup>
@@ -1038,44 +1032,23 @@ const ManagerSubscriptionsPage: React.FC = () => {
           <FormGroup>
             <FormLabel>Select New Plan</FormLabel>
             <RadioGroup>
-              <PlanCard 
-                selected={selectedPlan === 'basic'}
-                onClick={() => setSelectedPlan('basic')}
-              >
-                <PlanTitle>Basic</PlanTitle>
-                <ModalPlanPrice>{formatCurrency(29, selectedCurrency)}/month</ModalPlanPrice>
-                <PlanFeatures>
-                  <li>Up to 1,000 orders/month</li>
-                  <li>Basic analytics</li>
-                  <li>5 staff accounts</li>
-                </PlanFeatures>
-              </PlanCard>
-
-              <PlanCard 
-                selected={selectedPlan === 'professional'}
-                onClick={() => setSelectedPlan('professional')}
-              >
-                <PlanTitle>Professional</PlanTitle>
-                <ModalPlanPrice>{formatCurrency(99, selectedCurrency)}/month</ModalPlanPrice>
-                <PlanFeatures>
-                  <li>Up to 10,000 orders/month</li>
-                  <li>Advanced analytics</li>
-                  <li>Unlimited staff accounts</li>
-                </PlanFeatures>
-              </PlanCard>
-
-              <PlanCard 
-                selected={selectedPlan === 'enterprise'}
-                onClick={() => setSelectedPlan('enterprise')}
-              >
-                <PlanTitle>Enterprise</PlanTitle>
-                <ModalPlanPrice>{formatCurrency(199, selectedCurrency)}/month</ModalPlanPrice>
-                <PlanFeatures>
-                  <li>Unlimited orders</li>
-                  <li>Custom analytics</li>
-                  <li>Priority support</li>
-                </PlanFeatures>
-              </PlanCard>
+              {availablePlans.filter((p: any) => p.plan_target === 'restaurant' && p.is_active).map((plan: any) => (
+                <PlanCard
+                  key={plan.id}
+                  selected={selectedPlan === plan.name}
+                  onClick={() => setSelectedPlan(plan.name)}
+                >
+                  <PlanTitle>{plan.display_name}</PlanTitle>
+                  <ModalPlanPrice>{formatPlanPrice(plan, normalizeCurrencyCode(selectedCurrency))}/month</ModalPlanPrice>
+                  <PlanFeatures>
+                    <li>{plan.order_limit === -1 ? 'Unlimited' : `Up to ${plan.order_limit?.toLocaleString()}`} orders/month</li>
+                    <li>{plan.staff_limit === -1 ? 'Unlimited' : `${plan.staff_limit}`} staff accounts</li>
+                    {Array.isArray(plan.features) && plan.features.slice(0, 2).map((f: string, i: number) => (
+                      <li key={i}>{f}</li>
+                    ))}
+                  </PlanFeatures>
+                </PlanCard>
+              ))}
             </RadioGroup>
           </FormGroup>
 

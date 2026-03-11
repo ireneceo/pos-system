@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -18,7 +18,7 @@ import { ModalWarning } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 // Using page-specific filter components instead of common ones
 import { useStore } from '../../contexts/StoreContext';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies, COUNTRY_TO_CURRENCY, normalizeCurrencyCode } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { COUNTRIES } from '../../constants/countries';
@@ -74,6 +74,7 @@ interface Restaurant {
   discount_type?: 'none' | 'percentage' | 'fixed';
   discount_value?: number;
   discount_reason?: string;
+  is_demo?: boolean;
 }
 
 // Common components now imported from ../../components/UI
@@ -586,7 +587,8 @@ const RestaurantsPage: React.FC = () => {
     taxId: '',
     cuisine: '',
     planType: 'Basic Plan',
-    planAmount: '29.00',
+    planAmount: '49.00',
+    currency: 'MYR',
     status: 'active' as 'active' | 'inactive' | 'trial' | 'expired' | 'suspended' | 'cancelled',
     // Trial 체크박스 - 최초 등록 시에만 선택 가능
     enableTrial: true, // 기본값: 7일 무료 체험
@@ -599,6 +601,7 @@ const RestaurantsPage: React.FC = () => {
   });
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const planCurrencies = useMemo(() => getActivePlanCurrencies(availablePlans), [availablePlans]);
   const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
 
   // Restaurant Admin states
@@ -807,8 +810,8 @@ const RestaurantsPage: React.FC = () => {
             subscriptionEnd: restaurant.subscriptionEnd || null,
             planType: restaurant.planType || 'Basic Plan',
             planAmount: restaurant.planAmount || '29.00',
-            billingCycle: restaurant.billingCycle || 'monthly',
-            autoRenew: restaurant.autoRenew !== undefined ? restaurant.autoRenew : true,
+            billingCycle: restaurant.billingCycle || restaurant.billing_cycle || 'monthly',
+            autoRenew: (restaurant.autoRenew !== undefined ? restaurant.autoRenew : (restaurant.auto_renew !== undefined ? restaurant.auto_renew : true)),
             discount_type: restaurant.discount_type || 'none',
             discount_value: restaurant.discount_value || 0,
             discount_reason: restaurant.discount_reason || ''
@@ -902,7 +905,8 @@ const RestaurantsPage: React.FC = () => {
       taxId: '',
       cuisine: '',
       planType: firstPlan ? firstPlan.display_name : 'Basic Plan',
-      planAmount: firstPlan ? firstPlan.base_price_monthly : '29.00',
+      planAmount: firstPlan ? String(getPlanPrice(firstPlan, 'MYR')) : '49.00',
+      currency: 'MYR',
       status: 'active' as 'active' | 'inactive' | 'trial' | 'expired' | 'suspended' | 'cancelled',
       enableTrial: true,
       billingCycle: 'monthly' as 'monthly' | 'annual',
@@ -1047,7 +1051,8 @@ const RestaurantsPage: React.FC = () => {
     // Get first available plan or use existing planType
     const firstPlan = availablePlans.length > 0 ? availablePlans[0] : null;
     const defaultPlanType = restaurant.planType || (firstPlan ? firstPlan.display_name : 'Basic Plan');
-    const defaultPlanAmount = restaurant.planAmount || (firstPlan ? firstPlan.base_price_monthly : '29.00');
+    const restCurrency = normalizeCurrencyCode(restaurant.currency || 'MYR');
+    const defaultPlanAmount = restaurant.planAmount || (firstPlan ? String(getPlanPrice(firstPlan, restCurrency)) : '49.00');
 
     const editData = {
       ...restaurant,
@@ -1158,6 +1163,7 @@ const RestaurantsPage: React.FC = () => {
         status: newRestaurant.status,
         planType: newRestaurant.planType,
         planAmount: parseFloat(newRestaurant.planAmount),
+        currency: newRestaurant.currency,
         billingCycle: newRestaurant.billingCycle,
         payment_model: newRestaurant.paymentModel,
         autoRenew: newRestaurant.autoRenew,
@@ -1219,6 +1225,24 @@ const RestaurantsPage: React.FC = () => {
     } catch (error) {
       console.error('❌ Error adding restaurant:', error);
       setAddModalWarning('Error adding restaurant. Please check your connection and try again.');
+    }
+  };
+
+  const handleRestoreSubscription = async (restaurant: Restaurant) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/restaurants/${restaurant.id}/restore-subscription`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const result = await response.json();
+      if (result.success) {
+        await fetchRestaurants();
+      } else {
+        setEditModalWarning(result.message || 'Failed to restore subscription');
+      }
+    } catch (error) {
+      console.error('Error restoring subscription:', error);
     }
   };
 
@@ -1298,7 +1322,8 @@ const RestaurantsPage: React.FC = () => {
         cuisine: editingRestaurant.cuisine || 'Various',
         status: editingRestaurant.status,
         planType: editingRestaurant.planType || 'Basic Plan',
-        planAmount: parseFloat(editingRestaurant.planAmount || '29.00'),
+        planAmount: parseFloat(editingRestaurant.planAmount || '49.00'),
+        currency: normalizeCurrencyCode(editingRestaurant.currency || 'MYR'),
         billingCycle: editingRestaurant.billingCycle || 'monthly',
         payment_model: editingRestaurant.paymentModel || 'restaurant',
         autoRenew: editingRestaurant.autoRenew || true,
@@ -1641,7 +1666,7 @@ const RestaurantsPage: React.FC = () => {
             <RestaurantCard key={restaurant.id}>
               <RestaurantHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{restaurant.name} {restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}</RestaurantName>
+                  <RestaurantName>{restaurant.name} {restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}{restaurant.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}</RestaurantName>
                   <RestaurantMeta>
                     Admin: {restaurant.admin ? `${restaurant.admin.name} (${restaurant.admin.email})` : 'No Admin Assigned'}
                   </RestaurantMeta>
@@ -1689,6 +1714,14 @@ const RestaurantsPage: React.FC = () => {
                 <ActionButton onClick={() => handleEditRestaurant(restaurant)}>
                   Edit
                 </ActionButton>
+                {(restaurant.status === 'suspended' || restaurant.status === 'overdue') && (
+                  <ActionButton
+                    onClick={() => handleRestoreSubscription(restaurant)}
+                    style={{ background: '#EFF6FF', color: '#2563EB', border: '1px solid #93C5FD' }}
+                  >
+                    Restore
+                  </ActionButton>
+                )}
                 <ActionButton
                   onClick={() => handleToggleStatus(restaurant)}
                   style={{
@@ -1974,7 +2007,18 @@ const RestaurantsPage: React.FC = () => {
                     <FormLabel>Country</FormLabel>
                     <FormSelect
                       value={newRestaurant.country}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, country: e.target.value})}
+                      onChange={(e) => {
+                        const countryCode = e.target.value;
+                        const autoCurrency = COUNTRY_TO_CURRENCY[countryCode] || newRestaurant.currency;
+                        const planCurrency = planCurrencies.includes(autoCurrency as any) ? autoCurrency : newRestaurant.currency;
+                        const selectedPlan = availablePlans.find(p => p.display_name === newRestaurant.planType);
+                        setNewRestaurant({
+                          ...newRestaurant,
+                          country: countryCode,
+                          currency: planCurrency,
+                          planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, planCurrency)) : newRestaurant.planAmount
+                        });
+                      }}
                     >
                       {COUNTRIES.map(country => (
                         <option key={country.code} value={country.code}>
@@ -2015,6 +2059,26 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
+                    <FormLabel>Currency *</FormLabel>
+                    <FormSelect
+                      value={newRestaurant.currency}
+                      onChange={(e) => {
+                        const cur = e.target.value;
+                        const selectedPlan = availablePlans.find(p => p.display_name === newRestaurant.planType);
+                        setNewRestaurant({
+                          ...newRestaurant,
+                          currency: cur,
+                          planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, cur)) : '0'
+                        });
+                      }}
+                    >
+                      {planCurrencies.map(cur => (
+                        <option key={cur} value={cur}>{cur} ({formatCurrency(0, cur).charAt(0) === '0' ? cur : formatCurrency(0, cur).split(' ')[0]})</option>
+                      ))}
+                    </FormSelect>
+                  </FormGroup>
+
+                  <FormGroup>
                     <FormLabel>Plan Type *</FormLabel>
                     <FormSelect
                       value={newRestaurant.planType}
@@ -2023,13 +2087,13 @@ const RestaurantsPage: React.FC = () => {
                         setNewRestaurant({
                           ...newRestaurant,
                           planType: e.target.value,
-                          planAmount: selectedPlan?.base_price_monthly?.toString() || '29.00'
+                          planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, newRestaurant.currency)) : '0'
                         });
                       }}
                     >
-                      {availablePlans.map(plan => (
+                      {availablePlans.filter(p => p.plan_target === 'restaurant').map(plan => (
                         <option key={plan.id} value={plan.display_name}>
-                          {plan.display_name} ({formatCurrency(parseFloat(plan.base_price_monthly), operationSettings.currency)}/month)
+                          {plan.display_name} ({formatPlanPrice(plan, newRestaurant.currency)}/month)
                         </option>
                       ))}
                     </FormSelect>
@@ -2066,7 +2130,7 @@ const RestaurantsPage: React.FC = () => {
                             setNewRestaurant({
                               ...newRestaurant,
                               status: 'active',
-                              planAmount: availablePlans.find(p => p.display_name === newRestaurant.planType)?.base_price_monthly?.toString() || '29.00'
+                              planAmount: String(getPlanPrice(availablePlans.find(p => p.display_name === newRestaurant.planType) || {}, newRestaurant.currency))
                             });
                           }
                         }}
@@ -2101,21 +2165,17 @@ const RestaurantsPage: React.FC = () => {
                       value={newRestaurant.billingCycle}
                       onChange={(e) => {
                         const cycle = e.target.value as 'monthly' | 'annual';
-                        const planAmounts: { [key: string]: { monthly: string, annual: string } } = {
-                          'Basic Plan': { monthly: '29.00', annual: '290.00' },
-                          'Professional Plan': { monthly: '99.00', annual: '990.00' },
-                          'Enterprise Plan': { monthly: '199.00', annual: '2190.00' }
-                        };
-                        const amounts = planAmounts[newRestaurant.planType] || planAmounts['Basic Plan'];
+                        const selectedPlan = availablePlans.find((p: any) => p.display_name === newRestaurant.planType);
+                        const price = selectedPlan ? getPlanPrice(selectedPlan, newRestaurant.currency, cycle) : 0;
                         setNewRestaurant({
                           ...newRestaurant,
                           billingCycle: cycle,
-                          planAmount: amounts[cycle]
+                          planAmount: price.toFixed(2)
                         });
                       }}
                     >
                       <option value="monthly">Monthly</option>
-                      <option value="annual">Annual (10% discount)</option>
+                      <option value="annual">Annual</option>
                     </FormSelect>
                   </FormGroup>
 
@@ -2168,7 +2228,7 @@ const RestaurantsPage: React.FC = () => {
                       <strong>Summary:</strong>
                     </div>
                     <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
-                      {newRestaurant.planType} - ${newRestaurant.planAmount} ({newRestaurant.billingCycle})
+                      {newRestaurant.planType} - {formatCurrency(parseFloat(newRestaurant.planAmount) || 0, newRestaurant.currency || 'MYR')} ({newRestaurant.billingCycle})
                     </div>
                     <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
                       Paid by: {newRestaurant.paymentModel === 'brand_manager' ? 'Brand Manager' : newRestaurant.paymentModel === 'foodcourt_manager' ? 'Foodcourt Manager' : 'Restaurant Admin'}
@@ -2504,21 +2564,42 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
+                    <FormLabel>Currency *</FormLabel>
+                    <FormSelect
+                      value={normalizeCurrencyCode(editingRestaurant.currency || 'MYR')}
+                      onChange={(e) => {
+                        const cur = e.target.value;
+                        const selectedPlan = availablePlans.find(p => p.display_name === (editingRestaurant.planType || 'Basic Plan'));
+                        setEditingRestaurant({
+                          ...editingRestaurant,
+                          currency: cur,
+                          planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, cur)) : editingRestaurant.planAmount
+                        });
+                      }}
+                    >
+                      {planCurrencies.map(cur => (
+                        <option key={cur} value={cur}>{cur}</option>
+                      ))}
+                    </FormSelect>
+                  </FormGroup>
+
+                  <FormGroup>
                     <FormLabel>Plan Type *</FormLabel>
                     <FormSelect
                       value={editingRestaurant.planType || 'Basic Plan'}
                       onChange={(e) => {
                         const selectedPlan = availablePlans.find(p => p.display_name === e.target.value);
+                        const cur = normalizeCurrencyCode(editingRestaurant.currency || 'MYR');
                         setEditingRestaurant({
                           ...editingRestaurant,
                           planType: e.target.value,
-                          planAmount: selectedPlan?.base_price_monthly?.toString() || '29.00'
+                          planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, cur)) : '0'
                         });
                       }}
                     >
-                      {availablePlans.map(plan => (
+                      {availablePlans.filter(p => p.plan_target === 'restaurant').map(plan => (
                         <option key={plan.id} value={plan.display_name}>
-                          {plan.display_name} ({formatCurrency(parseFloat(plan.base_price_monthly), operationSettings.currency)}/month)
+                          {plan.display_name} ({formatPlanPrice(plan, normalizeCurrencyCode(editingRestaurant.currency || 'MYR'))}/month)
                         </option>
                       ))}
                     </FormSelect>
@@ -2537,21 +2618,18 @@ const RestaurantsPage: React.FC = () => {
                       value={editingRestaurant.billingCycle || 'monthly'}
                       onChange={(e) => {
                         const cycle = e.target.value as 'monthly' | 'annual';
-                        const planAmounts: { [key: string]: { monthly: string, annual: string } } = {
-                          'Basic Plan': { monthly: '29.00', annual: '290.00' },
-                          'Professional Plan': { monthly: '99.00', annual: '990.00' },
-                          'Enterprise Plan': { monthly: '199.00', annual: '2190.00' }
-                        };
-                        const amounts = planAmounts[editingRestaurant.planType || 'Basic Plan'] || planAmounts['Basic Plan'];
+                        const selectedPlan = availablePlans.find((p: any) => p.display_name === (editingRestaurant.planType || 'Basic Plan'));
+                        const cur = normalizeCurrencyCode(editingRestaurant.currency || 'MYR');
+                        const price = selectedPlan ? getPlanPrice(selectedPlan, cur, cycle) : 0;
                         setEditingRestaurant({
                           ...editingRestaurant,
                           billingCycle: cycle,
-                          planAmount: amounts[cycle]
+                          planAmount: price.toFixed(2)
                         });
                       }}
                     >
                       <option value="monthly">Monthly</option>
-                      <option value="annual">Annual (10% discount)</option>
+                      <option value="annual">Annual</option>
                     </FormSelect>
                   </FormGroup>
 
@@ -2653,10 +2731,10 @@ const RestaurantsPage: React.FC = () => {
                       <strong>Summary:</strong>
                     </div>
                     <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
-                      {editingRestaurant.planType || 'Basic Plan'} - ${editingRestaurant.planAmount || '29.00'} ({editingRestaurant.billingCycle || 'monthly'})
+                      {editingRestaurant.planType || 'Basic Plan'} - {formatCurrency(parseFloat(editingRestaurant.planAmount || '0'), editingRestaurant.currency || 'MYR')} ({editingRestaurant.billingCycle || 'monthly'})
                       {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (editingRestaurant.discount_value || 0) > 0 && (
                         <span style={{color: '#15803D', fontSize: '14px', marginLeft: '8px'}}>
-                          (-{editingRestaurant.discount_type === 'percentage' ? `${editingRestaurant.discount_value}%` : `$${(editingRestaurant.discount_value || 0).toFixed(2)}`})
+                          (-{editingRestaurant.discount_type === 'percentage' ? `${editingRestaurant.discount_value}%` : formatCurrency(editingRestaurant.discount_value || 0, editingRestaurant.currency || 'MYR')})
                         </span>
                       )}
                     </div>

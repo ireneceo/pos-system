@@ -26,12 +26,14 @@ class InvoiceScheduler {
 
       const subResult = await this.generateSubscriptionInvoices();
       const entityResult = await this.generateEntityPlanInvoices();
+      const entitySubResult = await this.generateEntitySubscriptionInvoices();
 
       const summary = {
         subscription: subResult || { generated: 0, skipped: 0, errors: 0 },
-        entityPlan: entityResult || { generated: 0, skipped: 0, errors: 0 }
+        entityPlan: entityResult || { generated: 0, skipped: 0, errors: 0 },
+        entitySubscription: entitySubResult || { generated: 0, skipped: 0, errors: 0 }
       };
-      const totalErrors = (subResult?.errors || 0) + (entityResult?.errors || 0);
+      const totalErrors = (subResult?.errors || 0) + (entityResult?.errors || 0) + (entitySubResult?.errors || 0);
 
       if (totalErrors > 0) {
         await systemLogger.error('payment', 'invoice-scheduler', `Daily run completed with ${totalErrors} error(s)`, summary);
@@ -61,6 +63,7 @@ class InvoiceScheduler {
       const restaurants = await Restaurant.findAll({
         where: {
           status: 'active',
+          is_demo: { [Op.ne]: true },
           subscription_start: { [Op.ne]: null },
           plan_type: { [Op.ne]: null }
         }
@@ -411,7 +414,7 @@ class InvoiceScheduler {
             if (!restaurant) continue;
 
             // Use restaurant's base currency (design rule: invoice in recipient's currency)
-            const invoiceCurrency = restaurant.currency || 'RM';
+            const invoiceCurrency = restaurant.currency || 'MYR';
 
             // Check for duplicate
             const existing = await Invoice.findOne({
@@ -547,6 +550,167 @@ class InvoiceScheduler {
     } catch (error) {
       console.error('❌ [ENTITY PLAN SCHEDULER] Error:', error);
       await systemLogger.critical('payment', 'invoice-scheduler', 'Entity plan invoice generation failed', { error: error.message });
+      return result;
+    }
+  }
+
+  /**
+   * Generate recurring subscription invoices for Brands, Foodcourts, and Owners.
+   * Same advance-day logic as generateSubscriptionInvoices (for restaurants).
+   * These are POS subscription fees charged by System Admin to these entities.
+   */
+  async generateEntitySubscriptionInvoices() {
+    const result = { generated: 0, skipped: 0, errors: 0 };
+    try {
+      const siteTimezone = await getSiteTimezone();
+      const today = getLocalDate(siteTimezone);
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+
+      console.log(`📊 [ENTITY SUB SCHEDULER] Checking brand/foodcourt/owner subscription invoices (${ADVANCE_DAYS}-day advance)...`);
+
+      // 1. Brands with active subscription
+      const brands = await Brand.findAll({
+        where: {
+          subscription_status: 'active',
+          is_demo: { [Op.ne]: true },
+          subscription_start: { [Op.ne]: null },
+          plan_type: { [Op.ne]: null }
+        }
+      });
+
+      // 2. Foodcourts with active subscription
+      const foodcourts = await Foodcourt.findAll({
+        where: {
+          subscription_status: 'active',
+          is_demo: { [Op.ne]: true },
+          subscription_start: { [Op.ne]: null },
+          plan_type: { [Op.ne]: null }
+        }
+      });
+
+      // 3. Owners with active subscription
+      const { Op: SeqOp } = require('sequelize');
+      const owners = await require('../models/User').findAll({
+        where: {
+          role: 'Restaurant Owner',
+          subscription_status: 'active',
+          is_demo: { [SeqOp.ne]: true },
+          subscription_start: { [SeqOp.ne]: null },
+          plan_type: { [SeqOp.ne]: null }
+        }
+      });
+
+      const entities = [
+        ...brands.map(b => ({ entity: b, type: 'brand', payerType: 'brand_manager', payerId: b.owner_id, name: b.name, currency: b.currency || 'MYR' })),
+        ...foodcourts.map(f => ({ entity: f, type: 'foodcourt', payerType: 'foodcourt_manager', payerId: f.owner_id, name: f.name, currency: f.currency || 'MYR' })),
+        ...owners.map(o => ({ entity: o, type: 'owner', payerType: 'restaurant_owner', payerId: o.id, name: o.company_name || o.full_name, currency: 'MYR' }))
+      ];
+
+      console.log(`📊 [ENTITY SUB SCHEDULER] Found ${brands.length} brands, ${foodcourts.length} foodcourts, ${owners.length} owners`);
+
+      for (const { entity, type, payerType, payerId, name, currency } of entities) {
+        try {
+          const subscriptionStart = new Date(entity.subscription_start);
+          const subscriptionDay = subscriptionStart.getDate();
+          const billingCycle = entity.billing_cycle || 'monthly';
+
+          const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+          const effectiveDay = subscriptionDay > 28 ? Math.min(subscriptionDay, lastDay) : subscriptionDay;
+
+          if (!this.isTodayAdvanceOf(effectiveDay, today)) {
+            continue;
+          }
+
+          const { targetMonth, targetYear } = this.getTargetBillingMonth(effectiveDay, today);
+
+          let billingStart, billingEnd;
+          if (billingCycle === 'annual') {
+            const subscriptionMonth = subscriptionStart.getMonth();
+            if (targetMonth !== subscriptionMonth) continue;
+            billingStart = new Date(targetYear, targetMonth, effectiveDay);
+            billingEnd = new Date(targetYear + 1, targetMonth, effectiveDay - 1);
+          } else {
+            billingStart = new Date(targetYear, targetMonth, effectiveDay);
+            billingEnd = new Date(targetYear, targetMonth + 1, effectiveDay - 1);
+          }
+
+          // Duplicate check
+          const existing = await Invoice.findOne({
+            where: {
+              payer_type: payerType,
+              payer_id: payerId,
+              billing_period_start: billingStart,
+              type: 'automatic',
+              invoice_category: 'subscription',
+              issuer_type: 'system_admin'
+            }
+          });
+
+          if (existing) {
+            result.skipped++;
+            continue;
+          }
+
+          // Get plan price
+          const planAmount = parseFloat(entity.plan_amount) || 0;
+          if (planAmount <= 0) {
+            result.skipped++;
+            continue;
+          }
+
+          // Generate invoice number
+          const prefix = type === 'brand' ? 'BRD' : type === 'foodcourt' ? 'FC' : 'OWN';
+          const dateStr = billingStart.toISOString().slice(0, 10).replace(/-/g, '');
+          const invoiceNumber = `INV-${prefix}-${dateStr}-${entity.id}`;
+
+          // Due date = billing start + 14 days
+          const dueDate = new Date(billingStart);
+          dueDate.setDate(dueDate.getDate() + 14);
+
+          const invoice = await Invoice.create({
+            invoice_number: invoiceNumber,
+            type: 'automatic',
+            invoice_category: 'subscription',
+            issuer_type: 'system_admin',
+            issuer_id: 1,
+            restaurant_id: null,
+            payer_type: payerType,
+            payer_id: payerId,
+            billing_period_start: billingStart,
+            billing_period_end: billingEnd,
+            due_date: dueDate,
+            subtotal: planAmount,
+            tax_amount: 0,
+            discount_amount: 0,
+            total_amount: planAmount,
+            currency: currency,
+            status: 'pending_payment',
+            notes: `${entity.plan_type} - ${billingCycle} subscription for ${name}`
+          });
+
+          await InvoiceItem.create({
+            invoice_id: invoice.id,
+            description: `${entity.plan_type} Subscription (${billingCycle})`,
+            quantity: 1,
+            unit_price: planAmount,
+            amount: planAmount,
+            item_type: 'subscription'
+          });
+
+          result.generated++;
+          console.log(`✅ [ENTITY SUB] ${invoiceNumber} for ${name} - ${currency} ${planAmount.toFixed(2)}`);
+
+        } catch (error) {
+          console.error(`❌ [ENTITY SUB] Error for ${name}:`, error.message);
+          result.errors++;
+        }
+      }
+
+      console.log(`✅ [ENTITY SUB SCHEDULER] Complete - Generated: ${result.generated}, Skipped: ${result.skipped}, Errors: ${result.errors}`);
+      return result;
+    } catch (error) {
+      console.error('❌ [ENTITY SUB SCHEDULER] Error:', error);
       return result;
     }
   }
@@ -858,6 +1022,110 @@ class InvoiceScheduler {
     } catch (e) {
       console.error('[Invoice notification error]', e.message);
     }
+  }
+
+  /**
+   * Create subscription invoice for Brand/Foodcourt/Owner entities at signup
+   * @param {Object} entity - Brand, Foodcourt, or User (Owner) record
+   * @param {string} entityType - 'brand', 'foodcourt', or 'owner'
+   * @param {Object} plan - PlanTemplate record
+   * @param {string} currency - Currency code (MYR, USD, KRW)
+   * @param {Date} dueDate - Invoice due date (trial end date)
+   */
+  async createEntitySubscriptionInvoice(entity, entityType, plan, currency, dueDate) {
+    const now = new Date();
+    const billingCycle = entity.billing_cycle || 'monthly';
+
+    // Get currency-specific price
+    let planAmount = 0;
+    const planPrice = await PlanPrice.findOne({
+      where: { plan_id: plan.id, currency: currency, is_active: true }
+    });
+    if (planPrice) {
+      planAmount = billingCycle === 'annual'
+        ? parseFloat(planPrice.annual_price)
+        : parseFloat(planPrice.monthly_price);
+    } else {
+      planAmount = billingCycle === 'annual'
+        ? parseFloat(plan.base_price_annual || plan.base_price_monthly * 12)
+        : parseFloat(plan.base_price_monthly);
+    }
+
+    if (!planAmount) {
+      console.log(`⚠️ No price for entity subscription: ${entity.name || entity.username}`);
+      return;
+    }
+
+    // Billing period
+    const billingStart = new Date(now);
+    const billingEnd = billingCycle === 'annual'
+      ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate() - 1)
+      : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate() - 1);
+
+    // Determine issuer type and payer info
+    const issuerType = 'system_admin';
+    let payerType, payerId, payerName;
+
+    if (entityType === 'brand') {
+      payerType = 'brand_manager';
+      payerId = entity.owner_id;
+      payerName = entity.name;
+    } else if (entityType === 'foodcourt') {
+      payerType = 'foodcourt_manager';
+      payerId = entity.owner_id;
+      payerName = entity.name;
+    } else {
+      // owner
+      payerType = 'restaurant_owner';
+      payerId = entity.id;
+      payerName = entity.company_name || entity.full_name || entity.username;
+    }
+
+    // Generate invoice number
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const prefix = entityType === 'brand' ? 'BRD' : entityType === 'foodcourt' ? 'FC' : 'OWN';
+    const invoiceNumber = `INV-${prefix}-${dateStr}-${entity.id}`;
+
+    // Check duplicate
+    const existing = await Invoice.findOne({ where: { invoice_number: invoiceNumber } });
+    if (existing) {
+      console.log(`⚠️ Invoice already exists: ${invoiceNumber}`);
+      return;
+    }
+
+    const invoice = await Invoice.create({
+      invoice_number: invoiceNumber,
+      type: 'automatic',
+      invoice_category: 'subscription',
+      issuer_type: issuerType,
+      issuer_id: 1,
+      restaurant_id: null,
+      payer_type: payerType,
+      payer_id: payerId,
+      billing_period_start: billingStart,
+      billing_period_end: billingEnd,
+      due_date: dueDate,
+      subtotal: planAmount,
+      tax_amount: 0,
+      discount_amount: 0,
+      total_amount: planAmount,
+      currency: currency,
+      status: 'pending',
+      notes: `${plan.display_name || plan.name} - ${billingCycle} subscription (Trial period)`
+    });
+
+    // Create invoice item
+    await InvoiceItem.create({
+      invoice_id: invoice.id,
+      description: `${plan.display_name || plan.name} Subscription (${billingCycle})`,
+      quantity: 1,
+      unit_price: planAmount,
+      amount: planAmount,
+      item_type: 'subscription'
+    });
+
+    console.log(`✅ Entity subscription invoice created: ${invoiceNumber} (${currency} ${planAmount})`);
+    return invoice;
   }
 
   stop() {

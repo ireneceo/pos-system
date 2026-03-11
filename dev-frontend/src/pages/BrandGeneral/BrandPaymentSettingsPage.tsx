@@ -315,7 +315,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
   const [systemSupportedCurrencies, setSystemSupportedCurrencies] = useState<string[]>([]); // 시스템관리자가 설정한 통화
-  const [defaultCurrency, setDefaultCurrency] = useState<string>('USD');
+  const [defaultCurrency, setDefaultCurrency] = useState<string>('MYR');
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [tempSelectedCurrencies, setTempSelectedCurrencies] = useState<string[]>([]);
 

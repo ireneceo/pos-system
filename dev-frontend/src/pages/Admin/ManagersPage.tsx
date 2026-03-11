@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,7 +25,7 @@ import {
   IconButton
 , Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies, normalizeCurrencyCode } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useStore } from '../../contexts/StoreContext';
@@ -48,12 +48,15 @@ interface Manager {
   address: string;
   role?: string;
   planType?: string;
-  planAmount?: number;
+  planAmount?: number | string;
   billingCycle?: 'monthly' | 'annual';
   paymentModel?: string;
   autoRenew?: boolean;
   subscriptionStart?: string;
   subscriptionEnd?: string;
+  subscriptionStatus?: string;
+  currency?: string;
+  is_demo?: boolean;
 }
 
 // Common components now imported from ../../components/UI
@@ -145,10 +148,10 @@ const IconSymbol = styled.span`
 
 const FormGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 
-  @media (max-width: 768px) {
+  @media (max-width: 600px) {
     grid-template-columns: 1fr;
   }
 `;
@@ -159,34 +162,51 @@ const FormGroup = styled.div`
 `;
 
 const FormLabel = styled.label`
-  font-size: 14px;
+  display: block;
+  font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: #6B7C93;
   margin-bottom: 8px;
 `;
 
 const FormInput = styled.input`
-  padding: 10px 12px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
   border: 1px solid #E6EBF1;
   border-radius: 6px;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.15s;
 
   &:focus {
     outline: none;
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
   }
+
+  &:disabled {
+    background: #F9FAFB;
+    color: #6B7280;
+    cursor: not-allowed;
+  }
+
+  &::placeholder {
+    color: #9CA3AF;
+  }
 `;
 
 const FormTextarea = styled.textarea`
-  padding: 10px 12px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
   border: 1px solid #E6EBF1;
   border-radius: 6px;
   font-size: 14px;
   min-height: 80px;
   resize: vertical;
-  transition: all 0.2s;
+  transition: all 0.15s;
 
   &:focus {
     outline: none;
@@ -255,15 +275,17 @@ const ManagersPage: React.FC = () => {
     role: 'Foodcourt General' as 'Foodcourt General' | 'Foodcourt Manager' | 'Brand General' | 'Brand Manager' | 'Restaurant Owner',
     parentManagerId: '' as string, // For Brand Manager - links to Brand General
     // Subscription fields
+    currency: 'MYR',
     planType: '',
     planAmount: '149.00',
     billingCycle: 'monthly' as 'monthly' | 'annual',
-    paymentModel: 'foodcourt_manager' as 'foodcourt_manager' | 'brand_manager',
+    paymentModel: 'foodcourt_manager' as 'foodcourt_manager' | 'brand_manager' | 'restaurant_owner',
     autoRenew: true,
     subscriptionStart: new Date().toISOString().split('T')[0],
     subscriptionEnd: ''
   });
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
+  const planCurrencies = useMemo(() => getActivePlanCurrencies(availablePlans), [availablePlans]);
   const [brandGenerals, setBrandGenerals] = useState<any[]>([]);
   const [foodcourtGenerals, setFoodcourtGenerals] = useState<any[]>([]);
 
@@ -351,6 +373,18 @@ const ManagersPage: React.FC = () => {
           // Managers are active by default
           const subscriptionStatus = 'active';
           
+          // Map subscription data from joined brand/foodcourt tables
+          const isBrandGeneral = user.role === 'Brand General';
+          const isFoodcourtGeneral = user.role === 'Foodcourt General';
+
+          const entityPlanType = isBrandGeneral ? user.brand_plan_type : isFoodcourtGeneral ? user.fc_plan_type : user.plan_type;
+          const entityPlanAmount = isBrandGeneral ? user.brand_plan_amount : isFoodcourtGeneral ? user.fc_plan_amount : null;
+          const entityBillingCycle = isBrandGeneral ? user.brand_billing_cycle : isFoodcourtGeneral ? user.fc_billing_cycle : null;
+          const entitySubStatus = isBrandGeneral ? user.brand_subscription_status : isFoodcourtGeneral ? user.fc_subscription_status : user.subscription_status;
+          const entitySubStart = isBrandGeneral ? user.brand_subscription_start : isFoodcourtGeneral ? user.fc_subscription_start : user.subscription_start;
+          const entitySubEnd = isBrandGeneral ? user.brand_subscription_end : isFoodcourtGeneral ? user.fc_subscription_end : user.subscription_end;
+          const entityCurrency = isBrandGeneral ? user.brand_currency : isFoodcourtGeneral ? user.fc_currency : 'MYR';
+
           const managerData = {
             id: `mgr-${user.id}`,
             managerId: user.username || `manager-${user.id}`,
@@ -358,7 +392,7 @@ const ManagersPage: React.FC = () => {
             fullName: user.full_name || user.username || 'Unknown Name',
             companyName: user.company_name || 'Unknown Company',
             email: user.email,
-            position: user.role || user.position || 'Manager', // Use role instead of position for English display
+            position: user.role || user.position || 'Manager',
             department: user.department || 'Management',
             phone: user.phone || '+60 12-345-6789',
             status: subscriptionStatus as 'active' | 'inactive',
@@ -366,7 +400,16 @@ const ManagersPage: React.FC = () => {
             totalRevenue: totalRevenue,
             createdAt: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
             lastActive: new Date().toISOString().split('T')[0],
-            address: user.address || 'No address provided'
+            address: user.address || 'No address provided',
+            role: user.role,
+            planType: entityPlanType || undefined,
+            planAmount: entityPlanAmount || undefined,
+            billingCycle: entityBillingCycle || undefined,
+            subscriptionStatus: entitySubStatus || undefined,
+            subscriptionStart: entitySubStart ? new Date(entitySubStart).toISOString().split('T')[0] : undefined,
+            subscriptionEnd: entitySubEnd ? new Date(entitySubEnd).toISOString().split('T')[0] : undefined,
+            currency: entityCurrency || 'MYR',
+            is_demo: user.is_demo || false
           };
           
           console.log('✅ Transformed manager:', managerData);
@@ -440,6 +483,8 @@ const ManagersPage: React.FC = () => {
       return availablePlans.filter(p => p.plan_target === 'brand');
     } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
       return availablePlans.filter(p => p.plan_target === 'foodcourt');
+    } else if (role === 'Restaurant Owner') {
+      return availablePlans.filter(p => p.plan_target === 'owner');
     }
     return [];
   };
@@ -486,8 +531,7 @@ const ManagersPage: React.FC = () => {
       const foodcourtPlans = availablePlans.filter(p => p.plan_target === 'foodcourt');
       const firstPlan = foodcourtPlans.length > 0 ? foodcourtPlans[0] : null;
 
-      const endDate = new Date();
-      endDate.setFullYear(endDate.getFullYear() + 1);
+      const today = new Date().toISOString().split('T')[0];
 
       setNewManager({
         managerId: '',
@@ -500,13 +544,14 @@ const ManagersPage: React.FC = () => {
         address: '',
         role: 'Foodcourt General',
         parentManagerId: '',
+        currency: 'MYR',
         planType: firstPlan ? firstPlan.display_name : '',
-        planAmount: firstPlan ? firstPlan.base_price_monthly : '149.00',
+        planAmount: firstPlan ? String(getPlanPrice(firstPlan || {}, 'MYR')) : '149.00',
         billingCycle: 'monthly',
         paymentModel: 'foodcourt_manager',
         autoRenew: true,
-        subscriptionStart: new Date().toISOString().split('T')[0],
-        subscriptionEnd: endDate.toISOString().split('T')[0]
+        subscriptionStart: today,
+        subscriptionEnd: calcSubscriptionEnd(today, 'monthly')
       });
 
       setShowAddModal(true);
@@ -571,8 +616,7 @@ const ManagersPage: React.FC = () => {
 
     const foodcourtPlans = availablePlans.filter(p => p.plan_target === 'foodcourt');
     const firstPlan = foodcourtPlans.length > 0 ? foodcourtPlans[0] : null;
-    const endDate = new Date();
-    endDate.setFullYear(endDate.getFullYear() + 1);
+    const today = new Date().toISOString().split('T')[0];
 
     setNewManager({
       managerId: '',
@@ -585,21 +629,43 @@ const ManagersPage: React.FC = () => {
       address: '',
       role: 'Foodcourt General',
       parentManagerId: '',
+      currency: 'MYR',
       planType: firstPlan ? firstPlan.display_name : '',
-      planAmount: firstPlan ? firstPlan.base_price_monthly : '149.00',
+      planAmount: firstPlan ? String(getPlanPrice(firstPlan || {}, 'MYR')) : '149.00',
       billingCycle: 'monthly',
       paymentModel: 'foodcourt_manager',
       autoRenew: true,
-      subscriptionStart: new Date().toISOString().split('T')[0],
-      subscriptionEnd: endDate.toISOString().split('T')[0]
+      subscriptionStart: today,
+      subscriptionEnd: calcSubscriptionEnd(today, 'monthly')
     });
   };
 
+  // Auto-calculate subscription end date from start + billing cycle
+  const calcSubscriptionEnd = (start: string, cycle: string) => {
+    if (!start) return '';
+    const d = new Date(start);
+    if (cycle === 'annual') {
+      d.setFullYear(d.getFullYear() + 1);
+    } else {
+      d.setMonth(d.getMonth() + 1);
+    }
+    return d.toISOString().split('T')[0];
+  };
+
   const handleInputChange = (field: string, value: string | boolean) => {
-    setNewManager(prev => ({
-      ...prev,
-      [field]: field === 'autoRenew' ? value === 'true' || value === true : value
-    }));
+    setNewManager(prev => {
+      const updated = {
+        ...prev,
+        [field]: field === 'autoRenew' ? value === 'true' || value === true : value
+      };
+      // Auto-calc end date when start or billing cycle changes
+      if (field === 'subscriptionStart' || field === 'billingCycle') {
+        const start = field === 'subscriptionStart' ? String(value) : prev.subscriptionStart;
+        const cycle = field === 'billingCycle' ? String(value) : prev.billingCycle;
+        updated.subscriptionEnd = calcSubscriptionEnd(start, cycle);
+      }
+      return updated;
+    });
   };
 
   const handleToggleStatus = (manager: Manager) => {
@@ -621,24 +687,21 @@ const ManagersPage: React.FC = () => {
   };
 
   const handleEditManager = (manager: Manager) => {
-    // Get plans for the manager's role (only General roles allowed)
-    const role = manager.role as 'Foodcourt General' | 'Brand General';
+    // Use actual subscription data from the manager (loaded from backend join)
+    const role = manager.role as 'Foodcourt General' | 'Brand General' | 'Restaurant Owner';
     const filteredPlans = getFilteredPlans(role);
     const firstPlan = filteredPlans.length > 0 ? filteredPlans[0] : null;
 
-    // Set editing manager with subscription defaults
-    const endDate = new Date();
-    endDate.setFullYear(endDate.getFullYear() + 1);
-
     setEditingManager({
       ...manager,
-      planType: firstPlan ? firstPlan.display_name : '',
-      planAmount: firstPlan ? firstPlan.base_price_monthly : '149.00',
-      billingCycle: 'monthly' as 'monthly' | 'annual',
-      paymentModel: role === 'Brand General' ? 'brand_manager' : 'foodcourt_manager',
-      autoRenew: true,
-      subscriptionStart: new Date().toISOString().split('T')[0],
-      subscriptionEnd: endDate.toISOString().split('T')[0]
+      planType: manager.planType || (firstPlan ? firstPlan.display_name : ''),
+      planAmount: manager.planAmount || (firstPlan ? firstPlan.base_price_monthly : '149.00'),
+      billingCycle: (manager.billingCycle || 'monthly') as 'monthly' | 'annual',
+      paymentModel: role === 'Brand General' ? 'brand_manager' : role === 'Restaurant Owner' ? 'restaurant_owner' : 'foodcourt_manager',
+      autoRenew: manager.autoRenew !== undefined ? manager.autoRenew : true,
+      subscriptionStart: manager.subscriptionStart || new Date().toISOString().split('T')[0],
+      subscriptionEnd: manager.subscriptionEnd || '',
+      currency: manager.currency || 'MYR'
     });
     setShowEditModal(true);
   };
@@ -659,7 +722,7 @@ const ManagersPage: React.FC = () => {
       console.log('📝 Extracted user ID:', userId);
 
       // Prepare update data for backend API
-      const updateData = {
+      const updateData: any = {
         username: editingManager.managerId, // Manager ID as username
         full_name: editingManager.fullName,
         company_name: editingManager.companyName,
@@ -669,6 +732,16 @@ const ManagersPage: React.FC = () => {
         phone: editingManager.phone,
         address: editingManager.address
       };
+
+      // Add subscription fields for General roles and Owner
+      if (editingManager.role === 'Brand General' || editingManager.role === 'Foodcourt General' || editingManager.role === 'Restaurant Owner') {
+        updateData.plan_type = editingManager.planType;
+        updateData.plan_amount = parseFloat(String(editingManager.planAmount)) || 0;
+        updateData.billing_cycle = editingManager.billingCycle;
+        updateData.currency = (editingManager as any).currency || 'MYR';
+        updateData.subscription_start = editingManager.subscriptionStart;
+        updateData.subscription_end = editingManager.subscriptionEnd;
+      }
 
       console.log('📝 Update data:', updateData);
 
@@ -830,6 +903,16 @@ const ManagersPage: React.FC = () => {
         address: newManager.address
       };
 
+      // Add subscription fields for General roles and Owner
+      if (newManager.role === 'Brand General' || newManager.role === 'Foodcourt General' || newManager.role === 'Restaurant Owner') {
+        managerUserData.plan_type = newManager.planType;
+        managerUserData.plan_amount = parseFloat(newManager.planAmount) || 0;
+        managerUserData.billing_cycle = newManager.billingCycle;
+        managerUserData.currency = newManager.currency;
+        managerUserData.subscription_start = newManager.subscriptionStart;
+        managerUserData.subscription_end = newManager.subscriptionEnd;
+      }
+
       // Add manager_id (parent manager) for Brand Manager and Foodcourt Manager
       if ((newManager.role === 'Brand Manager' || newManager.role === 'Foodcourt Manager') && newManager.parentManagerId) {
         managerUserData.manager_id = parseInt(newManager.parentManagerId);
@@ -970,7 +1053,7 @@ const ManagersPage: React.FC = () => {
                   <MobileValue className="col-info">
                     <MobileLabel>Manager Info</MobileLabel>
                     <ManagerInfo>
-                      <CompanyName>{manager.fullName}</CompanyName>
+                      <CompanyName>{manager.fullName}{manager.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}</CompanyName>
                       <ContactInfo>
                         {manager.companyName} • {manager.position} • {manager.department}
                       </ContactInfo>
@@ -1101,7 +1184,7 @@ const ManagersPage: React.FC = () => {
                         role: newRole,
                         parentManagerId: '', // Reset parent when role changes
                         planType: firstPlan ? firstPlan.display_name : prev.planType,
-                        planAmount: firstPlan ? firstPlan.base_price_monthly : prev.planAmount,
+                        planAmount: firstPlan ? String(getPlanPrice(firstPlan || {}, prev.currency)) : prev.planAmount,
                         paymentModel: paymentModel
                       }));
                     }}
@@ -1197,11 +1280,30 @@ const ManagersPage: React.FC = () => {
                   />
                 </FormGroup>
 
-                {/* Subscription Settings - Only show for General roles */}
-                {(newManager.role === 'Foodcourt General' || newManager.role === 'Brand General') && (
+                {/* Subscription Settings - Show for General roles and Owner */}
+                {(newManager.role === 'Foodcourt General' || newManager.role === 'Brand General' || newManager.role === 'Restaurant Owner') && (
                   <>
                     <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
                       <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
+                    </FormGroup>
+
+                    <FormGroup>
+                      <FormLabel>Currency *</FormLabel>
+                      <FilterSelect
+                        value={newManager.currency}
+                        onChange={(e) => {
+                          const cur = e.target.value;
+                          const selectedPlan = getFilteredPlans(newManager.role).find(p => p.display_name === newManager.planType);
+                          handleInputChange('currency', cur);
+                          if (selectedPlan) {
+                            handleInputChange('planAmount', String(getPlanPrice(selectedPlan, cur)));
+                          }
+                        }}
+                      >
+                        {planCurrencies.map(cur => (
+                          <option key={cur} value={cur}>{cur}</option>
+                        ))}
+                      </FilterSelect>
                     </FormGroup>
 
                     <FormGroup>
@@ -1212,14 +1314,14 @@ const ManagersPage: React.FC = () => {
                           const selectedPlan = getFilteredPlans(newManager.role).find(p => p.display_name === e.target.value);
                           handleInputChange('planType', e.target.value);
                           if (selectedPlan) {
-                            handleInputChange('planAmount', selectedPlan.base_price_monthly);
+                            handleInputChange('planAmount', String(getPlanPrice(selectedPlan, newManager.currency)));
                           }
                         }}
                       >
                         <option value="">Select Plan</option>
                         {getFilteredPlans(newManager.role).map(plan => (
                           <option key={plan.id} value={plan.display_name}>
-                            {plan.display_name} (RM {plan.base_price_monthly}/month)
+                            {plan.display_name} ({formatPlanPrice(plan, newManager.currency)}/month)
                           </option>
                         ))}
                       </FilterSelect>
@@ -1246,11 +1348,12 @@ const ManagersPage: React.FC = () => {
                     </FormGroup>
 
                     <FormGroup>
-                      <FormLabel>Subscription End Date</FormLabel>
+                      <FormLabel>Subscription End Date (Auto)</FormLabel>
                       <FormInput
                         type="date"
                         value={newManager.subscriptionEnd}
-                        onChange={(e) => handleInputChange('subscriptionEnd', e.target.value)}
+                        disabled
+                        style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                       />
                     </FormGroup>
 
@@ -1455,11 +1558,31 @@ const ManagersPage: React.FC = () => {
                   </FormGroup>
                 )}
 
-                {/* Subscription Settings - Only show for General roles */}
-                {(editingManager.role === 'Foodcourt General' || editingManager.role === 'Brand General') && (
+                {/* Subscription Settings - Show for General roles and Owner */}
+                {(editingManager.role === 'Foodcourt General' || editingManager.role === 'Brand General' || editingManager.role === 'Restaurant Owner') && (
                   <>
                     <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
                       <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
+                    </FormGroup>
+
+                    <FormGroup>
+                      <FormLabel>Currency *</FormLabel>
+                      <FilterSelect
+                        value={normalizeCurrencyCode((editingManager as any).currency || 'MYR')}
+                        onChange={(e) => {
+                          const cur = e.target.value;
+                          const selectedPlan = getFilteredPlans(editingManager.role).find(p => p.display_name === editingManager.planType);
+                          setEditingManager({
+                            ...editingManager,
+                            currency: cur,
+                            planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, cur)) : editingManager.planAmount
+                          } as any);
+                        }}
+                      >
+                        {planCurrencies.map(cur => (
+                          <option key={cur} value={cur}>{cur}</option>
+                        ))}
+                      </FilterSelect>
                     </FormGroup>
 
                     <FormGroup>
@@ -1468,17 +1591,18 @@ const ManagersPage: React.FC = () => {
                         value={editingManager.planType || ''}
                         onChange={(e) => {
                           const selectedPlan = getFilteredPlans(editingManager.role).find(p => p.display_name === e.target.value);
+                          const cur = normalizeCurrencyCode((editingManager as any).currency || 'MYR');
                           setEditingManager({
                             ...editingManager,
                             planType: e.target.value,
-                            planAmount: selectedPlan ? selectedPlan.base_price_monthly : editingManager.planAmount
+                            planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, cur)) : editingManager.planAmount
                           });
                         }}
                       >
                         <option value="">Select Plan</option>
                         {getFilteredPlans(editingManager.role).map(plan => (
                           <option key={plan.id} value={plan.display_name}>
-                            {plan.display_name} (RM {plan.base_price_monthly}/month)
+                            {plan.display_name} ({formatPlanPrice(plan, normalizeCurrencyCode((editingManager as any).currency || 'MYR'))}/month)
                           </option>
                         ))}
                       </FilterSelect>
@@ -1488,7 +1612,14 @@ const ManagersPage: React.FC = () => {
                       <FormLabel>Billing Cycle *</FormLabel>
                       <FilterSelect
                         value={editingManager.billingCycle || 'monthly'}
-                        onChange={(e) => setEditingManager({...editingManager, billingCycle: e.target.value as 'monthly' | 'annual'})}
+                        onChange={(e) => {
+                          const cycle = e.target.value as 'monthly' | 'annual';
+                          setEditingManager({
+                            ...editingManager,
+                            billingCycle: cycle,
+                            subscriptionEnd: calcSubscriptionEnd(editingManager.subscriptionStart || '', cycle)
+                          });
+                        }}
                       >
                         <option value="monthly">Monthly</option>
                         <option value="annual">Annual</option>
@@ -1500,27 +1631,25 @@ const ManagersPage: React.FC = () => {
                       <FormInput
                         type="date"
                         value={editingManager.subscriptionStart || new Date().toISOString().split('T')[0]}
-                        onChange={(e) => setEditingManager({...editingManager, subscriptionStart: e.target.value})}
+                        onChange={(e) => {
+                          const start = e.target.value;
+                          setEditingManager({
+                            ...editingManager,
+                            subscriptionStart: start,
+                            subscriptionEnd: calcSubscriptionEnd(start, editingManager.billingCycle || 'monthly')
+                          });
+                        }}
                       />
                     </FormGroup>
 
                     <FormGroup>
-                      <FormLabel>Subscription End Date</FormLabel>
+                      <FormLabel>Subscription End Date (Auto)</FormLabel>
                       <FormInput
                         type="date"
                         value={editingManager.subscriptionEnd || ''}
-                        onChange={(e) => setEditingManager({...editingManager, subscriptionEnd: e.target.value})}
+                        disabled
+                        style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                       />
-                    </FormGroup>
-
-                    <FormGroup style={{gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                      <input
-                        type="checkbox"
-                        checked={editingManager.autoRenew !== undefined ? editingManager.autoRenew : true}
-                        onChange={(e) => setEditingManager({...editingManager, autoRenew: e.target.checked})}
-                        style={{width: '16px', height: '16px', accentColor: '#635BFF'}}
-                      />
-                      <FormLabel style={{marginBottom: 0}}>Auto-renew subscription</FormLabel>
                     </FormGroup>
                   </>
                 )}

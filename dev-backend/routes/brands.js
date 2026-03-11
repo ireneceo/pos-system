@@ -216,7 +216,7 @@ router.post('/', authenticateToken, requireRole('Brand General', 'System Admin')
       phone,
       address,
       website,
-      currency: currency || 'RM',
+      currency: currency || 'MYR',
       status: status || 'active'
     });
 
@@ -554,6 +554,10 @@ router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), 
     const { subscription_status, subscription_start, subscription_end, plan_type } = req.body;
 
     if (subscription_status) {
+      // When restoring from suspended/overdue to active, clear grace period
+      if (['active', 'trial'].includes(subscription_status) && ['suspended', 'overdue'].includes(brand.subscription_status)) {
+        brand.grace_period_start = null;
+      }
       brand.subscription_status = subscription_status;
     }
     if (subscription_start !== undefined) {
@@ -913,7 +917,7 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
     for (const restaurant of restaurants) {
       try {
         // Check currency compatibility for fixed plans
-        const restCurrency = restaurant.currency || 'RM';
+        const restCurrency = restaurant.currency || 'MYR';
         if (plan.charge_type === 'fixed') {
           const priceRecord = (plan.prices || []).find(p => p.currency === restCurrency);
           if (!priceRecord || parseFloat(priceRecord.monthly_price || 0) <= 0) {
@@ -1338,7 +1342,7 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
         if (!restaurant) continue;
 
         // Use restaurant's base currency (design rule: invoice in recipient's currency)
-        const invoiceCurrency = restaurant.currency || 'RM';
+        const invoiceCurrency = restaurant.currency || 'MYR';
 
         // Validate issuer has payment methods for this restaurant's currency
         if (!hasPaymentMethodForCurrency(brandPaymentSettings, invoiceCurrency)) {
@@ -1558,7 +1562,7 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
         restaurant_name: r.name,
         restaurant_email: r.email,
         restaurant_status: r.status,
-        restaurant_currency: r.currency || 'RM',
+        restaurant_currency: r.currency || 'MYR',
         plan: activePlan ? {
           id: activePlan.plan.id,
           name: activePlan.plan.name,

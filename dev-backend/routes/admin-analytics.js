@@ -18,6 +18,25 @@ const requireManagerRole = (req, res, next) => {
   next();
 };
 
+// Cache demo restaurant IDs for System Admin filtering
+router.use(authenticateToken, async (req, res, next) => {
+  if (req.user.role === 'System Admin') {
+    try {
+      const demoRestaurants = await Restaurant.findAll({
+        where: { is_demo: true },
+        attributes: ['id'],
+        raw: true
+      });
+      req.demoRestaurantIds = demoRestaurants.map(r => r.id);
+    } catch (e) {
+      req.demoRestaurantIds = [];
+    }
+  } else {
+    req.demoRestaurantIds = [];
+  }
+  next();
+});
+
 // 시스템 전체 통계 API
 router.get('/system-stats', authenticateToken, requireManagerRole, async (req, res) => {
   try {
@@ -46,11 +65,16 @@ router.get('/system-stats', authenticateToken, requireManagerRole, async (req, r
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
+    // Demo filter for System Admin
+    const demoFilter = req.demoRestaurantIds.length > 0
+      ? { restaurant_id: { [Op.notIn]: req.demoRestaurantIds } } : {};
+
     // 필터 조건 구성
     const whereConditions = {
       order_date: {
         [Op.between]: [startDate, now]
-      }
+      },
+      ...demoFilter
     };
 
     if (restaurant_id && restaurant_id !== 'all') {
@@ -77,8 +101,8 @@ router.get('/system-stats', authenticateToken, requireManagerRole, async (req, r
     const totalOrders = orders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-    // 전체 레스토랑 수
-    const restaurantWhere = {};
+    // 전체 레스토랑 수 (exclude demo)
+    const restaurantWhere = { is_demo: false };
     if (manager_id && manager_id !== 'all') {
       restaurantWhere.admin_id = manager_id;
     }
@@ -172,10 +196,15 @@ router.get('/sales-trend', authenticateToken, requireManagerRole, async (req, re
         break;
     }
 
+    // Demo filter for System Admin
+    const demoFilterSales = req.demoRestaurantIds.length > 0
+      ? { restaurant_id: { [Op.notIn]: req.demoRestaurantIds } } : {};
+
     const whereConditions = {
       order_date: {
         [Op.between]: [startDate, now]
-      }
+      },
+      ...demoFilterSales
     };
 
     if (finalRestaurantId && finalRestaurantId !== 'all') {
@@ -231,13 +260,14 @@ router.get('/subscription-stats', authenticateToken, requireManagerRole, async (
         [require('sequelize').fn('SUM', require('sequelize').col('plan_amount')), 'revenue']
       ],
       where: {
-        status: 'active'
+        status: 'active',
+        is_demo: false
       },
       group: ['plan_type']
     });
 
     const totalSubscriptions = await Restaurant.count({
-      where: { status: 'active' }
+      where: { status: 'active', is_demo: false }
     });
 
     const planDistribution = subscriptionStats.map(stat => ({
@@ -320,7 +350,7 @@ router.get('/regional-stats', authenticateToken, requireManagerRole, async (req,
         break;
     }
 
-    const restaurantWhere = {};
+    const restaurantWhere = { is_demo: false };
     if (manager_id && manager_id !== 'all') {
       restaurantWhere.admin_id = manager_id;
     }

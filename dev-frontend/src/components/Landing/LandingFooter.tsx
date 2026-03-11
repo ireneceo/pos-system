@@ -19,7 +19,7 @@ const FooterContent = styled.div`
 
 const FooterGrid = styled.div`
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1.5fr;
   gap: 40px;
   margin-bottom: 40px;
 
@@ -206,23 +206,27 @@ const LandingFooter: React.FC = () => {
           </FooterSection>
 
           <FooterSection>
-            <SectionTitle>Contact</SectionTitle>
+            <SectionTitle>Company</SectionTitle>
             <ContactInfo>
               <ContactItem>
-                <ContactLabel>Email</ContactLabel>
-                <ContactLink href={`mailto:${contactInfo.email}`}>
-                  {contactInfo.email}
+                <ContactLabel>Name</ContactLabel>
+                <span>GIT CONSULTING SDN. BHD.</span>
+              </ContactItem>
+              <ContactItem>
+                <ContactLabel>SSM</ContactLabel>
+                <span>202201012250(1457947-A)</span>
+              </ContactItem>
+              <ContactItem>
+                <ContactLabel>Web</ContactLabel>
+                <ContactLink href="https://gitconsulting.group" target="_blank" rel="noopener noreferrer">
+                  https://gitconsulting.group
                 </ContactLink>
               </ContactItem>
               <ContactItem>
-                <ContactLabel>Phone</ContactLabel>
-                <ContactLink href={`tel:${contactInfo.phone.replace(/[^+\d]/g, '')}`}>
-                  {contactInfo.phone}
+                <ContactLabel>E-mail</ContactLabel>
+                <ContactLink href="mailto:help@gitconsulting.group">
+                  help@gitconsulting.group
                 </ContactLink>
-              </ContactItem>
-              <ContactItem>
-                <ContactLabel>Hours</ContactLabel>
-                <span>{contactInfo.hours}</span>
               </ContactItem>
             </ContactInfo>
           </FooterSection>

@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { checkPaymentStatus, PaymentStatus, canAccessPage } from '../utils/paymentStatus';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { fetchPaymentStatus, PaymentStatus, canAccessPage } from '../utils/paymentStatus';
 import { useAuth } from './AuthContext';
 
 interface PaymentStatusContextType {
@@ -36,16 +36,16 @@ export const PaymentStatusProvider: React.FC<PaymentStatusProviderProps> = ({ ch
     restrictionLevel: 'none',
     overdueInvoices: []
   });
-  
+
   const [showWarning, setShowWarning] = useState(false);
   const [showPartialRestriction, setShowPartialRestriction] = useState(false);
   const [showBlockedModal, setShowBlockedModal] = useState(false);
   const [warningDismissed, setWarningDismissed] = useState(false);
   const [partialRestrictionDismissed, setPartialRestrictionDismissed] = useState(false);
 
-  const refreshPaymentStatus = () => {
+  const refreshPaymentStatus = useCallback(async () => {
     if (!user) return;
-    
+
     // 시스템 관리자는 결제 상태 체크 안함
     if (user.role === 'System Admin') {
       setPaymentStatus({
@@ -57,10 +57,10 @@ export const PaymentStatusProvider: React.FC<PaymentStatusProviderProps> = ({ ch
       });
       return;
     }
-    
-    const status = checkPaymentStatus(user.role, user.id || '');
+
+    const status = await fetchPaymentStatus();
     setPaymentStatus(status);
-    
+
     // 상태에 따른 UI 표시 결정
     if (status.restrictionLevel === 'warning' && !warningDismissed) {
       setShowWarning(true);
@@ -69,7 +69,7 @@ export const PaymentStatusProvider: React.FC<PaymentStatusProviderProps> = ({ ch
     } else if (status.restrictionLevel === 'blocked') {
       setShowBlockedModal(true);
     }
-  };
+  }, [user, warningDismissed, partialRestrictionDismissed]);
 
   const canAccess = (path: string): boolean => {
     return canAccessPage(path, paymentStatus.restrictionLevel);
@@ -85,7 +85,7 @@ export const PaymentStatusProvider: React.FC<PaymentStatusProviderProps> = ({ ch
   const dismissPartialRestriction = () => {
     setShowPartialRestriction(false);
     setPartialRestrictionDismissed(true);
-    // 2시간 후 다시 표시하도록 타이머 설정  
+    // 2시간 후 다시 표시하도록 타이머 설정
     setTimeout(() => setPartialRestrictionDismissed(false), 2 * 60 * 60 * 1000);
   };
 
@@ -99,13 +99,13 @@ export const PaymentStatusProvider: React.FC<PaymentStatusProviderProps> = ({ ch
   }, [user]);
 
   return (
-    <PaymentStatusContext.Provider 
-      value={{ 
-        paymentStatus, 
+    <PaymentStatusContext.Provider
+      value={{
+        paymentStatus,
         refreshPaymentStatus,
         canAccess,
         showWarning,
-        showPartialRestriction, 
+        showPartialRestriction,
         showBlockedModal,
         dismissWarning,
         dismissPartialRestriction

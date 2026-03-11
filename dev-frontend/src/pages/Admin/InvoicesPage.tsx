@@ -78,6 +78,7 @@ interface Invoice {
   discountReason?: string;
   subtotalBeforeDiscount?: number;
   isModified?: boolean;
+  isDemo?: boolean;
   modificationHistory?: Array<{
     modified_at: string;
     modified_by: number;
@@ -181,6 +182,35 @@ const AutoBadge = styled.span`
   padding: 1px 5px;
   border-radius: 3px;
   vertical-align: middle;
+`;
+
+const DemoBadge = styled.span`
+  display: inline-block;
+  background: #F59E0B;
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-left: 4px;
+`;
+
+const DemoToggleLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #6B7280;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+
+  input {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+  }
 `;
 
 // StatusBadge 컴포넌트는 CommonStatusBadge로 교체됨
@@ -585,6 +615,8 @@ const InvoicesPage: React.FC = () => {
     name: 'Tax'
   });
   const [paymentMethodWarning, setPaymentMethodWarning] = useState<string | null>(null);
+  const [includeDemo, setIncludeDemo] = useState(false);
+  const [generatingMissing, setGeneratingMissing] = useState(false);
   const [sortField, setSortField] = useState<'invoiceNumber' | 'companyName' | 'issueDate' | 'dueDate' | 'amount' | 'status'>('issueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [newInvoice, setNewInvoice] = useState({
@@ -636,7 +668,7 @@ const InvoicesPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch('/api/invoices', {
+      const response = await fetch(`/api/invoices${includeDemo ? '?includeDemo=true' : ''}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -827,18 +859,44 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
-  // Fetch data on component mount
+  // Generate missing invoices (bulk)
+  const handleGenerateMissingInvoices = async () => {
+    setGeneratingMissing(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/invoices/generate-missing-bulk', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSuccessMessage(result.message);
+        setShowSuccessModal(true);
+        if (result.totalGenerated > 0) {
+          fetchInvoices();
+        }
+      }
+    } catch (error) {
+      console.error('Error generating missing invoices:', error);
+    } finally {
+      setGeneratingMissing(false);
+    }
+  };
+
+  // Fetch data on component mount and when demo toggle changes
   useEffect(() => {
     fetchInvoices();
     fetchManagers();
     fetchRestaurants();
-    // fetchSubscriptions(); // removed - not currently used
     fetchCompanySettings();
     fetchCurrencyConfig();
     fetchInvoiceCategories();
     fetchPaymentSettings();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [includeDemo]);
 
   // Get additionalCharges for a specific currency from the map (normalizes RM→MYR etc.)
   const getChargesForCurrency = (currency: string) => {
@@ -946,7 +1004,7 @@ const InvoicesPage: React.FC = () => {
           address: restaurant.address || '',
           phone: restaurant.phone || '',
           email: restaurant.email || '',
-          currency: restaurant.currency || 'USD'
+          currency: restaurant.currency || 'MYR'
         }));
         setRestaurants(transformedRestaurants);
         console.log('Transformed restaurants:', transformedRestaurants);
@@ -1150,7 +1208,7 @@ const InvoicesPage: React.FC = () => {
         });
         if (restRes.ok) {
           const restData = await restRes.json();
-          currency = restData.currency || 'USD';
+          currency = restData.currency || 'MYR';
         }
       } catch (error) {
         console.error('Error fetching restaurant currency:', error);
@@ -1832,7 +1890,7 @@ const InvoicesPage: React.FC = () => {
       payerType: invoice.payerType || 'restaurant',
       payerId: invoice.payerId || '',
       items: invoice.items,
-      currency: invoice.currency || operationSettings.currency || 'USD',
+      currency: invoice.currency || operationSettings.currency || 'MYR',
       discountType: invoice.discountType || 'none',
       discountValue: invoice.discountValue ? invoice.discountValue.toString() : '',
       discountReason: invoice.discountReason || '',
@@ -2073,7 +2131,7 @@ const InvoicesPage: React.FC = () => {
         discount_value: discountAmt > 0 ? discountVal : null,
         discount_amount: discountAmt > 0 ? discountAmt : null,
         discount_reason: newInvoice.discountReason || null,
-        currency: newInvoice.currency || 'USD',
+        currency: newInvoice.currency || 'MYR',
         status: 'draft',
         notes: `${companyName}\n${customerName}\n${customerAddress}\n\n${description}`,
         issued_by: 1,
@@ -2239,6 +2297,14 @@ const InvoicesPage: React.FC = () => {
         <Header>
           <Title>Invoices</Title>
           <ActionSection>
+            <Button
+              variant="secondary"
+              onClick={handleGenerateMissingInvoices}
+              disabled={generatingMissing}
+              style={{ opacity: generatingMissing ? 0.6 : 1 }}
+            >
+              {generatingMissing ? 'Generating...' : 'Generate Missing Invoices'}
+            </Button>
           </ActionSection>
         </Header>
         <Content>
@@ -2290,6 +2356,15 @@ const InvoicesPage: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
 
+            <DemoToggleLabel>
+              <input
+                type="checkbox"
+                checked={includeDemo}
+                onChange={(e) => setIncludeDemo(e.target.checked)}
+              />
+              Include Demo
+            </DemoToggleLabel>
+
             <CreateButtonArea>
               <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
             </CreateButtonArea>
@@ -2324,7 +2399,10 @@ const InvoicesPage: React.FC = () => {
                   </DataTableCell>
                   <DataTableCell data-label="Customer" align="left">
                     <InvoiceInfo>
-                      <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
+                      <InvoiceNumber>
+                        {invoice.customerName || invoice.restaurantName || 'Unknown'}
+                        {invoice.isDemo && <DemoBadge>DEMO</DemoBadge>}
+                      </InvoiceNumber>
                       <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
                     </InvoiceInfo>
                   </DataTableCell>
@@ -2339,8 +2417,8 @@ const InvoicesPage: React.FC = () => {
                       <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
                     )}
                   </DataTableCell>
-                  <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>
-                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>
                     <ActionButtons>
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
@@ -2538,7 +2616,7 @@ const InvoicesPage: React.FC = () => {
                         {invoice.paidDate ? formatDate(invoice.paidDate) : '-'}
                       </DataTableCell>
                       <DataTableCell data-label="Amount" align="right">
-                        <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'USD')}</DataTableAmount>
+                        <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                       </DataTableCell>
                       <DataTableCell data-label="" mobileFullWidth>
                         <ActionButtons>
@@ -3210,7 +3288,7 @@ const InvoicesPage: React.FC = () => {
                     </SummaryRow>
                     <SummaryRow highlight>
                       <span><strong>Payment Amount:</strong></span>
-                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</strong></span>
+                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>
                     </SummaryRow>
                   </InvoiceSummary>
                 </FormGroup>
@@ -3671,7 +3749,7 @@ const InvoicesPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</span>
+                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
                     </div>
                   </div>
                 </div>
@@ -3771,7 +3849,7 @@ const InvoicesPage: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'USD')}</span>
+                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
                     </div>
                   </div>
                 </div>

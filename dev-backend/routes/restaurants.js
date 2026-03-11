@@ -44,6 +44,98 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
+// Get subscription/payment status for the current user's entity
+router.get('/subscription-status', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    let status = { subscriptionStatus: 'active', overdueAmount: 0, daysOverdue: 0, hasInvoice: false };
+
+    // Determine entity based on role
+    if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
+      const restaurant = await Restaurant.findByPk(user.restaurant_id);
+      if (restaurant) {
+        const overdueInvoice = await Invoice.findOne({
+          where: { restaurant_id: restaurant.id, status: { [Op.in]: ['pending', 'overdue'] }, invoice_category: { [Op.in]: ['subscription', 'pos_subscription'] } },
+          order: [['due_date', 'ASC']]
+        });
+        const daysOverdue = overdueInvoice && overdueInvoice.due_date < new Date()
+          ? Math.floor((Date.now() - new Date(overdueInvoice.due_date).getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        status = {
+          subscriptionStatus: restaurant.status,
+          overdueAmount: overdueInvoice ? parseFloat(overdueInvoice.total_amount) : 0,
+          daysOverdue,
+          hasInvoice: !!overdueInvoice,
+          currency: restaurant.currency || 'MYR',
+          trialEndDate: restaurant.trial_end_date,
+          planType: restaurant.plan_type
+        };
+      }
+    } else if (user.role === 'Brand General' || user.role === 'Brand Manager') {
+      const brand = await Brand.findByPk(user.brand_id);
+      if (brand) {
+        const overdueInvoice = await Invoice.findOne({
+          where: { payer_type: 'brand_manager', payer_id: user.id, status: { [Op.in]: ['pending', 'overdue'] }, invoice_category: { [Op.in]: ['subscription', 'pos_subscription'] } },
+          order: [['due_date', 'ASC']]
+        });
+        const daysOverdue = overdueInvoice && overdueInvoice.due_date < new Date()
+          ? Math.floor((Date.now() - new Date(overdueInvoice.due_date).getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        status = {
+          subscriptionStatus: brand.subscription_status,
+          overdueAmount: overdueInvoice ? parseFloat(overdueInvoice.total_amount) : 0,
+          daysOverdue,
+          hasInvoice: !!overdueInvoice,
+          currency: brand.currency || 'MYR',
+          trialEndDate: brand.trial_end_date,
+          planType: brand.plan_type
+        };
+      }
+    } else if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') {
+      const foodcourt = await Foodcourt.findByPk(user.foodcourt_id);
+      if (foodcourt) {
+        const overdueInvoice = await Invoice.findOne({
+          where: { payer_type: 'foodcourt_manager', payer_id: user.id, status: { [Op.in]: ['pending', 'overdue'] }, invoice_category: { [Op.in]: ['subscription', 'pos_subscription'] } },
+          order: [['due_date', 'ASC']]
+        });
+        const daysOverdue = overdueInvoice && overdueInvoice.due_date < new Date()
+          ? Math.floor((Date.now() - new Date(overdueInvoice.due_date).getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        status = {
+          subscriptionStatus: foodcourt.subscription_status,
+          overdueAmount: overdueInvoice ? parseFloat(overdueInvoice.total_amount) : 0,
+          daysOverdue,
+          hasInvoice: !!overdueInvoice,
+          currency: foodcourt.currency || 'MYR',
+          trialEndDate: foodcourt.trial_end_date,
+          planType: foodcourt.plan_type
+        };
+      }
+    } else if (user.role === 'Restaurant Owner') {
+      const overdueInvoice = await Invoice.findOne({
+        where: { payer_id: user.id, payer_type: 'restaurant_owner', status: { [Op.in]: ['pending', 'overdue'] }, invoice_category: { [Op.in]: ['subscription', 'pos_subscription'] } },
+        order: [['due_date', 'ASC']]
+      });
+      const daysOverdue = overdueInvoice && overdueInvoice.due_date < new Date()
+        ? Math.floor((Date.now() - new Date(overdueInvoice.due_date).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+      status = {
+        subscriptionStatus: user.subscription_status || 'active',
+        overdueAmount: overdueInvoice ? parseFloat(overdueInvoice.total_amount) : 0,
+        daysOverdue,
+        hasInvoice: !!overdueInvoice,
+        trialEndDate: user.trial_end_date,
+        planType: user.plan_type
+      };
+    }
+
+    res.json({ success: true, ...status });
+  } catch (error) {
+    console.error('Error fetching subscription status:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch subscription status' });
+  }
+});
+
 // Get all restaurants (with role-based filtering)
 router.get('/', optionalAuth, async (req, res) => {
   try {
@@ -161,10 +253,11 @@ router.get('/', optionalAuth, async (req, res) => {
         country: restaurantData.country || 'MY',
         businessRegistration: restaurantData.business_registration || '',
         taxId: restaurantData.tax_id || '',
-        currency: restaurantData.currency || 'RM',
+        currency: restaurantData.currency || 'MYR',
         discount_type: restaurantData.discount_type || 'none',
         discount_value: restaurantData.discount_value ? parseFloat(restaurantData.discount_value) : 0,
-        discount_reason: restaurantData.discount_reason || null
+        discount_reason: restaurantData.discount_reason || null,
+        is_demo: restaurantData.is_demo || false
       };
     });
 
@@ -625,6 +718,8 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
       tax_id: req.body.tax_id || null,
       plan_type: incomingPlanType || 'Basic Plan',
       plan_amount: parseFloat(req.body.planAmount || req.body.plan_amount) || (planSnapshot ? planSnapshot.base_price_monthly : 29.00),
+      currency: req.body.currency || 'MYR',
+      billing_cycle: req.body.billingCycle || req.body.billing_cycle || 'monthly',
       status: (() => {
         const requestedStatus = req.body.status;
         const validStatuses = ['active', 'inactive', 'trial', 'overdue', 'suspended', 'expired', 'cancelled'];
@@ -877,8 +972,8 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
   }
 });
 
-// Update restaurant
-router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, res) => {
+// Update restaurant (no creation validation — fields are all optional on update)
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     // Validate brand_id permission if being changed
     if (req.body.brand_id !== undefined && req.body.brand_id) {
@@ -945,7 +1040,13 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
     if (req.body.planAmount !== undefined || req.body.plan_amount !== undefined) {
       updateData.plan_amount = parseFloat(req.body.planAmount || req.body.plan_amount);
     }
-    if (req.body.status !== undefined) updateData.status = req.body.status;
+    if (req.body.status !== undefined) {
+      updateData.status = req.body.status;
+      // When restoring from suspended/overdue to active, clear grace period
+      if (['active', 'trial'].includes(req.body.status) && ['suspended', 'overdue'].includes(restaurant.status)) {
+        updateData.grace_period_start = null;
+      }
+    }
     if (req.body.subscriptionStart !== undefined) {
       updateData.subscription_start = req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : null;
     }
@@ -954,6 +1055,9 @@ router.put('/:id', authenticateToken, validateRestaurantCreation, async (req, re
     }
     if (req.body.billingCycle !== undefined || req.body.billing_cycle !== undefined) {
       updateData.billing_cycle = req.body.billingCycle || req.body.billing_cycle;
+    }
+    if (req.body.currency !== undefined) {
+      updateData.currency = req.body.currency;
     }
     if (req.body.autoRenew !== undefined || req.body.auto_renew !== undefined) {
       updateData.auto_renew = req.body.autoRenew !== undefined ? req.body.autoRenew : req.body.auto_renew;
@@ -1359,6 +1463,80 @@ router.get('/subscriptions/manager/:managerId', async (req, res) => {
   }
 });
 
+// POST /api/restaurants/:id/restore-subscription — System Admin restores a suspended/overdue restaurant
+router.post('/:id/restore-subscription', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, message: 'Only System Admin can restore subscriptions' });
+    }
+
+    const restaurant = await Restaurant.findByPk(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+
+    const previousStatus = restaurant.status;
+    if (!['suspended', 'overdue'].includes(previousStatus)) {
+      return res.json({ success: true, message: `Restaurant is already ${previousStatus}` });
+    }
+
+    await restaurant.update({
+      status: 'active',
+      grace_period_start: null
+    });
+
+    console.log(`✅ [ADMIN] Subscription restored: ${restaurant.name} (${previousStatus} → active)`);
+
+    res.json({
+      success: true,
+      message: `Subscription restored: ${previousStatus} → active`,
+      data: { id: restaurant.id, name: restaurant.name, previousStatus, newStatus: 'active' }
+    });
+  } catch (error) {
+    console.error('Error restoring subscription:', error);
+    res.status(500).json({ success: false, message: 'Failed to restore subscription' });
+  }
+});
+
+// POST /api/restaurants/:id/generate-invoice — System Admin manually generates a subscription invoice
+router.post('/:id/generate-invoice', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, message: 'Only System Admin can generate invoices' });
+    }
+
+    const restaurant = await Restaurant.findByPk(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
+
+    if (!restaurant.plan_type || !restaurant.subscription_start) {
+      return res.status(400).json({ success: false, message: 'Restaurant has no active subscription plan' });
+    }
+
+    const invoiceScheduler = require('../services/invoiceScheduler');
+    const billingCycle = restaurant.billing_cycle || 'monthly';
+    const now = new Date();
+    const billingStart = new Date(now);
+    const billingEnd = billingCycle === 'annual'
+      ? new Date(now.getFullYear() + 1, now.getMonth(), now.getDate() - 1)
+      : new Date(now.getFullYear(), now.getMonth() + 1, now.getDate() - 1);
+
+    await invoiceScheduler.createSubscriptionInvoice(restaurant, billingStart, billingEnd, billingCycle);
+
+    console.log(`✅ [ADMIN] Manual invoice generated for: ${restaurant.name}`);
+
+    res.json({
+      success: true,
+      message: `Invoice generated for ${restaurant.name}`,
+      data: { restaurantId: restaurant.id, billingCycle, billingStart, billingEnd }
+    });
+  } catch (error) {
+    console.error('Error generating invoice:', error);
+    res.status(500).json({ success: false, message: 'Failed to generate invoice' });
+  }
+});
+
 // Add new subscription for restaurant
 router.post('/subscriptions', async (req, res) => {
   try {
@@ -1452,7 +1630,7 @@ router.post('/subscriptions', async (req, res) => {
           taxRate,
           taxAmount,
           totalAmount,
-          currency: restaurant.currency || 'RM',
+          currency: restaurant.currency || 'MYR',
           billingPeriodStart: formatDate(invoice.billing_period_start),
           billingPeriodEnd: formatDate(invoice.billing_period_end),
           dueDate: formatDate(dueDate),
