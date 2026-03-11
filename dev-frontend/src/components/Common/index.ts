@@ -14,3 +14,7 @@ export { default as InputModal } from './InputModal';
 
 // Modal styled components (named exports)
 export * from './Modal';
+
+// Setup Guide
+export { default as SetupGuide } from './SetupGuide';
+export type { SetupItem } from './SetupGuide';

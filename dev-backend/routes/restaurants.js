@@ -675,6 +675,17 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
 
     await transaction.commit();
 
+    // Auto-start trial period if status is 'trial'
+    if (restaurant.status === 'trial') {
+      try {
+        const subscriptionScheduler = require('../services/subscriptionScheduler');
+        await subscriptionScheduler.startTrial(restaurant.id);
+        console.log(`✅ Trial auto-started for restaurant: ${restaurant.name}`);
+      } catch (trialError) {
+        console.error('[Trial] Auto-start failed:', trialError.message);
+      }
+    }
+
     // Send Welcome Email (non-blocking, uses creator's SMTP)
     if (adminUser && (adminAction === 'create' || adminAction === 'assign')) {
       try {

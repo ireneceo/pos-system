@@ -376,7 +376,13 @@ const RestaurantInvoicesPage: React.FC = () => {
           issuerId: inv.issuer_id || inv.issuerId || null,
           issuerName: inv.issuer_name || inv.issuerName || '',
           issuerInfo: inv.issuerInfo || inv.issuer_info || null,
-          payerInfo: inv.payerInfo || inv.payer_info || null
+          payerInfo: inv.payerInfo || inv.payer_info || null,
+          discountType: inv.discount_type || inv.discountType || 'none',
+          discountValue: parseFloat(inv.discount_value || inv.discountValue || 0),
+          discountAmount: parseFloat(inv.discount_amount || inv.discountAmount || 0),
+          discountReason: inv.discount_reason || inv.discountReason || null,
+          subtotalBeforeDiscount: parseFloat(inv.subtotal || inv.subtotalBeforeDiscount || 0) || undefined,
+          additionalCharges: inv.additional_charges || inv.additionalCharges || []
         }));
         setAllInvoices(invoices);
       }
@@ -857,6 +863,12 @@ const RestaurantInvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span>
                 </div>
+                ${invoice.discountType && invoice.discountType !== 'none' && invoice.discountAmount > 0 ? `
+                <div class="summary-row tax" style="color: #15803D;">
+                    <span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span>
+                    <span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span>
+                </div>
+                ` : ''}
                 ${(invoice.additionalCharges || []).map(charge => `
                 <div class="summary-row tax">
                     <span>${charge.name} (${charge.rate}%):</span>
@@ -1318,7 +1330,13 @@ const RestaurantInvoicesPage: React.FC = () => {
                         <span>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
                       </div>
                     )}
-                    {selectedInvoice.tax > 0 && (
+                    {(selectedInvoice.additionalCharges || []).map((charge: any, idx: number) => (
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
+                        <span>{charge.name} ({charge.rate}%):</span>
+                        <span>{formatCurrency(charge.amount, selectedInvoice.currency || 'MYR')}</span>
+                      </div>
+                    ))}
+                    {(selectedInvoice.additionalCharges || []).length === 0 && selectedInvoice.tax > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
                         <span>Tax:</span>
                         <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>

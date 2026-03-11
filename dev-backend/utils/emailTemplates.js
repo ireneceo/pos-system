@@ -380,4 +380,164 @@ function entityPlanInvoiceEmail(data) {
   return { subject, html: emailLayout(bodyContent, issuerInfo), text };
 }
 
-module.exports = { welcomeEmail, invoiceEmail, entityPlanInvoiceEmail };
+/**
+ * Signup Welcome Email Template
+ * Sent when a user self-registers via /signup
+ * @param {Object} data
+ * @param {string} data.fullName
+ * @param {string} data.email
+ * @param {string} data.username
+ * @param {string} data.role - Display role (e.g., 'Restaurant', 'Brand', 'Food Court', 'Owner')
+ * @param {string} data.entityName - Restaurant/Brand/Foodcourt/Company name
+ * @param {string} data.planName - Selected plan name
+ * @param {string} data.billingCycle - 'monthly' or 'annual'
+ * @param {number} data.trialDays - Trial period in days
+ * @param {string} data.dashboardUrl
+ */
+function signupWelcomeEmail(data) {
+  const {
+    fullName, email, username, role, entityName,
+    planName, billingCycle, trialDays, dashboardUrl
+  } = data;
+
+  const brandColor = '#635BFF';
+
+  const bodyContent = `
+    <h2 style="margin:0 0 8px;color:#0A2540;font-size:20px;">Welcome to PurpleHere!</h2>
+    <p style="color:#4B5563;font-size:15px;line-height:1.6;">
+      Hi ${fullName},
+    </p>
+    <p style="color:#4B5563;font-size:15px;line-height:1.6;">
+      Your account has been created successfully. You're all set to get started!
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+      <tr><td style="background:#F0EDFF;border-radius:8px;padding:20px;">
+        <p style="margin:0 0 12px;font-weight:600;color:#0A2540;font-size:15px;">Account Details</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:4px 0;color:#6B7C93;font-size:14px;width:120px;">Account Type</td>
+            <td style="padding:4px 0;color:#0A2540;font-size:14px;font-weight:600;">${role}</td>
+          </tr>
+          ${entityName ? `<tr>
+            <td style="padding:4px 0;color:#6B7C93;font-size:14px;">Business</td>
+            <td style="padding:4px 0;color:#0A2540;font-size:14px;font-weight:600;">${entityName}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="padding:4px 0;color:#6B7C93;font-size:14px;">Email</td>
+            <td style="padding:4px 0;color:#0A2540;font-size:14px;font-weight:600;">${email}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#6B7C93;font-size:14px;">Username</td>
+            <td style="padding:4px 0;color:#0A2540;font-size:14px;font-weight:600;">${username}</td>
+          </tr>
+          <tr>
+            <td style="padding:4px 0;color:#6B7C93;font-size:14px;">Plan</td>
+            <td style="padding:4px 0;color:#0A2540;font-size:14px;font-weight:600;">${planName} (${billingCycle})</td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+      <tr><td style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:16px;text-align:center;">
+        <p style="margin:0;color:#059669;font-size:14px;font-weight:600;">
+          Your ${trialDays}-day free trial has started — no payment required now.
+        </p>
+      </td></tr>
+    </table>
+    <h3 style="margin:24px 0 12px;color:#0A2540;font-size:16px;">Getting Started</h3>
+    <ol style="color:#4B5563;font-size:14px;line-height:1.8;padding-left:20px;">
+      <li>Log in to your dashboard</li>
+      <li>Complete your business profile</li>
+      <li>Set up your menu items and categories</li>
+      <li>Configure your settings</li>
+      <li>Start using PurpleHere POS!</li>
+    </ol>
+    <div style="text-align:center;margin:28px 0 12px;">
+      <a href="${dashboardUrl}" style="display:inline-block;background:${brandColor};color:white;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">
+        Go to Dashboard
+      </a>
+    </div>`;
+
+  const subject = `Welcome to PurpleHere - Your account is ready!`;
+
+  const text = [
+    `Welcome to PurpleHere!`,
+    ``,
+    `Hi ${fullName},`,
+    ``,
+    `Your account has been created successfully.`,
+    ``,
+    `Account Details:`,
+    `Account Type: ${role}`,
+    entityName ? `Business: ${entityName}` : '',
+    `Email: ${email}`,
+    `Username: ${username}`,
+    `Plan: ${planName} (${billingCycle})`,
+    ``,
+    `Your ${trialDays}-day free trial has started.`,
+    ``,
+    `Getting Started:`,
+    `1. Log in: ${dashboardUrl}`,
+    `2. Complete your business profile`,
+    `3. Set up menu items`,
+    `4. Configure settings`,
+    `5. Start using PurpleHere POS!`
+  ].filter(Boolean).join('\n');
+
+  return { subject, html: emailLayout(bodyContent), text };
+}
+
+/**
+ * Password Reset Email Template
+ * @param {Object} data
+ * @param {string} data.fullName
+ * @param {string} data.resetUrl - Full URL with token
+ * @param {number} data.expiresInMinutes
+ */
+function passwordResetEmail(data) {
+  const { fullName, resetUrl, expiresInMinutes } = data;
+  const brandColor = '#635BFF';
+
+  const bodyContent = `
+    <h2 style="margin:0 0 8px;color:#0A2540;font-size:20px;">Reset Your Password</h2>
+    <p style="color:#4B5563;font-size:15px;line-height:1.6;">
+      Hi ${fullName || 'there'},
+    </p>
+    <p style="color:#4B5563;font-size:15px;line-height:1.6;">
+      We received a request to reset your password. Click the button below to create a new password.
+    </p>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${resetUrl}" style="display:inline-block;background:${brandColor};color:white;padding:14px 40px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">
+        Reset Password
+      </a>
+    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+      <tr><td style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:14px 18px;">
+        <p style="margin:0;color:#92400E;font-size:13px;">
+          This link expires in <strong>${expiresInMinutes} minutes</strong>. If you didn't request this, you can safely ignore this email.
+        </p>
+      </td></tr>
+    </table>
+    <p style="color:#9CA3AF;font-size:12px;margin-top:24px;">
+      If the button doesn't work, copy and paste this link into your browser:<br>
+      <a href="${resetUrl}" style="color:${brandColor};word-break:break-all;font-size:12px;">${resetUrl}</a>
+    </p>`;
+
+  const subject = `Reset your PurpleHere password`;
+
+  const text = [
+    `Reset Your Password`,
+    ``,
+    `Hi ${fullName || 'there'},`,
+    ``,
+    `We received a request to reset your password. Click the link below:`,
+    `${resetUrl}`,
+    ``,
+    `This link expires in ${expiresInMinutes} minutes.`,
+    `If you didn't request this, you can safely ignore this email.`
+  ].join('\n');
+
+  return { subject, html: emailLayout(bodyContent), text };
+}
+
+module.exports = { welcomeEmail, invoiceEmail, entityPlanInvoiceEmail, signupWelcomeEmail, passwordResetEmail };

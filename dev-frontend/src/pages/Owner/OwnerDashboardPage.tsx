@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { formatCurrency } from '../../utils/currency';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+// Owner has no company-info page yet, so no setup guide for now
 
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일

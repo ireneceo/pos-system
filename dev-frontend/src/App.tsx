@@ -20,6 +20,9 @@ import FeaturesPage from './pages/Landing/FeaturesPage';
 import PricingPage from './pages/Landing/PricingPage';
 import ContactPage from './pages/Landing/ContactPage';
 import DemoPage from './pages/Landing/DemoPage';
+import SignupPage from './pages/Landing/SignupPage';
+import ForgotPasswordPage from './pages/Landing/ForgotPasswordPage';
+import ResetPasswordPage from './pages/Landing/ResetPasswordPage';
 import CompanyPage from './pages/Landing/CompanyPage';
 import PrivacyPolicyPage from './pages/Landing/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/Landing/TermsOfServicePage';
@@ -320,6 +323,9 @@ function App() {
                       <Route path="/pricing" element={<PricingPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/demo" element={<DemoPage />} />
+                      <Route path="/signup" element={<SignupPage />} />
+                      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                      <Route path="/reset-password" element={<ResetPasswordPage />} />
                       <Route path="/company" element={<CompanyPage />} />
                       <Route path="/privacy" element={<PrivacyPolicyPage />} />
                       <Route path="/terms" element={<TermsOfServicePage />} />

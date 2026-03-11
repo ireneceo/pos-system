@@ -1,0 +1,193 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import styled from 'styled-components';
+
+export interface SetupItem {
+  key: string;
+  label: string;
+  description: string;
+  path: string;
+  completed: boolean;
+}
+
+interface SetupGuideProps {
+  items: SetupItem[];
+  entityId?: string | number;
+}
+
+const SetupGuide: React.FC<SetupGuideProps> = ({ items, entityId }) => {
+  const navigate = useNavigate();
+  const storageKey = `setup_guide_dismissed_${entityId || 'default'}`;
+
+  const completedCount = items.filter(i => i.completed).length;
+  const allDone = completedCount === items.length;
+
+  // Auto-hide when all complete, or if user dismissed
+  const [dismissed, setDismissed] = React.useState(() => {
+    if (allDone) return true;
+    return localStorage.getItem(storageKey) === 'true';
+  });
+
+  // Re-show if something becomes incomplete after dismiss
+  React.useEffect(() => {
+    if (allDone) {
+      localStorage.setItem(storageKey, 'true');
+      setDismissed(true);
+    }
+  }, [allDone, storageKey]);
+
+  if (dismissed) return null;
+
+  const incomplete = items.filter(i => !i.completed);
+
+  return (
+    <Container>
+      <GuideHeader>
+        <HeaderLeft>
+          <GuideTitle>Complete Your Setup</GuideTitle>
+          <Progress>{completedCount}/{items.length} completed</Progress>
+        </HeaderLeft>
+        <DismissButton onClick={() => {
+          localStorage.setItem(storageKey, 'true');
+          setDismissed(true);
+        }}>
+          Dismiss
+        </DismissButton>
+      </GuideHeader>
+
+      <ProgressBar>
+        <ProgressFill style={{ width: `${(completedCount / items.length) * 100}%` }} />
+      </ProgressBar>
+
+      <ItemList>
+        {incomplete.map(item => (
+          <Item key={item.key} onClick={() => navigate(item.path)}>
+            <ItemIcon>&#x25CB;</ItemIcon>
+            <ItemContent>
+              <ItemLabel>{item.label}</ItemLabel>
+              <ItemDesc>{item.description}</ItemDesc>
+            </ItemContent>
+            <ItemArrow>&rarr;</ItemArrow>
+          </Item>
+        ))}
+      </ItemList>
+    </Container>
+  );
+};
+
+export default SetupGuide;
+
+// ─── Styled Components ───────────────────────────────────────
+
+const Container = styled.div`
+  background: white;
+  border: 1px solid #E0E7FF;
+  border-left: 4px solid #635BFF;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+`;
+
+const GuideHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+`;
+
+const HeaderLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const GuideTitle = styled.h3`
+  font-size: 15px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0;
+`;
+
+const Progress = styled.span`
+  font-size: 13px;
+  color: #6B7280;
+`;
+
+const DismissButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: #9CA3AF;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+
+  &:hover {
+    color: #6B7280;
+    background: #F3F4F6;
+  }
+`;
+
+const ProgressBar = styled.div`
+  height: 4px;
+  background: #E5E7EB;
+  border-radius: 2px;
+  margin-bottom: 16px;
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background: #635BFF;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+`;
+
+const ItemList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const Item = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #F8FAFC;
+  }
+`;
+
+const ItemIcon = styled.span`
+  font-size: 16px;
+  color: #D1D5DB;
+  flex-shrink: 0;
+`;
+
+const ItemContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const ItemLabel = styled.div`
+  font-size: 14px;
+  font-weight: 500;
+  color: #0A2540;
+`;
+
+const ItemDesc = styled.div`
+  font-size: 12px;
+  color: #9CA3AF;
+  margin-top: 1px;
+`;
+
+const ItemArrow = styled.span`
+  font-size: 14px;
+  color: #D1D5DB;
+  flex-shrink: 0;
+`;

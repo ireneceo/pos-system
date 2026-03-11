@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { SetupGuide } from '../../components/Common';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
+import { useAuth } from '../../contexts/AuthContext';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ============================================================================
@@ -355,11 +358,13 @@ const PIE_COLORS = ['#DC2626', '#EF4444', '#F87171', '#FCA5A5', '#FECACA', '#FEE
 
 const BrandGeneralDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [currency, setCurrency] = useState('RM');
   const [loading, setLoading] = useState(true);
   const [brandId, setBrandId] = useState<number | null>(null);
   const [chartPeriod, setChartPeriod] = useState('year');
+  const { items: setupItems } = useSetupStatus({ role: user?.role || '', brandId: user?.brand_id });
 
   const [stats, setStats] = useState({
     totalRestaurants: 0,
@@ -547,6 +552,10 @@ const BrandGeneralDashboard: React.FC = () => {
       </Header>
 
       <Content>
+        {setupItems.length > 0 && (
+          <SetupGuide items={setupItems} entityId={`brand_${user?.brand_id}`} />
+        )}
+
         {/* KPI Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#DC2626">

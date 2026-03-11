@@ -32,6 +32,7 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
   const [planType, setPlanType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [skipFiltering, setSkipFiltering] = useState(true); // true = no plan-based filtering (System Admin, etc.)
 
   // Support legacy call: useAllowedRoutes(restaurantId)
   const normalized: UseAllowedRoutesParams | null = typeof params === 'number'
@@ -62,9 +63,11 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
       }
 
       if (!apiUrl) {
+        // No plan-based filtering for this role (System Admin, etc.)
         setAllowedRoutes([]);
         setSubscriptionStatus(null);
         setPlanType(null);
+        setSkipFiltering(true);
         setLoading(false);
         return;
       }
@@ -81,6 +84,9 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
         setAllowedRoutes(data.allowed_routes || []);
         setSubscriptionStatus(data.subscription_status || null);
         setPlanType(data.plan_type || null);
+        // Enforce filtering only when entity has a plan assigned
+        // If plan_type is null (no plan yet), fail-open to avoid blocking users
+        setSkipFiltering(!data.plan_type);
         setError(null);
       } catch (err) {
         console.error('useAllowedRoutes Error:', err);
@@ -88,6 +94,7 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
         setAllowedRoutes([]);
         setSubscriptionStatus(null);
         setPlanType(null);
+        setSkipFiltering(true); // On error, fail-open to avoid blocking users
       } finally {
         setLoading(false);
       }
@@ -100,8 +107,9 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
    * Check if a specific route is allowed
    */
   const isRouteAllowed = (route: string): boolean => {
-    // If no routes fetched (empty array), allow all (fail-open)
-    if (allowedRoutes.length === 0) {
+    // Skip filtering for roles without plan-based restrictions (System Admin, etc.)
+    // or when API call failed (fail-open on error only)
+    if (skipFiltering) {
       return true;
     }
 

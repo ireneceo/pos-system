@@ -781,7 +781,12 @@ router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
         items: transformedItems,
         issuerInfo: issuerInfo,
         payerInfo: payerInfo,
-        additional_charges: invoice.additional_charges || []
+        additional_charges: invoice.additional_charges || [],
+        discount_type: invoice.discount_type || 'none',
+        discount_value: parseFloat(invoice.discount_value) || 0,
+        discount_amount: parseFloat(invoice.discount_amount) || 0,
+        discount_reason: invoice.discount_reason || null,
+        subtotal: parseFloat(invoice.subtotal) || 0
       };
     }));
 
@@ -895,7 +900,12 @@ router.get('/invoices/to-pay', requireRole('Restaurant Owner'), async (req, res)
         items: transformedItems,
         issuerInfo: issuerInfo,
         payerInfo: payerInfo,
-        additional_charges: invoice.additional_charges || []
+        additional_charges: invoice.additional_charges || [],
+        discount_type: invoice.discount_type || 'none',
+        discount_value: parseFloat(invoice.discount_value) || 0,
+        discount_amount: parseFloat(invoice.discount_amount) || 0,
+        discount_reason: invoice.discount_reason || null,
+        subtotal: parseFloat(invoice.subtotal) || 0
       };
     }));
 

@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { SetupGuide } from '../../components/Common';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
+import { useAuth } from '../../contexts/AuthContext';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ============================================================================
@@ -353,11 +356,13 @@ const PIE_COLORS = ['#EA580C', '#F97316', '#FB923C', '#FDBA74', '#FED7AA', '#FFF
 
 const FoodcourtGeneralDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [currency, setCurrency] = useState('RM');
   const [loading, setLoading] = useState(true);
   const [foodcourtId, setFoodcourtId] = useState<number | null>(null);
   const [chartPeriod, setChartPeriod] = useState('year');
+  const { items: setupItems } = useSetupStatus({ role: user?.role || '', foodcourtId: user?.foodcourt_id });
 
   const [stats, setStats] = useState({
     totalRestaurants: 0,
@@ -544,6 +549,10 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       </Header>
 
       <Content>
+        {setupItems.length > 0 && (
+          <SetupGuide items={setupItems} entityId={`foodcourt_${user?.foodcourt_id}`} />
+        )}
+
         {/* KPI Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#EA580C">

@@ -738,7 +738,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }
 
   // 구독 플랜이 없는 Brand/Foodcourt/Owner는 안내 화면 표시
-  const needsSubscription = !routesLoading && !hasActiveSubscription &&
+  // 단, 인보이스/프로필 페이지는 접근 허용 (결제/정보 확인 필요)
+  const subscriptionExemptPaths = ['/pos/brand/invoices', '/pos/foodcourt/invoices', '/pos/owner/invoices', '/pos/profile'];
+  const isExemptPath = subscriptionExemptPaths.some(p => location.pathname.startsWith(p));
+  const needsSubscription = !routesLoading && !hasActiveSubscription && !isExemptPath &&
     (user?.role === 'Brand General' || user?.role === 'Brand Manager' ||
      user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ||
      user?.role === 'Restaurant Owner');
@@ -1371,6 +1374,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {/* System Access - Only for Restaurant Admin & Staff */}
           {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') && (
             isRouteAllowed(`/restaurant/${restaurantId}/pos-terminal`) ||
+            isRouteAllowed(`/restaurant/${restaurantId}/floor-plan`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/kitchen`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/display`) ||
             isRouteAllowed(`/mobile/:slug/menu`)
@@ -1391,18 +1395,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   POS Terminal
                 </NavItem>
               )}
-              <NavItem
-                to={`/restaurant/${restaurantId}/floor-plan`}
-                active={isActive(`/restaurant/${restaurantId}/floor-plan`)}
-                onClick={(e) => {
-                  e.preventDefault();
-                  closeSidebar();
-                  window.open(`/restaurant/${restaurantId}/floor-plan`, '_blank');
-                }}
-              >
-                <NavIcon>&#x25A6;</NavIcon>
-                Floor Plan
-              </NavItem>
+              {isRouteAllowed(`/restaurant/${restaurantId}/floor-plan`) && (
+                <NavItem
+                  to={`/restaurant/${restaurantId}/floor-plan`}
+                  active={isActive(`/restaurant/${restaurantId}/floor-plan`)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    closeSidebar();
+                    window.open(`/restaurant/${restaurantId}/floor-plan`, '_blank');
+                  }}
+                >
+                  <NavIcon>&#x25A6;</NavIcon>
+                  Floor Plan
+                </NavItem>
+              )}
               {isRouteAllowed(`/restaurant/${restaurantId}/kitchen`) && (
                 <NavItem
                   to={`/restaurant/${restaurantId}/kitchen`}
@@ -1730,7 +1736,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>✉</NavIcon>
                   Notifications
                 </NavItem>
-                {user?.role === 'Restaurant Admin' && (
+                {user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${restaurantId}/floor-plan`) && (
                   <NavItem to={`/restaurant/${restaurantId}/floor-plan-editor`} active={isActive(`/restaurant/${restaurantId}/floor-plan-editor`)} onClick={closeSidebar}>
                     <NavIcon>▦</NavIcon>
                     Floor Plan Editor

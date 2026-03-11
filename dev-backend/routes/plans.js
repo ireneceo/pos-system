@@ -4,6 +4,7 @@ const PlanTemplate = require('../models/PlanTemplate');
 const PlanPrice = require('../models/PlanPrice');
 const Restaurant = require('../models/Restaurant');
 const { Op } = require('sequelize');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 // Get all plans
 router.get('/', async (req, res) => {
@@ -34,7 +35,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new plan (Admin only)
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     console.log('🔄 POST /api/plans - Request received');
     console.log('📝 Request body:', req.body);
@@ -59,7 +60,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update plan (Admin only)
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const plan = await PlanTemplate.findByPk(req.params.id);
     if (!plan) {
@@ -75,7 +76,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete plan (Admin only)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const plan = await PlanTemplate.findByPk(req.params.id);
     if (!plan) {
@@ -108,7 +109,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get subscription statistics by plan
-router.get('/stats/subscriptions', async (req, res) => {
+router.get('/stats/subscriptions', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     // Query restaurants grouped by plan_type to get subscription counts
     const stats = await Restaurant.findAll({
@@ -140,7 +141,7 @@ router.get('/stats/subscriptions', async (req, res) => {
 });
 
 // Export plans to CSV
-router.get('/export/csv', async (req, res) => {
+router.get('/export/csv', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const plans = await PlanTemplate.findAll({
       order: [['sort_order', 'ASC']]

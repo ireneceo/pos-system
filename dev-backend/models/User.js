@@ -121,6 +121,16 @@ User.init({
     allowNull: false,
     comment: 'Demo account flag - prevents modification, enables daily reset'
   },
+  reset_token: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Password reset token (hashed)'
+  },
+  reset_token_expires: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Password reset token expiry'
+  },
   notification_preferences: {
     type: DataTypes.TEXT,
     allowNull: true,

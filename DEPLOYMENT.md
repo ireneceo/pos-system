@@ -50,7 +50,18 @@ sudo /var/www/rollback-production.sh [타임스탬프]
 
 ---
 
-## 배포 후 확인
+## 배포 자동 검증 (스크립트 내장)
+
+배포 스크립트에 다음 검증이 포함되어 있음:
+1. **rsync 결과 검증** - 전송된 파일 수 + exit code 확인
+2. **백엔드 파일 크기 비교** - dev vs production 핵심 파일 (server.js, invoices.js 등) 크기 비교, 차이 > 50%면 경고
+3. **프론트엔드 JS hash 검증** - dev build의 main.js 해시와 production 배포본 일치 확인
+4. **PM2 uptime 확인** - 재시작 후 30초 이내 = 정상 fresh restart
+5. **Nginx 캐시 클리어** - 오래된 JS/CSS 캐시 제거
+6. **Smoke tests** - /api/health, /api/invoices, /api/restaurants, /api/admin/payment-settings 응답 확인
+7. **프론트엔드 번들 접근 확인** - main.*.js 파일 HTTP 200 응답 확인
+
+## 배포 후 수동 확인
 
 1. https://purplehere.com 접속 확인
 2. PM2 상태 확인: `pm2 list | grep production`

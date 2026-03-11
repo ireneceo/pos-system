@@ -1,6 +1,6 @@
 # 인보이스 시스템 기술 문서
 
-> **최종 업데이트:** 2026-03-06
+> **최종 업데이트:** 2026-03-11
 > **상태:** 구현 완료 (수동 결제 확인 방식, 결제 게이트웨이 미연동)
 
 ---
@@ -189,6 +189,24 @@ Brand와 동일 구조. `issuer_type: 'foodcourt'`, 인보이스 번호 `INV-FC{
 - `entity_plans.auto_generate = true`인 플랜만 대상
 - 전월 1일~말일 기간의 매출 조회 → `calculatePlanCharges()` → 인보이스 생성
 - Brand/Foodcourt 구분: `entity_type` 필드로 자동 분기
+
+#### 2.5.3 Trial 시작 시 첫 인보이스 생성
+
+- **파일**: `services/subscriptionScheduler.js` → `invoiceScheduler.createSubscriptionInvoice()`
+- 레스토랑 생성(Trial 시작) 시 첫 구독 인보이스를 **즉시 생성**
+- `dueDate = trial_end_date` (Trial 종료일까지 결제)
+- Trial 7일 → Invoice 마감일 = Trial 종료일, 이후 Grace Period 7일
+- **목적**: Trial 종료 후 결제 없는 공백 기간(gap) 방지
+
+#### 2.5.4 할인(Discount) 처리
+
+- 인보이스 생성 시 레스토랑의 `discount_type`, `discount_value` 적용
+- `percentage`: subtotal × (discount_value / 100)
+- `fixed`: min(discount_value, subtotal)
+- **additional_charges**: 할인 후 금액(discountedAmount)에 대해 계산
+- charges 소스: 발행자의 Payment Settings → `additionalCharges[currency]`
+- `total_amount = discountedAmount + chargesTotal`
+- **주의**: `0 || fallback` 패턴 사용 금지 (JS falsy 버그). 반드시 `!== undefined && !== null` 체크
 
 ---
 
@@ -390,7 +408,14 @@ hasPaymentMethodForCurrency(paymentSettings, currency)
 | confirmed_at | DATETIME NULL | 결제 확인 시각 |
 | rejection_reason | TEXT NULL | 거절 사유 |
 | payment_submitted_at | DATETIME NULL | 결제 증빙 제출 시각 |
-| additional_charges | JSON DEFAULT [] | 추가 청구 항목 |
+| additional_charges | JSON DEFAULT [] | 추가 청구 항목 `[{name, rate, amount}]` - Payment Settings에서 스냅샷 |
+| subtotal | DECIMAL(10,2) NULL | 할인 전 소계 (할인 적용 시 원래 금액) |
+| discount_type | ENUM('none','percentage','fixed') | 할인 유형 |
+| discount_value | DECIMAL(10,2) NULL | 할인 값 (percentage: %, fixed: 금액) |
+| discount_amount | DECIMAL(10,2) NULL | 실제 할인 금액 |
+| discount_reason | VARCHAR(255) NULL | 할인 사유 |
+| is_modified | TINYINT(1) DEFAULT 0 | 수정 여부 |
+| modification_history | JSON NULL | 수정 이력 |
 | paid_at | DATETIME NULL | 결제 완료 시각 |
 
 ### 5.2 invoice_items 테이블

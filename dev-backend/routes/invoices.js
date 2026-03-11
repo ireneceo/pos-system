@@ -1565,7 +1565,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Update invoice fields (status is managed by PATCH /:id/status, not here)
     const updateData = {};
-    if (amount !== undefined) updateData.total_amount = total || amount;
+    if (amount !== undefined) updateData.total_amount = (total !== undefined && total !== null) ? total : amount;
     if (dueDate !== undefined) updateData.due_date = dueDate;
     if (payerType !== undefined) updateData.payer_type = payerType;
     if (payerId !== undefined) updateData.payer_id = payerId || null;
@@ -1587,6 +1587,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (discountAmount !== undefined) updateData.discount_amount = discountAmount;
     if (discountReason !== undefined) updateData.discount_reason = discountReason;
     if (subtotal !== undefined) updateData.subtotal = subtotal;
+
+    // Update additional charges if provided
+    const { additionalCharges } = req.body;
+    if (additionalCharges !== undefined) {
+      updateData.additional_charges = additionalCharges;
+    }
 
     // Save modification history if there are actual changes
     if (Object.keys(changes).length > 0 || modificationReason) {
@@ -2241,75 +2247,7 @@ router.post('/generate-automatic', authenticateToken, async (req, res) => {
   }
 });
 
-// Update an invoice
-router.put('/:invoiceId', authenticateToken, async (req, res) => {
-  try {
-    const { invoiceId } = req.params;
-    const {
-      amount,
-      tax,
-      total,
-      dueDate,
-      status,
-      payerType,
-      payerId,
-      items
-    } = req.body;
-
-    console.log('🔄 Updating invoice:', invoiceId, {
-      amount,
-      tax,
-      total,
-      dueDate,
-      status,
-      payerType,
-      payerId
-    });
-
-    // Find the invoice
-    const invoice = await Invoice.findByPk(invoiceId);
-    if (!invoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
-    }
-
-    // Update invoice fields
-    const updateData = {
-      total_amount: total,
-      due_date: dueDate,
-      status: status,
-      payer_type: payerType,
-      payer_id: payerId || null
-    };
-
-    await invoice.update(updateData);
-
-    // Update invoice items if provided
-    if (items && items.length > 0) {
-      // Delete existing items
-      await InvoiceItem.destroy({
-        where: { invoice_id: invoiceId }
-      });
-
-      // Create new items
-      const invoiceItems = items.map(item => ({
-        invoice_id: invoiceId,
-        description: item.description,
-        calculated_amount: item.unitPrice || amount,
-        tax_amount: tax,
-        total_amount: item.total || total
-      }));
-
-      await InvoiceItem.bulkCreate(invoiceItems);
-    }
-
-    console.log('✅ Invoice updated successfully:', invoiceId);
-    res.json({ success: true, message: 'Invoice updated successfully' });
-
-  } catch (error) {
-    console.error('Error updating invoice:', error);
-    res.status(500).json({ error: 'Failed to update invoice' });
-  }
-});
+// (Removed duplicate PUT /:invoiceId - use PUT /:id above which handles discount, modification history, and transactions)
 
 // ============================================
 // Payment Flow APIs (Submit, Confirm, Reject)

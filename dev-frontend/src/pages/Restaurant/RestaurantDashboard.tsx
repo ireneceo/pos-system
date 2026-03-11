@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { SetupGuide } from '../../components/Common';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
+import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
 
 interface DashboardData {
@@ -473,6 +475,7 @@ const RestaurantDashboard: React.FC = () => {
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
+  const { items: setupItems } = useSetupStatus({ role: user?.role || '', restaurantId });
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -659,6 +662,10 @@ const RestaurantDashboard: React.FC = () => {
         </Header>
 
         <Content>
+          {setupItems.length > 0 && (
+            <SetupGuide items={setupItems} entityId={restaurantId} />
+          )}
+
           <DashboardStatsGrid>
             <DashboardStatCard color="#F59E0B">
               <DashboardStatLabel>Today's Sales</DashboardStatLabel>

@@ -907,10 +907,10 @@ const PricingPage: React.FC = () => {
 
                     <ContactButton
                       primary={isPopular}
-                      onClick={() => navigate('/contact', {
+                      onClick={() => navigate('/signup', {
                         state: {
-                          inquiry_type: 'free_trial',
-                          interested_plan: `${activeTab}_${plan.name.toLowerCase()}`
+                          plan_target: activeTab,
+                          plan_id: plan.id
                         }
                       })}
                     >
@@ -928,7 +928,7 @@ const PricingPage: React.FC = () => {
           <CTASubtitle>
             Start your 7-day free trial today. No credit card required.
           </CTASubtitle>
-          <CTAButton onClick={() => navigate('/contact')}>
+          <CTAButton onClick={() => navigate('/signup')}>
             Start Free Trial
           </CTAButton>
         </CTASection>

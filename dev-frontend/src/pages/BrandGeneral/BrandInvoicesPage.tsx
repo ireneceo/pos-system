@@ -1646,10 +1646,18 @@ const BrandInvoicesPage: React.FC = () => {
                     <span>Subtotal:</span>
                     <span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span>
                 </div>
-                <div class="summary-row tax">
-                    <span>Tax (6%):</span>
-                    <span>${formatCurrency(invoice.tax, invoice.currency || 'MYR')}</span>
+                ${invoice.discountType && invoice.discountType !== 'none' && invoice.discountAmount > 0 ? `
+                <div class="summary-row tax" style="color: #15803D;">
+                    <span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span>
+                    <span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span>
                 </div>
+                ` : ''}
+                ${(invoice.additionalCharges || []).map(charge => `
+                <div class="summary-row tax">
+                    <span>${charge.name} (${charge.rate}%):</span>
+                    <span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span>
+                </div>
+                `).join('')}
                 <div class="summary-row total">
                     <span>Total:</span>
                     <span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
@@ -2182,6 +2190,27 @@ const BrandInvoicesPage: React.FC = () => {
           payerType: editInvoice.payerType,
           payerId: editInvoice.payerId,
           items: editInvoice.items,
+          discountType: editInvoice.discountType !== 'none' ? editInvoice.discountType : null,
+          discountValue: editInvoice.discountType !== 'none' ? parseFloat(editInvoice.discountValue) || 0 : null,
+          discountAmount: (() => {
+            const amt = parseFloat(editInvoice.amount) || 0;
+            const dv = parseFloat(editInvoice.discountValue) || 0;
+            if (editInvoice.discountType === 'percentage') return amt * (dv / 100);
+            if (editInvoice.discountType === 'fixed') return dv;
+            return null;
+          })(),
+          discountReason: editInvoice.discountReason || null,
+          subtotal: editInvoice.discountType !== 'none' ? parseFloat(editInvoice.amount) || 0 : null,
+          additionalCharges: (() => {
+            const amt = parseFloat(editInvoice.amount) || 0;
+            const dv = parseFloat(editInvoice.discountValue) || 0;
+            const da = editInvoice.discountType === 'percentage' ? amt * (dv / 100) : editInvoice.discountType === 'fixed' ? dv : 0;
+            const afterDiscount = Math.max(0, amt - da);
+            const editCharges = getChargesForCurrency(editInvoice.currency || '');
+            return editCharges
+              .filter((c: any) => c.enabled && c.name && c.rate > 0)
+              .map((c: any) => ({ name: c.name, rate: c.rate, amount: Math.round(afterDiscount * c.rate / 100 * 100) / 100 }));
+          })(),
           modificationReason: editModificationReason.trim() || undefined
         }),
       });
@@ -3665,10 +3694,18 @@ const BrandInvoicesPage: React.FC = () => {
                           <span style={{color: '#15803D'}}>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
                         </SummaryRow>
                       )}
-                      <SummaryRow>
-                        <span>Tax (6%):</span>
-                        <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>
-                      </SummaryRow>
+                      {(selectedInvoice.additionalCharges || []).map((charge: any, idx: number) => (
+                        <SummaryRow key={idx}>
+                          <span>{charge.name} ({charge.rate}%):</span>
+                          <span>{formatCurrency(charge.amount, selectedInvoice.currency || 'MYR')}</span>
+                        </SummaryRow>
+                      ))}
+                      {(selectedInvoice.additionalCharges || []).length === 0 && selectedInvoice.tax > 0 && (
+                        <SummaryRow>
+                          <span>Tax:</span>
+                          <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>
+                        </SummaryRow>
+                      )}
                       <SummaryRow highlight>
                         <span>Total:</span>
                         <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>

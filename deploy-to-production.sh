@@ -142,21 +142,70 @@ success "Frontend built successfully"
 # 6. Sync backend to production
 # ──────────────────────────────────────────
 log "Syncing backend to production server..."
-rsync -avz --delete \
+BACKEND_RSYNC_LOG=$(rsync -avz --delete \
     --exclude 'node_modules' \
     --exclude '.env' \
     --exclude 'uploads' \
     --exclude '*.log' \
-    $LOCAL_DEV_BACKEND/ $PROD_SERVER:$REMOTE_PROD_BACKEND/
-success "Backend synced"
+    $LOCAL_DEV_BACKEND/ $PROD_SERVER:$REMOTE_PROD_BACKEND/ 2>&1)
+BACKEND_RSYNC_EXIT=$?
+if [ $BACKEND_RSYNC_EXIT -ne 0 ]; then
+    error "Backend rsync failed (exit code: $BACKEND_RSYNC_EXIT)"
+fi
+BACKEND_FILE_COUNT=$(echo "$BACKEND_RSYNC_LOG" | grep -cE '^\S' 2>/dev/null || echo 0)
+success "Backend synced ($BACKEND_FILE_COUNT files transferred)"
+
+# ──────────────────────────────────────────
+# 6b. Verify critical backend files on production
+# ──────────────────────────────────────────
+log "Verifying critical backend files on production..."
+VERIFY_FAIL=0
+
+# Compare file sizes of key backend files
+for CHECK_FILE in "server.js" "routes/invoices.js" "models/Invoice.js" "services/invoiceScheduler.js"; do
+    LOCAL_SIZE=$(stat -c%s "$LOCAL_DEV_BACKEND/$CHECK_FILE" 2>/dev/null || echo "0")
+    REMOTE_SIZE=$(ssh $PROD_SERVER "stat -c%s $REMOTE_PROD_BACKEND/$CHECK_FILE" 2>/dev/null || echo "0")
+    if [ "$LOCAL_SIZE" != "$REMOTE_SIZE" ]; then
+        warn "  Size mismatch: $CHECK_FILE (dev: $LOCAL_SIZE, prod: $REMOTE_SIZE)"
+        VERIFY_FAIL=$((VERIFY_FAIL + 1))
+    fi
+done
+
+if [ $VERIFY_FAIL -eq 0 ]; then
+    success "Critical backend files verified"
+else
+    warn "$VERIFY_FAIL file(s) have size mismatches — may need manual check"
+fi
 
 # ──────────────────────────────────────────
 # 7. Sync frontend build to production
 # ──────────────────────────────────────────
 log "Syncing frontend build to production server..."
-rsync -avz --delete \
-    $LOCAL_DEV_FRONTEND/build/ $PROD_SERVER:$REMOTE_PROD_FRONTEND/build/
-success "Frontend synced"
+FRONTEND_RSYNC_LOG=$(rsync -avz --delete \
+    $LOCAL_DEV_FRONTEND/build/ $PROD_SERVER:$REMOTE_PROD_FRONTEND/build/ 2>&1)
+FRONTEND_RSYNC_EXIT=$?
+if [ $FRONTEND_RSYNC_EXIT -ne 0 ]; then
+    error "Frontend rsync failed (exit code: $FRONTEND_RSYNC_EXIT)"
+fi
+FRONTEND_FILE_COUNT=$(echo "$FRONTEND_RSYNC_LOG" | grep -cE '^\S' 2>/dev/null || echo 0)
+success "Frontend synced ($FRONTEND_FILE_COUNT files transferred)"
+
+# ──────────────────────────────────────────
+# 7b. Verify frontend build hash matches
+# ──────────────────────────────────────────
+log "Verifying frontend build integrity..."
+LOCAL_MAIN_JS=$(ls -1 $LOCAL_DEV_FRONTEND/build/static/js/main.*.js 2>/dev/null | head -1)
+if [ -n "$LOCAL_MAIN_JS" ]; then
+    LOCAL_MAIN_NAME=$(basename "$LOCAL_MAIN_JS")
+    REMOTE_EXISTS=$(ssh $PROD_SERVER "ls $REMOTE_PROD_FRONTEND/build/static/js/$LOCAL_MAIN_NAME 2>/dev/null && echo 'YES' || echo 'NO'")
+    if echo "$REMOTE_EXISTS" | grep -q "YES"; then
+        success "Frontend main.js hash match: $LOCAL_MAIN_NAME"
+    else
+        warn "Frontend main.js not found on production! Expected: $LOCAL_MAIN_NAME"
+        warn "  Prod JS files:"
+        ssh $PROD_SERVER "ls $REMOTE_PROD_FRONTEND/build/static/js/main.*.js 2>/dev/null" || echo "  (none found)"
+    fi
+fi
 
 # ──────────────────────────────────────────
 # 8. Install dependencies on production
@@ -264,17 +313,31 @@ log "Waiting for server to start..."
 sleep 3
 
 log "Verifying production server health..."
-if ssh $PROD_SERVER "curl -s --max-time 5 http://localhost:3002/api/health" | grep -q '"status":"ok"'; then
-    success "Production server is healthy!"
+HEALTH_RESP=$(ssh $PROD_SERVER "curl -s --max-time 5 http://localhost:3002/api/health" 2>/dev/null) || HEALTH_RESP=""
+if echo "$HEALTH_RESP" | grep -q '"status":"ok"'; then
+    # Extract uptime to verify it's a fresh restart (should be < 30 seconds)
+    UPTIME=$(echo "$HEALTH_RESP" | grep -oP '"uptime":\K[0-9.]+' | head -1)
+    if [ -n "$UPTIME" ]; then
+        UPTIME_INT=${UPTIME%%.*}
+        if [ "$UPTIME_INT" -lt 30 ]; then
+            success "Production server is healthy (uptime: ${UPTIME_INT}s — fresh restart confirmed)"
+        else
+            warn "Production server is healthy but uptime is ${UPTIME_INT}s — PM2 may not have restarted properly!"
+        fi
+    else
+        success "Production server is healthy!"
+    fi
 else
     warn "Health check failed. Please verify manually."
 fi
 
 # ──────────────────────────────────────────
-# 13. Reload nginx
+# 13. Reload nginx (with cache clear)
 # ──────────────────────────────────────────
 log "Reloading nginx..."
 ssh $PROD_SERVER "sudo systemctl reload nginx"
+# Clear nginx proxy cache if it exists
+ssh $PROD_SERVER "if [ -d /var/cache/nginx ]; then sudo rm -rf /var/cache/nginx/* 2>/dev/null; echo 'Nginx cache cleared'; fi" 2>/dev/null || true
 success "Nginx reloaded"
 
 # ──────────────────────────────────────────
@@ -358,10 +421,47 @@ if [ -n "$ADMIN_TOKEN" ]; then
     fi
 fi
 
-# --- 14c. Frontend ---
+# --- 14c. API Endpoints ---
+if [ -n "$ADMIN_TOKEN" ]; then
+    smoke_test "GET invoices" \
+        "curl -s --max-time 5 http://localhost:3002/api/invoices \
+            -H 'Authorization: Bearer $ADMIN_TOKEN'" \
+        '"id"'
+
+    smoke_test "GET restaurants" \
+        "curl -s --max-time 5 http://localhost:3002/api/restaurants \
+            -H 'Authorization: Bearer $ADMIN_TOKEN'" \
+        '"id"'
+
+    smoke_test "GET payment-settings" \
+        "curl -s --max-time 5 http://localhost:3002/api/admin/payment-settings \
+            -H 'Authorization: Bearer $ADMIN_TOKEN'" \
+        '"success"'
+fi
+
+# --- 14d. Frontend ---
 smoke_test "Frontend" \
     "curl -s --max-time 5 -o /dev/null -w '%{http_code}' https://purplehere.com/" \
     "200"
+
+# --- 14e. Frontend JS bundle check ---
+SMOKE_TOTAL=$((SMOKE_TOTAL + 1))
+PROD_MAIN_JS=$(ssh $PROD_SERVER "ls -1 $REMOTE_PROD_FRONTEND/build/static/js/main.*.js 2>/dev/null | head -1" 2>/dev/null)
+if [ -n "$PROD_MAIN_JS" ]; then
+    PROD_JS_NAME=$(basename "$PROD_MAIN_JS")
+    # Verify the JS is accessible via HTTPS
+    JS_HTTP=$(ssh $PROD_SERVER "curl -s --max-time 5 -o /dev/null -w '%{http_code}' https://purplehere.com/static/js/$PROD_JS_NAME" 2>/dev/null)
+    if [ "$JS_HTTP" = "200" ]; then
+        echo -e "  ${GREEN}✓${NC} Frontend JS bundle accessible ($PROD_JS_NAME)"
+        SMOKE_PASS=$((SMOKE_PASS + 1))
+    else
+        echo -e "  ${RED}✗${NC} Frontend JS bundle NOT accessible ($PROD_JS_NAME → HTTP $JS_HTTP)"
+        SMOKE_FAIL=$((SMOKE_FAIL + 1))
+    fi
+else
+    echo -e "  ${RED}✗${NC} Frontend JS bundle not found on production"
+    SMOKE_FAIL=$((SMOKE_FAIL + 1))
+fi
 
 # --- Summary ---
 echo ""

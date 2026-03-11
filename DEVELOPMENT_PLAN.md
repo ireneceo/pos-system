@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-10 (세션 2)
+> **최종 업데이트:** 2026-03-11
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,84 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: 인보이스 시스템 전면 버그 수정 + 배포 안정화 (2026-03-11)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 인보이스 할인 falsy 버그 | `total \|\| amount` → null/undefined 체크로 수정 (0이 falsy인 JS 버그) | ✅ |
+| 2 | additional_charges 저장 | PUT 엔드포인트 + 5개 역할 프론트엔드 edit handler에 charges 계산/전송 추가 | ✅ |
+| 3 | 중복 PUT 엔드포인트 제거 | invoices.js line 2245 dead code 제거 | ✅ |
+| 4 | HTML 템플릿 동적 charges | Brand/Foodcourt 하드코딩 "Tax (6%)" → additionalCharges 배열 렌더링 | ✅ |
+| 5 | Owner/Restaurant 필드 매핑 | transformInvoice/fetchAllInvoices에 discount 6필드 + charges 추가 | ✅ |
+| 6 | Owner 백엔드 discount 필드 | routes/owner.js GET 응답에 discount_type/value/amount/reason/subtotal 추가 | ✅ |
+| 7 | InvoiceScheduler item 금액 | InvoiceItem total_amount: planAmount → discountedAmount | ✅ |
+| 8 | InvoiceScheduler falsy 체크 | `discountedSubtotal \|\| subtotal` → null/undefined 체크 | ✅ |
+| 9 | Trial→Invoice 갭 해소 | 회원가입 시 첫 인보이스 즉시 생성 (dueDate = trial 종료일) | ✅ |
+| 10 | 배포 스크립트 강화 | rsync 검증, 파일 크기 비교, JS hash, PM2 uptime, smoke test 추가 | ✅ |
+| 11 | CLAUDE.md 검증 강화 | 실제 API 테스트 필수화 (코드 리뷰만으로 완료 금지) | ✅ |
+| 12 | 상세보기 모달 charges 동적 렌더링 | Admin/Brand/Foodcourt 상세보기에서 하드코딩 Tax → additionalCharges 배열 + Tax fallback | ✅ |
+| 13 | 누락 인보이스 DB 수정 | INV-260310001, INV-260310002 additional_charges 빈 배열 → SST 6% 추가 | ✅ |
+| 14 | SignupPage 배너 높이 통일 | min-height 140px → 160px, 모바일 반응형 추가 (FeaturesPage와 동일) | ✅ |
+| 15 | ScrollToTop 개선 | scrollRestoration=manual + behavior:instant (페이지 전환 시 상단 이동 보장) | ✅ |
+| 16 | /개발완료 스크립트 보강 | Docs 문서 검토/업데이트 단계 + Memory 업데이트 + 체크리스트 11항목 | ✅ |
+
+### 수정된 파일 (주요)
+- `dev-backend/routes/invoices.js` (PUT 할인 저장 + additional_charges + 중복 제거)
+- `dev-backend/routes/owner.js` (GET 응답 discount 필드 추가)
+- `dev-backend/services/invoiceScheduler.js` (item 금액 + falsy 체크 + customDueDate)
+- `dev-backend/services/subscriptionScheduler.js` (trial 시작 시 첫 인보이스 생성)
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx` (HTML discount + edit charges + 상세보기 charges)
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` (HTML + edit + 상세보기 charges)
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` (HTML + edit + 상세보기 charges)
+- `dev-frontend/src/pages/Owner/OwnerInvoicesPage.tsx` (필드 매핑 + modal + HTML)
+- `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx` (필드 매핑 + modal + HTML)
+- `dev-frontend/src/pages/Landing/SignupPage.tsx` (배너 높이 통일)
+- `dev-frontend/src/components/ScrollToTop.tsx` (scrollRestoration + instant scroll)
+- `deploy-to-production.sh` (검증 로직 강화)
+- `CLAUDE.md` (검증 워크플로우 API 테스트 필수화)
+- `.claude/commands/개발완료.md` (Docs 검토 단계 추가)
+
+---
+
+## ✅ 완료: 셀프 회원가입 시스템 + 프리런치 보안 수정 (2026-03-11)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | plans.js 보안 수정 | POST/PUT/DELETE에 authenticateToken + requireRole('System Admin') 추가 | ✅ |
+| 2 | Restaurant Owner 로그인 리다이렉트 | LoginPage에서 /pos/owner/dashboard로 이동 | ✅ |
+| 3 | Trial 자동 시작 | Restaurant 생성 시 subscriptionScheduler.startTrial() 호출, trial_end_date 자동 설정 | ✅ |
+| 4 | 401 자동 로그아웃 | AuthContext에 전역 fetch 인터셉터, 토큰 만료 시 자동 로그아웃 | ✅ |
+| 5 | POST /api/auth/signup | 4개 역할 셀프 가입 API (입력 검증 + 비밀번호 강도 + 역할별 엔티티 생성) | ✅ |
+| 6 | SignupPage 4-step wizard | 역할 선택 → 계정 정보 → 비즈니스 정보(플랜 선택) → 확인 | ✅ |
+| 7 | LoginPage "Sign up" 링크 | 하단에 가입 안내 링크 추가 | ✅ |
+| 8 | PricingPage → /signup 연결 | "Start Free Trial" 버튼에 plan_target + plan_id 전달 | ✅ |
+| 9 | LandingHeader Sign Up 버튼 | 데스크톱 + 모바일 메뉴에 "Sign Up Free" 버튼 추가 | ✅ |
+| 10 | App.tsx /signup 라우트 | SignupPage 라우트 등록 | ✅ |
+
+### 셀프 회원가입 역할별 동작
+| 역할 | 생성되는 엔티티 | Trial |
+|------|-----------------|-------|
+| Restaurant Admin | User + Restaurant (status='trial') | 7일 trial → overdue(7일 grace) → suspended |
+| Brand General | User + Brand (subscription_status='trial') | - |
+| Foodcourt General | User + Foodcourt (subscription_status='trial') | - |
+| Restaurant Owner | User only | - |
+
+### 수정된 파일 (주요)
+- `dev-backend/routes/plans.js` (보안 미들웨어 추가)
+- `dev-backend/routes/auth.js` (POST /api/auth/signup 엔드포인트)
+- `dev-backend/services/authService.js` (signup + generateSignupResponse 함수)
+- `dev-backend/routes/restaurants.js` (trial 자동 시작)
+- `dev-frontend/src/contexts/AuthContext.tsx` (401 인터셉터)
+- `dev-frontend/src/pages/Landing/SignupPage.tsx` (신규)
+- `dev-frontend/src/pages/Login/LoginPage.tsx` (Owner 리다이렉트 + signup 링크)
+- `dev-frontend/src/pages/Landing/PricingPage.tsx` (Start Free Trial → /signup)
+- `dev-frontend/src/components/Landing/LandingHeader.tsx` (Sign Up 버튼)
+- `dev-frontend/src/App.tsx` (/signup 라우트)
 
 ---
 
@@ -1652,7 +1730,7 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 
 | 작업 | 트리거 |
 |------|--------|
-| 셀프 회원가입 | 문의량 급증 시 |
+| ~~셀프 회원가입~~ | ✅ 완료 (2026-03-11) |
 | Stripe/PayPal 연동 | 해외 고객 요청 시 |
 | 세금계산서 | 특정 국가 요구 시 |
 | **AI 마케팅 인사이트 대시보드** | GA4 + Search Console 데이터 축적 후 |

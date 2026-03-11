@@ -181,21 +181,57 @@ const MobileNavLink = styled.button<{ active?: boolean }>`
   }
 `;
 
-const LoginButton = styled.button`
-  background: #635BFF;
-  color: white;
-  border: none;
-  font-size: 15px;
+const SignUpButton = styled.button`
+  background: white;
+  color: #635BFF;
+  border: 2px solid #635BFF;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  padding: 10px 24px;
+  padding: 8px 20px;
   border-radius: 8px;
   transition: all 0.2s;
   margin-left: 8px;
 
   &:hover {
+    background: #F8F7FF;
+    transform: translateY(-1px);
+  }
+`;
+
+const LoginButton = styled.button`
+  background: #635BFF;
+  color: white;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 10px 20px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  margin-left: 4px;
+
+  &:hover {
     background: #5A51E6;
     transform: translateY(-1px);
+  }
+`;
+
+const MobileSignUpButton = styled.button`
+  background: white;
+  color: #635BFF;
+  border: 2px solid #635BFF;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 14px 24px;
+  border-radius: 12px;
+  transition: all 0.2s;
+  text-align: center;
+  margin-top: 16px;
+
+  &:hover {
+    background: #F8F7FF;
   }
 `;
 
@@ -210,7 +246,7 @@ const MobileLoginButton = styled.button`
   border-radius: 12px;
   transition: all 0.2s;
   text-align: center;
-  margin-top: 16px;
+  margin-top: 8px;
 
   &:hover {
     background: #5A51E6;
@@ -265,8 +301,11 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             Contact
           </NavLink>
+          <SignUpButton onClick={() => handleNavigate('/signup')}>
+            Sign Up Free
+          </SignUpButton>
           <LoginButton onClick={() => handleNavigate('/pos')}>
-            POS System
+            Sign In
           </LoginButton>
         </Nav>
 
@@ -303,8 +342,11 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             Contact
           </MobileNavLink>
+          <MobileSignUpButton onClick={() => handleNavigate('/signup')}>
+            Sign Up Free
+          </MobileSignUpButton>
           <MobileLoginButton onClick={() => handleNavigate('/pos')}>
-            POS System
+            Sign In
           </MobileLoginButton>
         </MobileMenuContent>
       </MobileMenu>

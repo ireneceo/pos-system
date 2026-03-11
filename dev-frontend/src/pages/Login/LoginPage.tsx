@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -390,6 +390,42 @@ const TestAccountsSection = styled.div<{ show: boolean }>`
   transition: opacity 0.3s ease-in-out, max-height 0.3s ease-in-out;
 `;
 
+const BottomLinks = styled.div`
+  text-align: center;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+  color: #6B7C93;
+
+  a {
+    color: #635BFF;
+    text-decoration: none;
+    font-weight: 500;
+    &:hover { text-decoration: underline; }
+  }
+`;
+
+const HomeLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #9CA3AF !important;
+  font-size: 13px;
+  font-weight: 400 !important;
+
+  &:hover {
+    color: #6B7C93 !important;
+    text-decoration: none !important;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+`;
+
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -436,6 +472,9 @@ const LoginPage: React.FC = () => {
             } else {
               navigate('/pos/restaurant/dashboard', { replace: true });
             }
+            break;
+          case 'Restaurant Owner':
+            navigate('/pos/owner/dashboard', { replace: true });
             break;
           case 'Staff':
             if (user.restaurantId) {
@@ -533,13 +572,17 @@ const LoginPage: React.FC = () => {
           </Form>
           
           <Divider />
-          
-          <div style={{ textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>
-            <p>POS System v2.0</p>
-            <p style={{ marginTop: '8px', fontSize: '12px' }}>
-              Multi-tenant architecture with role-based access control
-            </p>
-          </div>
+
+          <BottomLinks>
+            <Link to="/forgot-password" className="forgot-link">Forgot your password?</Link>
+            <span>Don't have an account? <Link to="/signup">Sign up</Link></span>
+            <HomeLink to="/">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Back to Home
+            </HomeLink>
+          </BottomLinks>
         </LeftSection>
         
         <RightSection>

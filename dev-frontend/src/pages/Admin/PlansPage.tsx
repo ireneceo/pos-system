@@ -562,16 +562,22 @@ const PlansPage: React.FC = () => {
     is_active: true
   });
 
+  const getAuthHeaders = (): HeadersInit => {
+    const token = localStorage.getItem('auth_token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  };
+
   useEffect(() => {
     fetchSubscriptionStats();
     fetchAvailableModules();
     fetchCurrencyConfig();
     fetchSupportedCurrencies();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCurrencyConfig = async () => {
     try {
-      const response = await fetch('/api/currencies/config');
+      const response = await fetch('/api/currencies/config', { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setCurrencyConfig(data.currencies || data.data || {});
@@ -583,7 +589,7 @@ const PlansPage: React.FC = () => {
 
   const fetchSupportedCurrencies = async () => {
     try {
-      const response = await fetch('/api/currencies/supported');
+      const response = await fetch('/api/currencies/supported', { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         const codes = (data.data || []).map((c: any) => c.code);
@@ -673,7 +679,7 @@ const PlansPage: React.FC = () => {
 
   const fetchAvailableModules = async () => {
     try {
-      const response = await fetch('/api/addon-modules?active_only=true');
+      const response = await fetch('/api/addon-modules?active_only=true', { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch addon modules');
       const data = await response.json();
       setAvailableModules(data);
@@ -685,7 +691,7 @@ const PlansPage: React.FC = () => {
 
   const fetchSubscriptionStats = async () => {
     try {
-      const response = await fetch('/api/plans/stats/subscriptions');
+      const response = await fetch('/api/plans/stats/subscriptions', { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch subscription stats');
       const data = await response.json();
 
@@ -706,7 +712,7 @@ const PlansPage: React.FC = () => {
 
   const fetchPlans = async () => {
     try {
-      const response = await fetch('/api/plans');
+      const response = await fetch('/api/plans', { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to fetch plans');
 
       const data = await response.json();
@@ -825,6 +831,7 @@ const PlansPage: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(planData)
       });
@@ -922,6 +929,7 @@ const PlansPage: React.FC = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(),
         },
         body: JSON.stringify(planData)
       });
@@ -1135,7 +1143,7 @@ const PlansPage: React.FC = () => {
   
   const handleExportPlans = async () => {
     try {
-      const response = await fetch('/api/plans/export/csv');
+      const response = await fetch('/api/plans/export/csv', { headers: getAuthHeaders() });
       if (!response.ok) throw new Error('Failed to export plans');
 
       const blob = await response.blob();

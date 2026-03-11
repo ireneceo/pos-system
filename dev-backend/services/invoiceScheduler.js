@@ -138,7 +138,7 @@ class InvoiceScheduler {
   /**
    * Create a subscription invoice for a restaurant
    */
-  async createSubscriptionInvoice(restaurant, billingStart, billingEnd, billingCycle) {
+  async createSubscriptionInvoice(restaurant, billingStart, billingEnd, billingCycle, customDueDate) {
     const now = new Date();
 
     // Get plan price from subscription_snapshot or plan_prices table
@@ -234,8 +234,8 @@ class InvoiceScheduler {
     });
     const invoiceNumber = `INV-${year}${month}${String(count + 1).padStart(4, '0')}`;
 
-    // Due date is the billing start date (prepaid)
-    const dueDate = new Date(billingStart);
+    // Due date: custom (e.g. trial end) or billing start date (prepaid)
+    const dueDate = customDueDate ? new Date(customDueDate) : new Date(billingStart);
 
     // Determine payer based on payment_model
     let payerType = 'restaurant';
@@ -298,7 +298,7 @@ class InvoiceScheduler {
       calculated_amount: discountedAmount,
       tax_rate: 0,
       tax_amount: 0,
-      total_amount: planAmount
+      total_amount: discountedAmount
     });
 
     console.log(`✅ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}`);
@@ -477,7 +477,7 @@ class InvoiceScheduler {
               }
               const normalized = normalizeAdditionalCharges(rawCharges, invoiceCurrency);
               const enabledCharges = normalized.filter(c => c.enabled && c.name && c.rate > 0);
-              const discountedSub = charges.discountedSubtotal || charges.subtotal;
+              const discountedSub = (charges.discountedSubtotal !== undefined && charges.discountedSubtotal !== null) ? charges.discountedSubtotal : charges.subtotal;
               entityAdditionalCharges = enabledCharges.map(c => ({
                 name: c.name,
                 rate: parseFloat(c.rate) || 0,

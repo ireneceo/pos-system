@@ -329,6 +329,22 @@ class SubscriptionScheduler {
 
       console.log(`✅ Trial started for ${restaurant.name}: ends on ${trialEndDate.toISOString().split('T')[0]}`);
 
+      // Generate first subscription invoice immediately so user can pay during trial
+      try {
+        const invoiceScheduler = require('./invoiceScheduler');
+        const billingCycle = restaurant.billing_cycle || 'monthly';
+        const billingStart = new Date(today);
+        const billingEnd = billingCycle === 'annual'
+          ? new Date(today.getFullYear() + 1, today.getMonth(), today.getDate() - 1)
+          : new Date(today.getFullYear(), today.getMonth() + 1, today.getDate() - 1);
+
+        await invoiceScheduler.createSubscriptionInvoice(restaurant, billingStart, billingEnd, billingCycle, trialEndDate);
+        console.log(`📄 First invoice generated for ${restaurant.name} (due: ${trialEndDate.toISOString().split('T')[0]})`);
+      } catch (invoiceError) {
+        // Non-blocking: trial starts even if invoice generation fails
+        console.error(`⚠️ Could not generate first invoice for ${restaurant.name}:`, invoiceError.message);
+      }
+
       return {
         success: true,
         trialStartDate: today,

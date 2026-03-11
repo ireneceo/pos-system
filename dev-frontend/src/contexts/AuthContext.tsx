@@ -461,10 +461,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const logoutRef = React.useRef<(() => void) | null>(null);
+
   const logout = async () => {
     try {
-      // 서버에 로그아웃 요청
-      await fetch('/api/auth/logout', {
+      // Use original fetch to avoid interceptor loop
+      const originalFetch = (window as any).__originalFetch || window.fetch;
+      await originalFetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });
@@ -487,6 +490,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       navigate('/pos');
     }
   };
+
+  // Keep ref updated for use in fetch interceptor
+  logoutRef.current = logout;
+
+  // Global fetch interceptor: auto-logout on 401 responses
+  useEffect(() => {
+    if ((window as any).__fetchInterceptorInstalled) return;
+    (window as any).__fetchInterceptorInstalled = true;
+
+    const originalFetch = window.fetch.bind(window);
+    (window as any).__originalFetch = originalFetch;
+
+    window.fetch = async (...args: Parameters<typeof fetch>) => {
+      const response = await originalFetch(...args);
+
+      if (response.status === 401) {
+        const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
+        // Skip auto-logout for auth endpoints (login, register, signup)
+        const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/register') || url.includes('/api/auth/signup');
+        if (!isAuthEndpoint && localStorage.getItem('auth_token')) {
+          console.log('[Auth] Token expired - auto logout');
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user');
+          if (logoutRef.current) logoutRef.current();
+        }
+      }
+
+      return response;
+    };
+
+    return () => {
+      // Restore original fetch on unmount
+      window.fetch = originalFetch;
+      (window as any).__fetchInterceptorInstalled = false;
+    };
+  }, []);
 
   // PIN 전환 시 JWT 교체 + user 상태 교체 (리다이렉트 없음)
   const switchUser = (token: string, userData: SwitchUserData) => {
