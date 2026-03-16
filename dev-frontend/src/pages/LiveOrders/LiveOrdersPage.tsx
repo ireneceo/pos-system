@@ -8,6 +8,8 @@ import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import { formatPaymentDisplay } from '../../constants';
+import { Modal, ModalButton } from '../../components/UI';
 import {
   DataTable,
   DataTableHead,
@@ -46,6 +48,18 @@ const formatPickupTimeRange = (dateString: string): string => {
     return `${start.time} - ${end.time} ${end.period}`;
   }
   return `${start.time} ${start.period} - ${end.time} ${end.period}`;
+};
+
+// Helper: payment_proof 호환 — { current, history } 구조 또는 기존 단일 객체 모두 지원
+const getProofCurrent = (proof: any): any => {
+  if (!proof) return null;
+  if (proof.hasOwnProperty('current')) return proof.current;
+  return proof; // 기존 단일 객체
+};
+const getProofHistory = (proof: any): any[] => {
+  if (!proof) return [];
+  if (proof.hasOwnProperty('history')) return proof.history || [];
+  return [];
 };
 
 // Helper function to get fetch options with auth token
@@ -103,8 +117,10 @@ interface DbOrder {
   order_date: string;
   order_items: any;
   served_at?: string | null;
+  source?: 'pos' | 'mobile' | 'kiosk' | null;
   cashier_id?: number | null;
   cashier_name?: string | null;
+  customer_id?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -511,6 +527,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'served': return '#D1FAE5';
       case 'completed': return '#E5E7EB';
       case 'cancelled': return '#FEE2E2';
+      case 'rejected': return '#FEE2E2';
+      case 'verifying': return '#FEF3C7';
       default: return '#F3F4F6';
     }
   }};
@@ -523,6 +541,8 @@ const StatusBadge = styled.span<{ status: string }>`
       case 'served': return '#065F46';
       case 'completed': return '#374151';
       case 'cancelled': return '#991B1B';
+      case 'rejected': return '#DC2626';
+      case 'verifying': return '#F59E0B';
       default: return '#6B7280';
     }
   }};
@@ -568,6 +588,22 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
     font-size: 11px;
     flex: 0 0 auto;
   }
+`;
+
+const VerifyRejectButton = styled(ModalButton)`
+  && {
+    background: #FEF2F2;
+    border: 1px solid #EF4444;
+    color: #EF4444;
+  }
+  &&:hover:not(:disabled) {
+    background: #FEE2E2;
+  }
+`;
+
+const VerifyConfirmButton = styled(ModalButton)`
+  && { background: #10B981; }
+  &&:hover:not(:disabled) { background: #059669; }
 `;
 
 const IconButton = styled.button`
@@ -969,9 +1005,12 @@ const LiveOrdersPage: React.FC = () => {
 
   // Date filter state (default to 'today')
   const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
-  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today'));
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today', operationSettings.timeZone));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Payment Verification Modal (for Confirm button in table list)
+  const [verifyOrder, setVerifyOrder] = useState<DbOrder | null>(null);
 
   // Select Mode for merging orders
   const [selectMode, setSelectMode] = useState(false);
@@ -1291,7 +1330,7 @@ const LiveOrdersPage: React.FC = () => {
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
-    setDateRange(calculatePeriodDateRange(period));
+    setDateRange(calculatePeriodDateRange(period, operationSettings.timeZone));
   };
 
   // Get filtered orders - server-side filtering is now used, this returns the orders directly
@@ -1434,11 +1473,15 @@ const LiveOrdersPage: React.FC = () => {
 
   // Helper function to get display status
   const getDisplayStatus = (order: DbOrder): string => {
+    if ((order.payment_status as any) === 'rejected') return 'rejected';
+    if ((order.payment_status as any) === 'payment_verification_pending') return 'verifying';
     return order.status;
   };
 
   // Format status for display (replace underscores with spaces, capitalize properly)
   const formatStatusDisplay = (status: string): string => {
+    if (status === 'rejected') return 'Payment Rejected';
+    if (status === 'verifying') return 'Verifying Payment';
     if (status === 'outstanding') {
       return 'Outstanding';
     }
@@ -1598,8 +1641,8 @@ const LiveOrdersPage: React.FC = () => {
       outstanding: 'pending',
       pending: 'preparing',
       preparing: 'ready',
-      ready: paymentStatus === 'completed' ? 'completed' : 'served',
-      served: 'completed',
+      ready: 'served',
+      served: paymentStatus === 'completed' ? 'completed' : null,
       completed: null,
       cancelled: null
     };
@@ -2282,6 +2325,20 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
+  const handleRejectPayment = async () => {
+    if (!selectedOrder) return;
+    try {
+      await fetch(`/api/orders/${selectedOrder.id}`, getFetchOptions({
+        method: 'PATCH',
+        body: JSON.stringify({ payment_status: 'rejected', status: 'outstanding' })
+      }));
+      handleCloseModal();
+      fetchOrders();
+    } catch (error) {
+      console.error('Error rejecting payment:', error);
+    }
+  };
+
   const handleConfirmPayment = async () => {
     if (!selectedOrder) {
       return;
@@ -2320,41 +2377,39 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
-  const handleQuickConfirmPayment = async (orderId: number, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent opening the modal
-
-    // Stop notification sound when payment confirmed
+  // Payment Verification Modal handlers (for table list Confirm button)
+  const handleVerifyConfirm = async () => {
+    if (!verifyOrder) return;
     setAudioEnabled(false);
-
     try {
-      // 주문 정보 찾기
-      const order = orders.find((o: any) => o.id === orderId);
-
-      // 결제 완료 처리
-      const response = await fetch(`/api/orders/${orderId}`, getFetchOptions({
+      await fetch(`/api/orders/${verifyOrder.id}`, getFetchOptions({
         method: 'PATCH',
-        body: JSON.stringify({
-          payment_status: 'completed'
-        })
+        body: JSON.stringify({ payment_status: 'completed' })
       }));
-
-      if (!response.ok) {
-        throw new Error('Failed to confirm payment');
-      }
-
-      // 결제 완료 후 outstanding이면 pending으로 변경 (주방에 전송)
-      if (order && order.status === 'outstanding') {
-        await fetch(`/api/orders/${orderId}/status`, getFetchOptions({
+      if (verifyOrder.status === 'outstanding') {
+        await fetch(`/api/orders/${verifyOrder.id}/status`, getFetchOptions({
           method: 'PATCH',
-          body: JSON.stringify({
-            status: 'pending'
-          })
+          body: JSON.stringify({ status: 'pending' })
         }));
       }
-
-      fetchOrders(); // Refresh orders list
+      setVerifyOrder(null);
+      fetchOrders();
     } catch (error) {
-      console.error('Error in quick confirm:', error);
+      console.error('Error confirming payment:', error);
+    }
+  };
+
+  const handleVerifyReject = async () => {
+    if (!verifyOrder) return;
+    try {
+      await fetch(`/api/orders/${verifyOrder.id}`, getFetchOptions({
+        method: 'PATCH',
+        body: JSON.stringify({ payment_status: 'rejected', status: 'outstanding' })
+      }));
+      setVerifyOrder(null);
+      fetchOrders();
+    } catch (error) {
+      console.error('Error rejecting payment:', error);
     }
   };
 
@@ -2455,7 +2510,7 @@ const LiveOrdersPage: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  const handlePaymentConfirm = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number) => {
+  const handlePaymentConfirm = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string) => {
     if (!orderForPayment) return;
 
     // Stop notification sound when payment confirmed
@@ -2465,7 +2520,8 @@ const LiveOrdersPage: React.FC = () => {
       // Build update payload
       const updatePayload: any = {
         payment_status: 'completed',
-        payment_method: method
+        payment_method: method,
+        card_type: method === 'card' ? (cardType || null) : null
       };
 
       // Include points if used
@@ -2812,6 +2868,20 @@ const LiveOrdersPage: React.FC = () => {
                         {order.order_type === 'delivery' && (
                           <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>DELIVERY</OrderTypeBadge>
                         )}
+                        {order.source === 'mobile' && (
+                          <OrderTypeBadge style={{ background: '#DBEAFE', color: '#2563EB' }}>MOBILE</OrderTypeBadge>
+                        )}
+                        {order.source === 'mobile' && (
+                          order.customer_id
+                            ? <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>MEMBER</OrderTypeBadge>
+                            : <OrderTypeBadge style={{ background: '#F3F4F6', color: '#6B7280' }}>GUEST</OrderTypeBadge>
+                        )}
+                        {order.source === 'kiosk' && (
+                          <OrderTypeBadge style={{ background: '#FEF3C7', color: '#D97706' }}>KIOSK</OrderTypeBadge>
+                        )}
+                        {order.payment_method === 'staffMeal' && (
+                          <OrderTypeBadge style={{ background: '#FEE2E2', color: '#DC2626' }}>STAFF MEAL</OrderTypeBadge>
+                        )}
                       </OrderNumber>
                       <CustomerInfo>
                         {order.customer_name || 'Guest'}
@@ -2897,7 +2967,7 @@ const LiveOrdersPage: React.FC = () => {
                           isPending={order.payment_status === 'pending'}
                           isVerificationPending={order.payment_status === 'payment_verification_pending'}
                         >
-                          {order.payment_method || 'N/A'}
+                          {formatPaymentDisplay(order.payment_method, (order as any).card_type)}
                           {order.payment_status === 'pending' && ' (Pending)'}
                           {order.payment_status === 'payment_verification_pending' && ' (Verifying)'}
                         </PaymentMethod>
@@ -2905,11 +2975,11 @@ const LiveOrdersPage: React.FC = () => {
                     </DataTableCell>
                     <DataTableCell data-label="ACTION" mobileFullWidth>
                       <ActionButtonsGroup>
-                        {/* Served 상태가 아닌 경우에만 Complete Order/다음 단계 버튼 표시 */}
-                        {order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'served' && (
+                        {/* completed/cancelled 제외. Served에서는 Complete Order 표시 */}
+                        {order.status !== 'completed' && order.status !== 'cancelled' && (
                           <>
-                            {/* Show "Proceed Without Payment" button for Outstanding orders */}
-                            {isOutstanding(order) ? (
+                            {/* Show "Proceed Without Payment" button for Outstanding orders (hide if payment verification pending) */}
+                            {isOutstanding(order) && (order.payment_status as any) !== 'payment_verification_pending' && (order.payment_status as any) !== 'rejected' && (
                               <ActionButton
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -2919,7 +2989,8 @@ const LiveOrdersPage: React.FC = () => {
                               >
                                 Proceed Without Payment
                               </ActionButton>
-                            ) : (
+                            )}
+                            {!isOutstanding(order) && (
                               <ActionButton
                                 onClick={() => {
                                   const nextStatus = getNextStatus(order.status, order.payment_status);
@@ -2927,7 +2998,11 @@ const LiveOrdersPage: React.FC = () => {
                                     handleStatusChange(order.id, nextStatus);
                                   }
                                 }}
-                                style={order.status === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : undefined}
+                                style={
+                                  order.status === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } :
+                                  order.status === 'served' ? { background: '#9CA3AF', borderColor: '#9CA3AF', color: 'white' } :
+                                  undefined
+                                }
                               >
                                 {getActionLabel(order.status, order.payment_status, order.order_type)}
                               </ActionButton>
@@ -2962,17 +3037,17 @@ const LiveOrdersPage: React.FC = () => {
                             Payment
                           </ActionButton>
                         )}
-                        {/* payment_verification_pending 상태에서는 Confirm 버튼 표시 */}
+                        {/* payment_verification_pending — Payment Verification 모달 열기 */}
                         {(order.payment_status as any) === 'payment_verification_pending' && (
                           <ActionButton
-                            onClick={(e) => handleQuickConfirmPayment(order.id, e)}
+                            onClick={(e) => { e.stopPropagation(); setVerifyOrder(order); }}
                             style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}
                           >
-                            Confirm
+                            Confirm Payment
                           </ActionButton>
                         )}
-                        {/* Quick Complete Button - Show for all statuses except completed, cancelled, and payment pending */}
-                        {order.status !== 'completed' && order.status !== 'cancelled' && order.payment_status !== 'pending' && (
+                        {/* Quick Complete Button - Show only when payment is confirmed (exclude pending and payment_verification_pending) */}
+                        {order.status !== 'completed' && order.status !== 'cancelled' && order.payment_status !== 'pending' && (order.payment_status as any) !== 'payment_verification_pending' && (
                           <IconButton
                             onClick={(e) => {
                               e.stopPropagation();
@@ -3084,14 +3159,14 @@ const LiveOrdersPage: React.FC = () => {
                 {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
                   <ActionButton onClick={() => handleCancelOrder(selectedOrder.id)} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>Cancel Order</ActionButton>
                 )}
-                {isOutstanding(selectedOrder) && selectedOrder.status !== 'pending' && (
+                {isOutstanding(selectedOrder) && selectedOrder.status !== 'pending' && (selectedOrder.payment_status as any) !== 'payment_verification_pending' && (selectedOrder.payment_status as any) !== 'rejected' && (
                   <ActionButton onClick={() => { handleStatusChange(selectedOrder.id, 'pending'); handleCloseModal(); }} style={{ background: '#F59E0B', borderColor: '#F59E0B', color: 'white' }}>Proceed Without Payment</ActionButton>
                 )}
                 {selectedOrder.payment_status === 'pending' && (
                   <ActionButton onClick={() => handlePaymentClick(selectedOrder)} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Payment</ActionButton>
                 )}
                 {(selectedOrder.payment_status as any) === 'payment_verification_pending' && (
-                  <ActionButton onClick={handleConfirmPayment} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Confirm Payment</ActionButton>
+                  <ActionButton onClick={() => setVerifyOrder(selectedOrder)} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Confirm Payment</ActionButton>
                 )}
                 {selectedOrder.payment_status === 'pending' && !['served', 'completed', 'cancelled'].includes(selectedOrder.status) && (
                   <ActionButton onClick={() => setShowAddItemsView(true)} style={{ background: '#8B5CF6', borderColor: '#8B5CF6', color: 'white' }}>Add Items</ActionButton>
@@ -3446,6 +3521,12 @@ const LiveOrdersPage: React.FC = () => {
                       <DetailLabel>Source:</DetailLabel>
                       <DetailValue>{(selectedOrder as any).source === 'mobile' ? 'Mobile Order' : (selectedOrder as any).source === 'kiosk' ? 'Kiosk' : 'POS Terminal'}</DetailValue>
                     </DetailRow>
+                    {(selectedOrder as any).source === 'mobile' && (
+                      <DetailRow>
+                        <DetailLabel>Customer Type:</DetailLabel>
+                        <DetailValue>{(selectedOrder as any).customer_id ? 'Member' : 'Guest'}</DetailValue>
+                      </DetailRow>
+                    )}
                     {selectedOrder.table_number && (
                       <DetailRow>
                         <DetailLabel>Table Number:</DetailLabel>
@@ -3517,75 +3598,96 @@ const LiveOrdersPage: React.FC = () => {
                     </DetailRow>
                     <DetailRow>
                       <DetailLabel>Payment Method:</DetailLabel>
-                      <DetailValue>{selectedOrder.payment_method || 'N/A'}</DetailValue>
+                      <DetailValue>{formatPaymentDisplay(selectedOrder.payment_method, (selectedOrder as any).card_type)}</DetailValue>
                     </DetailRow>
                     <DetailRow>
                       <DetailLabel>Payment Status:</DetailLabel>
                       <DetailValue>
                         {(selectedOrder.payment_status as any) === 'payment_verification_pending' ? (
-                          <span style={{ color: '#F59E0B', fontWeight: 500 }}>⏳ Verification Pending</span>
+                          <span style={{ color: '#F59E0B', fontWeight: 500 }}>Verification Pending</span>
+                        ) : (selectedOrder.payment_status as any) === 'rejected' ? (
+                          <span style={{ color: '#DC2626', fontWeight: 500 }}>Payment Rejected</span>
                         ) : selectedOrder.payment_status === 'pending' ? (
                           <span style={{ color: '#FF6B6B', fontWeight: 500 }}>Pending</span>
-                        ) : selectedOrder.payment_status === 'paid' ? (
-                          <span style={{ color: '#10B981', fontWeight: 500 }}>✓ Paid</span>
+                        ) : selectedOrder.payment_status === 'paid' || selectedOrder.payment_status === 'completed' ? (
+                          <span style={{ color: '#10B981', fontWeight: 500 }}>Paid</span>
                         ) : (
                           selectedOrder.payment_status || 'N/A'
                         )}
                       </DetailValue>
                     </DetailRow>
+                    {selectedOrder.cashier_name && (
+                      <DetailRow>
+                        <DetailLabel>Cashier:</DetailLabel>
+                        <DetailValue>{selectedOrder.cashier_name}</DetailValue>
+                      </DetailRow>
+                    )}
                   </OrderDetailSection>
 
-                  {/* Payment Proof Section */}
-                  {(selectedOrder as any).payment_proof && (selectedOrder.payment_status as any) === 'payment_verification_pending' && (
-                    <>
-                      <Divider />
-                      <OrderDetailSection>
-                        <SectionTitle style={{ color: '#F59E0B' }}>Payment Proof (Customer Submitted)</SectionTitle>
-                        {(selectedOrder as any).payment_proof.reference && (
-                          <DetailRow>
-                            <DetailLabel>Transaction Reference:</DetailLabel>
-                            <DetailValue style={{ fontWeight: 600, fontFamily: 'monospace' }}>
-                              {(selectedOrder as any).payment_proof.reference}
-                            </DetailValue>
-                          </DetailRow>
-                        )}
-                        {(selectedOrder as any).payment_proof.file_name && (
-                          <DetailRow>
-                            <DetailLabel>Receipt File:</DetailLabel>
-                            <DetailValue>{(selectedOrder as any).payment_proof.file_name}</DetailValue>
-                          </DetailRow>
-                        )}
-                        {(selectedOrder as any).payment_proof.uploaded_at && (
-                          <DetailRow>
-                            <DetailLabel>Submitted At:</DetailLabel>
-                            <DetailValue>
-                              {formatDateTime((selectedOrder as any).payment_proof.uploaded_at)}
-                            </DetailValue>
-                          </DetailRow>
-                        )}
-                        {(selectedOrder as any).payment_proof.image && (
-                          <div style={{ marginTop: '16px' }}>
-                            <DetailLabel style={{ marginBottom: '8px' }}>Receipt Image:</DetailLabel>
-                            <div style={{ position: 'relative' }}>
-                              <img
-                                src={(selectedOrder as any).payment_proof.image}
-                                alt="Payment receipt"
-                                style={{
-                                  maxWidth: '100%',
-                                  maxHeight: '400px',
-                                  borderRadius: '8px',
-                                  border: '1px solid #E5E7EB',
-                                  cursor: 'pointer',
-                                  display: 'block'
-                                }}
-                                onClick={() => window.open((selectedOrder as any).payment_proof.image, '_blank')}
-                              />
+                  {/* Payment Proof Section - 모든 상태에서 동일하게 전체 표시 */}
+                  {(() => {
+                    const currentProof = getProofCurrent((selectedOrder as any).payment_proof);
+                    const history = getProofHistory((selectedOrder as any).payment_proof);
+                    // current가 없으면 (rejected 등) history의 마지막 항목을 표시
+                    const displayProof = currentProof || (history.length > 0 ? history[history.length - 1] : null);
+                    if (!displayProof) return null;
+                    const isFromHistory = !currentProof && !!displayProof;
+                    return (
+                      <>
+                        <Divider />
+                        <OrderDetailSection>
+                          <SectionTitle>
+                            Customer Submitted Proof
+                            {isFromHistory && (
+                              <span style={{ marginLeft: '8px', fontSize: '12px', fontWeight: 600, color: '#DC2626' }}>(Rejected)</span>
+                            )}
+                          </SectionTitle>
+                          {displayProof.reference && (
+                            <DetailRow>
+                              <DetailLabel>Transaction Reference:</DetailLabel>
+                              <DetailValue style={{ fontWeight: 600, fontFamily: 'monospace' }}>
+                                {displayProof.reference}
+                              </DetailValue>
+                            </DetailRow>
+                          )}
+                          {displayProof.file_name && (
+                            <DetailRow>
+                              <DetailLabel>Receipt File:</DetailLabel>
+                              <DetailValue>{displayProof.file_name}</DetailValue>
+                            </DetailRow>
+                          )}
+                          {displayProof.uploaded_at && (
+                            <DetailRow>
+                              <DetailLabel>Submitted At:</DetailLabel>
+                              <DetailValue>
+                                {formatDateTime(displayProof.uploaded_at)}
+                              </DetailValue>
+                            </DetailRow>
+                          )}
+                          {displayProof.image && (
+                            <div style={{ marginTop: '16px' }}>
+                              <DetailLabel style={{ marginBottom: '14px' }}>Receipt Image:</DetailLabel>
+                              <div style={{ position: 'relative' }}>
+                                <img
+                                  src={displayProof.image}
+                                  alt="Payment receipt"
+                                  style={{
+                                    maxWidth: '100%',
+                                    maxHeight: '400px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #E5E7EB',
+                                    cursor: 'pointer',
+                                    display: 'block'
+                                  }}
+                                  onClick={() => window.open(displayProof.image, '_blank')}
+                                />
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </OrderDetailSection>
-                    </>
-                  )}
+                          )}
+                        </OrderDetailSection>
+                      </>
+                    );
+                  })()}
 
                   <Divider />
 
@@ -3897,7 +3999,7 @@ const LiveOrdersPage: React.FC = () => {
             <BillSection style={{ borderTop: '1px dashed #000', paddingTop: '10px' }}>
               <BillRow>
                 <span>Payment Method:</span>
-                <span>{selectedOrder.payment_method ? selectedOrder.payment_method.toUpperCase() : 'N/A'}</span>
+                <span>{formatPaymentDisplay(selectedOrder.payment_method, (selectedOrder as any).card_type).toUpperCase()}</span>
               </BillRow>
               <BillRow>
                 <span>Order Status:</span>
@@ -3947,6 +4049,106 @@ const LiveOrdersPage: React.FC = () => {
           cancelText="Cancel"
           type="danger"
         />
+
+        {/* Payment Verification Modal */}
+        <Modal
+          isOpen={!!verifyOrder}
+          onClose={() => setVerifyOrder(null)}
+          title={(verifyOrder?.payment_status as any) === 'payment_verification_pending' ? 'Payment Verification' : 'Customer Submitted Proof'}
+          size="small"
+          footer={(verifyOrder?.payment_status as any) === 'payment_verification_pending' ? (
+            <>
+              <VerifyRejectButton variant="secondary" onClick={handleVerifyReject}>Reject</VerifyRejectButton>
+              <VerifyConfirmButton variant="primary" onClick={handleVerifyConfirm}>Confirm Payment</VerifyConfirmButton>
+            </>
+          ) : undefined}
+        >
+          {verifyOrder && (() => {
+            const currentProof = getProofCurrent((verifyOrder as any).payment_proof);
+            const proofHistory = getProofHistory((verifyOrder as any).payment_proof);
+            return (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '14px', color: '#6B7C93', marginBottom: '6px' }}>Order: <strong style={{ color: '#0A2540' }}>#{verifyOrder.order_number}</strong></div>
+                  <div style={{ fontSize: '14px', color: '#6B7C93', marginBottom: '6px' }}>Amount: <strong style={{ color: '#0A2540' }}>{formatCurrency(verifyOrder.total_amount, operationSettings.currency)}</strong></div>
+                  <div style={{ fontSize: '14px', color: '#6B7C93' }}>Method: <strong style={{ color: '#0A2540' }}>{verifyOrder.payment_method}</strong></div>
+                </div>
+
+                <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Customer Submitted Proof</div>
+                  {currentProof ? (
+                    <>
+                      {currentProof.reference && (
+                        <div style={{ fontSize: '13px', marginBottom: '6px' }}>
+                          <span style={{ color: '#6B7C93' }}>Reference: </span>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0A2540' }}>{currentProof.reference}</span>
+                        </div>
+                      )}
+                      {currentProof.file_name && (
+                        <div style={{ fontSize: '13px', marginBottom: '6px', color: '#6B7C93' }}>File: {currentProof.file_name}</div>
+                      )}
+                      {currentProof.uploaded_at && (
+                        <div style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '6px' }}>
+                          Submitted: {new Date(currentProof.uploaded_at).toLocaleString()}
+                        </div>
+                      )}
+                      {currentProof.image && (
+                        <img
+                          src={currentProof.image}
+                          alt="Payment proof"
+                          style={{ width: '100%', borderRadius: '6px', marginTop: '8px', cursor: 'pointer' }}
+                          onClick={() => window.open(currentProof.image, '_blank')}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: '#9CA3AF' }}>
+                      {(verifyOrder.payment_status as any) === 'rejected' ? 'Waiting for customer to resubmit.' : 'No payment proof submitted.'}
+                    </div>
+                  )}
+                </div>
+
+                {/* History Section */}
+                {proofHistory.length > 0 && (
+                  <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px', marginTop: '16px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#6B7C93', marginBottom: '10px' }}>
+                      Previous Attempts ({proofHistory.length})
+                    </div>
+                    {proofHistory.map((entry: any, idx: number) => (
+                      <div key={idx} style={{
+                        padding: '10px',
+                        background: '#F9FAFB',
+                        borderRadius: '6px',
+                        marginBottom: idx < proofHistory.length - 1 ? '8px' : 0,
+                        border: '1px solid #E5E7EB'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '12px', color: '#DC2626', fontWeight: 600 }}>Rejected #{entry.reject_count || idx + 1}</span>
+                          {entry.rejected_at && (
+                            <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{new Date(entry.rejected_at).toLocaleString()}</span>
+                          )}
+                        </div>
+                        {entry.reference && (
+                          <div style={{ fontSize: '12px', color: '#6B7C93' }}>
+                            Ref: <span style={{ fontFamily: 'monospace' }}>{entry.reference}</span>
+                          </div>
+                        )}
+                        {entry.image && (
+                          <img
+                            src={entry.image}
+                            alt={`Previous proof #${idx + 1}`}
+                            style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', borderRadius: '4px', marginTop: '6px', cursor: 'pointer' }}
+                            onClick={() => window.open(entry.image, '_blank')}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </Modal>
 
         {/* Payment Modal - POS Terminal과 동일한 모달 사용 */}
         {showPaymentModal && orderForPayment && (

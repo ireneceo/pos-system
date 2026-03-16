@@ -535,7 +535,7 @@ const SystemConfigPage: React.FC = () => {
                   <ModalButton variant="secondary" onClick={() => setShowRestartModal(false)}>
                     Cancel
                   </ModalButton>
-                  <ModalButton variant="danger" onClick={handleConfirmRestart}>
+                  <ModalButton variant="secondary" onClick={handleConfirmRestart} style={{ background: '#FEF2F2', color: '#EF4444', borderColor: '#EF4444' }}>
                     Restart System
                   </ModalButton>
                 </>

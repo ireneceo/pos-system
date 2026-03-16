@@ -10,6 +10,7 @@ import CartPage from './pages/CartPage';
 import PaymentPage from './pages/PaymentPage';
 import QRPaymentPage from './pages/QRPaymentPage';
 import BankTransferPage from './pages/BankTransferPage';
+import OnlinePaymentPage from './pages/OnlinePaymentPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
 import OrdersPage from './pages/OrdersPage';
 import AccountPage from './pages/AccountPage';
@@ -32,6 +33,7 @@ const MobileApp: React.FC = () => {
         <Route path="/:slug/payment" element={<PaymentPage />} />
         <Route path="/:slug/payment/qr" element={<QRPaymentPage />} />
         <Route path="/:slug/payment/bank-transfer" element={<BankTransferPage />} />
+        <Route path="/:slug/payment/online" element={<OnlinePaymentPage />} />
         <Route path="/:slug/order/:orderId" element={<OrderTrackingPage />} />
         <Route path="/:slug/orders" element={<OrdersPage />} />
         <Route path="/:slug/account" element={<AccountPage />} />

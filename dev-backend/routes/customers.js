@@ -218,7 +218,7 @@ router.post('/register', async (req, res) => {
     // 이메일 중복 체크 (이메일이 있는 경우에만)
     if (email && email.trim()) {
       const existingByEmail = await Customer.findOne({
-        where: { email: email.trim().toLowerCase(), type: 'member' }
+        where: { email: email.trim().toLowerCase() }
       });
 
       if (existingByEmail) {

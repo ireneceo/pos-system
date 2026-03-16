@@ -522,7 +522,7 @@ const PaymentPage: React.FC = () => {
     loginCustomer,
     registerCustomer
   } = useCustomer();
-  const { getTakeawayCharge, operationSettings } = useStore();
+  const { getTakeawayCharge, operationSettings, updateSettings } = useStore();
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -554,10 +554,10 @@ const PaymentPage: React.FC = () => {
   const [isImmediatePickup, setIsImmediatePickup] = useState(true);
   const [availablePickupSlots, setAvailablePickupSlots] = useState<string[]>([]);
 
-  // Guest info inline form state
-  const [guestName, setGuestName] = useState('');
-  const [guestPhone, setGuestPhone] = useState('');
-  const [guestEmail, setGuestEmail] = useState('');
+  // Guest info inline form state — restore from localStorage via guestInfo
+  const [guestName, setGuestName] = useState(() => guestInfo?.name || '');
+  const [guestPhone, setGuestPhone] = useState(() => guestInfo?.phone || '');
+  const [guestEmail, setGuestEmail] = useState(() => (guestInfo as any)?.email || '');
   const [showGuestForm, setShowGuestForm] = useState(false);
   const [showMemberForm, setShowMemberForm] = useState(false);
 
@@ -568,6 +568,14 @@ const PaymentPage: React.FC = () => {
 
   // Member login state
   const [memberPassword, setMemberPassword] = useState('');
+  const [memberLoginError, setMemberLoginError] = useState('');
+  const [guestFormError, setGuestFormError] = useState('');
+  const [memberLoginType, setMemberLoginType] = useState<'phone' | 'email'>('phone');
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberPhone, setMemberPhone] = useState('');
+
+  // Active customer tab: which info to use at Pay time
+  const [activeCustomerTab, setActiveCustomerTab] = useState<'guest' | 'member' | null>(null);
 
   // Points state
   const [availablePoints, setAvailablePoints] = useState(0);
@@ -704,7 +712,9 @@ const PaymentPage: React.FC = () => {
   const deliveryFee = calculateDeliveryFee();
 
   // Calculate discounted subtotal first (consistent with POS)
-  const discountedSubtotal = subtotal - couponDiscount - pointDiscount;
+  // Points discount only applies when member is logged in
+  const activePointDiscount = currentCustomer ? pointDiscount : 0;
+  const discountedSubtotal = subtotal - couponDiscount - activePointDiscount;
 
   // Apply tax from operation settings (on discounted amount - consistent with POS)
   const tax = operationSettings.taxEnabled ? discountedSubtotal * (operationSettings.taxRate / 100) : 0;
@@ -829,22 +839,44 @@ const PaymentPage: React.FC = () => {
     loadRestaurant();
   }, [slug, setCurrentStore]);
 
-  // Set Quick Order as default on page load, but not if logged in
+  // Set Quick Order as default on page load, but not if logged in or disabled
   React.useEffect(() => {
     if (currentCustomer) {
-      // If logged in, clear Quick Order guest info
+      // If logged in, clear Quick Order guest info and auto-select member tab
       if (guestInfo && guestInfo.name === 'Guest' && !guestInfo.phone) {
         setGuestInfo(null);
       }
-    } else if (!guestInfo) {
-      // Only set Quick Order if no customer info is already set
+      if (!activeCustomerTab) setActiveCustomerTab('member');
+    } else if (operationSettings.allowQuickOrder === false) {
+      // Quick Order disabled — clear auto-set Guest info so customer must provide info
+      if (guestInfo && guestInfo.name === 'Guest' && !guestInfo.phone) {
+        setGuestInfo(null);
+      }
+    } else if (!guestInfo && !activeCustomerTab) {
+      // Quick Order enabled and no customer info — auto-set as Guest
       setGuestInfo({
         name: 'Guest',
         phone: ''
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCustomer]);
+  }, [currentCustomer, operationSettings.allowQuickOrder]);
+
+  // Auto-sync guest form inputs to guestInfo when guest tab is active
+  React.useEffect(() => {
+    if (activeCustomerTab === 'guest' && showGuestForm && !showRegisterForm) {
+      if (guestName.trim() || guestPhone.trim()) {
+        // Save as soon as either field has input
+        setGuestInfo({ name: guestName.trim() || 'Guest', phone: guestPhone.trim() });
+      } else {
+        // Both empty — clear guestInfo so Pay button stays disabled
+        if (guestInfo && guestInfo.name !== 'Guest') {
+          setGuestInfo(null);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guestName, guestPhone, activeCustomerTab, showGuestForm, showRegisterForm]);
 
   // Load payment settings from restaurant
   React.useEffect(() => {
@@ -866,6 +898,10 @@ const PaymentPage: React.FC = () => {
             setPaymentMethods(restaurant.payment_settings);
           } else {
             console.warn('⚠️ No payment_settings found in restaurant data');
+          }
+          // Sync operation_settings to StoreContext (for allowQuickOrder, tax, etc.)
+          if (restaurant.operation_settings) {
+            updateSettings({ operations: { ...operationSettings, ...restaurant.operation_settings } });
           }
         }
       } catch (error) {
@@ -1074,12 +1110,23 @@ const PaymentPage: React.FC = () => {
     console.log('🔵🔵🔵 PAY BUTTON CLICKED! 🔵🔵🔵');
     console.log('Payment method selected:', paymentMethod);
     console.log('Cart items count:', cartItems.length);
+    console.log('Active customer tab:', activeCustomerTab);
 
     setError('');
 
     // Check if payment method is selected
     if (!paymentMethod) {
       setError('Please select a payment method');
+      return;
+    }
+
+    // Tab switching already clears the other state, so just use what's available
+    const useGuest = !currentCustomer;
+    const orderCustomer = currentCustomer || null;
+    const orderGuestInfo = !currentCustomer ? guestInfo : null;
+
+    // Customer info check — button is already disabled, but double-check
+    if (!orderCustomer && !orderGuestInfo) {
       return;
     }
 
@@ -1121,7 +1168,7 @@ const PaymentPage: React.FC = () => {
           // Validate delivery info for delivery orders
           if (orderType === 'delivery') {
             // Check if customer/guest info is provided
-            if (!currentCustomer && (!guestInfo || !guestInfo.phone)) {
+            if (!orderCustomer && (!orderGuestInfo || !orderGuestInfo.phone)) {
               setError('Please enter your contact information (Guest Order or Member)');
               setIsProcessing(false);
               return;
@@ -1157,8 +1204,8 @@ const PaymentPage: React.FC = () => {
             const dbOrderData = {
               restaurant_id: currentStore?.id || 1,
               // order_number will be auto-generated by backend
-              customer_name: currentCustomer ? currentCustomer.name : (guestInfo ? guestInfo.name || 'Guest' : 'Guest'),
-              customer_phone: currentCustomer ? currentCustomer.phone : (guestInfo ? guestInfo.phone || null : null),
+              customer_name: orderCustomer ? orderCustomer.name : (orderGuestInfo ? orderGuestInfo.name || 'Guest' : 'Guest'),
+              customer_phone: orderCustomer ? orderCustomer.phone : (orderGuestInfo ? orderGuestInfo.phone || null : null),
               table_number: selectedTable || null,
               subtotal: subtotal,
               total_amount: total,
@@ -1168,8 +1215,8 @@ const PaymentPage: React.FC = () => {
               service_charge_rate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
-              points_used: pointsToUse > 0 ? pointsToUse : null,
-              point_discount: pointDiscount > 0 ? pointDiscount : null,
+              points_used: !useGuest && pointsToUse > 0 ? pointsToUse : null,
+              point_discount: !useGuest && pointDiscount > 0 ? pointDiscount : null,
               coupon_code: couponCode && couponDiscount > 0 ? couponCode : null,
               coupon_discount: couponDiscount > 0 ? couponDiscount : null,
               // Store delivery info as JSON object
@@ -1181,7 +1228,7 @@ const PaymentPage: React.FC = () => {
                 zoneId: selectedZone
               } : null,
               scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
-              customer_id: currentCustomer ? currentCustomer.id : null,
+              customer_id: orderCustomer ? orderCustomer.id : null,
               status: 'outstanding',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
               source: 'mobile',  // Mobile order source
@@ -1232,12 +1279,12 @@ const PaymentPage: React.FC = () => {
             const backendPickupNumber = backendOrderNumber ? backendOrderNumber.split('-')[1] : '001';
 
             // Update customer stats if member
-            if (currentCustomer) {
-              updateCustomerOrderStats(currentCustomer.id, total);
+            if (orderCustomer) {
+              updateCustomerOrderStats(orderCustomer.id, total);
             }
 
             // Save delivery address to member profile if delivery order
-            await saveDeliveryAddressToMember();
+            if (orderCustomer) await saveDeliveryAddressToMember();
 
             // Save order ID to localStorage for customer order history
             const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
@@ -1268,51 +1315,43 @@ const PaymentPage: React.FC = () => {
             return;
           }
         } else if (paymentMethod === 'bankTransfer' || paymentMethod === 'bank_transfer' || paymentMethod === 'bank' ||
-                   paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') {
+                   paymentMethod === 'ewallet' || paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') {
           console.log('🔵 Processing QR / Bank Transfer payment - NOT saving order yet...');
 
           // Validate delivery info for delivery orders
           if (orderType === 'delivery') {
             console.log('🚚 Delivery validation check:', {
-              currentCustomer: !!currentCustomer,
-              guestInfo,
+              orderCustomer: !!orderCustomer,
+              orderGuestInfo,
               deliveryAddress,
               deliveryPhone,
               selectedZone
             });
 
             // Check if customer/guest info is provided
-            if (!currentCustomer && (!guestInfo || !guestInfo.phone)) {
+            if (!orderCustomer && (!orderGuestInfo || !orderGuestInfo.phone)) {
               console.log('❌ Validation failed: No customer/guest info');
-              const errorMsg = 'Please enter your contact information (Guest Order or Member)';
-              setError(errorMsg);
-              alert(errorMsg);
+              setError('Please enter your contact information (Guest Order or Member)');
               setIsProcessing(false);
               return;
             }
 
             if (!deliveryAddress.trim()) {
               console.log('❌ Validation failed: No delivery address');
-              const errorMsg = 'Please enter your delivery address';
-              setError(errorMsg);
-              alert(errorMsg);
+              setError('Please enter your delivery address');
               setIsProcessing(false);
               return;
             }
             if (!deliveryPhone.trim()) {
               console.log('❌ Validation failed: No delivery phone');
-              const errorMsg = 'Please enter your phone number in Customer Information';
-              setError(errorMsg);
-              alert(errorMsg);
+              setError('Please enter your phone number in Customer Information');
               setIsProcessing(false);
               return;
             }
             // Only validate zone if zones are configured
             if (deliveryZones.length > 0 && !selectedZone) {
               console.log('❌ Validation failed: No delivery zone selected');
-              const errorMsg = 'Please select a delivery zone';
-              setError(errorMsg);
-              alert(errorMsg);
+              setError('Please select a delivery zone');
               setIsProcessing(false);
               return;
             }
@@ -1329,8 +1368,8 @@ const PaymentPage: React.FC = () => {
           // Don't create order yet - just store data for the payment confirmation page
           const pendingOrderData = {
             restaurant_id: currentStore?.id || 1,
-            customer_name: currentCustomer ? currentCustomer.name : (guestInfo ? guestInfo.name || 'Guest' : 'Guest'),
-            customer_phone: currentCustomer ? currentCustomer.phone : (guestInfo ? guestInfo.phone || null : null),
+            customer_name: orderCustomer ? orderCustomer.name : (orderGuestInfo ? orderGuestInfo.name || 'Guest' : 'Guest'),
+            customer_phone: orderCustomer ? orderCustomer.phone : (orderGuestInfo ? orderGuestInfo.phone || null : null),
             table_number: selectedTable || null,
             subtotal: subtotal,
             total_amount: total,
@@ -1340,8 +1379,10 @@ const PaymentPage: React.FC = () => {
             service_charge_rate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
             takeaway_charge: takeawayCharge,
             delivery_fee: deliveryFee,
-            points_used: pointsToUse > 0 ? pointsToUse : null,
-            point_discount: pointDiscount > 0 ? pointDiscount : null,
+            points_used: !useGuest && pointsToUse > 0 ? pointsToUse : null,
+            point_discount: !useGuest && pointDiscount > 0 ? pointDiscount : null,
+            coupon_code: couponCode && couponDiscount > 0 ? couponCode : null,
+            coupon_discount: couponDiscount > 0 ? couponDiscount : null,
             // Store delivery info as JSON object
             delivery_info: orderType === 'delivery' ? {
               address: deliveryAddress,
@@ -1351,10 +1392,11 @@ const PaymentPage: React.FC = () => {
               zoneId: selectedZone
             } : null,
             scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
+            customer_id: orderCustomer ? orderCustomer.id : null,
             status: 'outstanding',
             order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
-            source: 'mobile',  // Mobile order source
-            payment_method: (paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') ? 'QR Payment' : 'Bank Transfer',
+            source: 'mobile',
+            payment_method: (paymentMethod === 'ewallet' || paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment') ? 'ewallet' : 'bankTransfer',
             payment_status: 'pending',
             kitchen_ready: false,
             order_date: new Date(),
@@ -1365,42 +1407,41 @@ const PaymentPage: React.FC = () => {
                 price: opt.price
               })) || [];
               return {
-                name: item.menuItem.name,
+                name: item.menuItem.code ? `${item.menuItem.code} ${item.menuItem.name}` : item.menuItem.name,
                 quantity: item.quantity,
                 price: unitPriceWithOptions,
                 basePrice: item.menuItem.price,
                 optionPrice: unitPriceWithOptions - item.menuItem.price,
                 options: getOptionNames(item),
                 optionDetails: optionDetails,
-                special_instructions: item.specialInstructions || null
+                special_instructions: item.specialInstructions || null,
+                is_set_menu: (item.menuItem as any).is_set_menu || false,
+                set_items: (item.menuItem as any).set_items || []
               };
-            }),
-            customer_id: currentCustomer?.id || null
+            })
           };
 
           // Store pending order data in sessionStorage (will be created after payment confirmation)
           sessionStorage.setItem('pendingOrderData', JSON.stringify(pendingOrderData));
 
           // Navigate to QR or Bank Transfer page
-          const targetPath = (paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment')
+          const targetPath = (paymentMethod === 'ewallet' || paymentMethod === 'qr' || paymentMethod === 'qrPayment' || paymentMethod === 'qr_payment')
             ? `/mobile/${slug}/payment/qr`
             : `/mobile/${slug}/payment/bank-transfer`;
 
           console.log('🔵 Navigating to:', targetPath);
           navigate(targetPath);
           setIsProcessing(false);
-        } else if (paymentMethod === 'card' || paymentMethod === 'fpx') {
-          console.log('🔵 Processing card / FPX payment...');
+        } else if (paymentMethod === 'online') {
+          console.log('🔵 Processing online payment (Stripe/PayPal)...');
 
-          // Validate delivery info for delivery orders
+          // Validate delivery info for delivery orders (online payment)
           if (orderType === 'delivery') {
-            // Check if customer/guest info is provided
-            if (!currentCustomer && (!guestInfo || !guestInfo.phone)) {
+            if (!orderCustomer && (!orderGuestInfo || !orderGuestInfo.phone)) {
               setError('Please enter your contact information (Guest Order or Member)');
               setIsProcessing(false);
               return;
             }
-
             if (!deliveryAddress.trim()) {
               setError('Please enter your delivery address');
               setIsProcessing(false);
@@ -1411,7 +1452,6 @@ const PaymentPage: React.FC = () => {
               setIsProcessing(false);
               return;
             }
-            // Only validate zone if zones are configured
             if (deliveryZones.length > 0 && !selectedZone) {
               setError('Please select a delivery zone');
               setIsProcessing(false);
@@ -1419,9 +1459,8 @@ const PaymentPage: React.FC = () => {
             }
           }
 
-          // Create order in DATABASE
+          // Create order in DATABASE first (with pending payment status)
           try {
-            // Get delivery zone name for delivery orders
             let deliveryZoneName = null;
             if (orderType === 'delivery' && selectedZone && deliveryZones.length > 0) {
               const zone = deliveryZones.find(z => z.id === selectedZone);
@@ -1430,10 +1469,9 @@ const PaymentPage: React.FC = () => {
 
             const dbOrderData = {
               restaurant_id: currentStore?.id || 1,
-              // order_number will be auto-generated by backend
-              customer_id: currentCustomer ? currentCustomer.id : null,
-              customer_name: currentCustomer ? currentCustomer.name : (guestInfo ? guestInfo.name || 'Guest' : 'Guest'),
-              customer_phone: currentCustomer ? currentCustomer.phone : (guestInfo ? guestInfo.phone || null : null),
+              customer_id: orderCustomer ? orderCustomer.id : null,
+              customer_name: orderCustomer ? orderCustomer.name : (orderGuestInfo ? orderGuestInfo.name || 'Guest' : 'Guest'),
+              customer_phone: orderCustomer ? orderCustomer.phone : (orderGuestInfo ? orderGuestInfo.phone || null : null),
               table_number: selectedTable || null,
               subtotal: subtotal,
               total_amount: total,
@@ -1443,11 +1481,10 @@ const PaymentPage: React.FC = () => {
               service_charge_rate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
               takeaway_charge: takeawayCharge,
               delivery_fee: deliveryFee,
-              points_used: pointsToUse > 0 ? pointsToUse : null,
-              point_discount: pointDiscount > 0 ? pointDiscount : null,
+              points_used: !useGuest && pointsToUse > 0 ? pointsToUse : null,
+              point_discount: !useGuest && pointDiscount > 0 ? pointDiscount : null,
               coupon_code: couponCode && couponDiscount > 0 ? couponCode : null,
               coupon_discount: couponDiscount > 0 ? couponDiscount : null,
-              // Store delivery info as JSON object
               delivery_info: orderType === 'delivery' ? {
                 address: deliveryAddress,
                 phone: deliveryPhone,
@@ -1456,11 +1493,11 @@ const PaymentPage: React.FC = () => {
                 zoneId: selectedZone
               } : null,
               scheduled_pickup_time: orderType === 'pickup' && scheduledPickupTime ? scheduledPickupTime : null,
-              status: 'pending',
+              status: 'outstanding',
               order_type: orderType === 'dine-in' ? 'dine_in' : orderType,
-              source: 'mobile',  // Mobile order source
-              payment_method: paymentMethod === 'card' ? 'Card' : 'FPX',
-              payment_status: 'completed',
+              source: 'mobile',
+              payment_method: 'online',
+              payment_status: 'pending',
               kitchen_ready: false,
               order_date: new Date(),
               order_items: cartItems.map(item => {
@@ -1484,10 +1521,7 @@ const PaymentPage: React.FC = () => {
               })
             };
 
-            console.log('💾 Saving card/FPX order to DATABASE...');
-
-            // Simulate payment processing
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            console.log('💾 Creating order for online payment...');
 
             const response = await fetch('/api/orders', {
               method: 'POST',
@@ -1496,50 +1530,47 @@ const PaymentPage: React.FC = () => {
             });
 
             if (!response.ok) {
-              throw new Error('Failed to save order to database');
+              throw new Error('Failed to create order');
             }
 
             const result = await response.json();
             const savedOrder = result.data;
-            console.log('✅ Card/FPX order saved to DB with ID:', savedOrder.id);
+            console.log('✅ Order created with ID:', savedOrder.id);
 
-            // Get order number and pickup number from backend response
             const backendOrderNumber = savedOrder.order_number;
             const backendPickupNumber = backendOrderNumber ? backendOrderNumber.split('-')[1] : '001';
 
             // Update customer stats if member
-            if (currentCustomer) {
-              updateCustomerOrderStats(currentCustomer.id, total);
+            if (orderCustomer) {
+              updateCustomerOrderStats(orderCustomer.id, total);
             }
+            if (orderCustomer) await saveDeliveryAddressToMember();
 
-            // Save delivery address to member profile if delivery order
-            await saveDeliveryAddressToMember();
-
-            // Save order ID to localStorage for customer order history
+            // Save order ID to localStorage
             const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
             if (!customerOrderIds.includes(savedOrder.id)) {
               customerOrderIds.push(savedOrder.id);
               localStorage.setItem('customerOrderIds', JSON.stringify(customerOrderIds));
             }
 
-            // Set order as current and clear cart
-            setCurrentOrder({
-              id: savedOrder.id,
-              pickupNumber: backendPickupNumber,
-              items: cartItems,
-              total: total,
-              status: 'pending',
-              createdAt: new Date(),
-              estimatedPickupTime: new Date(Date.now() + 30 * 60000), // 30 minutes from now
-              paymentStatus: 'completed'
-            });
-            clearCart();
+            // Determine provider from restaurant payment settings
+            const onlineSettings = paymentMethods?.online;
+            const provider = onlineSettings?.provider || 'stripe';
 
-            console.log('✅ Card / FPX payment saved, navigating...');
-            // Navigate to order tracking
-            navigate(`/mobile/${slug}/order/${savedOrder.id}`);
+            // Store payment data in sessionStorage for OnlinePaymentPage
+            sessionStorage.setItem('pendingOnlinePayment', JSON.stringify({
+              orderId: savedOrder.id,
+              total: total,
+              provider: provider,
+              currency: currency,
+              pickupNumber: backendPickupNumber,
+              items: cartItems
+            }));
+
+            console.log('✅ Navigating to online payment page...');
+            navigate(`/mobile/${slug}/payment/online`);
           } catch (error) {
-            console.error('❌ Failed to save card/FPX order to DB:', error);
+            console.error('❌ Failed to create order:', error);
             setError('Failed to create order. Please try again.');
             setIsProcessing(false);
             return;
@@ -1556,7 +1587,6 @@ const PaymentPage: React.FC = () => {
       console.error('Error details:', err);
       console.error('Error message:', errorMsg);
       setError(errorMsg);
-      alert(`Payment Error: ${errorMsg}`);
     } finally {
       console.log('🔵 Finally block executing...');
       console.log('Current processing state:', isProcessing);
@@ -1658,7 +1688,7 @@ const PaymentPage: React.FC = () => {
               <span style={{ color: '#059669' }}>-{formatCurrency(couponDiscount, currency)}</span>
             </SummaryRow>
           )}
-          {pointDiscount > 0 && (
+          {pointDiscount > 0 && currentCustomer && (
             <SummaryRow>
               <span>Points Discount ({pointsToUse} pts)</span>
               <span style={{ color: '#059669' }}>-{formatCurrency(pointDiscount, currency)}</span>
@@ -1696,10 +1726,13 @@ const PaymentPage: React.FC = () => {
         
         {error && <ErrorMessage>{error}</ErrorMessage>}
         
+        {/* Customer Information - wait for settings to load to prevent flash */}
+        {paymentMethods && (
         <Section>
-          <SectionTitle>Customer Information</SectionTitle>
+          <SectionTitle>Customer Information{operationSettings.allowQuickOrder === false ? ' *' : ''}</SectionTitle>
 
-          {/* Quick Order 체크박스 - disabled for delivery */}
+          {/* Quick Order 체크박스 - hidden if disabled in settings, disabled for delivery */}
+          {operationSettings.allowQuickOrder !== false && (
           <QuickOrderCheckbox style={{ opacity: orderType === 'delivery' ? 0.5 : 1 }}>
             <input
               type="checkbox"
@@ -1713,25 +1746,43 @@ const PaymentPage: React.FC = () => {
                     phone: ''
                   });
                   // Reset Guest/Member button selection
+                  setActiveCustomerTab(null);
                   setShowGuestForm(false);
                   setShowMemberForm(false);
                   setShowRegisterForm(false);
                 } else {
                   // 체크 해제 - guestInfo 초기화
                   setGuestInfo(null);
+                  setActiveCustomerTab(null);
                 }
               }}
             />
             <span>Quick Order (No customer info required){orderType === 'delivery' ? ' - Not available for delivery' : ''}</span>
           </QuickOrderCheckbox>
+          )}
 
           <CustomerChoiceContainer>
             <CustomerChoiceButton
-              selected={showGuestForm || showRegisterForm || (guestInfo && guestInfo.name !== 'Guest')}
+              selected={activeCustomerTab === 'guest'}
               onClick={() => {
-                setShowGuestForm(!showGuestForm);
+                setActiveCustomerTab('guest');
+                setShowGuestForm(true);
                 setShowMemberForm(false);
-                setShowRegisterForm(false);
+                // Clear Quick Order if active
+                if (guestInfo && guestInfo.name === 'Guest' && !guestInfo.phone) {
+                  setGuestInfo(null);
+                }
+                // Restore saved guest info to form fields
+                const savedGuest = localStorage.getItem('mobile_guest');
+                if (savedGuest) {
+                  try {
+                    const parsed = JSON.parse(savedGuest);
+                    if (parsed.name && parsed.name !== 'Guest') setGuestName(parsed.name);
+                    if (parsed.phone) setGuestPhone(parsed.phone);
+                    if (parsed.email) setGuestEmail(parsed.email);
+                  } catch {}
+                }
+                // Clear member state
                 if (currentCustomer) logoutCustomer();
               }}
             >
@@ -1740,12 +1791,20 @@ const PaymentPage: React.FC = () => {
             </CustomerChoiceButton>
 
             <CustomerChoiceButton
-              selected={showMemberForm || !!currentCustomer}
+              selected={activeCustomerTab === 'member'}
               onClick={() => {
-                setShowMemberForm(!showMemberForm);
+                setActiveCustomerTab('member');
+                setShowMemberForm(!currentCustomer);
                 setShowGuestForm(false);
                 setShowRegisterForm(false);
+                // Clear guest state from context but keep localStorage for later restore
+                const savedMobileGuest = localStorage.getItem('mobile_guest');
                 setGuestInfo(null);
+                if (savedMobileGuest) localStorage.setItem('mobile_guest', savedMobileGuest);
+                setGuestName('');
+                setGuestPhone('');
+                setGuestEmail('');
+                setGuestFormError('');
               }}
             >
               <ChoiceTitle>Member</ChoiceTitle>
@@ -1754,7 +1813,7 @@ const PaymentPage: React.FC = () => {
           </CustomerChoiceContainer>
 
           {/* Guest Form - Inline */}
-          {showGuestForm && !currentCustomer && (
+          {showGuestForm && activeCustomerTab === 'guest' && (
             <div style={{ marginTop: '16px' }}>
               {/* Registration checkbox */}
               <QuickOrderCheckbox>
@@ -1818,25 +1877,30 @@ const PaymentPage: React.FC = () => {
                 </>
               )}
 
-              <button
-                onClick={async () => {
-                  if (!guestName.trim() || !guestPhone.trim()) {
-                    alert('Please enter name and phone number');
-                    return;
-                  }
-
-                  // If registering as member
-                  if (showRegisterForm) {
+              {/* Register button — only shown when registering */}
+              {guestFormError && (
+                <div style={{ fontSize: '13px', color: '#DC2626', marginBottom: '8px' }}>
+                  {guestFormError}
+                </div>
+              )}
+              {showRegisterForm && (
+                <button
+                  onClick={async () => {
+                    setGuestFormError('');
+                    if (!guestName.trim() || !guestPhone.trim()) {
+                      setGuestFormError('Please enter name and phone number.');
+                      return;
+                    }
                     if (!guestEmail.trim()) {
-                      alert('Email is required for member registration');
+                      setGuestFormError('Email is required for member registration.');
                       return;
                     }
                     if (!registerPassword.trim()) {
-                      alert('Password is required for member registration');
+                      setGuestFormError('Password is required for member registration.');
                       return;
                     }
                     if (registerPassword !== registerConfirmPassword) {
-                      alert('Passwords do not match');
+                      setGuestFormError('Passwords do not match.');
                       return;
                     }
 
@@ -1848,56 +1912,90 @@ const PaymentPage: React.FC = () => {
                         password: registerPassword
                       } as any, currentStore?.id);
                       console.log('✅ Customer registered:', customer);
-                      alert('Registration successful! You are now logged in as a member.');
+                      // Switch to member tab after successful registration
+                      setActiveCustomerTab('member');
                       setShowGuestForm(false);
                       setShowRegisterForm(false);
+                      setShowMemberForm(false);
                       setGuestName('');
                       setGuestPhone('');
                       setGuestEmail('');
                       setRegisterPassword('');
                       setRegisterConfirmPassword('');
+                      setGuestFormError('');
                     } catch (error: any) {
                       console.error('Registration failed:', error);
-                      alert(error.message || 'Registration failed. Please try again.');
+                      setGuestFormError(error.message || 'Registration failed. Please try again.');
                     }
-                  } else {
-                    // Guest order only
-                    setGuestInfo({
-                      name: guestName,
-                      phone: guestPhone
-                    });
-                    setShowGuestForm(false);
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  background: '#635BFF',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                {showRegisterForm ? 'Register & Continue' : 'Save Guest Info'}
-              </button>
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: '#635BFF',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Register & Continue
+                </button>
+              )}
+
+              {/* Guest info auto-saved indicator */}
+              {!showRegisterForm && (guestName.trim() || guestPhone.trim()) && (
+                <div style={{ fontSize: '12px', color: '#16A34A', textAlign: 'center', marginTop: '4px' }}>
+                  ✓ Guest info saved
+                </div>
+              )}
             </div>
           )}
 
           {/* Member Form - Inline */}
-          {showMemberForm && !currentCustomer && (
+          {showMemberForm && activeCustomerTab === 'member' && !currentCustomer && (
             <div style={{ marginTop: '16px' }}>
-              <FormGroup>
-                <Label>Email or Phone Number *</Label>
-                <Input
-                  type="text"
-                  placeholder="Email or phone number"
-                  value={guestPhone}
-                  onChange={(e) => setGuestPhone(e.target.value)}
-                />
-              </FormGroup>
+              {/* Phone / Email tab */}
+              <div style={{
+                display: 'flex', background: '#F3F4F6', borderRadius: '10px',
+                padding: '4px', marginBottom: '16px'
+              }}>
+                <button type="button" onClick={() => { setMemberLoginType('phone'); setMemberLoginError(''); }} style={{
+                  flex: 1, padding: '8px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                  background: memberLoginType === 'phone' ? 'white' : 'transparent',
+                  color: memberLoginType === 'phone' ? '#1F2937' : '#6B7280',
+                  boxShadow: memberLoginType === 'phone' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                }}>Phone</button>
+                <button type="button" onClick={() => { setMemberLoginType('email'); setMemberLoginError(''); }} style={{
+                  flex: 1, padding: '8px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                  background: memberLoginType === 'email' ? 'white' : 'transparent',
+                  color: memberLoginType === 'email' ? '#1F2937' : '#6B7280',
+                  boxShadow: memberLoginType === 'email' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                }}>Email</button>
+              </div>
+
+              {memberLoginType === 'phone' ? (
+                <FormGroup>
+                  <Label>Phone Number *</Label>
+                  <PhoneInput
+                    value={memberPhone}
+                    onChange={setMemberPhone}
+                    defaultCountryCode={currentStore?.country}
+                    placeholder="Phone number"
+                  />
+                </FormGroup>
+              ) : (
+                <FormGroup>
+                  <Label>Email Address *</Label>
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={memberEmail}
+                    onChange={(e) => setMemberEmail(e.target.value)}
+                  />
+                </FormGroup>
+              )}
               <FormGroup>
                 <Label>Password *</Label>
                 <Input
@@ -1907,29 +2005,41 @@ const PaymentPage: React.FC = () => {
                   onChange={(e) => setMemberPassword(e.target.value)}
                 />
               </FormGroup>
+              {memberLoginError && (
+                <div style={{ fontSize: '13px', color: '#DC2626', marginBottom: '8px' }}>
+                  {memberLoginError}
+                </div>
+              )}
               <button
                 onClick={async () => {
-                  if (!guestPhone.trim()) {
-                    alert('Please enter your phone number');
+                  setMemberLoginError('');
+                  const identifier = memberLoginType === 'phone' ? memberPhone : memberEmail;
+                  if (!identifier.trim()) {
+                    setMemberLoginError(memberLoginType === 'phone'
+                      ? 'Please enter your phone number.'
+                      : 'Please enter your email.');
                     return;
                   }
                   if (!memberPassword.trim()) {
-                    alert('Please enter your password');
+                    setMemberLoginError('Please enter your password.');
                     return;
                   }
                   try {
-                    const customer = await loginCustomer(guestPhone, memberPassword, currentStore?.id);
+                    const customer = await loginCustomer(identifier, memberPassword, currentStore?.id);
                     if (customer) {
                       console.log('✅ Member logged in:', customer);
+                      setActiveCustomerTab('member');
                       setShowMemberForm(false);
-                      setGuestPhone('');
                       setMemberPassword('');
+                      setMemberPhone('');
+                      setMemberEmail('');
+                      setMemberLoginError('');
                     } else {
-                      alert('Login failed. Please check your phone number and password.');
+                      setMemberLoginError('Login failed. Please check your credentials and try again.');
                     }
                   } catch (error) {
                     console.error('Login error:', error);
-                    alert('Login failed. Please try again.');
+                    setMemberLoginError('Login failed. Please try again.');
                   }
                 }}
                 style={{
@@ -1971,7 +2081,7 @@ const PaymentPage: React.FC = () => {
             </div>
           )}
 
-          {/* Show selected customer details */}
+          {/* Show logged-in member info */}
           {currentCustomer && (
             <CustomerInfoBox>
               <CustomerInfoContent>
@@ -1984,7 +2094,7 @@ const PaymentPage: React.FC = () => {
               <ClearButton
                 onClick={() => {
                   logoutCustomer();
-                  setShowMemberForm(false);
+                  setShowMemberForm(true);
                 }}
                 title="Clear customer info"
               >
@@ -1992,31 +2102,8 @@ const PaymentPage: React.FC = () => {
               </ClearButton>
             </CustomerInfoBox>
           )}
-
-          {/* Show guest info if saved */}
-          {guestInfo && guestInfo.name !== 'Guest' && !currentCustomer && (
-            <CustomerInfoBox>
-              <CustomerInfoContent>
-                <CustomerInfoName>{guestInfo.name}</CustomerInfoName>
-                <CustomerInfoDetails>
-                  {guestInfo.phone || 'No phone number'}
-                </CustomerInfoDetails>
-              </CustomerInfoContent>
-              <ClearButton
-                onClick={() => {
-                  setGuestInfo(null);
-                  setGuestName('');
-                  setGuestPhone('');
-                  setGuestEmail('');
-                  setShowGuestForm(false);
-                }}
-                title="Clear guest info"
-              >
-                ×
-              </ClearButton>
-            </CustomerInfoBox>
-          )}
         </Section>
+        )}
 
         {/* Delivery Address Section - only show for delivery orders */}
         {orderType === 'delivery' && (
@@ -2482,9 +2569,9 @@ const PaymentPage: React.FC = () => {
         </Section>
       </Container>
       
-      <PayButton 
-        onClick={handlePayment} 
-        disabled={isProcessing || cartItems.length === 0}
+      <PayButton
+        onClick={handlePayment}
+        disabled={isProcessing || cartItems.length === 0 || !paymentMethod || (!currentCustomer && !guestInfo)}
       >
         {isProcessing ? (
           <>

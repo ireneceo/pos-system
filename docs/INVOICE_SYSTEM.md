@@ -249,6 +249,16 @@ Brand와 동일 구조. `issuer_type: 'foodcourt'`, 인보이스 번호 `INV-FC{
 | `overdue` | 마감일 초과 | → payment_submitted, cancelled |
 | `cancelled` | 취소됨 | (최종 상태) |
 
+### 3.1.1 Free 인보이스 (100% 할인, total_amount=0)
+
+**자동발행 시**: 스케줄러가 total_amount=0 감지 → 자동으로 `status='paid'`, `payment_notes='100% discount - auto-completed'`
+
+**수동발행 시**: `pending_payment` 상태로 생성 → 수신자가 "Confirm" 버튼 클릭 → `PATCH /api/invoices/:id/status` → `status='paid'`, `paid_amount=0`, `payment_notes='Free invoice - confirmed by recipient'`
+
+- Pay 버튼: `total > 0`일 때만 표시
+- Confirm 버튼: `total === 0`이고 `status === 'pending_payment' || 'overdue'`일 때 표시
+- Admin(발행자)은 "Mark Paid" 버튼으로 동일 처리
+
 ### 3.2 수동 결제 프로세스 (Bank Transfer / QR)
 
 ```

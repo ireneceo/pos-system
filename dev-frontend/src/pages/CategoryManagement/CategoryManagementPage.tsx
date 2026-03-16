@@ -58,10 +58,11 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
     switch (props.variant) {
       case 'danger':
         return `
-          background: #EF4444;
-          color: white;
+          background: #FEF2F2;
+          color: #EF4444;
+          border: 1px solid #EF4444;
           &:hover {
-            background: #DC2626;
+            background: #FEE2E2;
           }
         `;
       case 'secondary':

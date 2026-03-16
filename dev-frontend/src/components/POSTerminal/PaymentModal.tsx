@@ -231,7 +231,7 @@ interface PaymentModalProps {
   takeawayCharge?: number;
   discountAmount?: number;
   couponDiscount?: number;
-  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number) => void;
+  onConfirmPayment: (paymentMethod: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string) => void;
   paymentMethods?: any;
   taxRate?: number;
   serviceChargeRate?: number;
@@ -384,25 +384,23 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   // Get available payment methods for POS
   const getAvailablePaymentMethods = () => {
     if (!paymentMethods) {
-      // Default fallback
-      return [
-        { key: 'cash', label: 'Cash' },
-        { key: 'card', label: 'Card' },
-        { key: 'ewallet', label: 'E-Wallet' },
-        { key: 'bankTransfer', label: 'Bank Transfer' }
-      ];
+      return [];
     }
 
-    // Use saved order if available, otherwise default order
+    // Use saved order if available, otherwise iterate all keys
     const savedOrder = paymentMethods._order;
-    const defaultOrder = ['cash', 'card', 'ewallet', 'bankTransfer'];
+    const allKeys = Object.keys(paymentMethods).filter(k => k !== '_order');
     const methodOrder = savedOrder && Array.isArray(savedOrder)
       ? savedOrder.filter((k: string) => k !== '_order')
-      : defaultOrder;
+      : allKeys;
+
+    // Add any keys not in saved order (e.g. newly added payment methods)
+    const missingKeys = allKeys.filter(k => !methodOrder.includes(k));
+    const fullOrder = [...methodOrder, ...missingKeys];
 
     const methods: any[] = [];
 
-    methodOrder.forEach((key: string) => {
+    fullOrder.forEach((key: string) => {
       const method = paymentMethods[key];
       if (method && method.enabled && method.availableIn && method.availableIn.includes('pos')) {
         methods.push({
@@ -417,8 +415,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const availableMethods = getAvailablePaymentMethods();
   const [paymentMethod, setPaymentMethod] = useState<string>(availableMethods[0]?.key || 'cash');
+
+  // Update selected payment method when paymentMethods load/change
+  useEffect(() => {
+    if (availableMethods.length > 0 && !availableMethods.find(m => m.key === paymentMethod)) {
+      setPaymentMethod(availableMethods[0].key);
+    }
+  }, [paymentMethods]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cashAmount, setCashAmount] = useState('');
-  
+  const [cardType, setCardType] = useState<string>('');
+
   const quickAmounts = [50, 100, 150, 200];
   
   // paymentMethod 초기화 (availableMethods가 변경되면)
@@ -446,15 +452,23 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       if (amount >= total) {
         onConfirmPayment(paymentMethod, amount, calculateChange(), pointsToUse, pointDiscount);
       }
+    } else if (paymentMethod === 'card') {
+      onConfirmPayment(paymentMethod, undefined, undefined, pointsToUse, pointDiscount, cardType);
+    } else if (paymentMethod === 'staffMeal') {
+      onConfirmPayment(paymentMethod, undefined, undefined, 0, 0);
     } else {
       onConfirmPayment(paymentMethod, undefined, undefined, pointsToUse, pointDiscount);
     }
   };
-  
+
   const canConfirm = () => {
+    if (!paymentMethods || availableMethods.length === 0) return false;
     if (paymentMethod === 'cash') {
       const amount = parseFloat(cashAmount) || 0;
       return amount >= total;
+    }
+    if (paymentMethod === 'card') {
+      return true;
     }
     return true;
   };
@@ -660,18 +674,59 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
       <Section>
         <Label>Payment Method</Label>
+        {!paymentMethods ? (
+          <div style={{ color: '#6B7C93', fontSize: '14px', padding: '12px 0' }}>
+            Loading payment methods...
+          </div>
+        ) : availableMethods.length === 0 ? (
+          <div style={{ color: '#E25950', fontSize: '14px', padding: '12px 0' }}>
+            No payment methods enabled for POS. Please configure in Settings → Payment.
+          </div>
+        ) : (
         <RadioGroup>
           {availableMethods.map(method => (
             <RadioButton
               key={method.key}
               selected={paymentMethod === method.key}
-              onClick={() => setPaymentMethod(method.key)}
+              onClick={() => { setPaymentMethod(method.key); setCardType(''); }}
             >
               <div>{method.label}</div>
             </RadioButton>
           ))}
         </RadioGroup>
+        )}
       </Section>
+
+      {paymentMethod === 'card' && (
+        <InputSection>
+          <Label>Card Type (Optional)</Label>
+          <QuickAmountGrid>
+            {['visa', 'master', 'amex', 'other'].map(type => (
+              <QuickAmountBtn
+                key={type}
+                selected={cardType === type}
+                onClick={() => setCardType(cardType === type ? '' : type)}
+              >
+                {type === 'visa' ? 'Visa' : type === 'master' ? 'Master' : type === 'amex' ? 'Amex' : 'Other'}
+              </QuickAmountBtn>
+            ))}
+          </QuickAmountGrid>
+        </InputSection>
+      )}
+
+      {paymentMethod === 'staffMeal' && (
+        <div style={{
+          background: '#FFF7ED',
+          border: '1px solid #FDBA74',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          fontSize: '13px',
+          color: '#9A3412',
+          lineHeight: '1.5'
+        }}>
+          Staff meal is recorded at full price but excluded from revenue reports.
+        </div>
+      )}
 
       {paymentMethod === 'cash' && (
         <InputSection>

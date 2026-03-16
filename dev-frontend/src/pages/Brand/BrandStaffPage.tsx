@@ -88,10 +88,11 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
       box-shadow: 0 4px 12px rgba(99, 91, 255, 0.3);
     }
   ` : props.variant === 'danger' ? `
-    background: #DC2626;
-    color: white;
+    background: #FEF2F2;
+    color: #EF4444;
+    border: 1px solid #EF4444;
     &:hover {
-      background: #B91C1C;
+      background: #FEE2E2;
     }
   ` : `
     background: white;

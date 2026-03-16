@@ -555,10 +555,12 @@ const OrderTrackingPage: React.FC = () => {
             <span style={{ color: '#6B7280' }}>Payment</span>
             <span style={{
               fontWeight: 600,
-              color: getPaymentStatus() === 'payment_verification_pending' ? '#F59E0B' :
+              color: getPaymentStatus() === 'rejected' ? '#DC2626' :
+                    getPaymentStatus() === 'payment_verification_pending' ? '#F59E0B' :
                     (getPaymentStatus() === 'completed' || getPaymentStatus() === 'paid' ? '#10B981' : '#6B7280')
             }}>
-              {getPaymentStatus() === 'payment_verification_pending' ? 'Verifying Payment' :
+              {getPaymentStatus() === 'rejected' ? 'Payment Rejected' :
+               getPaymentStatus() === 'payment_verification_pending' ? 'Verifying Payment' :
                (getPaymentStatus() === 'completed' || getPaymentStatus() === 'paid' ? '✓ Paid' : 'Pay at Counter')}
             </span>
           </DetailRow>
@@ -649,6 +651,55 @@ const OrderTrackingPage: React.FC = () => {
               }
               return null;
             })()}
+          </div>
+        )}
+
+        {getPaymentStatus() === 'rejected' && (
+          <div style={{
+            background: '#FEE2E2',
+            border: '1px solid #DC2626',
+            borderRadius: '8px',
+            padding: '16px',
+            textAlign: 'center',
+            marginBottom: '24px',
+            width: '100%',
+            maxWidth: '400px'
+          }}>
+            <div style={{ color: '#B91C1C', fontWeight: 600, marginBottom: '8px' }}>
+              Payment Rejected
+            </div>
+            <div style={{ color: '#B91C1C', fontSize: '13px', marginBottom: '12px' }}>
+              Your payment could not be verified. Please try again.
+            </div>
+            <button
+              onClick={() => {
+                sessionStorage.setItem('retryPaymentOrderId', String(order.id));
+                sessionStorage.setItem('retryPaymentData', JSON.stringify({
+                  total_amount: order.total_amount || order.totalAmount || order.total || 0,
+                  order_number: order.order_number || order.orderNumber || '',
+                  payment_method: order.payment_method || order.paymentMethod || order.paymentMethod || '',
+                  currency: order.currency || 'MYR'
+                }));
+                const paymentMethod = order.payment_method || order.paymentMethod || '';
+                if (paymentMethod === 'e_wallet') {
+                  navigate(`/mobile/${slug}/payment/qr`);
+                } else {
+                  navigate(`/mobile/${slug}/payment/bank-transfer`);
+                }
+              }}
+              style={{
+                background: '#635BFF',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 24px',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Retry Payment
+            </button>
           </div>
         )}
 

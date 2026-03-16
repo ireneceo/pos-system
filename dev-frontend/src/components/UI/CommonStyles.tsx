@@ -2,7 +2,7 @@ import styled, { css } from 'styled-components';
 
 // 공통 버튼 스타일
 export const BaseButton = styled.button<{
-  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'info';
+  variant?: 'primary' | 'secondary' | 'danger' | 'danger-outline' | 'success' | 'warning' | 'info';
   size?: 'small' | 'medium' | 'large';
   fullWidth?: boolean;
 }>`
@@ -65,12 +65,11 @@ export const BaseButton = styled.button<{
         `;
       case 'danger':
         return css`
-          background: #DC3545;
-          color: white;
+          background: #FEF2F2;
+          color: #EF4444;
+          border: 1px solid #EF4444;
           &:hover:not(:disabled) {
-            background: #C82333;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+            background: #FEE2E2;
           }
         `;
       case 'success':

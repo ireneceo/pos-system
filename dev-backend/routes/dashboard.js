@@ -9,6 +9,7 @@ const Restaurant = require('../models/Restaurant');
 const Invoice = require('../models/Invoice');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { getTodayBounds, getDateRange, getStartOfMonth, getSiteTimezone } = require('../utils/dateTimeHelper');
 
 // Get restaurant-specific dashboard statistics - REMOVED DUPLICATE
 // This route is duplicated at line 437 with more complete restaurant info
@@ -17,17 +18,15 @@ const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth
 // Get dashboard statistics (legacy - no restaurant filter)
 router.get('/stats', async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
+    const tz = await getSiteTimezone();
+    const { startOfDay: today, endOfDay: todayEnd } = getTodayBounds(tz);
+
     // Today's stats
     const todayOrders = await Order.findAll({
       where: {
         createdAt: {
           [Op.gte]: today,
-          [Op.lt]: tomorrow
+          [Op.lte]: todayEnd
         }
       }
     });
@@ -44,9 +43,7 @@ router.get('/stats', async (req, res) => {
     const pendingOrdersCount = todayOrders.filter(o => o.status === 'pending' || o.status === 'preparing').length;
     
     // This week's stats
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - 7);
-    weekStart.setHours(0, 0, 0, 0);
+    const { startDate: weekStart } = getDateRange(7, tz);
     
     const weekOrders = await Order.findAll({
       where: {
@@ -118,12 +115,9 @@ router.get('/sales-chart', async (req, res) => {
     const { days = 7 } = req.query;
     const daysCount = parseInt(days);
 
-    // Calculate date range
-    const endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - daysCount + 1);
-    startDate.setHours(0, 0, 0, 0);
+    // Calculate date range (timezone-aware)
+    const tzChart = await getSiteTimezone();
+    const { startDate, endDate } = getDateRange(daysCount, tzChart);
 
     // Single query to get all orders in the range
     const orders = await Order.findAll({
@@ -228,16 +222,15 @@ router.get('/admin/stats', async (req, res) => {
     // Get total invoices
     const totalInvoices = await Invoice.count();
     
-    // Get paid invoices this month
-    const thisMonth = new Date();
-    thisMonth.setDate(1);
-    thisMonth.setHours(0, 0, 0, 0);
-    
+    // Get paid invoices this month (timezone-aware)
+    const tzMonth = await getSiteTimezone();
+    const thisMonthStart = getStartOfMonth(tzMonth);
+
     const paidInvoicesThisMonth = await Invoice.count({
       where: {
         status: 'paid',
         paid_at: {
-          [Op.gte]: thisMonth
+          [Op.gte]: thisMonthStart
         }
       }
     });
@@ -800,7 +793,7 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
           { is_deleted: null }
         ]
       },
-      attributes: ['id', 'order_date', 'total_amount', 'order_items', 'order_type', 'payment_method']
+      attributes: ['id', 'order_date', 'total_amount', 'order_items', 'order_type', 'payment_method', 'card_type']
     });
 
     // Build product ID → category name mapping for order_items that lack category
@@ -838,14 +831,27 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
     const menuSales = {};
     const orderTypeSales = {};
     const paymentMethodSales = {};
+    const cardTypeSales = {};
 
     let totalRevenue = 0;
-    let totalOrders = orders.length;
+    let totalOrders = 0;
+    let staffMealRevenue = 0;
+    let staffMealOrders = 0;
 
     // Process each order
     orders.forEach(order => {
       const orderAmount = parseFloat(order.total_amount || 0);
+      const isStaffMeal = order.payment_method === 'staffMeal';
+
+      // Staff meal: track separately, exclude from revenue
+      if (isStaffMeal) {
+        staffMealRevenue += orderAmount;
+        staffMealOrders += 1;
+        return; // Skip rest of aggregation
+      }
+
       totalRevenue += orderAmount;
+      totalOrders += 1;
 
       // Daily aggregation
       const dateKey = getDateInTimezone(new Date(order.order_date), timeZone);
@@ -878,6 +884,16 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       }
       paymentMethodSales[paymentMethod].revenue += orderAmount;
       paymentMethodSales[paymentMethod].orders += 1;
+
+      // Card type aggregation (when payment_method is card)
+      if (paymentMethod === 'card' && order.card_type) {
+        const ct = order.card_type;
+        if (!cardTypeSales[ct]) {
+          cardTypeSales[ct] = { revenue: 0, orders: 0 };
+        }
+        cardTypeSales[ct].revenue += orderAmount;
+        cardTypeSales[ct].orders += 1;
+      }
 
       // Category and menu item aggregation
       if (order.order_items && Array.isArray(order.order_items)) {
@@ -949,6 +965,11 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       .map(([method, data]) => ({ method, ...data }))
       .sort((a, b) => b.revenue - a.revenue);
 
+    // Convert cardTypeSales to array
+    const cardTypeSalesArray = Object.entries(cardTypeSales)
+      .map(([type, data]) => ({ type, ...data }))
+      .sort((a, b) => b.revenue - a.revenue);
+
     res.json({
       success: true,
       data: {
@@ -964,7 +985,12 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
         categorySales: categorySalesArray,
         menuSales: menuSalesArray,
         orderTypeSales: orderTypeSalesArray,
-        paymentMethodSales: paymentMethodSalesArray
+        paymentMethodSales: paymentMethodSalesArray,
+        cardTypeSales: cardTypeSalesArray,
+        staffMeal: {
+          revenue: staffMealRevenue,
+          orders: staffMealOrders
+        }
       }
     });
   } catch (error) {

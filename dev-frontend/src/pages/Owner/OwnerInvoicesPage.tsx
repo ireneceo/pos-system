@@ -212,13 +212,13 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
       background: #059669;
     }
   ` : props.variant === 'danger' ? `
-    background: #EF4444;
-    color: white;
+    background: #FEF2F2;
+    color: #EF4444;
     border-color: #EF4444;
     padding: 6px 12px;
 
     &:hover {
-      background: #DC2626;
+      background: #FEE2E2;
     }
   ` : props.variant === 'email' ? `
     background: white;
@@ -570,6 +570,29 @@ const OwnerInvoicesPage: React.FC = () => {
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setShowViewModal(true);
+  };
+
+  const handleConfirmFreeInvoice = async (invoice: Invoice) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/invoices/${invoice.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          status: 'paid',
+          paid_amount: 0,
+          payment_notes: 'Free invoice - confirmed by recipient'
+        })
+      });
+      if (response.ok) {
+        fetchInvoices();
+      }
+    } catch (error) {
+      console.error('Failed to confirm free invoice:', error);
+    }
   };
 
   const handlePayInvoice = async (invoice: Invoice) => {
@@ -988,6 +1011,12 @@ const OwnerInvoicesPage: React.FC = () => {
                       </LocalActionButton>
                     )}
 
+                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total === 0 && (
+                      <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>
+                        Confirm
+                      </LocalActionButton>
+                    )}
+
                     <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -1094,7 +1123,7 @@ const OwnerInvoicesPage: React.FC = () => {
           const payerCompany = selectedInvoice.payerInfo;
 
           return (
-          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total > 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> )} <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total > 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> )}{(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )} <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
                 {/* Invoice Header with Issuer Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
                   <div style={{ flex: '0 0 55%' }}>

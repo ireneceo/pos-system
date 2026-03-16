@@ -12,6 +12,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { printBillViaRawBT, printKitchenTicketViaRawBT } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import { formatCurrency } from '../../utils/currency';
+import { formatPaymentDisplay } from '../../constants';
 
 // Global print styles
 const PrintStyles = createGlobalStyle`
@@ -246,6 +247,7 @@ interface OrderCompleteModalProps {
     taxRate?: number;
     total: number;
     paymentMethod: string;
+    cardType?: string | null;
     amountReceived: number;
     change: number;
     // Points
@@ -380,7 +382,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
           )}
           <DetailRow>
             <DetailLabel>Payment Method</DetailLabel>
-            <DetailValue>{orderData.paymentMethod}</DetailValue>
+            <DetailValue>{formatPaymentDisplay(orderData.paymentMethod, orderData.cardType)}</DetailValue>
           </DetailRow>
           {orderData.paymentMethod === 'cash' && (
             <>
@@ -591,7 +593,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
         <PrintSection style={{ borderTop: '1px dashed #000', paddingTop: '10px' }}>
           <PrintRow>
             <span>Payment Method:</span>
-            <span>{orderData.paymentMethod.toUpperCase()}</span>
+            <span>{formatPaymentDisplay(orderData.paymentMethod, orderData.cardType).toUpperCase()}</span>
           </PrintRow>
           {orderData.paymentMethod === 'cash' && (
             <>

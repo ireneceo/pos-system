@@ -2,9 +2,23 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
 import { formatCurrency } from '../../utils/currency';
+import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
 import { printBillViaRawBT, printKitchenTicketViaRawBT } from '../../utils/billPrint';
 import OptionModal from '../../components/POSTerminal/OptionModal';
+import { Modal, ModalButton } from '../../components/UI';
+
+// Helper: payment_proof 호환 — { current, history } 구조 또는 기존 단일 객체 모두 지원
+const getProofCurrent = (proof: any): any => {
+  if (!proof) return null;
+  if (proof.hasOwnProperty('current')) return proof.current;
+  return proof;
+};
+const getProofHistory = (proof: any): any[] => {
+  if (!proof) return [];
+  if (proof.hasOwnProperty('history')) return proof.history || [];
+  return [];
+};
 
 interface TableDetailPanelProps {
   tableNumber: string;
@@ -20,6 +34,11 @@ interface TableDetailPanelProps {
   onNavigateToPOS: () => void;
   onOrderUpdated: () => void;
   onClearTable: (orderId: number) => Promise<void>;
+  onClearAllCompleted?: () => Promise<void>;
+  // Multi-order support
+  orders?: TableStatusInfo[];
+  selectedOrderIndex?: number;
+  onOrderIndexChange?: (index: number) => void;
 }
 
 // ─── Styled Components ───
@@ -352,6 +371,22 @@ const EmptyState = styled.div`
   }
 `;
 
+const RejectButton = styled(ModalButton)`
+  && {
+    background: #FEF2F2;
+    border: 1px solid #EF4444;
+    color: #EF4444;
+  }
+  &&:hover:not(:disabled) {
+    background: #FEE2E2;
+  }
+`;
+
+const ConfirmPayButton = styled(ModalButton)`
+  && { background: #10B981; }
+  &&:hover:not(:disabled) { background: #059669; }
+`;
+
 // ─── Confirm Modal ───
 
 const ConfirmOverlay = styled.div`
@@ -403,7 +438,7 @@ const ConfirmBtn = styled.button<{ $danger?: boolean }>`
   border: none;
 
   ${p => p.$danger
-    ? `background: #DC2626; color: white; &:hover { background: #B91C1C; }`
+    ? `background: #FEF2F2; color: #EF4444; border: 1px solid #EF4444; &:hover { background: #FEE2E2; }`
     : `background: #F3F4F6; color: #374151; &:hover { background: #E5E7EB; }`
   }
 `;
@@ -429,12 +464,13 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const getNextStatus = (current: string, paymentStatus?: string): { status: string; label: string } | null => {
   switch (current) {
+    case 'outstanding': return (paymentStatus === 'payment_verification_pending' || paymentStatus === 'rejected') ? null : { status: 'pending', label: 'Proceed Without Payment' };
     case 'pending': return { status: 'preparing', label: 'Start Cooking' };
     case 'preparing': return { status: 'ready', label: 'Mark Ready' };
-    case 'ready': return paymentStatus === 'completed'
+    case 'ready': return { status: 'served', label: 'Served' };
+    case 'served': return paymentStatus === 'completed'
       ? { status: 'completed', label: 'Complete Order' }
-      : { status: 'served', label: 'Served' };
-    case 'served': return { status: 'completed', label: 'Complete Order' };
+      : null;
     default: return null;
   }
 };
@@ -466,7 +502,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   onPayment,
   onNavigateToPOS,
   onOrderUpdated,
-  onClearTable
+  onClearTable,
+  onClearAllCompleted,
+  orders = [],
+  selectedOrderIndex = 0,
+  onOrderIndexChange
 }) => {
   const [loading, setLoading] = useState(false);
   const { getStoreInfo } = useStore();
@@ -599,6 +639,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     switch (paymentStatus) {
       case 'completed': case 'paid': return { color: '#059669', bg: '#ECFDF5' };
       case 'failed': return { color: '#DC2626', bg: '#FEE2E2' };
+      case 'rejected': return { color: '#DC2626', bg: '#FEE2E2' };
       case 'payment_verification_pending': return { color: '#D97706', bg: '#FEF3C7' };
       default: return { color: '#6B7280', bg: '#F3F4F6' };
     }
@@ -699,7 +740,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
   const handleRevertStatus = async () => {
     if (!statusInfo?.orderId || loading) return;
-    const prevStatus = getPreviousStatus(orderStatus);
+    // Special case: pending → outstanding (same as LiveOrders)
+    const prevStatus = orderStatus === 'pending' ? 'outstanding' : getPreviousStatus(orderStatus);
     if (!prevStatus) return;
     setLoading(true);
     try {
@@ -714,6 +756,13 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     setLoading(false);
   };
 
+  // Payment verification modal state
+  const [showPaymentProofModal, setShowPaymentProofModal] = useState<'verify' | 'view' | false>(false);
+
+  const handleConfirmPaymentClick = () => {
+    setShowPaymentProofModal('verify');
+  };
+
   const handleConfirmPayment = async () => {
     if (!statusInfo?.orderId) return;
     setLoading(true);
@@ -724,6 +773,31 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ payment_status: 'completed' })
       });
+      // 결제 완료 후 outstanding이면 pending으로 변경 (주방에 전송) — LiveOrders와 동일
+      if (orderStatus === 'outstanding') {
+        await fetch(`/api/orders/${statusInfo.orderId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ status: 'pending' })
+        });
+      }
+      setShowPaymentProofModal(false);
+      onOrderUpdated();
+    } catch (_) { /* silently fail */ }
+    setLoading(false);
+  };
+
+  const handleRejectPayment = async () => {
+    if (!statusInfo?.orderId) return;
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`/api/orders/${statusInfo.orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ payment_status: 'rejected', status: 'outstanding' })
+      });
+      setShowPaymentProofModal(false);
       onOrderUpdated();
     } catch (_) { /* silently fail */ }
     setLoading(false);
@@ -833,11 +907,107 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     await printKitchenTicketViaRawBT(orderData, getStoreInfo());
   };
 
-  const previousStatus = getPreviousStatus(orderStatus);
+  const previousStatus = orderStatus === 'pending' ? 'outstanding' : getPreviousStatus(orderStatus);
   const hasAddedItems = items.some((item: any) => (item.order_group || 0) > 0);
+
+  const rawProof = statusInfo?.paymentProof || (statusInfo as any)?.payment_proof || null;
+  const paymentProof = getProofCurrent(rawProof);
+  const proofHistory = getProofHistory(rawProof);
 
   return (
     <Panel>
+      {/* Payment Proof Verification Modal */}
+      <Modal
+        isOpen={!!showPaymentProofModal}
+        onClose={() => setShowPaymentProofModal(false)}
+        title={showPaymentProofModal === 'verify' ? 'Payment Verification' : 'Customer Submitted Proof'}
+        size="small"
+        footer={showPaymentProofModal === 'verify' ? (
+          <>
+            <RejectButton variant="secondary" onClick={handleRejectPayment} disabled={loading}>Reject</RejectButton>
+            <ConfirmPayButton variant="primary" onClick={handleConfirmPayment} disabled={loading}>Confirm Payment</ConfirmPayButton>
+          </>
+        ) : undefined}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ fontSize: '14px', color: '#6B7C93', marginBottom: '6px' }}>Order: <strong style={{ color: '#0A2540' }}>#{statusInfo?.orderNumber}</strong></div>
+          <div style={{ fontSize: '14px', color: '#6B7C93', marginBottom: '6px' }}>Amount: <strong style={{ color: '#0A2540' }}>{currency} {statusInfo?.totalAmount?.toFixed(2)}</strong></div>
+          <div style={{ fontSize: '14px', color: '#6B7C93' }}>Method: <strong style={{ color: '#0A2540' }}>{statusInfo?.paymentMethod}</strong></div>
+        </div>
+
+        <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Customer Submitted Proof</div>
+          {paymentProof ? (
+            <>
+              {paymentProof.reference && (
+                <div style={{ fontSize: '13px', marginBottom: '6px' }}>
+                  <span style={{ color: '#6B7C93' }}>Reference: </span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0A2540' }}>{paymentProof.reference}</span>
+                </div>
+              )}
+              {paymentProof.file_name && (
+                <div style={{ fontSize: '13px', marginBottom: '6px', color: '#6B7C93' }}>File: {paymentProof.file_name}</div>
+              )}
+              {paymentProof.uploaded_at && (
+                <div style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '6px' }}>
+                  Submitted: {new Date(paymentProof.uploaded_at).toLocaleString()}
+                </div>
+              )}
+              {paymentProof.image && (
+                <img
+                  src={paymentProof.image}
+                  alt="Payment proof"
+                  style={{ width: '100%', borderRadius: '6px', marginTop: '8px', cursor: 'pointer' }}
+                  onClick={() => window.open(paymentProof.image, '_blank')}
+                />
+              )}
+            </>
+          ) : (
+            <div style={{ fontSize: '13px', color: '#9CA3AF' }}>
+              {paymentStatus === 'rejected' ? 'Waiting for customer to resubmit.' : 'No payment proof submitted.'}
+            </div>
+          )}
+        </div>
+
+        {/* History Section */}
+        {proofHistory.length > 0 && (
+          <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px', marginTop: '16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#6B7C93', marginBottom: '10px' }}>
+              Previous Attempts ({proofHistory.length})
+            </div>
+            {proofHistory.map((entry: any, idx: number) => (
+              <div key={idx} style={{
+                padding: '10px',
+                background: '#F9FAFB',
+                borderRadius: '6px',
+                marginBottom: idx < proofHistory.length - 1 ? '8px' : 0,
+                border: '1px solid #E5E7EB'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '12px', color: '#DC2626', fontWeight: 600 }}>Rejected #{entry.reject_count || idx + 1}</span>
+                  {entry.rejected_at && (
+                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{new Date(entry.rejected_at).toLocaleString()}</span>
+                  )}
+                </div>
+                {entry.reference && (
+                  <div style={{ fontSize: '12px', color: '#6B7C93' }}>
+                    Ref: <span style={{ fontFamily: 'monospace' }}>{entry.reference}</span>
+                  </div>
+                )}
+                {entry.image && (
+                  <img
+                    src={entry.image}
+                    alt={`Previous proof #${idx + 1}`}
+                    style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', borderRadius: '4px', marginTop: '6px', cursor: 'pointer' }}
+                    onClick={() => window.open(entry.image, '_blank')}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
       <PanelHeader>
         <TableTitle>
           <h3>Table {tableNumber}</h3>
@@ -855,7 +1025,9 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 {STATUS_LABELS[orderStatus] || statusInfo!.status}
               </StatusBadge>
               <StatusBadge $color={paymentStatusColors.color} $bg={paymentStatusColors.bg}>
-                {paymentStatus === 'completed' || paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+                {paymentStatus === 'completed' || paymentStatus === 'paid' ? 'Paid' :
+                 paymentStatus === 'rejected' ? 'Rejected' :
+                 paymentStatus === 'payment_verification_pending' ? 'Verifying' : 'Unpaid'}
               </StatusBadge>
             </BadgeRow>
           )}
@@ -867,6 +1039,44 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         </TableTitle>
         <CloseBtn onClick={onClose}>&times;</CloseBtn>
       </PanelHeader>
+
+      {/* Multi-order tabs */}
+      {orders.length > 1 && (
+        <div style={{
+          padding: '8px 20px',
+          borderBottom: '1px solid #E6EBF1',
+          display: 'flex',
+          gap: '6px',
+          flexWrap: 'wrap',
+          background: '#F9FAFB'
+        }}>
+          {orders.map((order, idx) => (
+            <button
+              key={order.orderId || idx}
+              onClick={() => onOrderIndexChange?.(idx)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: selectedOrderIndex === idx ? 600 : 400,
+                border: selectedOrderIndex === idx ? '1.5px solid #635BFF' : '1px solid #D1D5DB',
+                background: selectedOrderIndex === idx ? '#EDE9FE' : 'white',
+                color: selectedOrderIndex === idx ? '#635BFF' : '#6B7280',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              #{order.orderNumber?.split('-')[1] || idx + 1}
+              {order.paymentStatus === 'paid' || order.paymentStatus === 'completed'
+                ? ' ✓'
+                : ''}
+            </button>
+          ))}
+          <span style={{ fontSize: '11px', color: '#9CA3AF', alignSelf: 'center', marginLeft: '4px' }}>
+            {orders.length} orders
+          </span>
+        </div>
+      )}
 
       {isOccupied ? (
         showAddItemsView ? (
@@ -1053,7 +1263,20 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   {statusInfo!.paymentMethod && (
                     <InfoItem>
                       <InfoLabel>Payment</InfoLabel>
-                      <InfoValue>{statusInfo!.paymentMethod}</InfoValue>
+                      <InfoValue>{formatPaymentDisplay(statusInfo!.paymentMethod, statusInfo!.cardType)}</InfoValue>
+                    </InfoItem>
+                  )}
+                  {paymentProof && (
+                    <InfoItem>
+                      <InfoLabel>Receipt</InfoLabel>
+                      <InfoValue>
+                        <span
+                          onClick={() => setShowPaymentProofModal('view')}
+                          style={{ color: '#635BFF', cursor: 'pointer', fontWeight: 500 }}
+                        >
+                          View →
+                        </span>
+                      </InfoValue>
                     </InfoItem>
                   )}
                   {statusInfo!.cashierName && (
@@ -1228,22 +1451,37 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     <IconSymbol>↺</IconSymbol>
                   </IconButton>
                 )}
+                {/* Quick Complete — LiveOrders 동일: 결제 확정된 주문만 아이콘 버튼 */}
+                {orderStatus !== 'completed' && orderStatus !== 'cancelled' && paymentStatus !== 'pending' && paymentStatus !== 'payment_verification_pending' && statusInfo!.orderId && (
+                  <IconButton
+                    onClick={() => onStatusChange(statusInfo!.orderId!, 'completed')}
+                    title="Mark as Completed"
+                  >
+                    <IconSymbol>✓</IconSymbol>
+                  </IconButton>
+                )}
               </IconButtonGroup>
 
-              {/* Status progression — LiveOrders와 동일: completed/cancelled 제외 */}
+              {/* Status progression — completed/cancelled 제외. Served에서는 Complete Order 표시 */}
               {nextAction && statusInfo!.orderId && orderStatus !== 'completed' && orderStatus !== 'cancelled' && (
                 <ActionBtn
-                  $variant={orderStatus === 'ready' ? 'success' : 'primary'}
+                  $variant="primary"
                   onClick={() => onStatusChange(statusInfo!.orderId!, nextAction.status)}
                   disabled={loading}
+                  style={
+                    orderStatus === 'outstanding' ? { background: '#F59E0B', borderColor: '#F59E0B', color: 'white' } :
+                    orderStatus === 'ready' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } :
+                    nextAction.status === 'completed' ? { background: '#9CA3AF', borderColor: '#9CA3AF', color: 'white' } :
+                    undefined
+                  }
                 >
                   {nextAction.label}
                 </ActionBtn>
               )}
 
-              {/* Confirm Payment — LiveOrders와 동일 */}
+              {/* Confirm Payment — 증빙 확인 모달 열기 */}
               {paymentStatus === 'payment_verification_pending' && (
-                <ActionBtn $variant="success" onClick={handleConfirmPayment} disabled={loading}>
+                <ActionBtn $variant="success" onClick={handleConfirmPaymentClick} disabled={loading}>
                   Confirm Payment
                 </ActionBtn>
               )}
@@ -1281,7 +1519,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   Leaved
                 </ActionBtn>
               )}
-              <ActionBtn $variant="link" onClick={onNavigateToPOS}>
+<ActionBtn $variant="link" onClick={onNavigateToPOS}>
                 Open in POS Terminal &#x2197;
               </ActionBtn>
             </ActionGroup>

@@ -8,6 +8,7 @@ const Stripe = require('stripe');
 const SystemSettings = require('../models/SystemSettings');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
+const Restaurant = require('../models/Restaurant');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 
@@ -55,6 +56,18 @@ async function getSecretKeyForIssuer(issuerType, issuerId) {
       }
       return ps.stripe.secretKey;
     }
+    case 'restaurant': {
+      const restaurant = await Restaurant.findByPk(issuerId);
+      if (!restaurant) throw new Error(`Restaurant ${issuerId} not found`);
+      const ps = typeof restaurant.payment_settings === 'string'
+        ? JSON.parse(restaurant.payment_settings) : restaurant.payment_settings;
+      // Restaurant stores Stripe keys in online.config
+      const secretKey = ps?.online?.config?.stripeSecretKey;
+      if (!ps?.online?.enabled || !secretKey) {
+        throw new Error(`Stripe is not configured for Restaurant ${issuerId}`);
+      }
+      return secretKey;
+    }
     default:
       throw new Error(`Unknown issuer type: ${issuerType}`);
   }
@@ -81,6 +94,12 @@ async function getPublishableKeyForIssuer(issuerType, issuerId) {
       const ps = typeof foodcourt?.payment_settings === 'string'
         ? JSON.parse(foodcourt.payment_settings) : foodcourt?.payment_settings;
       return ps?.stripe?.publishableKey || ps?.stripe?.publicKey || null;
+    }
+    case 'restaurant': {
+      const restaurant = await Restaurant.findByPk(issuerId);
+      const ps = typeof restaurant?.payment_settings === 'string'
+        ? JSON.parse(restaurant.payment_settings) : restaurant?.payment_settings;
+      return ps?.online?.config?.stripePublicKey || null;
     }
     default:
       return null;

@@ -103,6 +103,12 @@ const DateTime = styled.div`
   min-width: 200px;
   text-align: right;
   white-space: nowrap;
+
+  @media (max-width: 768px) {
+    min-width: auto;
+    text-align: left;
+    font-size: 13px;
+  }
 `;
 
 const MainLayout = styled.div`
@@ -1866,7 +1872,7 @@ const POSTerminalPage: React.FC = () => {
     setShowPaymentModal(true);
   };
 
-  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscountAmount?: number) => {
+  const handleConfirmPayment = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscountAmount?: number, cardType?: string) => {
     // 중복 실행 방지
     if (isProcessingPayment) {
       console.warn('POS - Payment already in progress, ignoring duplicate call');
@@ -1899,6 +1905,7 @@ const POSTerminalPage: React.FC = () => {
         pointsUsed: pointsUsed || 0,
         pointDiscount: pointDiscountAmount || 0,
         paymentMethod: method,
+        cardType: method === 'card' ? (cardType || null) : null,
         amountReceived: amountReceived || adjustedTotal,
         change: change || 0
       };
@@ -1956,6 +1963,7 @@ const POSTerminalPage: React.FC = () => {
       points_used: pointsUsed || null,
       point_discount: pointDiscountAmount || null,
       paymentMethod: method,
+      card_type: method === 'card' ? (cardType || null) : null,
       paymentStatus: 'completed' as const,
       orderType: orderType,
       orderSource: 'pos' as const,

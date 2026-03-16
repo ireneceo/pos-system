@@ -374,6 +374,7 @@ interface KitchenOrder {
   customerName?: string;
   tableNumber?: string;
   orderType: 'dine-in' | 'takeaway' | 'delivery' | 'pickup';
+  source?: 'pos' | 'mobile' | 'kiosk';
   scheduledPickupTime?: string | null;
 }
 
@@ -488,6 +489,7 @@ const KitchenDisplayPage: React.FC = () => {
               customerName: order.customer_name || undefined,
               tableNumber: order.table_number || undefined,
               orderType: (order.order_type || 'dine-in') as 'dine-in' | 'takeaway' | 'delivery' | 'pickup',
+              source: order.source || 'pos',
               scheduledPickupTime: order.scheduled_pickup_time || null
             } as KitchenOrder;
           });
@@ -675,6 +677,7 @@ const KitchenDisplayPage: React.FC = () => {
         tableNumber: order.table_number,
         customerName: order.customer_name,
         orderType: order.order_type || 'dine-in',
+        source: order.source || 'pos',
         scheduledPickupTime: order.scheduled_pickup_time || null
       };
 
@@ -1084,6 +1087,16 @@ const KitchenDisplayPage: React.FC = () => {
                         🚚 DELIVERY
                       </MetaItem>
                     )}
+                    {order.source === 'mobile' && (
+                      <MetaItem style={{ color: '#2563EB' }}>
+                        📱 MOBILE
+                      </MetaItem>
+                    )}
+                    {order.source === 'kiosk' && (
+                      <MetaItem style={{ color: '#D97706' }}>
+                        🖥 KIOSK
+                      </MetaItem>
+                    )}
                     <MetaItem>
                       ✓ {completedItems}/{order.items.length} items
                     </MetaItem>
@@ -1245,6 +1258,16 @@ const KitchenDisplayPage: React.FC = () => {
                     {order.orderType === 'delivery' && (
                       <MetaItem>
                         🚚 DELIVERY
+                      </MetaItem>
+                    )}
+                    {order.source === 'mobile' && (
+                      <MetaItem style={{ color: '#2563EB' }}>
+                        📱 MOBILE
+                      </MetaItem>
+                    )}
+                    {order.source === 'kiosk' && (
+                      <MetaItem style={{ color: '#D97706' }}>
+                        🖥 KIOSK
                       </MetaItem>
                     )}
                     <MetaItem>

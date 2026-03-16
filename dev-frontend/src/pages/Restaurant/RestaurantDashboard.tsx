@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
+import { formatPaymentDisplay } from '../../constants';
 
 interface DashboardData {
   restaurant: {
@@ -1018,7 +1019,7 @@ const RestaurantDashboard: React.FC = () => {
                       <Td>
                         <Amount>{formatCurrency(parseFloat(order.total_amount || 0), selectedCurrency)}</Amount>
                         <PaymentMethod isPending={order.payment_status === 'pending'}>
-                          {order.payment_status === 'pending' ? 'Pending' : (order.payment_method || 'Cash')}
+                          {order.payment_status === 'pending' ? 'Pending' : formatPaymentDisplay(order.payment_method, (order as any).card_type)}
                         </PaymentMethod>
                       </Td>
                     </Tr>

@@ -34,13 +34,8 @@ const FooterSection = styled.div``;
 const LogoSection = styled.div`
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 16px;
-`;
-
-const LogoText = styled.span`
-  font-size: 24px;
-  font-weight: 700;
-  color: white;
 `;
 
 const Description = styled.p`
@@ -179,7 +174,7 @@ const LandingFooter: React.FC = () => {
         <FooterGrid>
           <FooterSection>
             <LogoSection>
-              <LogoText>PurpleHere</LogoText>
+              <img src="/images/logo-white.svg" alt="PurpleHere" style={{ height: '32px', width: 'auto', display: 'block' }} />
               <Description>
                 Smart store management starts here. Efficiently manage your food courts, brands, and restaurants with our powerful POS system.
               </Description>

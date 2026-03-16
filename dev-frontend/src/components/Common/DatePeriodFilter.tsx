@@ -28,11 +28,32 @@ const formatDate = (d: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Helper: get current date in a specific timezone as YYYY-MM-DD
+const getDateInTimezone = (tz?: string): Date => {
+  if (!tz) return new Date();
+  try {
+    // Get the current date string in the target timezone
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const dateStr = formatter.format(new Date()); // "YYYY-MM-DD" in en-CA locale
+    const [year, month, day] = dateStr.split('-').map(Number);
+    // Create a local Date object representing that calendar date
+    return new Date(year, month - 1, day);
+  } catch {
+    return new Date();
+  }
+};
+
 // Helper: calculate date range for a period
-export const calculatePeriodDateRange = (period: PeriodType): DateRange => {
-  const now = new Date();
-  let start = new Date();
-  const end = new Date();
+// timezone: restaurant timezone (e.g., 'Asia/Kuala_Lumpur') - ensures "today" matches restaurant's local date
+export const calculatePeriodDateRange = (period: PeriodType, timezone?: string): DateRange => {
+  const now = getDateInTimezone(timezone);
+  let start = new Date(now);
+  const end = new Date(now);
 
   switch (period) {
     case 'today':

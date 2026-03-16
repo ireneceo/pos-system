@@ -138,9 +138,10 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         `;
       case 'danger':
         return `
-          background: #FEE2E2;
-          color: #DC2626;
-          &:hover { background: #FCA5A5; }
+          background: #FEF2F2;
+          border: 1px solid #EF4444;
+          color: #EF4444;
+          &:hover { background: #FEE2E2; }
         `;
       default:
         return `
@@ -262,7 +263,11 @@ const IngredientsPage: React.FC = () => {
         url = `/api/restaurants/${user?.restaurant_id}/ingredients/${deletingIngredientId}`;
       }
 
-      const response = await fetch(url, { method: 'DELETE' });
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const data = await response.json();
 
       if (data.success) {

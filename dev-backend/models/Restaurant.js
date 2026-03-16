@@ -189,48 +189,14 @@ Restaurant.init({
           },
           card: {
             enabled: true,
-            label: 'Credit/Debit Card',
-            availableIn: ['pos', 'mobile'],
-            provider: '', // 'ipay88', 'molpay', '2c2p', 'stripe', 'paypal'
-            config: {
-              // iPay88
-              ipay88MerchantCode: '',
-              ipay88MerchantKey: '',
-              // MOLPay
-              molpayMerchantId: '',
-              molpayVerifyKey: '',
-              molpaySecretKey: '',
-              // 2C2P
-              '2c2pMerchantId': '',
-              '2c2pSecretKey': '',
-              // Stripe
-              stripePublicKey: '',
-              stripeSecretKey: '',
-              // PayPal
-              paypalClientId: '',
-              paypalClientSecret: ''
-            }
+            label: 'Card',
+            availableIn: ['pos']
           },
           ewallet: {
             enabled: true,
             label: 'E-Wallet',
             availableIn: ['pos', 'mobile'],
-            provider: '', // 'tng', 'grabpay', 'boost', 'shopeepay'
-            config: {
-              // Touch 'n Go eWallet
-              tngMerchantId: '',
-              tngApiKey: '',
-              // GrabPay
-              grabpayMerchantId: '',
-              grabpayClientId: '',
-              grabpayClientSecret: '',
-              // Boost
-              boostMerchantId: '',
-              boostApiKey: '',
-              // ShopeePay
-              shopeePayMerchantId: '',
-              shopeePayApiKey: ''
-            }
+            qrImage: '' // QR code image for customer scanning
           },
           bankTransfer: {
             enabled: true,
@@ -239,12 +205,6 @@ Restaurant.init({
             bankName: '',
             accountNumber: '',
             accountName: ''
-          },
-          qr: {
-            enabled: true,
-            label: 'QR Payment',
-            availableIn: ['mobile'],
-            qrImage: ''
           },
           counter: {
             enabled: true,
@@ -257,31 +217,16 @@ Restaurant.init({
             availableIn: ['mobile'],
             provider: '', // 'stripe', 'paypal', 'both'
             config: {
-              // Stripe
               stripePublicKey: '',
               stripeSecretKey: '',
-              // PayPal
               paypalClientId: '',
               paypalClientSecret: ''
             }
           },
-          fpx: {
-            enabled: true,
-            label: 'FPX Online Banking',
-            availableIn: ['mobile'],
-            provider: '', // 'ipay88', 'molpay', '2c2p'
-            config: {
-              // iPay88 FPX
-              ipay88MerchantCode: '',
-              ipay88MerchantKey: '',
-              // MOLPay FPX
-              molpayMerchantId: '',
-              molpayVerifyKey: '',
-              molpaySecretKey: '',
-              // 2C2P FPX
-              '2c2pMerchantId': '',
-              '2c2pSecretKey': ''
-            }
+          staffMeal: {
+            enabled: false,
+            label: 'Staff Meal',
+            availableIn: ['pos']
           }
         };
       }

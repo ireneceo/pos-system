@@ -219,13 +219,13 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
       background: #059669;
     }
   ` : props.variant === 'danger' ? `
-    background: #EF4444;
-    color: white;
+    background: #FEF2F2;
+    color: #EF4444;
     border-color: #EF4444;
     padding: 6px 12px;
 
     &:hover {
-      background: #DC2626;
+      background: #FEE2E2;
     }
   ` : props.variant === 'email' ? `
     background: white;
@@ -634,6 +634,29 @@ const RestaurantInvoicesPage: React.FC = () => {
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setShowViewModal(true);
+  };
+
+  const handleConfirmFreeInvoice = async (invoice: Invoice) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/invoices/${invoice.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          status: 'paid',
+          paid_amount: 0,
+          payment_notes: 'Free invoice - confirmed by recipient'
+        })
+      });
+      if (response.ok) {
+        fetchInvoices();
+      }
+    } catch (error) {
+      console.error('Failed to confirm free invoice:', error);
+    }
   };
 
   const handlePayInvoice = async (invoice: Invoice) => {
@@ -1076,6 +1099,13 @@ const RestaurantInvoicesPage: React.FC = () => {
                       </LocalActionButton>
                     )}
 
+                    {/* Confirm button for free invoices */}
+                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total === 0 && (
+                      <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>
+                        Confirm
+                      </LocalActionButton>
+                    )}
+
                     {/* Download PDF */}
                     <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1199,6 +1229,14 @@ const RestaurantInvoicesPage: React.FC = () => {
                     handlePayInvoice(selectedInvoice);
                   }}>
                     Pay Now
+                  </Button>
+                )}
+                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total === 0 && (
+                  <Button variant="success" onClick={() => {
+                    setShowViewModal(false);
+                    handleConfirmFreeInvoice(selectedInvoice);
+                  }}>
+                    Confirm
                   </Button>
                 )}
                 <Button onClick={() => generateInvoicePDF(selectedInvoice)}>

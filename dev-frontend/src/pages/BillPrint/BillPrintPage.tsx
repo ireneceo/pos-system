@@ -5,6 +5,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import { formatPaymentDisplay } from '../../constants';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
@@ -376,7 +377,7 @@ const BillPrintPage: React.FC = () => {
             <BillSection>
               <BillRow>
                 <Label>Payment Method:</Label>
-                <Value>{selectedOrder.paymentMethod.toUpperCase()}</Value>
+                <Value>{formatPaymentDisplay(selectedOrder.paymentMethod || selectedOrder.payment_method, selectedOrder.cardType || selectedOrder.card_type).toUpperCase()}</Value>
               </BillRow>
               <BillRow>
                 <Label>Order Type:</Label>

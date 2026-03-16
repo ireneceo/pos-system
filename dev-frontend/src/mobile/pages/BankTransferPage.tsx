@@ -227,7 +227,7 @@ const Input = styled.input`
 
 const SubmitButton = styled.button`
   position: fixed;
-  bottom: 68px; /* Space for bottom navigation */
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   background: #635BFF;
@@ -241,6 +241,14 @@ const SubmitButton = styled.button`
   transition: background 0.2s;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
   z-index: 101;
+
+  @media (min-width: 768px) {
+    max-width: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 12px;
+    bottom: 80px;
+  }
 
   &:active {
     background: #5A51E6;
@@ -263,17 +271,24 @@ const BankTransferPage: React.FC = () => {
   const { setCurrentOrder, clearCart, currentStore, currency } = useMobileOrder();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Get order data from sessionStorage or location state
+  // Get order data: retry flow uses retryPaymentData, new order uses pendingOrderData
+  const retryDataStr = sessionStorage.getItem('retryPaymentData');
   const sessionData = sessionStorage.getItem('pendingOrderData');
-  const orderData = sessionData ? JSON.parse(sessionData) : (location.state as any);
-  const total = orderData?.total_amount || orderData?.total || 0;
+  const orderData = retryDataStr ? JSON.parse(retryDataStr) : (sessionData ? JSON.parse(sessionData) : (location.state as any));
+  const total = (orderData?.total_amount !== undefined && orderData?.total_amount !== null && orderData?.total_amount !== 0)
+    ? orderData.total_amount
+    : (orderData?.total || 0);
 
   const [paymentProofImage, setPaymentProofImage] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [transferReference, setTransferReference] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [bankDetails, setBankDetails] = useState({
+  const [bankDetails, setBankDetails] = useState<{
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+  } | null>({
     bankName: 'Loading...',
     accountName: 'Loading...',
     accountNumber: 'Loading...'
@@ -296,27 +311,22 @@ const BankTransferPage: React.FC = () => {
           // Get bank details from payment settings
           if (restaurant.payment_settings?.bankTransfer) {
             const bankTransferSettings = restaurant.payment_settings.bankTransfer;
-            setBankDetails({
-              bankName: bankTransferSettings.bankName || 'Maybank',
-              accountName: bankTransferSettings.accountName || 'ABC Restaurant Sdn Bhd',
-              accountNumber: bankTransferSettings.accountNumber || '514-123-456-789'
-            });
+            if (bankTransferSettings.bankName && bankTransferSettings.accountNumber) {
+              setBankDetails({
+                bankName: bankTransferSettings.bankName,
+                accountName: bankTransferSettings.accountName || '',
+                accountNumber: bankTransferSettings.accountNumber
+              });
+            } else {
+              setBankDetails(null);
+            }
           } else {
-            setBankDetails({
-              bankName: 'Maybank',
-              accountName: 'ABC Restaurant Sdn Bhd',
-              accountNumber: '514-123-456-789'
-            });
+            setBankDetails(null);
           }
         }
       } catch (error) {
         console.error('Failed to load bank details:', error);
-        // Keep default values
-        setBankDetails({
-          bankName: 'Maybank',
-          accountName: 'ABC Restaurant Sdn Bhd',
-          accountNumber: '514-123-456-789'
-        });
+        setBankDetails(null);
       }
     };
 
@@ -387,72 +397,91 @@ const BankTransferPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Get pending order data from sessionStorage
-      const pendingOrderDataStr = sessionStorage.getItem('pendingOrderData');
-      if (!pendingOrderDataStr) {
-        alert('Order data not found. Please go back and try again.');
-        setIsSubmitting(false);
-        return;
-      }
+      const retryOrderId = sessionStorage.getItem('retryPaymentOrderId');
 
-      const pendingOrderData = JSON.parse(pendingOrderDataStr);
-
-      // Create order in DATABASE with payment proof
-      const dbOrderData = {
-        ...pendingOrderData,
-        payment_status: 'payment_verification_pending',
-        payment_proof: {
+      if (retryOrderId) {
+        // 재결제: 기존 주문에 PATCH로 새 proof 업데이트
+        const newProof = {
           image: paymentProofImage,
           reference: transferReference,
           file_name: uploadedFileName,
           uploaded_at: new Date().toISOString()
+        };
+
+        const response = await fetch(`/api/mobile/order/${retryOrderId}/retry-payment`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payment_proof: newProof
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to resubmit payment proof');
         }
-      };
 
-      console.log('💾 Creating order with payment proof in DATABASE...');
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dbOrderData)
-      });
+        sessionStorage.removeItem('retryPaymentOrderId');
+        sessionStorage.removeItem('retryPaymentData');
+        navigate(`/mobile/${slug}/order/${retryOrderId}`);
+      } else {
+        // 신규 주문: 기존 로직
+        const pendingOrderDataStr = sessionStorage.getItem('pendingOrderData');
+        if (!pendingOrderDataStr) {
+          alert('Order data not found. Please go back and try again.');
+          setIsSubmitting(false);
+          return;
+        }
 
-      if (!response.ok) {
-        throw new Error('Failed to create order in database');
+        const pendingOrderData = JSON.parse(pendingOrderDataStr);
+
+        const dbOrderData = {
+          ...pendingOrderData,
+          payment_status: 'payment_verification_pending',
+          payment_proof: {
+            image: paymentProofImage,
+            reference: transferReference,
+            file_name: uploadedFileName,
+            uploaded_at: new Date().toISOString()
+          }
+        };
+
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dbOrderData)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create order in database');
+        }
+
+        const result = await response.json();
+        const savedOrder = result.data;
+
+        const backendOrderNumber = savedOrder.order_number;
+        const backendPickupNumber = backendOrderNumber ? backendOrderNumber.split('-')[1] : '001';
+
+        const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
+        if (!customerOrderIds.includes(savedOrder.id)) {
+          customerOrderIds.push(savedOrder.id);
+          localStorage.setItem('customerOrderIds', JSON.stringify(customerOrderIds));
+        }
+
+        setCurrentOrder({
+          id: savedOrder.id,
+          pickupNumber: backendPickupNumber,
+          items: pendingOrderData.order_items,
+          total: pendingOrderData.total_amount,
+          status: 'outstanding',
+          createdAt: new Date(),
+          estimatedPickupTime: new Date(Date.now() + 30 * 60000),
+          paymentStatus: 'pending' as any
+        });
+        clearCart();
+
+        sessionStorage.removeItem('pendingOrderData');
+        navigate(`/mobile/${slug}/order/${savedOrder.id}`);
       }
-
-      const result = await response.json();
-      const savedOrder = result.data;
-      console.log('✅ Order created in DB with ID:', savedOrder.id);
-
-      // Get order number and pickup number from backend response
-      const backendOrderNumber = savedOrder.order_number;
-      const backendPickupNumber = backendOrderNumber ? backendOrderNumber.split('-')[1] : '001';
-
-      // Save order ID to localStorage for customer order history
-      const customerOrderIds = JSON.parse(localStorage.getItem('customerOrderIds') || '[]');
-      if (!customerOrderIds.includes(savedOrder.id)) {
-        customerOrderIds.push(savedOrder.id);
-        localStorage.setItem('customerOrderIds', JSON.stringify(customerOrderIds));
-      }
-
-      // Set current order and clear cart
-      setCurrentOrder({
-        id: savedOrder.id,
-        pickupNumber: backendPickupNumber,
-        items: pendingOrderData.order_items,
-        total: pendingOrderData.total_amount,
-        status: 'outstanding',
-        createdAt: new Date(),
-        estimatedPickupTime: new Date(Date.now() + 30 * 60000),
-        paymentStatus: 'pending' as any // payment_verification_pending is backend only
-      });
-      clearCart();
-
-      // Clear pending order data
-      sessionStorage.removeItem('pendingOrderData');
-
-      // Navigate to order tracking
-      navigate(`/mobile/${slug}/order/${savedOrder.id}`);
     } catch (error) {
       console.error('Error submitting payment proof:', error);
       alert('Failed to submit payment proof. Please try again.');
@@ -465,12 +494,22 @@ const BankTransferPage: React.FC = () => {
     <MobileLayout
       title="Bank Transfer"
       showBack
-      onBack={() => navigate(`/mobile/${slug}/payment`)}
+      onBack={() => {
+        const retryOrderId = sessionStorage.getItem('retryPaymentOrderId');
+        if (retryOrderId) {
+          sessionStorage.removeItem('retryPaymentOrderId');
+          sessionStorage.removeItem('retryPaymentData');
+          navigate(`/mobile/${slug}/order/${retryOrderId}`);
+        } else {
+          navigate(`/mobile/${slug}/payment`);
+        }
+      }}
     >
       <Container>
         <BankDetailsSection>
           <AmountDisplay>{formatCurrency(total, currency)}</AmountDisplay>
 
+          {bankDetails ? (
           <BankDetailCard>
             <DetailRow>
               <DetailLabel>Bank Name</DetailLabel>
@@ -481,6 +520,7 @@ const BankTransferPage: React.FC = () => {
                 </CopyButton>
               </div>
             </DetailRow>
+            {bankDetails.accountName && (
             <DetailRow>
               <DetailLabel>Account Name</DetailLabel>
               <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -490,6 +530,7 @@ const BankTransferPage: React.FC = () => {
                 </CopyButton>
               </div>
             </DetailRow>
+            )}
             <DetailRow>
               <DetailLabel>Account Number</DetailLabel>
               <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -500,6 +541,15 @@ const BankTransferPage: React.FC = () => {
               </div>
             </DetailRow>
           </BankDetailCard>
+          ) : (
+          <BankDetailCard>
+            <DetailRow>
+              <DetailValue style={{ color: '#E25950', textAlign: 'center' }}>
+                Bank transfer details not configured. Please contact the restaurant.
+              </DetailValue>
+            </DetailRow>
+          </BankDetailCard>
+          )}
         </BankDetailsSection>
 
         <InstructionBox>

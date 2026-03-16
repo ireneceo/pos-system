@@ -17,6 +17,7 @@ const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { validateRestaurantCreation } = require('../middleware/validation');
 const jwt = require('jsonwebtoken');
+const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { deleteOldImages } = require('../utils/imageProcessor');
 
 // Optional authentication middleware
@@ -338,10 +339,10 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
   try {
     const restaurantId = req.params.id;
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    // 레스토랑 timezone 기준으로 "오늘" 계산
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['operation_settings'] });
+    const timezone = getRestaurantTimezone(restaurant);
+    const { startOfDay: todayStartUTC, endOfDay: todayEndUTC } = getTodayBounds(timezone);
 
     const activeOrders = await Order.findAll({
       where: {
@@ -350,7 +351,7 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
         order_type: 'dine_in',
         status: { [Op.notIn]: ['cancelled'] },
         [Op.or]: [{ is_deleted: false }, { is_deleted: null }],
-        createdAt: { [Op.between]: [todayStart, todayEnd] }
+        createdAt: { [Op.between]: [todayStartUTC, todayEndUTC] }
       },
       attributes: [
         'table_number', 'status', 'payment_status', 'order_number', 'id',
@@ -359,19 +360,14 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
         'discount', 'coupon_discount', 'discount_policy_amount', 'point_discount',
         'order_type', 'cashier_name',
         'coupon_code', 'discount_policy_name', 'points_used',
-        'payment_method', 'source', 'customer_phone',
-        'service_charge_rate', 'tax_rate'
+        'payment_method', 'card_type', 'source', 'customer_phone',
+        'service_charge_rate', 'tax_rate', 'payment_proof'
       ],
       order: [['createdAt', 'DESC']]
     });
 
-    // 테이블당 가장 최근 주문 1개만 사용 (DESC 정렬이므로 첫 번째가 최신)
-    const tableStatusMap = {};
-
-    for (const order of activeOrders) {
-      const tn = order.table_number;
-      if (tableStatusMap[tn]) continue; // 이미 최신 주문이 있으면 스킵
-
+    // Build order info helper
+    function buildOrderInfo(order) {
       let orderItems = [];
       try {
         orderItems = typeof order.order_items === 'string'
@@ -381,7 +377,6 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
 
       const elapsed = Math.round((Date.now() - new Date(order.createdAt).getTime()) / 60000);
 
-      // Derive table status from order status
       let tableStatus = 'occupied';
       if (order.payment_status === 'failed' || order.status === 'outstanding') {
         tableStatus = 'needs-attention';
@@ -391,10 +386,9 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
         tableStatus = 'completed';
       }
 
-      tableStatusMap[tn] = {
-        tableNumber: tn,
+      return {
+        tableNumber: order.table_number,
         status: tableStatus,
-        orderCount: 1,
         totalAmount: parseFloat(order.total_amount || 0),
         elapsedMinutes: elapsed,
         orderId: order.id,
@@ -417,14 +411,40 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
         pointDiscount: parseFloat(order.point_discount || 0),
         pointsUsed: parseInt(order.points_used || 0),
         paymentMethod: order.payment_method || null,
+        cardType: order.card_type || null,
         orderSource: order.source || 'pos',
         customerPhone: order.customer_phone || null,
         serviceChargeRate: parseFloat(order.service_charge_rate || 0),
         taxRate: parseFloat(order.tax_rate || 0),
         orderCreatedAt: order.createdAt,
         notes: null,
-        orderType: order.order_type || 'dine_in'
+        orderType: order.order_type || 'dine_in',
+        paymentProof: order.payment_proof || null
       };
+    }
+
+    // Filter: exclude only cancelled. Keep completed (Leave button) and served (still at table).
+    const activeOnly = activeOrders.filter(o => o.status !== 'cancelled');
+
+    // Group all active orders per table
+    const tableStatusMap = {};
+
+    for (const order of activeOnly) {
+      const tn = order.table_number;
+      const info = buildOrderInfo(order);
+
+      if (!tableStatusMap[tn]) {
+        // First order for this table — set as primary (backward compatible)
+        tableStatusMap[tn] = {
+          ...info,
+          orderCount: 1,
+          orders: [info]
+        };
+      } else {
+        // Additional order for same table
+        tableStatusMap[tn].orders.push(info);
+        tableStatusMap[tn].orderCount = tableStatusMap[tn].orders.length;
+      }
     }
 
     res.json({ success: true, data: tableStatusMap });
@@ -507,6 +527,21 @@ router.get('/:id', async (req, res) => {
     }
 
     const restaurantData = restaurant.toJSON();
+
+    // Normalize payment_settings: sync enabled flag with availableIn
+    if (restaurantData.payment_settings) {
+      const ps = typeof restaurantData.payment_settings === 'string'
+        ? JSON.parse(restaurantData.payment_settings) : restaurantData.payment_settings;
+      Object.keys(ps).forEach(key => {
+        if (key === '_order') return;
+        const m = ps[key];
+        if (m && typeof m === 'object' && 'enabled' in m && 'availableIn' in m) {
+          m.enabled = Array.isArray(m.availableIn) && m.availableIn.length > 0;
+        }
+      });
+      restaurantData.payment_settings = ps;
+    }
+
     const adminData = restaurantData.admin || null;
     const oversightManagers = (restaurantData.managers || []).filter(m =>
       m.role !== 'Restaurant Admin' && m.role !== 'Staff'

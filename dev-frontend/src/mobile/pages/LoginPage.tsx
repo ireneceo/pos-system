@@ -168,7 +168,7 @@ const LoginPage: React.FC = () => {
   const { setCurrentCustomer } = useCustomer();
   const { currentStore, setCurrentStore } = useMobileOrder();
 
-  const [loginType, setLoginType] = useState<'email' | 'phone'>('email');
+  const [loginType, setLoginType] = useState<'email' | 'phone'>('phone');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -291,17 +291,17 @@ const LoginPage: React.FC = () => {
           <TabContainer>
             <Tab
               type="button"
-              active={loginType === 'email'}
-              onClick={() => setLoginType('email')}
-            >
-              Email
-            </Tab>
-            <Tab
-              type="button"
               active={loginType === 'phone'}
               onClick={() => setLoginType('phone')}
             >
               Phone
+            </Tab>
+            <Tab
+              type="button"
+              active={loginType === 'email'}
+              onClick={() => setLoginType('email')}
+            >
+              Email
             </Tab>
           </TabContainer>
 

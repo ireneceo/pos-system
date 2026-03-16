@@ -51,6 +51,7 @@ interface OperationSettings {
       description: string;
     }>;
   };
+  allowQuickOrder: boolean;
 }
 
 interface StoreContextType {
@@ -107,7 +108,8 @@ const defaultOperationSettings: OperationSettings = {
     minimumOrder: 0,
     freeAbove: 999999,
     zones: []
-  }
+  },
+  allowQuickOrder: true
 };
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);

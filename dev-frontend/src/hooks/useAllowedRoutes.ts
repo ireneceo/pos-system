@@ -121,7 +121,7 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
         .replace(/:restaurantId/g, restaurantId?.toString() || '')
         .replace(/:slug/g, '[^/]+')
         .replace(/:id/g, '[^/]+')
-        .replace(/\*/g, '[^/]+');
+        .replace(/\*/g, '.*');
 
       const regex = new RegExp(`^${pattern}$`);
       return regex.test(normalizedRoute);

@@ -1665,7 +1665,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // Update invoice status
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
-    const { status, paid_amount, paid_at } = req.body;
+    const { status, paid_amount, paid_at, payment_notes } = req.body;
 
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
@@ -1676,6 +1676,9 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     if (status === 'paid') {
       updateData.paid_amount = paid_amount || invoice.total_amount;
       updateData.paid_at = paid_at || new Date();
+    }
+    if (payment_notes) {
+      updateData.payment_notes = payment_notes;
     }
 
     await invoice.update(updateData);

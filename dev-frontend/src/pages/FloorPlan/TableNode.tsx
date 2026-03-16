@@ -77,6 +77,40 @@ const StatusInfo = styled.div<{ $textColor: string }>`
   margin-top: 3px;
 `;
 
+const StaffMealBadge = styled.div`
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: #F3F4F6;
+  color: #6B7280;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  z-index: 5;
+  border: 1px solid #D1D5DB;
+`;
+
+const MultiOrderBadge = styled.div`
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: #635BFF;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  border: 1.5px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+`;
+
 const TEXT_ONLY_FIXTURES = new Set(['kitchen', 'entrance']);
 
 const FIXTURE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -141,6 +175,10 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
     opacity: isEditing ? 1 : 0.85
   } : undefined;
 
+  // Counter with narrow width: use vertical text
+  const isNarrowCounter = fixtureType === 'counter' && table.width < table.height;
+  const isStaffMeal = !isEditing && statusInfo?.paymentMethod === 'staffMeal';
+
   return (
     <NodeWrapper
       $x={table.x} $y={table.y}
@@ -157,11 +195,19 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
       onTouchStart={handleTouchStart}
       style={fixtureStyle}
     >
+      {isStaffMeal && <StaffMealBadge>STAFF</StaffMealBadge>}
+      {!isFixture && statusInfo?.orderCount && statusInfo.orderCount > 1 && (
+        <MultiOrderBadge>{statusInfo.orderCount}</MultiOrderBadge>
+      )}
       <TableLabel $textColor={colors.text} style={isTextOnly ? {
         fontSize: '14px',
         fontWeight: 600,
         whiteSpace: 'nowrap',
-      } : undefined}>
+      } : isNarrowCounter ? {
+        writingMode: 'vertical-rl',
+        textOrientation: 'mixed',
+        letterSpacing: '1px',
+      } as React.CSSProperties : undefined}>
         {table.label || table.tableNumber}
       </TableLabel>
       {!isFixture && (
@@ -173,7 +219,7 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
           </SeatsLabel>
           {!isEditing && statusInfo && status !== 'available' && (
             <StatusInfo $textColor={colors.text}>
-              {({
+              {isStaffMeal ? 'Staff Meal' : ({
                 pending: 'Pending',
                 preparing: 'Preparing',
                 ready: 'Ready',

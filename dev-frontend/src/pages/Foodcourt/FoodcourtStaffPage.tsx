@@ -72,21 +72,22 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  border: ${props => props.variant === 'primary' || props.variant === 'danger' ? 'none' : '1px solid #E6EBF1'};
+  border: ${props => props.variant === 'primary' ? 'none' : props.variant === 'danger' ? '1px solid #EF4444' : '1px solid #E6EBF1'};
   background: ${props => {
     if (props.variant === 'primary') return '#635BFF';
-    if (props.variant === 'danger') return '#DC2626';
+    if (props.variant === 'danger') return '#FEF2F2';
     return 'white';
   }};
   color: ${props => {
-    if (props.variant === 'primary' || props.variant === 'danger') return 'white';
+    if (props.variant === 'primary') return 'white';
+    if (props.variant === 'danger') return '#EF4444';
     return '#6B7C93';
   }};
 
   &:hover {
     background: ${props => {
       if (props.variant === 'primary') return '#5A51E6';
-      if (props.variant === 'danger') return '#B91C1C';
+      if (props.variant === 'danger') return '#FEE2E2';
       return '#F6F9FC';
     }};
     transform: translateY(-1px);

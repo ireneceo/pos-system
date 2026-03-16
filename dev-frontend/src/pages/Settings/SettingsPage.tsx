@@ -284,12 +284,21 @@ const PaymentMethodCard = styled.div`
   padding: 20px;
   border-radius: 6px;
   margin-bottom: 16px;
+
+  @media (max-width: 480px) {
+    padding: 16px 12px;
+  }
 `;
 
 const FeeInput = styled(Input)`
   width: 100px;
   display: inline-block;
   margin-right: 8px;
+
+  @media (max-width: 480px) {
+    width: 80px;
+    margin-right: 4px;
+  }
 `;
 
 const TablesGrid = styled.div`
@@ -297,6 +306,11 @@ const TablesGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
   margin-top: 20px;
+
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
 `;
 
 const TableItem = styled.div`
@@ -493,6 +507,7 @@ interface OperationSettings {
     pickup: boolean;
     delivery: boolean;
   };
+  allowQuickOrder: boolean;
   breakTimes: BreakTime[];
 }
 
@@ -666,6 +681,7 @@ const SettingsPage: React.FC = () => {
           pickup: false,
           delivery: false
         },
+        allowQuickOrder: true,
         breakTimes: []
       }
     };
@@ -964,6 +980,8 @@ const SettingsPage: React.FC = () => {
                 ...defaultOps.orderTypes,
                 ...(restaurant.operation_settings.orderTypes || {})
               },
+              allowQuickOrder: restaurant.operation_settings.allowQuickOrder !== undefined
+                ? restaurant.operation_settings.allowQuickOrder : defaultOps.allowQuickOrder,
               breakTimes: restaurant.operation_settings.breakTimes || defaultOps.breakTimes
             } : defaultOps;
 
@@ -1726,7 +1744,9 @@ const SettingsPage: React.FC = () => {
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      marginBottom: method.enabled ? '16px' : '0'
+                      marginBottom: method.enabled ? '16px' : '0',
+                      flexWrap: 'wrap',
+                      gap: '8px'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <OrderControls
@@ -1738,8 +1758,9 @@ const SettingsPage: React.FC = () => {
                         <ToggleLabel>{method.label}</ToggleLabel>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-                        {/* POS Terminal Toggle */}
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        {/* POS Terminal Toggle - only for methods that can be used in POS */}
+                        {!['counter', 'online'].includes(key) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{
                             fontSize: '13px',
@@ -1758,8 +1779,10 @@ const SettingsPage: React.FC = () => {
                             <ToggleSlider />
                           </ToggleSwitch>
                         </div>
+                        )}
 
-                        {/* Mobile Orders Toggle */}
+                        {/* Mobile Orders Toggle - only for methods that can be used in Mobile */}
+                        {!['cash', 'card', 'staffMeal'].includes(key) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{
                             fontSize: '13px',
@@ -1778,280 +1801,25 @@ const SettingsPage: React.FC = () => {
                             <ToggleSlider />
                           </ToggleSwitch>
                         </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Card Payment Settings */}
-                  {key === 'card' && method.enabled && (
-                    <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
-                      <FormGroup>
-                        <Label>Payment Gateway Provider</Label>
-                        <Select
-                          value={method.provider || ''}
-                          onChange={(e) => handlePaymentSettingChange(key, 'provider', e.target.value)}
-                        >
-                          <option value="">Select Gateway</option>
-                          <option value="ipay88">iPay88</option>
-                          <option value="molpay">MOLPay</option>
-                          <option value="2c2p">2C2P</option>
-                          <option value="stripe">Stripe</option>
-                          <option value="paypal">PayPal</option>
-                        </Select>
-                      </FormGroup>
+                  {/* Card - POS only, no PG config needed (online payments use Online Payment method) */}
 
-                      {/* iPay88 Configuration */}
-                      {method.provider === 'ipay88' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant Code</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter iPay88 Merchant Code"
-                              value={method.config?.ipay88MerchantCode || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'ipay88MerchantCode', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Merchant Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter iPay88 Merchant Key"
-                              value={method.config?.ipay88MerchantKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'ipay88MerchantKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-
-                      {/* MOLPay Configuration */}
-                      {method.provider === 'molpay' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter MOLPay Merchant ID"
-                              value={method.config?.molpayMerchantId || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'molpayMerchantId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Verify Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter MOLPay Verify Key"
-                              value={method.config?.molpayVerifyKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'molpayVerifyKey', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Secret Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter MOLPay Secret Key"
-                              value={method.config?.molpaySecretKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'molpaySecretKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-
-                      {/* 2C2P Configuration */}
-                      {method.provider === '2c2p' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter 2C2P Merchant ID"
-                              value={method.config?.['2c2pMerchantId'] || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, '2c2pMerchantId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Secret Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter 2C2P Secret Key"
-                              value={method.config?.['2c2pSecretKey'] || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, '2c2pSecretKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-
-                      {/* Stripe Configuration */}
-                      {method.provider === 'stripe' && (
-                        <>
-                          <FormGroup>
-                            <Label>Publishable Key</Label>
-                            <Input
-                              type="text"
-                              placeholder="pk_live_..."
-                              value={method.config?.stripePublicKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'stripePublicKey', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Secret Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="sk_live_..."
-                              value={method.config?.stripeSecretKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'stripeSecretKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-
-                      {/* PayPal Configuration */}
-                      {method.provider === 'paypal' && (
-                        <>
-                          <FormGroup>
-                            <Label>Client ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter PayPal Client ID"
-                              value={method.config?.paypalClientId || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'paypalClientId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Client Secret</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter PayPal Client Secret"
-                              value={method.config?.paypalClientSecret || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'paypalClientSecret', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {/* E-Wallet Settings */}
+                  {/* E-Wallet Settings - QR Code Image */}
                   {key === 'ewallet' && method.enabled && (
                     <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
-                      <FormGroup>
-                        <Label>E-Wallet Provider</Label>
-                        <Select
-                          value={method.provider || ''}
-                          onChange={(e) => handlePaymentSettingChange(key, 'provider', e.target.value)}
-                        >
-                          <option value="">Select E-Wallet</option>
-                          <option value="tng">Touch 'n Go eWallet</option>
-                          <option value="grabpay">GrabPay</option>
-                          <option value="boost">Boost</option>
-                          <option value="shopeepay">ShopeePay</option>
-                        </Select>
-                      </FormGroup>
-
-                      {/* Touch 'n Go Configuration */}
-                      {method.provider === 'tng' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter TNG Merchant ID"
-                              value={method.config?.tngMerchantId || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'tngMerchantId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>API Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter TNG API Key"
-                              value={method.config?.tngApiKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'tngApiKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-
-                      {/* GrabPay Configuration */}
-                      {method.provider === 'grabpay' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter GrabPay Merchant ID"
-                              value={method.config?.grabpayMerchantId || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'grabpayMerchantId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Client ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter GrabPay Client ID"
-                              value={method.config?.grabpayClientId || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'grabpayClientId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Client Secret</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter GrabPay Client Secret"
-                              value={method.config?.grabpayClientSecret || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'grabpayClientSecret', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-
-                      {/* Boost Configuration */}
-                      {method.provider === 'boost' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter Boost Merchant ID"
-                              value={method.config?.boostMerchantId || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'boostMerchantId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>API Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter Boost API Key"
-                              value={method.config?.boostApiKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'boostApiKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-
-                      {/* ShopeePay Configuration */}
-                      {method.provider === 'shopeepay' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter ShopeePay Merchant ID"
-                              value={method.config?.shopeePayMerchantId || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'shopeePayMerchantId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>API Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter ShopeePay API Key"
-                              value={method.config?.shopeePayApiKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'shopeePayApiKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
+                      <ImageUploadDropzone
+                        value={method.qrImage || ''}
+                        onChange={(base64) => handlePaymentSettingChange(key, 'qrImage', base64)}
+                        label="E-Wallet QR Code"
+                        helpText="Upload your e-wallet QR code image for customers to scan and make payment (TNG, GrabPay, Boost, etc.)"
+                        changeButtonText="Change QR Code"
+                        removeButtonText="Remove QR Code"
+                        imageAltText="E-Wallet QR Code"
+                      />
                     </div>
                   )}
 
@@ -2088,18 +1856,13 @@ const SettingsPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* QR Payment Settings */}
-                  {(key === 'qrPayment' || key === 'qr') && method.enabled && (
+                  {/* Staff Meal Info */}
+                  {key === 'staffMeal' && method.enabled && (
                     <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
-                      <ImageUploadDropzone
-                        value={method.qrImage || ''}
-                        onChange={(base64) => handlePaymentSettingChange(key, 'qrImage', base64)}
-                        label="QR Code Image"
-                        helpText="Upload QR code image for customers to scan and make payment"
-                        changeButtonText="Change QR Code"
-                        removeButtonText="Remove QR Code"
-                        imageAltText="QR Code"
-                      />
+                      <div style={{ fontSize: '13px', color: '#6B7C93', lineHeight: '1.5' }}>
+                        Staff meals are recorded at full price but excluded from revenue reports.
+                        Use this in POS when processing staff meals to keep accurate records.
+                      </div>
                     </div>
                   )}
 
@@ -2166,104 +1929,7 @@ const SettingsPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* FPX Settings */}
-                  {key === 'fpx' && method.enabled && (
-                    <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
-                      <FormGroup>
-                        <Label>FPX Gateway Provider</Label>
-                        <Select
-                          value={method.provider || ''}
-                          onChange={(e) => handlePaymentSettingChange(key, 'provider', e.target.value)}
-                        >
-                          <option value="">Select FPX Gateway</option>
-                          <option value="ipay88">iPay88 FPX</option>
-                          <option value="molpay">MOLPay FPX</option>
-                          <option value="2c2p">2C2P FPX</option>
-                        </Select>
-                      </FormGroup>
-
-                      {/* iPay88 FPX Configuration */}
-                      {method.provider === 'ipay88' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant Code</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter iPay88 Merchant Code"
-                              value={method.config?.ipay88MerchantCode || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'ipay88MerchantCode', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Merchant Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter iPay88 Merchant Key"
-                              value={method.config?.ipay88MerchantKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'ipay88MerchantKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-
-                      {/* MOLPay FPX Configuration */}
-                      {method.provider === 'molpay' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter MOLPay Merchant ID"
-                              value={method.config?.molpayMerchantId || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'molpayMerchantId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Verify Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter MOLPay Verify Key"
-                              value={method.config?.molpayVerifyKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'molpayVerifyKey', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Secret Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter MOLPay Secret Key"
-                              value={method.config?.molpaySecretKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'molpaySecretKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-
-                      {/* 2C2P FPX Configuration */}
-                      {method.provider === '2c2p' && (
-                        <>
-                          <FormGroup>
-                            <Label>Merchant ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter 2C2P Merchant ID"
-                              value={method.config?.['2c2pMerchantId'] || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, '2c2pMerchantId', e.target.value)}
-                            />
-                          </FormGroup>
-                          <FormGroup>
-                            <Label>Secret Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter 2C2P Secret Key"
-                              value={method.config?.['2c2pSecretKey'] || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, '2c2pSecretKey', e.target.value)}
-                            />
-                          </FormGroup>
-                        </>
-                      )}
-                    </div>
-                  )}
+                  {/* FPX removed - absorbed into Online Payment */}
                 </PaymentMethodCard>
                 );
               })}
@@ -2935,7 +2601,7 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard>
-                <CardTitle>Order Types</CardTitle>
+                <CardTitle>Mobile Order Types</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                   Enable or disable order types for mobile ordering
                 </p>
@@ -3019,6 +2685,40 @@ const SettingsPage: React.FC = () => {
                     <ToggleSlider />
                   </ToggleSwitch>
                 </Toggle>
+              </SettingsCard>
+
+              <SettingsCard>
+                <CardTitle>Quick Order</CardTitle>
+                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  Allow customers to order without providing contact information
+                </p>
+                <Toggle>
+                  <ToggleLabel>
+                    <span>Allow Quick Order</span>
+                    <span style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, marginLeft: '8px' }}>
+                      (No customer info required)
+                    </span>
+                  </ToggleLabel>
+                  <ToggleSwitch>
+                    <ToggleInput
+                      type="checkbox"
+                      checked={operationSettings.allowQuickOrder !== false}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({
+                          ...prev,
+                          allowQuickOrder: e.target.checked
+                        }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <ToggleSlider />
+                  </ToggleSwitch>
+                </Toggle>
+                <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '8px' }}>
+                  {operationSettings.allowQuickOrder !== false
+                    ? 'Customers can place orders without entering their name or phone number'
+                    : 'Customers must sign in as Guest or Member to place an order'}
+                </p>
               </SettingsCard>
 
               <SettingsCard>
@@ -3143,9 +2843,12 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard>
-                <CardTitle>Tax Settings</CardTitle>
+                <CardTitle>Tax & Service Charge</CardTitle>
+                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  Configure tax and service charge applied to orders
+                </p>
                 <Toggle>
-                  <ToggleLabel>Enable Tax</ToggleLabel>
+                  <ToggleLabel>Tax</ToggleLabel>
                   <ToggleSwitch>
                     <ToggleInput
                       type="checkbox"
@@ -3163,31 +2866,27 @@ const SettingsPage: React.FC = () => {
                 </Toggle>
 
                 {operationSettings.taxEnabled && (
-                  <>
-                    <Divider />
-                    <FormGroup>
-                      <Label>Tax Rate (%)</Label>
-                      <FeeInput
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={operationSettings.taxRate}
-                        onChange={(e) => {
-                          setOperationSettings(prev => ({ ...prev, taxRate: Number(e.target.value) }));
-                          setHasChanges(true);
-                        }}
-                      />
-                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
-                    </FormGroup>
-                  </>
+                  <FormGroup style={{ marginLeft: '16px', marginTop: '8px' }}>
+                    <Label>Tax Rate (%)</Label>
+                    <FeeInput
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={operationSettings.taxRate}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({ ...prev, taxRate: Number(e.target.value) }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
+                  </FormGroup>
                 )}
-              </SettingsCard>
 
-              <SettingsCard>
-                <CardTitle>Service Charge Settings</CardTitle>
+                <Divider />
+
                 <Toggle>
-                  <ToggleLabel>Enable Service Charge</ToggleLabel>
+                  <ToggleLabel>Service Charge</ToggleLabel>
                   <ToggleSwitch>
                     <ToggleInput
                       type="checkbox"
@@ -3205,24 +2904,21 @@ const SettingsPage: React.FC = () => {
                 </Toggle>
 
                 {operationSettings.serviceChargeEnabled && (
-                  <>
-                    <Divider />
-                    <FormGroup>
-                      <Label>Service Charge Rate (%)</Label>
-                      <FeeInput
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={operationSettings.serviceChargeRate}
-                        onChange={(e) => {
-                          setOperationSettings(prev => ({ ...prev, serviceChargeRate: Number(e.target.value) }));
-                          setHasChanges(true);
-                        }}
-                      />
-                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
-                    </FormGroup>
-                  </>
+                  <FormGroup style={{ marginLeft: '16px', marginTop: '8px' }}>
+                    <Label>Service Charge Rate (%)</Label>
+                    <FeeInput
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={operationSettings.serviceChargeRate}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({ ...prev, serviceChargeRate: Number(e.target.value) }));
+                        setHasChanges(true);
+                      }}
+                    />
+                    <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
+                  </FormGroup>
                 )}
               </SettingsCard>
 

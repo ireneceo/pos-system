@@ -337,12 +337,12 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
       background: #5A51E6;
     }
   ` : props.variant === 'danger' ? `
-    background: #DC2626;
-    color: white;
-    border-color: #DC2626;
-    
+    background: #FEF2F2;
+    color: #EF4444;
+    border-color: #EF4444;
+
     &:hover {
-      background: #B91C1C;
+      background: #FEE2E2;
     }
   ` : `
     background: white;

@@ -62,7 +62,7 @@ export const Content = styled.div`
 `;
 
 // 공통 버튼
-export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
+export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' | 'danger-outline' }>`
   padding: 12px 20px;
   border-radius: 8px;
   font-size: 14px;
@@ -101,6 +101,15 @@ export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'dange
             background: #C82333;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+          }
+        `;
+      case 'danger-outline':
+        return `
+          background: #FEF2F2;
+          color: #EF4444;
+          border: 1px solid #EF4444;
+          &:hover {
+            background: #FEE2E2;
           }
         `;
       default:

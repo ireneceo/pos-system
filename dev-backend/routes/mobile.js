@@ -8,6 +8,7 @@ const OptionGroup = require('../models/OptionGroup');
 const Option = require('../models/Option');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
+const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 
 // Helper function to parse image data (supports URL format, old JSON format, and legacy base64)
 function parseImageData(imageStr, imageThumbnail = null) {
@@ -34,18 +35,9 @@ function parseImageData(imageStr, imageThumbnail = null) {
 
 // Generate order number per restaurant with transaction support
 // Returns null - order number will be generated during transaction
-const generateOrderNumber = async (restaurantId, transaction = null) => {
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
-  const datePrefix = `${year}${month}${day}`;
-
-  // Get today's last order number for this specific restaurant (with lock if transaction provided)
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+const generateOrderNumber = async (restaurantId, transaction = null, timezone = 'Asia/Kuala_Lumpur') => {
+  const datePrefix = getOrderDatePrefix(timezone);
+  const { startOfDay: todayStart, endOfDay: todayEnd } = getTodayBounds(timezone);
 
   const queryOptions = {
     where: {
@@ -523,14 +515,11 @@ router.post('/cart/validate', async (req, res) => {
 
 // Helper: Find mergeable order for auto-merge (mobile)
 // Only merges orders from the same day (based on createdAt) with payment_status = 'pending'
-async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, transaction = null) {
+async function findMergeableOrderMobile(restaurantId, tableNumber, orderType, transaction = null, timezone = 'Asia/Kuala_Lumpur') {
   if (!restaurantId || !tableNumber) return null;
 
-  // Get today's date range (00:00:00 ~ 23:59:59)
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  // Get today's date range in restaurant's timezone
+  const { startOfDay: todayStart, endOfDay: todayEnd } = getTodayBounds(timezone);
 
   const queryOptions = {
     where: {
@@ -586,9 +575,13 @@ router.post('/order', async (req, res) => {
     const actualTableNumber = tableNumber || customerInfo?.tableNumber || null;
     const actualOrderType = orderType || 'dine_in';
 
+    // Get restaurant timezone for date calculations
+    const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'operation_settings'] });
+    const tz = getRestaurantTimezone(restaurant);
+
     // Auto-merge: Check if there's an existing order to merge into
     if (!skipAutoMerge && actualTableNumber) {
-      const mergeableOrder = await findMergeableOrderMobile(restaurantId, actualTableNumber, actualOrderType);
+      const mergeableOrder = await findMergeableOrderMobile(restaurantId, actualTableNumber, actualOrderType, null, tz);
 
       if (mergeableOrder) {
         console.log(`🔀 [MOBILE AUTO-MERGE] Found mergeable order ${mergeableOrder.id} for table ${actualTableNumber}`);
@@ -692,7 +685,7 @@ router.post('/order', async (req, res) => {
       try {
         order = await sequelize.transaction(async (t) => {
           // Generate order number within transaction (with row lock)
-          const generated = await generateOrderNumber(restaurantId, t);
+          const generated = await generateOrderNumber(restaurantId, t, tz);
           orderNumber = generated.orderNumber;
           pickupNumber = generated.pickupNumber;
 
@@ -891,18 +884,82 @@ router.get('/order/:orderId', async (req, res) => {
       status: order.status,
       items: items,
       total: parseFloat(order.total_amount),
+      total_amount: parseFloat(order.total_amount),
       createdAt: order.createdAt,
       estimatedPickupTime: new Date(order.createdAt.getTime() + 20 * 60000),
       paymentStatus: order.payment_status || 'pending',
+      payment_status: order.payment_status || 'pending',
+      paymentMethod: order.payment_method || 'counter',
+      payment_method: order.payment_method || 'counter',
+      currency: order.currency || 'MYR',
       orderType: order.order_type || 'dine-in',
       orderSource: 'mobile',
       table_number: order.table_number || null,
-      tableNumber: order.table_number ? order.table_number : null
+      tableNumber: order.table_number ? order.table_number : null,
+      payment_proof: order.payment_proof || null
     };
 
     res.json({ success: true, data: orderData });
   } catch (error) {
     console.error('Order fetch error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Retry payment proof (모바일 전용 - 인증 불필요)
+// rejected 상태의 주문에 대해서만 새 결제증빙 제출 허용
+router.patch('/order/:orderId/retry-payment', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const numericId = orderId.startsWith('ORD') ? orderId.substring(3) : orderId;
+    const { payment_proof } = req.body;
+
+    if (!payment_proof) {
+      return res.status(400).json({ success: false, error: 'Payment proof is required' });
+    }
+
+    const order = await Order.findByPk(numericId);
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // rejected 상태에서만 retry 허용
+    if (order.payment_status !== 'rejected') {
+      return res.status(400).json({ success: false, error: 'Order is not in rejected state' });
+    }
+
+    // 기존 proof history 보존 + 새 proof를 current에 저장
+    let existingProof = order.payment_proof
+      ? (typeof order.payment_proof === 'string' ? JSON.parse(order.payment_proof) : order.payment_proof)
+      : null;
+
+    if (existingProof && !existingProof.hasOwnProperty('current')) {
+      existingProof = { current: existingProof, history: [] };
+    }
+
+    const newProof = {
+      current: payment_proof,
+      history: existingProof ? (existingProof.history || []) : []
+    };
+
+    await order.update({
+      payment_status: 'payment_verification_pending',
+      payment_proof: newProof
+    });
+
+    // Socket event for real-time update
+    const io = req.app.get('io');
+    if (io && order.restaurant_id) {
+      const plainOrder = order.get({ plain: true });
+      if (typeof plainOrder.order_items === 'string') {
+        try { plainOrder.order_items = JSON.parse(plainOrder.order_items); } catch(e) {}
+      }
+      io.of('/orders').to(`restaurant_${order.restaurant_id}`).emit('order-updated', plainOrder);
+    }
+
+    res.json({ success: true, data: { id: order.id, payment_status: 'payment_verification_pending' } });
+  } catch (error) {
+    console.error('Retry payment error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

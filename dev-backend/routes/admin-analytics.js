@@ -6,6 +6,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const PlanTemplate = require('../models/PlanTemplate');
 const { authenticateToken } = require('../middleware/auth');
+const { getPeriodBounds, getSiteTimezone } = require('../utils/dateTimeHelper');
 
 // What and Why: 모든 admin-analytics API에 인증 필수
 // - 민감한 비즈니스 데이터 보호 (매출, 주문, 구독 통계)
@@ -44,26 +45,9 @@ router.get('/system-stats', authenticateToken, requireManagerRole, async (req, r
     // Support both camelCase (new) and snake_case (legacy)
     const finalRestaurantId = restaurantId || restaurant_id;
 
-    // 날짜 범위 계산
-    const now = new Date();
-    let startDate = new Date();
-
-    switch (period) {
-      case 'today':
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        break;
-      default:
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    }
+    // 날짜 범위 계산 (사이트 타임존 기준)
+    const tz = await getSiteTimezone();
+    const { startDate, endDate } = getPeriodBounds(period, tz);
 
     // Demo filter for System Admin
     const demoFilter = req.demoRestaurantIds.length > 0
@@ -72,7 +56,7 @@ router.get('/system-stats', authenticateToken, requireManagerRole, async (req, r
     // 필터 조건 구성
     const whereConditions = {
       order_date: {
-        [Op.between]: [startDate, now]
+        [Op.between]: [startDate, endDate]
       },
       ...demoFilter
     };
@@ -115,7 +99,7 @@ router.get('/system-stats', authenticateToken, requireManagerRole, async (req, r
     });
 
     // 이전 기간과 비교를 위한 데이터
-    const prevPeriodStart = new Date(startDate.getTime() - (now.getTime() - startDate.getTime()));
+    const prevPeriodStart = new Date(startDate.getTime() - (endDate.getTime() - startDate.getTime()));
     const prevOrders = await Order.findAll({
       where: {
         ...whereConditions,
@@ -167,30 +151,26 @@ router.get('/sales-trend', authenticateToken, requireManagerRole, async (req, re
     // Support both camelCase (new) and snake_case (legacy)
     const finalRestaurantId = restaurantId || restaurant_id;
 
-    const now = new Date();
-    let startDate = new Date();
+    const tz = await getSiteTimezone();
+    const { startDate, endDate } = getPeriodBounds(period, tz);
     let groupBy = '';
     let dateFormat = '';
 
     switch (period) {
       case 'today':
-        startDate.setHours(0, 0, 0, 0);
         groupBy = 'HOUR(order_date)';
         dateFormat = 'CONCAT(HOUR(order_date), "AM")';
         break;
       case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         groupBy = 'DAYNAME(order_date)';
         dateFormat = 'DAYNAME(order_date)';
         break;
       case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
         groupBy = 'MONTH(order_date)';
         dateFormat = 'MONTHNAME(order_date)';
         break;
       case 'month':
       default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         groupBy = 'DAY(order_date)';
         dateFormat = 'DAY(order_date)';
         break;
@@ -202,7 +182,7 @@ router.get('/sales-trend', authenticateToken, requireManagerRole, async (req, re
 
     const whereConditions = {
       order_date: {
-        [Op.between]: [startDate, now]
+        [Op.between]: [startDate, endDate]
       },
       ...demoFilterSales
     };
@@ -332,23 +312,8 @@ router.get('/regional-stats', authenticateToken, requireManagerRole, async (req,
   try {
     const { period = 'month', manager_id } = req.query;
 
-    const now = new Date();
-    let startDate = new Date();
-
-    switch (period) {
-      case 'today':
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        break;
-    }
+    const tz = await getSiteTimezone();
+    const { startDate, endDate } = getPeriodBounds(period, tz);
 
     const restaurantWhere = { is_demo: false };
     if (manager_id && manager_id !== 'all') {
@@ -371,7 +336,7 @@ router.get('/regional-stats', authenticateToken, requireManagerRole, async (req,
         ],
         where: {
           order_date: {
-            [Op.between]: [startDate, now]
+            [Op.between]: [startDate, endDate]
           }
         },
         required: false

@@ -700,6 +700,29 @@ const ManagerInvoicesPage: React.FC = () => {
     }
   };
 
+  const handleConfirmFreeInvoice = async (invoice: Invoice) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/invoices/${invoice.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          status: 'paid',
+          paid_amount: 0,
+          payment_notes: 'Free invoice - confirmed by recipient'
+        })
+      });
+      if (response.ok) {
+        fetchInvoices();
+      }
+    } catch (error) {
+      console.error('Failed to confirm free invoice:', error);
+    }
+  };
+
   const handlePayInvoice = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setPaymentData({
@@ -924,11 +947,15 @@ const ManagerInvoicesPage: React.FC = () => {
                         {invoice.status === 'sent' && (
                           <>
                             {invoice.total > 0 && <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>}
+                            {invoice.total === 0 && <ActionButton variant="primary" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>}
                             <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>Mark Overdue</ActionButton>
                           </>
                         )}
                         {invoice.status === 'overdue' && invoice.total > 0 && (
                           <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
+                        )}
+                        {invoice.status === 'overdue' && invoice.total === 0 && (
+                          <ActionButton variant="primary" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>
                         )}
                         {invoice.status === 'paid' && (
                           <ActionButton onClick={() => window.print()}>Print Receipt</ActionButton>

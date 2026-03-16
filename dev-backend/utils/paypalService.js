@@ -9,6 +9,7 @@ const paypal = require('@paypal/checkout-server-sdk');
 const SystemSettings = require('../models/SystemSettings');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
+const Restaurant = require('../models/Restaurant');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 
@@ -52,6 +53,19 @@ async function getPayPalConfigForIssuer(issuerType, issuerId) {
       if (!config) throw new Error(`PayPal is not configured for Foodcourt ${issuerId}`);
       return config;
     }
+    case 'restaurant': {
+      const restaurant = await Restaurant.findByPk(issuerId);
+      if (!restaurant) throw new Error(`Restaurant ${issuerId} not found`);
+      const ps = typeof restaurant.payment_settings === 'string'
+        ? JSON.parse(restaurant.payment_settings) : restaurant.payment_settings;
+      // Restaurant stores PayPal keys in online.config
+      const clientId = ps?.online?.config?.paypalClientId;
+      const clientSecret = ps?.online?.config?.paypalClientSecret;
+      if (!ps?.online?.enabled || !clientId || !clientSecret) {
+        throw new Error(`PayPal is not configured for Restaurant ${issuerId}`);
+      }
+      return { clientId, clientSecret };
+    }
     default:
       throw new Error(`Unknown issuer type: ${issuerType}`);
   }
@@ -78,6 +92,12 @@ async function getClientIdForIssuer(issuerType, issuerId) {
       const ps = typeof foodcourt?.payment_settings === 'string'
         ? JSON.parse(foodcourt.payment_settings) : foodcourt?.payment_settings;
       return ps?.paypal?.clientId || null;
+    }
+    case 'restaurant': {
+      const restaurant = await Restaurant.findByPk(issuerId);
+      const ps = typeof restaurant?.payment_settings === 'string'
+        ? JSON.parse(restaurant.payment_settings) : restaurant?.payment_settings;
+      return ps?.online?.config?.paypalClientId || null;
     }
     default:
       return null;

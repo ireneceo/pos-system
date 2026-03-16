@@ -1466,7 +1466,7 @@ const BrandPlansPage: React.FC = () => {
                           <div style={{fontSize: '12px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
                         </div>
                         {isAssigned ? (
-                          <Button variant="danger" onClick={() => removeRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>Remove</Button>
+                          <Button variant="danger-outline" onClick={() => removeRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>Remove</Button>
                         ) : (
                           <Button variant="primary" onClick={() => assignRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>Assign</Button>
                         )}

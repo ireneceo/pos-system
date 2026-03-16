@@ -83,6 +83,7 @@ const OrderStatus = styled.div<{ status: string }>`
       case 'preparing': return '#FEF3C7';
       case 'ready': return '#DBEAFE';
       case 'cancelled': return '#FEE2E2';
+      case 'rejected': return '#FEE2E2';
       case 'payment_verification_pending': return '#FEF3C7';
       default: return '#F3F4F6';
     }
@@ -93,6 +94,7 @@ const OrderStatus = styled.div<{ status: string }>`
       case 'preparing': return '#92400E';
       case 'ready': return '#1E40AF';
       case 'cancelled': return '#991B1B';
+      case 'rejected': return '#991B1B';
       case 'payment_verification_pending': return '#92400E';
       default: return '#374151';
     }
@@ -318,6 +320,7 @@ const OrdersPage: React.FC = () => {
       case 'ready': return 'Ready for Pickup';
       case 'completed': return 'Completed';
       case 'cancelled': return 'Cancelled';
+      case 'rejected': return 'Payment Rejected';
       default: return status;
     }
   };
@@ -367,13 +370,13 @@ const OrdersPage: React.FC = () => {
 
             // Determine display status based on both payment and order status
             let displayStatus: string;
-            if (paymentStatus === 'payment_verification_pending') {
+            if (paymentStatus === 'rejected') {
+              displayStatus = 'rejected';
+            } else if (paymentStatus === 'payment_verification_pending') {
               displayStatus = 'payment_verification_pending';
             } else if (paymentStatus === 'completed' || paymentStatus === 'paid') {
-              // Payment is confirmed, show actual order status
               displayStatus = orderStatus;
             } else {
-              // Default to order status
               displayStatus = orderStatus;
             }
 

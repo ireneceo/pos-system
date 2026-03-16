@@ -66,6 +66,7 @@ export interface TableStatusInfo {
   pointDiscount?: number;
   pointsUsed?: number;
   paymentMethod?: string | null;
+  cardType?: string | null;
   orderSource?: string;
   customerPhone?: string | null;
   serviceChargeRate?: number;
@@ -73,6 +74,9 @@ export interface TableStatusInfo {
   orderCreatedAt?: string;
   notes?: string | null;
   orderType?: string;
+  paymentProof?: { image?: string; reference?: string; file_name?: string; uploaded_at?: string } | null;
+  // Multi-order support: all active orders for this table
+  orders?: TableStatusInfo[];
 }
 
 export const DEFAULT_FLOOR_PLAN: FloorPlanData = {
@@ -100,10 +104,10 @@ export const FIXTURE_PRESETS: { type: FixtureType; label: string; defaultWidth: 
 
 export const STATUS_COLORS: Record<TableStatus, { bg: string; border: string; text: string }> = {
   available: { bg: '#F3F4F6', border: '#D1D5DB', text: '#9CA3AF' },
-  occupied: { bg: '#EFF6FF', border: '#635BFF', text: '#635BFF' },
-  ready: { bg: '#FEF3C7', border: '#D97706', text: '#D97706' },
-  'needs-attention': { bg: '#FEE2E2', border: '#DC2626', text: '#DC2626' },
-  completed: { bg: '#E5E7EB', border: '#9CA3AF', text: '#374151' }
+  occupied: { bg: '#EDE9FE', border: '#7C3AED', text: '#6D28D9' },
+  ready: { bg: '#DCFCE7', border: '#16A34A', text: '#15803D' },
+  'needs-attention': { bg: '#FEE2E2', border: '#DC2626', text: '#B91C1C' },
+  completed: { bg: '#F3F4F6', border: '#9CA3AF', text: '#6B7280' }
 };
 
 export const STATUS_LABELS: Record<TableStatus, string> = {
@@ -114,14 +118,14 @@ export const STATUS_LABELS: Record<TableStatus, string> = {
   completed: 'Completed'
 };
 
-// Order-level status colors — matches LiveOrders exactly
+// Order-level status colors — unified pastel palette for floor plan
 export const ORDER_STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  outstanding: { bg: '#FEF3C7', text: '#F59E0B', border: '#F59E0B' },
-  pending: { bg: '#FEF3C7', text: '#92400E', border: '#D97706' },
-  preparing: { bg: '#DBEAFE', text: '#1E40AF', border: '#3B82F6' },
-  ready: { bg: '#D1FAE5', text: '#065F46', border: '#10B981' },
-  served: { bg: '#D1FAE5', text: '#065F46', border: '#10B981' },
-  completed: { bg: '#E5E7EB', text: '#374151', border: '#9CA3AF' },
-  cancelled: { bg: '#FEE2E2', text: '#991B1B', border: '#DC2626' },
-  awaiting_payment: { bg: '#FEF3C7', text: '#92400E', border: '#D97706' }
+  outstanding: { bg: '#FFF7ED', text: '#C2410C', border: '#F97316' },
+  pending: { bg: '#FEF9C3', text: '#A16207', border: '#CA8A04' },
+  preparing: { bg: '#EDE9FE', text: '#6D28D9', border: '#7C3AED' },
+  ready: { bg: '#DCFCE7', text: '#15803D', border: '#16A34A' },
+  served: { bg: '#D1FAE5', text: '#047857', border: '#059669' },
+  completed: { bg: '#F3F4F6', text: '#6B7280', border: '#9CA3AF' },
+  cancelled: { bg: '#FEE2E2', text: '#B91C1C', border: '#DC2626' },
+  awaiting_payment: { bg: '#FFF7ED', text: '#C2410C', border: '#F97316' }
 };

@@ -106,6 +106,7 @@ interface Invoice {
   discountAmount?: number;
   discountReason?: string;
   subtotalBeforeDiscount?: number;
+  additionalCharges?: Array<{ name: string; rate: number; amount: number }>;
   isModified?: boolean;
   modificationHistory?: Array<{
     modified_at: string;
@@ -898,6 +899,29 @@ const BrandInvoicesPage: React.FC = () => {
   };
 
   // Open payment submit modal
+  const handleConfirmFreeInvoice = async (invoice: Invoice) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/invoices/${invoice.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          status: 'paid',
+          paid_amount: 0,
+          payment_notes: 'Free invoice - confirmed by recipient'
+        })
+      });
+      if (response.ok) {
+        fetchInvoices();
+      }
+    } catch (error) {
+      console.error('Failed to confirm free invoice:', error);
+    }
+  };
+
   const handlePayInvoice = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setPaymentData({ paymentMethod: '', transactionId: '', notes: '', receiptImage: '' });
@@ -2825,6 +2849,11 @@ const BrandInvoicesPage: React.FC = () => {
                             {/* Pay button for pending/overdue invoices (not for free) */}
                             {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total > 0 && (
                               <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay</LocalActionButton>
+                            )}
+
+                            {/* Confirm button for free invoices */}
+                            {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total === 0 && (
+                              <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</LocalActionButton>
                             )}
 
                             {/* Download PDF */}

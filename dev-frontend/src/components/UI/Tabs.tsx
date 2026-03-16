@@ -27,6 +27,16 @@ export const TabContainer = styled.div`
   &::-webkit-scrollbar-thumb:hover {
     background: #94A3B8;
   }
+
+  @media (max-width: 768px) {
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 12px;
+    margin-bottom: 20px;
+  }
 `;
 
 // 공통 탭 버튼

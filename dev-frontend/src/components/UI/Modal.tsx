@@ -86,6 +86,7 @@ export const ModalFooter = styled.div`
   justify-content: flex-end;
   gap: 12px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 `;
 
 // 폼 행 (2열 레이아웃)

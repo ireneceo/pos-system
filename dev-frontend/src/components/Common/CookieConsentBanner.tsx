@@ -118,7 +118,8 @@ const CookieConsentBanner: React.FC = () => {
                      location.pathname.startsWith('/restaurant') ||
                      location.pathname.startsWith('/kitchen') ||
                      location.pathname.startsWith('/customer-display') ||
-                     location.pathname.startsWith('/mobile-order');
+                     location.pathname.startsWith('/mobile-order') ||
+                     location.pathname.startsWith('/mobile');
 
   useEffect(() => {
     const consent = localStorage.getItem(COOKIE_CONSENT_KEY);

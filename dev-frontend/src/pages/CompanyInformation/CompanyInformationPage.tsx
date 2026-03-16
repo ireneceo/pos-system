@@ -241,6 +241,11 @@ const CompanyInformationPage: React.FC = () => {
   const [originalInfo, setOriginalInfo] = useState<CompanyInfo>(companyInfo);
   const [hasChanges, setHasChanges] = useState(false);
 
+  const requiredFields: (keyof CompanyInfo)[] = [
+    'companyName', 'registrationNo', 'address', 'city', 'state', 'postcode', 'country', 'phone', 'email'
+  ];
+  const isRequiredFilled = requiredFields.every(f => companyInfo[f]?.trim());
+
   useEffect(() => {
     loadCompanyInfo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -252,10 +257,12 @@ const CompanyInformationPage: React.FC = () => {
   }, [companyInfo, originalInfo]);
 
   const loadCompanyInfo = async () => {
-    // Load from database or localStorage
     try {
+      const token = localStorage.getItem('auth_token');
       if (user?.restaurantId) {
-        const response = await fetch(`/api/restaurants/${user.restaurantId}`);
+        const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
         if (response.ok) {
           const data = await response.json();
           const restaurant = data.data || data;
@@ -300,10 +307,14 @@ const CompanyInformationPage: React.FC = () => {
 
   const handleSave = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
       if (user?.restaurantId) {
         const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
           body: JSON.stringify({
             name: companyInfo.companyName,
             business_registration: companyInfo.registrationNo,
@@ -327,14 +338,13 @@ const CompanyInformationPage: React.FC = () => {
         if (response.ok) {
           setOriginalInfo(companyInfo);
           setHasChanges(false);
-          alert('Company information saved successfully!');
         } else {
-          alert('Failed to save company information.');
+          const errorData = await response.json().catch(() => null);
+          console.error('Save failed:', errorData?.message || response.statusText);
         }
       }
     } catch (error) {
       console.error('Save error:', error);
-      alert('An error occurred while saving.');
     }
   };
 
@@ -344,9 +354,9 @@ const CompanyInformationPage: React.FC = () => {
         <Header>
           <Title>Company Information</Title>
           <SaveButton
-            hasChanges={hasChanges}
+            hasChanges={hasChanges && isRequiredFilled}
             onClick={handleSave}
-            disabled={!hasChanges}
+            disabled={!hasChanges || !isRequiredFilled}
           >
             Save Changes
           </SaveButton>

@@ -1,122 +1,208 @@
 /**
  * DateTime Helper Utility
- * Provides timezone-aware date calculations and formatting
+ * Provides timezone-aware date calculations for all date-based queries.
+ *
+ * Core algorithm: Convert local timezone boundaries to UTC for DB queries.
+ * All Sequelize queries use UTC internally, so we must calculate
+ * "what UTC moment corresponds to midnight in the restaurant's timezone?"
  */
 
+const DEFAULT_TZ = 'Asia/Kuala_Lumpur';
+
 /**
- * Get current date in a specific timezone
- * @param {string} timeZone - IANA timezone string (e.g., 'Asia/Kuala_Lumpur')
- * @returns {Date} Date object adjusted for timezone
+ * Core: Calculate UTC offset for a given timezone at the current moment.
+ * Returns milliseconds to ADD to a local-constructed Date to get the true UTC moment.
+ *
+ * Example: Asia/Kuala_Lumpur is UTC+8
+ * - Server UTC: 2026-03-16 00:00
+ * - Local time: 2026-03-16 08:00
+ * - localNow = Date("2026-03-16 08:00") parsed as local = some UTC value
+ * - utcOffset = now.getTime() - localNow.getTime()
+ * - Adding utcOffset to a "local midnight as if UTC" gives the true UTC midnight
  */
-function getLocalDate(timeZone = 'Asia/Kuala_Lumpur') {
+function _getUTCOffset(timezone) {
+  const now = new Date();
+  const localNow = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+  return now.getTime() - localNow.getTime();
+}
+
+/**
+ * Core: Convert a local date+time to UTC Date object
+ * @param {number} year - Full year
+ * @param {number} month - 0-based month
+ * @param {number} day - Day of month
+ * @param {number} hours - Hours (0-23)
+ * @param {number} minutes - Minutes
+ * @param {number} seconds - Seconds
+ * @param {number} ms - Milliseconds
+ * @param {string} timezone - IANA timezone
+ * @returns {Date} UTC Date object
+ */
+function _localToUTC(year, month, day, hours, minutes, seconds, ms, timezone) {
+  const offset = _getUTCOffset(timezone);
+  const localAsDate = new Date(year, month, day, hours, minutes, seconds, ms);
+  return new Date(localAsDate.getTime() + offset);
+}
+
+/**
+ * Get current date string in a specific timezone (YYYY-MM-DD)
+ */
+function getCurrentLocalDate(timeZone = DEFAULT_TZ) {
+  return new Date().toLocaleDateString('en-CA', { timeZone });
+}
+
+/**
+ * Get current local Date parts in a specific timezone
+ */
+function getLocalDate(timeZone = DEFAULT_TZ) {
   const now = new Date();
   const dateStr = now.toLocaleString('en-US', { timeZone });
   return new Date(dateStr);
 }
 
 /**
- * Get today's start and end timestamps in a specific timezone
- * @param {string} timeZone - IANA timezone string
- * @returns {Object} { startOfDay, endOfDay } as Date objects in UTC
+ * Get today's start and end as UTC Date objects for a given timezone.
+ * Use these in Sequelize where clauses: { createdAt: { [Op.between]: [startOfDay, endOfDay] } }
  */
-function getTodayBounds(timeZone = 'Asia/Kuala_Lumpur') {
-  const now = new Date();
-  // Get current date string in the target timezone (YYYY-MM-DD format)
-  const dateStr = now.toLocaleDateString('en-CA', { timeZone });
+function getTodayBounds(timeZone = DEFAULT_TZ) {
+  const dateStr = getCurrentLocalDate(timeZone);
+  return getDateBounds(dateStr, timeZone);
+}
 
-  // Create start and end of day
-  const startOfDay = new Date(`${dateStr}T00:00:00`);
-  const endOfDay = new Date(`${dateStr}T23:59:59.999`);
-
-  // Get timezone offset
-  const tzOffset = getTimezoneOffset(timeZone);
-
-  // Adjust for timezone offset to get UTC times
-  startOfDay.setHours(startOfDay.getHours() - tzOffset);
-  endOfDay.setHours(endOfDay.getHours() - tzOffset);
-
+/**
+ * Get start/end of a specific date as UTC Date objects.
+ * @param {string} dateStr - 'YYYY-MM-DD'
+ * @param {string} timeZone - IANA timezone
+ * @returns {{ startOfDay: Date, endOfDay: Date }}
+ */
+function getDateBounds(dateStr, timeZone = DEFAULT_TZ) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const startOfDay = _localToUTC(y, m - 1, d, 0, 0, 0, 0, timeZone);
+  const endOfDay = _localToUTC(y, m - 1, d, 23, 59, 59, 999, timeZone);
   return { startOfDay, endOfDay };
 }
 
 /**
- * Get timezone offset in hours
- * @param {string} timeZone - IANA timezone string
- * @returns {number} Offset in hours (e.g., 8 for UTC+8)
+ * Get timezone offset in hours (for display purposes only, NOT for date math)
  */
-function getTimezoneOffset(timeZone = 'Asia/Kuala_Lumpur') {
+function getTimezoneOffset(timeZone = DEFAULT_TZ) {
   const now = new Date();
   const tzString = now.toLocaleString('en-US', {
     timeZone,
     timeZoneName: 'shortOffset'
   });
   const offsetMatch = tzString.match(/GMT([+-]\d+)/);
-  return offsetMatch ? parseInt(offsetMatch[1]) : 8; // Default to +8
+  return offsetMatch ? parseInt(offsetMatch[1]) : 8;
 }
 
 /**
- * Generate date prefix for order numbers (YYMMDD format)
- * @param {string} timeZone - IANA timezone string
- * @returns {string} Date prefix in YYMMDD format
+ * Generate date prefix for order numbers (YYMMDD format) in restaurant's timezone
  */
-function getOrderDatePrefix(timeZone = 'Asia/Kuala_Lumpur') {
-  const localDate = getLocalDate(timeZone);
-  const year = localDate.getFullYear().toString().slice(-2);
-  const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
-  const day = localDate.getDate().toString().padStart(2, '0');
-  return `${year}${month}${day}`;
+function getOrderDatePrefix(timeZone = DEFAULT_TZ) {
+  const dateStr = getCurrentLocalDate(timeZone);
+  const [y, m, d] = dateStr.split('-');
+  return `${y.slice(-2)}${m}${d}`;
 }
 
 /**
- * Get start of current month
- * @param {string} timeZone - IANA timezone string (optional)
- * @returns {Date} Start of month
+ * Get start of current month as UTC Date
  */
-function getStartOfMonth(timeZone) {
-  const now = timeZone ? getLocalDate(timeZone) : new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+function getStartOfMonth(timeZone = DEFAULT_TZ) {
+  const dateStr = getCurrentLocalDate(timeZone);
+  const [y, m] = dateStr.split('-').map(Number);
+  return _localToUTC(y, m - 1, 1, 0, 0, 0, 0, timeZone);
 }
 
 /**
- * Get end of current month
- * @param {string} timeZone - IANA timezone string (optional)
- * @returns {Date} End of month
+ * Get end of current month as UTC Date
  */
-function getEndOfMonth(timeZone) {
-  const now = timeZone ? getLocalDate(timeZone) : new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+function getEndOfMonth(timeZone = DEFAULT_TZ) {
+  const dateStr = getCurrentLocalDate(timeZone);
+  const [y, m] = dateStr.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate(); // day 0 of next month = last day of this month
+  return _localToUTC(y, m - 1, lastDay, 23, 59, 59, 999, timeZone);
 }
 
 /**
- * Get start of current year
- * @param {string} timeZone - IANA timezone string (optional)
- * @returns {Date} Start of year
+ * Get month bounds for a specific year/month as UTC Dates
+ * @param {number} year - Full year
+ * @param {number} month - 1-based month (1=Jan)
  */
-function getStartOfYear(timeZone) {
-  const now = timeZone ? getLocalDate(timeZone) : new Date();
-  return new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+function getMonthBounds(year, month, timeZone = DEFAULT_TZ) {
+  const lastDay = new Date(year, month, 0).getDate();
+  const monthStart = _localToUTC(year, month - 1, 1, 0, 0, 0, 0, timeZone);
+  const monthEnd = _localToUTC(year, month - 1, lastDay, 23, 59, 59, 999, timeZone);
+  return { monthStart, monthEnd };
 }
 
 /**
- * Get date range for past N days
+ * Get start of current year as UTC Date
+ */
+function getStartOfYear(timeZone = DEFAULT_TZ) {
+  const dateStr = getCurrentLocalDate(timeZone);
+  const y = parseInt(dateStr.split('-')[0]);
+  return _localToUTC(y, 0, 1, 0, 0, 0, 0, timeZone);
+}
+
+/**
+ * Get date range for past N days as UTC Dates
  * @param {number} days - Number of days to go back
- * @param {string} timeZone - IANA timezone string (optional)
- * @returns {Object} { startDate, endDate }
+ * @param {string} timeZone - IANA timezone
+ * @returns {{ startDate: Date, endDate: Date }}
  */
-function getDateRange(days, timeZone) {
-  const endDate = timeZone ? getLocalDate(timeZone) : new Date();
-  endDate.setHours(23, 59, 59, 999);
+function getDateRange(days, timeZone = DEFAULT_TZ) {
+  const todayStr = getCurrentLocalDate(timeZone);
+  const [y, m, d] = todayStr.split('-').map(Number);
 
-  const startDate = new Date(endDate);
-  startDate.setDate(startDate.getDate() - days + 1);
-  startDate.setHours(0, 0, 0, 0);
+  const endDate = _localToUTC(y, m - 1, d, 23, 59, 59, 999, timeZone);
+
+  // Go back N-1 days from today
+  const startLocal = new Date(y, m - 1, d);
+  startLocal.setDate(startLocal.getDate() - days + 1);
+  const startDate = _localToUTC(
+    startLocal.getFullYear(), startLocal.getMonth(), startLocal.getDate(),
+    0, 0, 0, 0, timeZone
+  );
 
   return { startDate, endDate };
 }
 
 /**
+ * Get week bounds (past 7 days) as UTC Dates
+ */
+function getWeekBounds(timeZone = DEFAULT_TZ) {
+  return getDateRange(7, timeZone);
+}
+
+/**
+ * Get period-based date range for analytics
+ * @param {string} period - 'today', 'week', 'month', 'year'
+ * @param {string} timeZone - IANA timezone
+ * @returns {{ startDate: Date, endDate: Date }}
+ */
+function getPeriodBounds(period, timeZone = DEFAULT_TZ) {
+  const { startOfDay, endOfDay } = getTodayBounds(timeZone);
+
+  switch (period) {
+    case 'today':
+      return { startDate: startOfDay, endDate: endOfDay };
+    case 'week':
+      return getDateRange(7, timeZone);
+    case 'month': {
+      const monthStart = getStartOfMonth(timeZone);
+      return { startDate: monthStart, endDate: endOfDay };
+    }
+    case 'year': {
+      const yearStart = getStartOfYear(timeZone);
+      return { startDate: yearStart, endDate: endOfDay };
+    }
+    default:
+      return getDateRange(30, timeZone);
+  }
+}
+
+/**
  * Format date as ISO date string (YYYY-MM-DD)
- * @param {Date} date - Date object
- * @returns {string} Formatted date string
  */
 function formatDateISO(date) {
   return date.toISOString().split('T')[0];
@@ -124,8 +210,6 @@ function formatDateISO(date) {
 
 /**
  * Format date as month key (YYYY-MM)
- * @param {Date} date - Date object
- * @returns {string} Month key
  */
 function formatMonthKey(date) {
   return date.toISOString().slice(0, 7);
@@ -133,11 +217,9 @@ function formatMonthKey(date) {
 
 /**
  * Get timezone from restaurant operation settings
- * @param {Object} restaurant - Restaurant object
- * @returns {string} Timezone string
  */
 function getRestaurantTimezone(restaurant) {
-  if (!restaurant) return 'Asia/Kuala_Lumpur';
+  if (!restaurant) return DEFAULT_TZ;
 
   try {
     const operationSettings = restaurant.operation_settings ?
@@ -145,35 +227,39 @@ function getRestaurantTimezone(restaurant) {
         JSON.parse(restaurant.operation_settings) :
         restaurant.operation_settings) : null;
 
-    return operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
+    return operationSettings?.timeZone || DEFAULT_TZ;
   } catch (e) {
-    return 'Asia/Kuala_Lumpur';
+    return DEFAULT_TZ;
   }
 }
 
 /**
  * Get the system (site) timezone from CompanySettings
- * @returns {Promise<string>} Timezone string
  */
 async function getSiteTimezone() {
   try {
     const CompanySettings = require('../models/CompanySettings');
     const settings = await CompanySettings.findOne({ attributes: ['timezone'] });
-    return settings?.timezone || 'Asia/Kuala_Lumpur';
+    return settings?.timezone || DEFAULT_TZ;
   } catch (e) {
-    return 'Asia/Kuala_Lumpur';
+    return DEFAULT_TZ;
   }
 }
 
 module.exports = {
   getLocalDate,
+  getCurrentLocalDate,
   getTodayBounds,
+  getDateBounds,
   getTimezoneOffset,
   getOrderDatePrefix,
   getStartOfMonth,
   getEndOfMonth,
+  getMonthBounds,
   getStartOfYear,
   getDateRange,
+  getWeekBounds,
+  getPeriodBounds,
   formatDateISO,
   formatMonthKey,
   getRestaurantTimezone,

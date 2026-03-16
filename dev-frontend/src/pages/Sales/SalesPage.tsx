@@ -5,6 +5,7 @@ import { useStaff } from '../../contexts/StaffContext';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import { formatPaymentDisplay } from '../../constants';
 import { getTodayInTimezone, getDateInTimezone } from '../../utils/timezone';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -35,6 +36,7 @@ interface SalesTransaction {
   discount: number;
   total: number;
   paymentMethod: 'cash' | 'card' | 'digital_wallet' | 'points';
+  cardType?: string | null;
   status: 'completed' | 'refunded' | 'cancelled';
 }
 
@@ -680,6 +682,7 @@ const SalesPage: React.FC = () => {
           discount: order.discount || 0,
           total: order.total || 0,
           paymentMethod: (order.paymentMethod as SalesTransaction['paymentMethod']) || 'cash',
+          cardType: (order as any).card_type || (order as any).cardType || null,
           status: 'completed' as const
         };
       })
@@ -1611,7 +1614,7 @@ const SalesPage: React.FC = () => {
                     <Amount>{formatCurrency(transaction.total, operationSettings.currency)}</Amount>
 
                     <PaymentBadge method={transaction.paymentMethod}>
-                      {transaction.paymentMethod.replace('_', ' ')}
+                      {formatPaymentDisplay(transaction.paymentMethod, transaction.cardType)}
                     </PaymentBadge>
                     
                     <StatusBadge status={transaction.status}>

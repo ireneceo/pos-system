@@ -198,6 +198,7 @@ const FloorPlanPage: React.FC = () => {
 
   // Detail panel
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [selectedOrderIndex, setSelectedOrderIndex] = useState(0);
 
   // Payment modal (like LiveOrders)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -377,6 +378,7 @@ const FloorPlanPage: React.FC = () => {
   // Table click → toggle detail panel
   const handleTableClick = (tableNumber: string) => {
     setSelectedTable(prev => prev === tableNumber ? null : tableNumber);
+    setSelectedOrderIndex(0);
   };
 
   // Status change handler
@@ -420,7 +422,8 @@ const FloorPlanPage: React.FC = () => {
     _amountReceived?: number,
     _change?: number,
     pointsUsed?: number,
-    pointDiscount?: number
+    pointDiscount?: number,
+    cardType?: string
   ) => {
     if (!selectedTable) return;
     const statusInfo = tableStatuses[selectedTable];
@@ -430,7 +433,8 @@ const FloorPlanPage: React.FC = () => {
       const token = localStorage.getItem('auth_token');
       const updatePayload: any = {
         payment_status: 'completed',
-        payment_method: method
+        payment_method: method,
+        card_type: method === 'card' ? (cardType || null) : null
       };
 
       if (pointsUsed && pointsUsed > 0 && pointDiscount && pointDiscount > 0) {
@@ -486,6 +490,26 @@ const FloorPlanPage: React.FC = () => {
     }
   };
 
+  // Clear all completed orders from table
+  const handleClearAllCompleted = async () => {
+    if (!selectedTable) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const completedOrders = selectedOrders.filter(o => o.orderStatus === 'completed');
+      await Promise.all(completedOrders.map(o =>
+        fetch(`/api/orders/${o.orderId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ table_number: null })
+        })
+      ));
+      setSelectedTable(null);
+      await fetchStatuses();
+    } catch (err) {
+      console.error('Failed to clear table:', err);
+    }
+  };
+
   // Navigate to POS Terminal (full page)
   const handleNavigateToPOS = () => {
     if (selectedTable) {
@@ -500,8 +524,12 @@ const FloorPlanPage: React.FC = () => {
     fetchStatuses();
   };
 
-  // Derived data for detail panel
-  const selectedStatusInfo = selectedTable ? tableStatuses[selectedTable] : undefined;
+  // Derived data for detail panel — multi-order support
+  const selectedTableData = selectedTable ? tableStatuses[selectedTable] : undefined;
+  const selectedOrders = selectedTableData?.orders || (selectedTableData ? [selectedTableData] : []);
+  // Clamp index to valid range
+  const safeOrderIndex = Math.min(selectedOrderIndex, Math.max(selectedOrders.length - 1, 0));
+  const selectedStatusInfo = selectedOrders.length > 0 ? selectedOrders[safeOrderIndex] : selectedTableData;
   const selectedTableInfo = selectedTable
     ? floorPlan.tables.find(t => t.tableNumber === selectedTable)
     : undefined;
@@ -606,6 +634,10 @@ const FloorPlanPage: React.FC = () => {
             onNavigateToPOS={handleNavigateToPOS}
             onOrderUpdated={fetchStatuses}
             onClearTable={handleClearTable}
+            onClearAllCompleted={handleClearAllCompleted}
+            orders={selectedOrders}
+            selectedOrderIndex={safeOrderIndex}
+            onOrderIndexChange={setSelectedOrderIndex}
           />
         )}
       </MainContent>

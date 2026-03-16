@@ -23,7 +23,8 @@ Customer.init({
   email: {
     type: DataTypes.STRING(100),
     allowNull: true,
-    comment: '이메일'
+    unique: true,
+    comment: '이메일 (고유, 비밀번호 찾기용)'
   },
   password_hash: {
     type: DataTypes.STRING(255),
@@ -56,6 +57,10 @@ Customer.init({
     {
       unique: true,
       fields: ['phone']
+    },
+    {
+      unique: true,
+      fields: ['email']
     },
     {
       fields: ['type']

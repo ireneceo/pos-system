@@ -73,14 +73,12 @@ export const Button = styled.button<{
         `;
       case 'danger-outline':
         return css`
-          background: ${t.colors.surface};
-          color: ${t.colors.danger};
-          border: 1px solid ${t.colors.danger};
+          background: ${t.colors.dangerLight};
+          color: #EF4444;
+          border: 1px solid #EF4444;
 
           &:hover:not(:disabled) {
-            background: ${t.colors.dangerLight};
-            color: ${t.colors.dangerHover};
-            border-color: ${t.colors.dangerHover};
+            background: #FEE2E2;
           }
         `;
       case 'success':

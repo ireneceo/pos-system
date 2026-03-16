@@ -47,7 +47,8 @@ export const PAYMENT_METHODS = {
   QR: 'qr',
   COUNTER: 'counter',
   ONLINE: 'online',
-  FPX: 'fpx'
+  FPX: 'fpx',
+  STAFF_MEAL: 'staffMeal'
 } as const;
 
 /**
@@ -71,7 +72,8 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   [PAYMENT_METHODS.QR]: 'QR Payment',
   [PAYMENT_METHODS.COUNTER]: 'Pay at Counter',
   [PAYMENT_METHODS.ONLINE]: 'Online Payment',
-  [PAYMENT_METHODS.FPX]: 'FPX Online Banking'
+  [PAYMENT_METHODS.FPX]: 'FPX Online Banking',
+  [PAYMENT_METHODS.STAFF_MEAL]: 'Staff Meal'
 };
 
 /**
@@ -477,6 +479,27 @@ export function getOrderStatusColor(status: string): { background: string; text:
  */
 export function getPaymentMethodLabel(method: string): string {
   return PAYMENT_METHOD_LABELS[method] || method;
+}
+
+/**
+ * Card type label mapping
+ */
+const CARD_TYPE_LABELS: Record<string, string> = {
+  visa: 'Visa',
+  master: 'Master',
+  amex: 'Amex',
+  other: 'Other'
+};
+
+/**
+ * Format payment method with card type: "Card(Visa)", "Cash", etc.
+ */
+export function formatPaymentDisplay(method: string | null | undefined, cardType?: string | null): string {
+  if (!method) return 'N/A';
+  if (method === 'card' && cardType) {
+    return `Card(${CARD_TYPE_LABELS[cardType] || cardType})`;
+  }
+  return getPaymentMethodLabel(method);
 }
 
 /**

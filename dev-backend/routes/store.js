@@ -36,6 +36,14 @@ router.get('/settings', authenticateToken, async (req, res) => {
         paymentSettings = typeof restaurant.payment_settings === 'string'
           ? JSON.parse(restaurant.payment_settings)
           : restaurant.payment_settings;
+        // Normalize: sync enabled flag with availableIn for all methods
+        Object.keys(paymentSettings).forEach(key => {
+          if (key === '_order') return;
+          const m = paymentSettings[key];
+          if (m && typeof m === 'object' && 'enabled' in m && 'availableIn' in m) {
+            m.enabled = Array.isArray(m.availableIn) && m.availableIn.length > 0;
+          }
+        });
       }
     } catch (e) {
       console.error('Error parsing payment_settings:', e);
@@ -169,6 +177,48 @@ router.put('/settings', authenticateToken, async (req, res) => {
           : req.body[field]);
 
         if (field === 'payment_settings' || field === 'operation_settings' || field === 'table_settings') {
+          // Migrate legacy payment method keys on save
+          if (field === 'payment_settings' && req.body[field]) {
+            const ps = req.body[field];
+            // qr/qrPayment → ewallet (merge qrImage)
+            if (ps.qr || ps.qrPayment) {
+              const qrData = ps.qrPayment || ps.qr;
+              if (!ps.ewallet) {
+                ps.ewallet = { enabled: true, label: 'E-Wallet', availableIn: ['pos', 'mobile'], qrImage: '' };
+              }
+              if (qrData.qrImage && !ps.ewallet.qrImage) {
+                ps.ewallet.qrImage = qrData.qrImage;
+              }
+              delete ps.qr;
+              delete ps.qrPayment;
+            }
+            // fpx → remove (absorbed into online)
+            if (ps.fpx) {
+              delete ps.fpx;
+            }
+            // Ensure staffMeal exists
+            if (!ps.staffMeal) {
+              ps.staffMeal = { enabled: false, label: 'Staff Meal', availableIn: [] };
+            }
+            // Clean ewallet legacy provider/config fields
+            if (ps.ewallet) {
+              delete ps.ewallet.provider;
+              delete ps.ewallet.config;
+              if (ps.ewallet.qrImage === undefined) ps.ewallet.qrImage = '';
+            }
+            // Clean card: POS-only, no PG config needed
+            if (ps.card) {
+              delete ps.card.provider;
+              delete ps.card.config;
+            }
+            // Clean _order array: remove legacy keys, ensure staffMeal
+            if (ps._order && Array.isArray(ps._order)) {
+              ps._order = ps._order.filter(k => !['qr', 'qrPayment', 'fpx'].includes(k));
+              if (!ps._order.includes('staffMeal')) {
+                ps._order.push('staffMeal');
+              }
+            }
+          }
           // Model setter will handle JSON.stringify, just pass the object
           restaurant[field] = req.body[field];
         } else {

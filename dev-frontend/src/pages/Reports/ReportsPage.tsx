@@ -146,8 +146,46 @@ const ExpandIcon = styled.span<{ expanded?: boolean }>`
   color: #6B7280;
 `;
 
+// Payment filter button style
+const PaymentFilterBtn = styled.button<{ active?: boolean }>`
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid ${props => props.active ? '#635BFF' : '#E6EBF1'};
+  background: ${props => props.active ? '#635BFF' : 'white'};
+  color: ${props => props.active ? 'white' : '#6B7C93'};
+
+  &:hover {
+    border-color: #635BFF;
+    color: ${props => props.active ? 'white' : '#635BFF'};
+  }
+`;
+
+const PaymentFilterRow = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+`;
+
+const StaffMealBanner = styled.div`
+  background: #FFF7ED;
+  border: 1px solid #FDBA74;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+`;
+
 // 타입 정의
-type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations';
+type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'payment';
 // PeriodType imported from DatePeriodFilter component
 
 // 차트 색상
@@ -173,6 +211,9 @@ const ReportsPage: React.FC = () => {
 
   // What and Why: 서버 집계 데이터 - 10000개 주문 클라이언트 처리 대신 서버에서 집계된 요약 데이터 사용
   const [reportsSummary, setReportsSummary] = useState<any>(null);
+
+  // Payment Analysis tab state
+  const [cardTypeFilter, setCardTypeFilter] = useState<string>('all');
 
   // Drilldown state for Sales Details tab
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
@@ -488,6 +529,56 @@ const ReportsPage: React.FC = () => {
       .slice(0, 5);
   }, [reportsSummary]);
 
+  // Payment method labels for display
+  const PAYMENT_LABELS: Record<string, string> = {
+    cash: 'Cash',
+    card: 'Credit/Debit Card',
+    ewallet: 'E-Wallet',
+    bank_transfer: 'Bank Transfer',
+    qr: 'QR Payment',
+    counter: 'Pay at Counter',
+    online: 'Online Payment',
+    fpx: 'FPX Online Banking',
+    points: 'Points'
+  };
+
+  const CARD_TYPE_LABELS: Record<string, string> = {
+    visa: 'Visa',
+    master: 'Mastercard',
+    amex: 'Amex',
+    other: 'Other'
+  };
+
+  // Payment method data from API
+  const paymentMethodData = useMemo(() => {
+    if (!reportsSummary?.paymentMethodSales) return [];
+    return reportsSummary.paymentMethodSales
+      .sort((a: any, b: any) => b.revenue - a.revenue);
+  }, [reportsSummary]);
+
+  // Card type data filtered by selected type
+  const cardTypeData = useMemo(() => {
+    if (!reportsSummary?.cardTypeSales) return [];
+    if (cardTypeFilter === 'all') return reportsSummary.cardTypeSales;
+    return reportsSummary.cardTypeSales.filter((c: any) => c.type === cardTypeFilter);
+  }, [reportsSummary, cardTypeFilter]);
+
+  // Available card types from data
+  const availableCardTypes = useMemo(() => {
+    if (!reportsSummary?.cardTypeSales) return [];
+    return reportsSummary.cardTypeSales.map((c: any) => c.type);
+  }, [reportsSummary]);
+
+  // Staff meal data
+  const staffMealData = useMemo(() => {
+    return reportsSummary?.staffMeal || { revenue: 0, orders: 0 };
+  }, [reportsSummary]);
+
+  // Total payment revenue (for percentage calculation)
+  const totalPaymentRevenue = useMemo(() => {
+    return paymentMethodData.reduce((sum: number, p: any) => sum + p.revenue, 0);
+  }, [paymentMethodData]);
+
   // What and Why: 서버 집계 데이터(dailySales)에서 drilldown 데이터 구성
   const drilldownData = useMemo(() => {
     if (!reportsSummary?.dailySales || reportsSummary.dailySales.length === 0) return {};
@@ -621,7 +712,7 @@ const ReportsPage: React.FC = () => {
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
-    setDateRange(calculatePeriodDateRange(period));
+    setDateRange(calculatePeriodDateRange(period, operationSettings.timeZone));
   };
 
   const handleCalendarRangeSelect = (start: string, end: string) => {
@@ -739,6 +830,43 @@ const ReportsPage: React.FC = () => {
     return lines.join('\n');
   }, [peakTimesData]);
 
+  // Payment Analysis 탭 CSV 생성
+  const generatePaymentCSV = useCallback((): string => {
+    const lines = [
+      'Payment_Method,Orders,Revenue,Percentage'
+    ];
+
+    paymentMethodData.forEach((item: any) => {
+      const pct = totalPaymentRevenue > 0 ? ((item.revenue / totalPaymentRevenue) * 100).toFixed(1) : '0.0';
+      lines.push(toCSVRow([
+        PAYMENT_LABELS[item.method] || item.method,
+        item.orders,
+        formatNumber(item.revenue),
+        `${pct}%`
+      ]));
+    });
+
+    if (cardTypeData.length > 0) {
+      lines.push('');
+      lines.push('Card_Type,Orders,Revenue');
+      cardTypeData.forEach((item: any) => {
+        lines.push(toCSVRow([
+          CARD_TYPE_LABELS[item.type] || item.type,
+          item.orders,
+          formatNumber(item.revenue)
+        ]));
+      });
+    }
+
+    if (staffMealData.orders > 0) {
+      lines.push('');
+      lines.push('Staff_Meal,Orders,Amount');
+      lines.push(toCSVRow(['Staff Meal (Excluded from revenue)', staffMealData.orders, formatNumber(staffMealData.revenue)]));
+    }
+
+    return lines.join('\n');
+  }, [paymentMethodData, cardTypeData, staffMealData, totalPaymentRevenue]);
+
   // What and Why: 탭별 CSV 생성 및 다운로드 통합 함수
   const handleDownloadReport = useCallback(() => {
     let csvContent: string;
@@ -759,6 +887,9 @@ const ReportsPage: React.FC = () => {
       case 'operations':
         csvContent = generateOperationsCSV();
         break;
+      case 'payment':
+        csvContent = generatePaymentCSV();
+        break;
       default:
         csvContent = generateSalesCSV();
     }
@@ -773,7 +904,7 @@ const ReportsPage: React.FC = () => {
     );
 
     downloadCSV(csvContent, filename);
-  }, [activeTab, activePeriod, isCustomDateRange, dateRange, user?.restaurantId, generateSalesCSV, generateDetailsCSV, generateMenuCSV, generateCustomersCSV, generateOperationsCSV]);
+  }, [activeTab, activePeriod, isCustomDateRange, dateRange, user?.restaurantId, generateSalesCSV, generateDetailsCSV, generateMenuCSV, generateCustomersCSV, generateOperationsCSV, generatePaymentCSV]);
 
 
   // Filter component using common DatePeriodFilter
@@ -823,6 +954,9 @@ const ReportsPage: React.FC = () => {
             </Tab>
             <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>
               Operations
+            </Tab>
+            <Tab active={activeTab === 'payment'} onClick={() => handleTabChange('payment')}>
+              Payment Analysis
             </Tab>
           </Tabs>
 
@@ -1353,6 +1487,233 @@ const ReportsPage: React.FC = () => {
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartCard>
+                </div>
+              )}
+          </div>
+
+          {/* Payment Analysis Tab */}
+          <div style={{ display: activeTab === 'payment' ? 'block' : 'none' }}>
+              <FilterComponent />
+              {loading || ordersLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>Loading payment data...</div>
+              ) : totalOrders === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                  No order data available for the selected period
+                </div>
+              ) : (
+                <div>
+                  {/* Staff Meal Banner */}
+                  {staffMealData.orders > 0 && (
+                    <StaffMealBanner>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#9A3412', marginBottom: '4px' }}>
+                          Staff Meal (Excluded from Revenue)
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#C2410C' }}>
+                          These orders are not included in the revenue figures below
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '20px', fontWeight: 700, color: '#9A3412' }}>{staffMealData.orders}</div>
+                          <div style={{ fontSize: '11px', color: '#C2410C' }}>Orders</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '20px', fontWeight: 700, color: '#9A3412' }}>
+                            {formatCurrency(staffMealData.revenue, operationSettings.currency)}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#C2410C' }}>Amount</div>
+                        </div>
+                      </div>
+                    </StaffMealBanner>
+                  )}
+
+                  {/* Payment Method Summary Stats */}
+                  <StatsRow>
+                    <StatCard color="#059669">
+                      <StatLabel>Total Revenue</StatLabel>
+                      <StatValue>{formatCurrency(totalPaymentRevenue, operationSettings.currency)}</StatValue>
+                      <StatDescription>{paymentMethodData.reduce((s: number, p: any) => s + p.orders, 0)} orders</StatDescription>
+                    </StatCard>
+                    <StatCard color="#2563EB">
+                      <StatLabel>Payment Methods Used</StatLabel>
+                      <StatValue>{paymentMethodData.length}</StatValue>
+                      <StatDescription>Active methods in period</StatDescription>
+                    </StatCard>
+                    <StatCard color="#7C3AED">
+                      <StatLabel>Card Payments</StatLabel>
+                      <StatValue>
+                        {formatCurrency(
+                          paymentMethodData.find((p: any) => p.method === 'card')?.revenue || 0,
+                          operationSettings.currency
+                        )}
+                      </StatValue>
+                      <StatDescription>
+                        {paymentMethodData.find((p: any) => p.method === 'card')?.orders || 0} orders
+                      </StatDescription>
+                    </StatCard>
+                    <StatCard color="#DC2626">
+                      <StatLabel>Cash Payments</StatLabel>
+                      <StatValue>
+                        {formatCurrency(
+                          paymentMethodData.find((p: any) => p.method === 'cash')?.revenue || 0,
+                          operationSettings.currency
+                        )}
+                      </StatValue>
+                      <StatDescription>
+                        {paymentMethodData.find((p: any) => p.method === 'cash')?.orders || 0} orders
+                      </StatDescription>
+                    </StatCard>
+                  </StatsRow>
+
+                  {/* Payment Methods Table */}
+                  <ChartGrid>
+                    <TableCard>
+                      <ChartTitle>Payment Methods Breakdown</ChartTitle>
+                      <Table>
+                        <thead>
+                          <tr>
+                            <TableHeader>Payment Method</TableHeader>
+                            <TableHeader>Orders</TableHeader>
+                            <TableHeader>Revenue</TableHeader>
+                            <TableHeader>Share</TableHeader>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paymentMethodData.length === 0 ? (
+                            <tr>
+                              <TableCell colSpan={4} style={{ textAlign: 'center', color: '#6B7C93' }}>
+                                No payment data available
+                              </TableCell>
+                            </tr>
+                          ) : (
+                            paymentMethodData.map((item: any, index: number) => {
+                              const pct = totalPaymentRevenue > 0 ? (item.revenue / totalPaymentRevenue) * 100 : 0;
+                              return (
+                                <tr key={item.method} style={{
+                                  backgroundColor: index === 0 ? '#F0F9FF' : 'transparent'
+                                }}>
+                                  <TableCell style={{ fontWeight: 600 }}>
+                                    {PAYMENT_LABELS[item.method] || item.method}
+                                  </TableCell>
+                                  <TableCell>{item.orders}</TableCell>
+                                  <TableCell style={{ fontWeight: 500 }}>
+                                    {formatCurrency(item.revenue, operationSettings.currency)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <ProgressBar percentage={pct} />
+                                      <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
+                                        {pct.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </Table>
+                    </TableCard>
+
+                    {/* Payment Method Pie Chart */}
+                    <ChartCard>
+                      <ChartTitle>Payment Distribution</ChartTitle>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                          <Pie
+                            data={paymentMethodData.map((item: any) => ({
+                              name: PAYMENT_LABELS[item.method] || item.method,
+                              value: Math.round(item.revenue)
+                            }))}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={true}
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={70}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {paymentMethodData.map((_: any, index: number) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => formatCurrency(Number(value), operationSettings.currency)} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </ChartCard>
+                  </ChartGrid>
+
+                  {/* Card Type Breakdown */}
+                  {reportsSummary?.cardTypeSales && reportsSummary.cardTypeSales.length > 0 && (
+                    <TableCard style={{ marginTop: '24px' }}>
+                      <ChartTitle>Card Type Breakdown</ChartTitle>
+                      <PaymentFilterRow>
+                        <PaymentFilterBtn
+                          active={cardTypeFilter === 'all'}
+                          onClick={() => setCardTypeFilter('all')}
+                        >
+                          All
+                        </PaymentFilterBtn>
+                        {['visa', 'master', 'amex', 'other'].map(type => (
+                          availableCardTypes.includes(type) && (
+                            <PaymentFilterBtn
+                              key={type}
+                              active={cardTypeFilter === type}
+                              onClick={() => setCardTypeFilter(type)}
+                            >
+                              {CARD_TYPE_LABELS[type] || type}
+                            </PaymentFilterBtn>
+                          )
+                        ))}
+                      </PaymentFilterRow>
+                      <Table>
+                        <thead>
+                          <tr>
+                            <TableHeader>Card Type</TableHeader>
+                            <TableHeader>Orders</TableHeader>
+                            <TableHeader>Revenue</TableHeader>
+                            <TableHeader>Share of Card Payments</TableHeader>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cardTypeData.length === 0 ? (
+                            <tr>
+                              <TableCell colSpan={4} style={{ textAlign: 'center', color: '#6B7C93' }}>
+                                No card type data for selected filter
+                              </TableCell>
+                            </tr>
+                          ) : (
+                            cardTypeData.map((item: any, index: number) => {
+                              const cardTotal = reportsSummary.cardTypeSales.reduce((s: number, c: any) => s + c.revenue, 0);
+                              const pct = cardTotal > 0 ? (item.revenue / cardTotal) * 100 : 0;
+                              return (
+                                <tr key={item.type} style={{
+                                  backgroundColor: index === 0 ? '#F5F3FF' : 'transparent'
+                                }}>
+                                  <TableCell style={{ fontWeight: 600 }}>
+                                    {CARD_TYPE_LABELS[item.type] || item.type}
+                                  </TableCell>
+                                  <TableCell>{item.orders}</TableCell>
+                                  <TableCell style={{ fontWeight: 500 }}>
+                                    {formatCurrency(item.revenue, operationSettings.currency)}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <ProgressBar percentage={pct} />
+                                      <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
+                                        {pct.toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </Table>
+                    </TableCard>
+                  )}
                 </div>
               )}
           </div>

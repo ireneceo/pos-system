@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-12
+> **최종 업데이트:** 2026-03-16
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -1733,6 +1733,36 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-frontend/src/pages/Admin/InvoicesPage.tsx` (bulk 생성 버튼)
 - `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` (+Invoice 버튼 제거)
 - `dev-frontend/src/pages/Admin/ManagersPage.tsx` (구독 데이터 CRUD + 레이아웃)
+
+---
+
+## ✅ 완료: 버그 수정 + Free 인보이스 Confirm + 푸터 로고 (2026-03-16)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Company Information 저장 시 로그아웃 버그 수정 | fetch에 Authorization 헤더 누락 → 401 → 자동 로그아웃. GET/PUT 모두 토큰 추가 | ✅ 완료 |
+| Company Information 필수항목 검증 | 필수항목(*) 미입력 시 저장버튼 비활성화 | ✅ 완료 |
+| Ingredients/Recipes DELETE 401 버그 수정 | DELETE fetch에 Authorization 헤더 누락 → 로그아웃 가능성. 토큰 추가 | ✅ 완료 |
+| Free 인보이스 Confirm 버튼 | 100% 할인 인보이스(total=0)가 pending_payment에 멈추는 문제. 모든 역할 인보이스 페이지에 Confirm 버튼 추가 | ✅ 완료 |
+| additionalCharges 타입 에러 수정 | BrandInvoicesPage/FoodcourtInvoicesPage Invoice 인터페이스에 additionalCharges 프로퍼티 추가 | ✅ 완료 |
+| 인보이스 status API payment_notes 지원 | PATCH /:id/status에 payment_notes 필드 추가 | ✅ 완료 |
+| 푸터 로고 교체 | LandingFooter "PurpleHere" 텍스트 → SVG 흰색 로고 이미지, 좌측 정렬 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/CompanyInformation/CompanyInformationPage.tsx` (auth 헤더 + 필수항목 검증)
+- `dev-frontend/src/pages/Ingredients/IngredientsPage.tsx` (DELETE auth 헤더)
+- `dev-frontend/src/pages/Recipes/RecipesPage.tsx` (DELETE auth 헤더)
+- `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx` (Free Confirm 버튼)
+- `dev-frontend/src/pages/Owner/OwnerInvoicesPage.tsx` (Free Confirm 버튼)
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` (Free Confirm + additionalCharges 타입)
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` (Free Confirm + additionalCharges 타입)
+- `dev-frontend/src/pages/Manager/InvoicesPage.tsx` (Free Confirm 버튼)
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx` (Free Mark Paid 버튼)
+- `dev-backend/routes/invoices.js` (payment_notes 지원)
+- `dev-frontend/src/components/Landing/LandingFooter.tsx` (SVG 로고 교체)
+- `dev-frontend/public/images/logo-white.svg` (브랜드 로고 추가)
 
 ---
 

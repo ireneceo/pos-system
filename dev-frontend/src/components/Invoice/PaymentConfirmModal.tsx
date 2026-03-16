@@ -212,12 +212,12 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
       cursor: not-allowed;
     }
   ` : props.variant === 'danger' ? `
-    background: #DC2626;
-    color: white;
-    border: none;
+    background: #FEF2F2;
+    color: #EF4444;
+    border: 1px solid #EF4444;
 
     &:hover:not(:disabled) {
-      background: #B91C1C;
+      background: #FEE2E2;
     }
 
     &:disabled {

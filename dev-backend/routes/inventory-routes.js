@@ -3,6 +3,7 @@ const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
 const { Ingredient, InventoryTransaction, StockTake, StockTakeItem, StockAlert, Restaurant, InventoryBatch, GeneralStock, GeneralStockTransaction, Supplier, RestaurantIngredientCost } = require('../models');
+const { getStartOfMonth, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 
 // 레스토랑의 코스트 오버라이드 맵 조회 헬퍼
 async function getRestaurantCostMap(restaurantId) {
@@ -126,16 +127,15 @@ router.get('/:restaurantId/inventory/summary', async (req, res) => {
       }
     });
 
-    // Get this month's loss from stock takes
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    // Get this month's loss from stock takes (timezone-aware)
+    const tz = getRestaurantTimezone(restaurant);
+    const monthStart = getStartOfMonth(tz);
 
     const stockTakes = await StockTake.findAll({
       where: {
         restaurant_id: restaurantId,
         status: 'completed',
-        completed_at: { [Op.gte]: startOfMonth }
+        completed_at: { [Op.gte]: monthStart }
       }
     });
 

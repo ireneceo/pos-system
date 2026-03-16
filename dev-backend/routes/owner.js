@@ -9,6 +9,7 @@ const Order = require('../models/Order');
 const Invoice = require('../models/Invoice');
 const InvoiceItem = require('../models/InvoiceItem');
 const { getIssuerCompanyInfo, getPayerCompanyInfo } = require('./invoices');
+const { getTodayBounds, getStartOfMonth, getEndOfMonth, getSiteTimezone } = require('../utils/dateTimeHelper');
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -81,15 +82,14 @@ router.get('/dashboard', requireRole('Restaurant Owner'), async (req, res) => {
       });
     }
 
-    // 오늘 날짜 범위
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // 오늘 날짜 범위 (사이트 타임존 기준)
+    const tz = await getSiteTimezone();
+    const { startOfDay: today, endOfDay: todayEnd } = getTodayBounds(tz);
+    const tomorrow = todayEnd; // used as upper bound
 
     // 이번 달 범위
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+    const monthStart = getStartOfMonth(tz);
+    const monthEnd = getEndOfMonth(tz);
 
     // 레스토랑 기본 정보
     const restaurants = await Restaurant.findAll({
@@ -106,7 +106,7 @@ router.get('/dashboard', requireRole('Restaurant Owner'), async (req, res) => {
     const todayOrders = await Order.findAll({
       where: {
         restaurant_id: { [Op.in]: restaurantIds },
-        createdAt: { [Op.gte]: today, [Op.lt]: tomorrow },
+        createdAt: { [Op.gte]: today, [Op.lte]: tomorrow },
         status: { [Op.notIn]: ['cancelled', 'refunded'] }
       },
       attributes: ['restaurant_id', 'total_amount']
@@ -116,7 +116,7 @@ router.get('/dashboard', requireRole('Restaurant Owner'), async (req, res) => {
     const monthOrders = await Order.findAll({
       where: {
         restaurant_id: { [Op.in]: restaurantIds },
-        createdAt: { [Op.gte]: monthStart, [Op.lt]: monthEnd },
+        createdAt: { [Op.gte]: monthStart, [Op.lte]: monthEnd },
         status: { [Op.notIn]: ['cancelled', 'refunded'] }
       },
       attributes: ['restaurant_id', 'total_amount']

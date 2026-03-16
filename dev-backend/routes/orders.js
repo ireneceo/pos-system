@@ -10,6 +10,7 @@ const { deductInventoryForOrder } = require('../services/inventoryDeductionServi
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
 const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
 const ActivityLog = require('../models/ActivityLog');
+const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 
 // Get all orders
 router.get('/', authenticateToken, async (req, res) => {
@@ -100,15 +101,23 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Helper: Find mergeable order for auto-merge
-// Only merges orders from the same day (based on order_date) with payment_status = 'pending'
-async function findMergeableOrder(restaurantId, tableNumber, orderType, transaction = null) {
+// Merge rules:
+// - Same restaurant, table, order_type, payment_method, today, both pending
+// - POS→POS: table + payment_method match is enough (cashier controls)
+// - Mobile→Mobile: additionally requires same customer (customer_id or customer_phone)
+// - POS↔Mobile cross-source: never merge
+async function findMergeableOrder(restaurantId, tableNumber, orderType, newOrderData = {}, transaction = null, timezone = 'Asia/Kuala_Lumpur') {
   if (!restaurantId || !tableNumber) return null;
 
-  // Get today's date range (00:00:00 ~ 23:59:59)
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  // New order must also be pending to merge
+  if (newOrderData.payment_status && newOrderData.payment_status !== 'pending') return null;
+
+  const newSource = newOrderData.source || 'pos';
+  const newPaymentMethod = newOrderData.payment_method || 'counter';
+  const isMobile = (s) => s === 'mobile';
+
+  // Get today's date range in restaurant's timezone
+  const { startOfDay: todayStart, endOfDay: todayEnd } = getTodayBounds(timezone);
 
   const queryOptions = {
     where: {
@@ -116,10 +125,10 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, transact
       table_number: tableNumber,
       order_type: orderType || 'dine_in',
       payment_status: 'pending',
+      payment_method: newPaymentMethod,
       status: {
         [Op.notIn]: ['served', 'completed', 'cancelled']
       },
-      // Only merge orders from today (same date condition)
       createdAt: {
         [Op.between]: [todayStart, todayEnd]
       },
@@ -132,13 +141,48 @@ async function findMergeableOrder(restaurantId, tableNumber, orderType, transact
     limit: 1
   };
 
+  // Cross-source: POS↔Mobile never merge
+  if (isMobile(newSource)) {
+    queryOptions.where.source = 'mobile';
+  } else {
+    queryOptions.where[Op.and] = [
+      { [Op.or]: [{ source: { [Op.ne]: 'mobile' } }, { source: null }] }
+    ];
+  }
+
   if (transaction) {
     queryOptions.lock = transaction.LOCK.UPDATE;
     queryOptions.transaction = transaction;
   }
 
   const existingOrders = await Order.findAll(queryOptions);
-  return existingOrders.length > 0 ? existingOrders[0] : null;
+  if (existingOrders.length === 0) return null;
+
+  const existing = existingOrders[0];
+
+  // Mobile→Mobile: require same customer
+  if (isMobile(newSource)) {
+    const newCustId = newOrderData.customer_id;
+    const newPhone = newOrderData.customer_phone;
+    const existCustId = existing.customer_id;
+    const existPhone = existing.customer_phone;
+
+    // Both members → same customer_id
+    if (newCustId && existCustId) {
+      return newCustId == existCustId ? existing : null;
+    }
+    // One member, one guest → never
+    if (newCustId || existCustId) return null;
+    // Both guests → same phone
+    if (newPhone && existPhone) {
+      return newPhone === existPhone ? existing : null;
+    }
+    // No phone to match → don't merge
+    return null;
+  }
+
+  // POS→POS: table + payment_method match is enough
+  return existing;
 }
 
 // Helper: Merge items into existing order
@@ -235,14 +279,21 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       orderData.customer_id = orderData.customerId;
     }
 
+    // Get restaurant for timezone (needed for merge check and order numbering)
+    const restaurant = orderData.restaurant_id ? await Restaurant.findByPk(orderData.restaurant_id) : null;
+    const timezone = getRestaurantTimezone(restaurant);
+
     // Auto-merge: Check if there's an existing order to merge into
-    // Only merge if: same restaurant, same table (non-null), same order_type, payment pending
+    // Rules: same table + payment_method + source group + (mobile: same customer)
     const skipAutoMerge = orderData.skipAutoMerge === true;
     if (!skipAutoMerge && orderData.restaurant_id && orderData.table_number) {
       const mergeableOrder = await findMergeableOrder(
         orderData.restaurant_id,
         orderData.table_number,
-        orderData.order_type || 'dine_in'
+        orderData.order_type || 'dine_in',
+        orderData,
+        null,
+        timezone
       );
 
       if (mergeableOrder) {
@@ -337,30 +388,9 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       orderData.total_amount = 0;
     }
 
-    // Get restaurant for timezone and operation settings
-    const restaurant = orderData.restaurant_id ? await Restaurant.findByPk(orderData.restaurant_id) : null;
-    let timezone = 'Asia/Kuala_Lumpur';
-    
-    if (restaurant) {
-      try {
-        const operationSettings = restaurant.operation_settings ? 
-          (typeof restaurant.operation_settings === 'string' ? 
-            JSON.parse(restaurant.operation_settings) : 
-            restaurant.operation_settings) : null;
-        if (operationSettings?.timeZone) {
-          timezone = operationSettings.timeZone;
-        }
-      } catch (e) {
-        console.warn('Failed to parse operation_settings:', e);
-      }
-    }
-
-    // Ensure order_date is set with timezone consideration
+    // Ensure order_date is set - use actual UTC time (not timezone-shifted)
     if (!orderData.order_date) {
-      // Create date in restaurant timezone
-      const now = new Date();
-      const dateStr = now.toLocaleString('en-US', { timeZone: timezone });
-      orderData.order_date = new Date(dateStr);
+      orderData.order_date = new Date();
     }
 
     // Generate unique order number with transaction and retry logic
@@ -378,17 +408,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
 
           if (needsOrderNumber || retryCount > 0) {
             // Generate order number using timezone-aware logic
-            const now = new Date();
-            const dateStr = now.toLocaleString('en-US', { timeZone: timezone });
-            const localDate = new Date(dateStr);
-            const year = localDate.getFullYear();
-            const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
-            const day = localDate.getDate().toString().padStart(2, '0');
-            const datePrefix = `${year.toString().slice(-2)}${month}${day}`;
-
-            // Check for existing orders today (in timezone) with lock
-            const todayStart = new Date(year, localDate.getMonth(), day, 0, 0, 0, 0);
-            const todayEnd = new Date(year, localDate.getMonth(), day, 23, 59, 59, 999);
+            const datePrefix = getOrderDatePrefix(timezone);
 
             const existingOrders = await Order.findAll({
               where: {
@@ -437,11 +457,18 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
             }, 0);
           }
 
+          // payment_proof 정규화: 단일 객체 → { current, history } 구조
+          let normalizedProof = orderData.payment_proof;
+          if (normalizedProof && !normalizedProof.hasOwnProperty('current')) {
+            normalizedProof = { current: normalizedProof, history: [] };
+          }
+
           return await Order.create({
             ...orderData,
             order_number: generatedOrderNumber,
             order_items: itemsArray.length > 0 ? itemsArray : null,  // Pass array, not JSON string
-            total_amount: calculatedTotal || 0
+            total_amount: calculatedTotal || 0,
+            payment_proof: normalizedProof || orderData.payment_proof
           }, {
             transaction: t,
             validate: false  // Skip validation since we're generating order_number
@@ -548,6 +575,42 @@ router.patch('/:id', authenticateToken, async (req, res) => {
         throw new Error('Order not found');
       }
 
+      // Payment proof history 관리: reject 시 current → history로 이동
+      if (req.body.payment_status === 'rejected' && order.payment_proof) {
+        let proof = typeof order.payment_proof === 'string' ? JSON.parse(order.payment_proof) : order.payment_proof;
+        // 기존 단일 객체 호환: { image, reference, ... } → { current: {...}, history: [] }
+        if (!proof.hasOwnProperty('current')) {
+          proof = { current: proof, history: [] };
+        }
+        if (proof.current) {
+          const historyEntry = {
+            ...proof.current,
+            rejected_at: new Date().toISOString(),
+            reject_count: (proof.history || []).length + 1
+          };
+          proof.history = [...(proof.history || []), historyEntry];
+          proof.current = null;
+        }
+        req.body.payment_proof = proof;
+      }
+
+      // Payment proof 재결제: payment_verification_pending + payment_proof가 새로 들어오면 current에 저장
+      if (req.body.payment_status === 'payment_verification_pending' && req.body.payment_proof) {
+        let existingProof = order.payment_proof ? (typeof order.payment_proof === 'string' ? JSON.parse(order.payment_proof) : order.payment_proof) : null;
+        // 기존 구조 호환
+        if (existingProof && !existingProof.hasOwnProperty('current')) {
+          existingProof = { current: existingProof, history: [] };
+        }
+        const newProofData = req.body.payment_proof;
+        // 새 proof가 이미 { current, history } 구조가 아닌 단일 객체이면 current에 넣기
+        if (!newProofData.hasOwnProperty('current')) {
+          req.body.payment_proof = {
+            current: newProofData,
+            history: existingProof ? (existingProof.history || []) : []
+          };
+        }
+      }
+
       // Update order with provided fields
       await order.update(req.body, { transaction: t });
 
@@ -574,6 +637,9 @@ router.patch('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Status order for forward/backward detection
+const STATUS_ORDER = { outstanding: 0, pending: 1, preparing: 2, ready: 3, served: 4, completed: 5, cancelled: -1 };
+
 // Update order status
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
@@ -584,19 +650,23 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
-    const updateData = { status };
+    // Served + 결제완료 → 자동으로 completed로 점프 (순방향 진행일 때만, revert 제외)
+    const isForward = STATUS_ORDER[status] > STATUS_ORDER[order.status];
+    const finalStatus = (status === 'served' && order.payment_status === 'completed' && isForward) ? 'completed' : status;
+
+    const updateData = { status: finalStatus };
     if (kitchen_ready !== undefined) {
       updateData.kitchen_ready = kitchen_ready;
     }
 
     // Record served_at timestamp when status changes to 'served' or 'completed'
     // Accept from frontend if provided, otherwise generate (only if not already set)
-    if ((status === 'served' || status === 'completed') && !order.served_at) {
+    if ((finalStatus === 'served' || finalStatus === 'completed') && !order.served_at) {
       updateData.served_at = served_at ? new Date(served_at) : new Date();
     }
 
     // If marking as served/completed, set all item statuses to completed
-    if ((status === 'served' || status === 'completed') && order.order_items) {
+    if ((finalStatus === 'served' || finalStatus === 'completed') && order.order_items) {
       try {
         const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
         const completedItems = items.map(item => ({
@@ -610,7 +680,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     }
 
     // If reverting to pending, reset all item statuses
-    if (status === 'pending' && order.order_items) {
+    if (finalStatus === 'pending' && order.order_items) {
       try {
         // order_items는 모델의 getter에서 이미 파싱됨
         const items = Array.isArray(order.order_items) ? order.order_items : JSON.parse(order.order_items);
@@ -626,7 +696,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 
     // Track if status changed to completed (for inventory deduction)
     const wasCompleted = order.status === 'completed';
-    const willBeCompleted = status === 'completed';
+    const willBeCompleted = finalStatus === 'completed';
 
     await order.update(updateData);
     await order.reload(); // Ensure we have the latest data
@@ -1190,38 +1260,11 @@ router.get('/analytics/sales', authenticateToken, async (req, res) => {
 router.get('/restaurant/:restaurantId/next-order-number', authenticateToken, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    let timeZone = req.query.timeZone || 'Asia/Kuala_Lumpur';
+    const restaurant = restaurantId ? await Restaurant.findByPk(restaurantId) : null;
+    const timeZone = getRestaurantTimezone(restaurant);
 
-    // Get timezone from restaurant settings if not provided
-    if (restaurantId) {
-      const restaurant = await Restaurant.findByPk(restaurantId);
-      if (restaurant && restaurant.operation_settings) {
-        try {
-          const operationSettings = typeof restaurant.operation_settings === 'string' ? 
-            JSON.parse(restaurant.operation_settings) : 
-            restaurant.operation_settings;
-          if (operationSettings?.timeZone) {
-            timeZone = operationSettings.timeZone;
-          }
-        } catch (e) {
-          console.warn('Failed to parse operation_settings:', e);
-        }
-      }
-    }
-
-    // Get current date in the specified timezone
-    const now = new Date();
-    const localDateStr = now.toLocaleString('en-US', { timeZone });
-    const localDate = new Date(localDateStr);
-
-    const year = localDate.getFullYear();
-    const month = (localDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = localDate.getDate().toString().padStart(2, '0');
-    const datePrefix = `${year.toString().slice(-2)}${month}${day}`; // YYMMDD
-
-    // Find the highest order number for today (in timezone)
-    const todayStart = new Date(year, localDate.getMonth(), day, 0, 0, 0, 0);
-    const todayEnd = new Date(year, localDate.getMonth(), day, 23, 59, 59, 999);
+    const datePrefix = getOrderDatePrefix(timeZone);
+    const { startOfDay: todayStart, endOfDay: todayEnd } = getTodayBounds(timeZone);
 
     const orders = await Order.findAll({
       where: {
@@ -1828,6 +1871,198 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('❌ [DELETE-ITEM] Error:', error.message);
     res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
+// Online Payment Routes (Stripe / PayPal) for Mobile Orders
+// ============================================================
+
+// Create Stripe PaymentIntent for an order
+router.post('/:id/create-payment-intent', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { getStripeForIssuer, getPublishableKeyForIssuer } = require('../utils/stripeService');
+
+    const order = await Order.findByPk(id, {
+      include: [{ model: Restaurant, as: 'restaurant' }]
+    });
+
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({ success: false, error: 'Order is already paid' });
+    }
+
+    // Use restaurant-level Stripe keys
+    const restaurantId = order.restaurant_id;
+    const stripe = await getStripeForIssuer('restaurant', restaurantId);
+
+    // Convert amount to smallest currency unit
+    const currency = order.restaurant?.currency || 'MYR';
+    const ZERO_DECIMAL = ['JPY', 'KRW', 'VND'];
+    const multiplier = ZERO_DECIMAL.includes(currency.toUpperCase()) ? 1 : 100;
+    const amountInSmallestUnit = Math.round(parseFloat(order.total_amount) * multiplier);
+
+    // Create PaymentIntent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInSmallestUnit,
+      currency: currency.toLowerCase(),
+      metadata: {
+        order_id: String(order.id),
+        order_number: order.order_number || '',
+        restaurant_id: String(restaurantId)
+      },
+      description: `Order ${order.order_number || order.id} - ${order.restaurant?.name || 'N/A'}`
+    });
+
+    // Store payment_intent_id on order
+    await order.update({
+      payment_intent_id: paymentIntent.id,
+      payment_provider: 'stripe',
+      payment_method: 'online'
+    });
+
+    const publishableKey = await getPublishableKeyForIssuer('restaurant', restaurantId);
+
+    res.json({
+      success: true,
+      clientSecret: paymentIntent.client_secret,
+      publishableKey,
+      paymentIntentId: paymentIntent.id
+    });
+  } catch (error) {
+    console.error('Error creating PaymentIntent for order:', error);
+    res.status(500).json({ success: false, error: 'Failed to create payment intent', details: error.message });
+  }
+});
+
+// Create PayPal order for a mobile order
+router.post('/:id/create-paypal-order', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { createPayPalClient, getClientIdForIssuer } = require('../utils/paypalService');
+    const paypal = require('@paypal/checkout-server-sdk');
+
+    const order = await Order.findByPk(id, {
+      include: [{ model: Restaurant, as: 'restaurant' }]
+    });
+
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({ success: false, error: 'Order is already paid' });
+    }
+
+    const restaurantId = order.restaurant_id;
+    const { client } = await createPayPalClient('restaurant', restaurantId);
+    const currency = order.restaurant?.currency || 'MYR';
+
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer('return=representation');
+    request.requestBody({
+      intent: 'CAPTURE',
+      purchase_units: [{
+        reference_id: String(order.id),
+        description: `Order ${order.order_number || order.id} - ${order.restaurant?.name || 'N/A'}`,
+        custom_id: String(order.id),
+        amount: {
+          currency_code: currency.toUpperCase(),
+          value: parseFloat(order.total_amount).toFixed(2)
+        }
+      }]
+    });
+
+    const paypalOrder = await client.execute(request);
+
+    await order.update({
+      payment_intent_id: paypalOrder.result.id,
+      payment_provider: 'paypal',
+      payment_method: 'online'
+    });
+
+    const clientId = await getClientIdForIssuer('restaurant', restaurantId);
+
+    res.json({
+      success: true,
+      orderId: paypalOrder.result.id,
+      clientId,
+      status: paypalOrder.result.status
+    });
+  } catch (error) {
+    console.error('Error creating PayPal order:', error);
+    res.status(500).json({ success: false, error: 'Failed to create PayPal order', details: error.message });
+  }
+});
+
+// Capture PayPal order after user approval
+router.post('/:id/capture-paypal-order', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orderId } = req.body;
+    const { createPayPalClient } = require('../utils/paypalService');
+    const paypal = require('@paypal/checkout-server-sdk');
+
+    const order = await Order.findByPk(id);
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+
+    if (order.payment_intent_id !== orderId) {
+      return res.status(400).json({ success: false, error: 'Order ID mismatch' });
+    }
+
+    const { client } = await createPayPalClient('restaurant', order.restaurant_id);
+
+    const request = new paypal.orders.OrdersCaptureRequest(orderId);
+    request.requestBody({});
+    const capture = await client.execute(request);
+
+    if (capture.result.status === 'COMPLETED') {
+      const captureId = capture.result.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+      await order.update({
+        payment_status: 'completed',
+        payment_method: 'online',
+        payment_provider: 'paypal',
+        transaction_id: captureId || orderId
+      });
+
+      res.json({ success: true, status: 'COMPLETED', captureId });
+    } else {
+      res.json({ success: true, status: capture.result.status });
+    }
+  } catch (error) {
+    console.error('Error capturing PayPal order:', error);
+    res.status(500).json({ success: false, error: 'Failed to capture PayPal payment', details: error.message });
+  }
+});
+
+// Confirm Stripe payment for an order (called after Stripe Elements completes)
+router.post('/:id/confirm-stripe-payment', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { getStripeForIssuer } = require('../utils/stripeService');
+
+    const order = await Order.findByPk(id);
+    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+
+    if (!order.payment_intent_id) {
+      return res.status(400).json({ success: false, error: 'No payment intent found for this order' });
+    }
+
+    const stripe = await getStripeForIssuer('restaurant', order.restaurant_id);
+    const paymentIntent = await stripe.paymentIntents.retrieve(order.payment_intent_id);
+
+    if (paymentIntent.status === 'succeeded') {
+      await order.update({
+        payment_status: 'completed',
+        payment_method: 'online',
+        payment_provider: 'stripe',
+        transaction_id: paymentIntent.id
+      });
+      res.json({ success: true, status: 'succeeded' });
+    } else {
+      res.json({ success: true, status: paymentIntent.status });
+    }
+  } catch (error) {
+    console.error('Error confirming Stripe payment:', error);
+    res.status(500).json({ success: false, error: 'Failed to confirm payment', details: error.message });
   }
 });
 

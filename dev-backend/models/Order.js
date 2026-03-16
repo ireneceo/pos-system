@@ -66,9 +66,29 @@ Order.init({
     type: DataTypes.STRING(50),
     allowNull: true
   },
+  card_type: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'Card type when payment_method is card: visa, master, amex, other'
+  },
   payment_status: {
-    type: DataTypes.ENUM('pending', 'completed', 'failed', 'payment_verification_pending'),
+    type: DataTypes.ENUM('pending', 'completed', 'failed', 'payment_verification_pending', 'rejected'),
     defaultValue: 'pending'
+  },
+  payment_intent_id: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Stripe PaymentIntent ID or PayPal Order ID for online payments'
+  },
+  payment_provider: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'Payment provider: stripe, paypal'
+  },
+  transaction_id: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Payment transaction ID from provider'
   },
   kitchen_ready: {
     type: DataTypes.BOOLEAN,

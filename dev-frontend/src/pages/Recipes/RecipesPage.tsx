@@ -559,7 +559,11 @@ const RecipesPage: React.FC = () => {
         url = `/api/restaurants/${user?.restaurant_id}/recipes/${deletingRecipeId}`;
       }
 
-      const response = await fetch(url, { method: 'DELETE' });
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
       const data = await response.json();
 
       if (data.success) {
