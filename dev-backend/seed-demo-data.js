@@ -93,6 +93,7 @@ function generateOrders(restaurant1Id, restaurant2Id) {
         order_type: orderType,
         source: 'pos',
         payment_method: isCompleted ? paymentMethod : null,
+        card_type: isCompleted && paymentMethod === 'card' ? ['visa', 'master', 'amex'][Math.floor(Math.random() * 3)] : null,
         payment_status: isCompleted ? 'completed' : (isCancelled ? 'failed' : 'pending'),
         kitchen_ready: ['preparing', 'ready', 'completed', 'served'].includes(status),
         order_date: orderDate,

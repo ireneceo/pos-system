@@ -6,6 +6,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import { getPaymentMethodLabel } from '../../constants';
 // timezone utility no longer needed - DatePeriodFilter handles date calculations
 import { downloadCSV, escapeCSV, toCSVRow, generateFilename } from '../../utils/csvDownload';
 import {
@@ -14,6 +15,7 @@ import {
 } from 'recharts';
 import PageHeader from '../../components/Common/PageHeader';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import DailySettlementPrint from './DailySettlementPrint';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
@@ -193,7 +195,7 @@ const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'
 
 const ReportsPage: React.FC = () => {
   const { user } = useAuth();
-  const { operationSettings } = useStore();
+  const { operationSettings, paymentSettings } = useStore();
 
   const [activeTab, handleTabChange] = useTabParam<TabType>('sales');
 
@@ -211,6 +213,9 @@ const ReportsPage: React.FC = () => {
 
   // What and Why: 서버 집계 데이터 - 10000개 주문 클라이언트 처리 대신 서버에서 집계된 요약 데이터 사용
   const [reportsSummary, setReportsSummary] = useState<any>(null);
+
+  // Daily Settlement Print modal
+  const [showSettlement, setShowSettlement] = useState(false);
 
   // Payment Analysis tab state
   const [cardTypeFilter, setCardTypeFilter] = useState<string>('all');
@@ -506,7 +511,6 @@ const ReportsPage: React.FC = () => {
     fetchReportsSummary();
   }, [fetchReportsSummary]);
 
-
   // What and Why: 서버 집계 데이터에서 피크 타임 직접 계산
   const peakTimesData = useMemo(() => {
     if (!reportsSummary?.hourlySales) return [];
@@ -529,18 +533,8 @@ const ReportsPage: React.FC = () => {
       .slice(0, 5);
   }, [reportsSummary]);
 
-  // Payment method labels for display
-  const PAYMENT_LABELS: Record<string, string> = {
-    cash: 'Cash',
-    card: 'Credit/Debit Card',
-    ewallet: 'E-Wallet',
-    bank_transfer: 'Bank Transfer',
-    qr: 'QR Payment',
-    counter: 'Pay at Counter',
-    online: 'Online Payment',
-    fpx: 'FPX Online Banking',
-    points: 'Points'
-  };
+  // Payment method label helper using restaurant payment settings
+  const getLabel = (method: string) => getPaymentMethodLabel(method, paymentSettings || undefined);
 
   const CARD_TYPE_LABELS: Record<string, string> = {
     visa: 'Visa',
@@ -839,7 +833,7 @@ const ReportsPage: React.FC = () => {
     paymentMethodData.forEach((item: any) => {
       const pct = totalPaymentRevenue > 0 ? ((item.revenue / totalPaymentRevenue) * 100).toFixed(1) : '0.0';
       lines.push(toCSVRow([
-        PAYMENT_LABELS[item.method] || item.method,
+        getLabel(item.method),
         item.orders,
         formatNumber(item.revenue),
         `${pct}%`
@@ -930,6 +924,20 @@ const ReportsPage: React.FC = () => {
         </svg>
         Download
       </button>
+      <button
+        onClick={() => setShowSettlement(true)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          padding: '8px 16px', background: '#F6F9FC', color: '#0A2540',
+          border: '1px solid #E6EBF1', borderRadius: '6px', cursor: 'pointer',
+          fontSize: '14px'
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>
+          <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Daily Settlement
+      </button>
     </DatePeriodFilter>
   );
 
@@ -946,6 +954,9 @@ const ReportsPage: React.FC = () => {
             <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>
               Sales Details
             </Tab>
+            <Tab active={activeTab === 'payment'} onClick={() => handleTabChange('payment')}>
+              Payment Analysis
+            </Tab>
             <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>
               Menu Analysis
             </Tab>
@@ -954,9 +965,6 @@ const ReportsPage: React.FC = () => {
             </Tab>
             <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>
               Operations
-            </Tab>
-            <Tab active={activeTab === 'payment'} onClick={() => handleTabChange('payment')}>
-              Payment Analysis
             </Tab>
           </Tabs>
 
@@ -1594,7 +1602,7 @@ const ReportsPage: React.FC = () => {
                                   backgroundColor: index === 0 ? '#F0F9FF' : 'transparent'
                                 }}>
                                   <TableCell style={{ fontWeight: 600 }}>
-                                    {PAYMENT_LABELS[item.method] || item.method}
+                                    {getLabel(item.method)}
                                   </TableCell>
                                   <TableCell>{item.orders}</TableCell>
                                   <TableCell style={{ fontWeight: 500 }}>
@@ -1623,7 +1631,7 @@ const ReportsPage: React.FC = () => {
                         <PieChart>
                           <Pie
                             data={paymentMethodData.map((item: any) => ({
-                              name: PAYMENT_LABELS[item.method] || item.method,
+                              name: getLabel(item.method),
                               value: Math.round(item.revenue)
                             }))}
                             cx="50%"
@@ -1720,6 +1728,11 @@ const ReportsPage: React.FC = () => {
 
         </Content>
       </ReportsContainer>
+
+      <DailySettlementPrint
+        isOpen={showSettlement}
+        onClose={() => setShowSettlement(false)}
+      />
     </>
   );
 };

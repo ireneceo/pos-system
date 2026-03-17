@@ -476,8 +476,27 @@ export function getOrderStatusColor(status: string): { background: string; text:
 
 /**
  * Helper function to format payment method label
+ * paymentSettings가 있으면 거기서 label을 가져오고, 없으면 hardcoded fallback
  */
-export function getPaymentMethodLabel(method: string): string {
+export function getPaymentMethodLabel(method: string, paymentSettings?: Record<string, any>): string {
+  if (paymentSettings) {
+    // payment_settings key mapping: method code → settings key
+    const keyMap: Record<string, string> = {
+      cash: 'cash',
+      card: 'card',
+      ewallet: 'ewallet',
+      bank_transfer: 'bankTransfer',
+      qr: 'qr',
+      counter: 'payAtCounter',
+      online: 'online',
+      fpx: 'fpx',
+      staffMeal: 'staffMeal',
+      staff_meal: 'staffMeal',
+    };
+    const settingsKey = keyMap[method] || method;
+    const setting = paymentSettings[settingsKey] || paymentSettings[method];
+    if (setting?.label) return setting.label;
+  }
   return PAYMENT_METHOD_LABELS[method] || method;
 }
 
@@ -494,12 +513,13 @@ const CARD_TYPE_LABELS: Record<string, string> = {
 /**
  * Format payment method with card type: "Card(Visa)", "Cash", etc.
  */
-export function formatPaymentDisplay(method: string | null | undefined, cardType?: string | null): string {
+export function formatPaymentDisplay(method: string | null | undefined, cardType?: string | null, paymentSettings?: Record<string, any>): string {
   if (!method) return 'N/A';
   if (method === 'card' && cardType) {
-    return `Card(${CARD_TYPE_LABELS[cardType] || cardType})`;
+    const cardLabel = getPaymentMethodLabel('card', paymentSettings);
+    return `${cardLabel}(${CARD_TYPE_LABELS[cardType] || cardType})`;
   }
-  return getPaymentMethodLabel(method);
+  return getPaymentMethodLabel(method, paymentSettings);
 }
 
 /**

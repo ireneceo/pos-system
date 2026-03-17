@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { SetupGuide } from '../../components/Common';
 import { useAuth } from '../../contexts/AuthContext';
+import { useStore } from '../../contexts/StoreContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
@@ -468,6 +469,7 @@ interface SalesChartData {
 const RestaurantDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { paymentSettings } = useStore();
   const restaurantId = user?.restaurantId || user?.id || '';
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1019,7 +1021,7 @@ const RestaurantDashboard: React.FC = () => {
                       <Td>
                         <Amount>{formatCurrency(parseFloat(order.total_amount || 0), selectedCurrency)}</Amount>
                         <PaymentMethod isPending={order.payment_status === 'pending'}>
-                          {order.payment_status === 'pending' ? 'Pending' : formatPaymentDisplay(order.payment_method, (order as any).card_type)}
+                          {order.payment_status === 'pending' ? 'Pending' : formatPaymentDisplay(order.payment_method, (order as any).card_type, paymentSettings || undefined)}
                         </PaymentMethod>
                       </Td>
                     </Tr>

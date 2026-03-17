@@ -57,6 +57,7 @@ interface OperationSettings {
 interface StoreContextType {
   storeSettings: StoreSettings;
   operationSettings: OperationSettings;
+  paymentSettings: Record<string, any> | null;
   siteTimezone: string;
   updateSettings: (settings: Partial<{ store: StoreSettings; operations: OperationSettings }>) => void;
   getStoreInfo: () => StoreSettings;
@@ -130,6 +131,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
   // localStorage 제거 - 기본 설정 사용 또는 DB에서 로드
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(defaultStoreSettings);
   const [operationSettings, setOperationSettings] = useState<OperationSettings>(defaultOperationSettings);
+  const [paymentSettings, setPaymentSettings] = useState<Record<string, any> | null>(null);
   const [siteTimezone, setSiteTimezone] = useState<string>('Asia/Kuala_Lumpur');
 
   // Load site timezone from CompanySettings (for admin pages)
@@ -245,6 +247,14 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
 
             setStoreSettings(storeData);
 
+            // Set payment settings if available
+            if (result.data.payment_settings) {
+              const ps = typeof result.data.payment_settings === 'string'
+                ? JSON.parse(result.data.payment_settings)
+                : result.data.payment_settings;
+              setPaymentSettings(ps);
+            }
+
             // Set operation settings if available
             if (result.data.operation_settings) {
               const parsedOperationSettings = typeof result.data.operation_settings === 'string'
@@ -267,6 +277,20 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
                 cashRounding: result.data.cash_rounding || 0.05,
                 roundingApplyTo: result.data.rounding_apply_to || 'cash_only'
               });
+            }
+
+            // Sync printer settings to localStorage for billPrint.js
+            if (result.data.printer_settings) {
+              const ps = typeof result.data.printer_settings === 'string'
+                ? JSON.parse(result.data.printer_settings)
+                : result.data.printer_settings;
+              if (ps.printerMode) {
+                localStorage.setItem('printerMode', ps.printerMode);
+              }
+              localStorage.setItem('printerSettings', JSON.stringify({
+                billPrinter: ps.billPrinter || { enabled: false, name: '', autoPrint: false },
+                kitchenPrinter: ps.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false }
+              }));
             }
           }
         } else {
@@ -322,6 +346,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
       value={{
         storeSettings,
         operationSettings,
+        paymentSettings,
         siteTimezone,
         updateSettings,
         getStoreInfo,

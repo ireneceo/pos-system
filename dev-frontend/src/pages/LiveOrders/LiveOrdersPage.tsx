@@ -25,6 +25,7 @@ import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, gen
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import DailySettlementPrint from '../Reports/DailySettlementPrint';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -963,7 +964,7 @@ interface CompanyInfo {
 
 const LiveOrdersPage: React.FC = () => {
   const { user } = useAuth();
-  const { getStoreInfo, operationSettings } = useStore();
+  const { getStoreInfo, operationSettings, paymentSettings } = useStore();
   const [orders, setOrders] = useState<DbOrder[]>([]); // Paginated orders for display
   const [orderCounts, setOrderCounts] = useState<{
     all: number; outstanding: number; pending: number; preparing: number;
@@ -1008,6 +1009,7 @@ const LiveOrdersPage: React.FC = () => {
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today', operationSettings.timeZone));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSettlement, setShowSettlement] = useState(false);
 
   // Payment Verification Modal (for Confirm button in table list)
   const [verifyOrder, setVerifyOrder] = useState<DbOrder | null>(null);
@@ -2734,6 +2736,21 @@ const LiveOrdersPage: React.FC = () => {
               </svg>
               <span className="download-label">Download CSV</span>
             </DownloadButton>
+            <button
+              onClick={() => setShowSettlement(true)}
+              title="Daily Settlement"
+              style={{
+                marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 16px', background: '#F6F9FC', color: '#0A2540',
+                border: '1px solid #E6EBF1', borderRadius: '6px', cursor: 'pointer',
+                fontSize: '14px', fontWeight: 500, flexShrink: 0
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }}>
+                <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Daily Settlement
+            </button>
           </FilterToolbar>
 
           <StatusTabs>
@@ -2967,7 +2984,7 @@ const LiveOrdersPage: React.FC = () => {
                           isPending={order.payment_status === 'pending'}
                           isVerificationPending={order.payment_status === 'payment_verification_pending'}
                         >
-                          {formatPaymentDisplay(order.payment_method, (order as any).card_type)}
+                          {formatPaymentDisplay(order.payment_method, (order as any).card_type, paymentSettings || undefined)}
                           {order.payment_status === 'pending' && ' (Pending)'}
                           {order.payment_status === 'payment_verification_pending' && ' (Verifying)'}
                         </PaymentMethod>
@@ -3598,7 +3615,7 @@ const LiveOrdersPage: React.FC = () => {
                     </DetailRow>
                     <DetailRow>
                       <DetailLabel>Payment Method:</DetailLabel>
-                      <DetailValue>{formatPaymentDisplay(selectedOrder.payment_method, (selectedOrder as any).card_type)}</DetailValue>
+                      <DetailValue>{formatPaymentDisplay(selectedOrder.payment_method, (selectedOrder as any).card_type, paymentSettings || undefined)}</DetailValue>
                     </DetailRow>
                     <DetailRow>
                       <DetailLabel>Payment Status:</DetailLabel>
@@ -3999,7 +4016,7 @@ const LiveOrdersPage: React.FC = () => {
             <BillSection style={{ borderTop: '1px dashed #000', paddingTop: '10px' }}>
               <BillRow>
                 <span>Payment Method:</span>
-                <span>{formatPaymentDisplay(selectedOrder.payment_method, (selectedOrder as any).card_type).toUpperCase()}</span>
+                <span>{formatPaymentDisplay(selectedOrder.payment_method, (selectedOrder as any).card_type, paymentSettings || undefined).toUpperCase()}</span>
               </BillRow>
               <BillRow>
                 <span>Order Status:</span>
@@ -4347,6 +4364,11 @@ const LiveOrdersPage: React.FC = () => {
         </ToastContainer>,
         document.body
       )}
+
+      <DailySettlementPrint
+        isOpen={showSettlement}
+        onClose={() => setShowSettlement(false)}
+      />
     </>
   );
 };

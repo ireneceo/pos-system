@@ -80,6 +80,7 @@ router.get('/settings', authenticateToken, async (req, res) => {
         currency: restaurant.currency,
         cash_rounding: restaurant.cash_rounding,
         rounding_apply_to: restaurant.rounding_apply_to,
+        printer_settings: restaurant.printer_settings || null,
         plan_type: restaurant.plan_type,
         status: restaurant.status
       }

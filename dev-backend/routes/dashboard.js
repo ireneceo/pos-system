@@ -779,7 +779,7 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
     const startUTC = getUTCBoundsForDate(startDate, timeZone, false);
     const endUTC = getUTCBoundsForDate(endDate, timeZone, true);
 
-    // Fetch completed orders with necessary fields
+    // Fetch completed orders with financial fields for settlement
     const orders = await Order.findAll({
       where: {
         restaurant_id: restaurantId,
@@ -793,7 +793,35 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
           { is_deleted: null }
         ]
       },
-      attributes: ['id', 'order_date', 'total_amount', 'order_items', 'order_type', 'payment_method', 'card_type']
+      attributes: [
+        'id', 'order_date', 'total_amount', 'order_items', 'order_type',
+        'payment_method', 'card_type', 'source',
+        'subtotal', 'tax', 'tax_rate', 'service_charge', 'service_charge_rate',
+        'discount', 'discount_policy_amount', 'coupon_discount', 'point_discount',
+        'takeaway_charge', 'delivery_fee'
+      ]
+    });
+
+    // Fetch cancelled orders (separate query for settlement tracking)
+    const cancelledOrders = await Order.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        order_date: { [Op.gte]: startUTC, [Op.lte]: endUTC },
+        status: 'cancelled',
+        [Op.or]: [{ is_deleted: false }, { is_deleted: null }]
+      },
+      attributes: ['id', 'total_amount']
+    });
+
+    // Fetch outstanding orders
+    const outstandingOrders = await Order.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        order_date: { [Op.gte]: startUTC, [Op.lte]: endUTC },
+        status: 'outstanding',
+        [Op.or]: [{ is_deleted: false }, { is_deleted: null }]
+      },
+      attributes: ['id', 'total_amount']
     });
 
     // Build product ID → category name mapping for order_items that lack category
@@ -838,6 +866,17 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
     let staffMealRevenue = 0;
     let staffMealOrders = 0;
 
+    // Settlement financial totals
+    let grossSales = 0;
+    let totalDiscount = 0;
+    let totalCouponDiscount = 0;
+    let totalPointDiscount = 0;
+    let totalTakeawayCharge = 0;
+    let totalDeliveryFee = 0;
+    let totalServiceCharge = 0;
+    let totalTax = 0;
+    const sourceSales = {};
+
     // Process each order
     orders.forEach(order => {
       const orderAmount = parseFloat(order.total_amount || 0);
@@ -852,6 +891,39 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
 
       totalRevenue += orderAmount;
       totalOrders += 1;
+
+      // Settlement financial aggregation
+      // If subtotal field has a value, use it. Otherwise derive from total_amount minus known additions.
+      const subtotal = order.subtotal !== null && order.subtotal !== undefined ? parseFloat(order.subtotal) : null;
+      if (subtotal !== null) {
+        grossSales += subtotal;
+      } else {
+        // Fallback: total_amount = subtotal - discounts + charges + tax + svc
+        // So subtotal ≈ total - tax - svc - takeaway - delivery + discounts
+        grossSales += orderAmount
+          - parseFloat(order.tax || 0)
+          - parseFloat(order.service_charge || 0)
+          - parseFloat(order.takeaway_charge || 0)
+          - parseFloat(order.delivery_fee || 0)
+          + parseFloat(order.discount || 0)
+          + parseFloat(order.coupon_discount || 0)
+          + parseFloat(order.point_discount || 0);
+      }
+      totalDiscount += parseFloat(order.discount || 0);
+      totalCouponDiscount += parseFloat(order.coupon_discount || 0);
+      totalPointDiscount += parseFloat(order.point_discount || 0);
+      totalTakeawayCharge += parseFloat(order.takeaway_charge || 0);
+      totalDeliveryFee += parseFloat(order.delivery_fee || 0);
+      totalServiceCharge += parseFloat(order.service_charge || 0);
+      totalTax += parseFloat(order.tax || 0);
+
+      // Source aggregation (pos / mobile)
+      const source = order.source || 'pos';
+      if (!sourceSales[source]) {
+        sourceSales[source] = { revenue: 0, orders: 0 };
+      }
+      sourceSales[source].revenue += orderAmount;
+      sourceSales[source].orders += 1;
 
       // Daily aggregation
       const dateKey = getDateInTimezone(new Date(order.order_date), timeZone);
@@ -877,8 +949,9 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       orderTypeSales[orderType].revenue += orderAmount;
       orderTypeSales[orderType].orders += 1;
 
-      // Payment method aggregation
-      const paymentMethod = order.payment_method || 'unknown';
+      // Payment method aggregation (merge bankTransfer + bank_transfer)
+      let paymentMethod = order.payment_method || 'unknown';
+      if (paymentMethod === 'bank_transfer') paymentMethod = 'bankTransfer';
       if (!paymentMethodSales[paymentMethod]) {
         paymentMethodSales[paymentMethod] = { revenue: 0, orders: 0 };
       }
@@ -886,8 +959,8 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       paymentMethodSales[paymentMethod].orders += 1;
 
       // Card type aggregation (when payment_method is card)
-      if (paymentMethod === 'card' && order.card_type) {
-        const ct = order.card_type;
+      if (paymentMethod === 'card') {
+        const ct = order.card_type || 'unspecified';
         if (!cardTypeSales[ct]) {
           cardTypeSales[ct] = { revenue: 0, orders: 0 };
         }
@@ -970,6 +1043,17 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
       .map(([type, data]) => ({ type, ...data }))
       .sort((a, b) => b.revenue - a.revenue);
 
+    // Convert sourceSales to array
+    const sourceSalesArray = Object.entries(sourceSales)
+      .map(([source, data]) => ({ source, ...data }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // Cancelled / Outstanding aggregation
+    const cancelledCount = cancelledOrders.length;
+    const cancelledAmount = cancelledOrders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+    const outstandingCount = outstandingOrders.length;
+    const outstandingAmount = outstandingOrders.reduce((sum, o) => sum + parseFloat(o.total_amount || 0), 0);
+
     res.json({
       success: true,
       data: {
@@ -980,6 +1064,22 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
           startDate,
           endDate
         },
+        // Settlement financial breakdown
+        settlement: {
+          grossSales,
+          totalDiscount,
+          totalCouponDiscount,
+          totalPointDiscount,
+          totalTakeawayCharge,
+          totalDeliveryFee,
+          totalServiceCharge,
+          totalTax,
+          netSales: totalRevenue,
+          cancelledOrders: cancelledCount,
+          cancelledAmount,
+          outstandingOrders: outstandingCount,
+          outstandingAmount
+        },
         dailySales: dailySalesArray,
         hourlySales: hourlySalesArray,
         categorySales: categorySalesArray,
@@ -987,6 +1087,7 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
         orderTypeSales: orderTypeSalesArray,
         paymentMethodSales: paymentMethodSalesArray,
         cardTypeSales: cardTypeSalesArray,
+        sourceSales: sourceSalesArray,
         staffMeal: {
           revenue: staffMealRevenue,
           orders: staffMealOrders

@@ -1,39 +1,37 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-03-16
+**마지막 업데이트:** 2026-03-17
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
-1. **Company Information 저장 시 로그아웃 버그 수정**
-   - GET/PUT fetch에 Authorization 헤더 누락 → 401 → AuthContext 자동 로그아웃
-   - 토큰 추가 + alert() 제거 (UI 가이드 위반)
+1. **Kitchen Display Item View 모드 구현**
+   - Order View 옆에 Item View 토글 추가
+   - Pending: 메뉴명 기준 그룹핑, Start All/Start 버튼
+   - Preparing: 배치 시스템 (Pending에서 보낸 그대로 유지), Done All/Done + 되돌리기
+   - Ready: 주문 기반 카드, 개별 Serve/되돌리기, 진행률 바
+   - 버튼: All = 파스텔, 개별 = 솔리드 다크
+   - 카운트: 주문단위 "X Orders / Y Items", 아이템단위 "X Menus / Y Items"
+   - Promise.all 동시 이동, 되돌리기 시 개별 배치 등록
+   - TypeScript 에러 및 빌드 경고 0건
 
-2. **Company Information 필수항목 검증**
-   - 필수항목(*) 9개 미입력 시 저장버튼 비활성화
+2. **Kitchen Display 실시간 업데이트 개선**
+   - socket order-updated 핸들러에 아이템 데이터 완전 갱신 추가
+   - Polling 간격 30초 → 5초로 단축
+   - Socket reconnect 강화 (reconnectionAttempts: Infinity, room 재참여)
 
-3. **Ingredients/Recipes DELETE auth 버그 수정**
-   - DELETE fetch에 Authorization 헤더 추가 (같은 로그아웃 버그 방지)
-
-4. **Free 인보이스 Confirm 버튼 (전 역할)**
-   - 100% 할인 인보이스(total=0) pending_payment 영구 정체 문제 해결
-   - 6개 인보이스 페이지에 Confirm/Mark Paid 버튼 추가
-   - 백엔드: PATCH /:id/status에 payment_notes 지원 추가
-   - BrandInvoicesPage/FoodcourtInvoicesPage additionalCharges 타입 에러 수정
-
-5. **푸터 로고 교체**
-   - LandingFooter "PurpleHere" 텍스트 → SVG 흰색 로고 이미지
-   - 좌측 정렬 (align-items: flex-start)
+3. **DB 정합성 수정**
+   - completed 상태 레거시 아이템 9건 정리
 
 ### 이전 세션 완료
+- Free 인보이스 Confirm + 로그아웃 버그 수정 + 타임존 통일 + 푸터 로고
 - Retry Payment 0원 버그 수정
-- 타임존 통일 (14개소 + 유틸리티)
-- Payment Proof 주문 상세팝업 표시 (모든 상태)
-- Floor Plan 결제증빙 모달 (View 모드)
-- Payment Retry 전체 플로우 (reject→history→retry→re-verify)
-- Rejected 상태 표시 (LiveOrders, FloorPlan, Mobile OrdersPage)
-- Floor Plan 테이블 주문 사라짐 버그 (타임존 문제 → table-status 수정)
+- Payment Proof 주문 상세팝업 표시
+- Floor Plan 결제증빙 모달
+- Payment Retry 전체 플로우
+- Rejected 상태 표시
+- Floor Plan 테이블 주문 사라짐 버그
 - 결제 수단 전면 재구조화
 
 ### 다음 할 일

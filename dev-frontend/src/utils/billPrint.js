@@ -219,6 +219,9 @@ export function generateBillContent(orderData, storeInfo) {
   if (storeInfo.phone) {
     content += 'Tel: ' + storeInfo.phone + CMD.LINE_FEED;
   }
+  if (storeInfo.businessRegistration) {
+    content += 'Reg No: ' + storeInfo.businessRegistration + CMD.LINE_FEED;
+  }
   if (storeInfo.gstRegNo) {
     content += 'Tax No: ' + storeInfo.gstRegNo + CMD.LINE_FEED;
   }
@@ -462,6 +465,7 @@ function generateHTMLBill(orderData, storeInfo) {
         <div class="store-name">${storeInfo.name || ''}</div>
         ${storeInfo.address ? `<div style="font-weight: 600;">${storeInfo.address}</div>` : ''}
         ${storeInfo.phone ? `<div style="font-weight: 600;">Tel: ${storeInfo.phone}</div>` : ''}
+        ${storeInfo.businessRegistration ? `<div style="font-weight: 600;">Reg No: ${storeInfo.businessRegistration}</div>` : ''}
         ${storeInfo.gstRegNo ? `<div style="font-weight: 600;">Tax No: ${storeInfo.gstRegNo}</div>` : ''}
       </div>
 
@@ -717,32 +721,34 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
 /**
  * Print HTML content via browser print dialog (for PC)
  */
-function printHTMLContent(htmlContent, title) {
-  const printWindow = window.open('', '_blank', 'width=400,height=600,scrollbars=yes');
-  if (printWindow) {
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+export function printHTMLContent(htmlContent, title) {
+  // Use hidden iframe to print without opening a new window
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
 
-    // Wait for content to load then print
-    printWindow.onload = function() {
+  const iframeDoc = iframe.contentWindow || iframe.contentDocument;
+  const doc = iframeDoc.document || iframeDoc;
+  doc.open();
+  doc.write(htmlContent);
+  doc.close();
+
+  iframe.onload = function() {
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      // Clean up iframe after printing
       setTimeout(() => {
-        printWindow.print();
-        // Close window after print dialog closes
-        printWindow.onafterprint = function() {
-          printWindow.close();
-        };
-        // Fallback: close after delay if onafterprint not supported
-        setTimeout(() => {
-          if (!printWindow.closed) {
-            printWindow.close();
-          }
-        }, 1000);
-      }, 200);
-    };
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 300);
+  };
 
-    return true;
-  }
-  return false;
+  return true;
 }
 
 // ============================================
@@ -1785,6 +1791,59 @@ export function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant') {
 
       return true;
     }
+    return false;
+  }
+}
+
+/**
+ * Print Daily Settlement Report
+ * Follows the same printer settings flow as bill/kitchen ticket printing
+ *
+ * @param {string} htmlContent - Pre-generated HTML content for browser print
+ * @param {string} escposContent - Pre-generated ESC/POS content for thermal printer (optional)
+ * @returns {boolean} Success status
+ */
+export function printSettlementReport(htmlContent, escposContent) {
+  try {
+    const settings = getPrinterSettings();
+    if (!settings.billPrinter.enabled) {
+      console.log('Bill printer is disabled in settings');
+      return true;
+    }
+
+    // Browser print mode
+    if (shouldUseBrowserPrint()) {
+      console.log('🖥️ Browser print mode - printing settlement report');
+      return printHTMLContent(htmlContent, 'Daily Settlement');
+    }
+
+    // RawBT mode - use ESC/POS content if provided
+    if (escposContent) {
+      console.log('📱 RawBT mode - printing settlement report');
+      const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
+      const targetPrinter = settings.billPrinter.name;
+
+      let intentScheme = '#Intent;scheme=rawbt;';
+      if (targetPrinter) {
+        intentScheme += 'S.s=' + encodeURIComponent(targetPrinter) + ';';
+      }
+      const intentPackage = 'package=ru.a402d.rawbtprinter;end;';
+      const intentUrl = 'intent:base64,' + base64Content + intentScheme + intentPackage;
+
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = intentUrl;
+      document.body.appendChild(iframe);
+      setTimeout(() => { document.body.removeChild(iframe); }, 1000);
+
+      return true;
+    }
+
+    // RawBT mode but no ESC/POS content - fallback to browser print
+    console.log('📱 RawBT mode but no ESC/POS content - falling back to browser print');
+    return printHTMLContent(htmlContent, 'Daily Settlement');
+  } catch (error) {
+    console.error('❌ Settlement print error:', error);
     return false;
   }
 }

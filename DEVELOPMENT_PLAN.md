@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-16
+> **최종 업데이트:** 2026-03-17
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -1763,6 +1763,26 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-backend/routes/invoices.js` (payment_notes 지원)
 - `dev-frontend/src/components/Landing/LandingFooter.tsx` (SVG 로고 교체)
 - `dev-frontend/public/images/logo-white.svg` (브랜드 로고 추가)
+
+---
+
+## ✅ 완료: Kitchen Display Item View + 실시간 업데이트 (2026-03-17)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Item View 모드 추가 | Order View 옆에 Item View 토글, 아이템 단위로 주방 작업 관리 | ✅ 완료 |
+| Pending 그룹핑 | 메뉴명 기준 그룹핑 (plain 합산, option 개별), Start All/Start 버튼 | ✅ 완료 |
+| Preparing 배치 시스템 | Pending에서 보낸 그대로 유지 (합치지 않음), Done All/Done + 되돌리기 | ✅ 완료 |
+| Ready 주문 카드 | 주문 기반 카드, 개별 Serve/되돌리기, 진행률 바, "Waiting X items" 배너 | ✅ 완료 |
+| 실시간 업데이트 | socket order-updated 핸들러에 아이템 데이터 완전 갱신 추가 | ✅ 완료 |
+| Polling 간격 개선 | 30초 → 5초로 단축, socket reconnect 강화 | ✅ 완료 |
+| DB 정합성 수정 | completed 상태 레거시 아이템 9건 정리 | ✅ 완료 |
+| 빌드 경고 제거 | totalSources 미사용 변수, no-mixed-operators 경고 수정 | ✅ 완료 |
+
+### 수정된 파일
+- `dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx`
 
 ---
 

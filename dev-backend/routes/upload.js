@@ -38,16 +38,55 @@ function generateFilename() {
  * Base64 이미지를 파일로 저장
  */
 async function saveImageFromBase64(base64Image, filename) {
-  // data:image/xxx;base64, 형식 체크
-  const matches = base64Image.match(/^data:image\/(\w+);base64,(.+)$/);
+  // data:image/xxx;base64, 형식 체크 (svg+xml 등 포함)
+  const matches = base64Image.match(/^data:image\/([\w+.-]+);base64,(.+)$/);
   if (!matches) {
     throw new Error('Invalid base64 image format');
   }
 
+  const mimeSubtype = matches[1]; // e.g. 'png', 'jpeg', 'svg+xml'
   const base64Data = matches[2];
   const buffer = Buffer.from(base64Data, 'base64');
 
-  // 원본 이미지 저장 (최대 크기 제한 + 품질 조정)
+  // SVG: 파일 그대로 저장 (sharp 변환 불필요)
+  if (mimeSubtype === 'svg+xml') {
+    const ext = 'svg';
+    const originalPath = path.join(UPLOAD_DIR, `${filename}.${ext}`);
+    await fs.writeFile(originalPath, buffer);
+    // SVG는 썸네일 생성 생략
+    return {
+      original: `/uploads/products/${filename}.${ext}`,
+      thumbnail: `/uploads/products/${filename}.${ext}`
+    };
+  }
+
+  // PNG: 투명 배경 유지
+  if (mimeSubtype === 'png') {
+    const originalPath = path.join(UPLOAD_DIR, `${filename}.png`);
+    await sharp(buffer)
+      .resize(IMAGE_SIZES.original.width, IMAGE_SIZES.original.height, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .png({ quality: IMAGE_SIZES.original.quality })
+      .toFile(originalPath);
+
+    const thumbnailPath = path.join(THUMBNAIL_DIR, `${filename}.png`);
+    await sharp(buffer)
+      .resize(IMAGE_SIZES.thumbnail.width, IMAGE_SIZES.thumbnail.height, {
+        fit: 'cover',
+        position: 'centre'
+      })
+      .png({ quality: IMAGE_SIZES.thumbnail.quality })
+      .toFile(thumbnailPath);
+
+    return {
+      original: `/uploads/products/${filename}.png`,
+      thumbnail: `/uploads/products/thumbnails/${filename}.png`
+    };
+  }
+
+  // JPEG 및 기타: 기존 로직
   const originalPath = path.join(UPLOAD_DIR, `${filename}.jpg`);
   await sharp(buffer)
     .resize(IMAGE_SIZES.original.width, IMAGE_SIZES.original.height, {

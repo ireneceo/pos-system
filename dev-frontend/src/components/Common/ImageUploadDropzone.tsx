@@ -228,12 +228,28 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
 
     setIsUploading(true);
 
-    // Compress and resize image before uploading
+    // SVG: upload as-is without canvas processing
+    if (file.type === 'image/svg+xml') {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string;
+        const imageUrl = await uploadImageToServer(base64);
+        setIsUploading(false);
+        if (imageUrl) {
+          onChange(imageUrl);
+        } else {
+          alert('Failed to upload image. Please try again.');
+        }
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // Raster images: compress and resize
     const reader = new FileReader();
     reader.onload = async (event) => {
       const img = new Image();
       img.onload = async () => {
-        // Create canvas for resizing
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         if (!ctx) {
@@ -259,13 +275,14 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
         canvas.width = width;
         canvas.height = height;
 
-        // Draw and compress image
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to base64 with compression (85% quality for JPEG)
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+        // Preserve PNG format for transparency support, compress JPEG otherwise
+        const isPng = file.type === 'image/png';
+        const compressedBase64 = isPng
+          ? canvas.toDataURL('image/png')
+          : canvas.toDataURL('image/jpeg', 0.85);
 
-        // Upload to server and get URL
         const imageUrl = await uploadImageToServer(compressedBase64);
 
         setIsUploading(false);

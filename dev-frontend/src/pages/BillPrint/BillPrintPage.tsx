@@ -238,7 +238,7 @@ const BillPrintPage: React.FC = () => {
   const { orders } = useOrders();
   const storeContext = useStore();
   const companyInfo = (storeContext as any).companyInfo;
-  const { operationSettings } = useStore();
+  const { operationSettings, paymentSettings } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
@@ -282,11 +282,20 @@ const BillPrintPage: React.FC = () => {
         {selectedOrder && ReactDOM.createPortal(
           <BillContainer data-print-bill>
             <BillHeader>
-              <StoreName>FOODCOURT CENTRAL</StoreName>
+              <StoreName>{storeContext.storeSettings.name}</StoreName>
               <StoreInfo>
-                123 Main Street, City Center<br />
-                Tel: +60 3-1234-5678<br />
-                GST Reg No: 000123456789
+                {storeContext.storeSettings.address && <>{storeContext.storeSettings.address}<br /></>}
+                {(storeContext.storeSettings.city || storeContext.storeSettings.state) && (
+                  <>{[storeContext.storeSettings.city, storeContext.storeSettings.state, storeContext.storeSettings.postalCode].filter(Boolean).join(', ')}<br /></>
+                )}
+                {storeContext.storeSettings.phone && <>Tel: {storeContext.storeSettings.phone}<br /></>}
+                {(storeContext.storeSettings.businessRegistration || storeContext.storeSettings.gstRegNo) && (
+                  <>
+                    {storeContext.storeSettings.businessRegistration && <>Reg No: {storeContext.storeSettings.businessRegistration}</>}
+                    {storeContext.storeSettings.businessRegistration && storeContext.storeSettings.gstRegNo && ' | '}
+                    {storeContext.storeSettings.gstRegNo && <>Tax No: {storeContext.storeSettings.gstRegNo}</>}
+                  </>
+                )}
               </StoreInfo>
             </BillHeader>
 
@@ -377,7 +386,7 @@ const BillPrintPage: React.FC = () => {
             <BillSection>
               <BillRow>
                 <Label>Payment Method:</Label>
-                <Value>{formatPaymentDisplay(selectedOrder.paymentMethod || selectedOrder.payment_method, selectedOrder.cardType || selectedOrder.card_type).toUpperCase()}</Value>
+                <Value>{formatPaymentDisplay(selectedOrder.paymentMethod || selectedOrder.payment_method, selectedOrder.cardType || selectedOrder.card_type, paymentSettings || undefined).toUpperCase()}</Value>
               </BillRow>
               <BillRow>
                 <Label>Order Type:</Label>

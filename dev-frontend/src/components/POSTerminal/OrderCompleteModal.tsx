@@ -265,7 +265,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
   orderData,
   onPrintBill
 }) => {
-  const { getStoreInfo, operationSettings } = useStore();
+  const { getStoreInfo, operationSettings, paymentSettings } = useStore();
   const storeInfo = getStoreInfo();
 
   // Format date/time with restaurant timezone
@@ -382,7 +382,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
           )}
           <DetailRow>
             <DetailLabel>Payment Method</DetailLabel>
-            <DetailValue>{formatPaymentDisplay(orderData.paymentMethod, orderData.cardType)}</DetailValue>
+            <DetailValue>{formatPaymentDisplay(orderData.paymentMethod, orderData.cardType, paymentSettings || undefined)}</DetailValue>
           </DetailRow>
           {orderData.paymentMethod === 'cash' && (
             <>
@@ -477,8 +477,15 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
           <PrintTitle>{storeInfo.name}</PrintTitle>
           <div style={{ fontSize: '11px', marginTop: '5px' }}>
             {storeInfo.address}<br />
-            Tel: {storeInfo.phone}<br />
-            GST Reg No: {storeInfo.gstRegNo}
+            Tel: {storeInfo.phone}
+            {(storeInfo.businessRegistration || storeInfo.gstRegNo) && (
+              <>
+                <br />
+                {storeInfo.businessRegistration && <>Reg No: {storeInfo.businessRegistration}</>}
+                {storeInfo.businessRegistration && storeInfo.gstRegNo && ' | '}
+                {storeInfo.gstRegNo && <>Tax No: {storeInfo.gstRegNo}</>}
+              </>
+            )}
           </div>
         </PrintHeader>
 
@@ -593,7 +600,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
         <PrintSection style={{ borderTop: '1px dashed #000', paddingTop: '10px' }}>
           <PrintRow>
             <span>Payment Method:</span>
-            <span>{formatPaymentDisplay(orderData.paymentMethod, orderData.cardType).toUpperCase()}</span>
+            <span>{formatPaymentDisplay(orderData.paymentMethod, orderData.cardType, paymentSettings || undefined).toUpperCase()}</span>
           </PrintRow>
           {orderData.paymentMethod === 'cash' && (
             <>

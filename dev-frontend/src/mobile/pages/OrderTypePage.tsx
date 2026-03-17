@@ -27,6 +27,13 @@ const Header = styled.div`
   margin-bottom: 48px;
 `;
 
+const StoreLogo = styled.img`
+  max-height: 48px;
+  max-width: 220px;
+  object-fit: contain;
+  margin: 0 0 8px 0;
+`;
+
 const Title = styled.h1`
   font-size: 28px;
   font-weight: 600;
@@ -289,7 +296,11 @@ const OrderTypePage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>{storeData?.name || 'Welcome'}</Title>
+        {storeData?.logo && storeData.logo !== '/images/store-logo.png' ? (
+          <StoreLogo src={storeData.logo} alt={storeData.name} />
+        ) : (
+          <Title>{storeData?.name || 'Welcome'}</Title>
+        )}
         <Subtitle>How would you like your order?</Subtitle>
       </Header>
 

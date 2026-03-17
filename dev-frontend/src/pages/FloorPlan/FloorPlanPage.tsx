@@ -8,6 +8,7 @@ import TableDetailPanel from './TableDetailPanel';
 import FloorPlanStatsBar from './FloorPlanStatsBar';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { getRestaurantTimezone } from '../../utils/timezone';
+import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import io from 'socket.io-client';
 
 // ─── Styled Components ───
@@ -204,6 +205,9 @@ const FloorPlanPage: React.FC = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [membershipSettings, setMembershipSettings] = useState<any>(null);
+
+  // Daily Settlement
+  const [showSettlement, setShowSettlement] = useState(false);
 
   // POS overlay (for New Order only)
   const [showPOS, setShowPOS] = useState(false);
@@ -600,6 +604,12 @@ const FloorPlanPage: React.FC = () => {
         </HeaderLeft>
         <HeaderRight>
           <Clock>{clock}</Clock>
+          <EditBtn onClick={() => setShowSettlement(true)}>
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '14px', height: '14px', verticalAlign: 'middle', marginRight: '4px' }}>
+              <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Daily Settlement
+          </EditBtn>
           {user?.role === 'Restaurant Admin' && (
             <EditBtn onClick={() => navigate(`/restaurant/${restaurantId}/floor-plan-editor`)}>
               Edit Layout
@@ -684,6 +694,11 @@ const FloorPlanPage: React.FC = () => {
           />
         )}
       </POSOverlay>
+
+      <DailySettlementPrint
+        isOpen={showSettlement}
+        onClose={() => setShowSettlement(false)}
+      />
     </PageContainer>
   );
 };

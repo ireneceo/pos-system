@@ -31,6 +31,7 @@ interface StoreInfo {
   address: string;
   phone: string;
   gstRegNo: string;
+  businessRegistration?: string;
 }
 
 // ESC/POS Commands
@@ -134,7 +135,12 @@ export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInf
   // Store info (centered, small)
   content += storeInfo.address + CMD.LINE_FEED;
   content += 'Tel: ' + storeInfo.phone + CMD.LINE_FEED;
-  content += 'GST Reg No: ' + storeInfo.gstRegNo + CMD.LINE_FEED;
+  if (storeInfo.businessRegistration) {
+    content += 'Reg No: ' + storeInfo.businessRegistration + CMD.LINE_FEED;
+  }
+  if (storeInfo.gstRegNo) {
+    content += 'Tax No: ' + storeInfo.gstRegNo + CMD.LINE_FEED;
+  }
   content += CMD.LINE_FEED;
 
   // Separator

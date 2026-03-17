@@ -591,7 +591,7 @@ const PageInfo = styled.span`
 const SalesPage: React.FC = () => {
   const { currentStaff, isLoggedIn } = useStaff();
   const { orders } = useOrders();
-  const { operationSettings } = useStore();
+  const { operationSettings, paymentSettings } = useStore();
   const [viewMode, handleViewModeChange] = useTabParam<ViewMode>('transactions');
   const [dateFilter, setDateFilter] = useState('today');
   const [startDate, setStartDate] = useState('');
@@ -1614,7 +1614,7 @@ const SalesPage: React.FC = () => {
                     <Amount>{formatCurrency(transaction.total, operationSettings.currency)}</Amount>
 
                     <PaymentBadge method={transaction.paymentMethod}>
-                      {formatPaymentDisplay(transaction.paymentMethod, transaction.cardType)}
+                      {formatPaymentDisplay(transaction.paymentMethod, transaction.cardType, paymentSettings || undefined)}
                     </PaymentBadge>
                     
                     <StatusBadge status={transaction.status}>

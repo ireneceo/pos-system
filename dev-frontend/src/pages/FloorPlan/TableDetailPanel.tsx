@@ -509,7 +509,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   onOrderIndexChange
 }) => {
   const [loading, setLoading] = useState(false);
-  const { getStoreInfo } = useStore();
+  const { getStoreInfo, paymentSettings } = useStore();
 
   // ─── Confirm modal state ───
   const [confirmModal, setConfirmModal] = useState<{
@@ -1263,7 +1263,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   {statusInfo!.paymentMethod && (
                     <InfoItem>
                       <InfoLabel>Payment</InfoLabel>
-                      <InfoValue>{formatPaymentDisplay(statusInfo!.paymentMethod, statusInfo!.cardType)}</InfoValue>
+                      <InfoValue>{formatPaymentDisplay(statusInfo!.paymentMethod, statusInfo!.cardType, paymentSettings || undefined)}</InfoValue>
                     </InfoItem>
                   )}
                   {paymentProof && (
