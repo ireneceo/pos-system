@@ -178,8 +178,8 @@ Inquiry Target: [Dropdown]
 | Menu Item | Badge Condition | Who Sees |
 |-----------|----------------|----------|
 | **Live Orders** | `pendingOrders > 0` (status='pending') | Restaurant Admin, Staff |
-| **System Inquiry** | Unread replies or new tickets | All roles with access |
-| **Operation Inquiry** | Open/unanswered tickets | All roles with access |
+| **System Inquiry** | **Creator (Restaurant)**: unread comments only / **Receiver (System Admin)**: open ticket count | Role-dependent |
+| **Operation Inquiry** | **Creator (Restaurant)**: unread comments only / **Receiver (Manager)**: open ticket count | Role-dependent |
 | **Notices** | Unread notices (read_at IS NULL) | All roles with access |
 | **Invoices** | Unpaid invoices (status='pending'/'overdue') | All roles with access |
 
@@ -188,18 +188,30 @@ Inquiry Target: [Dropdown]
 | State | Visual | Animation |
 |-------|--------|-----------|
 | No pending items | No badge | - |
-| Has pending items | Red dot | `@keyframes blink { 0%,50% { opacity:1 } 51%,100% { opacity:0 } }` 1s infinite |
+| Has pending items | Icon pulse | `@keyframes pulse { 0%,50% { transform:scale(1) } 25% { transform:scale(1.15) } }` 1s infinite |
 | Items resolved | Badge disappears | Immediate |
 
-### What Counts as "Pending"
+### What Counts as "Pending" (Updated 2026-03-17)
 
 | Channel | Pending For Creator | Pending For Receiver |
 |---------|-------------------|---------------------|
-| System Inquiry | Has reply (repliedAt != null, not viewed) | New ticket (status='open') |
-| Operation Inquiry | Has response (response != null, not viewed) | New ticket (status='open') |
+| System Inquiry | **Unread comments** (replies from admin, `unreadComments.systemInquiry > 0`) | New ticket (status='open') |
+| Operation Inquiry | **Unread comments** (replies from manager, `unreadComments.operationInquiry > 0`) | New ticket (status='open') |
 | Notices | - | read_at IS NULL |
 | Invoices | - | status IN ('pending', 'overdue') |
 | Live Orders | - | status = 'pending' |
+
+### Ticket Card Reply Badges (Added 2026-03-17)
+
+Ticket list cards show reply status badges next to status/priority badges:
+
+| Condition | Badge | Style |
+|-----------|-------|-------|
+| Unread reply exists (`unread_count > 0`) | **New Reply** | Red background (#EF4444), white text, pulse animation |
+| Reply exists but already read (`total_comments > 0, unread_count = 0`) | **Replied** | Light blue background (#E0F2FE), blue text (#0369A1) |
+| No replies | (none) | - |
+
+Applied to: SupportTicketsPage (Restaurant), OperationInquiryPage (Restaurant)
 
 ---
 

@@ -62,24 +62,12 @@ router.get('/', authenticateToken, async (req, res) => {
       counts.systemInquiry = await SupportTicket.count({
         where: { status: 'open' }
       });
-    } else {
-      counts.systemInquiry = await SupportTicket.count({
-        where: {
-          customerId: userId.toString(),
-          status: { [Op.in]: ['open', 'in-progress'] }
-        }
-      });
     }
+    // Restaurant Admin/Staff: badge only for unread replies (calculated below in unreadComments)
 
     // --- Operation Inquiry ---
     if (role === 'Restaurant Admin' || role === 'Staff') {
-      // Creator: tickets with response they haven't seen
-      counts.operationInquiry = await OperationTicket.count({
-        where: {
-          requesterId: userId,
-          status: { [Op.in]: ['open', 'in-progress'] }
-        }
-      });
+      // Restaurant users: badge only for unread replies (calculated below in unreadComments)
     } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
       const restaurants = await Restaurant.findAll({
         include: [{ model: require('../models/User'), as: 'managers', where: { id: userId }, attributes: [] }],

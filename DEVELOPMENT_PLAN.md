@@ -1766,6 +1766,24 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 
 ---
 
+## ✅ 완료: 사이드바 배지 로직 수정 + Kitchen Station 기획 (2026-03-17)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 사이드바 배지 조건 수정 | Restaurant의 System Inquiry / Operation Inquiry 배지를 "open 티켓 수" → "읽지 않은 답변(댓글) 수"로 변경 | ✅ 완료 |
+| 리스트 카드 답변 배지 | SupportTicketsPage, OperationInquiryPage 카드에 "New Reply" / "Replied" 배지 추가 | ✅ 완료 |
+| Kitchen Station 기획 | 멀티 주방 시스템 전체 설계 완료 (설계서: docs/KITCHEN_STATION_SYSTEM.md) | ✅ 완료 |
+
+### 수정된 파일
+- `dev-backend/routes/badgeCounts.js` (Restaurant Admin/Staff 배지 조건 변경)
+- `dev-frontend/src/components/Layout/MainLayout.tsx` (사이드바 배지 조건)
+- `dev-frontend/src/pages/Restaurant/SupportTicketsPage.tsx` (New Reply/Replied 배지)
+- `dev-frontend/src/pages/Restaurant/OperationInquiryPage.tsx` (New Reply/Replied 배지)
+
+---
+
 ## ✅ 완료: Kitchen Display Item View + 실시간 업데이트 (2026-03-17)
 
 ### 완료된 작업
@@ -1783,6 +1801,32 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 
 ### 수정된 파일
 - `dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx`
+
+---
+
+## 🔲 예정: Kitchen Station 시스템 (멀티 주방 지원)
+
+> **기획 완료:** 2026-03-17
+> **상세 설계:** `/var/www/docs/KITCHEN_STATION_SYSTEM.md`
+
+### 개요
+레스토랑에 여러 주방(Station) 등록 → Kitchen Display 주방별 필터 → 주문 시 주방별 오더티켓 분리 인쇄
+
+### 구현 Phase
+
+| Phase | 내용 | 규모 | 상태 |
+|-------|------|------|:----:|
+| **Phase 1** | DB 테이블(kitchen_stations) + Model + API CRUD | 중 | ⬜ |
+| **Phase 2** | Settings → Kitchen Stations 탭 (주방 등록 + 메뉴 배정) | 중 | ⬜ |
+| **Phase 3** | Printer 탭 Station별 프린터 카드 확장 | 소 | ⬜ |
+| **Phase 4** | Kitchen Display 주방 필터 탭 | 중 | ⬜ |
+| **Phase 5** | 오더티켓 주방별 분리 인쇄 (RawBT 멀티프린터) | 중 | ⬜ |
+
+### 핵심 설계 결정
+- **배정 모드**: 카테고리 기본 + 메뉴 개별 오버라이드
+- **프린터**: RawBT 경유 (Wi-Fi/LAN IP 프린터 지원), 네트워크 직접 TCP 안 함
+- **프린터 설정 위치**: 기존 Printer 탭에 유지 (Station별 프린터 카드로 자동 전환)
+- **하위 호환**: Station 0개면 현재와 100% 동일 동작
 
 ---
 

@@ -714,6 +714,15 @@ const OperationInquiryPage: React.FC = () => {
                   <TicketBadges>
                     <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
                     <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
+                    {unreadCounts[ticket.id]?.unread_count > 0 ? (
+                      <span style={{ background: '#EF4444', color: 'white', borderRadius: '6px', padding: '3px 10px', fontSize: '11px', fontWeight: 700, animation: 'pulse 1.5s infinite' }}>
+                        New Reply
+                      </span>
+                    ) : unreadCounts[ticket.id]?.total_comments > 0 ? (
+                      <span style={{ background: '#E0F2FE', color: '#0369A1', borderRadius: '6px', padding: '3px 10px', fontSize: '11px', fontWeight: 600 }}>
+                        Replied
+                      </span>
+                    ) : null}
                   </TicketBadges>
                 </TicketHeader>
 
@@ -728,7 +737,7 @@ const OperationInquiryPage: React.FC = () => {
                     <MetaLabel>Category</MetaLabel>
                     <MetaValue>{ticket.category}</MetaValue>
                   </MetaItem>
-                  {unreadCounts[ticket.id] && (
+                  {unreadCounts[ticket.id]?.total_comments > 0 && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       Comments {unreadCounts[ticket.id].total_comments}
                       {unreadCounts[ticket.id].unread_count > 0 && (
