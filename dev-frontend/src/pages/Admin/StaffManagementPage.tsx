@@ -159,6 +159,10 @@ const StaffName = styled.div`
 const StaffEmail = styled.div`
   font-size: 12px;
   color: #6B7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 
   @media (max-width: 768px) {
     font-size: 11px;
@@ -1421,7 +1425,7 @@ const AdminStaffManagementPage: React.FC = () => {
           </FilterBar>
 
           <Table>
-            <StaffTableHeader columns="2.5fr 2.5fr 1fr 1fr 1fr 1fr 220px">
+            <StaffTableHeader columns="2fr 2fr 1.2fr 1.2fr 0.8fr 1fr 200px">
               <span className="col-info">Staff Member</span>
               <span className="col-info">Company & Location</span>
               <span>Role</span>
@@ -1442,14 +1446,14 @@ const AdminStaffManagementPage: React.FC = () => {
               </EmptyState>
             ) : (
               filteredStaff.map(staff => (
-                <StaffTableRow columns="2.5fr 2.5fr 1fr 1fr 1fr 1fr 220px" key={staff.id}>
+                <StaffTableRow columns="2fr 2fr 1.2fr 1.2fr 0.8fr 1fr 200px" key={staff.id}>
                   <StaffInfo className="col-info">
                     <StaffAvatar role={staff.role}>
                       {getInitials(staff.name)}
                     </StaffAvatar>
                     <StaffDetails>
                       <StaffName>{staff.name}{staff.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}{staff.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}</StaffName>
-                      <StaffEmail>{staff.email}</StaffEmail>
+                      <StaffEmail>{staff.username} • {staff.email}</StaffEmail>
                     </StaffDetails>
                   </StaffInfo>
 

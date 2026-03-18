@@ -226,8 +226,8 @@ const StatusBadge = styled.span<{ isActive: boolean }>`
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  white-space: nowrap;
   text-transform: uppercase;
+  white-space: nowrap;
   background: ${props => props.isActive ? '#ECFDF5' : '#FEF2F2'};
   color: ${props => props.isActive ? '#059669' : '#DC2626'};
 `;
@@ -248,6 +248,7 @@ const ChargeTypeBadge = styled.span<{ chargeType: 'fixed' | 'percentage' }>`
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+  white-space: nowrap;
   background: ${props => props.chargeType === 'fixed' ? '#DBEAFE' : '#FEF3C7'};
   color: ${props => props.chargeType === 'fixed' ? '#1E40AF' : '#92400E'};
 `;

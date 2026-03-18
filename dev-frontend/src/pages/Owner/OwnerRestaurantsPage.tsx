@@ -170,6 +170,8 @@ const StatusBadge = styled.span<{ status: string }>`
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+  display: inline-block;
   background: ${props => {
     switch(props.status) {
       case 'active': return '#ECFDF5';
@@ -195,12 +197,14 @@ const StatusBadge = styled.span<{ status: string }>`
 `;
 
 const PlanBadge = styled.span<{ plan: string }>`
+  display: inline-block;
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   margin-left: 8px;
+  white-space: nowrap;
   background: ${props => {
     switch(props.plan) {
       case 'enterprise': return '#EDE9FE';

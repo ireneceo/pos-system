@@ -147,10 +147,12 @@ const StatusBadge = styled.span<{ status: string }>`
 `;
 
 const PlanBadge = styled.span<{ planType: string }>`
+  display: inline-block;
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
   background: ${props => {
     const pt = props.planType.toLowerCase();
     if (pt.includes('basic')) return '#DBEAFE';
@@ -161,7 +163,7 @@ const PlanBadge = styled.span<{ planType: string }>`
   color: ${props => {
     const pt = props.planType.toLowerCase();
     if (pt.includes('basic')) return '#1E40AF';
-    if (pt.includes('professional')) return '#6366F1';
+    if (pt.includes('professional')) return '#635BFF';
     if (pt.includes('enterprise')) return '#D97706';
     return '#6B7280';
   }};
@@ -364,7 +366,7 @@ const SubscriptionsPage: React.FC = () => {
           restaurantName: restaurant.name || 'Restaurant Name',
           currency: restaurant.currency || 'MYR',
           managerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
-          managerName: restaurant.managerName || restaurant.admin_name || 'No Manager Assigned',
+          managerName: `${restaurant.admin?.username || restaurant.managerId || ''} • ${restaurant.admin?.email || restaurant.managerName || restaurant.admin_name || 'No Manager Assigned'}`,
           planType,
           status: subscriptionStatus,
           startDate: (restaurant.subscriptionStart || restaurant.subscription_start) ? new Date(restaurant.subscriptionStart || restaurant.subscription_start).toISOString().split('T')[0] : '',
@@ -431,10 +433,10 @@ const SubscriptionsPage: React.FC = () => {
         allSubs.push({
           id: `sub-user-${u.id}`,
           restaurantId: u.id?.toString(),
-          restaurantName: u.company_name || u.full_name || u.username || u.email,
+          restaurantName: u.full_name || u.username,
           currency,
           managerId: u.id?.toString(),
-          managerName: u.full_name || u.username,
+          managerName: `${u.username} • ${u.email}`,
           planType,
           status: (subStatus || 'active') as any,
           startDate: subStart ? new Date(subStart).toISOString().split('T')[0] : '',
@@ -1128,7 +1130,7 @@ const SubscriptionsPage: React.FC = () => {
           </FilterBar>
 
           <Table>
-            <SubscriptionTableHeader columns="2.5fr 1fr 1fr 1.2fr 1fr 1fr 1fr 220px">
+            <SubscriptionTableHeader columns="2.5fr 1.3fr 0.8fr 1fr 1fr 0.8fr 0.8fr 200px">
               <span className="col-info">Subscriber</span>
               <span>Plan</span>
               <span>Status</span>
@@ -1140,7 +1142,7 @@ const SubscriptionsPage: React.FC = () => {
             </SubscriptionTableHeader>
 
             {filteredSubscriptions.map(subscription => (
-              <SubscriptionTableRow columns="2.5fr 1fr 1fr 1.2fr 1fr 1fr 1fr 220px" key={subscription.id}>
+              <SubscriptionTableRow columns="2.5fr 1.3fr 0.8fr 1fr 1fr 0.8fr 0.8fr 200px" key={subscription.id}>
                 <MobileGrid>
                   <MobileValue className="col-info">
                     <MobileLabel>Subscriber</MobileLabel>

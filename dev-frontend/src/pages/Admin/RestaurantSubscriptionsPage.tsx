@@ -231,6 +231,8 @@ const PaymentBadge = styled.span<{ type: string }>`
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-block;
   background: ${props => props.type === 'self' ? '#ECFDF5' : '#DBEAFE'};
   color: ${props => props.type === 'self' ? '#059669' : '#1E40AF'};
 `;
@@ -241,6 +243,8 @@ const PlanBadge = styled.span<{ plan: string }>`
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-block;
   background: ${props => {
     switch(props.plan) {
       case 'enterprise': return '#EDE9FE';
@@ -271,8 +275,8 @@ const StatusBadge = styled.span<{ status: string }>`
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  white-space: nowrap;
   text-transform: uppercase;
+  white-space: nowrap;
   background: ${props => {
     switch(props.status) {
       case 'active': return '#ECFDF5';

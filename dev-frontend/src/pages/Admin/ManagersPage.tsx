@@ -391,7 +391,7 @@ const ManagersPage: React.FC = () => {
             managerId: user.username || `manager-${user.id}`,
             userId: user.id, // Store numeric user ID for filtering
             fullName: user.full_name || user.username || 'Unknown Name',
-            companyName: user.company_name || 'Unknown Company',
+            companyName: user.company_name && user.company_name !== 'Unknown Company' ? user.company_name : user.brand_name || user.foodcourt_name || user.full_name || 'N/A',
             email: user.email,
             position: user.role || user.position || 'Manager',
             department: user.department || 'Management',
@@ -1059,7 +1059,7 @@ const ManagersPage: React.FC = () => {
                     <ManagerInfo>
                       <CompanyName>{manager.fullName}{manager.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}{manager.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}</CompanyName>
                       <ContactInfo>
-                        {manager.companyName} • {manager.position} • {manager.department}
+                        {manager.managerId} • {manager.email}
                       </ContactInfo>
                     </ManagerInfo>
                   </MobileValue>

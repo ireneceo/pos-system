@@ -239,8 +239,8 @@
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  white-space: nowrap;
   text-transform: uppercase;
+  white-space: nowrap;
   background: ${e=>e.isActive?"#ECFDF5":"#FEF2F2"};
   color: ${e=>e.isActive?"#059669":"#DC2626"};
 `,k=t.Ay.div`
@@ -257,6 +257,7 @@
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
+  white-space: nowrap;
   background: ${e=>"fixed"===e.chargeType?"#DBEAFE":"#FEF3C7"};
   color: ${e=>"fixed"===e.chargeType?"#1E40AF":"#92400E"};
 `,E=t.Ay.div`

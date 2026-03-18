@@ -2,14 +2,12 @@
 /**
  * mark-demo-accounts.js
  *
- * 데모/테스트 계정에 is_demo=true를 마킹합니다.
- * 배포 시 sync-database.js 후 자동 실행됩니다.
+ * 계정 분류: REAL / DEMO / TEST
+ * - REAL: 실제 고객 (is_demo=false, is_test=false)
+ * - DEMO: DemoPage 전용 계정 (is_demo=true, is_test=false) — 매일 리셋, 구독탭 숨김
+ * - TEST: 테스트 계정 (is_demo=false, is_test=true) — 통계 제외, 구독탭 보임
  *
- * 판별 기준:
- * - Users: username 기반 매칭 (실제 계정 화이트리스트 외 = 데모)
- * - Restaurants: admin(Restaurant Admin)이 데모 유저인 경우 = 데모
- * - Brands: owner가 데모 유저인 경우 = 데모
- * - Foodcourts: owner가 데모 유저인 경우 = 데모
+ * 배포 시 sync-database.js 후 자동 실행됩니다.
  *
  * 사용법:
  *   node scripts/mark-demo-accounts.js
@@ -19,7 +17,7 @@ const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
 // ========================================
-// 실제 계정 화이트리스트 (is_demo = false)
+// 실제 계정 화이트리스트 (is_demo=false, is_test=false)
 // 새 실제 고객이 추가되면 여기에 추가할 것
 // ========================================
 const REAL_USERNAMES = [
@@ -33,19 +31,15 @@ const REAL_USERNAMES = [
   'worpro',            // Restaurant Admin (WOR-PRO FOOD)
 ];
 
-// 실제 브랜드 이름
-const REAL_BRAND_NAMES = [
-  'with MIN',
-  'K-DINE with MIN',
+// 데모 계정 (DemoPage 전용, is_demo=true)
+const DEMO_USERNAMES = [
+  'demo-brand',        // Brand General Demo
+  'demo-restaurant',   // Restaurant Admin Demo
 ];
 
-// 실제 레스토랑 이름
-const REAL_RESTAURANT_NAMES = [
-  'K-Dine Korean Restaurant',
-  'K-DINE IPC Branch',
-  'with MIN Cafe',
-  'WOR-PRO FOOD',
-];
+// 실제 브랜드/레스토랑 이름
+const REAL_BRAND_NAMES = ['with MIN', 'K-DINE with MIN'];
+const REAL_RESTAURANT_NAMES = ['K-Dine Korean Restaurant', 'K-DINE IPC Branch', 'with MIN Cafe', 'WOR-PRO FOOD'];
 
 async function main() {
   const seq = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
@@ -56,62 +50,76 @@ async function main() {
 
   try {
     await seq.authenticate();
-    console.log('🔄 Marking demo accounts...');
+    console.log('🔄 Marking demo/test accounts...');
 
-    // 1. Users: 화이트리스트에 없는 모든 유저 = 데모
-    // 단, 셀프 회원가입 유저는 제외 (향후 실제 고객)
-    const [realResult] = await seq.query(
-      `UPDATE users SET is_demo = false WHERE username IN (${REAL_USERNAMES.map(u => `'${u}'`).join(',')})`
-    );
+    const realList = REAL_USERNAMES.map(u => `'${u}'`).join(',');
+    const demoList = DEMO_USERNAMES.map(u => `'${u}'`).join(',');
 
-    const [demoResult] = await seq.query(
-      `UPDATE users SET is_demo = true WHERE username NOT IN (${REAL_USERNAMES.map(u => `'${u}'`).join(',')}) AND is_demo = false`
-    );
-    console.log(`  Users: ${demoResult.affectedRows || 0} marked as demo, ${realResult.affectedRows || 0} confirmed as real`);
+    // 1. Users
+    // REAL accounts
+    await seq.query(`UPDATE users SET is_demo = false, is_test = false WHERE username IN (${realList})`);
+    // DEMO accounts
+    await seq.query(`UPDATE users SET is_demo = true, is_test = false WHERE username IN (${demoList})`);
+    // TEST accounts (not REAL and not DEMO)
+    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND is_demo = false AND is_test = false`);
+    // Also fix any that were wrongly marked as demo but should be test
+    await seq.query(`UPDATE users SET is_demo = false, is_test = true WHERE username NOT IN (${realList},${demoList}) AND is_demo = true`);
 
-    // 2. Restaurants: 실제 레스토랑 이름 화이트리스트
-    const [realRestResult] = await seq.query(
-      `UPDATE restaurants SET is_demo = false WHERE name IN (${REAL_RESTAURANT_NAMES.map(n => `'${n}'`).join(',')})`
-    );
-    const [demoRestResult] = await seq.query(
-      `UPDATE restaurants SET is_demo = true WHERE name NOT IN (${REAL_RESTAURANT_NAMES.map(n => `'${n}'`).join(',')}) AND is_demo = false`
-    );
-    console.log(`  Restaurants: ${demoRestResult.affectedRows || 0} marked as demo, ${realRestResult.affectedRows || 0} confirmed as real`);
-
-    // 3. Brands: 실제 브랜드 이름 화이트리스트
-    const [realBrandResult] = await seq.query(
-      `UPDATE brands SET is_demo = false WHERE name IN (${REAL_BRAND_NAMES.map(n => `'${n}'`).join(',')})`
-    );
-    const [demoBrandResult] = await seq.query(
-      `UPDATE brands SET is_demo = true WHERE name NOT IN (${REAL_BRAND_NAMES.map(n => `'${n}'`).join(',')}) AND is_demo = false`
-    );
-    console.log(`  Brands: ${demoBrandResult.affectedRows || 0} marked as demo, ${realBrandResult.affectedRows || 0} confirmed as real`);
-
-    // 4. Foodcourts: 현재 실제 푸드코트 없음 → 전부 데모
-    const [demoFcResult] = await seq.query(
-      `UPDATE foodcourts SET is_demo = true WHERE is_demo = false`
-    );
-    console.log(`  Foodcourts: ${demoFcResult.affectedRows || 0} marked as demo`);
-
-    // 결과 요약
-    const [summary] = await seq.query(`
+    const [userCounts] = await seq.query(`
       SELECT
-        (SELECT COUNT(*) FROM users WHERE is_demo = true) as demo_users,
-        (SELECT COUNT(*) FROM users WHERE is_demo = false) as real_users,
-        (SELECT COUNT(*) FROM restaurants WHERE is_demo = true) as demo_restaurants,
-        (SELECT COUNT(*) FROM restaurants WHERE is_demo = false) as real_restaurants,
-        (SELECT COUNT(*) FROM brands WHERE is_demo = true) as demo_brands,
-        (SELECT COUNT(*) FROM brands WHERE is_demo = false) as real_brands,
-        (SELECT COUNT(*) FROM foodcourts WHERE is_demo = true) as demo_foodcourts,
-        (SELECT COUNT(*) FROM foodcourts WHERE is_demo = false) as real_foodcourts
+        SUM(CASE WHEN is_demo = false AND is_test = false THEN 1 ELSE 0 END) as real_count,
+        SUM(CASE WHEN is_demo = true THEN 1 ELSE 0 END) as demo_count,
+        SUM(CASE WHEN is_test = true THEN 1 ELSE 0 END) as test_count
+      FROM users
     `);
-    const s = summary[0];
-    console.log(`\n✅ Demo marking complete:`);
-    console.log(`   Users: ${s.real_users} real, ${s.demo_users} demo`);
-    console.log(`   Restaurants: ${s.real_restaurants} real, ${s.demo_restaurants} demo`);
-    console.log(`   Brands: ${s.real_brands} real, ${s.demo_brands} demo`);
-    console.log(`   Foodcourts: ${s.real_foodcourts} real, ${s.demo_foodcourts} demo`);
+    console.log(`  Users: ${userCounts[0].real_count} real, ${userCounts[0].demo_count} demo, ${userCounts[0].test_count} test`);
 
+    // 2. Restaurants
+    const realRestList = REAL_RESTAURANT_NAMES.map(n => `'${n}'`).join(',');
+    await seq.query(`UPDATE restaurants SET is_demo = false, is_test = false WHERE name IN (${realRestList})`);
+    // Demo restaurants: owned by demo users
+    await seq.query(`UPDATE restaurants SET is_demo = true, is_test = false WHERE admin_id IN (SELECT id FROM users WHERE is_demo = true)`);
+    // Test restaurants: not real and not demo
+    await seq.query(`UPDATE restaurants SET is_test = true WHERE name NOT IN (${realRestList}) AND is_demo = false AND is_test = false`);
+
+    const [restCounts] = await seq.query(`
+      SELECT
+        SUM(CASE WHEN is_demo = false AND is_test = false THEN 1 ELSE 0 END) as real_count,
+        SUM(CASE WHEN is_demo = true THEN 1 ELSE 0 END) as demo_count,
+        SUM(CASE WHEN is_test = true THEN 1 ELSE 0 END) as test_count
+      FROM restaurants
+    `);
+    console.log(`  Restaurants: ${restCounts[0].real_count} real, ${restCounts[0].demo_count} demo, ${restCounts[0].test_count} test`);
+
+    // 3. Brands
+    const realBrandList = REAL_BRAND_NAMES.map(n => `'${n}'`).join(',');
+    await seq.query(`UPDATE brands SET is_demo = false, is_test = false WHERE name IN (${realBrandList})`);
+    await seq.query(`UPDATE brands SET is_demo = true, is_test = false WHERE owner_id IN (SELECT id FROM users WHERE is_demo = true)`);
+    await seq.query(`UPDATE brands SET is_test = true WHERE name NOT IN (${realBrandList}) AND is_demo = false AND is_test = false`);
+
+    const [brandCounts] = await seq.query(`
+      SELECT
+        SUM(CASE WHEN is_demo = false AND is_test = false THEN 1 ELSE 0 END) as real_count,
+        SUM(CASE WHEN is_demo = true THEN 1 ELSE 0 END) as demo_count,
+        SUM(CASE WHEN is_test = true THEN 1 ELSE 0 END) as test_count
+      FROM brands
+    `);
+    console.log(`  Brands: ${brandCounts[0].real_count} real, ${brandCounts[0].demo_count} demo, ${brandCounts[0].test_count} test`);
+
+    // 4. Foodcourts: 현재 실제 푸드코트 없음
+    await seq.query(`UPDATE foodcourts SET is_demo = true, is_test = false WHERE owner_id IN (SELECT id FROM users WHERE is_demo = true)`);
+    await seq.query(`UPDATE foodcourts SET is_test = true WHERE is_demo = false AND is_test = false`);
+
+    const [fcCounts] = await seq.query(`
+      SELECT
+        SUM(CASE WHEN is_demo = false AND is_test = false THEN 1 ELSE 0 END) as real_count,
+        SUM(CASE WHEN is_demo = true THEN 1 ELSE 0 END) as demo_count,
+        SUM(CASE WHEN is_test = true THEN 1 ELSE 0 END) as test_count
+      FROM foodcourts
+    `);
+    console.log(`  Foodcourts: ${fcCounts[0].real_count || 0} real, ${fcCounts[0].demo_count || 0} demo, ${fcCounts[0].test_count || 0} test`);
+
+    console.log('\n✅ Demo marking complete');
     await seq.close();
     process.exit(0);
   } catch (err) {

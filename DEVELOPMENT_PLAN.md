@@ -75,6 +75,12 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 | 10 | LiveOrders 페이지네이션 수정 | 서버/클라이언트 이중 페이지네이션 충돌 해결 | ✅ |
 | 11 | Foodcourt InvoicesPage 스타일 | Pay 버튼 녹색, 좌측 정렬, success variant 추가 | ✅ |
 | 12 | DEVELOPMENT_PLAN.md Brand/Foodcourt 1:N 수정 | 1:1→1:N 표기 수정 | ✅ |
+| 13 | mark-demo-accounts.js REAL/DEMO/TEST 3분류 | 데모 2명(demo-brand/restaurant), 나머지 테스트, 화이트리스트 실계정 | ✅ |
+| 14 | Admin Staff/Subscriptions/Managers username 표시 | username • email 패턴 통일, restaurants API admin.username 추가 | ✅ |
+| 15 | Admin Managers Unknown Company 수정 | Brand/Foodcourt name fallback | ✅ |
+| 16 | Staff 이메일 overflow 처리 | 긴 이메일 text-overflow: ellipsis | ✅ |
+| 17 | 배지 스타일 통일 (white-space: nowrap) | 8곳 Badge 한 줄 유지, 글자 크기만큼 배경 | ✅ |
+| 18 | PageComponents Delete 버튼 색상 | #DC3545→#EF4444 (컬러 가이드 준수) | ✅ |
 
 ### 수정된 파일 (주요)
 **백엔드:**

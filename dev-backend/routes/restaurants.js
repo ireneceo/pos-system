@@ -297,6 +297,7 @@ router.get('/', optionalAuth, async (req, res) => {
         admin: adminData ? {
           id: adminData.id.toString(),
           name: adminData.full_name || adminData.username,
+          username: adminData.username,
           email: adminData.email,
           phone: adminData.phone || '',
           role: adminData.role
@@ -648,6 +649,7 @@ router.get('/:id', async (req, res) => {
       admin: adminData ? {
         id: adminData.id.toString(),
         name: adminData.full_name || adminData.username,
+        username: adminData.username,
         email: adminData.email,
         phone: adminData.phone || '',
         role: adminData.role
