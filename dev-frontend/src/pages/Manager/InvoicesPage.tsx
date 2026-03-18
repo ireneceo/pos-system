@@ -120,7 +120,7 @@ const ActionSection = styled.div`
   gap: 12px;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
+const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'success' }>`
   padding: 12px 20px;
   border-radius: 8px;
   font-size: 14px;
@@ -128,21 +128,30 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   cursor: pointer;
   transition: all 0.2s;
   border: none;
-  
+
   ${props => props.variant === 'primary' ? `
     background: #635BFF;
     color: white;
-    
+
     &:hover {
       background: #5A51E6;
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(99, 91, 255, 0.3);
     }
+  ` : props.variant === 'success' ? `
+    background: #10B981;
+    color: white;
+
+    &:hover {
+      background: #059669;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
   ` : `
     background: white;
     color: #6B7280;
     border: 1px solid #E6EBF1;
-    
+
     &:hover {
       background: #F8FAFC;
       color: #0A2540;
@@ -264,7 +273,7 @@ const StatusBadge = styled.span<{ status: string }>`
   }};
 `;
 
-const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
+const ActionButton = styled.button<{ variant?: 'primary' | 'success' | 'danger' }>`
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
@@ -272,14 +281,22 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid;
-  
+
   ${props => props.variant === 'primary' ? `
     background: #635BFF;
     color: white;
     border-color: #635BFF;
-    
+
     &:hover {
       background: #5A51E6;
+    }
+  ` : props.variant === 'success' ? `
+    background: #10B981;
+    color: white;
+    border-color: #10B981;
+
+    &:hover {
+      background: #059669;
     }
   ` : props.variant === 'danger' ? `
     background: transparent;
@@ -440,7 +457,7 @@ const ManagerInvoicesPage: React.FC = () => {
     transactionId: '',
     paymentDate: new Date().toISOString().split('T')[0],
     notes: '',
-    receiptFile: null as File | null
+    receiptImage: ''
   });
   const [newInvoice, setNewInvoice] = useState({
     restaurantId: '',
@@ -730,7 +747,7 @@ const ManagerInvoicesPage: React.FC = () => {
       transactionId: '',
       paymentDate: new Date().toISOString().split('T')[0],
       notes: '',
-      receiptFile: null
+      receiptImage: ''
     });
     setInlineWarning('');
     await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
@@ -747,7 +764,7 @@ const ManagerInvoicesPage: React.FC = () => {
 
     // For non-online methods, require transaction ID or receipt
     if (paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal') {
-      if (!paymentData.transactionId && !paymentData.receiptFile) {
+      if (!paymentData.transactionId && !paymentData.receiptImage) {
         setInlineWarning('Please provide either a Transaction ID/Reference Number OR upload a payment receipt.');
         return;
       }
@@ -774,7 +791,7 @@ const ManagerInvoicesPage: React.FC = () => {
           payment_method: paymentData.paymentMethod,
           transaction_id: paymentData.transactionId,
           notes: paymentData.notes,
-          receipt_url: paymentData.receiptFile ? 'uploaded_receipt_url' : null
+          receipt_url: paymentData.receiptImage || null
         })
       });
 
@@ -803,7 +820,7 @@ const ManagerInvoicesPage: React.FC = () => {
         transactionId: '',
         paymentDate: new Date().toISOString().split('T')[0],
         notes: '',
-        receiptFile: null
+        receiptImage: ''
       });
 
     } catch (error) {
@@ -946,16 +963,16 @@ const ManagerInvoicesPage: React.FC = () => {
                         )}
                         {invoice.status === 'sent' && (
                           <>
-                            {invoice.total > 0 && <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>}
-                            {invoice.total === 0 && <ActionButton variant="primary" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>}
+                            {invoice.total > 0 && <ActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>}
+                            {invoice.total === 0 && <ActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>}
                             <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>Mark Overdue</ActionButton>
                           </>
                         )}
                         {invoice.status === 'overdue' && invoice.total > 0 && (
-                          <ActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
+                          <ActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
                         )}
                         {invoice.status === 'overdue' && invoice.total === 0 && (
-                          <ActionButton variant="primary" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>
+                          <ActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>
                         )}
                         {invoice.status === 'paid' && (
                           <ActionButton onClick={() => window.print()}>Print Receipt</ActionButton>
@@ -1197,7 +1214,7 @@ const ManagerInvoicesPage: React.FC = () => {
 
         {/* Payment Modal */}
         {showPaymentModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowPaymentModal(false)} title={`Submit Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || availablePaymentMethods.length === 0} > Submit Payment </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowPaymentModal(false)} title={`Submit Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentModal(false)}> Cancel </Button><Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || availablePaymentMethods.length === 0} > Submit Payment </Button></>}>
 
                 <FormGroup>
                   <FormLabel>Invoice Details</FormLabel>
@@ -1283,30 +1300,43 @@ const ManagerInvoicesPage: React.FC = () => {
                     </FormGroup>
 
                     <FormGroup>
-                      <FormLabel>Upload Receipt</FormLabel>
-                      <FormInput
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0] || null;
-                          setPaymentData({...paymentData, receiptFile: file});
-                        }}
-                  />
-                  <FormHelp>Upload bank transfer receipt if no transaction ID is provided</FormHelp>
-                  {paymentData.receiptFile && (
-                    <div style={{
-                      marginTop: '8px',
-                      padding: '8px',
-                      background: '#F0F9FF',
-                      border: '1px solid #0EA5E9',
-                      borderRadius: '4px',
-                      fontSize: '14px',
-                      color: '#0369A1'
-                    }}>
-                      File selected: {paymentData.receiptFile.name}
-                    </div>
-                  )}
-                </FormGroup>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <textarea
+                        placeholder="Any additional information about the payment..."
+                        value={paymentData.notes}
+                        onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))}
+                        style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>Payment Receipt Image</FormLabel>
+                      <div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC', cursor: 'pointer', position: 'relative' }}>
+                        {paymentData.receiptImage ? (
+                          <div>
+                            <img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} />
+                            <div>
+                              <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>Remove Image</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label style={{ cursor: 'pointer', display: 'block' }}>
+                            <input type="file" accept="image/*" onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file || !file.type.startsWith('image/')) return;
+                              if (file.size > 10 * 1024 * 1024) return;
+                              const reader = new FileReader();
+                              reader.onload = (ev) => { setPaymentData(prev => ({ ...prev, receiptImage: ev.target?.result as string })); };
+                              reader.readAsDataURL(file);
+                            }} style={{ display: 'none' }} />
+                            <div style={{ color: '#6B7280', fontSize: '14px' }}>
+                              <div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div>
+                              <div>Click to upload payment receipt</div>
+                              <div style={{ fontSize: '12px', marginTop: '4px' }}>Supports JPG, PNG (max 5MB)</div>
+                            </div>
+                          </label>
+                        )}
+                      </div>
+                    </FormGroup>
                   </>
                 )}
 

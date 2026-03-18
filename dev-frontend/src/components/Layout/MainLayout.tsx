@@ -1754,6 +1754,38 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </NavItem>
             )}
 
+            {/* System Admin - Change History */}
+            {user?.role === 'System Admin' && (
+              <NavItem to="/pos/admin/history" active={isActive('/pos/admin/history')} onClick={closeSidebar}>
+                <NavIcon>≡</NavIcon>
+                Change History
+              </NavItem>
+            )}
+
+            {/* Brand General/Manager - Change History */}
+            {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && isRouteAllowed('/pos/brand/history') && (
+              <NavItem to="/pos/brand/history" active={isActive('/pos/brand/history')} onClick={closeSidebar}>
+                <NavIcon>≡</NavIcon>
+                Change History
+              </NavItem>
+            )}
+
+            {/* Foodcourt General/Manager - Change History */}
+            {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && isRouteAllowed('/pos/foodcourt/history') && (
+              <NavItem to="/pos/foodcourt/history" active={isActive('/pos/foodcourt/history')} onClick={closeSidebar}>
+                <NavIcon>≡</NavIcon>
+                Change History
+              </NavItem>
+            )}
+
+            {/* Restaurant Owner - Change History */}
+            {user?.role === 'Restaurant Owner' && isRouteAllowed('/pos/owner/history') && (
+              <NavItem to="/pos/owner/history" active={isActive('/pos/owner/history')} onClick={closeSidebar}>
+                <NavIcon>≡</NavIcon>
+                Change History
+              </NavItem>
+            )}
+
             {/* Logout for all */}
             <NavItem to="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>
               <NavIcon>↩</NavIcon>

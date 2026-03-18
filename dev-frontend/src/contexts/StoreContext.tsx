@@ -265,7 +265,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
                 ...defaultOperationSettings,
                 ...parsedOperationSettings,
                 // Load currency settings from restaurant table
-                currency: result.data.currency || 'RM',
+                currency: result.data.currency || 'MYR',
                 cashRounding: result.data.cash_rounding || 0.05,
                 roundingApplyTo: result.data.rounding_apply_to || 'cash_only'
               });
@@ -273,7 +273,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
               // Even if no operation_settings, load currency from restaurant table
               setOperationSettings({
                 ...defaultOperationSettings,
-                currency: result.data.currency || 'RM',
+                currency: result.data.currency || 'MYR',
                 cashRounding: result.data.cash_rounding || 0.05,
                 roundingApplyTo: result.data.rounding_apply_to || 'cash_only'
               });

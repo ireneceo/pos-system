@@ -16,7 +16,7 @@ import {
 } from '../../components/UI';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
-import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
+import { formatCurrency as formatCurrencyUtil, getCurrencySymbol } from '../../utils/currency';
 
 
 const FilterControlsWrapper = styled.div`
@@ -430,7 +430,7 @@ const BrandPerformance: React.FC = () => {
             brandId: r.brand_id || 0,
             brandName: brand?.name || 'No Brand',
             brandCode: brand?.code || '-',
-            currency: brand?.currency || r.currency || 'RM'
+            currency: brand?.currency || r.currency || 'MYR'
           };
         });
         setRestaurants(allRestaurants);
@@ -803,7 +803,7 @@ const BrandPerformance: React.FC = () => {
                 {filteredBrandsList.map(brand => (
                   <DropdownItem key={brand.id} onClick={() => handleBrandSelect(brand)}>
                     <ItemName>{brand.name}</ItemName>
-                    <ItemDetails>{brand.code} {brand.currency ? `• ${brand.currency}` : ''}</ItemDetails>
+                    <ItemDetails>{brand.code} {brand.currency ? `• ${getCurrencySymbol(brand.currency)}` : ''}</ItemDetails>
                   </DropdownItem>
                 ))}
               </DropdownMenu>

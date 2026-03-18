@@ -191,7 +191,7 @@ type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'paym
 // PeriodType imported from DatePeriodFilter component
 
 // 차트 색상
-const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
+const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const ReportsPage: React.FC = () => {
   const { user } = useAuth();
@@ -1258,7 +1258,7 @@ const ReportsPage: React.FC = () => {
                         }}>
                           <TableCell style={{ 
                             fontWeight: 600, 
-                            color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#00D924') : '#0A2540'
+                            color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540'
                           }}>
                             #{index + 1}
                             {index === 0 && ' 🥇'}
@@ -1313,7 +1313,7 @@ const ReportsPage: React.FC = () => {
                       <StatValue>{filteredCustomers.length.toLocaleString()}</StatValue>
                       <StatDescription>{filteredCustomers.filter((c: any) => c.customer?.type === 'member').length} members, {filteredCustomers.filter((c: any) => c.customer?.type === 'guest').length} guests</StatDescription>
                     </StatCard>
-                    <StatCard color="#00D924">
+                    <StatCard color="#6FCF97">
                       <StatLabel>Repeat Customers</StatLabel>
                       <StatValue>{filteredCustomers.filter((c: any) => c.period_orders > 1).length}</StatValue>
                       <StatDescription>{filteredCustomers.length > 0 ? Math.round((filteredCustomers.filter((c: any) => c.period_orders > 1).length / filteredCustomers.length) * 100) : 0}% ordered multiple times</StatDescription>
@@ -1354,7 +1354,7 @@ const ReportsPage: React.FC = () => {
                             }}>
                               <TableCell style={{
                                 fontWeight: 600,
-                                color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#00D924') : '#0A2540'
+                                color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540'
                               }}>
                                 #{index + 1}
                                 {index === 0 && ' 🥇'}

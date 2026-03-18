@@ -1281,7 +1281,7 @@ const OwnerRestaurantsPage: React.FC = () => {
 
       {/* Remove Confirmation Modal */}
       {showDeleteModal && restaurantToDelete && (
-                <CommonModal isOpen={true} onClose={() => setShowDeleteModal(false)} title="Remove Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => setShowDeleteModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={confirmDeleteRestaurant} style={{ background: '#DC2626' }} > Remove Restaurant </ThemedButton></>}>
+                <CommonModal isOpen={true} onClose={() => setShowDeleteModal(false)} title="Remove Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => setShowDeleteModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={confirmDeleteRestaurant} style={{ background: '#EF4444' }} > Remove Restaurant </ThemedButton></>}>
 
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <div style={{

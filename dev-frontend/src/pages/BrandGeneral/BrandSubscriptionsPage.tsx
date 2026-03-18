@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -986,7 +986,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                     {discountForm.discount_type !== 'none' && (
                       <div>
                         <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>
-                          {discountForm.discount_type === 'percentage' ? 'Discount Rate (%)' : `Discount Amount (${currency})`}
+                          {discountForm.discount_type === 'percentage' ? 'Discount Rate (%)' : `Discount Amount (${getCurrencySymbol(currency)})`}
                         </div>
                         <FormInput
                           type="number"

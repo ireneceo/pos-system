@@ -74,12 +74,12 @@ export const BaseButton = styled.button<{
         `;
       case 'success':
         return css`
-          background: #28A745;
+          background: #10B981;
           color: white;
           &:hover:not(:disabled) {
-            background: #218838;
+            background: #059669;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
           }
         `;
       case 'warning':

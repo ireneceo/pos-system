@@ -8,19 +8,6 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import { useAuth } from '../../contexts/AuthContext';
 
 
-const FilterGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const FilterLabel = styled.label`
-  font-size: 13px;
-  font-weight: 600;
-  color: #6B7C93;
-`;
-
-
 const ActivityList = styled.div`
   background: white;
   border-radius: 12px;
@@ -153,7 +140,11 @@ const ActivityHistoryPage: React.FC = () => {
   }, [currentPage, entityType, actionType, userId, dateRange.start, dateRange.end]);
 
   const fetchActivityLogs = async () => {
-    if (!user?.restaurantId) return;
+    const authUser = user as any;
+    const restId = authUser?.restaurantId || authUser?.restaurant_id;
+    const uid = authUser?.id;
+
+    if (!restId && !uid) return;
 
     setLoading(true);
     try {
@@ -169,7 +160,11 @@ const ActivityHistoryPage: React.FC = () => {
       if (dateRange.end) params.append('end_date', dateRange.end);
 
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/activity-logs/restaurant/${user.restaurantId}?${params}`, {
+      // Restaurant Admin/Staff: query by restaurant_id, others: query by user_id
+      const apiPath = restId
+        ? `/api/activity-logs/restaurant/${restId}`
+        : `/api/activity-logs/user/${uid}`;
+      const response = await fetch(`${apiPath}?${params}`, {
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
@@ -283,39 +278,30 @@ const ActivityHistoryPage: React.FC = () => {
             onPeriodChange={handlePeriodChange}
             onCalendarRangeSelect={handleCalendarRangeSelect}
           >
-            <FilterGroup>
-              <FilterLabel>Entity Type</FilterLabel>
-              <FilterSelect value={entityType} onChange={(e) => { setEntityType(e.target.value); setCurrentPage(1); }}>
-                <option value="">All Types</option>
-                <option value="menu_item">Menu Item</option>
-                <option value="category">Category</option>
-                <option value="settings">Settings</option>
-                <option value="staff">Staff</option>
-                <option value="invoice">Invoice</option>
-                <option value="table">Table</option>
-                <option value="promotion">Promotion</option>
-                <option value="order_item">Order Item</option>
-              </FilterSelect>
-            </FilterGroup>
-
-            <FilterGroup>
-              <FilterLabel>Action Type</FilterLabel>
-              <FilterSelect value={actionType} onChange={(e) => { setActionType(e.target.value); setCurrentPage(1); }}>
-                <option value="">All Actions</option>
-                <option value="create">Create</option>
-                <option value="update">Update</option>
-                <option value="delete">Delete</option>
-              </FilterSelect>
-            </FilterGroup>
-          </DatePeriodFilter>
-
-          {hasActiveFilters && (
-            <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+            <FilterSelect value={entityType} onChange={(e) => { setEntityType(e.target.value); setCurrentPage(1); }}>
+              <option value="">All Types</option>
+              <option value="menu_item">Menu Item</option>
+              <option value="category">Category</option>
+              <option value="settings">Settings</option>
+              <option value="staff">Staff</option>
+              <option value="invoice">Invoice</option>
+              <option value="subscription">Subscription</option>
+              <option value="table">Table</option>
+              <option value="promotion">Promotion</option>
+              <option value="order_item">Order Item</option>
+            </FilterSelect>
+            <FilterSelect value={actionType} onChange={(e) => { setActionType(e.target.value); setCurrentPage(1); }}>
+              <option value="">All Actions</option>
+              <option value="create">Create</option>
+              <option value="update">Update</option>
+              <option value="delete">Delete</option>
+            </FilterSelect>
+            {hasActiveFilters && (
               <BaseButton variant="secondary" size="small" onClick={handleResetFilters}>
                 Reset Filters
               </BaseButton>
-            </div>
-          )}
+            )}
+          </DatePeriodFilter>
 
           {loading ? (
             <LoadingState>Loading activity logs...</LoadingState>

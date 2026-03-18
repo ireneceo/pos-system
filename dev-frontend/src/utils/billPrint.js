@@ -134,7 +134,7 @@ const CURRENCY_SYMBOLS = {
 };
 
 function getCurrencySymbol(currency) {
-  return CURRENCY_SYMBOLS[currency] || currency || 'RM';
+  return CURRENCY_SYMBOLS[currency] || currency || 'MYR';
 }
 
 // ============================================

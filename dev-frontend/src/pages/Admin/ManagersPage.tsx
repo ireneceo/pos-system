@@ -57,6 +57,7 @@ interface Manager {
   subscriptionStatus?: string;
   currency?: string;
   is_demo?: boolean;
+  is_test?: boolean;
 }
 
 // Common components now imported from ../../components/UI
@@ -409,7 +410,8 @@ const ManagersPage: React.FC = () => {
             subscriptionStart: entitySubStart ? new Date(entitySubStart).toISOString().split('T')[0] : undefined,
             subscriptionEnd: entitySubEnd ? new Date(entitySubEnd).toISOString().split('T')[0] : undefined,
             currency: entityCurrency || 'MYR',
-            is_demo: user.is_demo || false
+            is_demo: user.is_demo || false,
+            is_test: user.is_test || false
           };
           
           console.log('✅ Transformed manager:', managerData);
@@ -1055,7 +1057,7 @@ const ManagersPage: React.FC = () => {
                   <MobileValue className="col-info">
                     <MobileLabel>Manager Info</MobileLabel>
                     <ManagerInfo>
-                      <CompanyName>{manager.fullName}{manager.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}</CompanyName>
+                      <CompanyName>{manager.fullName}{manager.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}{manager.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}</CompanyName>
                       <ContactInfo>
                         {manager.companyName} • {manager.position} • {manager.department}
                       </ContactInfo>

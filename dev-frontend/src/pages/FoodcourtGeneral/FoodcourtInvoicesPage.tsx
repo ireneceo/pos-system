@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
-import { formatCurrency, normalizeCurrencyCode } from '../../utils/currency';
+import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge, StatusMessage } from '../../components/UI/CommonStyles';
@@ -231,7 +231,7 @@ const Amount = styled.div<{ highlight?: boolean }>`
   color: #374151;
 `;
 
-const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' }>`
+const LocalActionButton = styled.button<{ variant?: 'primary' | 'success' | 'danger' | 'email' | 'cancel' }>`
   padding: 6px;
   border-radius: 6px;
   font-size: 14px;
@@ -254,6 +254,16 @@ const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'emai
 
     &:hover {
       background: #5A51E6;
+    }
+  ` : props.variant === 'success' ? `
+    background: #10B981;
+    color: white;
+    border-color: #10B981;
+    padding: 6px 12px;
+    min-width: auto;
+
+    &:hover {
+      background: #059669;
     }
   ` : props.variant === 'danger' ? `
     background: transparent;
@@ -838,6 +848,50 @@ const FoodcourtInvoicesPage: React.FC = () => {
     setShowPaymentSubmitModal(true);
   };
 
+  // Resize image for receipt upload
+  const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 800, quality: number = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => { img.src = e.target?.result as string; };
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Failed to get canvas context')); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle receipt image upload with auto-resize
+  const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setPaymentSubmitError('Please upload an image file (JPG, PNG, etc.)'); return; }
+    if (file.size > 10 * 1024 * 1024) { setPaymentSubmitError('File size must be less than 10MB'); return; }
+    try {
+      setPaymentSubmitError(null);
+      const resizedImage = await resizeImage(file, 1024, 1024, 0.8);
+      setPaymentData(prev => ({ ...prev, receiptImage: resizedImage }));
+    } catch (error) {
+      console.error('Error processing image:', error);
+      setPaymentSubmitError('Failed to process image. Please try another file.');
+    }
+  };
+
   // Fetch invoice categories from API
   const fetchInvoiceCategories = useCallback(async () => {
     try {
@@ -864,45 +918,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
     setCategoryFormData({ name: '', code: '', description: '' });
   };
 
-  const handleCategorySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!categoryFormData.name.trim() || !categoryFormData.code.trim()) return;
 
-    try {
-      setSavingCategory(true);
-      const token = localStorage.getItem('auth_token');
-      const url = editingCategory
-        ? `/api/invoices/categories/${editingCategory.id}`
-        : '/api/invoices/categories';
-      const method = editingCategory ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: categoryFormData.name.trim(),
-          code: categoryFormData.code.trim().toLowerCase().replace(/\s+/g, '_'),
-          description: categoryFormData.description.trim() || null
-        })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        handleCloseCategoryModal();
-        fetchInvoiceCategories();
-      } else {
-        alert(data.error || 'Failed to save category');
-      }
-    } catch (error) {
-      console.error('Failed to save category:', error);
-      alert('Failed to save category');
-    } finally {
-      setSavingCategory(false);
-    }
-  };
 
   const handleDeleteCategoryConfirm = async () => {
     if (!categoryToDelete) return;
@@ -1198,7 +1214,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         if (!data.methods || data.methods.length === 0) {
-          setPaymentMethodWarning(`No payment methods configured for ${currency}. Please set up payment methods in Payment Settings before sending this invoice.`);
+          setPaymentMethodWarning(`No payment methods configured for ${getCurrencySymbol(currency)}. Please set up payment methods in Payment Settings before sending this invoice.`);
           return;
         }
       }
@@ -2581,7 +2597,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 filteredInvoicesToPay.map(invoice => (
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 160px)" key={invoice.id}>
                     <MobileGrid>
-                      <MobileValue className="col-invoice">
+                      <MobileValue className="col-invoice col-info">
                         <MobileLabel>Invoice</MobileLabel>
                         <InvoiceInfo>
                           <InvoiceNumber>
@@ -2592,7 +2608,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                         </InvoiceInfo>
                       </MobileValue>
 
-                      <MobileValue className="col-customer">
+                      <MobileValue className="col-customer col-info">
                         <MobileLabel>Restaurant</MobileLabel>
                         <InvoiceInfo>
                           <InvoiceNumber>{invoice.restaurantName || invoice.customerName || 'Unknown'}</InvoiceNumber>
@@ -2642,7 +2658,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                       {/* Pay button for pending/overdue invoices (not for free) */}
                       {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total > 0 && (
-                        <LocalActionButton variant="primary" onClick={() => handlePayInvoice(invoice)}>Pay</LocalActionButton>
+                        <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay</LocalActionButton>
                       )}
 
                       {/* Confirm button for free invoices */}
@@ -2709,7 +2725,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 filteredPaidInvoices.map(invoice => (
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 140px)" key={invoice.id}>
                     <MobileGrid>
-                      <MobileValue className="col-invoice">
+                      <MobileValue className="col-invoice col-info">
                         <MobileLabel>Invoice</MobileLabel>
                         <InvoiceInfo>
                           <InvoiceNumber>
@@ -2720,7 +2736,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                         </InvoiceInfo>
                       </MobileValue>
 
-                      <MobileValue className="col-customer">
+                      <MobileValue className="col-customer col-info">
                         <MobileLabel>Restaurant</MobileLabel>
                         <InvoiceInfo>
                           <InvoiceNumber>{invoice.restaurantName || invoice.customerName || 'Unknown'}</InvoiceNumber>
@@ -2783,7 +2799,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
+                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
 
                 <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
                   <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
@@ -2806,7 +2822,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     ) : (
                       <>
                         <p style={{ margin: '0 0 12px 0', color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
-                          No payment methods configured for <strong>{selectedInvoice.currency || 'MYR'}</strong>. Please set up your payment settings first.
+                          No payment methods configured for <strong>{getCurrencySymbol(selectedInvoice.currency || 'MYR')}</strong>. Please set up your payment settings first.
                         </p>
                         <button
                           onClick={() => { setShowPaymentSubmitModal(false); window.location.href = '/pos/foodcourt/payment-settings'; }}
@@ -2828,17 +2844,17 @@ const FoodcourtInvoicesPage: React.FC = () => {
                             key={method.id}
                             onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setPaymentSubmitError(null); }}
                             style={{
-                              display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 8px',
-                              border: `2px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E5E7EB'}`,
+                              padding: '12px 16px', minHeight: '44px',
                               borderRadius: '8px',
-                              background: paymentData.paymentMethod === method.id ? '#F5F3FF' : 'white',
-                              cursor: 'pointer', transition: 'all 0.2s'
+                              border: `1px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E6EBF1'}`,
+                              background: paymentData.paymentMethod === method.id ? 'rgba(99, 91, 255, 0.1)' : 'white',
+                              color: paymentData.paymentMethod === method.id ? '#635BFF' : '#374151',
+                              fontSize: '14px', fontWeight: '500',
+                              cursor: 'pointer', transition: 'all 0.15s',
+                              textAlign: 'center'
                             }}
                           >
-                            <span style={{ fontSize: '22px', marginBottom: '6px' }}>
-                              {method.id === 'stripe' ? '💳' : method.id === 'paypal' ? '🅿️' : method.id === 'qr_payment' ? '📱' : '🏦'}
-                            </span>
-                            <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>{method.name}</span>
+                            {method.name}
                           </button>
                         ))}
                       </div>
@@ -2897,6 +2913,28 @@ const FoodcourtInvoicesPage: React.FC = () => {
                         <FormGroup>
                           <FormLabel>Transaction ID / Reference Number</FormLabel>
                           <FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} />
+                        </FormGroup>
+                        <FormGroup>
+                          <FormLabel>Payment Receipt Image</FormLabel>
+                          <div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC', cursor: 'pointer', position: 'relative' }}>
+                            {paymentData.receiptImage ? (
+                              <div>
+                                <img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} />
+                                <div>
+                                  <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>Remove Image</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <label style={{ cursor: 'pointer', display: 'block' }}>
+                                <input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ display: 'none' }} />
+                                <div style={{ color: '#6B7280', fontSize: '14px' }}>
+                                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div>
+                                  <div>Click to upload payment receipt</div>
+                                  <div style={{ fontSize: '12px', marginTop: '4px' }}>Supports JPG, PNG (max 5MB)</div>
+                                </div>
+                              </label>
+                            )}
+                          </div>
                         </FormGroup>
                         <FormGroup>
                           <FormLabel>Notes (Optional)</FormLabel>
@@ -3900,7 +3938,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* Cancel Invoice Confirmation Modal */}
         {showCancelConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#DC2626', borderColor: '#DC2626' }} > Cancel Invoice </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Cancel Invoice </Button></>}>
 
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{
@@ -3966,7 +4004,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* Delete Invoice Confirmation Modal */}
         {showDeleteConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#DC2626', borderColor: '#DC2626' }} > Delete Invoice </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Delete Invoice </Button></>}>
 
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{

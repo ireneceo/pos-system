@@ -325,7 +325,7 @@ interface Restaurant {
 }
 
 // Chart colors
-const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
+const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const BrandReportsPage: React.FC = () => {
   const { user } = useAuth();
@@ -1319,7 +1319,7 @@ const BrandReportsPage: React.FC = () => {
                     const maxOrders = allMenuData[0]?.orders || 1;
                     return (
                       <tr key={index} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
-                        <TableCell style={{ fontWeight: 600, color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#00D924') : '#0A2540' }}>
+                        <TableCell style={{ fontWeight: 600, color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540' }}>
                           #{index + 1}{index === 0 && ' 🥇'}{index === 1 && ' 🥈'}{index === 2 && ' 🥉'}
                         </TableCell>
                         <TableCell style={{ fontWeight: 600 }}>{menu.name}</TableCell>
@@ -1350,7 +1350,7 @@ const BrandReportsPage: React.FC = () => {
                 <StatValue>{customers.length.toLocaleString()}</StatValue>
                 <StatDescription>Across all restaurants</StatDescription>
               </StatCard>
-              <StatCard color="#00D924">
+              <StatCard color="#6FCF97">
                 <StatLabel>Repeat Customers</StatLabel>
                 <StatValue>{customers.filter((c: any) => c.total_orders > 1).length}</StatValue>
                 <StatDescription>{customers.length > 0 ? Math.round((customers.filter((c: any) => c.total_orders > 1).length / customers.length) * 100) : 0}% return rate</StatDescription>

@@ -75,7 +75,14 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
           hasInvoice: !!overdueInvoice,
           currency: restaurant.currency || 'MYR',
           trialEndDate: restaurant.trial_end_date,
-          planType: restaurant.plan_type
+          planType: restaurant.plan_type,
+          pendingChange: restaurant.pending_plan_type ? {
+            planType: restaurant.pending_plan_type,
+            planAmount: parseFloat(restaurant.pending_plan_amount),
+            billingCycle: restaurant.pending_billing_cycle,
+            changeType: restaurant.plan_change_type,
+            effectiveDate: restaurant.plan_change_date
+          } : null
         };
       }
     } else if (user.role === 'Brand General' || user.role === 'Brand Manager') {
@@ -96,7 +103,14 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
           hasInvoice: !!overdueInvoice,
           currency: fullUser.currency || 'MYR',
           trialEndDate: fullUser.trial_end_date,
-          planType: fullUser.plan_type
+          planType: fullUser.plan_type,
+          pendingChange: fullUser.pending_plan_type ? {
+            planType: fullUser.pending_plan_type,
+            planAmount: parseFloat(fullUser.pending_plan_amount),
+            billingCycle: fullUser.pending_billing_cycle,
+            changeType: fullUser.plan_change_type,
+            effectiveDate: fullUser.plan_change_date
+          } : null
         };
       }
     } else if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') {
@@ -117,7 +131,14 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
           hasInvoice: !!overdueInvoice,
           currency: fullUser.currency || 'MYR',
           trialEndDate: fullUser.trial_end_date,
-          planType: fullUser.plan_type
+          planType: fullUser.plan_type,
+          pendingChange: fullUser.pending_plan_type ? {
+            planType: fullUser.pending_plan_type,
+            planAmount: parseFloat(fullUser.pending_plan_amount),
+            billingCycle: fullUser.pending_billing_cycle,
+            changeType: fullUser.plan_change_type,
+            effectiveDate: fullUser.plan_change_date
+          } : null
         };
       }
     } else if (user.role === 'Restaurant Owner') {
@@ -128,13 +149,22 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
       const daysOverdue = overdueInvoice && overdueInvoice.due_date < new Date()
         ? Math.floor((Date.now() - new Date(overdueInvoice.due_date).getTime()) / (1000 * 60 * 60 * 24))
         : 0;
+      const ownerUser = await User.findByPk(user.id);
       status = {
-        subscriptionStatus: user.subscription_status || 'active',
+        subscriptionStatus: ownerUser?.subscription_status || user.subscription_status || 'active',
         overdueAmount: overdueInvoice ? parseFloat(overdueInvoice.total_amount) : 0,
         daysOverdue,
         hasInvoice: !!overdueInvoice,
-        trialEndDate: user.trial_end_date,
-        planType: user.plan_type
+        currency: ownerUser?.currency || 'MYR',
+        trialEndDate: ownerUser?.trial_end_date || user.trial_end_date,
+        planType: ownerUser?.plan_type || user.plan_type,
+        pendingChange: ownerUser?.pending_plan_type ? {
+          planType: ownerUser.pending_plan_type,
+          planAmount: parseFloat(ownerUser.pending_plan_amount),
+          billingCycle: ownerUser.pending_billing_cycle,
+          changeType: ownerUser.plan_change_type,
+          effectiveDate: ownerUser.plan_change_date
+        } : null
       };
     }
 
@@ -323,7 +353,8 @@ router.get('/', optionalAuth, async (req, res) => {
         discount_type: restaurantData.discount_type || 'none',
         discount_value: restaurantData.discount_value ? parseFloat(restaurantData.discount_value) : 0,
         discount_reason: restaurantData.discount_reason || null,
-        is_demo: restaurantData.is_demo || false
+        is_demo: restaurantData.is_demo || false,
+        is_test: restaurantData.is_test || false
       };
     });
 
@@ -1161,6 +1192,19 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
     if (req.body.autoRenew !== undefined || req.body.auto_renew !== undefined) {
       updateData.auto_renew = req.body.autoRenew !== undefined ? req.body.autoRenew : req.body.auto_renew;
+    }
+
+    // Auto-calculate subscription_end if start + billing_cycle provided but end not specified
+    const effectiveStart = updateData.subscription_start || restaurant.subscription_start;
+    const effectiveCycle = updateData.billing_cycle || restaurant.billing_cycle;
+    if (effectiveStart && effectiveCycle && !updateData.subscription_end && (updateData.subscription_start || updateData.billing_cycle)) {
+      const startDate = new Date(effectiveStart);
+      if (effectiveCycle === 'annual') {
+        startDate.setFullYear(startDate.getFullYear() + 1);
+      } else {
+        startDate.setMonth(startDate.getMonth() + 1);
+      }
+      updateData.subscription_end = startDate.toISOString().split('T')[0];
     }
 
     // Limit fields

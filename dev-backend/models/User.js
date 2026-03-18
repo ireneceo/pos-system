@@ -141,11 +141,42 @@ User.init({
     allowNull: true,
     comment: 'Grace period start date for Owner'
   },
+  pending_plan_type: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Scheduled plan change - new plan name'
+  },
+  pending_plan_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Scheduled plan change - new plan amount'
+  },
+  pending_billing_cycle: {
+    type: DataTypes.ENUM('monthly', 'annual'),
+    allowNull: true,
+    comment: 'Scheduled plan change - new billing cycle'
+  },
+  plan_change_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Date when pending plan change takes effect'
+  },
+  plan_change_type: {
+    type: DataTypes.ENUM('downgrade', 'cycle_change'),
+    allowNull: true,
+    comment: 'Type of scheduled plan change'
+  },
   is_demo: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
     allowNull: false,
     comment: 'Demo account flag - prevents modification, enables daily reset'
+  },
+  is_test: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Test account flag - excluded from statistics, visible in admin with TEST badge'
   },
   reset_token: {
     type: DataTypes.STRING(255),

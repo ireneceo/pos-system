@@ -75,6 +75,47 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
   }
 });
 
+// Get activity logs for a user (Brand General, Foodcourt General, Owner, System Admin)
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { page = 1, limit = 50, entity_type, action_type, start_date, end_date } = req.query;
+    const offset = (page - 1) * limit;
+
+    const where = { user_id: userId };
+    if (entity_type) where.entity_type = entity_type;
+    if (action_type) where.action_type = action_type;
+    if (start_date || end_date) {
+      where.created_at = {};
+      if (start_date) where.created_at[Op.gte] = new Date(start_date);
+      if (end_date) where.created_at[Op.lte] = new Date(end_date);
+    }
+
+    const { count, rows } = await ActivityLog.findAndCountAll({
+      where,
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.json({
+      success: true,
+      data: {
+        logs: rows,
+        pagination: {
+          total: count,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(count / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user activity logs:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch activity logs' });
+  }
+});
+
 // Get activity log statistics
 router.get('/restaurant/:restaurantId/stats', async (req, res) => {
   try {

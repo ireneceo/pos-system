@@ -1,5 +1,13 @@
 // 결제 상태 체크 유틸리티
 
+export interface PendingPlanChange {
+  planType: string;
+  planAmount: number;
+  billingCycle: string;
+  changeType: string;
+  effectiveDate: string;
+}
+
 export interface PaymentStatus {
   hasOverdue: boolean;
   overdueAmount: number;
@@ -11,6 +19,7 @@ export interface PaymentStatus {
   currency?: string;
   trialEndDate?: string;
   planType?: string;
+  pendingChange?: PendingPlanChange | null;
 }
 
 export interface OverdueInvoice {
@@ -75,7 +84,8 @@ export const fetchPaymentStatus = async (): Promise<PaymentStatus> => {
       subscriptionStatus: data.subscriptionStatus,
       currency: data.currency,
       trialEndDate: data.trialEndDate,
-      planType: data.planType
+      planType: data.planType,
+      pendingChange: data.pendingChange || null
     };
   } catch {
     return getDefaultStatus();

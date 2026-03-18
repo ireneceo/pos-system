@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { EmptyState as CategoryEmptyState } from '../../components/UI/TableComponents';
 import { useSearchParams } from 'react-router-dom';
-import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode } from '../../utils/currency';
+import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -1114,7 +1114,7 @@ const InvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         if (!data.methods || data.methods.length === 0) {
-          setPaymentMethodWarning(`No payment methods configured for ${currency}. Please set up payment methods in Payment Settings before sending this invoice.`);
+          setPaymentMethodWarning(`No payment methods configured for ${getCurrencySymbol(currency)}. Please set up payment methods in Payment Settings before sending this invoice.`);
           return;
         }
       }
@@ -2908,7 +2908,7 @@ const InvoicesPage: React.FC = () => {
                 </FormGroup>
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Amount{newInvoice.currency ? ` (${newInvoice.currency})` : ''} *</FormLabel>
+                    <FormLabel>Amount{newInvoice.currency ? ` (${getCurrencySymbol(newInvoice.currency)})` : ''} *</FormLabel>
                     <FormInput
                       type="number"
                       step={newInvoice.currency ? (getCurrencyDecimals(newInvoice.currency) === 0 ? '1' : '0.01') : '0.01'}
@@ -3515,7 +3515,7 @@ const InvoicesPage: React.FC = () => {
 
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Amount ({editInvoice.currency || operationSettings.currency || 'RM'})</FormLabel>
+                    <FormLabel>Amount ({editInvoice.currency || operationSettings.currency || 'MYR'})</FormLabel>
                     <FormInput
                       type="number"
                       value={editInvoice.amount}
@@ -3799,7 +3799,7 @@ const InvoicesPage: React.FC = () => {
 
         {/* Cancel Invoice Confirmation Modal */}
         {showCancelConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#DC2626', borderColor: '#DC2626' }} > Cancel Invoice </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Cancel Invoice </Button></>}>
 
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{
@@ -3865,7 +3865,7 @@ const InvoicesPage: React.FC = () => {
 
         {/* Delete Invoice Confirmation Modal */}
         {showDeleteConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#DC2626', borderColor: '#DC2626' }} > Delete Invoice </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Delete Invoice </Button></>}>
 
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{

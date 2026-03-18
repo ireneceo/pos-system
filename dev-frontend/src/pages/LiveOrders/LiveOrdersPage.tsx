@@ -1123,13 +1123,13 @@ const LiveOrdersPage: React.FC = () => {
   }, []);
 
   // Fetch orders from database with server-side filtering
-  const fetchOrders = useCallback(async (page = 1) => {
+  const fetchOrders = useCallback(async () => {
     if (!user?.restaurantId) return;
 
     try {
       const params = new URLSearchParams({
-        page: String(page),
-        limit: '100',
+        page: '1',
+        limit: '1000',
         includeCompleted: 'true'
       });
 
@@ -1324,8 +1324,8 @@ const LiveOrdersPage: React.FC = () => {
 
   // Initial fetch
   useEffect(() => {
-    fetchOrders(currentPage);
-  }, [fetchOrders, currentPage]);
+    fetchOrders();
+  }, [fetchOrders]);
 
   // Fetch order counts for tab badges
   useEffect(() => {
@@ -3471,7 +3471,7 @@ const LiveOrdersPage: React.FC = () => {
                           date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
                           orderType: selectedOrder.order_type,
                           scheduledPickupTime: selectedOrder.scheduled_pickup_time || null,
-                          currency: operationSettings.currency || 'RM',
+                          currency: operationSettings.currency || 'MYR',
                           items: orderItems.map((item: any) => ({
                             menuItem: {
                               name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',

@@ -1448,7 +1448,7 @@ const AdminStaffManagementPage: React.FC = () => {
                       {getInitials(staff.name)}
                     </StaffAvatar>
                     <StaffDetails>
-                      <StaffName>{staff.name}{staff.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}</StaffName>
+                      <StaffName>{staff.name}{staff.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}{staff.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}</StaffName>
                       <StaffEmail>{staff.email}</StaffEmail>
                     </StaffDetails>
                   </StaffInfo>
@@ -2017,7 +2017,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && deletingStaff && (
-        <CommonModal isOpen={true} onClose={cancelDelete} title="Delete Staff" footer={<><Button variant="secondary" onClick={cancelDelete}>Cancel</Button><Button variant="primary" onClick={confirmDelete} style={{ backgroundColor: '#DC2626', borderColor: '#DC2626' }}>Delete</Button></>}>
+        <CommonModal isOpen={true} onClose={cancelDelete} title="Delete Staff" footer={<><Button variant="secondary" onClick={cancelDelete}>Cancel</Button><Button variant="primary" onClick={confirmDelete} style={{ backgroundColor: '#DC2626', borderColor: '#EF4444' }}>Delete</Button></>}>
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                     <StaffAvatar role={deletingStaff.role}>

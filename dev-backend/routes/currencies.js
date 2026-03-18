@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { SystemSettings, PlanTemplate, PlanPrice, Brand, Ingredient, IngredientCost, Recipe, RecipeCost, RecipeIngredient } = require('../models');
+const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 
 // ============================================
@@ -90,6 +91,14 @@ router.put('/default', authenticateToken, async (req, res) => {
       setting_key: 'default_currency',
       setting_value: defaultCurrency,
       description: 'Default currency for new subscriptions and invoices'
+    });
+
+    // Sync currency to all restaurants and subscription users
+    const Restaurant = require('../models/Restaurant');
+    const User = require('../models/User');
+    await Restaurant.update({ currency: defaultCurrency }, { where: {} });
+    await User.update({ currency: defaultCurrency }, {
+      where: { role: { [Op.in]: ['Brand General', 'Foodcourt General', 'Restaurant Owner'] } }
     });
 
     res.json({ success: true, defaultCurrency });

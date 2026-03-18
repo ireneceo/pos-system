@@ -83,7 +83,7 @@ const StyledButton = styled.button<{
         `;
       case 'danger':
         return `
-          background: #DC2626;
+          background: #EF4444;
           color: white;
           border-color: #DC2626;
 

@@ -237,6 +237,20 @@ if echo "$SYNC_OUTPUT" | grep -q "❌ Unable to sync"; then
     echo "$SYNC_OUTPUT" | grep "❌"
 fi
 
+# 9a. Run data migration (if exists)
+# ──────────────────────────────────────────
+MIGRATE_FILE="migrate-2026-03-18.js"
+if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$MIGRATE_FILE"; then
+    log "Running data migration ($MIGRATE_FILE)..."
+    MIGRATE_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $MIGRATE_FILE 2>&1") || true
+    if echo "$MIGRATE_OUTPUT" | grep -q "Migration 완료"; then
+        success "Data migration completed"
+    else
+        warn "Migration output:"
+        echo "$MIGRATE_OUTPUT" | head -15
+    fi
+fi
+
 # ──────────────────────────────────────────
 # 9b. Sync seed data (addon_modules, plan_templates 등 시스템 설정 데이터)
 # ──────────────────────────────────────────

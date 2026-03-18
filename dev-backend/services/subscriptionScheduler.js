@@ -178,10 +178,17 @@ class SubscriptionScheduler {
             });
             console.log(`✅ ${restaurant.name}: Overdue -> Active (payment found)`);
           } else {
-            // Grace period expired, suspend access
-            await restaurant.update({
-              status: 'suspended'
-            });
+            // Grace period expired, suspend access + cancel pending plan changes
+            const suspendData = { status: 'suspended' };
+            if (restaurant.pending_plan_type) {
+              suspendData.pending_plan_type = null;
+              suspendData.pending_plan_amount = null;
+              suspendData.pending_billing_cycle = null;
+              suspendData.plan_change_date = null;
+              suspendData.plan_change_type = null;
+              console.log(`🗑️ ${restaurant.name}: Pending plan change cancelled due to suspension`);
+            }
+            await restaurant.update(suspendData);
             console.log(`🚫 ${restaurant.name}: Overdue -> Suspended (grace period expired)`);
           }
           updated++;
@@ -318,7 +325,16 @@ class SubscriptionScheduler {
               await entity.update({ subscription_status: 'active', grace_period_start: null });
               console.log(`✅ ${entityType} ${entity.name || entity.username}: Overdue -> Active`);
             } else {
-              await entity.update({ subscription_status: 'suspended' });
+              const suspendData = { subscription_status: 'suspended' };
+              if (entity.pending_plan_type) {
+                suspendData.pending_plan_type = null;
+                suspendData.pending_plan_amount = null;
+                suspendData.pending_billing_cycle = null;
+                suspendData.plan_change_date = null;
+                suspendData.plan_change_type = null;
+                console.log(`🗑️ ${entityType} ${entity.name || entity.username}: Pending plan change cancelled due to suspension`);
+              }
+              await entity.update(suspendData);
               console.log(`🚫 ${entityType} ${entity.name || entity.username}: Overdue -> Suspended`);
             }
             updated++;

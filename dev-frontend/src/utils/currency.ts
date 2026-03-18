@@ -76,7 +76,7 @@ export function getAllCurrencies(): CurrencyData[] {
  */
 export function formatCurrency(
   amount: number | string,
-  currencyCode: string = 'RM',
+  currencyCode: string = 'MYR',
   showDecimals?: boolean
 ): string {
   const config = CURRENCY_CONFIG[currencyCode];
@@ -124,7 +124,7 @@ export function applyCashRounding(amount: number, precision: number): number {
  */
 export function formatCurrencyWithRounding(
   amount: number,
-  currencyCode: string = 'RM',
+  currencyCode: string = 'MYR',
   cashRounding: number = 0,
   applyRounding: boolean = false
 ): string {

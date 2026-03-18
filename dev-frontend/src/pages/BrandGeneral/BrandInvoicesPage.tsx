@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { EmptyState as CategoryEmptyState } from '../../components/UI/TableComponents';
 import { useSearchParams } from 'react-router-dom';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
-import { formatCurrency, normalizeCurrencyCode } from '../../utils/currency';
+import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge, StatusMessage } from '../../components/UI/CommonStyles';
@@ -1054,45 +1054,7 @@ const BrandInvoicesPage: React.FC = () => {
     setCategoryFormData({ name: '', code: '', description: '' });
   };
 
-  const handleCategorySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!categoryFormData.name.trim() || !categoryFormData.code.trim()) return;
 
-    try {
-      setSavingCategory(true);
-      const token = localStorage.getItem('auth_token');
-      const url = editingCategory
-        ? `/api/invoices/categories/${editingCategory.id}`
-        : '/api/invoices/categories';
-      const method = editingCategory ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: categoryFormData.name.trim(),
-          code: categoryFormData.code.trim().toLowerCase().replace(/\s+/g, '_'),
-          description: categoryFormData.description.trim() || null
-        })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        handleCloseCategoryModal();
-        fetchInvoiceCategories();
-      } else {
-        alert(data.error || 'Failed to save category');
-      }
-    } catch (error) {
-      console.error('Failed to save category:', error);
-      alert('Failed to save category');
-    } finally {
-      setSavingCategory(false);
-    }
-  };
 
   const handleDeleteCategoryConfirm = async () => {
     if (!categoryToDelete) return;
@@ -1343,7 +1305,7 @@ const BrandInvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         if (!data.methods || data.methods.length === 0) {
-          setPaymentMethodWarning(`No payment methods configured for ${currency}. Please set up payment methods in Payment Settings before sending this invoice.`);
+          setPaymentMethodWarning(`No payment methods configured for ${getCurrencySymbol(currency)}. Please set up payment methods in Payment Settings before sending this invoice.`);
           return;
         }
       }
@@ -3054,7 +3016,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="primary" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
+                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
 
                 <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
                   <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
@@ -3077,11 +3039,11 @@ const BrandInvoicesPage: React.FC = () => {
                     ) : (
                       <>
                         <p style={{ margin: '0 0 12px 0', color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
-                          No payment methods configured for <strong>{selectedInvoice.currency || 'MYR'}</strong>. Please set up your payment settings first.
+                          No payment methods configured for <strong>{getCurrencySymbol(selectedInvoice.currency || 'MYR')}</strong>. Please set up your payment settings first.
                         </p>
                         <button
                           onClick={() => { setShowPaymentSubmitModal(false); window.location.href = '/pos/brand/payment-settings'; }}
-                          style={{ padding: '8px 16px', background: '#DC2626', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+                          style={{ padding: '8px 16px', background: '#EF4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
                         >
                           Go to Payment Settings
                         </button>
@@ -3099,17 +3061,17 @@ const BrandInvoicesPage: React.FC = () => {
                             key={method.id}
                             onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setPaymentSubmitError(null); }}
                             style={{
-                              display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 8px',
-                              border: `2px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E5E7EB'}`,
+                              padding: '12px 16px', minHeight: '44px',
                               borderRadius: '8px',
-                              background: paymentData.paymentMethod === method.id ? '#F5F3FF' : 'white',
-                              cursor: 'pointer', transition: 'all 0.2s'
+                              border: `1px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E6EBF1'}`,
+                              background: paymentData.paymentMethod === method.id ? 'rgba(99, 91, 255, 0.1)' : 'white',
+                              color: paymentData.paymentMethod === method.id ? '#635BFF' : '#374151',
+                              fontSize: '14px', fontWeight: '500',
+                              cursor: 'pointer', transition: 'all 0.15s',
+                              textAlign: 'center'
                             }}
                           >
-                            <span style={{ fontSize: '22px', marginBottom: '6px' }}>
-                              {method.id === 'stripe' ? '💳' : method.id === 'paypal' ? '🅿️' : method.id === 'qr_payment' ? '📱' : '🏦'}
-                            </span>
-                            <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>{method.name}</span>
+                            {method.name}
                           </button>
                         ))}
                       </div>
@@ -3176,7 +3138,7 @@ const BrandInvoicesPage: React.FC = () => {
                               <div>
                                 <img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} />
                                 <div>
-                                  <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#DC2626', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>Remove Image</button>
+                                  <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>Remove Image</button>
                                 </div>
                               </div>
                             ) : (
@@ -4238,7 +4200,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         {/* Cancel Invoice Confirmation Modal */}
         {showCancelConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#DC2626', borderColor: '#DC2626' }} > Cancel Invoice </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Cancel Invoice </Button></>}>
 
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{
@@ -4304,7 +4266,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         {/* Delete Invoice Confirmation Modal */}
         {showDeleteConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#DC2626', borderColor: '#DC2626' }} > Delete Invoice </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Delete Invoice </Button></>}>
 
                 <div style={{ textAlign: 'center', padding: '20px 0' }}>
                   <h3 style={{

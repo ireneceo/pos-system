@@ -1307,7 +1307,7 @@ const POSTerminalPage: React.FC = () => {
               setPaymentMethods(restaurant.payment_settings);
             }
             // Load currency settings
-            setCurrency(restaurant.currency || 'RM');
+            setCurrency(restaurant.currency || 'MYR');
             setCashRounding(restaurant.cash_rounding ? parseFloat(restaurant.cash_rounding) : null);
             setRoundingApplyTo(restaurant.rounding_apply_to || 'cash_only');
           }

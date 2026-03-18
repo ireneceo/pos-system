@@ -263,6 +263,12 @@ Brand.init({
     defaultValue: false,
     allowNull: false,
     comment: 'Demo brand flag - excluded from real revenue statistics'
+  },
+  is_test: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Test brand flag - excluded from statistics, shown with TEST badge'
   }
 }, {
   sequelize: database.sequelize,

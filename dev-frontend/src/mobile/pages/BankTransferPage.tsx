@@ -251,7 +251,7 @@ const SubmitButton = styled.button`
   }
 
   &:active {
-    background: #5A51E6;
+    background: #635BFF;
   }
 
   &:disabled {

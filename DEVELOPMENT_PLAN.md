@@ -15,12 +15,12 @@ System Admin (플랫폼 운영)
 ├── Brand / Foodcourt 생성 및 관리
 └── POS 구독 플랜 관리 → 모든 레스토랑에 POS 구독료 인보이스 발행
 
-Brand General (브랜드 운영, 1:1 매칭)
+Brand General (브랜드 운영, 1:N 매칭)
 ├── 브랜드 소속 레스토랑(가맹점) 관리
 ├── 자체 구독 플랜 생성 (로얄티, 브랜드비, 매출% 등)
 └── 소속 레스토랑에 브랜드 플랜 인보이스 발행
 
-Foodcourt General (푸드코트 운영, 1:1 매칭)
+Foodcourt General (푸드코트 운영, 1:N 매칭)
 ├── 푸드코트 입점 레스토랑 관리
 ├── 자체 구독 플랜 생성 (임대료, 관리비, 매출% 등)
 └── 입점 레스토랑에 푸드코트 플랜 인보이스 발행
@@ -55,6 +55,48 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: 구독 플랜 셀프 변경 + 통화 통일 + 컬러 가이드 + Activity History 전역화 (2026-03-18)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 구독 플랜 셀프 변경 | Profile > Subscription 탭에서 직접 플랜 변경 (업그레이드 즉시/다운그레이드 예약/cycle 변경) | ✅ |
+| 2 | 차액 인보이스 자동 발행 | 업그레이드 시 proration 계산 + plan_upgrade 인보이스 생성 | ✅ |
+| 3 | invoiceScheduler pending 전환 | 청구일에 pending_plan → 실제 plan 자동 전환 | ✅ |
+| 4 | subscriptionScheduler suspended 시 pending 취소 | suspended 전환 시 예약된 플랜 변경 자동 취소 | ✅ |
+| 5 | 통화 일관성 통합 | SystemSettings default_currency 기준 통일, RM→MYR fallback 21곳 수정, 통화 설정 변경 시 전체 동기화 | ✅ |
+| 6 | 컬러 가이드 생성 | COLOR_GUIDE.md 생성, 진한색 버튼배경 금지, #28A745→#10B981, #DC3545→#EF4444 통일 | ✅ |
+| 7 | 데모/테스트 계정 분리 | is_test 필드 추가, DEMO(주황)/TEST(보라) 배지 분리 | ✅ |
+| 8 | Activity History 전역화 | 모든 역할에 Change History 페이지 + 사이드바 메뉴 + user_id 기준 API + addon_modules 추가 | ✅ |
+| 9 | 인보이스 결제 모달 통일 | Notes 필드 4역할 통일, Manager Receipt base64 수정, 이모지 제거, Pay/Submit 버튼 녹색 통일 | ✅ |
+| 10 | LiveOrders 페이지네이션 수정 | 서버/클라이언트 이중 페이지네이션 충돌 해결 | ✅ |
+| 11 | Foodcourt InvoicesPage 스타일 | Pay 버튼 녹색, 좌측 정렬, success variant 추가 | ✅ |
+| 12 | DEVELOPMENT_PLAN.md Brand/Foodcourt 1:N 수정 | 1:1→1:N 표기 수정 | ✅ |
+
+### 수정된 파일 (주요)
+**백엔드:**
+- `models/Restaurant.js`, `User.js`, `Brand.js`, `Foodcourt.js`, `ActivityLog.js` (pending 필드 + is_test + nullable)
+- `routes/subscriptions.js` (전면 재작성: my-plan, change-plan, cancel)
+- `routes/plans.js`, `restaurants.js`, `currencies.js`, `activityLogs.js`
+- `services/invoiceScheduler.js`, `subscriptionScheduler.js`
+- `migrate-2026-03-18.js` (운영 마이그레이션)
+
+**프론트엔드:**
+- `pages/Profile/SubscriptionTab.tsx` (신규)
+- `pages/Profile/ProfilePage.tsx` (Subscription 탭)
+- `pages/ActivityHistory/ActivityHistoryPage.tsx` (역할별 분기 + 필터 개선)
+- `pages/*/InvoicesPage.tsx` (5개 역할 결제 모달 통일)
+- `components/UI/CommonStyles.tsx`, `PageComponents.tsx` (컬러 통일)
+- `components/Layout/MainLayout.tsx` (Change History 메뉴 + isRouteAllowed)
+- `contexts/AuthContext.tsx` (ROLE_ROUTES 추가)
+- `utils/paymentStatus.ts`, `currency.ts` (통화 통일)
+- `COLOR_GUIDE.md` (신규)
+
+**설계 문서:**
+- `docs/SUBSCRIPTION_SELF_CHANGE.md` (신규)
 
 ---
 

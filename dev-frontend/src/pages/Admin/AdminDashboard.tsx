@@ -52,7 +52,7 @@ interface Manager {
 
 // Normalize currency codes (MYR and RM are the same currency)
 const normalizeCurrency = (code: string): string => {
-  if (code === 'MYR' || code === 'RM') return 'RM';
+  if (code === 'MYR' || code === 'RM') return 'MYR';
   return code;
 };
 
@@ -70,7 +70,7 @@ const mergeCurrencyRevenue = (byCurrency: CurrencyRevenue): CurrencyRevenue => {
 const formatMultiCurrency = (byCurrency: CurrencyRevenue): string => {
   const merged = mergeCurrencyRevenue(byCurrency);
   const entries = Object.entries(merged).filter(([, amount]) => amount > 0);
-  if (entries.length === 0) return formatCurrency(0, 'RM');
+  if (entries.length === 0) return formatCurrency(0, 'MYR');
   return entries.map(([currency, amount]) => formatCurrency(amount, currency)).join(' / ');
 };
 
@@ -115,7 +115,7 @@ const getMostUsedCurrency = (invoices: any[], supportedCurs: string[]): string =
       counts[cur] = (counts[cur] || 0) + 1;
     }
   });
-  let best = supportedCurs[0] || 'RM';
+  let best = supportedCurs[0] || 'MYR';
   let bestCount = 0;
   supportedCurs.forEach(cur => {
     if ((counts[cur] || 0) > bestCount) {

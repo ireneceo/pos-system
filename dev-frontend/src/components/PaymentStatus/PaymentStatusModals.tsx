@@ -242,7 +242,7 @@ const ActionButton = styled.button<{ variant: 'primary' | 'secondary' }>`
   border: none;
   
   ${props => props.variant === 'primary' ? `
-    background: #DC2626;
+    background: #EF4444;
     color: white;
     
     &:hover {

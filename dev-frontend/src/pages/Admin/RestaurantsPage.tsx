@@ -1666,7 +1666,7 @@ const RestaurantsPage: React.FC = () => {
             <RestaurantCard key={restaurant.id}>
               <RestaurantHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{restaurant.name} {restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}{restaurant.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}</RestaurantName>
+                  <RestaurantName>{restaurant.name} {restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}{restaurant.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}{restaurant.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}</RestaurantName>
                   <RestaurantMeta>
                     Admin: {restaurant.admin ? `${restaurant.admin.name} (${restaurant.admin.email})` : 'No Admin Assigned'}
                   </RestaurantMeta>

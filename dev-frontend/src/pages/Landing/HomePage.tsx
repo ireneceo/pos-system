@@ -69,7 +69,7 @@ const PrimaryButton = styled.button`
   transition: all 0.2s ease;
 
   &:hover {
-    background: #635BFF;
+    background: #5A51E6;
     color: white;
     transform: translateY(-2px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);

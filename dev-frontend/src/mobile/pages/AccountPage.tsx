@@ -213,7 +213,7 @@ const LoginButton = styled.button`
   transition: background 0.2s;
 
   &:active {
-    background: #5A51E6;
+    background: #635BFF;
   }
 `;
 

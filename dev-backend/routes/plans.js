@@ -9,7 +9,15 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 // Get all plans (with currency_prices)
 router.get('/', async (req, res) => {
   try {
+    const where = {};
+    if (req.query.plan_target) {
+      where.plan_target = req.query.plan_target;
+    }
+    if (req.query.is_active !== undefined) {
+      where.is_active = req.query.is_active === 'true';
+    }
     const plans = await PlanTemplate.findAll({
+      where,
       order: [['sort_order', 'ASC'], ['id', 'ASC']]
     });
 

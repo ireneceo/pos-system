@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams, useParams } from 'react-router-dom';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
@@ -304,7 +304,8 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [paymentData, setPaymentData] = useState({
     paymentMethod: '',
     transactionId: '',
-    receiptImage: ''
+    receiptImage: '',
+    notes: ''
   });
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [paymentSubmitError, setPaymentSubmitError] = useState('');
@@ -526,6 +527,7 @@ const RestaurantInvoicesPage: React.FC = () => {
         body: JSON.stringify({
           payment_method: paymentData.paymentMethod,
           transaction_id: paymentData.transactionId,
+          notes: paymentData.notes || null,
           receipt_url: paymentData.receiptImage || null
         })
       });
@@ -1453,7 +1455,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                       Payment Not Available
                     </p>
                     <p style={{ margin: 0, color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
-                      <strong>{selectedInvoice.issuerName || (selectedInvoice.issuerType === 'brand' ? 'Brand' : selectedInvoice.issuerType === 'foodcourt' ? 'Foodcourt' : 'System Admin')}</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the invoice issuer to set up payment options.
+                      <strong>{selectedInvoice.issuerName || (selectedInvoice.issuerType === 'brand' ? 'Brand' : selectedInvoice.issuerType === 'foodcourt' ? 'Foodcourt' : 'System Admin')}</strong> has not configured payment methods for <strong>{getCurrencySymbol(selectedInvoice.currency || 'MYR')}</strong> yet. Please contact the invoice issuer to set up payment options.
                     </p>
                   </div>
                 ) : (
@@ -1536,6 +1538,15 @@ const RestaurantInvoicesPage: React.FC = () => {
                         <FormGroup>
                           <FormLabel>Transaction ID / Reference Number</FormLabel>
                           <FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} />
+                        </FormGroup>
+                        <FormGroup>
+                          <FormLabel>Notes (Optional)</FormLabel>
+                          <textarea
+                            placeholder="Any additional information about the payment..."
+                            value={paymentData.notes}
+                            onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))}
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
+                          />
                         </FormGroup>
                         <FormGroup>
                           <FormLabel>Payment Receipt Image</FormLabel>

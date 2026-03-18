@@ -9,7 +9,7 @@ const ActivityLog = sequelize.define('ActivityLog', {
   },
   restaurant_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'restaurants',
       key: 'id'

@@ -52,16 +52,16 @@ export const useBrandCurrency = (): BrandCurrencyData => {
         if (response.ok) {
           const data = await response.json();
           // Restaurant currency is in the 'currency' field
-          const currency = data.currency || data.operation_settings?.currency || 'RM';
+          const currency = data.currency || data.operation_settings?.currency || 'MYR';
           setDefaultCurrency(currency);
         } else {
           // Fallback to default
-          setDefaultCurrency('RM');
+          setDefaultCurrency('MYR');
         }
       } catch (err) {
         console.error('Failed to fetch restaurant currency:', err);
         setError('Failed to load currency settings');
-        setDefaultCurrency('RM');
+        setDefaultCurrency('MYR');
       } finally {
         setLoading(false);
       }

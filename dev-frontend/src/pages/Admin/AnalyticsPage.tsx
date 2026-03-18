@@ -9,7 +9,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { useStore } from '../../contexts/StoreContext';
-import { formatCurrency } from '../../utils/currency';
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 
 // 스타일 컴포넌트
@@ -327,7 +327,7 @@ type TabType = 'manager_sales' | 'restaurant_sales' | 'subscriptions' | 'restaur
 // PeriodType imported from DatePeriodFilter
 
 // 차트 색상
-const COLORS = ['#635BFF', '#00D924', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
+const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const AnalyticsPage: React.FC = () => {
   const { operationSettings } = useStore();
@@ -785,7 +785,7 @@ const AnalyticsPage: React.FC = () => {
       })).sort((a, b) => b.revenue - a.revenue);
 
       csv += `MANAGER RANKINGS\n`;
-      csv += `Rank,Manager Name,Revenue (${currency})\n`;
+      csv += `Rank,Manager Name,Revenue (${getCurrencySymbol(currency)})\n`;
       managerRankings.forEach((manager, index) => {
         csv += `${index + 1},${manager.name},${manager.revenue.toLocaleString()}\n`;
       });
@@ -802,7 +802,7 @@ const AnalyticsPage: React.FC = () => {
 
         if (managerRestaurants.length > 0) {
           csv += `${selectedManagerName}'S RESTAURANTS\n`;
-          csv += `Restaurant Name,Revenue (${currency}),Orders,Performance\n`;
+          csv += `Restaurant Name,Revenue (${getCurrencySymbol(currency)}),Orders,Performance\n`;
           managerRestaurants.forEach(restaurant => {
             const revenue = Math.round((5000 + (restaurant.id * 1000) % 15000) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12));
             const orders = Math.round((50 + (restaurant.id * 10) % 100) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12));
@@ -838,7 +838,7 @@ const AnalyticsPage: React.FC = () => {
             )) {
             periodLabel = 'HOURLY BREAKDOWN';
             csv += `${periodLabel}\n`;
-            csv += `Hour,Sales (${currency}),Orders,Avg Order Value (${currency}),Performance\n`;
+            csv += `Hour,Sales (${getCurrencySymbol(currency)}),Orders,Avg Order Value (${getCurrencySymbol(currency)}),Performance\n`;
             for (let hour = 8; hour <= 22; hour++) {
               const hourlyRevenue = Math.round(baseRevenue * 0.033 * (0.3 + Math.random() * 1.4));
               const hourlyOrders = Math.round(baseOrders * 0.033 * (0.3 + Math.random() * 1.4));
@@ -850,7 +850,7 @@ const AnalyticsPage: React.FC = () => {
             )) {
             periodLabel = 'DAILY BREAKDOWN (WEEK)';
             csv += `${periodLabel}\n`;
-            csv += `Day,Sales (${currency}),Orders,Avg Order Value (${currency}),Performance\n`;
+            csv += `Day,Sales (${getCurrencySymbol(currency)}),Orders,Avg Order Value (${getCurrencySymbol(currency)}),Performance\n`;
             const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
             days.forEach(day => {
               const dailyRevenue = Math.round(baseRevenue * 0.233 * (0.7 + Math.random() * 0.6));
@@ -861,7 +861,7 @@ const AnalyticsPage: React.FC = () => {
           } else if (activePeriod === 'year') {
             periodLabel = 'MONTHLY BREAKDOWN';
             csv += `${periodLabel}\n`;
-            csv += `Month,Sales (${currency}),Orders,Avg Order Value (${currency}),Performance\n`;
+            csv += `Month,Sales (${getCurrencySymbol(currency)}),Orders,Avg Order Value (${getCurrencySymbol(currency)}),Performance\n`;
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             months.forEach(month => {
               const monthlyRevenue = Math.round(baseRevenue * 12 * (0.8 + Math.random() * 0.4));
@@ -872,7 +872,7 @@ const AnalyticsPage: React.FC = () => {
           } else {
             periodLabel = 'DAILY BREAKDOWN';
             csv += `${periodLabel}\n`;
-            csv += `Date,Sales (${currency}),Orders,Avg Order Value (${currency}),Performance\n`;
+            csv += `Date,Sales (${getCurrencySymbol(currency)}),Orders,Avg Order Value (${getCurrencySymbol(currency)}),Performance\n`;
             const startDate = isCustomDateRange ? new Date(dateRange.start) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
             const endDate = isCustomDateRange ? new Date(dateRange.end) : new Date();
             const diffDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -897,7 +897,7 @@ const AnalyticsPage: React.FC = () => {
         })).sort((a, b) => b.revenue - a.revenue);
 
         csv += `RESTAURANT RANKINGS\n`;
-        csv += `Rank,Restaurant Name,Manager,Revenue (${currency}),Orders,Avg Order Value (${currency})\n`;
+        csv += `Rank,Restaurant Name,Manager,Revenue (${getCurrencySymbol(currency)}),Orders,Avg Order Value (${getCurrencySymbol(currency)})\n`;
         restaurantRankings.forEach((restaurant, index) => {
           csv += `${index + 1},${restaurant.name},${restaurant.manager},${restaurant.revenue.toLocaleString()},${restaurant.orders},${Math.round(restaurant.revenue / restaurant.orders)}\n`;
         });
@@ -930,7 +930,7 @@ const AnalyticsPage: React.FC = () => {
 
       // Subscription details table
       csv += `RESTAURANT SUBSCRIPTION DETAILS\n`;
-      csv += `Restaurant Name,Manager,Plan Type,Monthly Fee (${currency}),Status,Subscription Start,Subscription End,Location\n`;
+      csv += `Restaurant Name,Manager,Plan Type,Monthly Fee (${getCurrencySymbol(currency)}),Status,Subscription Start,Subscription End,Location\n`;
 
       filteredRestaurantsForSubscription.forEach(restaurant => {
         const restaurantName = restaurant.name || 'Unknown Restaurant';
@@ -961,7 +961,7 @@ const AnalyticsPage: React.FC = () => {
         planRevenue[planType] = (planRevenue[planType] || 0) + monthlyFee;
       });
 
-      csv += `Plan Type,Subscribers,Monthly Revenue (${currency}),Avg Revenue per Subscriber (${currency})\n`;
+      csv += `Plan Type,Subscribers,Monthly Revenue (${getCurrencySymbol(currency)}),Avg Revenue per Subscriber (${getCurrencySymbol(currency)})\n`;
       Object.keys(planCounts).forEach(planType => {
         const subscribers = planCounts[planType];
         const revenue = planRevenue[planType];
@@ -1014,7 +1014,7 @@ const AnalyticsPage: React.FC = () => {
         });
 
       csv += `\nMANAGER PERFORMANCE RANKING\n`;
-      csv += `Rank,Manager,Restaurants,Total Revenue (${currency})\n`;
+      csv += `Rank,Manager,Restaurants,Total Revenue (${getCurrencySymbol(currency)})\n`;
 
       const managerStats: Record<string, { restaurants: number; revenue: number }> = {};
       restaurants.forEach(restaurant => {

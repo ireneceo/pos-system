@@ -279,8 +279,8 @@ export const MobileOrderProvider: React.FC<MobileOrderProviderProps> = ({ childr
     localStorage.removeItem('mobile_cart');
   }, []);
   
-  // Get currency from current store or default to 'RM'
-  const currency = currentStore?.currency || 'RM';
+  // Get currency from current store or default to 'MYR'
+  const currency = currentStore?.currency || 'MYR';
 
   const value: MobileOrderContextType = {
     // Store

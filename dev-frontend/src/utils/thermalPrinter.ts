@@ -117,7 +117,7 @@ const formatDateTime = (date: Date): string => {
 /**
  * Generate ESC/POS receipt content
  */
-export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInfo, currency: string = 'RM'): string => {
+export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInfo, currency: string = 'MYR'): string => {
   let content = '';
 
   // Initialize
@@ -241,7 +241,7 @@ export const generateReceiptContent = (orderData: OrderData, storeInfo: StoreInf
 /**
  * Send to RawBT printer
  */
-export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo, currency: string = 'RM'): Promise<boolean> => {
+export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo, currency: string = 'MYR'): Promise<boolean> => {
   try {
     console.log('🔍 Starting RawBT print process...');
     console.log('📦 Order data:', {
@@ -321,7 +321,7 @@ export const printToRawBT = async (orderData: OrderData, storeInfo: StoreInfo, c
  * Print bill - automatically detects device and uses appropriate method
  * Returns true if print was successful, false otherwise
  */
-export const printBill = async (orderData: OrderData, storeInfo: StoreInfo, currency: string = 'RM'): Promise<boolean> => {
+export const printBill = async (orderData: OrderData, storeInfo: StoreInfo, currency: string = 'MYR'): Promise<boolean> => {
   const isTabletOrMobile = isMobileOrTablet();
 
   if (isTabletOrMobile) {

@@ -450,6 +450,11 @@ function App() {
                           <AdminSettingsPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/admin/history" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <ActivityHistoryPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/admin/payment-settings" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <AdminPaymentSettingsPage />
@@ -519,6 +524,11 @@ function App() {
                           <OwnerOperationInquiryPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/owner/history" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <ActivityHistoryPage />
+                        </ProtectedRoute>
+                      } />
 
                       {/* Foodcourt General / Foodcourt Manager Routes */}
                       <Route path="/pos/foodcourt/general/dashboard" element={
@@ -564,6 +574,11 @@ function App() {
                       <Route path="/pos/foodcourt/invoices" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtInvoicesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/history" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <ActivityHistoryPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/plans" element={
@@ -621,6 +636,11 @@ function App() {
                       <Route path="/pos/brand/general/notices" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandNoticesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/history" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <ActivityHistoryPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/invoices" element={

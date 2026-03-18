@@ -2,6 +2,7 @@
 
 > **이 문서는 모든 새 기능 개발 시 반드시 참조해야 합니다.**
 > 기준 페이지: Admin Pages (RestaurantsPage, PlansPage, ManagersPage)
+> **색상 사용:** `COLOR_GUIDE.md` 참조 — 허용된 색상만 사용. 이모지 아이콘 사용 금지.
 
 ---
 

@@ -24,16 +24,20 @@ class InvoiceScheduler {
       console.log('📅 [INVOICE SCHEDULER] Running daily invoice check...');
       await systemLogger.info('payment', 'invoice-scheduler', 'Daily invoice scheduler run started');
 
+      // Apply any pending plan changes before generating invoices
+      const pendingResult = await this.applyPendingPlanChanges();
+
       const subResult = await this.generateSubscriptionInvoices();
       const entityResult = await this.generateEntityPlanInvoices();
       const entitySubResult = await this.generateEntitySubscriptionInvoices();
 
       const summary = {
+        pendingChanges: pendingResult || { applied: 0, errors: 0 },
         subscription: subResult || { generated: 0, skipped: 0, errors: 0 },
         entityPlan: entityResult || { generated: 0, skipped: 0, errors: 0 },
         entitySubscription: entitySubResult || { generated: 0, skipped: 0, errors: 0 }
       };
-      const totalErrors = (subResult?.errors || 0) + (entityResult?.errors || 0) + (entitySubResult?.errors || 0);
+      const totalErrors = (pendingResult?.errors || 0) + (subResult?.errors || 0) + (entityResult?.errors || 0) + (entitySubResult?.errors || 0);
 
       if (totalErrors > 0) {
         await systemLogger.error('payment', 'invoice-scheduler', `Daily run completed with ${totalErrors} error(s)`, summary);
@@ -1145,6 +1149,169 @@ class InvoiceScheduler {
 
     console.log(`✅ Entity subscription invoice created: ${invoiceNumber} (${currency} ${planAmount})`);
     return invoice;
+  }
+
+  /**
+   * Apply pending plan changes on their effective date.
+   * Runs before invoice generation so new invoices use updated plan data.
+   */
+  async applyPendingPlanChanges() {
+    const result = { applied: 0, errors: 0 };
+    const User = require('../models/User');
+    const ActivityLog = require('../models/ActivityLog');
+    try {
+      const siteTimezone = await getSiteTimezone();
+      const today = getLocalDate(siteTimezone);
+      const todayStr = today.toISOString().split('T')[0];
+
+      console.log(`📊 [PENDING CHANGES] Checking for pending plan changes effective on ${todayStr}...`);
+
+      // 1. Restaurants with pending changes
+      const restaurants = await Restaurant.findAll({
+        where: {
+          pending_plan_type: { [Op.ne]: null },
+          plan_change_date: { [Op.lte]: today },
+          is_demo: { [Op.ne]: true }
+        }
+      });
+
+      for (const restaurant of restaurants) {
+        try {
+          const oldPlan = restaurant.plan_type;
+          const oldAmount = parseFloat(restaurant.plan_amount);
+          const oldCycle = restaurant.billing_cycle;
+
+          // Apply the pending change
+          const updateData = {
+            plan_type: restaurant.pending_plan_type,
+            plan_amount: restaurant.pending_plan_amount,
+            billing_cycle: restaurant.pending_billing_cycle || restaurant.billing_cycle,
+            pending_plan_type: null,
+            pending_plan_amount: null,
+            pending_billing_cycle: null,
+            plan_change_date: null,
+            plan_change_type: null
+          };
+
+          // Recalculate subscription_end
+          const start = new Date(restaurant.subscription_start || today);
+          if (updateData.billing_cycle === 'annual') {
+            start.setFullYear(start.getFullYear() + 1);
+          } else {
+            start.setMonth(start.getMonth() + 1);
+          }
+          updateData.subscription_end = start.toISOString().split('T')[0];
+
+          // Update plan limits from PlanTemplate
+          const newPlan = await PlanTemplate.findOne({
+            where: {
+              [Op.or]: [
+                { display_name: updateData.plan_type },
+                { name: updateData.plan_type }
+              ],
+              plan_target: 'restaurant'
+            }
+          });
+          if (newPlan) {
+            updateData.order_limit = newPlan.order_limit;
+            updateData.menu_item_limit = newPlan.menu_item_limit;
+            updateData.staff_limit = newPlan.staff_limit;
+          }
+
+          await restaurant.update(updateData);
+
+          // Activity log
+          await ActivityLog.create({
+            restaurant_id: restaurant.id,
+            user_id: restaurant.admin_id,
+            username: 'system',
+            full_name: 'Invoice Scheduler',
+            action_type: 'update',
+            entity_type: 'subscription',
+            entity_id: String(restaurant.id),
+            entity_name: updateData.plan_type,
+            changes: {
+              before: { plan_type: oldPlan, plan_amount: oldAmount, billing_cycle: oldCycle },
+              after: { plan_type: updateData.plan_type, plan_amount: parseFloat(updateData.plan_amount), billing_cycle: updateData.billing_cycle }
+            },
+            description: `Scheduled plan change applied: ${oldPlan} → ${updateData.plan_type}`
+          });
+
+          console.log(`✅ [PENDING] Restaurant "${restaurant.name}": ${oldPlan} → ${updateData.plan_type}`);
+          result.applied++;
+        } catch (error) {
+          console.error(`❌ [PENDING] Error applying change for restaurant ${restaurant.name}:`, error.message);
+          result.errors++;
+        }
+      }
+
+      // 2. Users (Brand General, Foodcourt General, Owner) with pending changes
+      const users = await User.findAll({
+        where: {
+          pending_plan_type: { [Op.ne]: null },
+          plan_change_date: { [Op.lte]: today },
+          is_demo: { [Op.ne]: true },
+          role: { [Op.in]: ['Brand General', 'Foodcourt General', 'Restaurant Owner'] }
+        }
+      });
+
+      for (const user of users) {
+        try {
+          const oldPlan = user.plan_type;
+          const oldAmount = parseFloat(user.plan_amount);
+          const oldCycle = user.billing_cycle;
+
+          const updateData = {
+            plan_type: user.pending_plan_type,
+            plan_amount: user.pending_plan_amount,
+            billing_cycle: user.pending_billing_cycle || user.billing_cycle,
+            pending_plan_type: null,
+            pending_plan_amount: null,
+            pending_billing_cycle: null,
+            plan_change_date: null,
+            plan_change_type: null
+          };
+
+          // Recalculate subscription_end
+          const start = new Date(user.subscription_start || today);
+          if (updateData.billing_cycle === 'annual') {
+            start.setFullYear(start.getFullYear() + 1);
+          } else {
+            start.setMonth(start.getMonth() + 1);
+          }
+          updateData.subscription_end = start.toISOString().split('T')[0];
+
+          await user.update(updateData);
+
+          await ActivityLog.create({
+            user_id: user.id,
+            username: 'system',
+            full_name: 'Invoice Scheduler',
+            action_type: 'update',
+            entity_type: 'subscription',
+            entity_id: String(user.id),
+            entity_name: updateData.plan_type,
+            changes: {
+              before: { plan_type: oldPlan, plan_amount: oldAmount, billing_cycle: oldCycle },
+              after: { plan_type: updateData.plan_type, plan_amount: parseFloat(updateData.plan_amount), billing_cycle: updateData.billing_cycle }
+            },
+            description: `Scheduled plan change applied: ${oldPlan} → ${updateData.plan_type}`
+          });
+
+          console.log(`✅ [PENDING] User "${user.full_name}" (${user.role}): ${oldPlan} → ${updateData.plan_type}`);
+          result.applied++;
+        } catch (error) {
+          console.error(`❌ [PENDING] Error applying change for user ${user.full_name}:`, error.message);
+          result.errors++;
+        }
+      }
+
+      console.log(`📊 [PENDING CHANGES] Applied: ${result.applied}, Errors: ${result.errors}`);
+    } catch (error) {
+      console.error('❌ [PENDING CHANGES] Fatal error:', error.message);
+      result.errors++;
+    }
+    return result;
   }
 
   stop() {

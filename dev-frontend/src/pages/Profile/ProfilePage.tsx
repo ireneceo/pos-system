@@ -7,6 +7,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
+import SubscriptionTab from './SubscriptionTab';
 
 // 스타일 컴포넌트
 const ProfileContainer = styled.div`
@@ -327,7 +328,7 @@ const ProfilePage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { currentStaff, updateStaff, isLoggedIn } = useStaff();
   const { user: authUser, isAuthenticated, updateUser, isLoading: authLoading } = useAuth();
-  const [activeTab, handleTabParamChange] = useTabParam<'profile' | 'schedule' | 'performance' | 'security'>('profile');
+  const [activeTab, handleTabParamChange] = useTabParam<'profile' | 'subscription' | 'schedule' | 'performance' | 'security'>('profile');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -514,7 +515,7 @@ const ProfilePage: React.FC = () => {
     if (currentUser?.role === 'System Admin' && tab === 'performance') {
       handleTabParamChange('profile');
     } else {
-      handleTabParamChange(tab as 'profile' | 'schedule' | 'performance' | 'security');
+      handleTabParamChange(tab as 'profile' | 'subscription' | 'schedule' | 'performance' | 'security');
     }
   };
 
@@ -838,6 +839,11 @@ const ProfilePage: React.FC = () => {
             <Tab active={activeTab === 'profile'} onClick={() => handleTabChange('profile')}>
               Personal Information
             </Tab>
+            {['Restaurant Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(currentUser.role) && !dbUser?.is_demo && (
+              <Tab active={activeTab === 'subscription'} onClick={() => handleTabChange('subscription')}>
+                Subscription
+              </Tab>
+            )}
             <Tab active={activeTab === 'schedule'} onClick={() => handleTabChange('schedule')}>
               Work Schedule
             </Tab>
@@ -938,6 +944,10 @@ const ProfilePage: React.FC = () => {
                 </SaveStatusMessage>
               </div>
             </ContentCard>
+          )}
+
+          {activeTab === 'subscription' && (
+            <SubscriptionTab />
           )}
 
           {activeTab === 'schedule' && (

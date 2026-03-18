@@ -139,6 +139,31 @@ Restaurant.init({
     allowNull: true,
     comment: 'Last successful payment date'
   },
+  pending_plan_type: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Scheduled plan change - new plan name'
+  },
+  pending_plan_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Scheduled plan change - new plan amount'
+  },
+  pending_billing_cycle: {
+    type: DataTypes.ENUM('monthly', 'annual'),
+    allowNull: true,
+    comment: 'Scheduled plan change - new billing cycle'
+  },
+  plan_change_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Date when pending plan change takes effect'
+  },
+  plan_change_type: {
+    type: DataTypes.ENUM('downgrade', 'cycle_change'),
+    allowNull: true,
+    comment: 'Type of scheduled plan change'
+  },
   created_by: {
     type: DataTypes.INTEGER,
     allowNull: true
@@ -487,6 +512,12 @@ Restaurant.init({
     defaultValue: false,
     allowNull: false,
     comment: 'Demo restaurant flag - excluded from real revenue statistics'
+  },
+  is_test: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Test restaurant flag - excluded from statistics, shown with TEST badge'
   },
   kitchen_assignment_mode: {
     type: DataTypes.STRING(20),

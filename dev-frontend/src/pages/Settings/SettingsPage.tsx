@@ -770,7 +770,7 @@ const SettingsPage: React.FC = () => {
   // Initialize currencySettings from operationSettings (will be overridden by DB values in useEffect)
   const defaultOps = loadSettings().operations;
   const [currencySettings, setCurrencySettings] = useState({
-    currency: defaultOps.currency || 'RM',
+    currency: defaultOps.currency || 'MYR',
     cashRounding: defaultOps.cashRounding !== null && defaultOps.cashRounding !== undefined ? defaultOps.cashRounding : null,
     roundingApplyTo: defaultOps.roundingApplyTo || 'cash_only' as 'cash_only' | 'all'
   });
@@ -1000,7 +1000,7 @@ const SettingsPage: React.FC = () => {
 
             // Override with currency settings from restaurant table (these take priority)
             // Individual columns (currency, cash_rounding, rounding_apply_to) are the source of truth
-            const currencyFromDB = restaurant.currency || 'RM';
+            const currencyFromDB = restaurant.currency || 'MYR';
             // null means rounding is disabled - preserve null, don't default to 0.05
             const cashRoundingFromDB = restaurant.cash_rounding !== null && restaurant.cash_rounding !== undefined
               ? parseFloat(restaurant.cash_rounding)
@@ -1679,7 +1679,7 @@ const SettingsPage: React.FC = () => {
             rounding_apply_to: verifyRestaurant.rounding_apply_to
           });
           setCurrencySettings({
-            currency: verifyRestaurant.currency || 'RM',
+            currency: verifyRestaurant.currency || 'MYR',
             cashRounding: verifyRestaurant.cash_rounding !== null && verifyRestaurant.cash_rounding !== undefined ? parseFloat(verifyRestaurant.cash_rounding) : null,
             roundingApplyTo: verifyRestaurant.rounding_apply_to || 'cash_only'
           });

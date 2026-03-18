@@ -216,7 +216,7 @@ const ActionButton = styled.button<{ variant: 'primary' | 'secondary' | 'success
         `;
       case 'success':
         return `
-          background: #059669;
+          background: #10B981;
           border-color: #059669;
           color: white;
           &:hover { background: #047857; border-color: #047857; }

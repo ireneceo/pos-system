@@ -262,6 +262,12 @@ Foodcourt.init({
     defaultValue: false,
     allowNull: false,
     comment: 'Demo foodcourt flag - excluded from real revenue statistics'
+  },
+  is_test: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    comment: 'Test foodcourt flag - excluded from statistics, shown with TEST badge'
   }
 }, {
   sequelize: database.sequelize,

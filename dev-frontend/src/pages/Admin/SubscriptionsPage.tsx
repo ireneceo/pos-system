@@ -385,7 +385,8 @@ const SubscriptionsPage: React.FC = () => {
           discountValue: parseFloat(restaurant.discount_value) || 0,
           discountReason: restaurant.discount_reason || '',
           entityType: 'restaurant',
-          isDemo: restaurant.is_demo || false
+          isDemo: restaurant.is_demo || false,
+          isTest: restaurant.is_test || false
         } as any);
       });
 
@@ -455,7 +456,8 @@ const SubscriptionsPage: React.FC = () => {
           discountReason: '',
           entityType: u.role === 'Brand General' ? 'brand' : u.role === 'Foodcourt General' ? 'foodcourt' : 'owner',
           userRole: u.role,
-          isDemo: u.is_demo || false
+          isDemo: u.is_demo || false,
+          isTest: u.is_test || false
         } as any);
       });
 
@@ -1146,6 +1148,7 @@ const SubscriptionsPage: React.FC = () => {
                       <RestaurantName>
                         {subscription.restaurantName}
                         {(subscription as any).isDemo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}
+                        {(subscription as any).isTest && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}
                         {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}
                         {(subscription as any).entityType && (subscription as any).entityType !== 'restaurant' && (
                           <span style={{ fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', marginLeft: '4px', verticalAlign: 'middle',

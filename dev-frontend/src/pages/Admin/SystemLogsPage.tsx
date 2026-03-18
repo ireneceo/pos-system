@@ -84,7 +84,7 @@ const ToggleButton = styled.button<{ active?: boolean }>`
   border: 1px solid;
   
   ${props => props.active ? `
-    background: #059669;
+    background: #10B981;
     color: white;
     border-color: #059669;
     

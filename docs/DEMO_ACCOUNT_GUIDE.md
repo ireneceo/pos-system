@@ -1,6 +1,6 @@
 # 데모/테스트 계정 관리 가이드
 
-> **최종 업데이트:** 2026-03-11
+> **최종 업데이트:** 2026-03-18
 > **목적:** 데모/테스트 계정이 실제 매출 통계에 영향을 주지 않도록 관리
 
 ---
@@ -14,16 +14,23 @@
 
 ---
 
-## 2. is_demo 플래그 체계
+## 2. is_demo / is_test 플래그 체계 (2026-03-18 분리)
+
+### 이원 플래그
+
+| 플래그 | 대상 | 배지 색상 | 구독 탭 | 매일 리셋 | 통계 제외 |
+|--------|------|----------|---------|----------|----------|
+| `is_demo=true` | DemoPage 전용 계정 (demo-brand, demo-restaurant) | 주황 #F59E0B | 숨김 | O | O |
+| `is_test=true` | 테스트 계정 (brand_general, kdine_admin 등) | 보라 #8B5CF6 | 보임 | X | O |
 
 ### 적용 대상 테이블
 
-| 테이블 | 컬럼 | 설명 |
-|--------|-------|------|
-| `users` | `is_demo` BOOLEAN DEFAULT false | 데모/테스트 유저 |
-| `restaurants` | `is_demo` BOOLEAN DEFAULT false | 데모/테스트 레스토랑 |
-| `brands` | `is_demo` BOOLEAN DEFAULT false | 데모/테스트 브랜드 |
-| `foodcourts` | `is_demo` BOOLEAN DEFAULT false | 데모/테스트 푸드코트 |
+| 테이블 | is_demo | is_test | 설명 |
+|--------|---------|---------|------|
+| `users` | BOOLEAN DEFAULT false | BOOLEAN DEFAULT false | 유저 |
+| `restaurants` | BOOLEAN DEFAULT false | BOOLEAN DEFAULT false | 레스토랑 |
+| `brands` | BOOLEAN DEFAULT false | BOOLEAN DEFAULT false | 브랜드 |
+| `foodcourts` | BOOLEAN DEFAULT false | BOOLEAN DEFAULT false | 푸드코트 |
 
 ### 필터링 범위
 

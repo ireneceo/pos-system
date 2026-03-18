@@ -252,7 +252,7 @@ const UrgencyBadge = styled.span<{ level: string }>`
   ${props => {
     switch (props.level) {
       case 'critical':
-        return 'background: #DC2626; color: white;';
+        return 'background: #EF4444; color: white;';
       case 'high':
         return 'background: #F59E0B; color: white;';
       default:
@@ -303,11 +303,11 @@ const ExpiryBadge = styled.span<{ urgency: string }>`
       case 'expired':
         return 'background: #7F1D1D; color: white;';
       case 'critical':
-        return 'background: #DC2626; color: white;';
+        return 'background: #EF4444; color: white;';
       case 'warning':
         return 'background: #F59E0B; color: white;';
       default:
-        return 'background: #059669; color: white;';
+        return 'background: #10B981; color: white;';
     }
   }}
 `;
@@ -2958,7 +2958,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                     console.error('Failed to delete:', error);
                   }
                 }}
-                style={{ background: '#DC2626' }}
+                style={{ background: '#EF4444' }}
               >
                 {deleteTarget.type === 'ingredient' ? 'Unlink' : 'Delete'}
               </ModalButton>

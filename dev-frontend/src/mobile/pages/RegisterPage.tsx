@@ -118,7 +118,7 @@ const SubmitButton = styled.button`
   margin-top: 8px;
 
   &:active {
-    background: #5A51E6;
+    background: #635BFF;
   }
 
   &:disabled {

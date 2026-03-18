@@ -24,7 +24,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
         return `
           background: #EF4444;
           color: white;
-          &:hover { background: #DC2626; }
+          &:hover { background: #EF4444; }
         `;
       case 'secondary':
         return `

@@ -52,7 +52,7 @@ export const ThemedButton = styled.button<{
         `;
       case 'danger':
         return `
-          background: #DC2626;
+          background: #EF4444;
           color: white;
 
           &:hover {

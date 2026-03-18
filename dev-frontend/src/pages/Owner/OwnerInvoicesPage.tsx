@@ -292,7 +292,8 @@ const OwnerInvoicesPage: React.FC = () => {
   const [paymentData, setPaymentData] = useState({
     paymentMethod: '',
     transactionId: '',
-    receiptImage: ''
+    receiptImage: '',
+    notes: ''
   });
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [paymentSubmitError, setPaymentSubmitError] = useState('');
@@ -472,13 +473,14 @@ const OwnerInvoicesPage: React.FC = () => {
         body: JSON.stringify({
           payment_method: paymentData.paymentMethod,
           transaction_id: paymentData.transactionId,
+          notes: paymentData.notes || null,
           receipt_url: paymentData.receiptImage || null
         })
       });
 
       if (response.ok) {
         setShowPaymentSubmitModal(false);
-        setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
+        setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
         await fetchAllInvoices();
         await fetchInvoicesToPay();
         window.dispatchEvent(new Event('refreshBadgeCounts'));
@@ -598,7 +600,7 @@ const OwnerInvoicesPage: React.FC = () => {
   const handlePayInvoice = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setPaymentSubmitError('');
-    setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
+    setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
     await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
     setShowPaymentSubmitModal(true);
   };
@@ -1325,17 +1327,17 @@ const OwnerInvoicesPage: React.FC = () => {
                             key={method.id}
                             onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setPaymentSubmitError(''); }}
                             style={{
-                              display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 8px',
-                              border: `2px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E5E7EB'}`,
+                              padding: '12px 16px', minHeight: '44px',
                               borderRadius: '8px',
-                              background: paymentData.paymentMethod === method.id ? '#F5F3FF' : 'white',
-                              cursor: 'pointer', transition: 'all 0.2s'
+                              border: `1px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E6EBF1'}`,
+                              background: paymentData.paymentMethod === method.id ? 'rgba(99, 91, 255, 0.1)' : 'white',
+                              color: paymentData.paymentMethod === method.id ? '#635BFF' : '#374151',
+                              fontSize: '14px', fontWeight: '500',
+                              cursor: 'pointer', transition: 'all 0.15s',
+                              textAlign: 'center'
                             }}
                           >
-                            <span style={{ fontSize: '22px', marginBottom: '6px' }}>
-                              {method.id === 'stripe' ? '💳' : method.id === 'paypal' ? '🅿️' : method.id === 'qr_payment' ? '📱' : '🏦'}
-                            </span>
-                            <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>{method.name}</span>
+                            {method.name}
                           </button>
                         ))}
                       </div>
@@ -1347,7 +1349,7 @@ const OwnerInvoicesPage: React.FC = () => {
                         invoiceId={selectedInvoice.id}
                         onSuccess={() => {
                           setShowPaymentSubmitModal(false);
-                          setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
+                          setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
                           fetchAllInvoices();
                           fetchInvoicesToPay();
                           window.dispatchEvent(new Event('refreshBadgeCounts'));
@@ -1391,6 +1393,15 @@ const OwnerInvoicesPage: React.FC = () => {
                         <FormGroup>
                           <FormLabel>Transaction ID / Reference Number</FormLabel>
                           <FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} />
+                        </FormGroup>
+                        <FormGroup>
+                          <FormLabel>Notes (Optional)</FormLabel>
+                          <textarea
+                            placeholder="Any additional information about the payment..."
+                            value={paymentData.notes}
+                            onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))}
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit' }}
+                          />
                         </FormGroup>
                         <FormGroup>
                           <FormLabel>Payment Receipt Image</FormLabel>

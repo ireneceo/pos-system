@@ -95,12 +95,12 @@ export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'dange
         `;
       case 'danger':
         return `
-          background: #DC3545;
+          background: #EF4444;
           color: white;
           &:hover {
-            background: #C82333;
+            background: #DC2626;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
           }
         `;
       case 'danger-outline':

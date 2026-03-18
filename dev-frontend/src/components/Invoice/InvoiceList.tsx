@@ -75,7 +75,7 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'success' | 'danger' 
         `;
       case 'success':
         return `
-          background: #059669;
+          background: #10B981;
           color: white;
           border-color: #059669;
           &:hover { background: #047857; }

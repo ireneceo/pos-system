@@ -199,7 +199,7 @@ const Button = styled.button<{ variant?: 'primary' | 'danger' | 'secondary' }>`
   transition: all 0.2s;
 
   ${props => props.variant === 'primary' ? `
-    background: #059669;
+    background: #10B981;
     color: white;
     border: none;
 

@@ -191,7 +191,7 @@ const NewOrderButton = styled(Button)`
   border: none;
   
   &:active {
-    background: #5A51E6;
+    background: #635BFF;
   }
 `;
 

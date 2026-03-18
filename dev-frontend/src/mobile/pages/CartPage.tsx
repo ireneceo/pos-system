@@ -154,7 +154,7 @@ const BrowseButton = styled.button`
   transition: background 0.2s;
   
   &:active {
-    background: #5A51E6;
+    background: #635BFF;
   }
 `;
 
@@ -212,7 +212,7 @@ const CheckoutButton = styled.button`
   }
 
   &:active {
-    background: #5A51E6;
+    background: #635BFF;
   }
 
   &:disabled {

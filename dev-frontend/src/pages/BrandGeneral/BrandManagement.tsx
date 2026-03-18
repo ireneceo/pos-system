@@ -244,7 +244,7 @@ const BrandManagement: React.FC = () => {
       phone: brand.phone || '',
       address: brand.address || '',
       website: brand.website || '',
-      currency: (brand as any).currency || 'RM'
+      currency: (brand as any).currency || 'MYR'
     });
     setShowModal(true);
   };
