@@ -464,6 +464,7 @@ const adminReportsRouter = require('./routes/admin-reports');
 const commentsRouter = require('./routes/comments');
 const noticesRouter = require('./routes/notices');
 const badgeCountsRouter = require('./routes/badgeCounts');
+const kitchenStationsRouter = require('./routes/kitchen-stations');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -540,6 +541,7 @@ app.use('/api/owner', ownerRouter);  // Restaurant Owner routes
 app.use('/api/comments', commentsRouter);  // Polymorphic comments (notices, tickets)
 app.use('/api/notices', noticesRouter);  // Notices (공지) system
 app.use('/api/badge-counts', badgeCountsRouter);  // Sidebar badge counts
+app.use('/api/kitchen-stations', kitchenStationsRouter);  // Kitchen station management
 
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');

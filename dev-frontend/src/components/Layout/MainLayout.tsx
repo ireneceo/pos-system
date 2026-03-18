@@ -739,7 +739,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   // 구독 플랜이 없는 Brand/Foodcourt/Owner는 안내 화면 표시
   // 단, 인보이스/프로필 페이지는 접근 허용 (결제/정보 확인 필요)
-  const subscriptionExemptPaths = ['/pos/brand/invoices', '/pos/foodcourt/invoices', '/pos/owner/invoices', '/pos/profile'];
+  const subscriptionExemptPaths = ['/pos/brand/invoices', '/pos/foodcourt/invoices', '/pos/owner/invoices', '/pos/profile', '/invoices'];
   const isExemptPath = subscriptionExemptPaths.some(p => location.pathname.startsWith(p));
   const needsSubscription = !routesLoading && !hasActiveSubscription && !isExemptPath &&
     (user?.role === 'Brand General' || user?.role === 'Brand Manager' ||
@@ -750,6 +750,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     if (user?.role === 'Brand General' || user?.role === 'Brand Manager') return '/pos/brand/invoices';
     if (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') return '/pos/foodcourt/invoices';
     if (user?.role === 'Restaurant Owner') return '/pos/owner/invoices';
+    if ((user?.role === 'Restaurant Admin' || user?.role === 'Staff') && user?.restaurantId) return `/restaurant/${user.restaurantId}/invoices`;
     return '/pos/dashboard';
   };
 

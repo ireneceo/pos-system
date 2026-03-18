@@ -431,16 +431,15 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // Demo filter: System Admin excludes demo restaurants by default
     const includeDemo = req.query.includeDemo === 'true';
-    const restaurantWhere = (role === 'System Admin' && !includeDemo) ? { is_demo: false } : {};
+    const excludeDemo = (role === 'System Admin' && !includeDemo);
 
     const invoices = await Invoice.findAll({
       where: whereClause,
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        where: Object.keys(restaurantWhere).length > 0 ? restaurantWhere : undefined,
         attributes: ['id', 'name', 'admin_id', 'admin_name', 'plan_type', 'phone', 'email', 'subscription_snapshot', 'billing_cycle', 'is_demo'],
-        required: Object.keys(restaurantWhere).length > 0
+        required: false  // LEFT JOIN: restaurant_id가 null인 Brand/FC/Owner 인보이스도 포함
       }, {
         model: InvoiceItem,
         as: 'items',
@@ -449,8 +448,19 @@ router.get('/', authenticateToken, async (req, res) => {
       order: [['due_date', 'DESC'], ['id', 'DESC']]
     });
 
+    // Post-filter: exclude demo restaurant invoices if needed
+    let filteredInvoices = invoices;
+    if (excludeDemo) {
+      filteredInvoices = invoices.filter(inv => {
+        // restaurant_id가 null인 인보이스(Brand/FC/Owner)는 항상 포함
+        if (!inv.restaurant_id) return true;
+        // restaurant가 있으면 is_demo 체크
+        return inv.restaurant && !inv.restaurant.is_demo;
+      });
+    }
+
     // Get all unique payer IDs to fetch manager data
-    const payerIds = [...new Set(invoices
+    const payerIds = [...new Set(filteredInvoices
       .filter(inv => inv.payer_id && inv.payer_type !== 'restaurant')
       .map(inv => inv.payer_id)
     )];
@@ -461,7 +471,7 @@ router.get('/', authenticateToken, async (req, res) => {
     }) : [];
 
     // Transform data to match frontend expectations
-    const transformedInvoices = invoices.map(invoice => {
+    const transformedInvoices = filteredInvoices.map(invoice => {
       // Determine customer info based on payer type
       let customerName, customerAddress, customerCompany;
 

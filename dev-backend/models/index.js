@@ -60,6 +60,7 @@ const Comment = require('./Comment');
 const CommentRead = require('./CommentRead');
 const Notice = require('./Notice');
 const NoticeRecipient = require('./NoticeRecipient');
+const KitchenStation = require('./KitchenStation');
 
 // Define associations
 // Brand - Restaurant associations
@@ -437,6 +438,16 @@ Restaurant.hasMany(NoticeRecipient, { foreignKey: 'restaurant_id', as: 'noticeRe
 NoticeRecipient.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 NoticeRecipient.belongsTo(User, { foreignKey: 'read_by', as: 'reader' });
 
+// KitchenStation associations
+KitchenStation.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(KitchenStation, { foreignKey: 'restaurant_id', as: 'kitchenStations' });
+
+KitchenStation.hasMany(Category, { foreignKey: 'kitchen_station_id', as: 'categories' });
+Category.belongsTo(KitchenStation, { foreignKey: 'kitchen_station_id', as: 'kitchenStation' });
+
+KitchenStation.hasMany(Product, { foreignKey: 'kitchen_station_id', as: 'products' });
+Product.belongsTo(KitchenStation, { foreignKey: 'kitchen_station_id', as: 'kitchenStation' });
+
 module.exports = {
   User,
   Restaurant,
@@ -499,5 +510,6 @@ module.exports = {
   Comment,
   CommentRead,
   Notice,
-  NoticeRecipient
+  NoticeRecipient,
+  KitchenStation
 };

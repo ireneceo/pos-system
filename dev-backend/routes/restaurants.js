@@ -51,6 +51,12 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
     const user = req.user;
     let status = { subscriptionStatus: 'active', overdueAmount: 0, daysOverdue: 0, hasInvoice: false };
 
+    // Demo/test accounts: always active, skip all checks
+    const fullUser = await User.findByPk(user.id);
+    if (fullUser?.is_demo) {
+      return res.json({ success: true, data: status });
+    }
+
     // Determine entity based on role
     if (user.role === 'Restaurant Admin' || user.role === 'Staff') {
       const restaurant = await Restaurant.findByPk(user.restaurant_id);
@@ -73,43 +79,45 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
         };
       }
     } else if (user.role === 'Brand General' || user.role === 'Brand Manager') {
-      const brand = await Brand.findByPk(user.brand_id);
-      if (brand) {
+      // Subscription data is on users table
+      const fullUser = await User.findByPk(user.id);
+      if (fullUser) {
         const overdueInvoice = await Invoice.findOne({
-          where: { payer_type: 'brand_manager', payer_id: user.id, status: { [Op.in]: ['pending', 'overdue'] }, invoice_category: { [Op.in]: ['subscription', 'pos_subscription'] } },
+          where: { payer_type: 'brand_manager', payer_id: user.id, status: { [Op.in]: ['pending', 'overdue', 'pending_payment'] }, invoice_category: { [Op.in]: ['subscription', 'pos_subscription'] } },
           order: [['due_date', 'ASC']]
         });
         const daysOverdue = overdueInvoice && overdueInvoice.due_date < new Date()
           ? Math.floor((Date.now() - new Date(overdueInvoice.due_date).getTime()) / (1000 * 60 * 60 * 24))
           : 0;
         status = {
-          subscriptionStatus: brand.subscription_status,
+          subscriptionStatus: fullUser.subscription_status || 'active',
           overdueAmount: overdueInvoice ? parseFloat(overdueInvoice.total_amount) : 0,
           daysOverdue,
           hasInvoice: !!overdueInvoice,
-          currency: brand.currency || 'MYR',
-          trialEndDate: brand.trial_end_date,
-          planType: brand.plan_type
+          currency: fullUser.currency || 'MYR',
+          trialEndDate: fullUser.trial_end_date,
+          planType: fullUser.plan_type
         };
       }
     } else if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') {
-      const foodcourt = await Foodcourt.findByPk(user.foodcourt_id);
-      if (foodcourt) {
+      // Subscription data is on users table
+      const fullUser = await User.findByPk(user.id);
+      if (fullUser) {
         const overdueInvoice = await Invoice.findOne({
-          where: { payer_type: 'foodcourt_manager', payer_id: user.id, status: { [Op.in]: ['pending', 'overdue'] }, invoice_category: { [Op.in]: ['subscription', 'pos_subscription'] } },
+          where: { payer_type: 'foodcourt_manager', payer_id: user.id, status: { [Op.in]: ['pending', 'overdue', 'pending_payment'] }, invoice_category: { [Op.in]: ['subscription', 'pos_subscription'] } },
           order: [['due_date', 'ASC']]
         });
         const daysOverdue = overdueInvoice && overdueInvoice.due_date < new Date()
           ? Math.floor((Date.now() - new Date(overdueInvoice.due_date).getTime()) / (1000 * 60 * 60 * 24))
           : 0;
         status = {
-          subscriptionStatus: foodcourt.subscription_status,
+          subscriptionStatus: fullUser.subscription_status || 'active',
           overdueAmount: overdueInvoice ? parseFloat(overdueInvoice.total_amount) : 0,
           daysOverdue,
           hasInvoice: !!overdueInvoice,
-          currency: foodcourt.currency || 'MYR',
-          trialEndDate: foodcourt.trial_end_date,
-          planType: foodcourt.plan_type
+          currency: fullUser.currency || 'MYR',
+          trialEndDate: fullUser.trial_end_date,
+          planType: fullUser.plan_type
         };
       }
     } else if (user.role === 'Restaurant Owner') {
@@ -182,6 +190,63 @@ router.get('/', optionalAuth, async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
+    // Batch fetch today's sales, orders, and staff count for all restaurants
+    const restaurantIds = restaurants.map(r => r.id);
+    const todayStatsMap = {};
+    const staffCountMap = {};
+
+    if (restaurantIds.length > 0) {
+      try {
+        const { sequelize } = require('../config/database');
+        const { QueryTypes } = require('sequelize');
+
+        // Today's sales & orders (completed/served orders)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const salesStats = await sequelize.query(`
+          SELECT restaurant_id,
+            COALESCE(SUM(total_amount), 0) as total_sales,
+            COUNT(*) as order_count
+          FROM orders
+          WHERE restaurant_id IN (:ids)
+            AND status IN ('completed', 'served')
+            AND createdAt BETWEEN :start AND :end
+          GROUP BY restaurant_id
+        `, {
+          replacements: { ids: restaurantIds, start: todayStart, end: todayEnd },
+          type: QueryTypes.SELECT
+        });
+
+        salesStats.forEach(s => {
+          todayStatsMap[s.restaurant_id] = {
+            sales: parseFloat(s.total_sales) || 0,
+            orders: parseInt(s.order_count) || 0
+          };
+        });
+
+        // Staff count per restaurant
+        const staffStats = await sequelize.query(`
+          SELECT restaurant_id, COUNT(*) as cnt
+          FROM users
+          WHERE restaurant_id IN (:ids)
+            AND role IN ('Staff', 'Restaurant Admin')
+          GROUP BY restaurant_id
+        `, {
+          replacements: { ids: restaurantIds },
+          type: QueryTypes.SELECT
+        });
+
+        staffStats.forEach(s => {
+          staffCountMap[s.restaurant_id] = parseInt(s.cnt) || 0;
+        });
+      } catch (err) {
+        console.error('Error fetching restaurant stats:', err.message);
+      }
+    }
+
     // Transform data to match frontend interface
     const transformedRestaurants = restaurants.map(restaurant => {
       const restaurantData = restaurant.toJSON();
@@ -228,9 +293,9 @@ router.get('/', optionalAuth, async (req, res) => {
         location: restaurantData.address || '',
         cuisine: restaurantData.cuisine || 'Various',
         status: restaurantData.status || 'inactive',
-        todaySales: 0, // Would need to calculate from orders
-        todayOrders: 0, // Would need to calculate from orders
-        staffCount: 0, // Would need to count from user assignments
+        todaySales: todayStatsMap[restaurantData.id]?.sales || 0,
+        todayOrders: todayStatsMap[restaurantData.id]?.orders || 0,
+        staffCount: staffCountMap[restaurantData.id] || 0,
         rating: 4.5, // Default value
         createdAt: restaurantData.createdAt,
         lastOrder: restaurantData.updatedAt,
@@ -1145,6 +1210,9 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Cuisine field
     if (req.body.cuisine !== undefined) updateData.cuisine = req.body.cuisine;
 
+    // Kitchen station assignment mode
+    if (req.body.kitchen_assignment_mode !== undefined) updateData.kitchen_assignment_mode = req.body.kitchen_assignment_mode;
+
     // === Restaurant Admin (Owner) 변경 처리 ===
     const adminAction = req.body.adminAction; // 'create' | 'change' | undefined
 
@@ -1777,16 +1845,19 @@ router.get('/:id/allowed-routes', async (req, res) => {
       return res.status(404).json({ error: 'Restaurant not found' });
     }
 
+    // Demo restaurants: use highest plan for full access
+    const effectivePlanType = restaurant.is_demo ? 'Enterprise Plan' : restaurant.plan_type;
+
     // Find plan
     const plan = await PlanTemplate.findOne({
-      where: { display_name: restaurant.plan_type }
+      where: { display_name: effectivePlanType }
     });
 
     if (!plan) {
       // If no plan found, return empty routes (restricted access)
       return res.json({
         restaurant_id: restaurant.id,
-        plan_type: restaurant.plan_type,
+        plan_type: effectivePlanType,
         included_modules: [],
         allowed_routes: []
       });
@@ -1799,7 +1870,7 @@ router.get('/:id/allowed-routes', async (req, res) => {
       // No modules included, return empty routes
       return res.json({
         restaurant_id: restaurant.id,
-        plan_type: restaurant.plan_type,
+        plan_type: effectivePlanType,
         included_modules: [],
         allowed_routes: []
       });
@@ -1824,7 +1895,7 @@ router.get('/:id/allowed-routes', async (req, res) => {
 
     res.json({
       restaurant_id: restaurant.id,
-      plan_type: restaurant.plan_type,
+      plan_type: effectivePlanType,
       included_modules: includedModuleCodes,
       allowed_routes: uniqueRoutes,
       modules: modules.map(m => ({

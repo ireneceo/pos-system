@@ -31,6 +31,11 @@ const Category = sequelize.define('Category', {
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  kitchen_station_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Kitchen station assignment (category mode)'
   }
 }, {
   tableName: 'categories',

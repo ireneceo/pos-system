@@ -2006,12 +2006,21 @@ router.get('/:id/allowed-routes', async (req, res) => {
       return res.status(404).json({ error: 'Brand not found' });
     }
 
-    if (!brand.plan_type) {
+    // Subscription data is on users table (brand owner)
+    const User = require('../models/User');
+    const owner = brand.owner_id ? await User.findByPk(brand.owner_id) : null;
+
+    // Demo accounts: use highest plan (enterprise) for full access
+    const isDemo = owner?.is_demo || brand.is_demo;
+    const planType = isDemo ? 'Brand Enterprise' : (owner?.plan_type || brand.plan_type);
+    const subStatus = isDemo ? 'active' : (owner?.subscription_status || brand.subscription_status);
+
+    if (!planType) {
       return res.json({
         entity_id: brand.id,
         entity_type: 'brand',
         plan_type: null,
-        subscription_status: brand.subscription_status,
+        subscription_status: subStatus,
         included_modules: [],
         allowed_routes: [],
         modules: []
@@ -2022,8 +2031,8 @@ router.get('/:id/allowed-routes', async (req, res) => {
     const plan = await PlanTemplate.findOne({
       where: {
         [Op.or]: [
-          { display_name: brand.plan_type },
-          { name: brand.plan_type }
+          { display_name: planType },
+          { name: planType }
         ],
         plan_target: 'brand'
       }
@@ -2033,8 +2042,8 @@ router.get('/:id/allowed-routes', async (req, res) => {
       return res.json({
         entity_id: brand.id,
         entity_type: 'brand',
-        plan_type: brand.plan_type,
-        subscription_status: brand.subscription_status,
+        plan_type: planType,
+        subscription_status: subStatus,
         included_modules: [],
         allowed_routes: [],
         modules: []
@@ -2046,8 +2055,8 @@ router.get('/:id/allowed-routes', async (req, res) => {
       return res.json({
         entity_id: brand.id,
         entity_type: 'brand',
-        plan_type: brand.plan_type,
-        subscription_status: brand.subscription_status,
+        plan_type: planType,
+        subscription_status: subStatus,
         included_modules: [],
         allowed_routes: [],
         modules: []
@@ -2065,8 +2074,8 @@ router.get('/:id/allowed-routes', async (req, res) => {
     res.json({
       entity_id: brand.id,
       entity_type: 'brand',
-      plan_type: brand.plan_type,
-      subscription_status: brand.subscription_status,
+      plan_type: planType,
+      subscription_status: subStatus,
       included_modules: includedModuleCodes,
       allowed_routes: allowedRoutes,
       modules: modules.map(m => ({ code: m.module_code, name: m.name, category: m.category }))

@@ -1779,9 +1779,9 @@ const InvoicesPage: React.FC = () => {
     const payerTypeText = getPayerDisplay(invoice.payerType || 'restaurant').toLowerCase();
 
     const matchesSearch = !searchTerm ||
-                         invoice.companyName.toLowerCase().includes(term) ||
-                         invoice.invoiceNumber.toLowerCase().includes(term) ||
-                         invoice.managerName.toLowerCase().includes(term) ||
+                         (invoice.companyName || '').toLowerCase().includes(term) ||
+                         (invoice.invoiceNumber || '').toLowerCase().includes(term) ||
+                         (invoice.managerName || '').toLowerCase().includes(term) ||
                          statusText.includes(term) ||
                          typeText.includes(term) ||
                          planTypeText.includes(term) ||
@@ -1811,7 +1811,7 @@ const InvoicesPage: React.FC = () => {
         comparison = a.invoiceNumber.localeCompare(b.invoiceNumber);
         break;
       case 'companyName':
-        comparison = a.companyName.localeCompare(b.companyName);
+        comparison = (a.companyName || '').localeCompare(b.companyName || '');
         break;
       case 'issueDate':
         comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();

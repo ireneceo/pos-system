@@ -11,6 +11,9 @@ router.post('/login', validateLogin, async (req, res, next) => {
     const result = await authService.login(email, password);
     successResponse(res, result, 'Login successful');
   } catch (error) {
+    if (error.code === 'ACCOUNT_SUSPENDED') {
+      return errorResponse(res, error.message, 403, 'ACCOUNT_SUSPENDED');
+    }
     if (error.message === 'Invalid email/username or password') {
       return errorResponse(res, error.message, 401, 'INVALID_CREDENTIALS');
     }

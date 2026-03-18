@@ -1,24 +1,24 @@
 /**
  * Notification Email Templates
- * Uses the same purple branding style as invoice emails.
+ * Uses shared emailLayout from emailTemplates.js for consistent branding.
  */
 
+const { emailLayout } = require('./emailTemplates');
+
+const BRAND_COLOR = '#635BFF';
+
+function ctaButton(label, url) {
+  if (!url) return '';
+  return `<div style="text-align:center;margin:24px 0 8px;">
+      <a href="${url}" style="display:inline-block;background:${BRAND_COLOR};color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">${label}</a>
+    </div>`;
+}
+
 function wrapTemplate(title, bodyContent) {
-  return `
-<div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-  <div style="background: linear-gradient(135deg, #635BFF, #4B45C6); padding: 32px 24px; text-align: center; border-radius: 8px 8px 0 0;">
-    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">${title}</h1>
-  </div>
-  <div style="padding: 32px 24px;">
-    ${bodyContent}
-  </div>
-  <div style="padding: 16px 24px; background: #F9FAFB; border-top: 1px solid #E5E7EB; border-radius: 0 0 8px 8px;">
-    <p style="color: #9CA3AF; font-size: 12px; margin: 0; text-align: center;">
-      Sent by Purple POS Notification System<br>
-      You can manage your notification preferences in Settings.
-    </p>
-  </div>
-</div>`;
+  const content = `
+    <h2 style="color:#1A1A2E;font-size:20px;font-weight:600;margin:0 0 8px;">${title}</h2>
+    ${bodyContent}`;
+  return emailLayout(content);
 }
 
 function infoRow(label, value) {
@@ -50,9 +50,7 @@ function noticeReceivedEmail(notice, authorName) {
     <p style="color: #6B7280; font-size: 14px; margin: 0 0 24px;">
       ${(notice.content || '').replace(/<[^>]*>/g, '').slice(0, 300)}${(notice.content || '').length > 300 ? '...' : ''}
     </p>
-    <p style="color: #6B7280; font-size: 14px;">
-      Log in to your dashboard to view the full notice.
-    </p>`;
+    ${ctaButton('View Notice', 'https://purplehere.com/pos/notices')}`;
 
   return {
     subject: `New Notice: ${(notice.title || 'Untitled').slice(0, 60)}`,
@@ -74,9 +72,7 @@ function commentReceivedEmail(comment, entityTitle, commenterName) {
         ${(comment.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}
       </p>
     </div>
-    <p style="color: #6B7280; font-size: 14px;">
-      Log in to your dashboard to view and reply.
-    </p>`;
+    ${ctaButton('View & Reply', 'https://purplehere.com/pos/dashboard')}`;
 
   return {
     subject: `New Comment on: ${(entityTitle || 'item').slice(0, 50)}`,
@@ -102,9 +98,7 @@ function inquiryReceivedEmail(ticket, requesterName) {
     <p style="color: #6B7280; font-size: 14px; margin: 0 0 24px;">
       ${(ticket.description || ticket.content || '').replace(/<[^>]*>/g, '').slice(0, 300)}
     </p>
-    <p style="color: #6B7280; font-size: 14px;">
-      Log in to your dashboard to review and respond.
-    </p>`;
+    ${ctaButton('Review Inquiry', 'https://purplehere.com/pos/dashboard')}`;
 
   return {
     subject: `New Inquiry: ${(ticket.title || ticket.subject || 'No subject').slice(0, 50)}`,
@@ -130,9 +124,7 @@ function inquiryRepliedEmail(ticket, reply, replierName) {
         ${(reply.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}
       </p>
     </div>
-    <p style="color: #6B7280; font-size: 14px;">
-      Log in to your dashboard to view the full conversation.
-    </p>`;
+    ${ctaButton('View Conversation', 'https://purplehere.com/pos/dashboard')}`;
 
   return {
     subject: `Reply to: ${(ticket.title || ticket.subject || 'Your inquiry').slice(0, 50)}`,
@@ -162,9 +154,7 @@ function ticketStatusChangedEmail(ticket, newStatus) {
       infoRow('Subject', ticket.title || ticket.subject || 'No subject') +
       infoRow('New Status', `<span style="display: inline-block; padding: 4px 12px; background: ${color}20; color: ${color}; border-radius: 12px; font-weight: 600; font-size: 13px;">${newStatus}</span>`)
     )}
-    <p style="color: #6B7280; font-size: 14px;">
-      Log in to your dashboard to view the details.
-    </p>`;
+    ${ctaButton('View Ticket', 'https://purplehere.com/pos/dashboard')}`;
 
   return {
     subject: `Ticket Update: ${(ticket.title || ticket.subject || 'Ticket').slice(0, 40)} - ${newStatus}`,
@@ -190,9 +180,7 @@ function invoiceCreatedEmail(invoice, restaurantName) {
       infoRow('Due Date', dueDate) +
       infoRow('Status', 'Pending')
     )}
-    <p style="color: #6B7280; font-size: 14px;">
-      Please log in to your dashboard to review and arrange payment.
-    </p>`;
+    ${ctaButton('View Invoice', 'https://purplehere.com/pos/invoices')}`;
 
   return {
     subject: `Invoice ${invoice.invoice_number} - ${amount} Due ${dueDate}`,
@@ -218,9 +206,7 @@ function invoiceOverdueEmail(invoice, restaurantName) {
       infoRow('Due Date', `<span style="color: #EF4444;">${dueDate}</span>`) +
       infoRow('Status', '<span style="color: #EF4444; font-weight: 600;">Overdue</span>')
     )}
-    <p style="color: #6B7280; font-size: 14px;">
-      Please log in and arrange payment as soon as possible.
-    </p>`;
+    ${ctaButton('Pay Now', 'https://purplehere.com/pos/invoices')}`;
 
   return {
     subject: `OVERDUE: Invoice ${invoice.invoice_number} - ${amount}`,
@@ -244,9 +230,7 @@ function invoicePaidEmail(invoice, restaurantName) {
       infoRow('Amount', `<span style="color: #10B981; font-weight: 700; font-size: 16px;">${amount}</span>`) +
       infoRow('Status', '<span style="color: #10B981; font-weight: 600;">Paid</span>')
     )}
-    <p style="color: #6B7280; font-size: 14px;">
-      Log in to your dashboard to view payment details.
-    </p>`;
+    ${ctaButton('View Details', 'https://purplehere.com/pos/invoices')}`;
 
   return {
     subject: `Payment Confirmed: Invoice ${invoice.invoice_number} - ${amount}`,

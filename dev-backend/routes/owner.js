@@ -925,12 +925,16 @@ router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) 
     const AddonModule = require('../models/AddonModule');
 
     const owner = await User.findByPk(req.user.id);
-    if (!owner || !owner.plan_type) {
+    // Demo owners: full access
+    const isDemo = owner?.is_demo;
+    const effectivePlanType = isDemo ? 'Owner Basic Plan' : owner?.plan_type;
+    const effectiveSubStatus = isDemo ? 'active' : owner?.subscription_status;
+    if (!owner || !effectivePlanType) {
       return res.json({
         entity_id: req.user.id,
         entity_type: 'owner',
-        plan_type: owner?.plan_type || null,
-        subscription_status: owner?.subscription_status || null,
+        plan_type: effectivePlanType || null,
+        subscription_status: effectiveSubStatus || null,
         included_modules: [],
         allowed_routes: [],
         modules: []
@@ -940,8 +944,8 @@ router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) 
     const plan = await PlanTemplate.findOne({
       where: {
         [Op.or]: [
-          { display_name: owner.plan_type },
-          { name: owner.plan_type }
+          { display_name: effectivePlanType },
+          { name: effectivePlanType }
         ],
         plan_target: 'owner'
       }
@@ -951,8 +955,8 @@ router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) 
       return res.json({
         entity_id: owner.id,
         entity_type: 'owner',
-        plan_type: owner.plan_type,
-        subscription_status: owner.subscription_status,
+        plan_type: effectivePlanType,
+        subscription_status: effectiveSubStatus,
         included_modules: [],
         allowed_routes: [],
         modules: []
@@ -964,8 +968,8 @@ router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) 
       return res.json({
         entity_id: owner.id,
         entity_type: 'owner',
-        plan_type: owner.plan_type,
-        subscription_status: owner.subscription_status,
+        plan_type: effectivePlanType,
+        subscription_status: effectiveSubStatus,
         included_modules: [],
         allowed_routes: [],
         modules: []
@@ -983,8 +987,8 @@ router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) 
     res.json({
       entity_id: owner.id,
       entity_type: 'owner',
-      plan_type: owner.plan_type,
-      subscription_status: owner.subscription_status,
+      plan_type: effectivePlanType,
+      subscription_status: effectiveSubStatus,
       included_modules: includedModuleCodes,
       allowed_routes: allowedRoutes,
       modules: modules.map(m => ({ code: m.module_code, name: m.name, category: m.category }))

@@ -89,6 +89,7 @@ rm test-xxx.js      # 반드시 삭제
 ```bash
 # 프론트엔드 빌드 + 개발서버 반영 (두 단계 모두 필수!)
 cd /var/www/dev-frontend && npm run build
+sudo rm -rf /var/www/dev-frontend-build/static
 sudo cp -r /var/www/dev-frontend/build/* /var/www/dev-frontend-build/
 
 # 백엔드 변경 시

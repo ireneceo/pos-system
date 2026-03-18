@@ -312,7 +312,7 @@ const StatusBadge = styled.span<{ status: string }>`
   font-weight: 500;
   background: ${props => {
     switch(props.status) {
-      case 'active': return '#D1FAE5';
+      case 'active': return '#ECFDF5';
       case 'trial': return '#FEF3C7';
       case 'inactive': case 'overdue': return '#FEE2E2';
       default: return '#F3F4F6';
@@ -320,9 +320,9 @@ const StatusBadge = styled.span<{ status: string }>`
   }};
   color: ${props => {
     switch(props.status) {
-      case 'active': return '#065F46';
+      case 'active': return '#059669';
       case 'trial': return '#92400E';
-      case 'inactive': case 'overdue': return '#991B1B';
+      case 'inactive': case 'overdue': return '#DC2626';
       default: return '#6B7280';
     }
   }};

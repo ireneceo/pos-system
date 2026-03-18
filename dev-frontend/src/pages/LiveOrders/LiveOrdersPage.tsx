@@ -1210,9 +1210,13 @@ const LiveOrdersPage: React.FC = () => {
 
   // Store playNotificationSound in ref to avoid socket reconnection on audio state changes
   const playNotificationSoundRef = useRef(playNotificationSound);
+  const fetchOrderCountsRef = useRef(fetchOrderCounts);
   useEffect(() => {
     playNotificationSoundRef.current = playNotificationSound;
   }, [playNotificationSound]);
+  useEffect(() => {
+    fetchOrderCountsRef.current = fetchOrderCounts;
+  }, [fetchOrderCounts]);
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -1245,6 +1249,7 @@ const LiveOrdersPage: React.FC = () => {
 
       // Play notification sound for new order (use ref to avoid dependency)
       playNotificationSoundRef.current();
+      fetchOrderCountsRef.current(); // Refresh stats (Total Sales, Avg, Max)
       window.dispatchEvent(new Event('refreshBadgeCounts'));
     });
 
@@ -1262,6 +1267,7 @@ const LiveOrdersPage: React.FC = () => {
         }
         return prev.map(o => o.id === order.id ? order : o);
       });
+      fetchOrderCountsRef.current(); // Refresh stats
       window.dispatchEvent(new Event('refreshBadgeCounts'));
     });
 
@@ -1278,6 +1284,7 @@ const LiveOrdersPage: React.FC = () => {
         }
         return prev.filter(o => o.id !== id);
       });
+      fetchOrderCountsRef.current(); // Refresh stats
       window.dispatchEvent(new Event('refreshBadgeCounts'));
     });
 
@@ -1294,6 +1301,8 @@ const LiveOrdersPage: React.FC = () => {
 
       // Play notification sound
       playNotificationSoundRef.current();
+
+      fetchOrderCountsRef.current(); // Refresh stats (amount changed)
 
       // Show alert notification (stays until manually dismissed or View Order clicked)
       setItemsAddedAlert({

@@ -510,9 +510,9 @@ const LoginPage: React.FC = () => {
       } else {
         setError('Invalid email/username or password');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      setError('Login failed. Please try again.');
+      setError(error?.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
+import { Modal as CommonModal } from '../../components/UI/Modal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { useMenu } from '../../contexts/MenuContext';
@@ -363,7 +364,7 @@ const ActionButton = styled.button`
 `;
 
 // 타입 정의
-type TabType = 'store' | 'operations' | 'payment' | 'printer' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
+type TabType = 'store' | 'operations' | 'payment' | 'printer' | 'kitchenStations' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
 
 interface Table {
   id: string;
@@ -585,16 +586,17 @@ const SettingsPage: React.FC = () => {
   // Printer settings state
   const [printerSettings, setPrinterSettings] = useState({
     billPrinter: {
-      enabled: false,  // Default disabled
+      enabled: false,
       name: '',
       autoPrint: false
     },
     kitchenPrinter: {
-      enabled: false,  // Default disabled
+      enabled: false,
       name: '',
-      autoPrint: false,  // Default disabled
-      printPerItem: false  // Print separate ticket for each item
-    }
+      autoPrint: false,
+      printPerItem: false
+    },
+    kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean }>
   });
 
   // Printer mode state (rawbt or browser)
@@ -604,6 +606,17 @@ const SettingsPage: React.FC = () => {
     return (saved === 'browser' || saved === 'rawbt') ? saved : 'rawbt';
   });
   const [printerSettingsLoading, setPrinterSettingsLoading] = useState(true);
+
+  // Kitchen Stations state
+  const [kitchenStations, setKitchenStations] = useState<any[]>([]);
+  const [kitchenAssignmentMode, setKitchenAssignmentMode] = useState<'category' | 'menu_item'>('category');
+  const [kitchenStationsLoading, setKitchenStationsLoading] = useState(true);
+  const [showStationModal, setShowStationModal] = useState(false);
+  const [editingStation, setEditingStation] = useState<any>(null);
+  const [stationForm, setStationForm] = useState({ name: '', category_ids: [] as number[], product_ids: [] as number[] });
+  const [allCategories, setAllCategories] = useState<any[]>([]);
+  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [stationSaving, setStationSaving] = useState(false);
 
   // Load settings from localStorage or use defaults
   const loadSettings = () => {
@@ -1106,13 +1119,15 @@ const SettingsPage: React.FC = () => {
                 name: dbSettings.kitchenPrinter?.name || '',
                 autoPrint: dbSettings.kitchenPrinter?.autoPrint ?? false,
                 printPerItem: dbSettings.kitchenPrinter?.printPerItem ?? false
-              }
+              },
+              kitchenStationPrinters: dbSettings.kitchenStationPrinters || {}
             });
             // Also sync to localStorage for billPrint.js
             localStorage.setItem('printerMode', mode);
             localStorage.setItem('printerSettings', JSON.stringify({
               billPrinter: dbSettings.billPrinter || { enabled: false, name: '', autoPrint: false },
-              kitchenPrinter: dbSettings.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false }
+              kitchenPrinter: dbSettings.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false },
+              ...(dbSettings.kitchenStationPrinters ? { kitchenStationPrinters: dbSettings.kitchenStationPrinters } : {})
             }));
           }
         }
@@ -1125,7 +1140,8 @@ const SettingsPage: React.FC = () => {
             const parsed = JSON.parse(savedPrinterSettings);
             setPrinterSettings(prev => ({
               billPrinter: { ...prev.billPrinter, ...parsed.billPrinter },
-              kitchenPrinter: { ...prev.kitchenPrinter, ...parsed.kitchenPrinter }
+              kitchenPrinter: { ...prev.kitchenPrinter, ...parsed.kitchenPrinter },
+              kitchenStationPrinters: parsed.kitchenStationPrinters || prev.kitchenStationPrinters
             }));
           } catch (err) {
             console.error('Failed to parse printer settings:', err);
@@ -1138,6 +1154,46 @@ const SettingsPage: React.FC = () => {
     };
 
     loadPrinterSettings();
+  }, [user?.restaurantId]);
+
+  // Load kitchen stations
+  const loadKitchenStations = async () => {
+    if (!user?.restaurantId) return;
+    setKitchenStationsLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const authHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+      const [stationsRes, categoriesRes, productsRes] = await Promise.all([
+        fetch(`/api/kitchen-stations?restaurant_id=${user.restaurantId}`, { headers: authHeaders }),
+        fetch(`/api/categories?restaurant_id=${user.restaurantId}`, { headers: authHeaders }),
+        fetch(`/api/menu?restaurant_id=${user.restaurantId}`, { headers: authHeaders })
+      ]);
+
+      if (stationsRes.ok) {
+        const stationsData = await stationsRes.json();
+        setKitchenStations(stationsData.data?.stations || []);
+        setKitchenAssignmentMode(stationsData.data?.assignment_mode || 'category');
+      }
+      if (categoriesRes.ok) {
+        const catData = await categoriesRes.json();
+        setAllCategories(Array.isArray(catData) ? catData : (catData.data || []));
+      }
+      if (productsRes.ok) {
+        const prodData = await productsRes.json();
+        // /api/menu returns { data: { categories, items } }
+        const items = prodData.data?.items || prodData.data || [];
+        setAllProducts(Array.isArray(items) ? items : []);
+      }
+    } catch (error) {
+      console.error('Failed to load kitchen stations:', error);
+    } finally {
+      setKitchenStationsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadKitchenStations();
   }, [user?.restaurantId]);
 
   // Load membership settings
@@ -1711,6 +1767,9 @@ const SettingsPage: React.FC = () => {
                 </Tab>
                 <Tab active={activeTab === 'printer'} onClick={() => handleTabChange('printer')}>
                   Printer
+                </Tab>
+                <Tab active={activeTab === 'kitchenStations'} onClick={() => handleTabChange('kitchenStations')}>
+                  Kitchen Stations
                 </Tab>
                 <Tab active={activeTab === 'managers'} onClick={() => handleTabChange('managers')}>
                   Managers
@@ -3633,7 +3692,7 @@ const SettingsPage: React.FC = () => {
                         />
                         <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px', lineHeight: '1.5' }}>
                           Enter the printer name as shown in RawBT app<br />
-                          (WiFi/Bluetooth printers must be configured in RawBT first)<br />
+                          (WiFi printers must be configured in RawBT first)<br />
                           Leave empty to use RawBT's default printer
                         </p>
                       </FormGroup>
@@ -3654,63 +3713,130 @@ const SettingsPage: React.FC = () => {
                   )}
                 </SettingsCard>
 
-                {/* Kitchen Printer Card */}
-                <SettingsCard>
-                  <CardTitle>Kitchen Printer</CardTitle>
-                  <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                    Configure printer for kitchen order tickets
-                  </p>
+                {/* Kitchen Printer Card — Station 유무에 따라 분기 */}
+                {kitchenStations.length === 0 ? (
+                  /* Station 0개: 기존 단일 Kitchen Printer */
+                  <SettingsCard>
+                    <CardTitle>Kitchen Printer</CardTitle>
+                    <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                      Configure printer for kitchen order tickets
+                    </p>
 
-                  <Toggle>
-                    <ToggleLabel>Enable Kitchen Printer</ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput
-                        type="checkbox"
-                        checked={printerSettings.kitchenPrinter.enabled}
-                        onChange={(e) => setPrinterSettings(prev => ({
-                          ...prev,
-                          kitchenPrinter: { ...prev.kitchenPrinter, enabled: e.target.checked }
-                        }))}
-                      />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
-
-                  {printerSettings.kitchenPrinter.enabled && (
-                    <>
-                      <FormGroup style={{ marginTop: '20px' }}>
-                        <Label>Printer Address</Label>
-                        <Input
-                          type="text"
-                          value={printerSettings.kitchenPrinter.name}
-                          onChange={(e) => setPrinterSettings(prev => ({
-                            ...prev,
-                            kitchenPrinter: { ...prev.kitchenPrinter, name: e.target.value }
-                          }))}
-                          placeholder="e.g., Kitchen-Printer, PT-210"
-                        />
-                        <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px', lineHeight: '1.5' }}>
-                          Enter the printer name as shown in RawBT app<br />
-                          (WiFi/Bluetooth printers must be configured in RawBT first)<br />
-                          Leave empty to use RawBT's default printer
-                        </p>
-                      </FormGroup>
-
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
-                        <input
+                    <Toggle>
+                      <ToggleLabel>Enable Kitchen Printer</ToggleLabel>
+                      <ToggleSwitch>
+                        <ToggleInput
                           type="checkbox"
-                          checked={printerSettings.kitchenPrinter.autoPrint}
+                          checked={printerSettings.kitchenPrinter.enabled}
                           onChange={(e) => setPrinterSettings(prev => ({
                             ...prev,
-                            kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }
+                            kitchenPrinter: { ...prev.kitchenPrinter, enabled: e.target.checked }
                           }))}
-                          style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
                         />
-                        <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print on new order</span>
-                      </label>
-                    </>
-                  )}
-                </SettingsCard>
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                    </Toggle>
+
+                    {printerSettings.kitchenPrinter.enabled && (
+                      <>
+                        <FormGroup style={{ marginTop: '20px' }}>
+                          <Label>Printer Address</Label>
+                          <Input
+                            type="text"
+                            value={printerSettings.kitchenPrinter.name}
+                            onChange={(e) => setPrinterSettings(prev => ({
+                              ...prev,
+                              kitchenPrinter: { ...prev.kitchenPrinter, name: e.target.value }
+                            }))}
+                            placeholder="e.g., Kitchen-Printer, PT-210"
+                          />
+                          <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px', lineHeight: '1.5' }}>
+                            Enter the printer name as shown in RawBT app<br />
+                            (WiFi printers must be configured in RawBT first)<br />
+                            Leave empty to use RawBT's default printer
+                          </p>
+                        </FormGroup>
+
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={printerSettings.kitchenPrinter.autoPrint}
+                            onChange={(e) => setPrinterSettings(prev => ({
+                              ...prev,
+                              kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }
+                            }))}
+                            style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                          />
+                          <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print on new order</span>
+                        </label>
+                      </>
+                    )}
+                  </SettingsCard>
+                ) : (
+                  /* Station 1개 이상: Station별 프린터 카드 */
+                  <SettingsCard>
+                    <CardTitle>Kitchen Printers</CardTitle>
+                    <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', padding: '10px 12px', marginBottom: '16px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
+                      Kitchen Stations are registered. Configure a printer for each station below.<br />
+                      Enter the printer name as shown in RawBT app. WiFi printers must be configured in RawBT first.<br />
+                      Leave empty to use RawBT's default printer.
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {kitchenStations.filter((s: any) => s.is_active !== false).map((station: any) => {
+                        const sp = printerSettings.kitchenStationPrinters[station.id] || { name: '', autoPrint: true };
+                        return (
+                          <div key={station.id} style={{ background: '#F6F9FC', borderRadius: '8px', padding: '14px', border: '1px solid #E6EBF1' }}>
+                            <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '14px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: sp.name ? '#10B981' : '#F59E0B' }} />
+                              {station.name}
+                            </div>
+                            <FormGroup style={{ marginBottom: '8px' }}>
+                              <Label style={{ fontSize: '12px' }}>Printer Address</Label>
+                              <Input
+                                type="text"
+                                value={sp.name}
+                                onChange={(e) => setPrinterSettings(prev => ({
+                                  ...prev,
+                                  kitchenStationPrinters: {
+                                    ...prev.kitchenStationPrinters,
+                                    [station.id]: { ...sp, name: e.target.value, stationName: station.name }
+                                  }
+                                }))}
+                                placeholder="e.g., PT-210, InnerPrinter"
+                                style={{ fontSize: '13px', padding: '6px 10px' }}
+                              />
+                            </FormGroup>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={sp.autoPrint}
+                                onChange={(e) => setPrinterSettings(prev => ({
+                                  ...prev,
+                                  kitchenStationPrinters: {
+                                    ...prev.kitchenStationPrinters,
+                                    [station.id]: { ...sp, autoPrint: e.target.checked, stationName: station.name }
+                                  }
+                                }))}
+                                style={{ width: '16px', height: '16px', accentColor: '#635BFF' }}
+                              />
+                              <span style={{ fontSize: '13px', color: '#374151' }}>Auto-print on new order</span>
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {!kitchenStations.some((s: any) => {
+                      const sp = printerSettings.kitchenStationPrinters[s.id];
+                      return sp && sp.name;
+                    }) && (
+                      <div style={{ marginTop: '12px', padding: '8px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', fontSize: '12px', color: '#92400E' }}>
+                        No printer addresses configured yet. Enter printer names for each station.
+                      </div>
+                    )}
+                  </SettingsCard>
+                )}
               </SettingsGrid>
               )}
 
@@ -3755,11 +3881,15 @@ const SettingsPage: React.FC = () => {
 
                     try {
                       const token = localStorage.getItem('auth_token');
-                      const settingsToSave = {
+                      const settingsToSave: any = {
                         printerMode: printerMode,
                         billPrinter: printerSettings.billPrinter,
                         kitchenPrinter: printerSettings.kitchenPrinter
                       };
+                      // Station별 프린터가 있으면 포함
+                      if (Object.keys(printerSettings.kitchenStationPrinters).length > 0) {
+                        settingsToSave.kitchenStationPrinters = printerSettings.kitchenStationPrinters;
+                      }
 
                       const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
                         method: 'PUT',
@@ -3795,6 +3925,315 @@ const SettingsPage: React.FC = () => {
                   </StatusMessage>
                 )}
               </SaveButtonContainer>
+            </>
+          )}
+
+          {activeTab === 'kitchenStations' && (
+            <>
+              {/* Info Banner */}
+              <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px', padding: '16px', marginBottom: '24px' }}>
+                <p style={{ margin: 0, fontSize: '14px', color: '#075985', lineHeight: '1.5' }}>
+                  Register kitchen stations to filter orders by station in Kitchen Display and print separate order tickets per station.
+                  If no stations are registered, everything works the same as before. Printer settings are configured in the Printer tab.
+                </p>
+              </div>
+
+              {/* Assignment Mode */}
+              <SettingsCard style={{ marginBottom: '24px' }}>
+                <CardTitle>Assignment Mode</CardTitle>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', flex: 1, minWidth: '200px', padding: '12px', borderRadius: '8px', border: `1px solid ${kitchenAssignmentMode === 'category' ? '#635BFF' : '#E6EBF1'}`, background: kitchenAssignmentMode === 'category' ? '#F8F7FF' : 'white' }}>
+                    <input
+                      type="radio"
+                      name="assignmentMode"
+                      checked={kitchenAssignmentMode === 'category'}
+                      onChange={async () => {
+                        setKitchenAssignmentMode('category');
+                        const token = localStorage.getItem('auth_token');
+                        await fetch(`/api/restaurants/${user?.restaurantId}`, {
+                          method: 'PUT',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ kitchen_assignment_mode: 'category' })
+                        });
+                      }}
+                      style={{ marginTop: '2px' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '14px' }}>By Category (Recommended)</div>
+                      <div style={{ color: '#6B7C93', fontSize: '13px', marginTop: '4px' }}>Assign categories to stations. New menu items automatically follow their category.</div>
+                    </div>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', flex: 1, minWidth: '200px', padding: '12px', borderRadius: '8px', border: `1px solid ${kitchenAssignmentMode === 'menu_item' ? '#635BFF' : '#E6EBF1'}`, background: kitchenAssignmentMode === 'menu_item' ? '#F8F7FF' : 'white' }}>
+                    <input
+                      type="radio"
+                      name="assignmentMode"
+                      checked={kitchenAssignmentMode === 'menu_item'}
+                      onChange={async () => {
+                        setKitchenAssignmentMode('menu_item');
+                        const token = localStorage.getItem('auth_token');
+                        await fetch(`/api/restaurants/${user?.restaurantId}`, {
+                          method: 'PUT',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ kitchen_assignment_mode: 'menu_item' })
+                        });
+                      }}
+                      style={{ marginTop: '2px' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '14px' }}>By Menu Item</div>
+                      <div style={{ color: '#6B7C93', fontSize: '13px', marginTop: '4px' }}>Assign each menu item individually. More precise but requires manual assignment for new items.</div>
+                    </div>
+                  </label>
+                </div>
+              </SettingsCard>
+
+              {/* Stations List */}
+              <SettingsCard>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <CardTitle style={{ marginBottom: 0 }}>Stations</CardTitle>
+                  <SaveButton onClick={() => {
+                    setEditingStation(null);
+                    setStationForm({ name: '', category_ids: [], product_ids: [] });
+                    setShowStationModal(true);
+                  }}>
+                    Add Station
+                  </SaveButton>
+                </div>
+
+                {kitchenStationsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>Loading...</div>
+                ) : kitchenStations.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 500, marginBottom: '8px' }}>No kitchen stations yet</div>
+                    <div style={{ fontSize: '14px' }}>Add stations to split orders by kitchen area</div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {kitchenStations.map((station: any) => {
+                      const assignedCats = station.categories || [];
+                      const assignedProds = station.products || [];
+                      const hasAssignment = assignedCats.length > 0 || assignedProds.length > 0;
+                      const statusColor = !station.is_active ? '#EF4444' : hasAssignment ? '#10B981' : '#F59E0B';
+                      return (
+                        <div key={station.id} style={{ background: '#F6F9FC', borderRadius: '8px', padding: '16px', border: '1px solid #E6EBF1' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor }} />
+                              <span style={{ fontWeight: 600, color: '#0A2540', fontSize: '15px' }}>{station.name}</span>
+                              {!station.is_active && (
+                                <span style={{ fontSize: '11px', background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: '10px', fontWeight: 500 }}>Inactive</span>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => {
+                                  setEditingStation(station);
+                                  setStationForm({
+                                    name: station.name,
+                                    category_ids: assignedCats.map((c: any) => c.id),
+                                    product_ids: assignedProds.map((p: any) => p.id)
+                                  });
+                                  setShowStationModal(true);
+                                }}
+                                style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #E6EBF1', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#6B7C93' }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!window.confirm(`Delete "${station.name}"? Assigned categories and menu items will be unassigned.`)) return;
+                                  const token = localStorage.getItem('auth_token');
+                                  await fetch(`/api/kitchen-stations/${station.id}`, {
+                                    method: 'DELETE',
+                                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                                  });
+                                  loadKitchenStations();
+                                }}
+                                style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', fontSize: '13px', color: '#EF4444' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                          {/* Assignment info */}
+                          <div style={{ marginTop: '8px', fontSize: '13px', color: '#6B7C93' }}>
+                            {assignedCats.length > 0 && (
+                              <div>Categories: {assignedCats.map((c: any) => `${c.emoji || ''} ${c.name}`.trim()).join(', ')}</div>
+                            )}
+                            {assignedProds.length > 0 && (
+                              <div>Menu Items: {assignedProds.map((p: any) => p.name).join(', ')}</div>
+                            )}
+                            {!hasAssignment && (
+                              <div style={{ color: '#F59E0B' }}>No items assigned</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Unassigned Warning */}
+                {kitchenStations.length > 0 && (() => {
+                  const assignedCatIds = new Set(kitchenStations.flatMap((s: any) => (s.categories || []).map((c: any) => c.id)));
+                  const assignedProdIds = new Set(kitchenStations.flatMap((s: any) => (s.products || []).map((p: any) => p.id)));
+                  const unassignedCats = allCategories.filter((c: any) => !assignedCatIds.has(c.id));
+                  const unassignedProds = allProducts.filter((p: any) => !assignedProdIds.has(p.id));
+
+                  if (kitchenAssignmentMode === 'category' && unassignedCats.length > 0) {
+                    return (
+                      <div style={{ marginTop: '16px', padding: '12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
+                        <strong>Unassigned categories:</strong> {unassignedCats.map((c: any) => c.name).join(', ')}
+                        <div style={{ marginTop: '4px', color: '#B45309' }}>Unassigned items will appear in all station displays.</div>
+                      </div>
+                    );
+                  }
+                  if (kitchenAssignmentMode === 'menu_item' && unassignedProds.length > 0) {
+                    return (
+                      <div style={{ marginTop: '16px', padding: '12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
+                        <strong>Unassigned menu items:</strong> {unassignedProds.length} items
+                        <div style={{ marginTop: '4px', color: '#B45309' }}>Unassigned items will appear in all station displays.</div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </SettingsCard>
+
+              {/* Station Add/Edit Modal */}
+              {showStationModal && (
+                <CommonModal
+                  isOpen={true}
+                  title={editingStation ? `Edit Station: ${editingStation.name}` : 'Add Kitchen Station'}
+                  onClose={() => setShowStationModal(false)}
+                  maxWidth="520px"
+                  footer={
+                    <>
+                      <button
+                        onClick={() => setShowStationModal(false)}
+                        style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #E6EBF1', background: 'white', cursor: 'pointer', fontSize: '14px', color: '#6B7C93' }}
+                      >
+                        Cancel
+                      </button>
+                      <SaveButton
+                        disabled={!stationForm.name.trim() || stationSaving}
+                        onClick={async () => {
+                          setStationSaving(true);
+                          try {
+                            const token = localStorage.getItem('auth_token');
+                            const authHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+                            if (editingStation) {
+                              await fetch(`/api/kitchen-stations/${editingStation.id}`, {
+                                method: 'PUT',
+                                headers: authHeaders,
+                                body: JSON.stringify({
+                                  name: stationForm.name.trim(),
+                                  category_ids: stationForm.category_ids,
+                                  product_ids: stationForm.product_ids
+                                })
+                              });
+                            } else {
+                              await fetch('/api/kitchen-stations', {
+                                method: 'POST',
+                                headers: authHeaders,
+                                body: JSON.stringify({
+                                  restaurant_id: user?.restaurantId,
+                                  name: stationForm.name.trim(),
+                                  category_ids: stationForm.category_ids,
+                                  product_ids: stationForm.product_ids
+                                })
+                              });
+                            }
+
+                            setShowStationModal(false);
+                            loadKitchenStations();
+                          } catch (error) {
+                            console.error('Failed to save station:', error);
+                          } finally {
+                            setStationSaving(false);
+                          }
+                        }}
+                      >
+                        {stationSaving ? 'Saving...' : (editingStation ? 'Save Changes' : 'Add Station')}
+                      </SaveButton>
+                    </>
+                  }
+                >
+                    <FormGroup>
+                      <Label>Station Name *</Label>
+                      <Input
+                        value={stationForm.name}
+                        onChange={(e) => setStationForm({ ...stationForm, name: e.target.value })}
+                        placeholder="e.g., Grill Station"
+                      />
+                    </FormGroup>
+
+                    {kitchenAssignmentMode === 'category' ? (
+                      <FormGroup>
+                        <Label>Assign Categories</Label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+                          {allCategories.map((cat: any) => {
+                            const isChecked = stationForm.category_ids.includes(cat.id);
+                            // Check if assigned to another station
+                            const otherStation = kitchenStations.find((s: any) =>
+                              s.id !== editingStation?.id && (s.categories || []).some((c: any) => c.id === cat.id)
+                            );
+                            return (
+                              <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#E6EBF1'}`, opacity: otherStation ? 0.5 : 1 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  disabled={!!otherStation}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setStationForm({ ...stationForm, category_ids: [...stationForm.category_ids, cat.id] });
+                                    } else {
+                                      setStationForm({ ...stationForm, category_ids: stationForm.category_ids.filter(id => id !== cat.id) });
+                                    }
+                                  }}
+                                />
+                                <span style={{ fontSize: '14px', color: '#0A2540' }}>{cat.emoji || ''} {cat.name}</span>
+                                {otherStation && <span style={{ fontSize: '11px', color: '#8898AA' }}>({otherStation.name})</span>}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </FormGroup>
+                    ) : (
+                      <FormGroup>
+                        <Label>Assign Menu Items</Label>
+                        <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {allProducts.map((prod: any) => {
+                            const isChecked = stationForm.product_ids.includes(prod.id);
+                            const otherStation = kitchenStations.find((s: any) =>
+                              s.id !== editingStation?.id && (s.products || []).some((p: any) => p.id === prod.id)
+                            );
+                            return (
+                              <label key={prod.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: otherStation ? 'not-allowed' : 'pointer', background: isChecked ? '#F8F7FF' : 'white', border: `1px solid ${isChecked ? '#C7D2FE' : '#E6EBF1'}`, opacity: otherStation ? 0.5 : 1 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  disabled={!!otherStation}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setStationForm({ ...stationForm, product_ids: [...stationForm.product_ids, prod.id] });
+                                    } else {
+                                      setStationForm({ ...stationForm, product_ids: stationForm.product_ids.filter(id => id !== prod.id) });
+                                    }
+                                  }}
+                                />
+                                <span style={{ fontSize: '14px', color: '#0A2540' }}>{prod.name}</span>
+                                <span style={{ fontSize: '12px', color: '#8898AA' }}>({prod.category})</span>
+                                {otherStation && <span style={{ fontSize: '11px', color: '#8898AA' }}>({otherStation.name})</span>}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </FormGroup>
+                    )}
+                </CommonModal>
+              )}
             </>
           )}
 

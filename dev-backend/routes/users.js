@@ -31,20 +31,11 @@ router.get('/', authenticateToken, async (req, res) => {
       }
     }
 
+    // Get users first (no brand/foodcourt join to avoid duplicates)
     const users = await sequelize.query(`
-      SELECT u.*, r.name as restaurant_name,
-        b.plan_type as brand_plan_type, b.plan_amount as brand_plan_amount,
-        b.billing_cycle as brand_billing_cycle, b.subscription_status as brand_subscription_status,
-        b.subscription_start as brand_subscription_start, b.subscription_end as brand_subscription_end,
-        b.currency as brand_currency, b.id as brand_entity_id, b.name as brand_name,
-        f.plan_type as fc_plan_type, f.plan_amount as fc_plan_amount,
-        f.billing_cycle as fc_billing_cycle, f.subscription_status as fc_subscription_status,
-        f.subscription_start as fc_subscription_start, f.subscription_end as fc_subscription_end,
-        f.currency as fc_currency, f.id as fc_entity_id, f.name as fc_name
+      SELECT u.*, r.name as restaurant_name
       FROM users u
       LEFT JOIN restaurants r ON u.restaurant_id = r.id
-      LEFT JOIN brands b ON b.owner_id = u.id AND u.role = 'Brand General'
-      LEFT JOIN foodcourts f ON f.owner_id = u.id AND u.role = 'Foodcourt General'
       ${roleFilter}
       ORDER BY u.full_name
     `, {
@@ -52,10 +43,75 @@ router.get('/', authenticateToken, async (req, res) => {
       type: sequelize.QueryTypes.SELECT
     });
 
-    // Remove password from results
+    // Fetch brand/foodcourt data separately and merge (first brand/fc per user for display)
+    const brandGeneralIds = users.filter(u => u.role === 'Brand General').map(u => u.id);
+    const fcGeneralIds = users.filter(u => u.role === 'Foodcourt General').map(u => u.id);
+
+    let brandsMap = {};    // first brand per user (backward compat)
+    let brandsAllMap = {}; // all brands per user
+    if (brandGeneralIds.length > 0) {
+      const brands = await sequelize.query(`
+        SELECT b.* FROM brands b WHERE b.owner_id IN (?) ORDER BY b.id ASC
+      `, { replacements: [brandGeneralIds], type: sequelize.QueryTypes.SELECT });
+      for (const b of brands) {
+        if (!brandsMap[b.owner_id]) brandsMap[b.owner_id] = b;
+        if (!brandsAllMap[b.owner_id]) brandsAllMap[b.owner_id] = [];
+        brandsAllMap[b.owner_id].push(b);
+      }
+    }
+
+    let fcMap = {};
+    let fcAllMap = {};
+    if (fcGeneralIds.length > 0) {
+      const fcs = await sequelize.query(`
+        SELECT f.* FROM foodcourts f WHERE f.owner_id IN (?) ORDER BY f.id ASC
+      `, { replacements: [fcGeneralIds], type: sequelize.QueryTypes.SELECT });
+      for (const f of fcs) {
+        if (!fcMap[f.owner_id]) fcMap[f.owner_id] = f;
+        if (!fcAllMap[f.owner_id]) fcAllMap[f.owner_id] = [];
+        fcAllMap[f.owner_id].push(f);
+      }
+    }
+
+    // Merge brand/foodcourt entity info + map subscription from users table with backward-compat field names
     const usersWithoutPassword = users.map(user => {
-      const { password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
+      const { password, ...u } = user;
+      const b = brandsMap[u.id];
+      const f = fcMap[u.id];
+      if (b) {
+        u.brand_entity_id = b.id;
+        u.brand_name = b.name;
+      }
+      if (brandsAllMap[u.id]) {
+        u.brands = brandsAllMap[u.id].map(br => ({ id: br.id, name: br.name }));
+      }
+      if (f) {
+        u.fc_entity_id = f.id;
+        u.fc_name = f.name;
+      }
+      if (fcAllMap[u.id]) {
+        u.foodcourts = fcAllMap[u.id].map(fc => ({ id: fc.id, name: fc.name }));
+      }
+      // Backward compat: map users table subscription fields to prefixed names for frontend
+      if (u.role === 'Brand General') {
+        u.brand_plan_type = u.plan_type;
+        u.brand_plan_amount = u.plan_amount;
+        u.brand_billing_cycle = u.billing_cycle;
+        u.brand_subscription_status = u.subscription_status;
+        u.brand_subscription_start = u.subscription_start;
+        u.brand_subscription_end = u.subscription_end;
+        u.brand_currency = u.currency;
+      }
+      if (u.role === 'Foodcourt General') {
+        u.fc_plan_type = u.plan_type;
+        u.fc_plan_amount = u.plan_amount;
+        u.fc_billing_cycle = u.billing_cycle;
+        u.fc_subscription_status = u.subscription_status;
+        u.fc_subscription_start = u.subscription_start;
+        u.fc_subscription_end = u.subscription_end;
+        u.fc_currency = u.currency;
+      }
+      return u;
     });
 
     console.log(`✅ Found ${usersWithoutPassword.length} users with role: ${req.query.role || 'all'}`);
@@ -246,9 +302,12 @@ router.post('/', authenticateToken, async (req, res) => {
       pin_code: pin_code || null
     };
 
-    // For Restaurant Owner: store subscription on user directly
+    // For Restaurant Owner: store subscription on user directly (brands/foodcourts use entity tables)
     if (role === 'Restaurant Owner') {
       userCreateData.plan_type = plan_type || null;
+      userCreateData.plan_amount = plan_amount ? parseFloat(plan_amount) : null;
+      userCreateData.billing_cycle = billing_cycle || 'monthly';
+      userCreateData.currency = currency || 'MYR';
       userCreateData.subscription_status = subscription_start ? 'active' : 'trial';
       userCreateData.subscription_start = subscription_start || new Date();
       userCreateData.subscription_end = calcSubscriptionEnd;
@@ -378,43 +437,25 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
       }
     }
 
-    // Extract subscription fields — these go to entity tables, not user table
-    const subscriptionFields = ['plan_type', 'plan_amount', 'billing_cycle', 'currency', 'subscription_start', 'subscription_end', 'subscription_status'];
-    const entityUpdateData = {};
-    for (const field of subscriptionFields) {
-      if (updateData[field] !== undefined) {
-        entityUpdateData[field] = updateData[field];
-        // Remove from user updateData (except for Owner who stores on user)
-        if (user.role !== 'Restaurant Owner') {
-          delete updateData[field];
-        }
-      }
+    // Subscription fields — all roles store on users table directly
+    if (updateData.plan_amount !== undefined) {
+      updateData.plan_amount = updateData.plan_amount ? parseFloat(updateData.plan_amount) : null;
     }
 
     // Auto-calculate subscription_end if start + billing_cycle provided
-    if (entityUpdateData.subscription_start && entityUpdateData.billing_cycle && !entityUpdateData.subscription_end) {
-      const startDate = new Date(entityUpdateData.subscription_start);
-      if (entityUpdateData.billing_cycle === 'annual') {
+    const effectiveBillingCycle = updateData.billing_cycle || user.billing_cycle;
+    const effectiveStart = updateData.subscription_start;
+    if (effectiveStart && effectiveBillingCycle && !updateData.subscription_end) {
+      const startDate = new Date(effectiveStart);
+      if (effectiveBillingCycle === 'annual') {
         startDate.setFullYear(startDate.getFullYear() + 1);
       } else {
         startDate.setMonth(startDate.getMonth() + 1);
       }
-      entityUpdateData.subscription_end = startDate.toISOString().split('T')[0];
-      if (user.role === 'Restaurant Owner') {
-        updateData.subscription_end = entityUpdateData.subscription_end;
-      }
+      updateData.subscription_end = startDate.toISOString().split('T')[0];
     }
 
     await user.update(updateData);
-
-    // Update subscription on entity table (Brand/Foodcourt)
-    if (Object.keys(entityUpdateData).length > 0) {
-      if (user.role === 'Brand General' && user.brand_id) {
-        await Brand.update(entityUpdateData, { where: { id: user.brand_id } });
-      } else if (user.role === 'Foodcourt General' && user.foodcourt_id) {
-        await Foodcourt.update(entityUpdateData, { where: { id: user.foodcourt_id } });
-      }
-    }
 
     logActivity(req, {
       action_type: 'update',

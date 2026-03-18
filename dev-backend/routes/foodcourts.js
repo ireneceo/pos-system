@@ -1747,12 +1747,21 @@ router.get('/:id/allowed-routes', async (req, res) => {
       return res.status(404).json({ error: 'Foodcourt not found' });
     }
 
-    if (!foodcourt.plan_type) {
+    // Subscription data is on users table (foodcourt owner)
+    const User = require('../models/User');
+    const owner = foodcourt.owner_id ? await User.findByPk(foodcourt.owner_id) : null;
+
+    // Demo accounts: use highest plan (enterprise) for full access
+    const isDemo = owner?.is_demo || foodcourt.is_demo;
+    const planType = isDemo ? 'Foodcourt Enterprise' : (owner?.plan_type || foodcourt.plan_type);
+    const subStatus = isDemo ? 'active' : (owner?.subscription_status || foodcourt.subscription_status);
+
+    if (!planType) {
       return res.json({
         entity_id: foodcourt.id,
         entity_type: 'foodcourt',
         plan_type: null,
-        subscription_status: foodcourt.subscription_status,
+        subscription_status: subStatus,
         included_modules: [],
         allowed_routes: [],
         modules: []
@@ -1762,8 +1771,8 @@ router.get('/:id/allowed-routes', async (req, res) => {
     const plan = await PlanTemplate.findOne({
       where: {
         [Op.or]: [
-          { display_name: foodcourt.plan_type },
-          { name: foodcourt.plan_type }
+          { display_name: planType },
+          { name: planType }
         ],
         plan_target: 'foodcourt'
       }
@@ -1773,8 +1782,8 @@ router.get('/:id/allowed-routes', async (req, res) => {
       return res.json({
         entity_id: foodcourt.id,
         entity_type: 'foodcourt',
-        plan_type: foodcourt.plan_type,
-        subscription_status: foodcourt.subscription_status,
+        plan_type: planType,
+        subscription_status: subStatus,
         included_modules: [],
         allowed_routes: [],
         modules: []
@@ -1786,8 +1795,8 @@ router.get('/:id/allowed-routes', async (req, res) => {
       return res.json({
         entity_id: foodcourt.id,
         entity_type: 'foodcourt',
-        plan_type: foodcourt.plan_type,
-        subscription_status: foodcourt.subscription_status,
+        plan_type: planType,
+        subscription_status: subStatus,
         included_modules: [],
         allowed_routes: [],
         modules: []
@@ -1805,8 +1814,8 @@ router.get('/:id/allowed-routes', async (req, res) => {
     res.json({
       entity_id: foodcourt.id,
       entity_type: 'foodcourt',
-      plan_type: foodcourt.plan_type,
-      subscription_status: foodcourt.subscription_status,
+      plan_type: planType,
+      subscription_status: subStatus,
       included_modules: includedModuleCodes,
       allowed_routes: allowedRoutes,
       modules: modules.map(m => ({ code: m.module_code, name: m.name, category: m.category }))

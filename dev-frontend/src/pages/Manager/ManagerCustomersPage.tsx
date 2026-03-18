@@ -144,15 +144,15 @@ const StatusBadge = styled.span<{ status: string }>`
   text-transform: uppercase;
   background: ${props => {
     switch (props.status) {
-      case 'active': return '#DEF7EC';
-      case 'inactive': return '#FEF2F2';
+      case 'active': return '#ECFDF5';
+      case 'inactive': return '#FEE2E2';
       default: return '#F3F4F6';
     }
   }};
   color: ${props => {
     switch (props.status) {
-      case 'active': return '#065F46';
-      case 'inactive': return '#991B1B';
+      case 'active': return '#059669';
+      case 'inactive': return '#DC2626';
       default: return '#374151';
     }
   }};

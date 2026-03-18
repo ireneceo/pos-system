@@ -1049,21 +1049,24 @@ router.post('/forgot-password', async (req, res) => {
 
       await emailService.sendEmail('restaurant', restaurantId, {
         to: customer.email,
-        subject: 'Password Reset Request - Purple Here',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1F2937;">Password Reset Request</h2>
-            <p style="color: #4B5563;">Hi ${customer.name || 'there'},</p>
-            <p style="color: #4B5563;">We received a request to reset your password. Click the button below to create a new password:</p>
-            <div style="text-align: center; margin: 32px 0;">
-              <a href="${resetLink}" style="background: #635BFF; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>
-            </div>
-            <p style="color: #6B7280; font-size: 14px;">This link will expire in 1 hour.</p>
-            <p style="color: #6B7280; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
-            <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 32px 0;">
-            <p style="color: #9CA3AF; font-size: 12px;">This email was sent by Purple Here POS</p>
-          </div>
-        `
+        subject: 'Password Reset Request - PurpleHere',
+        html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="https://purplehere.com" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
+  <tr><td style="padding:32px;">
+    <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">Password Reset Request</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.6;">Hi ${customer.name || 'there'},</p>
+    <p style="color:#374151;font-size:14px;line-height:1.6;">We received a request to reset your password. Click the button below to create a new password:</p>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${resetLink}" style="display:inline-block;background:#635BFF;color:white;padding:14px 36px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">Reset Password</a>
+    </div>
+    <p style="color:#6B7280;font-size:14px;">This link will expire in 1 hour.</p>
+    <p style="color:#6B7280;font-size:14px;">If you didn't request this, you can safely ignore this email.</p>
+  </td></tr>
+  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">This is an automated message from <a href="https://purplehere.com" style="color:#635BFF;text-decoration:none;">PurpleHere</a>. No-reply email.</p></td></tr>
+</table></td></tr></table></body></html>`
       });
       console.log(`✅ Password reset email sent to ${customer.email}`);
     } catch (emailError) {

@@ -563,7 +563,10 @@ function generateHTMLKitchenTicket(orderData, storeInfo) {
 
   // Table, Pager, or Pickup number (priority: Table > Pager > Pickup)
   let pickupHTML = '';
-  if (orderData.tableNumber) {
+  if (orderData.skipFooterLocation) {
+    // 그룹 프린트: 하단 위치 정보 생략
+    pickupHTML = '';
+  } else if (orderData.tableNumber) {
     pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">TABLE ${orderData.tableNumber}</div>`;
   } else if (orderData.pagerNumber) {
     pickupHTML = `<div style="font-size: 28px; font-weight: 900; text-align: center; margin: 15px 0;">PAGER ${orderData.pagerNumber}</div>`;
@@ -949,6 +952,14 @@ export function generateKitchenTicketContent(orderData, storeInfo) {
   // === FOOTER - TABLE/PAGER/PICKUP NUMBER AND ORDER TYPE (at bottom) ===
   content += CMD.LINE_FEED;
 
+  // Skip footer location for group prints (Item View)
+  if (orderData.skipFooterLocation) {
+    content += CMD.LINE_FEED;
+    content += CMD.LINE_FEED;
+    content += CMD.CUT;
+    return content;
+  }
+
   // TABLE NUMBER (priority) > PAGER NUMBER > PICKUP NUMBER - single line format
   if (orderData.tableNumber) {
     content += CMD.ALIGN_CENTER;
@@ -1300,6 +1311,12 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
     if (!settings.kitchenPrinter.enabled) {
       console.log('Kitchen printer is disabled in settings');
       return true; // Return success but skip printing
+    }
+
+    // ─── Station별 분리 인쇄: kitchenStationPrinters가 있으면 분리 ───
+    const stationPrinters = settings.kitchenStationPrinters;
+    if (stationPrinters && Object.keys(stationPrinters).length > 0 && !printerName) {
+      return await printKitchenTicketsByStation(orderData, storeInfo, settings);
     }
 
     // Use provided printerName or get from settings
@@ -1846,6 +1863,234 @@ export function printSettlementReport(htmlContent, escposContent) {
     console.error('❌ Settlement print error:', error);
     return false;
   }
+}
+
+/**
+ * Station별 분리 인쇄 — 아이템을 Station별로 묶어서 각 프린터로 전송
+ * Station 없는 아이템(미배정)은 기본 kitchenPrinter로 전송
+ *
+ * @param {Object} orderData - Order data
+ * @param {Object} storeInfo - Store info
+ * @param {Object} settings - Printer settings (from getPrinterSettings)
+ * @returns {Promise<boolean>} Success status
+ */
+async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
+  const stationPrinters = settings.kitchenStationPrinters || {};
+  const stationIds = Object.keys(stationPrinters);
+
+  // menuName → stationId 매핑 (localStorage에서 로드)
+  let menuStationMap = {};
+  try {
+    const saved = localStorage.getItem('kitchenStationMenuMap');
+    if (saved) menuStationMap = JSON.parse(saved);
+  } catch (e) {
+    console.error('Failed to load kitchen station menu map:', e);
+  }
+
+  // 아이템을 stationId별로 분류
+  const stationItems = {}; // { stationId: [items] }
+  const unassignedItems = []; // 미배정 아이템
+
+  (orderData.items || []).forEach(item => {
+    const itemName = item.menuItem?.name || item.name;
+    const stationId = menuStationMap[itemName];
+
+    if (stationId && stationPrinters[stationId]) {
+      if (!stationItems[stationId]) stationItems[stationId] = [];
+      stationItems[stationId].push(item);
+    } else {
+      unassignedItems.push(item);
+    }
+  });
+
+  const totalStationTickets = Object.keys(stationItems).length + (unassignedItems.length > 0 ? 1 : 0);
+  let ticketIndex = 0;
+
+  console.log(`🍳 Station 분리 인쇄: ${totalStationTickets}장 (${Object.keys(stationItems).length} stations + ${unassignedItems.length > 0 ? '1 default' : 'no default'})`);
+
+  const printPerItem = settings.kitchenPrinter.printPerItem || false;
+
+  // Helper: Station/기본 프린터로 아이템 목록을 인쇄 (printPerItem 적용)
+  const printItemsToStation = async (items, printerName, stationName) => {
+    if (printPerItem && items.length > 0) {
+      // Per-item: 각 아이템마다 별도 티켓
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const perItemOrderData = {
+          ...orderData,
+          items: [item],
+          groupLabel: stationName ? stationName.toUpperCase() : undefined
+        };
+
+        if (shouldUseBrowserPrint()) {
+          const htmlContent = generateHTMLKitchenTicket(perItemOrderData, storeInfo);
+          printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'} - ${item.name}`);
+        } else {
+          const escposContent = stationName
+            ? generateStationKitchenTicket(perItemOrderData, storeInfo, stationName, i + 1, items.length)
+            : generateSingleItemKitchenTicket(orderData, item, i + 1, items.length, storeInfo);
+          const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
+
+          let intentScheme = '#Intent;scheme=rawbt;';
+          if (printerName) intentScheme += 'S.s=' + encodeURIComponent(printerName) + ';';
+          const intentUrl = 'intent:base64,' + base64Content + intentScheme + 'package=ru.a402d.rawbtprinter;end;';
+
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = intentUrl;
+          document.body.appendChild(iframe);
+          setTimeout(() => document.body.removeChild(iframe), 500);
+        }
+
+        if (i < items.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+      }
+    } else {
+      // 합본: Station 내 모든 아이템 1장
+      const stationOrderData = {
+        ...orderData,
+        items: items,
+        groupLabel: stationName ? stationName.toUpperCase() : undefined
+      };
+
+      if (shouldUseBrowserPrint()) {
+        const htmlContent = generateHTMLKitchenTicket(stationOrderData, storeInfo);
+        printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'}`);
+      } else {
+        const escposContent = stationName
+          ? generateStationKitchenTicket(stationOrderData, storeInfo, stationName, ticketIndex, totalStationTickets)
+          : generateKitchenTicketContent(stationOrderData, storeInfo);
+        const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
+
+        let intentScheme = '#Intent;scheme=rawbt;';
+        if (printerName) intentScheme += 'S.s=' + encodeURIComponent(printerName) + ';';
+        const intentUrl = 'intent:base64,' + base64Content + intentScheme + 'package=ru.a402d.rawbtprinter;end;';
+
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = intentUrl;
+        document.body.appendChild(iframe);
+        setTimeout(() => document.body.removeChild(iframe), 500);
+      }
+    }
+  };
+
+  // Station별 티켓 인쇄
+  for (const stationId of Object.keys(stationItems)) {
+    const sp = stationPrinters[stationId];
+    const items = stationItems[stationId];
+    const stationName = sp.stationName || `Station ${stationId}`;
+    ticketIndex++;
+
+    await printItemsToStation(items, sp.name, stationName);
+
+    // Station 간 딜레이
+    if (ticketIndex < totalStationTickets) {
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+  }
+
+  // 미배정 아이템 → 기본 kitchenPrinter로
+  if (unassignedItems.length > 0) {
+    ticketIndex++;
+    await printItemsToStation(unassignedItems, settings.kitchenPrinter.name, null);
+  }
+
+  return true;
+}
+
+/**
+ * Generate Station-specific Kitchen Ticket ESC/POS content
+ * Same as generateKitchenTicketContent but with Station name header + ticket count
+ */
+function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketIndex, totalTickets) {
+  let content = '';
+
+  content += CMD.INIT;
+
+  // === STATION NAME (Large, Bold, Center) ===
+  content += CMD.ALIGN_CENTER;
+  content += CMD.TEXT_DOUBLE;
+  content += CMD.BOLD_ON;
+  content += '[ ' + stationName + ' ]' + CMD.LINE_FEED;
+  content += CMD.TEXT_NORMAL;
+  content += CMD.BOLD_OFF;
+  content += CMD.LINE_FEED;
+
+  // === ORDER INFO ===
+  content += CMD.ALIGN_LEFT;
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+  content += formatLine('Order:', orderData.orderNumber) + CMD.LINE_FEED;
+
+  const timeStr = orderData.date
+    ? orderData.date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true })
+    : new Date().toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+  content += formatLine('Time:', timeStr) + CMD.LINE_FEED;
+
+  // Table / Pager / Pickup
+  if (orderData.tableNumber) {
+    content += formatLine('Table:', orderData.tableNumber) + CMD.LINE_FEED;
+  } else if (orderData.pagerNumber) {
+    content += formatLine('Pager:', orderData.pagerNumber) + CMD.LINE_FEED;
+  }
+
+  const orderSource = orderData.orderSource === 'mobile' ? 'MOBILE ORDER' : 'POS';
+  content += formatLine('Source:', orderSource) + CMD.LINE_FEED;
+
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+  content += CMD.LINE_FEED;
+
+  // === ITEMS ===
+  content += CMD.BOLD_ON;
+  content += CMD.TEXT_DOUBLE_HEIGHT;
+  content += 'ORDER ITEMS:' + CMD.LINE_FEED;
+  content += CMD.TEXT_NORMAL;
+  content += CMD.BOLD_OFF;
+  content += CMD.LINE_FEED;
+
+  orderData.items.forEach(item => {
+    const itemName = item.menuItem?.name || item.name;
+    const qty = item.quantity;
+
+    content += CMD.BOLD_ON;
+    content += CMD.TEXT_DOUBLE;
+    content += qty + ' x ' + itemName + CMD.LINE_FEED;
+    content += CMD.TEXT_NORMAL;
+    content += CMD.BOLD_OFF;
+
+    // Options
+    const options = item.options || [];
+    options.forEach(opt => {
+      if (!/^.+\sx\d+$/.test(opt)) {
+        content += '  > ' + opt + CMD.LINE_FEED;
+      }
+    });
+
+    // Special instructions
+    const special = item.special_instructions || item.specialInstructions || '';
+    if (special) {
+      content += CMD.BOLD_ON;
+      content += '  *** ' + special + ' ***' + CMD.LINE_FEED;
+      content += CMD.BOLD_OFF;
+    }
+
+    content += CMD.LINE_FEED;
+  });
+
+  // === TICKET COUNT ===
+  content += CMD.DASHED_LINE + CMD.LINE_FEED;
+  content += CMD.ALIGN_CENTER;
+  content += 'Ticket ' + ticketIndex + ' of ' + totalTickets + CMD.LINE_FEED;
+  content += CMD.LINE_FEED;
+
+  // Cut paper
+  content += CMD.LINE_FEED;
+  content += CMD.LINE_FEED;
+  content += CMD.LINE_FEED;
+  content += CMD.CUT;
+
+  return content;
 }
 
 // All functions are already exported individually above

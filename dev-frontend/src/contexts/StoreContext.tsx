@@ -289,7 +289,8 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
               }
               localStorage.setItem('printerSettings', JSON.stringify({
                 billPrinter: ps.billPrinter || { enabled: false, name: '', autoPrint: false },
-                kitchenPrinter: ps.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false }
+                kitchenPrinter: ps.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false },
+                ...(ps.kitchenStationPrinters ? { kitchenStationPrinters: ps.kitchenStationPrinters } : {})
               }));
             }
           }

@@ -135,7 +135,7 @@ const StatusBadge = styled.span<{ status: string }>`
   background: ${props => {
     switch(props.status) {
       case 'active': return '#ECFDF5';
-      case 'inactive': return '#F3F4F6';
+      case 'inactive': return '#FEE2E2';
       case 'trial': return '#FEF3C7';
       case 'expired': return '#FEE2E2';
       case 'suspended': return '#FEF2F2';
@@ -146,7 +146,7 @@ const StatusBadge = styled.span<{ status: string }>`
   color: ${props => {
     switch(props.status) {
       case 'active': return '#059669';
-      case 'inactive': return '#6B7280';
+      case 'inactive': return '#DC2626';
       case 'trial': return '#D97706';
       case 'expired': return '#DC2626';
       case 'suspended': return '#DC2626';

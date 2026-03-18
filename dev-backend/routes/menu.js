@@ -64,7 +64,8 @@ router.get('/', async (req, res) => {
       name: cat.name,
       emoji: cat.emoji || '🍽️',
       displayOrder: cat.displayOrder,
-      isActive: cat.isActive
+      isActive: cat.isActive,
+      kitchen_station_id: cat.kitchen_station_id || null
     }));
 
     // Transform products to ensure emoji and optionGroups are included
@@ -156,7 +157,9 @@ router.get('/', async (req, res) => {
         // 레시피 연결
         recipe_id: prod.recipe_id || null,
         // 활성화 상태
-        is_active: prod.is_active !== false  // 기본값 true
+        is_active: prod.is_active !== false,  // 기본값 true
+        // Kitchen Station 배정
+        kitchen_station_id: prod.kitchen_station_id || null
       };
     });
 

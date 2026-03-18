@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { Invoice, InvoiceItem, Restaurant, PlanPrice, EntityPlan, EntityPlanRestaurant, Order, Brand, Foodcourt, SystemSettings } = require('../models');
+const { Invoice, InvoiceItem, Restaurant, PlanPrice, PlanTemplate, EntityPlan, EntityPlanRestaurant, Order, Brand, Foodcourt, SystemSettings } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const systemLogger = require('../utils/systemLogger');
@@ -277,9 +277,9 @@ class InvoiceScheduler {
       discount_reason: restaurant.discount_reason || null,
       total_amount: totalAmount,
       currency: currency,
-      status: totalAmount === 0 ? 'paid' : 'pending_payment',
-      paid_at: totalAmount === 0 ? now : null,
-      payment_notes: totalAmount === 0 ? '100% discount - auto-completed' : null,
+      status: 'pending_payment',
+      paid_at: null,
+      payment_notes: null,
       notes: `${billingCycle === 'annual' ? 'Annual' : 'Monthly'} subscription invoice for ${restaurant.plan_type}. Auto-generated.`,
       issued_by: 0,
       issued_at: now,
@@ -492,7 +492,6 @@ class InvoiceScheduler {
 
             const entityChargesTotal = entityAdditionalCharges.reduce((sum, c) => sum + c.amount, 0);
             const finalTotalAmount = Math.max(0, charges.totalAmount + entityChargesTotal);
-            const isZeroFinal = finalTotalAmount === 0;
 
             // Create invoice
             const invoice = await Invoice.create({
@@ -511,9 +510,9 @@ class InvoiceScheduler {
               discount_reason: charges.discountReason || null,
               total_amount: finalTotalAmount,
               currency: invoiceCurrency,
-              status: isZeroFinal ? 'paid' : 'pending_payment',
-              paid_at: isZeroFinal ? today : null,
-              payment_notes: isZeroFinal ? '100% discount - auto-completed' : null,
+              status: 'pending_payment',
+              paid_at: null,
+              payment_notes: null,
               notes: `Auto-generated ${plan.entity_type} plan invoice for ${plan.name}. Period: ${periodStart.toISOString().split('T')[0]} ~ ${periodEnd.toISOString().split('T')[0]}`,
               issued_by: 0,
               issued_at: today,
@@ -569,45 +568,39 @@ class InvoiceScheduler {
 
       console.log(`📊 [ENTITY SUB SCHEDULER] Checking brand/foodcourt/owner subscription invoices (${ADVANCE_DAYS}-day advance)...`);
 
-      // 1. Brands with active subscription
-      const brands = await Brand.findAll({
+      // All entity subscription users: Brand General, Foodcourt General, Restaurant Owner
+      // Subscription data is stored on users table for all roles
+      const User = require('../models/User');
+      const entityUsers = await User.findAll({
         where: {
-          subscription_status: 'active',
+          role: { [Op.in]: ['Brand General', 'Foodcourt General', 'Restaurant Owner'] },
+          subscription_status: { [Op.in]: ['active', 'trial'] },
           is_demo: { [Op.ne]: true },
           subscription_start: { [Op.ne]: null },
           plan_type: { [Op.ne]: null }
         }
       });
 
-      // 2. Foodcourts with active subscription
-      const foodcourts = await Foodcourt.findAll({
-        where: {
-          subscription_status: 'active',
-          is_demo: { [Op.ne]: true },
-          subscription_start: { [Op.ne]: null },
-          plan_type: { [Op.ne]: null }
-        }
-      });
+      const payerTypeMap = {
+        'Brand General': 'brand_manager',
+        'Foodcourt General': 'foodcourt_manager',
+        'Restaurant Owner': 'restaurant_owner'
+      };
+      const typeMap = { 'Brand General': 'brand', 'Foodcourt General': 'foodcourt', 'Restaurant Owner': 'owner' };
 
-      // 3. Owners with active subscription
-      const { Op: SeqOp } = require('sequelize');
-      const owners = await require('../models/User').findAll({
-        where: {
-          role: 'Restaurant Owner',
-          subscription_status: 'active',
-          is_demo: { [SeqOp.ne]: true },
-          subscription_start: { [SeqOp.ne]: null },
-          plan_type: { [SeqOp.ne]: null }
-        }
-      });
+      const entities = entityUsers.map(u => ({
+        entity: u,
+        type: typeMap[u.role],
+        payerType: payerTypeMap[u.role],
+        payerId: u.id,
+        name: u.company_name || u.full_name,
+        currency: u.currency || 'MYR'
+      }));
 
-      const entities = [
-        ...brands.map(b => ({ entity: b, type: 'brand', payerType: 'brand_manager', payerId: b.owner_id, name: b.name, currency: b.currency || 'MYR' })),
-        ...foodcourts.map(f => ({ entity: f, type: 'foodcourt', payerType: 'foodcourt_manager', payerId: f.owner_id, name: f.name, currency: f.currency || 'MYR' })),
-        ...owners.map(o => ({ entity: o, type: 'owner', payerType: 'restaurant_owner', payerId: o.id, name: o.company_name || o.full_name, currency: 'MYR' }))
-      ];
-
-      console.log(`📊 [ENTITY SUB SCHEDULER] Found ${brands.length} brands, ${foodcourts.length} foodcourts, ${owners.length} owners`);
+      const brandCount = entityUsers.filter(u => u.role === 'Brand General').length;
+      const fcCount = entityUsers.filter(u => u.role === 'Foodcourt General').length;
+      const ownerCount = entityUsers.filter(u => u.role === 'Restaurant Owner').length;
+      console.log(`📊 [ENTITY SUB SCHEDULER] Found ${brandCount} brand generals, ${fcCount} foodcourt generals, ${ownerCount} owners`);
 
       for (const { entity, type, payerType, payerId, name, currency } of entities) {
         try {
@@ -652,8 +645,27 @@ class InvoiceScheduler {
             continue;
           }
 
-          // Get plan price
-          const planAmount = parseFloat(entity.plan_amount) || 0;
+          // Get plan price: entity.plan_amount → fallback to plan_prices table
+          let planAmount = parseFloat(entity.plan_amount) || 0;
+          if (planAmount <= 0 && entity.plan_type) {
+            // Convert plan_type display name to plan_prices key
+            // e.g. "Brand Enterprise" → "brand_enterprise", "Foodcourt Basic" → "foodcourt_basic"
+            const planKey = entity.plan_type.toLowerCase().replace(/\s+/g, '_');
+            const planPrice = await PlanPrice.findOne({
+              where: { currency: currency, is_active: true },
+              include: [{
+                model: PlanTemplate,
+                as: 'plan',
+                where: { name: planKey },
+                attributes: ['id', 'name']
+              }]
+            });
+            if (planPrice) {
+              planAmount = billingCycle === 'annual'
+                ? parseFloat(planPrice.annual_price) || 0
+                : parseFloat(planPrice.monthly_price) || 0;
+            }
+          }
           if (planAmount <= 0) {
             result.skipped++;
             continue;
@@ -686,6 +698,8 @@ class InvoiceScheduler {
             total_amount: planAmount,
             currency: currency,
             status: 'pending_payment',
+            issued_by: 0,
+            issued_at: today,
             notes: `${entity.plan_type} - ${billingCycle} subscription for ${name}`
           });
 
@@ -695,6 +709,11 @@ class InvoiceScheduler {
             quantity: 1,
             unit_price: planAmount,
             amount: planAmount,
+            fixed_amount: planAmount,
+            calculated_amount: planAmount,
+            tax_rate: 0,
+            tax_amount: 0,
+            total_amount: planAmount,
             item_type: 'subscription'
           });
 

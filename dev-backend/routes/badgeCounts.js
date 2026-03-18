@@ -109,45 +109,52 @@ router.get('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // --- Notices ---
-    if (role === 'Restaurant Admin' || role === 'Staff') {
+    // --- Notices (exclude self-authored notices from badge count) ---
+    const countUnreadNotices = async (recipientConditions) => {
+      // Get candidate notice_ids from unread recipients
+      const unreadRows = await NoticeRecipient.findAll({
+        where: { [Op.or]: recipientConditions },
+        attributes: ['notice_id'],
+        group: ['notice_id'],
+        raw: true
+      });
+      if (unreadRows.length === 0) return 0;
+      const noticeIds = unreadRows.map(r => r.notice_id);
+      // Exclude self-authored
+      const validNotices = await Notice.count({
+        where: { id: { [Op.in]: noticeIds }, author_id: { [Op.ne]: userId }, status: 'published' }
+      });
+      return validNotices;
+    };
+
+    if (role === 'System Admin') {
+      counts.notices = await countUnreadNotices([{ user_id: userId, read_at: null }]);
+    } else if (role === 'Restaurant Admin' || role === 'Staff') {
       if (restaurantId) {
-        counts.notices = await NoticeRecipient.count({
-          where: { restaurant_id: restaurantId, read_at: null }
-        });
+        counts.notices = await countUnreadNotices([{ restaurant_id: restaurantId, read_at: null }]);
       }
     } else if (role === 'Brand General' || role === 'Brand Manager') {
-      // Count unread notices for brand restaurants + direct user recipients
       const noticeConditions = [{ user_id: userId, read_at: null }];
-      const brand = await Brand.findOne({ where: { owner_id: userId } });
-      if (brand) {
+      const brands = await Brand.findAll({ where: { owner_id: userId } });
+      for (const brand of brands) {
         const brandRestaurants = await Restaurant.findAll({ where: { brand_id: brand.id }, attributes: ['id'] });
         const brIds = brandRestaurants.map(r => r.id);
         if (brIds.length > 0) {
           noticeConditions.push({ restaurant_id: { [Op.in]: brIds }, read_at: null });
         }
       }
-      // Count unique notice_ids with unread recipients
-      const unreadRecipients = await NoticeRecipient.findAll({
-        where: { [Op.or]: noticeConditions },
-        attributes: [[sequelize.fn('DISTINCT', sequelize.col('notice_id')), 'notice_id']]
-      });
-      counts.notices = unreadRecipients.length;
+      counts.notices = await countUnreadNotices(noticeConditions);
     } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
       const noticeConditions = [{ user_id: userId, read_at: null }];
-      const foodcourt = await Foodcourt.findOne({ where: { owner_id: userId } });
-      if (foodcourt) {
+      const foodcourts = await Foodcourt.findAll({ where: { owner_id: userId } });
+      for (const foodcourt of foodcourts) {
         const fcRestaurants = await Restaurant.findAll({ where: { foodcourt_id: foodcourt.id }, attributes: ['id'] });
         const fcIds = fcRestaurants.map(r => r.id);
         if (fcIds.length > 0) {
           noticeConditions.push({ restaurant_id: { [Op.in]: fcIds }, read_at: null });
         }
       }
-      const unreadRecipients = await NoticeRecipient.findAll({
-        where: { [Op.or]: noticeConditions },
-        attributes: [[sequelize.fn('DISTINCT', sequelize.col('notice_id')), 'notice_id']]
-      });
-      counts.notices = unreadRecipients.length;
+      counts.notices = await countUnreadNotices(noticeConditions);
     } else if (role === 'Restaurant Owner') {
       const noticeConditions = [{ user_id: userId, read_at: null }];
       const owned = await RestaurantManager.findAll({
@@ -158,11 +165,7 @@ router.get('/', authenticateToken, async (req, res) => {
       if (ownedIds.length > 0) {
         noticeConditions.push({ restaurant_id: { [Op.in]: ownedIds }, read_at: null });
       }
-      const unreadRecipients = await NoticeRecipient.findAll({
-        where: { [Op.or]: noticeConditions },
-        attributes: [[sequelize.fn('DISTINCT', sequelize.col('notice_id')), 'notice_id']]
-      });
-      counts.notices = unreadRecipients.length;
+      counts.notices = await countUnreadNotices(noticeConditions);
     }
 
     // --- Invoices ---

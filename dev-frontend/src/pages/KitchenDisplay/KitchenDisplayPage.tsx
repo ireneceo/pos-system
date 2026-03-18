@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import io, { Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
 import { useMenu } from '../../contexts/MenuContext';
+import { useStore } from '../../contexts/StoreContext';
 import PageHeader from '../../components/Common/PageHeader';
 import { formatTime } from '../../utils/timezone';
+import { printKitchenTicketViaRawBT } from '../../utils/billPrint';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -558,9 +560,20 @@ const GroupOrderList = styled.div`
 
 // ─── Component ────────────────────────────────────────────────
 
+// Live clock component (updates every second without triggering parent re-render)
+const LiveClock: React.FC<{ operationSettings: any }> = React.memo(({ operationSettings }) => {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return <Clock>{formatTime(time, operationSettings)}</Clock>;
+});
+
 const KitchenDisplayPage: React.FC = () => {
   const { user } = useAuth();
-  const { menuItems } = useMenu();
+  const { menuItems, categories } = useMenu();
+  const { getStoreInfo, operationSettings: storeOpSettings } = useStore();
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [, setSocket] = useState<Socket | null>(null);
@@ -572,107 +585,112 @@ const KitchenDisplayPage: React.FC = () => {
 
   const [preparingBatches, setPreparingBatches] = useState<PreparingBatch[]>([]);
 
-  // Fetch orders from database
+  // ─── Kitchen Station Filter ───
+  const [kitchenStations, setKitchenStations] = useState<Array<{ id: number; name: string }>>([]);
+  const [selectedStation, setSelectedStation] = useState<number | 'all'>('all');
+  // menuName → station_id 매핑 (카테고리 or 프로덕트 기반, 프로덕트 오버라이드 우선)
+  const [menuStationMap, setMenuStationMap] = useState<Map<string, number>>(new Map());
+
+  // ─── Shared: raw order_items → KitchenOrder items 변환 ───
+  const processRawOrderItems = (orderId: string | number, rawItems: any[]): KitchenOrder['items'] => {
+    const items: any[] = [];
+    rawItems.forEach((item: any, itemIndex: number) => {
+      if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+        const setItems = item.set_items.map((si: any, setIndex: number) => ({
+          ...si,
+          id: `item-${orderId}-${itemIndex}-set-${setIndex}`,
+          name: si.name,
+          quantity: si.quantity * (item.quantity || 1),
+          status: si.status || 'pending'
+        }));
+        items.push({
+          ...item,
+          id: `item-${orderId}-${itemIndex}`,
+          name: item.name || item.menuItem?.name || 'Set Menu',
+          quantity: item.quantity,
+          options: item.options || [],
+          special_instructions: item.special_instructions || item.specialInstructions || '',
+          status: item.status || 'pending',
+          is_set_menu: true,
+          set_items: setItems
+        });
+      } else {
+        items.push({
+          ...item,
+          id: `item-${orderId}-${itemIndex}`,
+          name: item.name || item.menuItem?.name || 'Item',
+          quantity: item.quantity,
+          options: item.options || [],
+          special_instructions: item.special_instructions || item.specialInstructions || '',
+          status: item.status || 'pending',
+          is_set_menu: false
+        });
+      }
+    });
+    return items;
+  };
+
+  const rawToKitchenOrder = (order: any): KitchenOrder => {
+    let orderItems = order.order_items || [];
+    if (typeof orderItems === 'string') {
+      try { orderItems = JSON.parse(orderItems); } catch { orderItems = []; }
+    }
+    return {
+      id: order.id.toString(),
+      orderNumber: order.order_number,
+      pickupNumber: (order.order_number || '').split('-')[1] || (order.order_number || '').slice(-3),
+      pagerNumber: order.pager_number || undefined,
+      items: processRawOrderItems(order.id, orderItems),
+      status: order.status as KitchenOrder['status'],
+      orderTime: new Date(order.createdAt || Date.now()),
+      paymentStatus: order.payment_status,
+      customerName: order.customer_name || undefined,
+      tableNumber: order.table_number || undefined,
+      orderType: (order.order_type || 'dine-in') as KitchenOrder['orderType'],
+      source: order.source || 'pos',
+      scheduledPickupTime: order.scheduled_pickup_time || null
+    };
+  };
+
+  const isKitchenVisible = (order: any): boolean => {
+    if (!['pending', 'preparing', 'ready'].includes(order.status)) return false;
+    if (order.status === 'ready') {
+      let items = order.order_items || [];
+      if (typeof items === 'string') { try { items = JSON.parse(items); } catch { items = []; } }
+      const allServed = items.length > 0 && items.every((item: any) => {
+        if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+          return item.set_items.every((si: any) => si.status === 'served' || si.status === 'completed');
+        }
+        return item.status === 'served' || item.status === 'completed';
+      });
+      if (allServed) return false;
+    }
+    return true;
+  };
+
+  // ─── API helper ───
+  const apiHeaders = () => {
+    const token = localStorage.getItem('auth_token');
+    return { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+  };
+
+  // ─── Fetch all orders (source of truth) ───
   const fetchOrders = useCallback(async () => {
     if (!user?.restaurantId) return;
-
     try {
-      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/orders/restaurant/${user.restaurantId}`, {
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        }
+        headers: apiHeaders()
       });
-
       const result = await response.json();
-
       if (result.success && result.data) {
-        const dbOrders = result.data;
+        const kitchenOrders: KitchenOrder[] = result.data
+          .filter(isKitchenVisible)
+          .map(rawToKitchenOrder);
 
-        const kitchenOrders: KitchenOrder[] = dbOrders
-          .filter((order: any) => {
-            // Exclude orders that are already served/completed
-            if (!['pending', 'preparing', 'ready'].includes(order.status)) return false;
-            // For 'ready' orders, also exclude if all items are served/completed
-            if (order.status === 'ready') {
-              let items = order.order_items || [];
-              if (typeof items === 'string') {
-                try { items = JSON.parse(items); } catch { items = []; }
-              }
-              const allServed = items.length > 0 && items.every((item: any) => {
-                if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
-                  return item.set_items.every((si: any) => si.status === 'served' || si.status === 'completed');
-                }
-                return item.status === 'served' || item.status === 'completed';
-              });
-              if (allServed) return false;
-            }
-            return true;
-          })
-          .map((order: any) => {
-            let orderItems = order.order_items || [];
-            if (typeof orderItems === 'string') {
-              try { orderItems = JSON.parse(orderItems); } catch { orderItems = []; }
-            }
-
-            const processedItems: any[] = [];
-            orderItems.forEach((item: any, itemIndex: number) => {
-              if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
-                const setItems = item.set_items.map((setItem: any, setIndex: number) => ({
-                  ...setItem,
-                  id: `item-${order.id}-${itemIndex}-set-${setIndex}`,
-                  name: setItem.name,
-                  quantity: setItem.quantity * (item.quantity || 1),
-                  status: setItem.status || 'pending'
-                }));
-
-                processedItems.push({
-                  ...item,
-                  id: `item-${order.id}-${itemIndex}`,
-                  name: item.name || item.menuItem?.name || 'Set Menu',
-                  quantity: item.quantity,
-                  options: item.options || [],
-                  special_instructions: item.special_instructions || item.specialInstructions || '',
-                  status: item.status || 'pending',
-                  is_set_menu: true,
-                  set_items: setItems
-                });
-              } else {
-                processedItems.push({
-                  ...item,
-                  id: `item-${order.id}-${itemIndex}`,
-                  name: item.name || item.menuItem?.name || 'Item',
-                  quantity: item.quantity,
-                  options: item.options || [],
-                  special_instructions: item.special_instructions || item.specialInstructions || '',
-                  status: item.status || 'pending',
-                  is_set_menu: false
-                });
-              }
-            });
-
-            return {
-              id: order.id.toString(),
-              orderNumber: order.order_number,
-              pickupNumber: order.order_number.split('-')[1] || order.order_number.slice(-3),
-              pagerNumber: order.pager_number || undefined,
-              items: processedItems,
-              status: order.status as KitchenOrder['status'],
-              orderTime: new Date(order.createdAt),
-              paymentStatus: order.payment_status,
-              customerName: order.customer_name || undefined,
-              tableNumber: order.table_number || undefined,
-              orderType: (order.order_type || 'dine-in') as KitchenOrder['orderType'],
-              source: order.source || 'pos',
-              scheduledPickupTime: order.scheduled_pickup_time || null
-            } as KitchenOrder;
-          });
-
-        setOrders(prevOrders => {
-          const prevOrderIds = new Set(prevOrders.map(o => o.id));
-          const newOrders = kitchenOrders.filter(o => !prevOrderIds.has(o.id));
+        setOrders(prev => {
+          const prevIds = new Set(prev.map(o => o.id));
+          const newOrders = kitchenOrders.filter(o => !prevIds.has(o.id));
           if (newOrders.length > 0) playNotificationSound();
           return kitchenOrders;
         });
@@ -683,34 +701,61 @@ const KitchenDisplayPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.restaurantId]);
 
-  // Load operation settings for timezone
+  // Operation settings — StoreContext에서 가져오기 (별도 API 호출 제거)
   useEffect(() => {
-    const loadSettings = async () => {
-      if (!user?.restaurantId) return;
+    if (storeOpSettings) {
+      setOperationSettings(storeOpSettings);
+    }
+  }, [storeOpSettings]);
+
+  // Kitchen stations — API 1개만 호출, 메뉴 매핑은 MenuContext 데이터 재사용
+  useEffect(() => {
+    if (!user?.restaurantId) return;
+    const loadStations = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
-        const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setOperationSettings(data.operation_settings);
+        const res = await fetch(`/api/kitchen-stations?restaurant_id=${user.restaurantId}`, { headers: apiHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          setKitchenStations((data.data?.stations || []).filter((s: any) => s.is_active !== false));
         }
-      } catch (error) {
-        console.error('Failed to load operation settings:', error);
+      } catch (e) {
+        console.error('Failed to load kitchen stations:', e);
       }
     };
-    loadSettings();
+    loadStations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.restaurantId]);
 
-  // Initial fetch and periodic refresh
+  // Menu→Station 매핑: MenuContext 데이터로 구축 (별도 /api/menu 호출 제거)
+  useEffect(() => {
+    if (!menuItems.length && !categories.length) return;
+
+    const catStationMap = new Map<string, number>();
+    categories.forEach((cat: any) => {
+      if (cat.kitchen_station_id) catStationMap.set(cat.id, cat.kitchen_station_id);
+    });
+
+    const map = new Map<string, number>();
+    menuItems.forEach((item: any) => {
+      if (item.kitchen_station_id) {
+        map.set(item.name, item.kitchen_station_id);
+      } else if (catStationMap.has(item.category)) {
+        map.set(item.name, catStationMap.get(item.category)!);
+      }
+    });
+    setMenuStationMap(map);
+
+    if (map.size > 0) {
+      localStorage.setItem('kitchenStationMenuMap', JSON.stringify(Object.fromEntries(map)));
+    } else {
+      localStorage.removeItem('kitchenStationMenuMap');
+    }
+  }, [menuItems, categories]);
+
+  // Initial fetch + periodic refresh (소켓이 실시간 담당, 폴링은 fallback)
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 5000);
+    const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
   }, [fetchOrders]);
 
@@ -810,82 +855,21 @@ const KitchenDisplayPage: React.FC = () => {
     });
 
     newSocket.on('order-updated', (order: any) => {
-      console.log('🍳 [KDS] order-updated received:', order.id, order.status, 'at', new Date().toISOString());
       if (order.restaurant_id !== user.restaurantId) return;
 
-      // Parse order_items from socket data
-      let orderItems = order.order_items || [];
-      if (typeof orderItems === 'string') {
-        try { orderItems = JSON.parse(orderItems); } catch { orderItems = []; }
+      if (!isKitchenVisible(order)) {
+        // 주문이 served/completed 되어 화면에서 제거
+        setOrders(prev => prev.filter(o => o.id !== order.id.toString()));
+        return;
       }
 
-      // Process items (same logic as fetchOrders)
-      const processedItems: any[] = [];
-      orderItems.forEach((item: any, itemIndex: number) => {
-        if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
-          const setItems = item.set_items.map((setItem: any, setIndex: number) => ({
-            ...setItem,
-            id: `item-${order.id}-${itemIndex}-set-${setIndex}`,
-            name: setItem.name,
-            quantity: setItem.quantity * (item.quantity || 1),
-            status: setItem.status || 'pending'
-          }));
-          processedItems.push({
-            ...item,
-            id: `item-${order.id}-${itemIndex}`,
-            name: item.name || item.menuItem?.name || 'Set Menu',
-            quantity: item.quantity,
-            options: item.options || [],
-            special_instructions: item.special_instructions || item.specialInstructions || '',
-            status: item.status || 'pending',
-            is_set_menu: true,
-            set_items: setItems
-          });
-        } else {
-          processedItems.push({
-            ...item,
-            id: `item-${order.id}-${itemIndex}`,
-            name: item.name || item.menuItem?.name || 'Item',
-            quantity: item.quantity,
-            options: item.options || [],
-            special_instructions: item.special_instructions || item.specialInstructions || '',
-            status: item.status || 'pending',
-            is_set_menu: false
-          });
-        }
-      });
-
-      const updatedKitchenOrder: KitchenOrder = {
-        id: order.id.toString(),
-        orderNumber: order.order_number,
-        pickupNumber: (order.order_number || '').split('-')[1] || (order.order_number || '').slice(-3),
-        pagerNumber: order.pager_number || undefined,
-        items: processedItems,
-        status: order.status as KitchenOrder['status'],
-        orderTime: new Date(order.createdAt || Date.now()),
-        paymentStatus: order.payment_status,
-        customerName: order.customer_name || undefined,
-        tableNumber: order.table_number || undefined,
-        orderType: (order.order_type || 'dine-in') as KitchenOrder['orderType'],
-        source: order.source || 'pos',
-        scheduledPickupTime: order.scheduled_pickup_time || null
-      };
-
+      const updated = rawToKitchenOrder(order);
       setOrders(prev => {
-        // Check if this order already exists
-        const exists = prev.some(o => o.id === order.id.toString());
-        let updated;
+        const exists = prev.some(o => o.id === updated.id);
         if (exists) {
-          updated = prev.map(o => o.id === order.id.toString() ? updatedKitchenOrder : o);
-        } else {
-          // New order coming in (e.g. status changed to pending/preparing/ready from outside)
-          updated = [updatedKitchenOrder, ...prev];
+          return prev.map(o => o.id === updated.id ? updated : o);
         }
-        return updated.filter(o => {
-          if (!['pending', 'preparing', 'ready'].includes(o.status)) return false;
-          if (o.status === 'ready' && areAllItemsServed(o)) return false;
-          return true;
-        });
+        return [updated, ...prev];
       });
     });
 
@@ -898,9 +882,9 @@ const KitchenDisplayPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.restaurantId]);
 
-  // Clock
+  // Elapsed time update (every 10s is enough for minute-based display)
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 10000);
     return () => clearInterval(timer);
   }, []);
 
@@ -923,26 +907,90 @@ const KitchenDisplayPage: React.FC = () => {
     return Math.floor((currentTime.getTime() - orderTime.getTime()) / 1000 / 60);
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: KitchenOrder['status'], updateUI: boolean = true) => {
-    if (updateUI) {
-      setOrders(prev => prev.map(order =>
-        order.id === orderId ? { ...order, status: newStatus } : order
-      ).filter(o => {
-        if (!['pending', 'preparing', 'ready'].includes(o.status)) return false;
-        if (o.status === 'ready' && areAllItemsServed(o)) return false;
-        return true;
-      }));
+  // ─── Print Helper ───
+  // Item View 그룹 프린트 — 카드에 보이는 대로: 메뉴명 x총수량 + 출처 라벨 + 옵션 상세
+  const printGroupTicket = (group: MenuGroup) => {
+    const allSources = [...group.plainSources, ...group.optionSources];
+    const totalQty = group.plainQty + group.optionSources.reduce((s, o) => s + o.quantity, 0);
+
+    // 출처 라벨 (T002 x4, #001 등)
+    const plainLabelMap = new Map<string, number>();
+    group.plainSources.forEach(s => {
+      plainLabelMap.set(s.label, (plainLabelMap.get(s.label) || 0) + s.quantity);
+    });
+    const labels = Array.from(plainLabelMap.entries())
+      .map(([label, qty]) => qty > 1 ? `${label} x${qty}` : label);
+    group.optionSources.forEach(s => labels.push(s.label));
+
+    // 그룹을 하나의 아이템으로 만들어서 오더티켓 형식으로 전송
+    // 옵션 아이템은 special_instructions로 표현
+    const items: any[] = [];
+
+    // Plain 아이템 (합산)
+    if (group.plainQty > 0) {
+      items.push({
+        name: group.menuName,
+        quantity: group.plainQty,
+        options: [],
+        special_instructions: ''
+      });
     }
 
+    // 옵션 아이템 (개별)
+    group.optionSources.forEach(src => {
+      items.push({
+        name: group.menuName,
+        quantity: src.quantity,
+        options: src.options || [],
+        special_instructions: src.special_instructions || ''
+      });
+    });
+
+    const orderData = {
+      orderNumber: labels.join(', '),
+      date: group.earliestTime,
+      items,
+      skipFooterLocation: true  // 그룹 프린트는 하단 테이블/픽업번호 생략
+    };
+
+    printKitchenTicketViaRawBT(orderData, getStoreInfo());
+  };
+
+  const printOrderTicket = (order: KitchenOrder, itemsOverride?: any[]) => {
+    const orderData = {
+      orderNumber: order.orderNumber,
+      date: order.orderTime,
+      tableNumber: order.tableNumber,
+      pagerNumber: order.pagerNumber,
+      customerName: order.customerName || 'Walk-in Customer',
+      orderSource: order.source || 'pos',
+      items: (itemsOverride || order.items).map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        options: item.options || [],
+        special_instructions: item.special_instructions || '',
+        is_set_menu: item.is_set_menu || false,
+        set_items: item.set_items || []
+      }))
+    };
+    printKitchenTicketViaRawBT(orderData, getStoreInfo());
+  };
+
+  const updateOrderStatus = async (orderId: string, newStatus: KitchenOrder['status']) => {
+    // 즉시 UI 반영 (소켓 오면 덮어씌워짐)
+    setOrders(prev => prev.map(o =>
+      o.id === orderId ? { ...o, status: newStatus } : o
+    ).filter(o => {
+      if (!['pending', 'preparing', 'ready'].includes(o.status)) return false;
+      if (o.status === 'ready' && areAllItemsServed(o)) return false;
+      return true;
+    }));
+
     try {
-      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
+        headers: apiHeaders(),
         body: JSON.stringify({ status: newStatus })
       });
       const result = await response.json();
@@ -954,6 +1002,25 @@ const KitchenDisplayPage: React.FC = () => {
 
   // Get the next item status based on order status
   type ItemStatus = 'pending' | 'preparing' | 'ready' | 'served' | 'completed';
+
+  // ─── Station Filter Helper ───
+  // 아이템이 선택된 Station에 속하는지 판별
+  const isItemInSelectedStation = useCallback((itemName: string): boolean => {
+    if (selectedStation === 'all') return true;
+    const stationId = menuStationMap.get(itemName);
+    return stationId === selectedStation;
+  }, [selectedStation, menuStationMap]);
+
+  // 주문에 선택된 Station의 아이템이 있는지 판별
+  const orderHasStationItems = useCallback((order: KitchenOrder): boolean => {
+    if (selectedStation === 'all') return true;
+    return order.items.some(item => {
+      if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+        return item.set_items.some(si => isItemInSelectedStation(si.name));
+      }
+      return isItemInSelectedStation(item.name);
+    });
+  }, [selectedStation, isItemInSelectedStation]);
 
   const getNextItemStatus = (orderStatus: string, currentItemStatus: string): ItemStatus => {
     // Each column: click toggles between the column's "done" state and "active" state
@@ -999,234 +1066,153 @@ const KitchenDisplayPage: React.FC = () => {
   };
 
   const updateItemStatus = async (orderId: string, itemId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const updatedItems = order.items.map(item => {
+      if (item.id === itemId) {
+        return { ...item, status: getNextItemStatus(order.status, item.status || 'pending') };
+      }
+      return item;
+    });
+
+    // 즉시 UI 반영
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o));
+
     try {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-
-      const updatedItems = order.items.map(item => {
-        if (item.id === itemId) {
-          const newStatus = getNextItemStatus(order.status, item.status || 'pending');
-          return { ...item, status: newStatus };
-        }
-        return item;
-      });
-
-      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/orders/${orderId}/items`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ order_items: updatedItems.map(item => ({ ...item, status: item.status })) })
+        headers: apiHeaders(),
+        body: JSON.stringify({ order_items: updatedItems })
       });
-
       const result = await response.json();
-      if (!result.success) return;
+      if (!result.success) { fetchOrders(); return; }
 
-      setOrders(prevOrders =>
-        prevOrders.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o)
-      );
-
-      // If all items are done for this column, move order to next status
       if (areAllItemsDoneForColumn(updatedItems, order.status)) {
-        const nextOrderStatus: Record<string, KitchenOrder['status']> = {
-          pending: 'preparing',
-          preparing: 'ready',
-          ready: 'served',
-        };
-        const next = nextOrderStatus[order.status];
-        if (next) {
-          await updateOrderStatus(orderId, next, true);
-        }
+        const next = ({ pending: 'preparing', preparing: 'ready', ready: 'served' } as any)[order.status];
+        if (next) await updateOrderStatus(orderId, next);
       }
-    } catch (error) {
-      console.error('updateItemStatus error:', error);
+    } catch {
       fetchOrders();
     }
   };
 
   const updateSetItemStatus = async (orderId: string, parentItemId: string, setItemId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const updatedItems = order.items.map(item => {
+      if (item.id === parentItemId && item.set_items) {
+        const updatedSetItems = item.set_items.map(setItem => {
+          if (setItem.id === setItemId) {
+            return { ...setItem, status: getNextItemStatus(order.status, setItem.status || 'pending') };
+          }
+          return setItem;
+        });
+        const allSetDone = updatedSetItems.every(si => isItemDoneForColumn(order.status, si.status || 'pending'));
+        const parentStatus: ItemStatus = allSetDone ? getNextItemStatus(order.status, order.status) : (order.status as ItemStatus);
+        return { ...item, set_items: updatedSetItems, status: parentStatus };
+      }
+      return item;
+    });
+
+    // 즉시 UI 반영
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o));
+
     try {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-
-      const updatedItems = order.items.map(item => {
-        if (item.id === parentItemId && item.set_items) {
-          const updatedSetItems = item.set_items.map(setItem => {
-            if (setItem.id === setItemId) {
-              const newStatus = getNextItemStatus(order.status, setItem.status || 'pending');
-              return { ...setItem, status: newStatus };
-            }
-            return setItem;
-          });
-          const allSetDone = updatedSetItems.every(si => isItemDoneForColumn(order.status, si.status || 'pending'));
-          const parentStatus: ItemStatus = allSetDone ? getNextItemStatus(order.status, order.status) : (order.status as ItemStatus);
-          return { ...item, set_items: updatedSetItems, status: parentStatus };
-        }
-        return item;
-      });
-
-      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/orders/${orderId}/items`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ order_items: updatedItems.map(item => ({ ...item, status: item.status })) })
+        headers: apiHeaders(),
+        body: JSON.stringify({ order_items: updatedItems })
       });
-
       const result = await response.json();
-      if (!result.success) return;
-
-      setOrders(prevOrders =>
-        prevOrders.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o)
-      );
+      if (!result.success) { fetchOrders(); return; }
 
       if (areAllItemsDoneForColumn(updatedItems, order.status)) {
-        const nextOrderStatus: Record<string, KitchenOrder['status']> = {
-          pending: 'preparing',
-          preparing: 'ready',
-          ready: 'served',
-        };
-        const next = nextOrderStatus[order.status];
-        if (next) {
-          await updateOrderStatus(orderId, next, true);
-        }
+        const next = ({ pending: 'preparing', preparing: 'ready', ready: 'served' } as any)[order.status];
+        if (next) await updateOrderStatus(orderId, next);
       }
     } catch {
       fetchOrders();
     }
   };
 
-  const markAllItemsCompletedAndReady = async (orderId: string) => {
+  // Helper: update items then order status in sequence
+  const updateItemsThenOrderStatus = async (orderId: string, updatedItems: any[], newOrderStatus: KitchenOrder['status']) => {
+    // 즉시 UI 반영
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o));
+
     try {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-
-      // Mark all items as 'ready' so they show as active Serve buttons in Ready column
-      const updatedItems = order.items.map(item => {
-        const updatedItem = { ...item, status: 'ready' as const };
-        if (item.set_items && item.set_items.length > 0) {
-          updatedItem.set_items = item.set_items.map(setItem => ({ ...setItem, status: 'ready' as const }));
-        }
-        return updatedItem;
+      const res = await fetch(`/api/orders/${orderId}/items`, {
+        method: 'PATCH', credentials: 'include', headers: apiHeaders(),
+        body: JSON.stringify({ order_items: updatedItems })
       });
-
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/orders/${orderId}/items`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ order_items: updatedItems.map(item => ({ ...item, status: item.status })) })
-      });
-
-      const result = await response.json();
-      if (!result.success) return;
-
-      setOrders(prevOrders =>
-        prevOrders.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o)
-      );
-
-      await updateOrderStatus(orderId, 'ready', true);
+      const result = await res.json();
+      if (!result.success) { fetchOrders(); return; }
+      await updateOrderStatus(orderId, newOrderStatus);
     } catch {
       fetchOrders();
     }
   };
 
-  const markAllItemsAndMove = async (orderId: string, targetStatus: KitchenOrder['status']) => {
-    try {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-
-      // Set items to target status (preparing when moving to preparing)
-      const resetItems = order.items.map(item => {
-        const resetItem = { ...item, status: targetStatus as ItemStatus };
-        if (item.set_items && item.set_items.length > 0) {
-          resetItem.set_items = item.set_items.map(setItem => ({ ...setItem, status: targetStatus as ItemStatus }));
-        }
-        return resetItem;
-      });
-
-      const token = localStorage.getItem('auth_token');
-      await fetch(`/api/orders/${orderId}/items`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ order_items: resetItems.map(item => ({ ...item, status: item.status })) })
-      });
-
-      setOrders(prevOrders =>
-        prevOrders.map(o => o.id === orderId ? { ...o, items: resetItems as any } : o)
-      );
-
-      await updateOrderStatus(orderId, targetStatus, true);
-    } catch {
-      fetchOrders();
-    }
+  const markAllItemsCompletedAndReady = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const updatedItems = order.items.map(item => ({
+      ...item, status: 'ready' as const,
+      set_items: item.set_items?.map(si => ({ ...si, status: 'ready' as const }))
+    }));
+    return updateItemsThenOrderStatus(orderId, updatedItems, 'ready');
   };
 
-  const markAllServed = async (orderId: string) => {
-    try {
-      const order = orders.find(o => o.id === orderId);
-      if (!order) return;
-
-      const updatedItems = order.items.map(item => {
-        const updatedItem = { ...item, status: 'served' as const };
-        if (item.set_items && item.set_items.length > 0) {
-          updatedItem.set_items = item.set_items.map(setItem => ({ ...setItem, status: 'served' as const }));
-        }
-        return updatedItem;
-      });
-
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/orders/${orderId}/items`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ order_items: updatedItems.map(item => ({ ...item, status: item.status })) })
-      });
-
-      const result = await response.json();
-      if (!result.success) return;
-
-      setOrders(prevOrders =>
-        prevOrders.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o)
-      );
-
-      await updateOrderStatus(orderId, 'served', true);
-    } catch {
-      fetchOrders();
-    }
+  const markAllItemsAndMove = (orderId: string, targetStatus: KitchenOrder['status']) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const updatedItems = order.items.map(item => ({
+      ...item, status: targetStatus as ItemStatus,
+      set_items: item.set_items?.map(si => ({ ...si, status: targetStatus as ItemStatus }))
+    }));
+    return updateItemsThenOrderStatus(orderId, updatedItems, targetStatus);
   };
+
+  const markAllServed = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const updatedItems = order.items.map(item => ({
+      ...item, status: 'served' as const,
+      set_items: item.set_items?.map(si => ({ ...si, status: 'served' as const }))
+    }));
+    return updateItemsThenOrderStatus(orderId, updatedItems, 'served');
+  };
+
+  // Memoized order lists by status (recalculates when orders or station filter changes)
+  const ordersByStatus = useMemo(() => {
+    const sorted = (status: string) => orders
+      .filter(order => order.status === status)
+      .filter(orderHasStationItems)
+      .sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime());
+    return {
+      pending: sorted('pending'),
+      preparing: sorted('preparing'),
+      ready: sorted('ready')
+    };
+  }, [orders, orderHasStationItems]);
 
   const getOrdersByStatus = (status: KitchenOrder['status']) => {
-    return orders
-      .filter(order => order.status === status)
-      .sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime());
+    return ordersByStatus[status] || [];
   };
 
-  const counts = {
-    pending: getOrdersByStatus('pending').length,
-    preparing: getOrdersByStatus('preparing').length,
-    ready: getOrdersByStatus('ready').length
-  };
+  const counts = useMemo(() => ({
+    pending: ordersByStatus.pending.length,
+    preparing: ordersByStatus.preparing.length,
+    ready: ordersByStatus.ready.length
+  }), [ordersByStatus]);
 
   // 주문단위: 총 아이템 수 (세트메뉴는 set_items 개별 카운트)
-  const getOrderItemCount = (status: KitchenOrder['status']): number => {
-    return getOrdersByStatus(status).reduce((sum, o) => {
+  const orderItemCounts = useMemo(() => {
+    const calc = (orderList: KitchenOrder[]) => orderList.reduce((sum, o) => {
       return sum + o.items.reduce((iSum, item) => {
         if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
           return iSum + item.set_items.length;
@@ -1234,21 +1220,35 @@ const KitchenDisplayPage: React.FC = () => {
         return iSum + 1;
       }, 0);
     }, 0);
+    return {
+      pending: calc(ordersByStatus.pending),
+      preparing: calc(ordersByStatus.preparing),
+      ready: calc(ordersByStatus.ready)
+    };
+  }, [ordersByStatus]);
+
+  const getOrderItemCount = (status: KitchenOrder['status']): number => {
+    return orderItemCounts[status] || 0;
   };
 
   // 아이템단위: 해당 item.status인 아이템 수
-  const getItemStatusCount = (status: string): number => {
-    // pending: order.status==='pending'인 주문에서 item.status==='pending'인 것만
-    // (preparing 주문의 되돌린 pending 아이템은 Pending 카드에 보이지만 카운트는 주문단위와 정합성 유지)
-    const targetOrders = orders.filter(o => o.status === status);
-    return targetOrders.reduce((sum, o) => {
-      return sum + o.items.reduce((iSum, item) => {
-        if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
-          return iSum + item.set_items.filter(si => (si.status || 'pending') === status).length;
-        }
-        return iSum + ((item.status || 'pending') === status ? 1 : 0);
+  const itemStatusCounts = useMemo(() => {
+    const calc = (status: string) => {
+      const targetOrders = orders.filter(o => o.status === status);
+      return targetOrders.reduce((sum, o) => {
+        return sum + o.items.reduce((iSum, item) => {
+          if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+            return iSum + item.set_items.filter(si => (si.status || 'pending') === status).length;
+          }
+          return iSum + ((item.status || 'pending') === status ? 1 : 0);
+        }, 0);
       }, 0);
-    }, 0);
+    };
+    return { pending: calc('pending'), preparing: calc('preparing'), ready: calc('ready') };
+  }, [orders]);
+
+  const getItemStatusCount = (status: string): number => {
+    return (itemStatusCounts as any)[status] || 0;
   };
 
   // ─── Render helpers ─────────────────────────────────────────
@@ -1345,7 +1345,7 @@ const KitchenDisplayPage: React.FC = () => {
                     );
                   })()}
                 </ItemInfo>
-                {!item.is_set_menu && totalItems === 1 && (
+                {!item.is_set_menu && totalItems === 1 && order.status !== 'pending' && (
                   <RevertBtn
                     style={{ padding: '6px 10px', fontSize: '12px', marginRight: 4 }}
                     onClick={() => {
@@ -1353,6 +1353,15 @@ const KitchenDisplayPage: React.FC = () => {
                       if (prevStatus) updateOrderStatus(order.id, prevStatus);
                     }}
                   >↺</RevertBtn>
+                )}
+                {!item.is_set_menu && totalItems === 1 && order.status === 'pending' && (
+                  <RevertBtn
+                    style={{ padding: '6px 8px', marginRight: 4 }}
+                    onClick={() => printOrderTicket(order)}
+                    title="Print Kitchen Ticket"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                  </RevertBtn>
                 )}
                 {!item.is_set_menu && (
                   <ItemActionButton
@@ -1396,6 +1405,9 @@ const KitchenDisplayPage: React.FC = () => {
         {/* Actions */}
         {order.status === 'pending' && totalItems > 1 && (
           <ActionRow>
+            <RevertBtn style={{ flex: 'none', padding: '8px 10px' }} onClick={() => printOrderTicket(order)} title="Print Kitchen Ticket">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            </RevertBtn>
             <ActionBtn color="#F59E0B" onClick={() => markAllItemsAndMove(order.id, 'preparing')}>
               Start All
             </ActionBtn>
@@ -1403,9 +1415,7 @@ const KitchenDisplayPage: React.FC = () => {
         )}
         {order.status === 'preparing' && totalItems > 1 && (
           <ActionRow>
-            <RevertBtn onClick={() => updateOrderStatus(order.id, 'pending')}>
-              ↺
-            </RevertBtn>
+            <RevertBtn onClick={() => updateOrderStatus(order.id, 'pending')}>↺</RevertBtn>
             <ActionBtn color="#3B82F6" onClick={() => markAllItemsCompletedAndReady(order.id)}>
               Mark Ready
             </ActionBtn>
@@ -1413,9 +1423,7 @@ const KitchenDisplayPage: React.FC = () => {
         )}
         {order.status === 'ready' && totalItems > 1 && (
           <ActionRow>
-            <RevertBtn onClick={() => updateOrderStatus(order.id, 'preparing')}>
-              ↺
-            </RevertBtn>
+            <RevertBtn onClick={() => updateOrderStatus(order.id, 'preparing')}>↺</RevertBtn>
             <ActionBtn color="#10B981" onClick={() => markAllServed(order.id)}>
               Serve All
             </ActionBtn>
@@ -1448,7 +1456,7 @@ const KitchenDisplayPage: React.FC = () => {
   }
 
   // 아이템 뷰 Pending 그룹핑 — item.status === 'pending'인 모든 아이템 수집 (주문 상태 무관)
-  const getItemViewPendingGroups = (): MenuGroup[] => {
+  const getItemViewPendingGroupsRaw = (): MenuGroup[] => {
     const groupMap = new Map<string, MenuGroup>();
 
     // pending/preparing 주문에서 item.status가 pending인 아이템 수집
@@ -1463,6 +1471,7 @@ const KitchenDisplayPage: React.FC = () => {
         if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
           item.set_items.forEach(setItem => {
             if ((setItem.status || 'pending') !== 'pending') return;
+            if (!isItemInSelectedStation(setItem.name)) return;
             const key = setItem.name;
             if (!groupMap.has(key)) {
               groupMap.set(key, {
@@ -1481,6 +1490,7 @@ const KitchenDisplayPage: React.FC = () => {
           });
         } else {
           if ((item.status || 'pending') !== 'pending') return;
+          if (!isItemInSelectedStation(item.name)) return;
           const key = item.name;
           if (!groupMap.has(key)) {
             groupMap.set(key, {
@@ -1515,6 +1525,11 @@ const KitchenDisplayPage: React.FC = () => {
 
     return Array.from(groupMap.values()).sort((a, b) => a.earliestTime.getTime() - b.earliestTime.getTime());
   };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pendingGroups = useMemo(() => getItemViewPendingGroupsRaw(), [orders, selectedStation, menuStationMap]);
+
+  const getItemViewPendingGroups = () => pendingGroups;
 
   // 그룹 아이템들을 주문 단위로 모아서 한 번에 상태 변경 + 자동전진
   const handleGroupBatch = async (group: MenuGroup, direction: 'forward' | 'revert', column?: 'pending' | 'preparing') => {
@@ -1568,7 +1583,56 @@ const KitchenDisplayPage: React.FC = () => {
       return { orderId, order, updatedItems };
     }).filter(Boolean) as Array<{ orderId: string; order: KitchenOrder; updatedItems: any[] }>;
 
-    // 모든 주문 동시에 API 호출
+    // 즉시 UI 반영 (revert 시 주문 상태도 함께 변경)
+    setOrders(prev => prev.map(o => {
+      const update = updates.find(u => u.orderId === o.id);
+      if (!update) return o;
+      const updated = { ...o, items: update.updatedItems as any };
+
+      // revert 시: 모든 아이템이 이전 상태이면 주문도 이전 상태로
+      if (direction === 'revert') {
+        const prevOrderStatus: Record<string, string> = { preparing: 'pending', ready: 'preparing' };
+        const prevStatus = prevOrderStatus[o.status];
+        if (prevStatus) {
+          const allReverted = update.updatedItems.every((it: any) => {
+            if (it.is_set_menu && it.set_items && it.set_items.length > 0) {
+              return it.set_items.every((si: any) => (si.status || 'pending') === prevStatus);
+            }
+            return (it.status || 'pending') === prevStatus;
+          });
+          if (allReverted) updated.status = prevStatus as any;
+        }
+      }
+      return updated;
+    }).filter(o => {
+      if (!['pending', 'preparing', 'ready'].includes(o.status)) return false;
+      if (o.status === 'ready' && areAllItemsServed(o)) return false;
+      return true;
+    }));
+
+    // Preparing 배치 관리 (UI-only state)
+    const allItemIds = new Set(allSources.map(s => s.itemId));
+    if (direction === 'forward' && column === 'pending') {
+      const batchId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      setPreparingBatches(prev => [...prev, {
+        batchId,
+        menuName: group.menuName,
+        formattedName: group.formattedName,
+        itemIds: allItemIds
+      }]);
+    } else if (direction === 'forward' && column === 'preparing') {
+      setPreparingBatches(prev => prev
+        .map(b => ({ ...b, itemIds: new Set(Array.from(b.itemIds).filter(id => !allItemIds.has(id))) }))
+        .filter(b => b.itemIds.size > 0)
+      );
+    } else if (direction === 'revert' && column === 'preparing') {
+      setPreparingBatches(prev => prev
+        .map(b => ({ ...b, itemIds: new Set(Array.from(b.itemIds).filter(id => !allItemIds.has(id))) }))
+        .filter(b => b.itemIds.size > 0)
+      );
+    }
+
+    // API call (items 먼저 저장)
     try {
       const results = await Promise.all(updates.map(({ orderId, updatedItems }) =>
         fetch(`/api/orders/${orderId}/items`, {
@@ -1581,68 +1645,40 @@ const KitchenDisplayPage: React.FC = () => {
           body: JSON.stringify({ order_items: updatedItems.map(item => ({ ...item, status: item.status })) })
         }).then(r => r.json())
       ));
-
       if (results.some(r => !r.success)) { fetchOrders(); return; }
-
-      // 모든 주문의 아이템 상태 한 번에 업데이트
-      setOrders(prev => prev.map(o => {
-        const update = updates.find(u => u.orderId === o.id);
-        return update ? { ...o, items: update.updatedItems as any } : o;
-      }));
-
-      // Preparing 배치 관리
-      const allItemIds = new Set(allSources.map(s => s.itemId));
-      if (direction === 'forward' && column === 'pending') {
-        // Pending → Preparing: 배치 등록
-        const batchId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-        setPreparingBatches(prev => [...prev, {
-          batchId,
-          menuName: group.menuName,
-          formattedName: group.formattedName,
-          itemIds: allItemIds
-        }]);
-      } else if (direction === 'revert' && column === 'preparing') {
-        // Preparing → Pending: 배치에서 해당 아이템 제거
-        setPreparingBatches(prev => prev
-          .map(b => {
-            const remaining = new Set(Array.from(b.itemIds).filter(id => !allItemIds.has(id)));
-            return { ...b, itemIds: remaining };
-          })
-          .filter(b => b.itemIds.size > 0)
-        );
-      }
-
-      // 자동전진/롤백 처리 (동시에)
-      const statusUpdates = updates.map(({ orderId, order, updatedItems }) => {
-        if (direction === 'forward') {
-          if (areAllItemsDoneForColumn(updatedItems, order.status)) {
-            const nextOrderStatus: Record<string, KitchenOrder['status']> = {
-              pending: 'preparing', preparing: 'ready', ready: 'served',
-            };
-            const next = nextOrderStatus[order.status];
-            if (next) return updateOrderStatus(orderId, next, true);
-          }
-        } else {
-          const prevOrderStatus: Record<string, KitchenOrder['status']> = {
-            preparing: 'pending', ready: 'preparing', served: 'ready',
-          };
-          const prevStatus = prevOrderStatus[order.status];
-          if (prevStatus) {
-            const allReverted = updatedItems.every(it => {
-              if (it.is_set_menu && it.set_items && it.set_items.length > 0) {
-                return it.set_items.every(si => (si.status || 'pending') === prevStatus);
-              }
-              return (it.status || 'pending') === prevStatus;
-            });
-            if (allReverted) return updateOrderStatus(orderId, prevStatus, true);
-          }
-        }
-        return Promise.resolve();
-      });
-      await Promise.all(statusUpdates);
     } catch {
       fetchOrders();
+      return;
     }
+
+    // 자동전진/롤백 (API 성공 후)
+    const statusUpdates = updates.map(({ orderId, order, updatedItems }) => {
+      if (direction === 'forward') {
+        if (areAllItemsDoneForColumn(updatedItems, order.status)) {
+          const nextOrderStatus: Record<string, KitchenOrder['status']> = {
+            pending: 'preparing', preparing: 'ready', ready: 'served',
+          };
+          const next = nextOrderStatus[order.status];
+          if (next) return updateOrderStatus(orderId, next);
+        }
+      } else {
+        const prevOrderStatus: Record<string, KitchenOrder['status']> = {
+          preparing: 'pending', ready: 'preparing', served: 'ready',
+        };
+        const prevStatus = prevOrderStatus[order.status];
+        if (prevStatus) {
+          const allReverted = updatedItems.every(it => {
+            if (it.is_set_menu && it.set_items && it.set_items.length > 0) {
+              return it.set_items.every((si: any) => (si.status || 'pending') === prevStatus);
+            }
+            return (it.status || 'pending') === prevStatus;
+          });
+          if (allReverted) return updateOrderStatus(orderId, prevStatus);
+        }
+      }
+      return Promise.resolve();
+    });
+    await Promise.all(statusUpdates);
   };
 
   // Pending/Preparing 공통 그룹 카드 렌더링
@@ -1672,8 +1708,14 @@ const KitchenDisplayPage: React.FC = () => {
           </GroupMenuName>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {column === 'preparing' && (
-              <RevertBtn style={{ padding: '10px 14px', fontSize: '16px' }}
+              <RevertBtn style={{ padding: '10px 14px', fontSize: '14px' }}
                 onClick={() => handleGroupBatch(group, 'revert', column)}>↺</RevertBtn>
+            )}
+            {column === 'pending' && (
+              <RevertBtn style={{ padding: '10px 12px' }} title="Print Kitchen Ticket"
+                onClick={() => printGroupTicket(group)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              </RevertBtn>
             )}
             <ActionBtn color={actionColor} solid={isSingle} style={{ flex: 'none', padding: '10px 20px', fontSize: '14px' }}
               onClick={() => handleGroupBatch(group, 'forward', column)}>
@@ -1746,6 +1788,7 @@ const KitchenDisplayPage: React.FC = () => {
             item.set_items.forEach(setItem => {
               if (!batch.itemIds.has(setItem.id!)) return;
               if ((setItem.status || 'pending') !== 'preparing') return;
+              if (!isItemInSelectedStation(setItem.name)) return;
               batchedItemIds.add(setItem.id!);
               hasItems = true;
               group.plainQty += setItem.quantity;
@@ -1758,6 +1801,7 @@ const KitchenDisplayPage: React.FC = () => {
           } else {
             if (!batch.itemIds.has(item.id!)) return;
             if ((item.status || 'pending') !== 'preparing') return;
+            if (!isItemInSelectedStation(item.name)) return;
             batchedItemIds.add(item.id!);
             hasItems = true;
             if (order.orderTime < group.earliestTime) group.earliestTime = order.orderTime;
@@ -1796,6 +1840,7 @@ const KitchenDisplayPage: React.FC = () => {
           item.set_items.forEach(setItem => {
             if (batchedItemIds.has(setItem.id!)) return;
             if ((setItem.status || 'pending') !== 'preparing') return;
+            if (!isItemInSelectedStation(setItem.name)) return;
             groups.push({
               menuName: setItem.name, formattedName: formatItemName(setItem.name),
               plainQty: setItem.quantity,
@@ -1810,6 +1855,7 @@ const KitchenDisplayPage: React.FC = () => {
         } else {
           if (batchedItemIds.has(item.id!)) return;
           if ((item.status || 'pending') !== 'preparing') return;
+          if (!isItemInSelectedStation(item.name)) return;
           const regularOptions = item.options?.filter(opt => !/^.+\sx\d+$/.test(opt)) || [];
           const hasCustomization = regularOptions.length > 0 || !!item.special_instructions;
           groups.push({
@@ -1836,11 +1882,12 @@ const KitchenDisplayPage: React.FC = () => {
 
   // ─── Item View: Ready (주문 단위, preparing 중 부분 ready 포함) ──
 
-  const getItemViewReadyOrders = (): KitchenOrder[] => {
-    // 아이템 상태 기준: ready 또는 served 아이템이 있는 모든 주문 (모든 아이템 served면 제외)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const readyOrdersMemo = useMemo(() => {
     return orders
       .filter(o => ['pending', 'preparing', 'ready'].includes(o.status))
       .filter(o => !areAllItemsServed(o))
+      .filter(orderHasStationItems)
       .filter(o => {
         return o.items.some(item => {
           if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
@@ -1850,7 +1897,9 @@ const KitchenDisplayPage: React.FC = () => {
         });
       })
       .sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime());
-  };
+  }, [orders, orderHasStationItems]);
+
+  const getItemViewReadyOrders = () => readyOrdersMemo;
 
   const renderItemViewReady = () => {
     const readyOrders = getItemViewReadyOrders();
@@ -1959,7 +2008,7 @@ const KitchenDisplayPage: React.FC = () => {
                   </ItemInfo>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     {!isServed && (
-                      <RevertBtn style={{ padding: '4px 8px', fontSize: '11px' }}
+                      <RevertBtn style={{ padding: '6px 10px', fontSize: '12px' }}
                         onClick={async () => {
                           const updatedItems = order.items.map(it => {
                             if (fi.isSetItem && fi.parentId && it.id === fi.parentId && it.set_items) {
@@ -1970,23 +2019,28 @@ const KitchenDisplayPage: React.FC = () => {
                             }
                             return it;
                           });
-                          const token = localStorage.getItem('auth_token');
+
+                          // 즉시 UI 반영
+                          setOrders(prev => prev.map(o => o.id === order.id ? { ...o, items: updatedItems as any } : o));
+
+                          // 배치 등록 (Ready→Preparing 되돌린 아이템은 개별 카드로)
+                          setPreparingBatches(prev => [...prev, {
+                            batchId: `batch-revert-${Date.now()}`,
+                            menuName: fi.name,
+                            formattedName: formatItemName(fi.name),
+                            itemIds: new Set([fi.id])
+                          }]);
+
+                          // API call: items 먼저, 필요시 order status
                           try {
                             const response = await fetch(`/api/orders/${order.id}/items`, {
                               method: 'PATCH', credentials: 'include',
-                              headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-                              body: JSON.stringify({ order_items: updatedItems.map(it => ({ ...it, status: it.status })) })
+                              headers: apiHeaders(),
+                              body: JSON.stringify({ order_items: updatedItems })
                             });
                             const result = await response.json();
                             if (!result.success) { fetchOrders(); return; }
-                            setOrders(prev => prev.map(o => o.id === order.id ? { ...o, items: updatedItems as any } : o));
-                            // 되돌린 아이템을 개별 배치로 등록 (Preparing에서 합쳐지지 않도록)
-                            setPreparingBatches(prev => [...prev, {
-                              batchId: `batch-revert-${Date.now()}`,
-                              menuName: fi.name,
-                              formattedName: formatItemName(fi.name),
-                              itemIds: new Set([fi.id])
-                            }]);
+
                             // ready/served 아이템이 하나도 없으면 주문을 preparing으로
                             const hasReadyOrServed = updatedItems.some(it => {
                               if (it.is_set_menu && it.set_items && it.set_items.length > 0) {
@@ -1995,7 +2049,7 @@ const KitchenDisplayPage: React.FC = () => {
                               return it.status === 'ready' || it.status === 'served' || it.status === 'completed';
                             });
                             if (!hasReadyOrServed && order.status === 'ready') {
-                              await updateOrderStatus(order.id, 'preparing', true);
+                              await updateOrderStatus(order.id, 'preparing');
                             }
                           } catch { fetchOrders(); }
                         }}>↺</RevertBtn>
@@ -2045,11 +2099,19 @@ const KitchenDisplayPage: React.FC = () => {
             <ViewToggleBtn active={viewMode === 'order'} onClick={() => { setViewMode('order'); localStorage.setItem('kitchenDisplayViewMode', 'order'); }}>Order</ViewToggleBtn>
             <ViewToggleBtn active={viewMode === 'item'} onClick={() => { setViewMode('item'); localStorage.setItem('kitchenDisplayViewMode', 'item'); }}>Item</ViewToggleBtn>
           </ViewToggle>
+          {kitchenStations.length > 0 && (
+            <ViewToggle>
+              <ViewToggleBtn active={selectedStation === 'all'} onClick={() => setSelectedStation('all')}>All</ViewToggleBtn>
+              {kitchenStations.map(s => (
+                <ViewToggleBtn key={s.id} active={selectedStation === s.id} onClick={() => setSelectedStation(s.id)}>{s.name}</ViewToggleBtn>
+              ))}
+            </ViewToggle>
+          )}
           <ConnectionStatus connected={isConnected}>
             <ConnectionDot connected={isConnected} />
             {isConnected ? 'Live' : 'Offline'}
           </ConnectionStatus>
-          <Clock>{formatTime(currentTime, operationSettings)}</Clock>
+          <LiveClock operationSettings={operationSettings} />
         </HeaderInfo>
       </PageHeader>
 

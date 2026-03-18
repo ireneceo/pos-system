@@ -741,6 +741,7 @@ const ManagersPage: React.FC = () => {
         updateData.currency = (editingManager as any).currency || 'MYR';
         updateData.subscription_start = editingManager.subscriptionStart;
         updateData.subscription_end = editingManager.subscriptionEnd;
+        updateData.auto_renew = (editingManager as any).autoRenew !== false;
       }
 
       console.log('📝 Update data:', updateData);
@@ -911,6 +912,7 @@ const ManagersPage: React.FC = () => {
         managerUserData.currency = newManager.currency;
         managerUserData.subscription_start = newManager.subscriptionStart;
         managerUserData.subscription_end = newManager.subscriptionEnd;
+        managerUserData.auto_renew = newManager.autoRenew !== false;
       }
 
       // Add manager_id (parent manager) for Brand Manager and Foodcourt Manager

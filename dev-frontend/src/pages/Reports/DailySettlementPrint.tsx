@@ -80,11 +80,10 @@ const Overlay = styled.div`
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 40px 20px;
-  overflow-y: auto;
+  padding: 20px;
 
   @media print {
     position: static;
@@ -99,11 +98,14 @@ const ModalContainer = styled.div`
   border-radius: 12px;
   max-width: 520px;
   width: 100%;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  flex-shrink: 0;
 
   @media print {
     max-width: none;
+    max-height: none;
     border-radius: 0;
     box-shadow: none;
   }
@@ -186,12 +188,23 @@ const DateInput = styled.input`
   }
 `;
 
+const ModalBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+
+  @media print {
+    overflow: visible;
+  }
+`;
+
 const ActionBar = styled.div`
   display: flex;
   gap: 12px;
   padding: 16px 24px;
   border-top: 1px solid #E6EBF1;
   justify-content: flex-end;
+  flex-shrink: 0;
 
   @media print {
     display: none;
@@ -617,6 +630,44 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
     printSettlementReport(htmlContent);
   };
 
+  const handleDownloadPDF = async () => {
+    const htmlContent = generateSettlementHTML();
+    if (!htmlContent) return;
+
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: html2canvas } = await import('html2canvas');
+
+      // Create off-screen container with receipt width (80mm ≈ 302px)
+      const container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '302px';
+      container.style.background = 'white';
+      container.innerHTML = htmlContent.replace(/<html>|<\/html>|<head>.*?<\/head>|<body>|<\/body>|<!DOCTYPE[^>]*>/gs, '');
+      document.body.appendChild(container);
+
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        width: 302,
+        windowWidth: 302,
+        backgroundColor: '#ffffff'
+      });
+
+      document.body.removeChild(container);
+
+      // Create PDF with receipt dimensions (80mm width, dynamic height)
+      const imgWidth = 80; // mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [imgWidth, imgHeight] });
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`settlement-${selectedDate}.pdf`);
+    } catch (error) {
+      console.error('PDF download error:', error);
+    }
+  };
+
   const handleDateChange = (date: string) => {
     setSelectedDate(date);
   };
@@ -684,6 +735,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
           <CloseButton onClick={onClose}>&times;</CloseButton>
         </ModalHeader>
 
+        <ModalBody>
         {/* Date selector */}
         <DateSelector className="no-print">
           <QuickDateBtn
@@ -981,10 +1033,19 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
           </Receipt>
         )}
 
+        </ModalBody>
+
         {/* Action buttons */}
         {!loading && data && totalOrders > 0 && (
           <ActionBar className="no-print">
             <ActionButton onClick={onClose}>Close</ActionButton>
+            <ActionButton onClick={handleDownloadPDF}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              PDF Download
+            </ActionButton>
             <ActionButton primary onClick={handlePrint}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z"

@@ -80,38 +80,23 @@ router.post('/contact', async (req, res) => {
       await sendPlatformEmail({
         to: email,
         subject: `Thank you for contacting ${companyName}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">${companyName}</h1>
-            </div>
-            <div style="background: white; padding: 30px; border: 1px solid #E6EBF1; border-top: none; border-radius: 0 0 12px 12px;">
-              <h2 style="color: #0A2540; margin-top: 0;">We've received your inquiry</h2>
-              <p style="color: #374151; line-height: 1.6;">Dear ${name},</p>
-              <p style="color: #374151; line-height: 1.6;">
-                Thank you for reaching out to us. We have successfully received your message and our team will review it shortly.
-              </p>
-              <p style="color: #374151; line-height: 1.6;">
-                <strong>We typically respond within 24 hours during business days.</strong>
-              </p>
-              <div style="background: #F8FAFC; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #635BFF;">
-                <p style="color: #6B7280; font-size: 13px; margin: 0 0 8px 0;"><strong>Your message:</strong></p>
-                <p style="color: #374151; font-size: 14px; margin: 0; white-space: pre-wrap;">${message.length > 500 ? message.substring(0, 500) + '...' : message}</p>
-              </div>
-              ${inquiry_type === 'free_trial' ? `
-              <div style="background: #EEF2FF; padding: 16px; border-radius: 8px; margin: 20px 0;">
-                <p style="color: #4338CA; font-size: 14px; margin: 0;">
-                  <strong>Free Trial Request</strong> — We'll set up your account and get back to you with login details.
-                </p>
-              </div>
-              ` : ''}
-              <hr style="border: none; border-top: 1px solid #E6EBF1; margin: 24px 0;">
-              <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin: 0;">
-                ${companyName} | <a href="https://purplehere.com" style="color: #635BFF;">purplehere.com</a>
-              </p>
-            </div>
-          </div>
-        `
+        html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="https://purplehere.com" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
+  <tr><td style="padding:32px;">
+    <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">We've received your inquiry</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.6;">Dear ${name},</p>
+    <p style="color:#374151;font-size:14px;line-height:1.6;">Thank you for reaching out. We have received your message and will review it shortly.</p>
+    <p style="color:#374151;font-size:14px;line-height:1.6;"><strong>We typically respond within 24 hours during business days.</strong></p>
+    <div style="background:#F8FAFC;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #635BFF;">
+      <p style="color:#6B7280;font-size:13px;margin:0 0 8px;"><strong>Your message:</strong></p>
+      <p style="color:#374151;font-size:14px;margin:0;white-space:pre-wrap;">${message.length > 500 ? message.substring(0, 500) + '...' : message}</p>
+    </div>${inquiry_type === 'free_trial' ? '<div style="background:#EEF2FF;padding:16px;border-radius:8px;margin:20px 0;"><p style="color:#4338CA;font-size:14px;margin:0;"><strong>Free Trial Request</strong> — We will set up your account and get back to you with login details.</p></div>' : ''}
+  </td></tr>
+  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">This is an automated message from <a href="https://purplehere.com" style="color:#635BFF;text-decoration:none;">PurpleHere</a>. No-reply email.<br><span style="color:#9CA3AF;">help@purplehere.com</span></p></td></tr>
+</table></td></tr></table></body></html>`
       });
     } catch (emailError) {
       // Email failure should not block the inquiry submission
@@ -344,26 +329,25 @@ router.post('/admin/inquiries/:id/reply', authenticateToken, async (req, res) =>
         await sendPlatformEmail({
           to: inquiry.email,
           subject: `Re: Your inquiry to ${companyName}`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #635BFF;">Thank you for contacting us</h2>
-              <p>Dear ${inquiry.name},</p>
-              <p>Thank you for your inquiry. Here is our response:</p>
-              <div style="background: #F8FAFC; padding: 20px; border-left: 4px solid #635BFF; margin: 20px 0;">
-                ${reply_message.replace(/\n/g, '<br>')}
-              </div>
-              <hr style="border: none; border-top: 1px solid #E6EBF1; margin: 20px 0;">
-              <p style="color: #6B7280; font-size: 14px;">
-                <strong>Your original message:</strong><br>
-                ${inquiry.message.replace(/\n/g, '<br>')}
-              </p>
-              <hr style="border: none; border-top: 1px solid #E6EBF1; margin: 20px 0;">
-              <p style="color: #6B7280; font-size: 12px;">
-                Best regards,<br>
-                ${companyName} Team
-              </p>
-            </div>
-          `
+          html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="https://purplehere.com" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
+  <tr><td style="padding:32px;">
+    <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">Response to Your Inquiry</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.6;">Dear ${inquiry.name},</p>
+    <p style="color:#374151;font-size:14px;line-height:1.6;">Thank you for your inquiry. Here is our response:</p>
+    <div style="background:#F8FAFC;padding:16px 20px;border-left:4px solid #635BFF;border-radius:0 8px 8px 0;margin:20px 0;">
+      <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">${reply_message.replace(/\n/g, '<br>')}</p>
+    </div>
+    <div style="margin:20px 0;padding-top:16px;border-top:1px solid #E6EBF1;">
+      <p style="color:#6B7280;font-size:13px;margin:0 0 8px;"><strong>Your original message:</strong></p>
+      <p style="color:#9CA3AF;font-size:13px;margin:0;line-height:1.5;">${inquiry.message.replace(/\n/g, '<br>')}</p>
+    </div>
+  </td></tr>
+  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">Best regards, ${companyName} Team<br>This is a no-reply email. <a href="https://purplehere.com" style="color:#635BFF;text-decoration:none;">purplehere.com</a></p></td></tr>
+</table></td></tr></table></body></html>`
         });
 
         await inquiry.update({

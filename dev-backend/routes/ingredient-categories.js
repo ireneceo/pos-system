@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { IngredientCategory, Ingredient, Restaurant } = require('../models');
+const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -14,11 +15,13 @@ const { isBrandManager } = require('../middleware/recipeAuth');
  */
 router.get('/brands/:brandId/ingredient-categories', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brandId } = req.params;
-    const brand_id = brandId; // DB 쿼리용
+    // Shared across all brands owned by this user
+    const Brand = require('../models/Brand');
+    const userBrands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+    const allBrandIds = userBrands.map(b => b.id);
 
     const categories = await IngredientCategory.findAll({
-      where: { brand_id },
+      where: { brand_id: { [Op.or]: [{ [Op.in]: allBrandIds }, null] } },
       order: [['display_order', 'ASC'], ['name', 'ASC']],
       include: [{
         model: Ingredient,
@@ -236,10 +239,17 @@ router.get('/restaurants/:restaurantId/ingredient-categories', authenticateToken
       editable: true
     }));
 
-    // 브랜드 카테고리 (브랜드 소속인 경우)
+    // 브랜드 카테고리 (브랜드 소속인 경우 - owner의 모든 브랜드 통합)
     if (restaurant.brand_id) {
+      const Brand = require('../models/Brand');
+      const brand = await Brand.findByPk(restaurant.brand_id);
+      let allBrandIds = [restaurant.brand_id];
+      if (brand?.owner_id) {
+        const ownerBrands = await Brand.findAll({ where: { owner_id: brand.owner_id }, attributes: ['id'] });
+        allBrandIds = ownerBrands.map(b => b.id);
+      }
       const brandCategories = await IngredientCategory.findAll({
-        where: { brand_id: restaurant.brand_id },
+        where: { brand_id: { [Op.in]: allBrandIds } },
         order: [['display_order', 'ASC'], ['name', 'ASC']],
         include: [{
           model: Ingredient,

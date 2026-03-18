@@ -300,6 +300,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [showPaymentSubmitModal, setShowPaymentSubmitModal] = useState(false);
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<number | null>(null);
   const [paymentData, setPaymentData] = useState({
     paymentMethod: '',
     transactionId: '',
@@ -637,6 +638,8 @@ const RestaurantInvoicesPage: React.FC = () => {
   };
 
   const handleConfirmFreeInvoice = async (invoice: Invoice) => {
+    if (confirmingInvoiceId) return;
+    setConfirmingInvoiceId(invoice.id);
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/invoices/${invoice.id}/status`, {
@@ -652,10 +655,13 @@ const RestaurantInvoicesPage: React.FC = () => {
         })
       });
       if (response.ok) {
-        fetchInvoices();
+        await fetchInvoices();
+        setShowViewModal(false);
       }
     } catch (error) {
       console.error('Failed to confirm free invoice:', error);
+    } finally {
+      setConfirmingInvoiceId(null);
     }
   };
 
@@ -1101,8 +1107,8 @@ const RestaurantInvoicesPage: React.FC = () => {
 
                     {/* Confirm button for free invoices */}
                     {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total === 0 && (
-                      <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>
-                        Confirm
+                      <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)} disabled={confirmingInvoiceId === invoice.id}>
+                        {confirmingInvoiceId === invoice.id ? 'Confirming...' : 'Confirm'}
                       </LocalActionButton>
                     )}
 
@@ -1232,11 +1238,8 @@ const RestaurantInvoicesPage: React.FC = () => {
                   </Button>
                 )}
                 {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total === 0 && (
-                  <Button variant="success" onClick={() => {
-                    setShowViewModal(false);
-                    handleConfirmFreeInvoice(selectedInvoice);
-                  }}>
-                    Confirm
+                  <Button variant="success" onClick={() => handleConfirmFreeInvoice(selectedInvoice)} disabled={!!confirmingInvoiceId}>
+                    {confirmingInvoiceId ? 'Confirming...' : 'Confirm'}
                   </Button>
                 )}
                 <Button onClick={() => generateInvoicePDF(selectedInvoice)}>

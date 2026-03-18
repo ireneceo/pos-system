@@ -2,6 +2,7 @@ const nodemailer = require('nodemailer');
 const { sequelize } = require('../config/database');
 const { QueryTypes } = require('sequelize');
 const { decrypt } = require('./encryption');
+const { getLogoAttachment } = require('./emailTemplates');
 
 /**
  * Get email settings for a specific entity
@@ -73,6 +74,8 @@ function createTransporter(settings) {
   });
 }
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 /**
  * Send email for a specific entity
  */
@@ -81,14 +84,27 @@ async function sendEmail(entityType, entityId, mailOptions) {
     const settings = await getEmailSettings(entityType, entityId);
     const transporter = createTransporter(settings);
 
+    const fromAddress = settings.from_email || settings.smtp_user;
+    const fromFormatted = settings.from_name
+      ? `"${settings.from_name}" <${fromAddress}>`
+      : fromAddress;
+
     if (!mailOptions.from) {
-      mailOptions.from = settings.from_name
-        ? `"${settings.from_name}" <${settings.from_email}>`
-        : settings.from_email;
+      mailOptions.from = fromFormatted;
     }
 
     if (settings.reply_to_email && !mailOptions.replyTo) {
       mailOptions.replyTo = settings.reply_to_email;
+    }
+
+    // 개발서버: 제목에 [DEV] 표시
+    if (isDev && mailOptions.subject) {
+      mailOptions.subject = `[DEV] ${mailOptions.subject}`;
+    }
+
+    // 로고 CID 첨부 자동 추가
+    if (mailOptions.html && mailOptions.html.includes('cid:purplehere-logo')) {
+      mailOptions.attachments = [...(mailOptions.attachments || []), ...getLogoAttachment()];
     }
 
     const info = await transporter.sendMail(mailOptions);
@@ -113,14 +129,27 @@ async function sendPlatformEmail(mailOptions) {
     const settings = await getPlatformEmailSettings();
     const transporter = createTransporter(settings);
 
+    const fromAddress = settings.from_email || settings.smtp_user;
+    const fromFormatted = settings.from_name
+      ? `"${settings.from_name}" <${fromAddress}>`
+      : fromAddress;
+
     if (!mailOptions.from) {
-      mailOptions.from = settings.from_name
-        ? `"${settings.from_name}" <${settings.from_email}>`
-        : settings.from_email;
+      mailOptions.from = fromFormatted;
     }
 
     if (settings.reply_to_email && !mailOptions.replyTo) {
       mailOptions.replyTo = settings.reply_to_email;
+    }
+
+    // 개발서버: 제목에 [DEV] 표시
+    if (isDev && mailOptions.subject) {
+      mailOptions.subject = `[DEV] ${mailOptions.subject}`;
+    }
+
+    // 로고 CID 첨부 자동 추가
+    if (mailOptions.html && mailOptions.html.includes('cid:purplehere-logo')) {
+      mailOptions.attachments = [...(mailOptions.attachments || []), ...getLogoAttachment()];
     }
 
     const info = await transporter.sendMail(mailOptions);
@@ -142,20 +171,22 @@ async function sendPlatformEmail(mailOptions) {
 async function sendTestEmail(entityType, entityId, testEmail) {
   const mailOptions = {
     to: testEmail,
-    subject: 'Test Email from Purple POS',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #635BFF;">Test Email</h2>
-        <p>This is a test email from your Purple POS notification system.</p>
-        <p>If you received this email, your SMTP configuration is working correctly!</p>
-        <hr style="border: none; border-top: 1px solid #E6EBF1; margin: 20px 0;">
-        <p style="color: #6B7C93; font-size: 12px;">
-          Sent from Purple POS Notification System<br>
-          Entity Type: ${entityType}<br>
-          Entity ID: ${entityId}
-        </p>
-      </div>
-    `,
+    subject: 'Test Email from PurpleHere',
+    html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="https://purplehere.com" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
+  <tr><td style="padding:32px;">
+    <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">SMTP Test</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.6;">This is a test email from your PurpleHere notification system.</p>
+    <div style="background:#ECFDF5;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #10B981;">
+      <p style="color:#059669;font-size:14px;margin:0;font-weight:600;">SMTP configuration is working correctly!</p>
+    </div>
+    <p style="color:#9CA3AF;font-size:12px;">Entity: ${entityType} / ID: ${entityId}</p>
+  </td></tr>
+  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;"><a href="https://purplehere.com" style="color:#635BFF;text-decoration:none;">purplehere.com</a></p></td></tr>
+</table></td></tr></table></body></html>`,
     text: `Test Email\n\nThis is a test email from your Purple POS notification system.\nIf you received this email, your SMTP configuration is working correctly!\n\nEntity Type: ${entityType}\nEntity ID: ${entityId}`
   };
 
@@ -219,6 +250,11 @@ async function sendIssuerEmail(issuerType, issuerId, mailOptions) {
 
     if (settings.reply_to_email && !mailOptions.replyTo) {
       mailOptions.replyTo = settings.reply_to_email;
+    }
+
+    // 로고 CID 첨부 자동 추가
+    if (mailOptions.html && mailOptions.html.includes('cid:purplehere-logo')) {
+      mailOptions.attachments = [...(mailOptions.attachments || []), ...getLogoAttachment()];
     }
 
     const info = await transporter.sendMail(mailOptions);

@@ -7,20 +7,35 @@
  * Templates support issuer branding (logo, name, color) via issuerInfo parameter.
  */
 
+const path = require('path');
+
+const PLATFORM_LOGO_PATH = path.join(__dirname, '..', '..', 'dev-frontend', 'public', 'images', 'logo-email.png');
+const PLATFORM_LOGO_CID = 'purplehere-logo';
+
+/**
+ * Get logo attachment for CID embedding in emails
+ * @returns {Array} nodemailer attachments array
+ */
+function getLogoAttachment() {
+  return [{
+    filename: 'logo.png',
+    path: PLATFORM_LOGO_PATH,
+    cid: PLATFORM_LOGO_CID
+  }];
+}
+
 /**
  * Base email layout with optional issuer branding
+ * Clean, modern design: light header + color logo + accent on CTA only
  * @param {string} bodyContent - HTML body content
  * @param {Object} [issuerInfo] - Optional issuer branding
- * @param {string} [issuerInfo.name] - Issuer display name
- * @param {string} [issuerInfo.logoUrl] - Issuer logo URL
- * @param {string} [issuerInfo.color] - Brand color (hex, default: #635BFF)
  */
 function emailLayout(bodyContent, issuerInfo) {
   const brandName = issuerInfo?.name || 'PurpleHere';
   const brandColor = issuerInfo?.color || '#635BFF';
   const logoHtml = issuerInfo?.logoUrl
-    ? `<img src="${issuerInfo.logoUrl}" alt="${brandName}" style="max-height:40px;max-width:200px;display:block;" />`
-    : `<h1 style="margin:0;color:white;font-size:22px;font-weight:600;">${brandName}</h1>`;
+    ? `<a href="${issuerInfo?.website || 'https://purplehere.com'}" style="text-decoration:none;"><img src="${issuerInfo.logoUrl}" alt="${brandName}" style="height:32px;display:block;" /></a>`
+    : `<a href="https://purplehere.com" style="text-decoration:none;"><img src="cid:${PLATFORM_LOGO_CID}" alt="${brandName}" style="height:32px;display:block;" /></a>`;
   const footerText = issuerInfo?.companyName || 'PurpleHere POS System';
   const footerUrl = issuerInfo?.website || 'https://purplehere.com';
   const footerDomain = issuerInfo?.website ? issuerInfo.website.replace(/^https?:\/\//, '') : 'purplehere.com';
@@ -32,20 +47,29 @@ function emailLayout(bodyContent, issuerInfo) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${brandName}</title>
 </head>
-<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;">
+<body style="margin:0;padding:0;background:#F4F5F7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F5F7;padding:40px 20px;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-        <tr><td style="background:${brandColor};padding:24px 32px;">
+      <!-- Accent top bar -->
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+        <tr><td style="height:4px;background-color:${brandColor};border-radius:8px 8px 0 0;font-size:0;line-height:0;">&nbsp;</td></tr>
+      </table>
+      <!-- Main card -->
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:0 0 8px 8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <!-- Logo header -->
+        <tr><td style="padding:28px 32px 20px;border-bottom:1px solid #EEEEF0;">
           ${logoHtml}
         </td></tr>
+        <!-- Body -->
         <tr><td style="padding:32px;">
           ${bodyContent}
         </td></tr>
-        <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;">
-          <p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">
-            ${footerText}<br>
-            <a href="${footerUrl}" style="color:${brandColor};text-decoration:none;">${footerDomain}</a>
+        <!-- Footer -->
+        <tr><td style="padding:20px 32px;border-top:1px solid #EEEEF0;">
+          <p style="margin:0;color:#9CA3AF;font-size:12px;line-height:1.6;text-align:center;">
+            This is an automated message from ${footerText}.<br>
+            This is a no-reply email. Manage preferences in Settings.<br>
+            <a href="${footerUrl}" style="color:#6B7280;text-decoration:none;">${footerDomain}</a>
           </p>
         </td></tr>
       </table>
@@ -540,4 +564,4 @@ function passwordResetEmail(data) {
   return { subject, html: emailLayout(bodyContent), text };
 }
 
-module.exports = { welcomeEmail, invoiceEmail, entityPlanInvoiceEmail, signupWelcomeEmail, passwordResetEmail };
+module.exports = { emailLayout, getLogoAttachment, welcomeEmail, invoiceEmail, entityPlanInvoiceEmail, signupWelcomeEmail, passwordResetEmail };

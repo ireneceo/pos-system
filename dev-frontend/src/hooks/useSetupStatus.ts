@@ -51,13 +51,15 @@ export function useSetupStatus(params: UseSetupStatusParams) {
         const headers = getAuthHeaders();
 
         if ((role === 'Restaurant Admin' || role === 'Staff') && restaurantId) {
-          const [companyRes, settingsRes] = await Promise.all([
+          const [companyRes, settingsRes, menuRes] = await Promise.all([
             fetch(`/api/restaurants/${restaurantId}/company-info`, { headers }),
-            fetch(`/api/restaurants/${restaurantId}`, { headers })
+            fetch(`/api/restaurants/${restaurantId}`, { headers }),
+            fetch(`/api/menu?restaurant_id=${restaurantId}&excludeImage=true`, { headers })
           ]);
 
           let companyData: CompanyData | null = null;
           let settingsData: RestaurantSettingsData | null = null;
+          let menuItemCount = 0;
 
           if (companyRes.ok) {
             const result = await companyRes.json();
@@ -67,12 +69,36 @@ export function useSetupStatus(params: UseSetupStatusParams) {
             const result = await settingsRes.json();
             settingsData = result.data || result;
           }
+          if (menuRes.ok) {
+            const result = await menuRes.json();
+            const items = result.data?.items || result.data || [];
+            menuItemCount = Array.isArray(items) ? items.length : 0;
+          }
 
+          // 1. Company Information
           const companyComplete = isCompanyInfoComplete(companyData);
-          // Store settings: check if user has explicitly set currency (not the default empty state)
+
+          // 2. Store Settings: currency + timezone
           const hasCurrency = !!(settingsData?.currency);
-          const hasOperationSettings = !!(settingsData?.operation_settings);
-          const settingsComplete = hasCurrency && hasOperationSettings;
+          const opSettings = settingsData?.operation_settings;
+          const hasTimezone = !!(opSettings?.timeZone);
+          const storeComplete = hasCurrency && hasTimezone;
+
+          // 3. Operating Hours: explicitly set (not empty)
+          const hasHours = !!(opSettings?.openingTime && opSettings?.closingTime);
+
+          // 4. Menu Items: at least 1
+          const hasMenu = menuItemCount > 0;
+
+          // 5. Payment Methods: at least 1 POS payment method enabled
+          const paySettings = settingsData?.payment_settings;
+          let hasPayment = false;
+          if (paySettings && typeof paySettings === 'object') {
+            hasPayment = Object.entries(paySettings).some(([key, val]: [string, any]) => {
+              if (key === '_order' || !val || typeof val !== 'object') return false;
+              return val.enabled && Array.isArray(val.availableIn) && val.availableIn.includes('pos');
+            });
+          }
 
           const setupItems: SetupItem[] = [
             {
@@ -84,10 +110,31 @@ export function useSetupStatus(params: UseSetupStatusParams) {
             },
             {
               key: 'store_settings',
-              label: 'Review Store Settings',
-              description: 'Verify your currency, operating hours, and payment preferences',
-              path: `/restaurant/${restaurantId}/settings`,
-              completed: settingsComplete
+              label: 'Set Currency & Timezone',
+              description: 'Configure your currency and timezone for accurate transactions',
+              path: `/restaurant/${restaurantId}/settings?tab=store`,
+              completed: storeComplete
+            },
+            {
+              key: 'operating_hours',
+              label: 'Set Operating Hours',
+              description: 'Configure opening/closing times for your restaurant',
+              path: `/restaurant/${restaurantId}/settings?tab=operations`,
+              completed: hasHours
+            },
+            {
+              key: 'menu_items',
+              label: 'Add Menu Items',
+              description: 'Register at least one menu item to start taking orders',
+              path: `/restaurant/${restaurantId}/menu`,
+              completed: hasMenu
+            },
+            {
+              key: 'payment_methods',
+              label: 'Configure Payment Methods',
+              description: 'Enable at least one payment method for POS transactions',
+              path: `/restaurant/${restaurantId}/settings?tab=payment`,
+              completed: hasPayment
             }
           ];
           setItems(setupItems);

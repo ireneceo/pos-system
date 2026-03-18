@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-17
+> **최종 업데이트:** 2026-03-18
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,45 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: 이메일 템플릿 + 구독 아키텍처 + 브랜드 통합 + UI 개선 (2026-03-18)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 이메일 템플릿 통일 | 14개 유형 공통 레이아웃(액센트바+컬러로고+CTA), CID 인라인 로고, 3개 파일 통합 | ✅ |
+| 2 | Free 인보이스 Confirm | 금액 0원 자동 paid 제거, Confirm 버튼 즉시 반영+로딩 | ✅ |
+| 3 | Entity 구독 인보이스 버그 | plan_prices fallback, issued_by/issued_at, InvoiceItem 필드 추가 | ✅ |
+| 4 | Managers 페이지 중복 | LEFT JOIN → 별도 쿼리 머지 (멀티 브랜드 지원) | ✅ |
+| 5 | 구독 데이터 users 테이블 통일 | Brand/Foodcourt General 구독 → users 테이블 (Owner와 동일) | ✅ |
+| 6 | subscription-status API | users 테이블 기준 조회 (brands/foodcourts 의존 제거) | ✅ |
+| 7 | allowed-routes API | users 테이블에서 plan_type 조회 (Brand/Foodcourt/Owner) | ✅ |
+| 8 | Suspended 로그인 차단 | 403 + "관리자에게 문의" 메시지 (데모 bypass) | ✅ |
+| 9 | 데모 계정 프리패스 | is_demo → Enterprise 자동, 구독 체크 skip | ✅ |
+| 10 | 공지 뱃지 버그 | 자기가 보낸 공지 제외, System Admin 지원, findOne→findAll | ✅ |
+| 11 | SubscriptionsPage 기본 필터 | Active → All | ✅ |
+| 12 | InvoicesPage null safe | companyName/invoiceNumber null 접근 방지, to-pay 날짜 필터 제거 | ✅ |
+| 13 | Settlement Report 팝업 | 브라우저 높이 제한, PDF 직접 다운로드 (80mm 영수증) | ✅ |
+| 14 | Manager RestaurantsPage 수치 | todaySales/todayOrders/staffCount 실제 DB 쿼리 | ✅ |
+| 15 | 레시피/재료/공급업체 통합 | Ingredients+IngredientCategories+Suppliers 브랜드 통합, RecipeCategories 브랜드별 | ✅ |
+| 16 | Active/Inactive 색상 통일 | 6개 파일, 표준 #ECFDF5/#059669, #FEE2E2/#DC2626 | ✅ |
+| 17 | 공급업체 토글 버튼 | Active/Inactive 아이콘 토글 추가 | ✅ |
+| 18 | Live Orders 실시간 통계 | Socket 4개 이벤트에서 fetchOrderCounts 재호출 | ✅ |
+
+### 수정된 파일 (주요)
+- `dev-backend/utils/emailTemplates.js`, `notificationTemplates.js`, `invoiceEmailTemplate.js`, `emailService.js`
+- `dev-backend/routes/users.js`, `restaurants.js`, `invoices.js`, `brands.js`, `foodcourts.js`, `owner.js`
+- `dev-backend/routes/badgeCounts.js`, `notices.js`, `ingredients.js`, `recipe-categories.js`, `ingredient-categories.js`, `suppliers.js`
+- `dev-backend/services/authService.js`, `invoiceScheduler.js`, `subscriptionScheduler.js`
+- `dev-backend/routes/auth.js`
+- `dev-frontend/src/pages/Reports/DailySettlementPrint.tsx`, `LiveOrders/LiveOrdersPage.tsx`
+- `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx`, `Admin/InvoicesPage.tsx`, `Admin/SubscriptionsPage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx`, `FoodcourtGeneral/FoodcourtInvoicesPage.tsx`
+- `dev-frontend/src/pages/RecipeManagement/RecipeManagementPage.tsx`, `Suppliers/SuppliersPage.tsx`
+- `dev-frontend/src/pages/Login/LoginPage.tsx`, `contexts/AuthContext.tsx`
+- 색상 통일: `Admin/RestaurantsPage.tsx`, `Promotions/PromotionsPage.tsx`, `Owner/OwnerDashboardPage.tsx`, `Manager/ManagerCustomersPage.tsx`, `FoodcourtGeneral/FoodcourtManagement.tsx`
 
 ---
 

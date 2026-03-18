@@ -629,9 +629,9 @@ const BrandInvoicesPage: React.FC = () => {
 
   // To Pay tab filters (separate from Issued tab)
   const [toPaySearchTerm, setToPaySearchTerm] = useState('');
-  const [toPayActivePeriod, setToPayActivePeriod] = useState<PeriodType>('month');
+  const [toPayActivePeriod, setToPayActivePeriod] = useState<PeriodType>('all');
   const [toPayIsCustomDateRange, setToPayIsCustomDateRange] = useState(false);
-  const [toPayDateRange, setToPayDateRange] = useState(() => calculatePeriodDateRange('month'));
+  const [toPayDateRange, setToPayDateRange] = useState(() => calculatePeriodDateRange('all'));
 
   // To Pay period filter handlers
   const handleToPayPeriodChange = (period: PeriodType) => {
@@ -1991,9 +1991,9 @@ const BrandInvoicesPage: React.FC = () => {
     const payerText = getPayerDisplay(invoice.payerType || '').toLowerCase();
 
     const matchesSearch = !searchTerm ||
-      invoice.companyName.toLowerCase().includes(term) ||
-      invoice.invoiceNumber.toLowerCase().includes(term) ||
-      invoice.managerName.toLowerCase().includes(term) ||
+      (invoice.companyName || '').toLowerCase().includes(term) ||
+      (invoice.invoiceNumber || '').toLowerCase().includes(term) ||
+      (invoice.managerName || '').toLowerCase().includes(term) ||
       (invoice.restaurantName || '').toLowerCase().includes(term) ||
       statusText.includes(term) ||
       typeText.includes(term) ||
@@ -2030,31 +2030,16 @@ const BrandInvoicesPage: React.FC = () => {
 
   // Filtered invoices to pay with search and date range
   const filteredInvoicesToPay = invoicesToPay.filter(invoice => {
-    // Universal search
+    // Search filter only — no date filter for to-pay (unpaid invoices should always be visible)
+    if (!toPaySearchTerm) return true;
     const term = toPaySearchTerm.toLowerCase();
     const statusText = getStatusDisplay(invoice.status).toLowerCase();
-
-    const matchesSearch = !toPaySearchTerm ||
-      invoice.invoiceNumber.toLowerCase().includes(term) ||
+    return (invoice.invoiceNumber || '').toLowerCase().includes(term) ||
       (invoice.issuerName || '').toLowerCase().includes(term) ||
       (invoice.restaurantName || '').toLowerCase().includes(term) ||
       statusText.includes(term) ||
       (invoice.categoryDisplayName || '').toLowerCase().includes(term) ||
       (invoice.planType || '').toLowerCase().includes(term);
-
-    // Date range filter
-    let matchesDateRange = true;
-    if (toPayDateRange.start && toPayDateRange.end) {
-      const invoiceDate = new Date(invoice.issueDate);
-      const startDate = new Date(toPayDateRange.start);
-      const endDate = new Date(toPayDateRange.end);
-
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
-    }
-
-    return matchesSearch && matchesDateRange;
   }).sort((a, b) => {
     // Sort by issue date descending (newest first)
     const dateA = new Date(a.issueDate).getTime();

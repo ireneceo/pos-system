@@ -135,8 +135,8 @@ const StatusBadge = styled.span<{ status: 'active' | 'inactive' | 'expired' }>`
         `;
       case 'inactive':
         return `
-          background: #F3F4F6;
-          color: #6B7C93;
+          background: #FEE2E2;
+          color: #DC2626;
         `;
       case 'expired':
         return `

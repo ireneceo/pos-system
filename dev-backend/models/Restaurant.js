@@ -487,6 +487,12 @@ Restaurant.init({
     defaultValue: false,
     allowNull: false,
     comment: 'Demo restaurant flag - excluded from real revenue statistics'
+  },
+  kitchen_assignment_mode: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'category',
+    allowNull: false,
+    comment: 'Kitchen station assignment mode: category or menu_item'
   }
 }, {
   sequelize: database.sequelize,

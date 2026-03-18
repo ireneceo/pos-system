@@ -33,6 +33,26 @@ async function login(emailOrUsername, password) {
     throw new Error('Invalid email/username or password');
   }
 
+  // Block login for suspended accounts (all roles except System Admin and demo accounts)
+  if (user.role !== 'System Admin' && !user.is_demo) {
+    // Brand General, Foodcourt General, Restaurant Owner: check users.subscription_status
+    if (['Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(user.role) && user.subscription_status === 'suspended') {
+      const err = new Error('Your account has been suspended due to unpaid invoices. Please contact your administrator.');
+      err.code = 'ACCOUNT_SUSPENDED';
+      throw err;
+    }
+    // Restaurant Admin, Staff: check restaurant.status
+    if (['Restaurant Admin', 'Staff'].includes(user.role) && user.restaurant_id) {
+      const Restaurant = require('../models/Restaurant');
+      const restaurant = await Restaurant.findByPk(user.restaurant_id);
+      if (restaurant && restaurant.status === 'suspended' && !restaurant.is_demo) {
+        const err = new Error('Your restaurant account has been suspended due to unpaid invoices. Please contact your administrator.');
+        err.code = 'ACCOUNT_SUSPENDED';
+        throw err;
+      }
+    }
+  }
+
   // JWT_SECRET 필수 검증
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is required');
@@ -407,19 +427,24 @@ function notifyAdminNewSignup({ user, role, entityName, planName, billingCycle }
       if (!admins.length) return;
 
       const adminEmails = admins.map(a => a.email).join(', ');
-      const html = `
-        <h2>New Signup Notification</h2>
-        <p>A new user has registered on PurpleHere POS:</p>
-        <table style="border-collapse:collapse;width:100%;max-width:500px;">
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Name</td><td style="padding:8px;border:1px solid #ddd;">${user.full_name}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Email</td><td style="padding:8px;border:1px solid #ddd;">${user.email}</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Role</td><td style="padding:8px;border:1px solid #ddd;">${role}</td></tr>
-          ${entityName ? `<tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Entity</td><td style="padding:8px;border:1px solid #ddd;">${entityName}</td></tr>` : ''}
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Plan</td><td style="padding:8px;border:1px solid #ddd;">${planName} (${billingCycle})</td></tr>
-          <tr><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">Trial Ends</td><td style="padding:8px;border:1px solid #ddd;">${new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}</td></tr>
-        </table>
-        <p style="margin-top:16px;color:#666;">This is an automated notification from PurpleHere POS.</p>
-      `;
+      const r = (label, value) => `<tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;width:35%;">${label}</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${value}</td></tr>`;
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="https://purplehere.com" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
+  <tr><td style="padding:32px;">
+    <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">New Signup</h2>
+    <p style="color:#6B7280;font-size:14px;margin:0 0 20px;">A new user has registered:</p>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB;border-radius:8px;margin:0 0 16px;">
+      ${r('Name', user.full_name)}${r('Email', user.email)}${r('Role', role)}
+      ${entityName ? r('Entity', entityName) : ''}
+      ${r('Plan', `${planName} (${billingCycle})`)}
+      ${r('Trial Ends', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString())}
+    </table>
+  </td></tr>
+  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">Automated notification from <a href="https://purplehere.com" style="color:#635BFF;text-decoration:none;">PurpleHere</a>. No-reply email.</p></td></tr>
+</table></td></tr></table></body></html>`;
 
       sendPlatformEmail({
         to: adminEmails,

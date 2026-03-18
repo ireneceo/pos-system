@@ -102,6 +102,22 @@ User.init({
     allowNull: true,
     comment: 'Subscription plan type for Restaurant Owner (matches PlanTemplate.display_name)'
   },
+  plan_amount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Subscription plan amount for Restaurant Owner'
+  },
+  billing_cycle: {
+    type: DataTypes.ENUM('monthly', 'annual'),
+    allowNull: true,
+    comment: 'Billing cycle for Restaurant Owner'
+  },
+  currency: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    defaultValue: 'MYR',
+    comment: 'Currency for Restaurant Owner subscription'
+  },
   subscription_status: {
     type: DataTypes.ENUM('active', 'trial', 'overdue', 'expired', 'suspended', 'cancelled'),
     allowNull: true,

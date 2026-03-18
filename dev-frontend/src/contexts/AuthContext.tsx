@@ -454,10 +454,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
 
-      return false;
-    } catch (error) {
+      // Handle specific error codes
+      const errorResult = await response.json().catch(() => null);
+      if (errorResult?.error?.code === 'ACCOUNT_SUSPENDED') {
+        throw new Error(errorResult.error.message || 'Your account has been suspended. Please contact your administrator.');
+      }
 
       return false;
+    } catch (error) {
+      throw error;
     }
   };
 

@@ -172,10 +172,10 @@ router.get('/received', authenticateToken, async (req, res) => {
       }
     }
 
-    // 4) For Brand General: notices targeted to their brand
+    // 4) For Brand General: notices targeted to ALL their brands
     if (user.role === 'Brand General') {
-      const brand = await Brand.findOne({ where: { owner_id: user.id } });
-      if (brand) {
+      const brands = await Brand.findAll({ where: { owner_id: user.id } });
+      for (const brand of brands) {
         const brandRestaurants = await Restaurant.findAll({ where: { brand_id: brand.id }, attributes: ['id'] });
         const brIds = brandRestaurants.map(r => r.id);
         if (brIds.length > 0) {
@@ -184,10 +184,10 @@ router.get('/received', authenticateToken, async (req, res) => {
       }
     }
 
-    // 5) For Foodcourt General: notices targeted to their foodcourt
+    // 5) For Foodcourt General: notices targeted to ALL their foodcourts
     if (user.role === 'Foodcourt General') {
-      const foodcourt = await Foodcourt.findOne({ where: { owner_id: user.id } });
-      if (foodcourt) {
+      const foodcourts = await Foodcourt.findAll({ where: { owner_id: user.id } });
+      for (const foodcourt of foodcourts) {
         const fcRestaurants = await Restaurant.findAll({ where: { foodcourt_id: foodcourt.id }, attributes: ['id'] });
         const fcIds = fcRestaurants.map(r => r.id);
         if (fcIds.length > 0) {
@@ -292,10 +292,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    // Brand General: mark as read for all brand restaurant recipients
+    // Brand General: mark as read for ALL brand restaurant recipients
     if (user.role === 'Brand General') {
-      const brand = await Brand.findOne({ where: { owner_id: user.id } });
-      if (brand) {
+      const brands = await Brand.findAll({ where: { owner_id: user.id } });
+      for (const brand of brands) {
         const brandRestaurants = await Restaurant.findAll({ where: { brand_id: brand.id }, attributes: ['id'] });
         brandRestaurants.forEach(r => {
           updateConditions.push({ notice_id: notice.id, restaurant_id: r.id, read_at: null });
@@ -303,10 +303,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
       }
     }
 
-    // Foodcourt General: mark as read for all foodcourt restaurant recipients
+    // Foodcourt General: mark as read for ALL foodcourt restaurant recipients
     if (user.role === 'Foodcourt General') {
-      const foodcourt = await Foodcourt.findOne({ where: { owner_id: user.id } });
-      if (foodcourt) {
+      const foodcourts = await Foodcourt.findAll({ where: { owner_id: user.id } });
+      for (const foodcourt of foodcourts) {
         const fcRestaurants = await Restaurant.findAll({ where: { foodcourt_id: foodcourt.id }, attributes: ['id'] });
         fcRestaurants.forEach(r => {
           updateConditions.push({ notice_id: notice.id, restaurant_id: r.id, read_at: null });
@@ -374,6 +374,11 @@ router.post('/', authenticateToken, async (req, res) => {
       const allRestaurants = await Restaurant.findAll({ attributes: ['id'] });
       allRestaurants.forEach(r => {
         recipients.push({ notice_id: notice.id, restaurant_id: r.id });
+      });
+      // All System Admins (so they can track read status)
+      const systemAdmins = await User.findAll({ where: { role: 'System Admin' }, attributes: ['id'] });
+      systemAdmins.forEach(u => {
+        recipients.push({ notice_id: notice.id, user_id: u.id });
       });
       // All Brand Generals
       const brandGenerals = await User.findAll({ where: { role: 'Brand General' }, attributes: ['id'] });

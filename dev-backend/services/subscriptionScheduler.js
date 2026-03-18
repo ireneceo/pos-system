@@ -330,23 +330,20 @@ class SubscriptionScheduler {
     };
 
     try {
-      // Brands (skip demo)
-      const brands = await Brand.findAll({
-        where: { subscription_status: { [Op.in]: ['trial', 'overdue'] }, is_demo: { [Op.ne]: true } }
+      // All entity subscription users (Brand General, Foodcourt General, Owner)
+      // Subscription data is on users table for all roles
+      const entityUsers = await User.findAll({
+        where: {
+          role: { [Op.in]: ['Brand General', 'Foodcourt General', 'Restaurant Owner'] },
+          subscription_status: { [Op.in]: ['trial', 'overdue'] },
+          is_demo: { [Op.ne]: true }
+        }
       });
-      await processEntities(brands, 'brand');
 
-      // Foodcourts (skip demo)
-      const foodcourts = await Foodcourt.findAll({
-        where: { subscription_status: { [Op.in]: ['trial', 'overdue'] }, is_demo: { [Op.ne]: true } }
-      });
-      await processEntities(foodcourts, 'foodcourt');
-
-      // Owners (skip demo)
-      const owners = await User.findAll({
-        where: { role: 'Restaurant Owner', subscription_status: { [Op.in]: ['trial', 'overdue'] }, is_demo: { [Op.ne]: true } }
-      });
-      await processEntities(owners, 'owner');
+      const typeMap = { 'Brand General': 'brand', 'Foodcourt General': 'foodcourt', 'Restaurant Owner': 'owner' };
+      for (const u of entityUsers) {
+        await processEntities([u], typeMap[u.role]);
+      }
 
     } catch (e) {
       console.error('❌ Error in processEntitySubscriptions:', e.message);

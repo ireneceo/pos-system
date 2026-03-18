@@ -15,9 +15,11 @@ const { generateSupplierCode } = require('../utils/codeGenerator');
  */
 router.get('/brands/:brandId/suppliers', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brandId } = req.params;
+    // Get all brands owned by this user (shared suppliers across brands)
+    const userBrands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+    const allBrandIds = userBrands.map(b => b.id);
 
-    // 해당 브랜드에 연결된 공급업체 조회
+    // 유저의 모든 브랜드에 연결된 공급업체 조회
     const suppliers = await Supplier.findAll({
       include: [
         {
@@ -30,7 +32,7 @@ router.get('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asyn
           as: 'connectedBrands',
           attributes: ['id', 'name', 'code'],
           through: { attributes: [] },
-          where: { id: brandId },
+          where: { id: allBrandIds },
           required: true
         }
       ],
@@ -371,11 +373,13 @@ router.post('/brands/:brandId/suppliers', authenticateToken, isBrandManager, asy
       notes
     });
 
-    // 브랜드 연결
-    await SupplierBrand.create({
-      supplier_id: supplier.id,
-      brand_id: brandId
-    });
+    // 유저의 모든 브랜드에 자동 연결 (공급업체는 브랜드 통합 사용)
+    const userBrands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+    for (const b of userBrands) {
+      await SupplierBrand.findOrCreate({
+        where: { supplier_id: supplier.id, brand_id: b.id }
+      });
+    }
 
     // 연결된 브랜드 정보와 함께 반환
     const supplierWithBrands = await Supplier.findByPk(supplier.id, {
@@ -507,20 +511,31 @@ router.get('/restaurants/:restaurantId/brand-suppliers', authenticateToken, chec
       return res.json({ success: true, data: [] });
     }
 
-    // 브랜드 공급업체 조회 (owner_type = 'brand')
+    // 브랜드 공급업체 조회 (owner의 모든 브랜드 통합)
+    const brand = await Brand.findByPk(restaurant.brand_id);
+    let allBrandIds = [restaurant.brand_id];
+    if (brand?.owner_id) {
+      const ownerBrands = await Brand.findAll({ where: { owner_id: brand.owner_id }, attributes: ['id'] });
+      allBrandIds = ownerBrands.map(b => b.id);
+    }
     const brandSuppliers = await Supplier.findAll({
-      where: {
-        brand_id: restaurant.brand_id,
-        owner_type: 'brand'
-      },
-      order: [['name', 'ASC']],
+      where: { owner_type: 'brand' },
       include: [
+        {
+          model: Brand,
+          as: 'connectedBrands',
+          attributes: [],
+          through: { attributes: [] },
+          where: { id: allBrandIds },
+          required: true
+        },
         {
           model: SupplierCategory,
           as: 'supplierCategory',
           attributes: ['id', 'name', 'color']
         }
-      ]
+      ],
+      order: [['name', 'ASC']]
     });
 
     res.json({ success: true, data: brandSuppliers });

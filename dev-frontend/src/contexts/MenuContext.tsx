@@ -25,6 +25,7 @@ export interface MenuItem {
   set_items?: SetMenuItem[];
   set_display_order?: number;
   recipe_id?: number | null;
+  kitchen_station_id?: number | null;
 }
 
 export interface MenuOption {
@@ -52,6 +53,7 @@ export interface MenuCategory {
   emoji: string;
   order: number;
   isActive?: boolean;
+  kitchen_station_id?: number | null;
 }
 
 interface MenuContextType {
@@ -205,7 +207,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             name: cat.name,
             emoji: cat.emoji || categoryEmojis[idx % categoryEmojis.length],
             order: cat.displayOrder !== undefined ? cat.displayOrder : idx,
-            isActive: cat.isActive !== undefined ? cat.isActive : true
+            isActive: cat.isActive !== undefined ? cat.isActive : true,
+            kitchen_station_id: cat.kitchen_station_id || null
           };
         });
 
@@ -252,7 +255,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             is_set_menu: item.is_set_menu || false,
             set_items: item.set_items || undefined,
             set_display_order: item.set_display_order || 0,
-            recipe_id: item.recipe_id || null
+            recipe_id: item.recipe_id || null,
+            kitchen_station_id: item.kitchen_station_id || null
           };
         });
 

@@ -119,6 +119,11 @@ Product.init({
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: '연결된 제품 레시피 ID'
+  },
+  kitchen_station_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Kitchen station assignment (menu item mode or override)'
   }
 }, {
   sequelize: database.sequelize,

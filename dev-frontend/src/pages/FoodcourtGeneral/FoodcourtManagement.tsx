@@ -181,7 +181,7 @@ const StatusBadge = styled.span<{ status: string }>`
   ${props => {
     switch (props.status) {
       case 'active':
-        return 'background: #DCFCE7; color: #166534;';
+        return 'background: #ECFDF5; color: #059669;';
       case 'maintenance':
         return 'background: #FEF3C7; color: #92400E;';
       case 'closed':

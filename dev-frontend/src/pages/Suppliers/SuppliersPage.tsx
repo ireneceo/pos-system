@@ -120,7 +120,7 @@ const StatusBadge = styled.span<{ active: boolean }>`
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
-  background: ${props => props.active ? '#D1FAE5' : '#FEE2E2'};
+  background: ${props => props.active ? '#ECFDF5' : '#FEE2E2'};
   color: ${props => props.active ? '#059669' : '#DC2626'};
   margin-left: 8px;
 `;
@@ -567,6 +567,30 @@ const SuppliersPage: React.FC = () => {
     }
   };
 
+  const handleToggleActive = async (supplier: Supplier) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      let url = '';
+      if (isBrandUser && selectedBrand) {
+        url = `/api/brands/${selectedBrand}/suppliers/${supplier.id}`;
+      } else if (isRestaurantAdmin && effectiveRestaurantId) {
+        url = `/api/restaurants/${effectiveRestaurantId}/suppliers/${supplier.id}`;
+      }
+      if (!url) return;
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ is_active: !supplier.is_active })
+      });
+      if (response.ok) {
+        if (isBrandUser) fetchSuppliers();
+        else fetchRestaurantSuppliers();
+      }
+    } catch (error) {
+      console.error('Toggle active error:', error);
+    }
+  };
+
   const isItemReadOnly = (item: Supplier) => isRestaurantAdmin && item.owner_type === 'brand';
 
   const filteredSuppliers = suppliers.filter(supplier =>
@@ -600,18 +624,7 @@ const SuppliersPage: React.FC = () => {
         </div>
       </SupplierHeader>
 
-      {/* Show connected brands as tags */}
-      {isBrandUser && (
-        <BrandTagsContainer>
-          {supplier.connectedBrands && supplier.connectedBrands.length > 0 ? (
-            supplier.connectedBrands.map(brand => (
-              <BrandTag key={brand.id}>{brand.name}</BrandTag>
-            ))
-          ) : (
-            <NoBrandTag>No brand connected</NoBrandTag>
-          )}
-        </BrandTagsContainer>
-      )}
+      {/* Brand tags removed - suppliers are shared across all brands */}
 
       <SupplierInfo>
         {supplier.contact_name && (
@@ -655,6 +668,18 @@ const SuppliersPage: React.FC = () => {
         <ActionButton onClick={() => handleViewSupplier(supplier)}>View</ActionButton>
         {!readOnly && (
           <>
+            <ActionButton
+              onClick={() => handleToggleActive(supplier)}
+              title={supplier.is_active ? 'Deactivate' : 'Activate'}
+              style={{ color: supplier.is_active ? '#10B981' : '#9CA3AF' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                {supplier.is_active
+                  ? <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>
+                  : <circle cx="12" cy="12" r="10" />
+                }
+              </svg>
+            </ActionButton>
             <ActionButton onClick={() => handleOpenModal(supplier)}>Edit</ActionButton>
             <ActionButton
               variant="danger"
@@ -785,39 +810,7 @@ const SuppliersPage: React.FC = () => {
               </UIFormGroup>
             </UIFormRow>
 
-            {/* Brand connection for Brand General/Manager */}
-            {isBrandUser && brands.length > 0 && (
-              <UIFormGroup>
-                <FormLabel>Connect to Brands</FormLabel>
-                <BrandCheckboxContainer>
-                  {brands.map(brand => (
-                    <CheckboxWrapper key={brand.id}>
-                      <HiddenCheckbox
-                        type="checkbox"
-                        id={`brand-${brand.id}`}
-                        checked={formData.brand_ids.includes(brand.id)}
-                        onChange={() => handleBrandToggle(brand.id)}
-                      />
-                      <BrandCheckboxLabel
-                        htmlFor={`brand-${brand.id}`}
-                        style={{
-                          borderColor: formData.brand_ids.includes(brand.id) ? '#635BFF' : '#E5E7EB',
-                          background: formData.brand_ids.includes(brand.id) ? '#EEF2FF' : 'white'
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.brand_ids.includes(brand.id)}
-                          onChange={() => handleBrandToggle(brand.id)}
-                          style={{ accentColor: '#635BFF' }}
-                        />
-                        {brand.name}
-                      </BrandCheckboxLabel>
-                    </CheckboxWrapper>
-                  ))}
-                </BrandCheckboxContainer>
-              </UIFormGroup>
-            )}
+            {/* Brand connection removed - suppliers are shared across all brands automatically */}
 
             <UIFormRow>
               <UIFormGroup>
@@ -937,17 +930,6 @@ const SuppliersPage: React.FC = () => {
                   <ViewValue>{viewSupplier.code || '-'}</ViewValue>
                 </ViewField>
               </ViewRow>
-
-              {viewSupplier.connectedBrands && viewSupplier.connectedBrands.length > 0 && (
-                <ViewField>
-                  <ViewLabel>Connected Brands</ViewLabel>
-                  <BrandTagsContainer>
-                    {viewSupplier.connectedBrands.map(brand => (
-                      <BrandTag key={brand.id}>{brand.name}</BrandTag>
-                    ))}
-                  </BrandTagsContainer>
-                </ViewField>
-              )}
 
               <ViewDivider />
 

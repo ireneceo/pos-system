@@ -672,7 +672,6 @@ const NoticesPage: React.FC = () => {
       if (response.ok) {
         setShowSendModal(false);
         resetNewNoticeForm();
-        setActiveTab('sent');
         await fetchNotices();
       }
     } catch (error) {

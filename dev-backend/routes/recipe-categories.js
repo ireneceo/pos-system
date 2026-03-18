@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { RecipeCategory, Recipe, Restaurant } = require('../models');
+const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 
@@ -15,10 +16,9 @@ const { isBrandManager } = require('../middleware/recipeAuth');
 router.get('/brands/:brandId/recipe-categories', authenticateToken, isBrandManager, async (req, res) => {
   try {
     const { brandId } = req.params;
-    const brand_id = brandId; // DB 쿼리용
 
     const categories = await RecipeCategory.findAll({
-      where: { brand_id },
+      where: { brand_id: brandId },
       order: [['display_order', 'ASC'], ['name', 'ASC']],
       include: [{
         model: Recipe,

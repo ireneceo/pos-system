@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Ingredient, IngredientCategory, Restaurant, Supplier, RestaurantIngredientCost } = require('../models');
+const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 const { generateIngredientCode } = require('../utils/codeGenerator');
@@ -16,11 +17,13 @@ const { deleteOldImages } = require('../utils/imageProcessor');
  */
 router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, async (req, res) => {
   try {
-    const { brandId } = req.params;
-    const brand_id = brandId; // DB 쿼리용
+    // Get all brands owned by this user (shared ingredients across brands)
+    const Brand = require('../models/Brand');
+    const userBrands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+    const allBrandIds = userBrands.map(b => b.id);
 
     const ingredients = await Ingredient.findAll({
-      where: { brand_id },
+      where: { brand_id: { [Op.or]: [{ [Op.in]: allBrandIds }, null] } },
       order: [['name', 'ASC']],
       include: [
         {
@@ -221,10 +224,17 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       return res.json({ success: true, data: [] });
     }
 
-    // 브랜드 재료 조회 (owner_type = 'brand')
+    // 브랜드 owner의 모든 브랜드 재료 조회 (통합 사용)
+    const brand = await require('../models/Brand').findByPk(restaurant.brand_id);
+    let allBrandIds = [restaurant.brand_id];
+    if (brand?.owner_id) {
+      const ownerBrands = await require('../models/Brand').findAll({ where: { owner_id: brand.owner_id }, attributes: ['id'] });
+      allBrandIds = ownerBrands.map(b => b.id);
+    }
+
     const brandIngredients = await Ingredient.findAll({
       where: {
-        brand_id: restaurant.brand_id,
+        brand_id: { [Op.in]: allBrandIds },
         owner_type: 'brand'
       },
       order: [['name', 'ASC']],

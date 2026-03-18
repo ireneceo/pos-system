@@ -265,7 +265,7 @@ const FormSelect = styled.select`
 const SubscriptionsPage: React.FC = () => {
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('active');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -328,65 +328,139 @@ const SubscriptionsPage: React.FC = () => {
 
   const fetchSubscriptions = async () => {
     try {
-      console.log('🔄 Fetching restaurants from API...');
+      const token = localStorage.getItem('auth_token');
+      const headers: any = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const restaurantsResponse = await fetch('/api/restaurants');
+      // Fetch all data sources in parallel
+      const [restaurantsResponse, usersResponse] = await Promise.all([
+        fetch('/api/restaurants', { headers }),
+        fetch('/api/users', { headers })
+      ]);
 
-      if (!restaurantsResponse.ok) {
-        throw new Error('Failed to fetch restaurants');
-      }
-
-      const restaurantsData = await restaurantsResponse.json();
+      const restaurantsData = restaurantsResponse.ok ? await restaurantsResponse.json() : [];
+      const usersData = usersResponse.ok ? await usersResponse.json() : [];
       const restaurants = Array.isArray(restaurantsData) ? restaurantsData : [];
-      
-      const formattedSubscriptions: RestaurantSubscription[] = restaurants.map((restaurant: any, index: number) => {
+      const users = Array.isArray(usersData) ? usersData : (usersData.data || []);
+
+      setAllRestaurantsData(restaurants);
+
+      const allSubs: RestaurantSubscription[] = [];
+
+      // 1. Restaurant subscriptions
+      restaurants.forEach((restaurant: any, index: number) => {
         const planType = restaurant.planType || restaurant.plan_type || 'Basic Plan';
-        
-        // Map restaurant status to subscription status
         let subscriptionStatus: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled' = 'active';
-        if (restaurant.status === 'active') subscriptionStatus = 'active';
+        if (restaurant.status === 'trial') subscriptionStatus = 'trial';
+        else if (restaurant.status === 'active') subscriptionStatus = 'active';
+        else if (restaurant.status === 'overdue') subscriptionStatus = 'expired';
+        else if (restaurant.status === 'suspended') subscriptionStatus = 'suspended';
         else if (restaurant.status === 'inactive') subscriptionStatus = 'suspended';
         else if (restaurant.status === 'cancelled') subscriptionStatus = 'cancelled';
-        
-        const planTypeLower = planType.toLowerCase();
-        const planLimits: { [key: string]: number } = {
-          basic: 50,
-          professional: 200,
-          enterprise: -1
-        };
-        const limitKey = Object.keys(planLimits).find(k => planTypeLower.includes(k)) || '';
 
-        return {
-          id: `sub-${restaurant.id}`,
+        allSubs.push({
+          id: `sub-rest-${restaurant.id}`,
           restaurantId: restaurant.id?.toString() || `rest-${index}`,
           restaurantName: restaurant.name || 'Restaurant Name',
           currency: restaurant.currency || 'MYR',
           managerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
           managerName: restaurant.managerName || restaurant.admin_name || 'No Manager Assigned',
-          planType: planType,
+          planType,
           status: subscriptionStatus,
-          startDate: (restaurant.subscriptionStart || restaurant.subscription_start) ? new Date(restaurant.subscriptionStart || restaurant.subscription_start).toISOString().split('T')[0] : '2024-01-01',
-          endDate: (restaurant.subscriptionEnd || restaurant.subscription_end) ? new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
-          monthlyFee: parseFloat(restaurant.planAmount || restaurant.plan_amount) || 29,
+          startDate: (restaurant.subscriptionStart || restaurant.subscription_start) ? new Date(restaurant.subscriptionStart || restaurant.subscription_start).toISOString().split('T')[0] : '',
+          endDate: (restaurant.subscriptionEnd || restaurant.subscription_end) ? new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] : '',
+          monthlyFee: parseFloat(restaurant.planAmount || restaurant.plan_amount) || 0,
           billingCycle: (restaurant.billingCycle || restaurant.billing_cycle || 'monthly') as 'monthly' | 'annual',
-          paymentModel: 'manager' as 'manager' | 'restaurant',
+          paymentModel: 'restaurant' as any,
           payerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
-          payerName: restaurant.managerName || restaurant.admin_name || 'No Manager',
-          menuItemLimit: planLimits[limitKey] || 50,
-          currentMenuItems: Math.floor(Math.random() * ((planLimits[limitKey] || 50) > 0 ? (planLimits[limitKey] || 50) * 0.7 : 150)) + 10,
+          payerName: restaurant.managerName || restaurant.admin_name || '',
+          menuItemLimit: restaurant.menu_item_limit || 50,
+          currentMenuItems: 0,
           features: [],
-          lastPayment: (restaurant.subscriptionStart || restaurant.subscription_start) ? new Date(restaurant.subscriptionStart || restaurant.subscription_start).toISOString().split('T')[0] : '-',
-          nextPayment: (restaurant.subscriptionEnd || restaurant.subscription_end) ? new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] : new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
-          autoRenew: restaurant.auto_renew !== undefined ? restaurant.auto_renew : subscriptionStatus === 'active',
-          location: restaurant.address || 'Location not specified',
+          lastPayment: '',
+          nextPayment: (restaurant.subscriptionEnd || restaurant.subscription_end) ? new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] : '',
+          autoRenew: restaurant.auto_renew !== undefined ? restaurant.auto_renew : true,
+          location: restaurant.address || '',
           discountType: restaurant.discount_type || 'none',
           discountValue: parseFloat(restaurant.discount_value) || 0,
-          discountReason: restaurant.discount_reason || ''
-        };
+          discountReason: restaurant.discount_reason || '',
+          entityType: 'restaurant',
+          isDemo: restaurant.is_demo || false
+        } as any);
       });
-      
-      setSubscriptions(formattedSubscriptions);
-      
+
+      // 2. Brand General / Foodcourt General / Restaurant Owner subscriptions
+      users.filter((u: any) => ['Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(u.role)).forEach((u: any) => {
+        let planType = '';
+        let planAmount = 0;
+        let billingCycle = 'monthly';
+        let currency = 'MYR';
+        let subStatus = 'active';
+        let subStart = '';
+        let subEnd = '';
+
+        if (u.role === 'Brand General') {
+          planType = u.brand_plan_type || u.plan_type || '';
+          planAmount = parseFloat(u.brand_plan_amount || u.plan_amount) || 0;
+          billingCycle = u.brand_billing_cycle || u.billing_cycle || 'monthly';
+          currency = u.brand_currency || u.currency || 'MYR';
+          subStatus = u.brand_subscription_status || u.subscription_status || 'active';
+          subStart = u.brand_subscription_start || u.subscription_start || '';
+          subEnd = u.brand_subscription_end || u.subscription_end || '';
+        } else if (u.role === 'Foodcourt General') {
+          planType = u.fc_plan_type || u.plan_type || '';
+          planAmount = parseFloat(u.fc_plan_amount || u.plan_amount) || 0;
+          billingCycle = u.fc_billing_cycle || u.billing_cycle || 'monthly';
+          currency = u.fc_currency || u.currency || 'MYR';
+          subStatus = u.fc_subscription_status || u.subscription_status || 'active';
+          subStart = u.fc_subscription_start || u.subscription_start || '';
+          subEnd = u.fc_subscription_end || u.subscription_end || '';
+        } else if (u.role === 'Restaurant Owner') {
+          planType = u.plan_type || '';
+          planAmount = parseFloat(u.plan_amount) || 0;
+          billingCycle = u.billing_cycle || 'monthly';
+          currency = u.currency || 'MYR';
+          subStatus = u.subscription_status || 'active';
+          subStart = u.subscription_start || '';
+          subEnd = u.subscription_end || '';
+        }
+
+        if (!planType) return; // No plan assigned, skip
+
+        allSubs.push({
+          id: `sub-user-${u.id}`,
+          restaurantId: u.id?.toString(),
+          restaurantName: u.company_name || u.full_name || u.username || u.email,
+          currency,
+          managerId: u.id?.toString(),
+          managerName: u.full_name || u.username,
+          planType,
+          status: (subStatus || 'active') as any,
+          startDate: subStart ? new Date(subStart).toISOString().split('T')[0] : '',
+          endDate: subEnd ? new Date(subEnd).toISOString().split('T')[0] : '',
+          monthlyFee: planAmount,
+          billingCycle: billingCycle as 'monthly' | 'annual',
+          paymentModel: 'manager' as any,
+          payerId: u.id?.toString(),
+          payerName: u.full_name || u.username,
+          menuItemLimit: 0,
+          currentMenuItems: 0,
+          features: [],
+          lastPayment: '',
+          nextPayment: subEnd ? new Date(subEnd).toISOString().split('T')[0] : '',
+          autoRenew: true,
+          location: u.address || '',
+          discountType: 'none',
+          discountValue: 0,
+          discountReason: '',
+          entityType: u.role === 'Brand General' ? 'brand' : u.role === 'Foodcourt General' ? 'foodcourt' : 'owner',
+          userRole: u.role,
+          isDemo: u.is_demo || false
+        } as any);
+      });
+
+      setSubscriptions(allSubs);
+
     } catch (error) {
       console.error('❌ Error fetching subscriptions:', error);
       setSubscriptions([]);
@@ -431,12 +505,16 @@ const SubscriptionsPage: React.FC = () => {
     }
   };
 
+  const [filterEntityType, setFilterEntityType] = useState<'all' | 'restaurant' | 'brand' | 'foodcourt' | 'owner'>('all');
+
   const filteredSubscriptions = subscriptions.filter(subscription => {
     const matchesSearch = subscription.restaurantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          subscription.managerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          subscription.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || subscription.status === filterStatus;
-    return matchesSearch && matchesFilter;
+    const entityType = (subscription as any).entityType || 'restaurant';
+    const matchesEntity = filterEntityType === 'all' || entityType === filterEntityType;
+    return matchesSearch && matchesFilter && matchesEntity;
   });
 
   const totalSubscriptions = subscriptions.length;
@@ -713,9 +791,12 @@ const SubscriptionsPage: React.FC = () => {
         }
       } else if (selectedTarget.type === 'manager' && selectedTarget.data.id) {
         const role = selectedTarget.data.role || '';
-        const subscriptionData = {
-          plan_type: newSubscription.customPlanName || 'Custom Plan',
-          subscription_status: newSubscription.status === 'trial' ? 'trialing' : newSubscription.status,
+        const subscriptionData: any = {
+          plan_type: newSubscription.planType || newSubscription.customPlanName || 'Custom Plan',
+          plan_amount: parseFloat(String(newSubscription.monthlyFee)) || 0,
+          billing_cycle: newSubscription.billingCycle || 'monthly',
+          currency: newSubscription.currency || 'MYR',
+          subscription_status: newSubscription.status === 'trial' ? 'trial' : 'active',
           subscription_start: newSubscription.startDate,
           subscription_end: newSubscription.endDate
         };
@@ -813,11 +894,29 @@ const SubscriptionsPage: React.FC = () => {
         'Authorization': `Bearer ${token}`
       };
 
-      // Update restaurant subscription
-      const response = await fetch(`/api/restaurants/${editingSubscription.restaurantId}`, {
+      // Update subscription based on entity type
+      const entityType = (editingSubscription as any).entityType;
+      let apiUrl = `/api/restaurants/${editingSubscription.restaurantId}`;
+      let apiBody = updateData;
+
+      if (entityType === 'brand' || entityType === 'foodcourt' || entityType === 'owner') {
+        // For Brand/FC/Owner: update via /api/users/:id
+        apiUrl = `/api/users/${editingSubscription.restaurantId}`;
+        apiBody = {
+          plan_type: planName,
+          plan_amount: editingSubscription.monthlyFee,
+          billing_cycle: (editingSubscription as any).billingCycle || 'monthly',
+          currency: (editingSubscription as any).currency || 'MYR',
+          subscription_start: editingSubscription.startDate,
+          subscription_end: editingSubscription.endDate,
+          subscription_status: editingSubscription.status
+        } as any;
+      }
+
+      const response = await fetch(apiUrl, {
         method: 'PUT',
         headers,
-        body: JSON.stringify(updateData)
+        body: JSON.stringify(apiBody)
       });
 
       console.log('📡 Subscription update API response status:', response.status);
@@ -1008,6 +1107,17 @@ const SubscriptionsPage: React.FC = () => {
               <option value="cancelled">Cancelled</option>
             </FilterSelect>
 
+            <FilterSelect
+              value={filterEntityType}
+              onChange={(e) => setFilterEntityType(e.target.value as any)}
+            >
+              <option value="all">All Types</option>
+              <option value="restaurant">Restaurant</option>
+              <option value="brand">Brand General</option>
+              <option value="foodcourt">Foodcourt General</option>
+              <option value="owner">Restaurant Owner</option>
+            </FilterSelect>
+
             <SearchInput
               placeholder="Search subscriptions..."
               value={searchTerm}
@@ -1017,7 +1127,7 @@ const SubscriptionsPage: React.FC = () => {
 
           <Table>
             <SubscriptionTableHeader columns="2.5fr 1fr 1fr 1.2fr 1fr 1fr 1fr 220px">
-              <span className="col-info">Restaurant Info</span>
+              <span className="col-info">Subscriber</span>
               <span>Plan</span>
               <span>Status</span>
               <span>Menu Items</span>
@@ -1031,11 +1141,23 @@ const SubscriptionsPage: React.FC = () => {
               <SubscriptionTableRow columns="2.5fr 1fr 1fr 1.2fr 1fr 1fr 1fr 220px" key={subscription.id}>
                 <MobileGrid>
                   <MobileValue className="col-info">
-                    <MobileLabel>Restaurant Info</MobileLabel>
+                    <MobileLabel>Subscriber</MobileLabel>
                     <RestaurantInfo>
-                      <RestaurantName>{subscription.restaurantName} {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}</RestaurantName>
+                      <RestaurantName>
+                        {subscription.restaurantName}
+                        {(subscription as any).isDemo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}
+                        {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}
+                        {(subscription as any).entityType && (subscription as any).entityType !== 'restaurant' && (
+                          <span style={{ fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', marginLeft: '4px', verticalAlign: 'middle',
+                            color: (subscription as any).entityType === 'brand' ? '#7C3AED' : (subscription as any).entityType === 'foodcourt' ? '#059669' : '#D97706',
+                            background: (subscription as any).entityType === 'brand' ? '#EDE9FE' : (subscription as any).entityType === 'foodcourt' ? '#D1FAE5' : '#FEF3C7'
+                          }}>
+                            {(subscription as any).entityType === 'brand' ? 'Brand' : (subscription as any).entityType === 'foodcourt' ? 'Foodcourt' : 'Owner'}
+                          </span>
+                        )}
+                      </RestaurantName>
                       <RestaurantMeta>
-                        {subscription.managerName} • {subscription.location}
+                        {(subscription as any).userRole || subscription.managerName}{subscription.location ? ` • ${subscription.location}` : ''}
                       </RestaurantMeta>
                     </RestaurantInfo>
                   </MobileValue>
