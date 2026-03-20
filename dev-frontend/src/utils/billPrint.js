@@ -733,6 +733,24 @@ export function printHTMLContent(htmlContent, title) {
   iframe.style.width = '0';
   iframe.style.height = '0';
   iframe.style.border = 'none';
+
+  // Set onload BEFORE appending to DOM to avoid race condition
+  iframe.onload = function() {
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.print();
+      } catch (e) {
+        console.error('Print failed:', e);
+      }
+      // Clean up iframe after printing
+      setTimeout(() => {
+        if (iframe.parentNode) {
+          document.body.removeChild(iframe);
+        }
+      }, 2000);
+    }, 300);
+  };
+
   document.body.appendChild(iframe);
 
   const iframeDoc = iframe.contentWindow || iframe.contentDocument;
@@ -740,16 +758,6 @@ export function printHTMLContent(htmlContent, title) {
   doc.open();
   doc.write(htmlContent);
   doc.close();
-
-  iframe.onload = function() {
-    setTimeout(() => {
-      iframe.contentWindow.print();
-      // Clean up iframe after printing
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
-    }, 300);
-  };
 
   return true;
 }
@@ -762,7 +770,7 @@ export function printHTMLContent(htmlContent, title) {
  * Get printer settings from localStorage
  * @returns {Object} Printer settings
  */
-function getPrinterSettings() {
+export function getPrinterSettings() {
   try {
     const savedSettings = localStorage.getItem('printerSettings');
     if (savedSettings) {
@@ -1306,17 +1314,13 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
  */
 export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerName) {
   try {
-    // Check if kitchen printer is enabled
     const settings = getPrinterSettings();
+    console.log(`🖨️ printKitchenTicketViaRawBT: ${(orderData.items || []).length} items, printerMode=${getPrinterMode()}`);
+
+    // kitchenPrinter.enabled 체크 — Station 유무 관계없이 동일
     if (!settings.kitchenPrinter.enabled) {
       console.log('Kitchen printer is disabled in settings');
       return true; // Return success but skip printing
-    }
-
-    // ─── Station별 분리 인쇄: kitchenStationPrinters가 있으면 분리 ───
-    const stationPrinters = settings.kitchenStationPrinters;
-    if (stationPrinters && Object.keys(stationPrinters).length > 0 && !printerName) {
-      return await printKitchenTicketsByStation(orderData, storeInfo, settings);
     }
 
     // Use provided printerName or get from settings
@@ -1533,8 +1537,17 @@ export function generateAdditionalItemsTicketContent(orderData, storeInfo) {
  */
 export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, printerName) {
   try {
-    // Check if kitchen printer is enabled
     const settings = getPrinterSettings();
+
+    // Station 프린터가 설정되어 있으면 station별 라우팅으로 처리
+    const stationPrinters = settings.kitchenStationPrinters;
+    const hasStationPrinters = stationPrinters && Object.keys(stationPrinters).length > 0;
+
+    if (hasStationPrinters && !printerName) {
+      return await printKitchenTicketsByStation(orderData, storeInfo, settings);
+    }
+
+    // Station이 없을 때만 kitchenPrinter.enabled 체크
     if (!settings.kitchenPrinter.enabled) {
       console.log('Kitchen printer is disabled in settings');
       return true; // Return success but skip printing
@@ -1866,19 +1879,88 @@ export function printSettlementReport(htmlContent, escposContent) {
 }
 
 /**
- * Station별 분리 인쇄 — 아이템을 Station별로 묶어서 각 프린터로 전송
- * Station 없는 아이템(미배정)은 기본 kitchenPrinter로 전송
- *
- * @param {Object} orderData - Order data
- * @param {Object} storeInfo - Store info
- * @param {Object} settings - Printer settings (from getPrinterSettings)
- * @returns {Promise<boolean>} Success status
+ * RawBT 프린터로 주방 티켓 전송 (단일 프린터 대상)
+ */
+async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName) {
+  const printPerItem = settings.kitchenPrinter.printPerItem || false;
+  const items = orderData.items || [];
+  console.log(`🖨️ sendToRawBTPrinter: ${items.length} items, printPerItem=${printPerItem}, station=${stationName}, browser=${shouldUseBrowserPrint()}`);
+  console.log(`🖨️ Item names:`, items.map(i => (i.menuItem?.name || i.name) + ' x' + i.quantity));
+
+  if (printPerItem && items.length > 0) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined };
+
+      if (shouldUseBrowserPrint()) {
+        const htmlContent = generateHTMLKitchenTicket(perItemData, storeInfo);
+        printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'} - ${item.name}`);
+      } else {
+        const escposContent = generateKitchenTicketContent(perItemData, storeInfo);
+        const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
+        let intentScheme = '#Intent;scheme=rawbt;';
+        if (printerName) intentScheme += 'S.s=' + encodeURIComponent(printerName) + ';';
+        const intentUrl = 'intent:base64,' + base64Content + intentScheme + 'package=ru.a402d.rawbtprinter;end;';
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = intentUrl;
+        document.body.appendChild(iframe);
+        setTimeout(() => document.body.removeChild(iframe), 500);
+      }
+      if (i < items.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+    }
+  } else {
+    const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined };
+
+    if (shouldUseBrowserPrint()) {
+      const htmlContent = generateHTMLKitchenTicket(ticketData, storeInfo);
+      printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'}`);
+    } else {
+      const escposContent = generateKitchenTicketContent(ticketData, storeInfo);
+      const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
+      let intentScheme = '#Intent;scheme=rawbt;';
+      if (printerName) intentScheme += 'S.s=' + encodeURIComponent(printerName) + ';';
+      const intentUrl = 'intent:base64,' + base64Content + intentScheme + 'package=ru.a402d.rawbtprinter;end;';
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = intentUrl;
+      document.body.appendChild(iframe);
+      setTimeout(() => document.body.removeChild(iframe), 500);
+    }
+  }
+  return true;
+}
+
+/**
+ * Station별 분리 인쇄
+ * RawBT 모드: 모든 아이템을 하나의 티켓으로 합쳐서 전송 (RawBT는 연속 intent 처리 불가)
+ * Browser 모드: Station별 분리 인쇄 (각 Station 별도 페이지)
  */
 async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
   const stationPrinters = settings.kitchenStationPrinters || {};
   const stationIds = Object.keys(stationPrinters);
 
-  // menuName → stationId 매핑 (localStorage에서 로드)
+  // Station이 1개면 매핑 없이 해당 프린터로 전체 전송
+  if (stationIds.length === 1) {
+    const sp = stationPrinters[stationIds[0]];
+    const printerName = sp.name;
+    const stationName = sp.stationName || 'Kitchen';
+
+    console.log(`🍳 Single station — sending all to: ${printerName} (${stationName})`);
+    return await sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName);
+  }
+
+  // Station 2개 이상: RawBT 모드에서는 분리하지 않고 전체 합쳐서 한 장으로 출력
+  // (RawBT는 연속 intent를 처리하지 못해서 첫 번째만 출력됨)
+  if (!shouldUseBrowserPrint()) {
+    const sp = stationPrinters[stationIds[0]];
+    console.log(`🍳 RawBT mode with ${stationIds.length} stations — sending combined ticket`);
+    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, null);
+  }
+
+  // Browser 모드: Station별 분리 인쇄 (각 Station 별도 페이지)
   let menuStationMap = {};
   try {
     const saved = localStorage.getItem('kitchenStationMenuMap');
@@ -1887,114 +1969,42 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     console.error('Failed to load kitchen station menu map:', e);
   }
 
-  // 아이템을 stationId별로 분류
-  const stationItems = {}; // { stationId: [items] }
-  const unassignedItems = []; // 미배정 아이템
+  const stationItems = {};
+  const unmappedItems = [];
 
   (orderData.items || []).forEach(item => {
     const itemName = item.menuItem?.name || item.name;
     const stationId = menuStationMap[itemName];
-
     if (stationId && stationPrinters[stationId]) {
       if (!stationItems[stationId]) stationItems[stationId] = [];
       stationItems[stationId].push(item);
     } else {
-      unassignedItems.push(item);
+      unmappedItems.push(item);
     }
   });
 
-  const totalStationTickets = Object.keys(stationItems).length + (unassignedItems.length > 0 ? 1 : 0);
-  let ticketIndex = 0;
+  // 매핑이 없으면 첫 번째 Station 프린터로 전부 전송
+  if (Object.keys(stationItems).length === 0 && unmappedItems.length > 0) {
+    const sp = stationPrinters[stationIds[0]];
+    console.log(`🍳 No menu-station map — sending all to first station: ${sp.name}`);
+    return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, sp.stationName || 'Kitchen');
+  }
 
-  console.log(`🍳 Station 분리 인쇄: ${totalStationTickets}장 (${Object.keys(stationItems).length} stations + ${unassignedItems.length > 0 ? '1 default' : 'no default'})`);
-
-  const printPerItem = settings.kitchenPrinter.printPerItem || false;
-
-  // Helper: Station/기본 프린터로 아이템 목록을 인쇄 (printPerItem 적용)
-  const printItemsToStation = async (items, printerName, stationName) => {
-    if (printPerItem && items.length > 0) {
-      // Per-item: 각 아이템마다 별도 티켓
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const perItemOrderData = {
-          ...orderData,
-          items: [item],
-          groupLabel: stationName ? stationName.toUpperCase() : undefined
-        };
-
-        if (shouldUseBrowserPrint()) {
-          const htmlContent = generateHTMLKitchenTicket(perItemOrderData, storeInfo);
-          printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'} - ${item.name}`);
-        } else {
-          const escposContent = stationName
-            ? generateStationKitchenTicket(perItemOrderData, storeInfo, stationName, i + 1, items.length)
-            : generateSingleItemKitchenTicket(orderData, item, i + 1, items.length, storeInfo);
-          const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
-
-          let intentScheme = '#Intent;scheme=rawbt;';
-          if (printerName) intentScheme += 'S.s=' + encodeURIComponent(printerName) + ';';
-          const intentUrl = 'intent:base64,' + base64Content + intentScheme + 'package=ru.a402d.rawbtprinter;end;';
-
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          iframe.src = intentUrl;
-          document.body.appendChild(iframe);
-          setTimeout(() => document.body.removeChild(iframe), 500);
-        }
-
-        if (i < items.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 800));
-        }
-      }
-    } else {
-      // 합본: Station 내 모든 아이템 1장
-      const stationOrderData = {
-        ...orderData,
-        items: items,
-        groupLabel: stationName ? stationName.toUpperCase() : undefined
-      };
-
-      if (shouldUseBrowserPrint()) {
-        const htmlContent = generateHTMLKitchenTicket(stationOrderData, storeInfo);
-        printHTMLContent(htmlContent, `Kitchen - ${stationName || 'Ticket'}`);
-      } else {
-        const escposContent = stationName
-          ? generateStationKitchenTicket(stationOrderData, storeInfo, stationName, ticketIndex, totalStationTickets)
-          : generateKitchenTicketContent(stationOrderData, storeInfo);
-        const base64Content = btoa(unescape(encodeURIComponent(escposContent)));
-
-        let intentScheme = '#Intent;scheme=rawbt;';
-        if (printerName) intentScheme += 'S.s=' + encodeURIComponent(printerName) + ';';
-        const intentUrl = 'intent:base64,' + base64Content + intentScheme + 'package=ru.a402d.rawbtprinter;end;';
-
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = intentUrl;
-        document.body.appendChild(iframe);
-        setTimeout(() => document.body.removeChild(iframe), 500);
-      }
-    }
-  };
-
-  // Station별 티켓 인쇄
-  for (const stationId of Object.keys(stationItems)) {
+  // Browser 모드: Station별 인쇄 (printHTMLContent로 각각 출력)
+  const mappedStationIds = Object.keys(stationItems);
+  for (let idx = 0; idx < mappedStationIds.length; idx++) {
+    const stationId = mappedStationIds[idx];
     const sp = stationPrinters[stationId];
     const items = stationItems[stationId];
     const stationName = sp.stationName || `Station ${stationId}`;
-    ticketIndex++;
 
-    await printItemsToStation(items, sp.name, stationName);
-
-    // Station 간 딜레이
-    if (ticketIndex < totalStationTickets) {
-      await new Promise(resolve => setTimeout(resolve, 800));
-    }
+    await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName);
   }
 
-  // 미배정 아이템 → 기본 kitchenPrinter로
-  if (unassignedItems.length > 0) {
-    ticketIndex++;
-    await printItemsToStation(unassignedItems, settings.kitchenPrinter.name, null);
+  // 매핑 안 된 아이템 → 첫 번째 Station 프린터로
+  if (unmappedItems.length > 0) {
+    const sp = stationPrinters[stationIds[0]];
+    await sendToRawBTPrinter({ ...orderData, items: unmappedItems }, storeInfo, settings, sp.name, sp.stationName || 'Kitchen');
   }
 
   return true;

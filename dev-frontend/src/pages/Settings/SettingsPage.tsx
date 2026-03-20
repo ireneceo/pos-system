@@ -364,7 +364,7 @@ const ActionButton = styled.button`
 `;
 
 // 타입 정의
-type TabType = 'store' | 'operations' | 'payment' | 'printer' | 'kitchenStations' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
+type TabType = 'store' | 'operations' | 'payment' | 'printer' | 'kitchenStations' | 'mobileOrder' | 'company' | 'brands' | 'billing' | 'managers' | 'membership';
 
 interface Table {
   id: string;
@@ -613,7 +613,7 @@ const SettingsPage: React.FC = () => {
   const [kitchenStationsLoading, setKitchenStationsLoading] = useState(true);
   const [showStationModal, setShowStationModal] = useState(false);
   const [editingStation, setEditingStation] = useState<any>(null);
-  const [stationForm, setStationForm] = useState({ name: '', category_ids: [] as number[], product_ids: [] as number[] });
+  const [stationForm, setStationForm] = useState({ name: '', category_ids: [] as number[], product_ids: [] as number[], alert_sound: 'bell' as string });
   const [allCategories, setAllCategories] = useState<any[]>([]);
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [stationSaving, setStationSaving] = useState(false);
@@ -762,6 +762,12 @@ const SettingsPage: React.FC = () => {
 
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(loadSettings().store);
   const [operationSettings, setOperationSettings] = useState<OperationSettings>(loadSettings().operations);
+  const [mobileSettings, setMobileSettings] = useState<{
+    show_featured: boolean;
+    show_popular: boolean;
+    popular_excluded_category_ids: number[];
+    category_schedules: Array<{ category_id: number; start_time: string; end_time: string }>;
+  }>({ show_featured: true, show_popular: true, popular_excluded_category_ids: [], category_schedules: [] });
   const [brandInfo, setBrandInfo] = useState<{
     brand_id: number | null;
     brand_name: string | null;
@@ -1039,6 +1045,16 @@ const SettingsPage: React.FC = () => {
                 tablePrefix: restaurant.table_settings.tablePrefix || 'T',
                 totalTables: restaurant.table_settings.totalTables || 20,
                 qrCodeBaseUrl: restaurant.table_settings.qrCodeBaseUrl || window.location.origin
+              });
+            }
+
+            // Load mobile settings from DB
+            if (restaurant.mobile_settings) {
+              setMobileSettings({
+                show_featured: restaurant.mobile_settings.show_featured ?? true,
+                show_popular: restaurant.mobile_settings.show_popular ?? true,
+                popular_excluded_category_ids: restaurant.mobile_settings.popular_excluded_category_ids || [],
+                category_schedules: restaurant.mobile_settings.category_schedules || []
               });
             }
           }
@@ -1596,7 +1612,8 @@ const SettingsPage: React.FC = () => {
           logo_url: storeSettings.logo,
           payment_settings: normalizedPaymentMethods,
           operation_settings: operationSettings,
-          table_settings: tableSettings,  // Save table settings to DB
+          table_settings: tableSettings,
+          mobile_settings: mobileSettings,
           currency: currencySettings.currency,
           cash_rounding: currencySettings.cashRounding,
           rounding_apply_to: currencySettings.roundingApplyTo
@@ -1770,6 +1787,9 @@ const SettingsPage: React.FC = () => {
                 </Tab>
                 <Tab active={activeTab === 'kitchenStations'} onClick={() => handleTabChange('kitchenStations')}>
                   Kitchen Stations
+                </Tab>
+                <Tab active={activeTab === 'mobileOrder'} onClick={() => handleTabChange('mobileOrder')}>
+                  Mobile Order
                 </Tab>
                 <Tab active={activeTab === 'managers'} onClick={() => handleTabChange('managers')}>
                   Managers
@@ -2660,127 +2680,6 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard>
-                <CardTitle>Mobile Order Types</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
-                  Enable or disable order types for mobile ordering
-                </p>
-                <Toggle>
-                  <ToggleLabel>Dine In</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings.orderTypes?.dineIn ?? true}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          orderTypes: {
-                            ...prev.orderTypes,
-                            dineIn: e.target.checked
-                          }
-                        }));
-                        setHasChanges(true);
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
-                <Toggle>
-                  <ToggleLabel>Takeaway</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings.orderTypes?.takeaway ?? true}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          orderTypes: {
-                            ...prev.orderTypes,
-                            takeaway: e.target.checked
-                          }
-                        }));
-                        setHasChanges(true);
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
-                <Toggle>
-                  <ToggleLabel>Pre-order Pickup</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings.orderTypes?.pickup ?? false}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          orderTypes: {
-                            ...prev.orderTypes,
-                            pickup: e.target.checked
-                          }
-                        }));
-                        setHasChanges(true);
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
-                <Toggle>
-                  <ToggleLabel>Delivery</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings.orderTypes?.delivery ?? false}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          orderTypes: {
-                            ...prev.orderTypes,
-                            delivery: e.target.checked
-                          }
-                        }));
-                        setHasChanges(true);
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
-              </SettingsCard>
-
-              <SettingsCard>
-                <CardTitle>Quick Order</CardTitle>
-                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
-                  Allow customers to order without providing contact information
-                </p>
-                <Toggle>
-                  <ToggleLabel>
-                    <span>Allow Quick Order</span>
-                    <span style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, marginLeft: '8px' }}>
-                      (No customer info required)
-                    </span>
-                  </ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings.allowQuickOrder !== false}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          allowQuickOrder: e.target.checked
-                        }));
-                        setHasChanges(true);
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
-                <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '8px' }}>
-                  {operationSettings.allowQuickOrder !== false
-                    ? 'Customers can place orders without entering their name or phone number'
-                    : 'Customers must sign in as Guest or Member to place an order'}
-                </p>
-              </SettingsCard>
-
-              <SettingsCard>
                 <CardTitle>Break Times</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                   Set break times when orders cannot be picked up
@@ -3165,190 +3064,6 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
-                <CardTitle>Delivery Pricing Settings</CardTitle>
-                <Toggle>
-                  <ToggleLabel>Enable Delivery Service</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings.deliveryPricing?.enabled || false}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          deliveryPricing: { ...prev.deliveryPricing, enabled: e.target.checked }
-                        }));
-                        setHasChanges(true);
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
-
-                {operationSettings.deliveryPricing?.enabled && (
-                  <>
-                    <Divider />
-                    <FormGroup>
-                      <Label>Minimum Order Amount</Label>
-                      <FeeInput
-                        type="number"
-                        step="1.00"
-                        value={operationSettings.deliveryPricing.minimumOrder}
-                        onChange={(e) => {
-                          setOperationSettings(prev => ({
-                            ...prev,
-                            deliveryPricing: { ...prev.deliveryPricing, minimumOrder: Number(e.target.value) }
-                          }));
-                          setHasChanges(true);
-                        }}
-                      />
-                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
-                      <HelpText>Minimum subtotal required for delivery orders (0 = no minimum)</HelpText>
-                    </FormGroup>
-
-                    <FormGroup>
-                      <Label>Free Delivery Above</Label>
-                      <FeeInput
-                        type="number"
-                        step="1.00"
-                        value={operationSettings.deliveryPricing.freeAbove}
-                        onChange={(e) => {
-                          setOperationSettings(prev => ({
-                            ...prev,
-                            deliveryPricing: { ...prev.deliveryPricing, freeAbove: Number(e.target.value) }
-                          }));
-                          setHasChanges(true);
-                        }}
-                      />
-                      <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
-                      <HelpText>Waive delivery fee if order subtotal exceeds this amount (999999 = never free)</HelpText>
-                    </FormGroup>
-
-                    <Divider />
-                    <Label style={{ marginBottom: '16px' }}>Delivery Zones</Label>
-                    <HelpText style={{ marginBottom: '16px' }}>Configure delivery zones and their corresponding fees</HelpText>
-
-                    {(operationSettings.deliveryPricing.zones || []).map((zone, index) => (
-                      <div key={index} style={{
-                        background: '#FAFBFC',
-                        padding: '16px',
-                        borderRadius: '8px',
-                        marginBottom: '12px',
-                        border: '1px solid #E6EBF1'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                          <Label style={{ margin: 0 }}>Zone {index + 1}</Label>
-                          <button
-                            onClick={() => {
-                              const zones = [...(operationSettings.deliveryPricing.zones || [])];
-                              zones.splice(index, 1);
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                deliveryPricing: { ...prev.deliveryPricing, zones }
-                              }));
-                              setHasChanges(true);
-                            }}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#DC2626',
-                              cursor: 'pointer',
-                              fontSize: '14px',
-                              padding: '4px 8px'
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                        <FormGroup>
-                          <Label>Zone Name</Label>
-                          <Input
-                            type="text"
-                            placeholder="e.g., Zone A (City Center)"
-                            value={zone.name}
-                            onChange={(e) => {
-                              const zones = [...(operationSettings.deliveryPricing.zones || [])];
-                              zones[index] = { ...zones[index], name: e.target.value };
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                deliveryPricing: { ...prev.deliveryPricing, zones }
-                              }));
-                              setHasChanges(true);
-                            }}
-                          />
-                        </FormGroup>
-                        <FormGroup>
-                          <Label>Description</Label>
-                          <Input
-                            type="text"
-                            placeholder="e.g., 3km radius"
-                            value={zone.description}
-                            onChange={(e) => {
-                              const zones = [...(operationSettings.deliveryPricing.zones || [])];
-                              zones[index] = { ...zones[index], description: e.target.value };
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                deliveryPricing: { ...prev.deliveryPricing, zones }
-                              }));
-                              setHasChanges(true);
-                            }}
-                          />
-                        </FormGroup>
-                        <FormGroup>
-                          <Label>Delivery Fee</Label>
-                          <FeeInput
-                            type="number"
-                            step="0.50"
-                            value={zone.fee}
-                            onChange={(e) => {
-                              const zones = [...(operationSettings.deliveryPricing.zones || [])];
-                              zones[index] = { ...zones[index], fee: Number(e.target.value) };
-                              setOperationSettings(prev => ({
-                                ...prev,
-                                deliveryPricing: { ...prev.deliveryPricing, zones }
-                              }));
-                              setHasChanges(true);
-                            }}
-                          />
-                          <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
-                        </FormGroup>
-                      </div>
-                    ))}
-
-                    <button
-                      onClick={() => {
-                        const zones = [...(operationSettings.deliveryPricing.zones || [])];
-                        zones.push({
-                          id: `zone-${Date.now()}`,
-                          name: '',
-                          description: '',
-                          fee: 0
-                        });
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          deliveryPricing: { ...prev.deliveryPricing, zones }
-                        }));
-                        setHasChanges(true);
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        background: '#F0F4FF',
-                        border: '1px dashed #635BFF',
-                        borderRadius: '8px',
-                        color: '#635BFF',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      Add Delivery Zone
-                    </button>
-                  </>
-                )}
-              </SettingsCard>
-
-              <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>Pager System Settings</CardTitle>
                 <Toggle>
                   <ToggleLabel>Enable Pager System</ToggleLabel>
@@ -3406,118 +3121,62 @@ const SettingsPage: React.FC = () => {
                 <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
                   Configure table numbers, QR codes, and customer seating options for your restaurant.
                 </p>
-                
                 <SettingsGrid>
                   <div>
                     <FormGroup>
                       <Toggle>
                         <ToggleLabel>Enable Table Numbers</ToggleLabel>
                         <ToggleSwitch>
-                          <ToggleInput
-                            type="checkbox"
-                            checked={tableSettings.enableTableNumbers}
-                            onChange={(e) => {
-                              setTableSettings({...tableSettings, enableTableNumbers: e.target.checked});
-                              setHasChanges(true);
-                            }}
-                          />
+                          <ToggleInput type="checkbox" checked={tableSettings.enableTableNumbers}
+                            onChange={(e) => { setTableSettings({...tableSettings, enableTableNumbers: e.target.checked}); setHasChanges(true); }} />
                           <ToggleSlider />
                         </ToggleSwitch>
                       </Toggle>
                       <HelpText>Allow customers to select table numbers when ordering</HelpText>
                     </FormGroup>
-                    
                     <FormGroup>
                       <Toggle>
                         <ToggleLabel>Table Number Required</ToggleLabel>
                         <ToggleSwitch>
-                          <ToggleInput
-                            type="checkbox"
-                            checked={tableSettings.tableNumberRequired}
-                            onChange={(e) => {
-                              setTableSettings({...tableSettings, tableNumberRequired: e.target.checked});
-                              setHasChanges(true);
-                            }}
-                            disabled={!tableSettings.enableTableNumbers}
-                          />
+                          <ToggleInput type="checkbox" checked={tableSettings.tableNumberRequired}
+                            onChange={(e) => { setTableSettings({...tableSettings, tableNumberRequired: e.target.checked}); setHasChanges(true); }}
+                            disabled={!tableSettings.enableTableNumbers} />
                           <ToggleSlider />
                         </ToggleSwitch>
                       </Toggle>
                       <HelpText>Make table number selection mandatory for dine-in orders</HelpText>
                     </FormGroup>
                   </div>
-                  
                   <div>
                     <FormGroup>
                       <Label>Table Prefix</Label>
-                      <Input
-                        type="text"
-                        value={tableSettings.tablePrefix}
-                        onChange={(e) => {
-                          setTableSettings({...tableSettings, tablePrefix: e.target.value});
-                          setHasChanges(true);
-                        }}
-                        placeholder="e.g., T, TABLE"
-                      />
+                      <Input type="text" value={tableSettings.tablePrefix}
+                        onChange={(e) => { setTableSettings({...tableSettings, tablePrefix: e.target.value}); setHasChanges(true); }}
+                        placeholder="e.g., T, TABLE" />
                       <HelpText>Prefix for table numbers (e.g., T001, TABLE001)</HelpText>
                     </FormGroup>
-                    
                     <FormGroup>
                       <Label>Number of Tables</Label>
-                      <Input
-                        type="number"
-                        value={tableSettings.totalTables}
-                        onChange={(e) => {
-                          setTableSettings({...tableSettings, totalTables: parseInt(e.target.value) || 1});
-                          setHasChanges(true);
-                        }}
-                        min="1"
-                        max="999"
-                      />
+                      <Input type="number" value={tableSettings.totalTables}
+                        onChange={(e) => { setTableSettings({...tableSettings, totalTables: parseInt(e.target.value) || 1}); setHasChanges(true); }}
+                        min="1" max="999" />
                     </FormGroup>
                   </div>
                 </SettingsGrid>
-                
                 <FormGroup>
                   <Label>QR Code Base URL</Label>
-                  <Input
-                    type="text"
-                    value={tableSettings.qrCodeBaseUrl}
-                    onChange={(e) => {
-                      setTableSettings({...tableSettings, qrCodeBaseUrl: e.target.value});
-                      setHasChanges(true);
-                    }}
-                    placeholder="https://yourdomain.com"
-                  />
+                  <Input type="text" value={tableSettings.qrCodeBaseUrl}
+                    onChange={(e) => { setTableSettings({...tableSettings, qrCodeBaseUrl: e.target.value}); setHasChanges(true); }}
+                    placeholder="https://yourdomain.com" />
                   <HelpText>Base URL for QR codes (usually your domain)</HelpText>
                 </FormGroup>
-                
-                <button
-                  onClick={handleGenerateQRCodes}
-                  style={{
-                    padding: '10px 20px',
-                    background: '#E6EBF1',
-                    color: '#0A2540',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    marginTop: '16px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#D1D5DB';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#E6EBF1';
-                  }}
-                >
+                <button onClick={handleGenerateQRCodes}
+                  style={{ padding: '10px 20px', background: '#E6EBF1', color: '#0A2540', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s', marginTop: '16px' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#D1D5DB'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#E6EBF1'; }}>
                   Generate QR Codes
                 </button>
-                
                 <Divider />
-                
                 <div style={{ marginTop: '24px' }}>
                   <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>Table QR Codes</h4>
                   <TablesGrid>
@@ -3527,34 +3186,13 @@ const SettingsPage: React.FC = () => {
                         <TableItem key={table.id}>
                           <TableNumber>{tableNumber}</TableNumber>
                           <QRContainer>
-                            {/* Canvas for PNG download */}
-                            <QRCodeCanvas
-                              id={`qr-${table.id}`}
-                              value={table.qrCode}
-                              size={100}
-                              level="H"
-                              includeMargin={true}
-                              style={{ display: 'none' }}
-                            />
-                            {/* SVG for display, print, and SVG download */}
-                            <QRCodeSVG
-                              id={`qr-svg-${table.id}`}
-                              value={table.qrCode}
-                              size={100}
-                              level="H"
-                              includeMargin={true}
-                            />
+                            <QRCodeCanvas id={`qr-${table.id}`} value={table.qrCode} size={100} level="H" includeMargin={true} style={{ display: 'none' }} />
+                            <QRCodeSVG id={`qr-svg-${table.id}`} value={table.qrCode} size={100} level="H" includeMargin={true} />
                           </QRContainer>
                           <TableActions>
-                            <ActionButton onClick={() => handleDownloadSVG(table)} title="Download SVG (recommended for print)">
-                              SVG
-                            </ActionButton>
-                            <ActionButton onClick={() => handleDownloadQR(table)} title="Download PNG">
-                              PNG
-                            </ActionButton>
-                            <ActionButton onClick={() => handlePrintQR(table)}>
-                              Print
-                            </ActionButton>
+                            <ActionButton onClick={() => handleDownloadSVG(table)} title="Download SVG (recommended for print)">SVG</ActionButton>
+                            <ActionButton onClick={() => handleDownloadQR(table)} title="Download PNG">PNG</ActionButton>
+                            <ActionButton onClick={() => handlePrintQR(table)}>Print</ActionButton>
                           </TableActions>
                         </TableItem>
                       );
@@ -3562,6 +3200,285 @@ const SettingsPage: React.FC = () => {
                   </TablesGrid>
                 </div>
               </SettingsCard>
+
+              </SettingsGrid>
+
+              <SaveButtonContainer>
+                <SaveButton onClick={handleSave} disabled={!hasChanges}>
+                  {hasChanges ? 'Save Changes' : 'Saved'}
+                </SaveButton>
+                {saveStatus && (
+                  <StatusMessage type={saveStatus.type}>
+                    {saveStatus.message}
+                  </StatusMessage>
+                )}
+              </SaveButtonContainer>
+            </>
+          )}
+
+          {activeTab === 'mobileOrder' && (
+            <>
+              <SettingsGrid>
+                <SettingsCard>
+                  <CardTitle>Order Types</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    Enable or disable order types for mobile ordering
+                  </p>
+                  <Toggle>
+                    <ToggleLabel>Dine In</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.dineIn ?? true}
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, dineIn: e.target.checked } })); setHasChanges(true); }} />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
+                  <Toggle>
+                    <ToggleLabel>Takeaway</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.takeaway ?? true}
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, takeaway: e.target.checked } })); setHasChanges(true); }} />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
+                  <Toggle>
+                    <ToggleLabel>Pre-order Pickup</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.pickup ?? false}
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, pickup: e.target.checked } })); setHasChanges(true); }} />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
+                  <Toggle>
+                    <ToggleLabel>Delivery</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.delivery ?? false}
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, delivery: e.target.checked } })); setHasChanges(true); }} />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
+                </SettingsCard>
+
+                <SettingsCard>
+                  <CardTitle>Quick Order</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    Allow customers to order without providing contact information
+                  </p>
+                  <Toggle>
+                    <ToggleLabel>
+                      <span>Allow Quick Order</span>
+                      <span style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, marginLeft: '8px' }}>(No customer info required)</span>
+                    </ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput type="checkbox" checked={operationSettings.allowQuickOrder !== false}
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, allowQuickOrder: e.target.checked })); setHasChanges(true); }} />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
+                  <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '8px' }}>
+                    {operationSettings.allowQuickOrder !== false
+                      ? 'Customers can place orders without entering their name or phone number'
+                      : 'Customers must sign in as Guest or Member to place an order'}
+                  </p>
+                </SettingsCard>
+
+                <SettingsCard>
+                  <CardTitle>Display Options</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    Control which sections appear on the mobile menu
+                  </p>
+                  <Toggle>
+                    <ToggleLabel>Show Featured Menu</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput type="checkbox" checked={mobileSettings.show_featured}
+                        onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_featured: e.target.checked })); setHasChanges(true); }} />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
+                  <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '4px', marginBottom: '12px' }}>
+                    Display recommended items in a dedicated tab (set in Menu Management)
+                  </p>
+                  <Toggle>
+                    <ToggleLabel>Show Popular Menu</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput type="checkbox" checked={mobileSettings.show_popular}
+                        onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_popular: e.target.checked })); setHasChanges(true); }} />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
+                  <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '4px' }}>
+                    Show best-selling items based on recent order history
+                  </p>
+                </SettingsCard>
+
+                {mobileSettings.show_popular && categories.length > 0 && (
+                  <SettingsCard>
+                    <CardTitle>Popular Menu Categories</CardTitle>
+                    <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                      Turn off categories you don't want in the Popular section
+                    </p>
+                    {categories.map((cat: any) => {
+                      const isExcluded = mobileSettings.popular_excluded_category_ids.includes(cat.id);
+                      return (
+                        <Toggle key={cat.id}>
+                          <ToggleLabel style={{ fontSize: '13px' }}>{cat.emoji || '🍽️'} {cat.name}</ToggleLabel>
+                          <ToggleSwitch>
+                            <ToggleInput type="checkbox" checked={!isExcluded}
+                              onChange={(e) => {
+                                setMobileSettings(prev => {
+                                  const ids = prev.popular_excluded_category_ids.filter(id => id !== cat.id);
+                                  if (!e.target.checked) ids.push(cat.id);
+                                  return { ...prev, popular_excluded_category_ids: ids };
+                                });
+                                setHasChanges(true);
+                              }} />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                        </Toggle>
+                      );
+                    })}
+                  </SettingsCard>
+                )}
+
+                <SettingsCard>
+                  <CardTitle>Category Time Restrictions</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                    Restrict specific categories to certain hours on mobile order only. Categories without a schedule are always visible.
+                  </p>
+                  {(mobileSettings.category_schedules || []).map((sched, index) => {
+                    const cat = categories.find((c: any) => c.id === sched.category_id || c.id?.toString() === sched.category_id?.toString());
+                    return (
+                      <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <Label style={{ margin: 0 }}>{cat ? `${cat.emoji || '🍽️'} ${cat.name}` : `Category #${sched.category_id}`}</Label>
+                          <button onClick={() => {
+                            setMobileSettings(prev => ({ ...prev, category_schedules: prev.category_schedules.filter((_, i) => i !== index) }));
+                            setHasChanges(true);
+                          }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                          <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                            <Label>Available From</Label>
+                            <Input type="time" value={sched.start_time}
+                              onChange={(e) => {
+                                setMobileSettings(prev => {
+                                  const arr = [...prev.category_schedules];
+                                  arr[index] = { ...arr[index], start_time: e.target.value };
+                                  return { ...prev, category_schedules: arr };
+                                });
+                                setHasChanges(true);
+                              }} />
+                          </FormGroup>
+                          <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                            <Label>Available Until</Label>
+                            <Input type="time" value={sched.end_time}
+                              onChange={(e) => {
+                                setMobileSettings(prev => {
+                                  const arr = [...prev.category_schedules];
+                                  arr[index] = { ...arr[index], end_time: e.target.value };
+                                  return { ...prev, category_schedules: arr };
+                                });
+                                setHasChanges(true);
+                              }} />
+                          </FormGroup>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(() => {
+                    const scheduledIds = new Set((mobileSettings.category_schedules || []).map(s => s.category_id?.toString()));
+                    const availableCats = categories.filter((c: any) => !scheduledIds.has(c.id?.toString()));
+                    if (availableCats.length === 0) return (
+                      <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', padding: '12px' }}>All categories have schedules assigned</p>
+                    );
+                    return (
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <select
+                          id="add-schedule-cat"
+                          style={{ flex: 1, padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '8px', fontSize: '14px', background: 'white' }}
+                        >
+                          {availableCats.map((cat: any) => (
+                            <option key={cat.id} value={cat.id}>{cat.emoji || '🍽️'} {cat.name}</option>
+                          ))}
+                        </select>
+                        <button onClick={() => {
+                          const sel = document.getElementById('add-schedule-cat') as HTMLSelectElement;
+                          if (!sel?.value) return;
+                          const catId = parseInt(sel.value);
+                          setMobileSettings(prev => ({
+                            ...prev,
+                            category_schedules: [...prev.category_schedules, { category_id: catId, start_time: '09:00', end_time: '22:00' }]
+                          }));
+                          setHasChanges(true);
+                        }} style={{ padding: '10px 16px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          Add Schedule
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </SettingsCard>
+
+                <SettingsCard>
+                  <CardTitle>Delivery Pricing Settings</CardTitle>
+                  <Toggle>
+                    <ToggleLabel>Enable Delivery Service</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput type="checkbox" checked={operationSettings.deliveryPricing?.enabled || false}
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, enabled: e.target.checked } })); setHasChanges(true); }} />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
+
+                  {operationSettings.deliveryPricing?.enabled && (
+                    <>
+                      <Divider />
+                      <FormGroup>
+                        <Label>Minimum Order Amount</Label>
+                        <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.minimumOrder}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, minimumOrder: Number(e.target.value) } })); setHasChanges(true); }} />
+                        <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
+                        <HelpText>Minimum subtotal required for delivery orders (0 = no minimum)</HelpText>
+                      </FormGroup>
+                      <FormGroup>
+                        <Label>Free Delivery Above</Label>
+                        <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.freeAbove}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, freeAbove: Number(e.target.value) } })); setHasChanges(true); }} />
+                        <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
+                        <HelpText>Waive delivery fee if order subtotal exceeds this amount (999999 = never free)</HelpText>
+                      </FormGroup>
+                      <Divider />
+                      <Label style={{ marginBottom: '16px' }}>Delivery Zones</Label>
+                      <HelpText style={{ marginBottom: '16px' }}>Configure delivery zones and their corresponding fees</HelpText>
+                      {(operationSettings.deliveryPricing.zones || []).map((zone: any, index: number) => (
+                        <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <Label style={{ margin: 0 }}>Zone {index + 1}</Label>
+                            <button onClick={() => {
+                              const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.splice(index, 1);
+                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true);
+                            }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
+                          </div>
+                          <FormGroup><Label>Zone Name</Label><Input type="text" placeholder="e.g., Zone A (City Center)" value={zone.name}
+                            onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], name: e.target.value };
+                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true); }} /></FormGroup>
+                          <FormGroup><Label>Description</Label><Input type="text" placeholder="e.g., 3km radius" value={zone.description}
+                            onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], description: e.target.value };
+                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true); }} /></FormGroup>
+                          <FormGroup><Label>Delivery Fee</Label><FeeInput type="number" step="0.50" value={zone.fee}
+                            onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], fee: Number(e.target.value) };
+                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true); }} />
+                            <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span></FormGroup>
+                        </div>
+                      ))}
+                      <button onClick={() => {
+                        const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.push({ id: `zone-${Date.now()}`, name: '', description: '', fee: 0 });
+                        setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true);
+                      }} style={{ width: '100%', padding: '12px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }}>
+                        Add Delivery Zone
+                      </button>
+                    </>
+                  )}
+                </SettingsCard>
+
               </SettingsGrid>
 
               <SaveButtonContainer>
@@ -3653,9 +3570,9 @@ const SettingsPage: React.FC = () => {
                 )}
               </SettingsCard>
 
-              {printerMode === 'rawbt' && !printerSettingsLoading && (
+              {!printerSettingsLoading && (
               <SettingsGrid>
-                {/* Bill Printer Card - Only for RawBT mode */}
+                {/* Bill Printer Card */}
                 <SettingsCard>
                   <CardTitle>Bill Printer</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
@@ -3679,23 +3596,13 @@ const SettingsPage: React.FC = () => {
 
                   {printerSettings.billPrinter.enabled && (
                     <>
-                      <FormGroup style={{ marginTop: '20px' }}>
-                        <Label>Printer Address</Label>
-                        <Input
-                          type="text"
-                          value={printerSettings.billPrinter.name}
-                          onChange={(e) => setPrinterSettings(prev => ({
-                            ...prev,
-                            billPrinter: { ...prev.billPrinter, name: e.target.value }
-                          }))}
-                          placeholder="e.g., PT-210, InnerPrinter"
-                        />
-                        <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px', lineHeight: '1.5' }}>
-                          Enter the printer name as shown in RawBT app<br />
-                          (WiFi printers must be configured in RawBT first)<br />
-                          Leave empty to use RawBT's default printer
-                        </p>
-                      </FormGroup>
+                      <div style={{ marginTop: '16px', padding: '10px 12px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
+                        {printerMode === 'rawbt' ? (
+                          <>Prints to RawBT default printer.<br />Set your bill printer as default in RawBT app.</>
+                        ) : (
+                          <>Opens browser print dialog for receipts.<br />Connect a receipt printer via USB or network.</>
+                        )}
+                      </div>
 
                       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
                         <input
@@ -3713,130 +3620,64 @@ const SettingsPage: React.FC = () => {
                   )}
                 </SettingsCard>
 
-                {/* Kitchen Printer Card — Station 유무에 따라 분기 */}
-                {kitchenStations.length === 0 ? (
-                  /* Station 0개: 기존 단일 Kitchen Printer */
-                  <SettingsCard>
-                    <CardTitle>Kitchen Printer</CardTitle>
-                    <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
-                      Configure printer for kitchen order tickets
-                    </p>
+                {/* Kitchen Printer Card — Station 유무 관계없이 동일 */}
+                <SettingsCard>
+                  <CardTitle>Kitchen Printer</CardTitle>
+                  <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                    Configure printer for kitchen order tickets
+                  </p>
 
-                    <Toggle>
-                      <ToggleLabel>Enable Kitchen Printer</ToggleLabel>
-                      <ToggleSwitch>
-                        <ToggleInput
+                  <Toggle>
+                    <ToggleLabel>Enable Kitchen Printer</ToggleLabel>
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={printerSettings.kitchenPrinter.enabled}
+                        onChange={(e) => setPrinterSettings(prev => ({
+                          ...prev,
+                          kitchenPrinter: { ...prev.kitchenPrinter, enabled: e.target.checked }
+                        }))}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                  </Toggle>
+
+                  {printerSettings.kitchenPrinter.enabled && (
+                    <>
+                      <div style={{ marginTop: '16px', padding: '10px 12px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
+                        {printerMode === 'browser' ? (
+                          <>Opens browser print dialog for kitchen order tickets.</>
+                        ) : kitchenStations.length > 0 ? (
+                          <>
+                            Each station needs a separate device with Kitchen Display open.<br />
+                            Set RawBT default printer to the station's printer on each device.<br />
+                            Select the station filter on Kitchen Display to match.
+                          </>
+                        ) : (
+                          <>
+                            Use a separate device for kitchen printing:<br />
+                            1. Open Kitchen Display on a kitchen tablet<br />
+                            2. Set RawBT default printer to your kitchen printer on that device<br />
+                            3. Order tickets will auto-print when new orders arrive
+                          </>
+                        )}
+                      </div>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
+                        <input
                           type="checkbox"
-                          checked={printerSettings.kitchenPrinter.enabled}
+                          checked={printerSettings.kitchenPrinter.autoPrint}
                           onChange={(e) => setPrinterSettings(prev => ({
                             ...prev,
-                            kitchenPrinter: { ...prev.kitchenPrinter, enabled: e.target.checked }
+                            kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }
                           }))}
+                          style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
                         />
-                        <ToggleSlider />
-                      </ToggleSwitch>
-                    </Toggle>
-
-                    {printerSettings.kitchenPrinter.enabled && (
-                      <>
-                        <FormGroup style={{ marginTop: '20px' }}>
-                          <Label>Printer Address</Label>
-                          <Input
-                            type="text"
-                            value={printerSettings.kitchenPrinter.name}
-                            onChange={(e) => setPrinterSettings(prev => ({
-                              ...prev,
-                              kitchenPrinter: { ...prev.kitchenPrinter, name: e.target.value }
-                            }))}
-                            placeholder="e.g., Kitchen-Printer, PT-210"
-                          />
-                          <p style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px', lineHeight: '1.5' }}>
-                            Enter the printer name as shown in RawBT app<br />
-                            (WiFi printers must be configured in RawBT first)<br />
-                            Leave empty to use RawBT's default printer
-                          </p>
-                        </FormGroup>
-
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={printerSettings.kitchenPrinter.autoPrint}
-                            onChange={(e) => setPrinterSettings(prev => ({
-                              ...prev,
-                              kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }
-                            }))}
-                            style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
-                          />
-                          <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print on new order</span>
-                        </label>
-                      </>
-                    )}
-                  </SettingsCard>
-                ) : (
-                  /* Station 1개 이상: Station별 프린터 카드 */
-                  <SettingsCard>
-                    <CardTitle>Kitchen Printers</CardTitle>
-                    <div style={{ background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', padding: '10px 12px', marginBottom: '16px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
-                      Kitchen Stations are registered. Configure a printer for each station below.<br />
-                      Enter the printer name as shown in RawBT app. WiFi printers must be configured in RawBT first.<br />
-                      Leave empty to use RawBT's default printer.
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {kitchenStations.filter((s: any) => s.is_active !== false).map((station: any) => {
-                        const sp = printerSettings.kitchenStationPrinters[station.id] || { name: '', autoPrint: true };
-                        return (
-                          <div key={station.id} style={{ background: '#F6F9FC', borderRadius: '8px', padding: '14px', border: '1px solid #E6EBF1' }}>
-                            <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '14px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: sp.name ? '#10B981' : '#F59E0B' }} />
-                              {station.name}
-                            </div>
-                            <FormGroup style={{ marginBottom: '8px' }}>
-                              <Label style={{ fontSize: '12px' }}>Printer Address</Label>
-                              <Input
-                                type="text"
-                                value={sp.name}
-                                onChange={(e) => setPrinterSettings(prev => ({
-                                  ...prev,
-                                  kitchenStationPrinters: {
-                                    ...prev.kitchenStationPrinters,
-                                    [station.id]: { ...sp, name: e.target.value, stationName: station.name }
-                                  }
-                                }))}
-                                placeholder="e.g., PT-210, InnerPrinter"
-                                style={{ fontSize: '13px', padding: '6px 10px' }}
-                              />
-                            </FormGroup>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                              <input
-                                type="checkbox"
-                                checked={sp.autoPrint}
-                                onChange={(e) => setPrinterSettings(prev => ({
-                                  ...prev,
-                                  kitchenStationPrinters: {
-                                    ...prev.kitchenStationPrinters,
-                                    [station.id]: { ...sp, autoPrint: e.target.checked, stationName: station.name }
-                                  }
-                                }))}
-                                style={{ width: '16px', height: '16px', accentColor: '#635BFF' }}
-                              />
-                              <span style={{ fontSize: '13px', color: '#374151' }}>Auto-print on new order</span>
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {!kitchenStations.some((s: any) => {
-                      const sp = printerSettings.kitchenStationPrinters[s.id];
-                      return sp && sp.name;
-                    }) && (
-                      <div style={{ marginTop: '12px', padding: '8px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', fontSize: '12px', color: '#92400E' }}>
-                        No printer addresses configured yet. Enter printer names for each station.
-                      </div>
-                    )}
-                  </SettingsCard>
-                )}
+                        <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print on new order</span>
+                      </label>
+                    </>
+                  )}
+                </SettingsCard>
               </SettingsGrid>
               )}
 
@@ -3886,10 +3727,6 @@ const SettingsPage: React.FC = () => {
                         billPrinter: printerSettings.billPrinter,
                         kitchenPrinter: printerSettings.kitchenPrinter
                       };
-                      // Station별 프린터가 있으면 포함
-                      if (Object.keys(printerSettings.kitchenStationPrinters).length > 0) {
-                        settingsToSave.kitchenStationPrinters = printerSettings.kitchenStationPrinters;
-                      }
 
                       const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
                         method: 'PUT',
@@ -3993,7 +3830,7 @@ const SettingsPage: React.FC = () => {
                   <CardTitle style={{ marginBottom: 0 }}>Stations</CardTitle>
                   <SaveButton onClick={() => {
                     setEditingStation(null);
-                    setStationForm({ name: '', category_ids: [], product_ids: [] });
+                    setStationForm({ name: '', category_ids: [], product_ids: [], alert_sound: 'bell' });
                     setShowStationModal(true);
                   }}>
                     Add Station
@@ -4020,6 +3857,9 @@ const SettingsPage: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColor }} />
                               <span style={{ fontWeight: 600, color: '#0A2540', fontSize: '15px' }}>{station.name}</span>
+                              <span style={{ fontSize: '11px', background: '#F0F0FF', color: '#635BFF', padding: '2px 8px', borderRadius: '10px', fontWeight: 500 }}>
+                                {({ bell: 'Bell', beep: 'Double Beep', triple: 'Triple', urgent: 'Urgent', melody: 'Melody', deep: 'Deep' } as Record<string, string>)[station.alert_sound || 'bell'] || 'Bell'}
+                              </span>
                               {!station.is_active && (
                                 <span style={{ fontSize: '11px', background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: '10px', fontWeight: 500 }}>Inactive</span>
                               )}
@@ -4031,7 +3871,8 @@ const SettingsPage: React.FC = () => {
                                   setStationForm({
                                     name: station.name,
                                     category_ids: assignedCats.map((c: any) => c.id),
-                                    product_ids: assignedProds.map((p: any) => p.id)
+                                    product_ids: assignedProds.map((p: any) => p.id),
+                                    alert_sound: station.alert_sound || 'bell'
                                   });
                                   setShowStationModal(true);
                                 }}
@@ -4080,23 +3921,51 @@ const SettingsPage: React.FC = () => {
                   const unassignedCats = allCategories.filter((c: any) => !assignedCatIds.has(c.id));
                   const unassignedProds = allProducts.filter((p: any) => !assignedProdIds.has(p.id));
 
+                  // 카테고리 없는 아이템 찾기 (Uncategorized)
+                  const validCatIds = new Set(allCategories.map((c: any) => Number(c.id)));
+                  const uncategorizedProds = allProducts.filter((p: any) => !p.category || !validCatIds.has(Number(p.category)));
+
+                  const warnings: JSX.Element[] = [];
+
                   if (kitchenAssignmentMode === 'category' && unassignedCats.length > 0) {
-                    return (
-                      <div style={{ marginTop: '16px', padding: '12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
-                        <strong>Unassigned categories:</strong> {unassignedCats.map((c: any) => c.name).join(', ')}
-                        <div style={{ marginTop: '4px', color: '#B45309' }}>Unassigned items will appear in all station displays.</div>
+                    warnings.push(
+                      <div key="unassigned-cats" style={{ padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '16px' }}>⚠</span>
+                          <strong>{unassignedCats.length} unassigned {unassignedCats.length === 1 ? 'category' : 'categories'}</strong>
+                        </div>
+                        <div>{unassignedCats.map((c: any) => `${c.emoji || ''} ${c.name}`.trim()).join(', ')}</div>
+                        <div style={{ marginTop: '6px', color: '#B45309', fontSize: '12px' }}>These items will show in all stations on Kitchen Display. Assign them to a station to filter properly.</div>
                       </div>
                     );
                   }
                   if (kitchenAssignmentMode === 'menu_item' && unassignedProds.length > 0) {
-                    return (
-                      <div style={{ marginTop: '16px', padding: '12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
-                        <strong>Unassigned menu items:</strong> {unassignedProds.length} items
-                        <div style={{ marginTop: '4px', color: '#B45309' }}>Unassigned items will appear in all station displays.</div>
+                    warnings.push(
+                      <div key="unassigned-prods" style={{ padding: '12px 16px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '16px' }}>⚠</span>
+                          <strong>{unassignedProds.length} unassigned menu {unassignedProds.length === 1 ? 'item' : 'items'}</strong>
+                        </div>
+                        <div>{unassignedProds.slice(0, 10).map((p: any) => p.name).join(', ')}{unassignedProds.length > 10 ? ` +${unassignedProds.length - 10} more` : ''}</div>
+                        <div style={{ marginTop: '6px', color: '#B45309', fontSize: '12px' }}>These items will show in all stations on Kitchen Display. Assign them to a station to filter properly.</div>
                       </div>
                     );
                   }
-                  return null;
+                  if (uncategorizedProds.length > 0) {
+                    warnings.push(
+                      <div key="uncategorized" style={{ padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', fontSize: '13px', color: '#991B1B' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '16px' }}>⚠</span>
+                          <strong>{uncategorizedProds.length} uncategorized menu {uncategorizedProds.length === 1 ? 'item' : 'items'}</strong>
+                        </div>
+                        <div>{uncategorizedProds.map((p: any) => p.name).join(', ')}</div>
+                        <div style={{ marginTop: '6px', color: '#B91C1C', fontSize: '12px' }}>These items have no category and cannot be assigned to a station. Assign a category first in Menu Management.</div>
+                      </div>
+                    );
+                  }
+
+                  if (warnings.length === 0) return null;
+                  return <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>{warnings}</div>;
                 })()}
               </SettingsCard>
 
@@ -4130,7 +3999,8 @@ const SettingsPage: React.FC = () => {
                                 body: JSON.stringify({
                                   name: stationForm.name.trim(),
                                   category_ids: stationForm.category_ids,
-                                  product_ids: stationForm.product_ids
+                                  product_ids: stationForm.product_ids,
+                                  alert_sound: stationForm.alert_sound
                                 })
                               });
                             } else {
@@ -4141,7 +4011,8 @@ const SettingsPage: React.FC = () => {
                                   restaurant_id: user?.restaurantId,
                                   name: stationForm.name.trim(),
                                   category_ids: stationForm.category_ids,
-                                  product_ids: stationForm.product_ids
+                                  product_ids: stationForm.product_ids,
+                                  alert_sound: stationForm.alert_sound
                                 })
                               });
                             }
@@ -4167,6 +4038,39 @@ const SettingsPage: React.FC = () => {
                         onChange={(e) => setStationForm({ ...stationForm, name: e.target.value })}
                         placeholder="e.g., Grill Station"
                       />
+                    </FormGroup>
+
+                    <FormGroup>
+                      <Label>Alert Sound</Label>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <select
+                          value={stationForm.alert_sound}
+                          onChange={(e) => setStationForm({ ...stationForm, alert_sound: e.target.value })}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #E6EBF1', fontSize: '14px', color: '#0A2540', background: 'white' }}
+                        >
+                          {[
+                            { value: 'bell', label: 'Bell' },
+                            { value: 'beep', label: 'Double Beep' },
+                            { value: 'triple', label: 'Triple' },
+                            { value: 'urgent', label: 'Urgent' },
+                            { value: 'melody', label: 'Melody' },
+                            { value: 'deep', label: 'Deep' },
+                          ].map(s => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            import('../../utils/notificationSound').then(({ playPresetSound }) => {
+                              playPresetSound(stationForm.alert_sound as any);
+                            });
+                          }}
+                          style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #E6EBF1', background: 'white', cursor: 'pointer', fontSize: '13px', color: '#6B7C93', whiteSpace: 'nowrap' }}
+                        >
+                          ▶ Test
+                        </button>
+                      </div>
                     </FormGroup>
 
                     {kitchenAssignmentMode === 'category' ? (

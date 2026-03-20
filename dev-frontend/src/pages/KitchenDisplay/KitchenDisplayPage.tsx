@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import io, { Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,7 +6,7 @@ import { useMenu } from '../../contexts/MenuContext';
 import { useStore } from '../../contexts/StoreContext';
 import PageHeader from '../../components/Common/PageHeader';
 import { formatTime } from '../../utils/timezone';
-import { printKitchenTicketViaRawBT } from '../../utils/billPrint';
+import { printKitchenTicketViaRawBT, getPrinterSettings as getBillPrinterSettings } from '../../utils/billPrint';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -585,8 +585,11 @@ const KitchenDisplayPage: React.FC = () => {
 
   const [preparingBatches, setPreparingBatches] = useState<PreparingBatch[]>([]);
 
+  // ─── Sound toggle ───
+  const [audioEnabled, setAudioEnabled] = useState(true);
+
   // ─── Kitchen Station Filter ───
-  const [kitchenStations, setKitchenStations] = useState<Array<{ id: number; name: string }>>([]);
+  const [kitchenStations, setKitchenStations] = useState<Array<{ id: number; name: string; alert_sound?: string }>>([]);
   const [selectedStation, setSelectedStation] = useState<number | 'all'>('all');
   // menuName → station_id 매핑 (카테고리 or 프로덕트 기반, 프로덕트 오버라이드 우선)
   const [menuStationMap, setMenuStationMap] = useState<Map<string, number>>(new Map());
@@ -691,9 +694,10 @@ const KitchenDisplayPage: React.FC = () => {
         setOrders(prev => {
           const prevIds = new Set(prev.map(o => o.id));
           const newOrders = kitchenOrders.filter(o => !prevIds.has(o.id));
-          if (newOrders.length > 0) playNotificationSound();
+          if (newOrders.length > 0) playNotificationSoundRef.current();
           return kitchenOrders;
         });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
       }
     } catch (error) {
       console.error('Failed to fetch orders:', error);
@@ -851,7 +855,53 @@ const KitchenDisplayPage: React.FC = () => {
       };
 
       setOrders(prev => [newOrder, ...prev]);
-      playNotificationSound();
+      playNotificationSoundRef.current(orderItems);
+
+      // ─── Auto-print kitchen ticket ───
+      try {
+        const printerSettings = getBillPrinterSettings();
+        const shouldAutoPrint = printerSettings.kitchenPrinter?.enabled && printerSettings.kitchenPrinter?.autoPrint;
+
+        if (shouldAutoPrint) {
+          const storeInfo = getStoreInfo();
+          const printOrderData = {
+            orderNumber: order.order_number,
+            pickupNumber: order.order_number.split('-')[1],
+            date: new Date(order.createdAt || Date.now()),
+            orderType: order.order_type,
+            orderSource: order.order_source || 'pos',
+            tableNumber: order.table_number || null,
+            pagerNumber: order.pager_number || null,
+            customerName: order.customer_name || 'Walk-in Customer',
+            items: orderItems.map((item: any) => {
+              let itemOptions = item.options || [];
+              if (typeof itemOptions === 'string') {
+                try { itemOptions = JSON.parse(itemOptions); } catch { itemOptions = []; }
+              }
+              if (!Array.isArray(itemOptions)) itemOptions = [];
+              return {
+                menuItem: {
+                  name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+                  price: parseFloat(item.price || '0'),
+                  is_set_menu: item.is_set_menu || false,
+                  set_items: item.set_items || []
+                },
+                quantity: item.quantity || 1,
+                options: itemOptions
+              };
+            }),
+            notes: order.notes || ''
+          };
+
+          printKitchenTicketViaRawBT(printOrderData, storeInfo)
+            .then(success => {
+              if (success) console.log('Kitchen ticket auto-printed for order', order.order_number);
+            })
+            .catch(err => console.error('Auto-print failed:', err));
+        }
+      } catch (err) {
+        console.error('Auto-print error:', err);
+      }
     });
 
     newSocket.on('order-updated', (order: any) => {
@@ -888,10 +938,53 @@ const KitchenDisplayPage: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const playNotificationSound = () => {
-    const audio = new Audio('/notification.mp3');
-    audio.play().catch(() => {});
-  };
+  const playNotificationSound = useCallback((orderItems?: any[]) => {
+    if (!audioEnabled) return;
+    import('../../utils/notificationSound').then(({ startRepeatingSound }) => {
+      let preset: any = 'bell';
+
+      if (selectedStation !== 'all') {
+        const station = kitchenStations.find(s => s.id === selectedStation);
+        if (station) {
+          // Check if order has items for this station
+          if (orderItems) {
+            const hasStationItems = orderItems.some((item: any) => {
+              const itemName = item.name || item.menuItem?.name || '';
+              const stationId = menuStationMap.get(itemName);
+              if (stationId === undefined) return true; // unassigned → all stations
+              return stationId === selectedStation;
+            });
+            if (!hasStationItems) return;
+          }
+          preset = station.alert_sound || 'bell';
+        }
+      }
+
+      startRepeatingSound(preset, 5000); // 5초마다 반복
+    });
+  }, [audioEnabled, selectedStation, kitchenStations, menuStationMap]);
+
+  // Stop repeating sound when any order status changes (Pending → Preparing etc.)
+  const stopSound = useCallback(() => {
+    import('../../utils/notificationSound').then(({ stopRepeatingSound }) => {
+      stopRepeatingSound();
+    });
+  }, []);
+
+  // Stop sound when audio toggled off
+  useEffect(() => {
+    if (!audioEnabled) {
+      import('../../utils/notificationSound').then(({ stopRepeatingSound }) => {
+        stopRepeatingSound();
+      });
+    }
+  }, [audioEnabled]);
+
+  // Ref to avoid socket/fetchOrders dependency on playNotificationSound
+  const playNotificationSoundRef = useRef(playNotificationSound);
+  useEffect(() => {
+    playNotificationSoundRef.current = playNotificationSound;
+  }, [playNotificationSound]);
 
   const getItemCode = (itemName: string): string => {
     const menuItem = menuItems.find(m => m.name === itemName);
@@ -977,6 +1070,8 @@ const KitchenDisplayPage: React.FC = () => {
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: KitchenOrder['status']) => {
+    // Stop repeating notification sound on any status change
+    stopSound();
     // 즉시 UI 반영 (소켓 오면 덮어씌워짐)
     setOrders(prev => prev.map(o =>
       o.id === orderId ? { ...o, status: newStatus } : o
@@ -1005,9 +1100,11 @@ const KitchenDisplayPage: React.FC = () => {
 
   // ─── Station Filter Helper ───
   // 아이템이 선택된 Station에 속하는지 판별
+  // 미배정 아이템 (어떤 Station에도 없음) → 모든 Station에 표시 (사라지면 안 됨)
   const isItemInSelectedStation = useCallback((itemName: string): boolean => {
     if (selectedStation === 'all') return true;
     const stationId = menuStationMap.get(itemName);
+    if (stationId === undefined) return true; // 미배정 → 모든 Station에 표시
     return stationId === selectedStation;
   }, [selectedStation, menuStationMap]);
 
@@ -1066,6 +1163,7 @@ const KitchenDisplayPage: React.FC = () => {
   };
 
   const updateItemStatus = async (orderId: string, itemId: string) => {
+    stopSound();
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
@@ -1210,13 +1308,15 @@ const KitchenDisplayPage: React.FC = () => {
     ready: ordersByStatus.ready.length
   }), [ordersByStatus]);
 
-  // 주문단위: 총 아이템 수 (세트메뉴는 set_items 개별 카운트)
+  // 주문단위: 총 아이템 수 (세트메뉴는 set_items 개별 카운트, Station 필터 적용)
   const orderItemCounts = useMemo(() => {
     const calc = (orderList: KitchenOrder[]) => orderList.reduce((sum, o) => {
       return sum + o.items.reduce((iSum, item) => {
         if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
-          return iSum + item.set_items.length;
+          if (selectedStation === 'all') return iSum + item.set_items.length;
+          return iSum + item.set_items.filter(si => isItemInSelectedStation(si.name)).length;
         }
+        if (selectedStation !== 'all' && !isItemInSelectedStation(item.name)) return iSum;
         return iSum + 1;
       }, 0);
     }, 0);
@@ -1225,27 +1325,31 @@ const KitchenDisplayPage: React.FC = () => {
       preparing: calc(ordersByStatus.preparing),
       ready: calc(ordersByStatus.ready)
     };
-  }, [ordersByStatus]);
+  }, [ordersByStatus, selectedStation, isItemInSelectedStation]);
 
   const getOrderItemCount = (status: KitchenOrder['status']): number => {
     return orderItemCounts[status] || 0;
   };
 
-  // 아이템단위: 해당 item.status인 아이템 수
+  // 아이템단위: 해당 item.status인 아이템 수 (Station 필터 적용)
   const itemStatusCounts = useMemo(() => {
     const calc = (status: string) => {
       const targetOrders = orders.filter(o => o.status === status);
       return targetOrders.reduce((sum, o) => {
         return sum + o.items.reduce((iSum, item) => {
           if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
-            return iSum + item.set_items.filter(si => (si.status || 'pending') === status).length;
+            return iSum + item.set_items.filter(si => {
+              if (selectedStation !== 'all' && !isItemInSelectedStation(si.name)) return false;
+              return (si.status || 'pending') === status;
+            }).length;
           }
+          if (selectedStation !== 'all' && !isItemInSelectedStation(item.name)) return iSum;
           return iSum + ((item.status || 'pending') === status ? 1 : 0);
         }, 0);
       }, 0);
     };
     return { pending: calc('pending'), preparing: calc('preparing'), ready: calc('ready') };
-  }, [orders]);
+  }, [orders, selectedStation, isItemInSelectedStation]);
 
   const getItemStatusCount = (status: string): number => {
     return (itemStatusCounts as any)[status] || 0;
@@ -1265,13 +1369,23 @@ const KitchenDisplayPage: React.FC = () => {
   const renderOrderCard = (order: KitchenOrder) => {
     const elapsedTime = getElapsedTime(order.orderTime);
     const isUrgent = elapsedTime > 15 && order.status === 'pending';
+
+    // Station 필터: 선택된 Station 아이템만 표시
+    const visibleItems = selectedStation === 'all' ? order.items : order.items.filter(item => {
+      if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
+        return item.set_items.some(si => isItemInSelectedStation(si.name));
+      }
+      return isItemInSelectedStation(item.name);
+    });
+
     // Count set_items individually instead of parent set menu item
     let totalItems = 0;
     let completedItems = 0;
-    order.items.forEach(item => {
+    visibleItems.forEach(item => {
       if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
-        totalItems += item.set_items.length;
-        completedItems += item.set_items.filter(si => isItemDoneForColumn(order.status, si.status || 'pending')).length;
+        const stationSetItems = selectedStation === 'all' ? item.set_items : item.set_items.filter(si => isItemInSelectedStation(si.name));
+        totalItems += stationSetItems.length;
+        completedItems += stationSetItems.filter(si => isItemDoneForColumn(order.status, si.status || 'pending')).length;
       } else {
         totalItems += 1;
         if (isItemDoneForColumn(order.status, item.status || 'pending')) completedItems += 1;
@@ -1317,7 +1431,7 @@ const KitchenDisplayPage: React.FC = () => {
 
         {/* Items */}
         <ItemsContainer>
-          {order.items.map((item) => (
+          {visibleItems.map((item) => (
             <React.Fragment key={item.id}>
               <ItemRow done={isItemDoneForColumn(order.status, item.status || 'pending') && order.status !== 'pending'}>
                 <ItemInfo>
@@ -1379,7 +1493,7 @@ const KitchenDisplayPage: React.FC = () => {
 
               {item.is_set_menu && item.set_items && item.set_items.length > 0 && (
                 <SetItemsWrap>
-                  {item.set_items.map((setItem) => (
+                  {(selectedStation === 'all' ? item.set_items : item.set_items.filter(si => isItemInSelectedStation(si.name))).map((setItem) => (
                     <SetItemRow key={setItem.id} done={isItemDoneForColumn(order.status, setItem.status || 'pending') && order.status !== 'pending'}>
                       <SetItemName done={isItemDoneForColumn(order.status, setItem.status || 'pending') && order.status !== 'pending'}>
                         {formatItemName(setItem.name)} {setItem.quantity > 1 && <ItemQty highlight done={isItemDoneForColumn(order.status, setItem.status || 'pending') && order.status !== 'pending'}>x {setItem.quantity}</ItemQty>}
@@ -1897,7 +2011,7 @@ const KitchenDisplayPage: React.FC = () => {
         });
       })
       .sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime());
-  }, [orders, orderHasStationItems]);
+  }, [orders, orderHasStationItems, selectedStation, isItemInSelectedStation]);
 
   const getItemViewReadyOrders = () => readyOrdersMemo;
 
@@ -1925,6 +2039,8 @@ const KitchenDisplayPage: React.FC = () => {
       order.items.forEach(item => {
         if (item.is_set_menu && item.set_items && item.set_items.length > 0) {
           item.set_items.forEach(si => {
+            // Station 필터: 선택된 Station 아이템만 포함
+            if (selectedStation !== 'all' && !isItemInSelectedStation(si.name)) return;
             totalItems++;
             const st = si.status || 'pending';
             if (st === 'ready') readyItems++;
@@ -1935,6 +2051,8 @@ const KitchenDisplayPage: React.FC = () => {
             });
           });
         } else {
+          // Station 필터: 선택된 Station 아이템만 포함
+          if (selectedStation !== 'all' && !isItemInSelectedStation(item.name)) return;
           totalItems++;
           const st = item.status || 'pending';
           if (st === 'ready') readyItems++;
@@ -2107,6 +2225,25 @@ const KitchenDisplayPage: React.FC = () => {
               ))}
             </ViewToggle>
           )}
+          <button
+            onClick={() => setAudioEnabled(!audioEnabled)}
+            title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
+            style={{
+              width: '40px', height: '40px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+              background: audioEnabled ? '#635BFF' : '#E6EBF1',
+              transition: 'all 0.15s'
+            }}
+          >
+            <img
+              src={audioEnabled ? '/sound-on.svg' : '/sound-off.svg'}
+              alt={audioEnabled ? 'Sound ON' : 'Sound OFF'}
+              style={{
+                width: '22px', height: '22px',
+                filter: audioEnabled ? 'brightness(0) invert(1)' : 'brightness(0) opacity(0.4)'
+              }}
+            />
+          </button>
           <ConnectionStatus connected={isConnected}>
             <ConnectionDot connected={isConnected} />
             {isConnected ? 'Live' : 'Offline'}

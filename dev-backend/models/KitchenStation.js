@@ -22,6 +22,11 @@ const KitchenStation = sequelize.define('KitchenStation', {
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  alert_sound: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'bell',
+    comment: 'Sound preset: bell, beep, triple, urgent, melody, deep'
   }
 }, {
   tableName: 'kitchen_stations',

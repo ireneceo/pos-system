@@ -524,6 +524,19 @@ Restaurant.init({
     defaultValue: 'category',
     allowNull: false,
     comment: 'Kitchen station assignment mode: category or menu_item'
+  },
+  mobile_settings: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    get() {
+      const value = this.getDataValue('mobile_settings');
+      if (!value) return { show_featured: true, show_popular: true };
+      try { return JSON.parse(value); } catch { return { show_featured: true, show_popular: true }; }
+    },
+    set(value) {
+      this.setDataValue('mobile_settings', value ? JSON.stringify(value) : null);
+    },
+    comment: 'Mobile order display settings (JSON)'
   }
 }, {
   sequelize: database.sequelize,

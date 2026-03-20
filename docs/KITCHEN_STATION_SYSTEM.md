@@ -1,7 +1,9 @@
 # Kitchen Station 시스템 설계서
 
 > **작성일:** 2026-03-17
-> **상태:** 기획 완료, 구현 대기
+> **상태:** Phase 1~2 완료 (Station 등록 + Display 필터 + 자동 프린트 + Printer 탭 단순화), Phase 3~5 대기
+> **중요:** RawBT는 S.s= 파라미터로 프린터 선택 불가 (항상 기본 프린터 1개로만 출력). 멀티 프린터는 디바이스 분리 방식으로 운영.
+> **2026-03-19 변경:** Printer 탭 Station별 프린터 카드 제거. Station 유무 관계없이 Kitchen Printer 단일 설정. 미배정 아이템은 모든 Station에 표시.
 > **관련 파일:** KitchenDisplayPage.tsx, SettingsPage.tsx, billPrint.js
 
 ---
@@ -24,7 +26,7 @@
 |----------|------|-----------|
 | Printer Mode (RawBT / Browser) | Settings > Printer 탭 | **그대로** |
 | Bill Printer (이름, 자동인쇄) | Settings > Printer 탭 | **그대로** |
-| Kitchen Printer (이름, 자동인쇄) | Settings > Printer 탭 | **확장** — Station 있으면 Station별 프린터 카드로 전환 |
+| Kitchen Printer (이름, 자동인쇄) | Settings > Printer 탭 | **그대로** — Station 유무 관계없이 동일한 단일 카드 |
 | Kitchen Ticket Options (아이템별 분리) | Settings > Printer 탭 | **그대로** |
 | 주방 등록 + 이름 | Settings > **Kitchen Stations 탭 (신규)** | 신규 |
 | 주방별 메뉴/카테고리 배정 | Settings > **Kitchen Stations 탭 (신규)** | 신규 |
@@ -206,10 +208,10 @@ Station을 모두 지우면 다시 기존 단일 카드로 복원.
   auto_print ON? → RawBT intent 자동 전송
   auto_print OFF? → 수동 프린트 버튼으로만 전송
   ↓
-RawBT intent (800ms 간격):
-  S.s=Kitchen-Grill  → 스테이크 티켓
-  S.s=Kitchen-Cold   → 샐러드 티켓
-  S.s=Kitchen-Noodle → 라멘 티켓
+RawBT intent (기본 프린터로 전송):
+  ⚠️ RawBT는 S.s= 파라미터 미지원 — 항상 앱 기본 프린터로만 출력
+  → 멀티 프린터 사용 시: 각 Station별 별도 디바이스 + Kitchen Display 필터
+  → 각 디바이스의 RawBT 기본 프린터를 해당 Station 프린터로 설정
 ```
 
 ### 오더티켓 레이아웃

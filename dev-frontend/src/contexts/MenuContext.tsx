@@ -26,6 +26,7 @@ export interface MenuItem {
   set_display_order?: number;
   recipe_id?: number | null;
   kitchen_station_id?: number | null;
+  is_featured?: boolean;
 }
 
 export interface MenuOption {

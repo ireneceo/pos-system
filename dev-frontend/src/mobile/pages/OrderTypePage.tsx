@@ -291,7 +291,7 @@ const OrderTypePage: React.FC = () => {
     }
   }, [searchParams, slug]);
 
-  const orderTypes = storeData?.orderTypes || { dineIn: true, takeaway: true, pickup: false, delivery: false };
+  const orderTypes = storeData?.orderTypes || null;
 
   return (
     <Container>
@@ -321,6 +321,9 @@ const OrderTypePage: React.FC = () => {
       )}
 
       <OptionsContainer>
+        {!orderTypes ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF', fontSize: '14px' }}>Loading...</div>
+        ) : <>
         {orderTypes.dineIn && (
           <OptionCard onClick={() => handleOrderTypeSelection('dine-in')}>
             <OptionIcon>🍽️</OptionIcon>
@@ -348,6 +351,7 @@ const OrderTypePage: React.FC = () => {
             <OptionTitle>Delivery</OptionTitle>
           </OptionCard>
         )}
+        </>}
       </OptionsContainer>
 
       <Footer>

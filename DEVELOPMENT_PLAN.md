@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-18
+> **최종 업데이트:** 2026-03-20
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -58,7 +58,124 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
-## ✅ 완료: 구독 플랜 셀프 변경 + 통화 통일 + 컬러 가이드 + Activity History 전역화 (2026-03-18)
+## ✅ 완료: v3.4 — 모바일 인기메뉴 카테고리 설정 + 카테고리 시간 제한 + 시스템 로그 정리 (2026-03-20)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | ServerHealthMonitor 제거 | SSH 인증 실패 반복하던 불필요 기능 삭제 + 운영 DB 로그 1146건 정리 | ✅ |
+| 2 | 인기메뉴 카테고리 제외 | mobile_settings.popular_excluded_category_ids로 제외할 카테고리 선택 | ✅ |
+| 3 | 카테고리 시간 제한 | mobile_settings.category_schedules로 모바일 전용 시간 제한 (자정 넘김 지원) | ✅ |
+| 4 | Settings Mobile Order 탭 UI | Popular Categories 카드 + Category Time Restrictions 카드 추가 | ✅ |
+| 5 | Settings 2열 레이아웃 정리 | gridColumn 전체폭 제거, 빈 공간 없이 2열 배치 | ✅ |
+| 6 | 운영서버 배포 | Smoke 9/10 통과 | ✅ |
+
+### 수정된 파일 (주요)
+**백엔드:**
+- `routes/mobile.js` (popular 카테고리 필터 + menu 시간 필터)
+- `routes/system-logs.js` (server-health 라우트 제거)
+- `server.js` (serverHealthMonitor 제거)
+- `services/serverHealthMonitor.js` (삭제)
+
+**프론트엔드:**
+- `pages/Settings/SettingsPage.tsx` (Popular Categories + Time Restrictions UI + 2열 레이아웃)
+
+---
+
+## ✅ 완료: v3.3 — 주방 알림 소리 + 모바일 추천/인기메뉴 + Settings Mobile Order 탭 (2026-03-20)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Kitchen Station 알림 소리 | Station별 6종 프리셋, Web Audio API 화음 기반 | ✅ |
+| 2 | 소리 반복 재생 | 새 주문 시 5초 간격 반복, 상태 변경 시 자동 멈춤 | ✅ |
+| 3 | Sound 토글 버튼 | Live Orders + Kitchen Display에 종 아이콘 버튼 (sound-on/off.svg) | ✅ |
+| 4 | Live Orders 소리 버그 수정 | setAudioEnabled(false) → stopSound()로 교체, 볼륨 0.3→0.8 | ✅ |
+| 5 | Settings > Mobile Order 탭 | Order Types, Quick Order, Display Options, Delivery Pricing 통합 | ✅ |
+| 6 | 모바일 추천메뉴 (Featured) | Product.is_featured + Menu Management 체크박스 + FEATURED 배지 | ✅ |
+| 7 | 모바일 인기메뉴 (Popular) | 최근 30일 주문 집계 TOP 8 자동 표시 | ✅ |
+| 8 | 모바일 Featured 탭 | 카테고리 탭에 Featured 가상 탭 + Featured/Popular 섹션 | ✅ |
+| 9 | 모바일 이미지 최적화 | 목록 API에서 base64 제외, thumbnail URL만 반환 (11MB→647KB, 94% 감소) | ✅ |
+| 10 | 미분류 아이템 정리 | K-DINE IPC 12건→Uncategorized, with MIN Cafe 2건→Other | ✅ |
+| 11 | Settings 미분류 경고 버그 | category ID string/number 타입 비교 수정 | ✅ |
+| 12 | 모바일 Order Types 깜빡임 수정 | Fallback 기본값 제거, API 로드 완료까지 Loading 표시 | ✅ |
+| 13 | 운영서버 배포 | Smoke 9/10 통과 | ✅ |
+
+### 수정된 파일 (주요)
+**백엔드:**
+- `models/Restaurant.js` (mobile_settings JSON 필드)
+- `models/Product.js` (is_featured BOOLEAN)
+- `models/KitchenStation.js` (alert_sound STRING)
+- `routes/mobile.js` (featured/popular API, parseImageData listOnly 최적화)
+- `routes/store.js` (mobile_settings 저장/조회)
+- `routes/kitchen-stations.js` (alert_sound CRUD)
+
+**프론트엔드:**
+- `utils/notificationSound.ts` (신규: 6종 화음 프리셋 + 반복 재생 매니저)
+- `pages/Settings/SettingsPage.tsx` (Mobile Order 탭 신설, operations에서 이동)
+- `pages/KitchenDisplay/KitchenDisplayPage.tsx` (Station별 소리 + Sound 토글)
+- `pages/LiveOrders/LiveOrdersPage.tsx` (소리 개선 + Sound 토글 아이콘)
+- `pages/MenuManagement/MenuManagementPage.tsx` (Featured 체크박스 + 배지)
+- `mobile/pages/MenuPage.tsx` (Featured 탭 + Featured/Popular 섹션)
+- `mobile/pages/OrderTypePage.tsx` (깜빡임 수정)
+- `contexts/MenuContext.tsx` (MenuItem.is_featured)
+
+---
+
+## ✅ 완료: v3.2.1 — 프린트 안정화 + Kitchen Display Station 필터 + Printer 설정 단순화 (2026-03-19)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | PC 브라우저 인쇄 수정 | printHTMLContent iframe.onload race condition 수정 | ✅ |
+| 2 | RawBT 다중 Station 합쳐서 전송 | 연속 intent 불가 → 전체 합쳐서 1회 전송 | ✅ |
+| 3 | Kitchen Display Order View Station 필터 | Station 선택 시 해당 아이템만 표시 + progress/count 필터 | ✅ |
+| 4 | Kitchen Display Item View Ready 필터 | Ready 컬럼 Station 필터 누락 수정 | ✅ |
+| 5 | 미배정 아이템 처리 | menuStationMap에 없는 아이템 → 모든 Station에 표시 | ✅ |
+| 6 | Settings 미배정 카테고리 경고 | 노란 배너로 미배정 카테고리 표시 | ✅ |
+| 7 | Settings Uncategorized 아이템 경고 | 빨간 배너로 카테고리 없는 아이템 표시 | ✅ |
+| 8 | Printer 탭 단순화 | Station별 프린터 카드 제거, Station 유무 관계없이 동일 UI | ✅ |
+| 9 | Auto-print 로직 단순화 | Station 분기 제거, kitchenPrinter.enabled && autoPrint 통일 | ✅ |
+| 10 | 운영서버 배포 | Smoke 9/10 통과 | ✅ |
+
+### 수정된 파일 (주요)
+**프론트엔드:**
+- `dev-frontend/src/utils/billPrint.js` (printHTMLContent 수정, station 분기 제거)
+- `dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx` (Station 필터 Order View/Item View Ready, auto-print 단순화)
+- `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx` (auto-print station 분기 제거, getStoreInfo 추가)
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` (Station 프린터 카드 제거, 미배정 경고 추가)
+- `dev-frontend/src/components/POSTerminal/OrderCompleteModal.tsx`
+
+---
+
+## ✅ 완료: v3.2.2 — 주방 프린터 자동 프린트 + 모바일 오더 검색 + 프린터 설정 UI 개선 (2026-03-19)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 주방 프린터 Station 라우팅 버그 수정 | Station 프린터 설정 시 kitchenPrinter.enabled 체크로 스킵되던 문제 해결 | ✅ |
+| 2 | RawBT 프린터 선택 불가 확인 | RawBT는 S.s= 파라미터로 프린터 선택 불가 (항상 기본 프린터로만 출력) | ✅ |
+| 3 | Kitchen Display 자동 프린트 | order-created WebSocket 이벤트 수신 시 자동 프린트 (autoPrint 설정 기반) | ✅ |
+| 4 | POS 결제 완료 시 자동 프린트 | Bill + Kitchen Ticket 자동 프린트 (Settings autoPrint 토글 연동) | ✅ |
+| 5 | 프린터 설정 UI 개선 | Printer Address 필드 제거, RawBT 기본 프린터 안내 + 별도 디바이스 가이드 표시 | ✅ |
+| 6 | Kitchen Station 보라색 점 제거 | 불필요한 상태 표시 아이콘 제거 | ✅ |
+| 7 | 모바일 오더 메뉴 검색 | 검색 바 추가, 전체 카테고리 통합 검색, POS 터미널과 동일 스타일 | ✅ |
+| 8 | 모바일 오더 All Items 탭 제거 | 기본값을 첫 번째 카테고리로 변경, 카테고리 전환 즉시 (API 호출 없음) | ✅ |
+| 9 | 모바일 오더 로딩 속도 개선 | 초기 전체 메뉴 1회 로드 → 카테고리/검색 모두 클라이언트 필터링 | ✅ |
+| 10 | 모바일 검색 입력 시 화면 확대 방지 | SearchInput font-size 14px → 16px | ✅ |
+
+### 수정된 파일 (주요)
+**프론트엔드:**
+- `dev-frontend/src/utils/billPrint.js` (Station 프린터 라우팅 수정, getPrinterSettings export, sendToRawBTPrinter 헬퍼)
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` (Printer Address 제거, 안내문 변경, 보라점 제거)
+- `dev-frontend/src/pages/KitchenDisplay/KitchenDisplayPage.tsx` (order-created 자동 프린트)
+- `dev-frontend/src/pages/POSTerminal/POSTerminalPage.tsx` (결제 완료 시 자동 Bill+Kitchen 프린트)
+- `dev-frontend/src/components/POSTerminal/OrderCompleteModal.tsx` (auto-print 로직 POSTerminalPage로 이동)
+- `dev-frontend/src/mobile/pages/MenuPage.tsx` (검색 바 + All Items 제거 + 전체 로드 최적화)
+
+---
+
+## ✅ 완료: v3.2 — 구독 플랜 셀프 변경 + 통화 통일 + 컬러 가이드 + Activity History 전역화 (2026-03-18)
 
 ### 완료된 작업
 | # | 작업 | 설명 | 상태 |
@@ -106,7 +223,7 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
-## ✅ 완료: 이메일 템플릿 + 구독 아키텍처 + 브랜드 통합 + UI 개선 (2026-03-18)
+## ✅ 완료: v3.1 — 이메일 템플릿 + 구독 아키텍처 + 브랜드 통합 + UI 개선 (2026-03-18)
 
 ### 완료된 작업
 | # | 작업 | 설명 | 상태 |

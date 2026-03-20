@@ -116,7 +116,7 @@ router.get('/unassigned', authenticateToken, verifyRestaurantAccess, async (req,
 // Station 생성
 router.post('/', authenticateToken, requireRole('System Admin', 'Restaurant Admin'), verifyRestaurantAccess, async (req, res) => {
   try {
-    const { name, display_order, category_ids, product_ids } = req.body;
+    const { name, display_order, category_ids, product_ids, alert_sound } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Station name is required' });
@@ -142,7 +142,8 @@ router.post('/', authenticateToken, requireRole('System Admin', 'Restaurant Admi
     const station = await KitchenStation.create({
       restaurant_id: req.restaurantId,
       name: name.trim(),
-      display_order: order
+      display_order: order,
+      alert_sound: alert_sound || 'bell'
     });
 
     // Assign categories if provided
@@ -190,7 +191,7 @@ router.put('/:id', authenticateToken, requireRole('System Admin', 'Restaurant Ad
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    const { name, display_order, is_active, category_ids, product_ids } = req.body;
+    const { name, display_order, is_active, category_ids, product_ids, alert_sound } = req.body;
 
     // Check duplicate name if name changed
     if (name && name.trim() !== station.name) {
@@ -211,6 +212,7 @@ router.put('/:id', authenticateToken, requireRole('System Admin', 'Restaurant Ad
     if (name !== undefined) updateData.name = name.trim();
     if (display_order !== undefined) updateData.display_order = display_order;
     if (is_active !== undefined) updateData.is_active = is_active;
+    if (alert_sound !== undefined) updateData.alert_sound = alert_sound;
 
     if (Object.keys(updateData).length > 0) {
       await station.update(updateData);

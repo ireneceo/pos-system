@@ -124,6 +124,11 @@ Product.init({
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: 'Kitchen station assignment (menu item mode or override)'
+  },
+  is_featured: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Featured item for mobile order display'
   }
 }, {
   sequelize: database.sequelize,

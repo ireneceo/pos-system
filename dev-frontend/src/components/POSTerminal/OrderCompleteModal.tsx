@@ -267,6 +267,7 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
 }) => {
   const { getStoreInfo, operationSettings, paymentSettings } = useStore();
   const storeInfo = getStoreInfo();
+  // Auto-print is handled in POSTerminalPage after payment completion
 
   // Format date/time with restaurant timezone
   const formatDateTime = (date?: Date | string) => {

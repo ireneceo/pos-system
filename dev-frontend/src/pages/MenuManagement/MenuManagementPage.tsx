@@ -763,6 +763,7 @@ const MenuManagementPage: React.FC = () => {
     image: '',
     optionGroups: [],
     is_set_menu: false,
+    is_featured: false,
     set_items: [],
     set_display_order: 0,
     recipe_id: null
@@ -1089,6 +1090,7 @@ const MenuManagementPage: React.FC = () => {
       optionGroups: selectedOptionGroups,
       soldOut: false,
       is_set_menu: false,
+      is_featured: formData.is_featured || false,
       set_items: [],
       set_display_order: 0,
       recipe_id: formData.recipe_id || null
@@ -1236,6 +1238,7 @@ const MenuManagementPage: React.FC = () => {
               <MenuCard key={item.id} soldOut={item.soldOut} inactive={item.is_active === false}>
                 <MenuImage>
                   {item.is_set_menu && <SetBadge>SET</SetBadge>}
+                  {item.is_featured && <SetBadge style={{ background: '#635BFF', left: item.is_set_menu ? '52px' : '8px' }}>FEATURED</SetBadge>}
                   {item.image && item.image.trim() !== '' ? (
                     <img
                       src={item.image}
@@ -1441,6 +1444,15 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={formData.is_featured || false}
+                onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>Featured Item</span>
+              <span style={{ fontSize: '12px', color: '#6B7C93' }}>Show in mobile Featured tab</span>
+            </label>
+          </UIFormGroup>
+
+          <UIFormGroup>
             <FormLabel>Emoji Icon</FormLabel>
             <EmojiPicker>
               {emojiOptions['other'].map((emoji: string) => (
@@ -1602,6 +1614,15 @@ const MenuManagementPage: React.FC = () => {
                 </option>
               ))}
             </FormSelect>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={formData.is_featured || false}
+                onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>Featured Item</span>
+              <span style={{ fontSize: '12px', color: '#6B7C93' }}>Show in mobile Featured tab</span>
+            </label>
           </UIFormGroup>
 
           <UIFormGroup>
@@ -1774,6 +1795,15 @@ const MenuManagementPage: React.FC = () => {
                 </option>
               ))}
             </FormSelect>
+          </UIFormGroup>
+
+          <UIFormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={formData.is_featured || false}
+                onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>Featured Item</span>
+              <span style={{ fontSize: '12px', color: '#6B7C93' }}>Show in mobile Featured tab</span>
+            </label>
           </UIFormGroup>
 
           <UIFormGroup>

@@ -489,6 +489,8 @@ const NoticesPage: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
   const [sending, setSending] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', content: '', priority: 'normal' as 'normal' | 'important' | 'urgent' });
 
   // New notice form states
   const [newNotice, setNewNotice] = useState({
@@ -1037,10 +1039,74 @@ const NoticesPage: React.FC = () => {
 
       {/* ====================================================================== */}
       {/* View Notice Modal */}
-      {/* ====================================================================== */}
       {showViewModal && selectedNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title="Notice Details" size="large" footer={<><DeleteButton onClick={() => handleDeleteNotice(selectedNotice.id)}>Delete Notice</DeleteButton><Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>Close</Button></>}>
-              {/* Notice Info */}
+        <CommonModal
+          isOpen={true}
+          onClose={() => { setShowViewModal(false); setSelectedNotice(null); setIsEditing(false); }}
+          title={isEditing ? 'Edit Notice' : 'Notice Details'}
+          size="large"
+          footer={
+            isEditing ? (
+              <>
+                <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
+                <Button variant="primary" onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/notices/${selectedNotice.id}`, {
+                      method: 'PUT',
+                      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                      body: JSON.stringify(editForm)
+                    });
+                    if ((await res.json()).success) {
+                      setIsEditing(false);
+                      setSelectedNotice({ ...selectedNotice, ...editForm });
+                      fetchNotices();
+                    }
+                  } catch (e) { console.error(e); }
+                }}>Save</Button>
+              </>
+            ) : (
+              <>
+                {String(selectedNotice.author_id) === String(user?.id) && (
+                  <Button variant="primary" onClick={() => {
+                    setEditForm({ title: selectedNotice.title, content: selectedNotice.content, priority: selectedNotice.priority });
+                    setIsEditing(true);
+                  }}>Edit</Button>
+                )}
+                <DeleteButton onClick={() => handleDeleteNotice(selectedNotice.id)}>Delete Notice</DeleteButton>
+                <Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>Close</Button>
+              </>
+            )
+          }
+        >
+          {isEditing ? (
+            <ViewSection>
+              <FormGroup>
+                <FormLabel>Title</FormLabel>
+                <FormInput value={editForm.title} onChange={(e: any) => setEditForm({ ...editForm, title: e.target.value })} />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel>Content</FormLabel>
+                <textarea
+                  value={editForm.content}
+                  onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                  style={{ width: '100%', minHeight: '200px', padding: '12px', borderRadius: '8px', border: '1px solid #E6EBF1', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
+                />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel>Priority</FormLabel>
+                <select
+                  value={editForm.priority}
+                  onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E6EBF1', fontSize: '14px' }}
+                >
+                  <option value="normal">Normal</option>
+                  <option value="important">Important</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </FormGroup>
+            </ViewSection>
+          ) : (
+            <>
               <ViewSection>
                 <ViewNoticeTitle>{selectedNotice.title}</ViewNoticeTitle>
                 <ViewNoticeMeta>
@@ -1060,7 +1126,6 @@ const NoticesPage: React.FC = () => {
                 )}
               </ViewSection>
 
-              {/* Recipients */}
               <ViewSection>
                 <ViewSectionTitle>
                   Recipients ({getRecipientCount(selectedNotice)})
@@ -1086,13 +1151,14 @@ const NoticesPage: React.FC = () => {
                 )}
               </ViewSection>
 
-              {/* Comments Section */}
               <CommentSection
                 entityType="notice"
                 entityId={String(selectedNotice.id)}
                 currentUserId={user?.id}
                 onMarkRead={() => setUnreadCounts(prev => { const next = { ...prev }; const key = String(selectedNotice.id); if (next[key]) next[key] = { ...next[key], unread_count: 0 }; return next; })}
               />
+            </>
+          )}
         </CommonModal>
       )}
     </Container>

@@ -13,6 +13,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { useMenu } from '../../contexts/MenuContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useStaff } from '../../contexts/StaffContext';
+import { printBillViaRawBT, printKitchenTicketViaRawBT, getPrinterSettings } from '../../utils/billPrint';
 import { useAuth } from '../../contexts/AuthContext';
 import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
@@ -1104,7 +1105,7 @@ const POSTerminalPage: React.FC = () => {
   const { user, switchUser, logout: authLogout } = useAuth();
   const restaurantId = useRestaurantId();
   const { addOrder } = useOrders();
-  const { getTakeawayCharge, operationSettings } = useStore();
+  const { getTakeawayCharge, operationSettings, getStoreInfo } = useStore();
   const { categories: allCategories, menuItems, getItemsByCategory, loadMenuByCategory, isLoadingMenu } = useMenu();
 
   // POS Terminal shows only active categories (customer-facing view)
@@ -2018,6 +2019,32 @@ const POSTerminalPage: React.FC = () => {
       });
       setShowOrderCompleteModal(true);
       setShowPaymentModal(false);
+
+      // Auto-print bill + kitchen ticket
+      const printSettings = getPrinterSettings();
+      const printStoreInfo = getStoreInfo();
+      const printData = {
+        ...orderData,
+        orderNumber: savedOrder?.order_number || savedOrder?.orderNumber || '',
+        pickupNumber: savedOrder?.pickup_number || savedOrder?.pickupNumber || (savedOrder?.order_number ? savedOrder.order_number.split('-')[1] : null),
+        tableNumber: savedOrder?.table_number || tableNumber || undefined,
+        pagerNumber: savedOrder?.pager_number || pagerNumber || undefined,
+        total: savedOrder?.total || orderData.total,
+        cashierName: user?.name || null
+      };
+
+      if (printSettings.billPrinter?.enabled && printSettings.billPrinter?.autoPrint) {
+        setTimeout(() => {
+          printBillViaRawBT(printData, printStoreInfo).catch(e => console.error('Auto bill print failed:', e));
+        }, 300);
+      }
+
+      const kitchenAuto = printSettings.kitchenPrinter?.enabled && printSettings.kitchenPrinter?.autoPrint;
+      if (kitchenAuto) {
+        setTimeout(() => {
+          printKitchenTicketViaRawBT(printData, printStoreInfo).catch(e => console.error('Auto kitchen print failed:', e));
+        }, 800);
+      }
 
       // Clear the order
       setOrderItems([]);

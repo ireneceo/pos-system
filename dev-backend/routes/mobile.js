@@ -11,25 +11,28 @@ const { sequelize } = require('../config/database');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 
 // Helper function to parse image data (supports URL format, old JSON format, and legacy base64)
-function parseImageData(imageStr, imageThumbnail = null) {
+// listOnly=true: returns only thumbnail URL for list views (excludes base64 to reduce payload)
+function parseImageData(imageStr, imageThumbnail = null, listOnly = false) {
   if (!imageStr) return null;
 
   // New URL format (starts with /uploads/)
   if (imageStr.startsWith('/uploads/')) {
     const thumbnail = imageThumbnail || imageStr.replace('/products/', '/products/thumbnails/');
-    return { thumbnail, medium: imageStr, original: imageStr };
+    return listOnly ? { thumbnail } : { thumbnail, medium: imageStr, original: imageStr };
   }
 
   // Old JSON format with multiple sizes
   if (imageStr.startsWith('{')) {
     try {
-      return JSON.parse(imageStr);
+      const parsed = JSON.parse(imageStr);
+      return listOnly ? { thumbnail: parsed.thumbnail } : parsed;
     } catch {
-      return { thumbnail: imageStr, medium: imageStr, original: imageStr };
+      return listOnly ? null : { thumbnail: imageStr, medium: imageStr, original: imageStr };
     }
   }
 
-  // Legacy base64 or other format
+  // Legacy base64 — exclude from list views (too large)
+  if (listOnly) return null;
   return { thumbnail: imageStr, medium: imageStr, original: imageStr };
 }
 
@@ -240,15 +243,44 @@ router.get('/menu/:slug', async (req, res) => {
       order: [['displayOrder', 'ASC'], ['name', 'ASC']]
     });
 
+    // Filter categories by time schedule (mobile_settings.category_schedules)
+    const mobileCfg = restaurant.mobile_settings || {};
+    const schedules = mobileCfg.category_schedules || [];
+    const hiddenCategoryIds = new Set();
+    if (schedules.length > 0) {
+      const now = new Date();
+      const tz = restaurant.operation_settings?.timeZone || 'Asia/Kuala_Lumpur';
+      const localTime = now.toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+      for (const sched of schedules) {
+        const catId = sched.category_id?.toString();
+        if (!catId || !sched.start_time || !sched.end_time) continue;
+        const { start_time, end_time } = sched;
+        let isInRange;
+        if (start_time <= end_time) {
+          isInRange = localTime >= start_time && localTime < end_time;
+        } else {
+          isInRange = localTime >= start_time || localTime < end_time;
+        }
+        if (!isInRange) hiddenCategoryIds.add(catId);
+      }
+    }
+
+    const visibleCategories = dbCategories.filter(cat => !hiddenCategoryIds.has(cat.id.toString()));
+
     // Build product query with pagination
     const productWhere = {
       restaurant_id: restaurantId,
-      soldOut: false  // Only show available items
+      soldOut: false
     };
 
     // Filter by category if specified
     if (categoryId) {
       productWhere.category = categoryId;
+    }
+
+    // Exclude hidden categories from product results
+    if (hiddenCategoryIds.size > 0 && !categoryId) {
+      productWhere.category = { [Op.notIn]: Array.from(hiddenCategoryIds) };
     }
 
     // Get total count for pagination
@@ -276,13 +308,13 @@ router.get('/menu/:slug', async (req, res) => {
     });
 
     // Create categories array for mobile app
-    const categories = dbCategories.map(cat => ({
+    const categories = visibleCategories.map(cat => ({
       id: cat.id.toString(),
       name: cat.name,
       emoji: cat.emoji || getProductEmoji(cat.name)  // Use DB emoji first, fallback to generated
     }));
 
-    // Create category map for quick lookup
+    // Create category map for quick lookup (use all categories for item mapping)
     const categoryMap = {};
     dbCategories.forEach(cat => {
       categoryMap[cat.id] = cat.name;
@@ -354,8 +386,8 @@ router.get('/menu/:slug', async (req, res) => {
         }
       }
 
-      // Parse image data for multiple sizes (thumbnail for list, medium for detail)
-      const imageData = parseImageData(product.image, product.image_thumbnail);
+      // Parse image — list view: thumbnail URL only, skip base64
+      const imageData = parseImageData(product.image, product.image_thumbnail, true);
 
       return {
         id: product.id.toString(),
@@ -364,10 +396,8 @@ router.get('/menu/:slug', async (req, res) => {
         name: product.name,
         price: parseFloat(product.price),
         description: product.description || '',
-        emoji: product.emoji || getProductEmoji(categoryName),  // Use DB emoji first, fallback to generated
-        image: imageData?.thumbnail || undefined,  // Use thumbnail for list view (faster loading)
-        imageMedium: imageData?.medium || undefined,  // Medium size for detail view
-        imageOriginal: imageData?.original || undefined,  // Original for full view
+        emoji: product.emoji || getProductEmoji(categoryName),
+        image: imageData?.thumbnail || undefined,
         isAvailable: !product.soldOut,  // Available if not sold out
         preparationTime: product.preparation_time || 15,
         calories: product.calories || 0,
@@ -375,7 +405,8 @@ router.get('/menu/:slug', async (req, res) => {
         optionGroups: productOptionGroups,
         is_set_menu: product.is_set_menu || false,
         set_items: product.set_items || undefined,
-        set_display_order: product.set_display_order || 0
+        set_display_order: product.set_display_order || 0,
+        is_featured: product.is_featured || false
       };
     });
 
@@ -383,9 +414,12 @@ router.get('/menu/:slug', async (req, res) => {
     const totalPages = Math.ceil(totalCount / parseInt(limit));
     const hasMore = parseInt(page) < totalPages;
 
+    // Mobile display settings
+    const mobileSettings = restaurant.mobile_settings || { show_featured: true, show_popular: true };
+
     res.json({
       success: true,
-      data: { categories, items },
+      data: { categories, items, mobile_settings: mobileSettings },
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -1077,6 +1111,125 @@ router.post('/auth/guest', async (req, res) => {
       }
     });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/mobile/featured/:slug — Featured menu items
+router.get('/featured/:slug', async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findOne({ where: { slug: req.params.slug } });
+    if (!restaurant) return res.status(404).json({ success: false, error: 'Restaurant not found' });
+
+    const products = await Product.findAll({
+      where: { restaurant_id: restaurant.id, is_featured: true, soldOut: false },
+      order: [['id', 'ASC']]
+    });
+
+    const items = products.map(p => {
+      const imageData = parseImageData(p.image, p.image_thumbnail, true);
+      return {
+        id: p.id.toString(),
+        name: p.name,
+        price: parseFloat(p.price),
+        emoji: p.emoji || '🍽️',
+        image: imageData?.thumbnail || undefined,
+        is_set_menu: p.is_set_menu || false,
+        set_items: p.set_items || undefined,
+        code: p.code || undefined
+      };
+    });
+
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error('Error fetching featured items:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/mobile/popular/:slug — Popular menu items (last 30 days)
+router.get('/popular/:slug', async (req, res) => {
+  try {
+    const restaurant = await Restaurant.findOne({ where: { slug: req.params.slug } });
+    if (!restaurant) return res.status(404).json({ success: false, error: 'Restaurant not found' });
+
+    // Get orders from last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const orders = await Order.findAll({
+      where: {
+        restaurant_id: restaurant.id,
+        status: { [Op.notIn]: ['cancelled'] },
+        createdAt: { [Op.gte]: thirtyDaysAgo }
+      },
+      attributes: ['order_items'],
+      raw: true
+    });
+
+    // Count item frequency
+    const itemCounts = {};
+    orders.forEach(order => {
+      let items = order.order_items;
+      if (typeof items === 'string') {
+        try { items = JSON.parse(items); } catch { items = []; }
+      }
+      if (!Array.isArray(items)) return;
+      items.forEach(item => {
+        const productId = item.product_id || item.productId || item.menuItem?.id;
+        if (!productId) return;
+        const parsed = parseInt(productId);
+        if (isNaN(parsed)) return;
+        const key = parsed.toString();
+        itemCounts[key] = (itemCounts[key] || 0) + (item.quantity || 1);
+      });
+    });
+
+    // Sort by count, take top 8
+    const topIds = Object.entries(itemCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([id]) => parseInt(id));
+
+    if (topIds.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Fetch product details
+    const productWhere = { id: topIds, soldOut: false };
+
+    // Exclude categories from popular (mobile_settings.popular_excluded_category_ids)
+    const mobileSettings = restaurant.mobile_settings || {};
+    const excludedIds = mobileSettings.popular_excluded_category_ids || [];
+    if (excludedIds.length > 0) {
+      const excludedStrIds = excludedIds.map(id => id.toString());
+      productWhere.category = { [Op.notIn]: excludedStrIds };
+    }
+
+    const products = await Product.findAll({ where: productWhere });
+
+    const items = topIds
+      .map(id => {
+        const p = products.find(prod => prod.id === id);
+        if (!p) return null;
+        const imageData = parseImageData(p.image, p.image_thumbnail, true);
+        return {
+          id: p.id.toString(),
+          name: p.name,
+          price: parseFloat(p.price),
+          emoji: p.emoji || '🍽️',
+          image: imageData?.thumbnail || undefined,
+          is_set_menu: p.is_set_menu || false,
+          set_items: p.set_items || undefined,
+          code: p.code || undefined,
+          orderCount: itemCounts[id.toString()] || 0
+        };
+      })
+      .filter(Boolean);
+
+    res.json({ success: true, data: items });
+  } catch (error) {
+    console.error('Error fetching popular items:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

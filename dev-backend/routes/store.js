@@ -81,6 +81,8 @@ router.get('/settings', authenticateToken, async (req, res) => {
         cash_rounding: restaurant.cash_rounding,
         rounding_apply_to: restaurant.rounding_apply_to,
         printer_settings: restaurant.printer_settings || null,
+        mobile_settings: restaurant.mobile_settings || { show_featured: true, show_popular: true },
+        table_settings: restaurant.table_settings || {},
         plan_type: restaurant.plan_type,
         status: restaurant.status
       }
@@ -166,7 +168,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
       'name', 'email', 'phone', 'address', 'city', 'state',
       'postal_code', 'country', 'website', 'logo_url',
       'business_registration', 'tax_id',
-      'payment_settings', 'operation_settings', 'table_settings',
+      'payment_settings', 'operation_settings', 'table_settings', 'mobile_settings',
       'currency', 'cash_rounding', 'rounding_apply_to'
     ];
 
@@ -177,7 +179,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
           ? `[JSON ${typeof req.body[field]}]`
           : req.body[field]);
 
-        if (field === 'payment_settings' || field === 'operation_settings' || field === 'table_settings') {
+        if (field === 'payment_settings' || field === 'operation_settings' || field === 'table_settings' || field === 'mobile_settings') {
           // Migrate legacy payment method keys on save
           if (field === 'payment_settings' && req.body[field]) {
             const ps = req.body[field];

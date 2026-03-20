@@ -137,31 +137,26 @@ const Container = styled.div`
 
 
 const AudioToggleButton = styled.button<{ enabled: boolean }>`
-  width: 44px;
-  height: 44px;
-  background: transparent;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   border: none;
   cursor: pointer;
   transition: all 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  color: #635BFF;
+  padding: 0;
+  background: ${props => props.enabled ? '#635BFF' : '#E6EBF1'};
 
-  svg {
-    width: 24px;
-    height: 24px;
-    fill: currentColor;
+  img {
+    width: 22px;
+    height: 22px;
+    filter: ${props => props.enabled ? 'brightness(0) invert(1)' : 'brightness(0) opacity(0.4)'};
   }
 
   &:hover {
-    color: #5A54E5;
-    transform: scale(1.1);
-  }
-
-  &:active {
-    transform: scale(1);
+    opacity: 0.85;
   }
 `;
 
@@ -1060,52 +1055,26 @@ const LiveOrdersPage: React.FC = () => {
     }, 4000);
   }, []);
 
-  // Audio notification for new orders
+  // Audio notification for new orders (repeats until status change)
   const playNotificationSound = useCallback(() => {
     if (!audioEnabled) return;
+    import('../../utils/notificationSound').then(({ startRepeatingSound }) => {
+      startRepeatingSound('bell', 5000);
+    });
+  }, [audioEnabled]);
 
-    try {
-      // Create a simple notification sound using Web Audio API
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+  const stopSound = useCallback(() => {
+    import('../../utils/notificationSound').then(({ stopRepeatingSound }) => {
+      stopRepeatingSound();
+    });
+  }, []);
 
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      // Configure sound (pleasant notification tone)
-      oscillator.frequency.value = 800; // Hz
-      oscillator.type = 'sine';
-
-      // Volume envelope
-      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-      // Play sound
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
-
-      // Play a second tone for double beep
-      setTimeout(() => {
-        const oscillator2 = audioContext.createOscillator();
-        const gainNode2 = audioContext.createGain();
-
-        oscillator2.connect(gainNode2);
-        gainNode2.connect(audioContext.destination);
-
-        oscillator2.frequency.value = 1000;
-        oscillator2.type = 'sine';
-
-        gainNode2.gain.setValueAtTime(0, audioContext.currentTime);
-        gainNode2.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
-        gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-
-        oscillator2.start(audioContext.currentTime);
-        oscillator2.stop(audioContext.currentTime + 0.5);
-      }, 200);
-    } catch (error) {
-      console.error('Failed to play notification sound:', error);
+  // Stop sound when audio toggled off
+  useEffect(() => {
+    if (!audioEnabled) {
+      import('../../utils/notificationSound').then(({ stopRepeatingSound }) => {
+        stopRepeatingSound();
+      });
     }
   }, [audioEnabled]);
 
@@ -1586,8 +1555,8 @@ const LiveOrdersPage: React.FC = () => {
   };
 
   const handleStatusChange = async (orderId: number, newStatus: DbOrder['status'], setKitchenReady: boolean = false) => {
-    // Stop notification sound when status changes
-    setAudioEnabled(false);
+    // Stop repeating notification sound when status changes
+    stopSound();
 
     // Get current timestamp for served_at
     const now = new Date().toISOString();
@@ -2355,8 +2324,8 @@ const LiveOrdersPage: React.FC = () => {
       return;
     }
 
-    // Stop notification sound when payment confirmed
-    setAudioEnabled(false);
+    // Stop repeating notification sound when payment confirmed
+    stopSound();
 
     try {
       // 결제 완료 처리
@@ -2524,8 +2493,8 @@ const LiveOrdersPage: React.FC = () => {
   const handlePaymentConfirm = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string) => {
     if (!orderForPayment) return;
 
-    // Stop notification sound when payment confirmed
-    setAudioEnabled(false);
+    // Stop repeating notification sound when payment confirmed
+    stopSound();
 
     try {
       // Build update payload
@@ -2698,18 +2667,12 @@ const LiveOrdersPage: React.FC = () => {
           <AudioToggleButton
             enabled={audioEnabled}
             onClick={() => setAudioEnabled(!audioEnabled)}
-            title={audioEnabled ? 'Stop notification sound' : 'Play notification sound'}
+            title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
           >
-            {audioEnabled ? (
-              <svg viewBox="0 0 24 24">
-                <rect x="6" y="4" width="4" height="16" rx="1" />
-                <rect x="14" y="4" width="4" height="16" rx="1" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
+            <img
+              src={audioEnabled ? '/sound-on.svg' : '/sound-off.svg'}
+              alt={audioEnabled ? 'Sound ON' : 'Sound OFF'}
+            />
           </AudioToggleButton>
         </PageHeader>
 

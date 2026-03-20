@@ -20,7 +20,9 @@ interface MenuItem {
   emoji?: string;
   image?: string;
   is_set_menu?: boolean;
+  is_featured?: boolean;
   set_items?: Array<{ name: string; quantity: number }>;
+  orderCount?: number;
 }
 
 interface PaginationInfo {
@@ -50,6 +52,65 @@ const StoreStatus = styled.div<{ isOpen: boolean }>`
   font-size: 14px;
   color: ${props => props.isOpen ? '#10B981' : '#EF4444'};
   font-weight: 500;
+`;
+
+const SearchSection = styled.div`
+  padding: 0 0 12px 0;
+`;
+
+const SearchInputContainer = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 10px 16px 10px 40px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.15s;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &::placeholder {
+    color: #8898AA;
+  }
+`;
+
+const SearchIcon = styled.div`
+  position: absolute;
+  left: 12px;
+  color: #8898AA;
+  font-size: 16px;
+  pointer-events: none;
+`;
+
+const ClearSearchBtn = styled.button`
+  position: absolute;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #F6F9FC;
+  border-radius: 50%;
+  color: #6B7C93;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #E6EBF1;
+  }
 `;
 
 const CategoryTabs = styled.div`
@@ -288,9 +349,19 @@ const MenuPage: React.FC = () => {
 
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([]); // 검색용 전체 메뉴
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [previousCategory, setPreviousCategory] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Featured & Popular
+  const [mobileSettings, setMobileSettings] = useState<{ show_featured: boolean; show_popular: boolean }>({ show_featured: true, show_popular: true });
+  const [featuredItems, setFeaturedItems] = useState<MenuItem[]>([]);
+  const [popularItems, setPopularItems] = useState<(MenuItem & { orderCount?: number })[]>([]);
+  const [showFeaturedTab, setShowFeaturedTab] = useState(false);
 
   const loadTriggerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -327,7 +398,7 @@ const MenuPage: React.FC = () => {
 
       // Load menu items with pagination
       let url = `/api/mobile/menu/${slug}?page=${page}&limit=${ITEMS_PER_PAGE}`;
-      if (categoryId && categoryId !== 'all') {
+      if (categoryId) {
         url += `&categoryId=${categoryId}`;
       }
 
@@ -337,7 +408,8 @@ const MenuPage: React.FC = () => {
         if (result.success && result.data) {
           // Set categories (only on first page)
           if (page === 1) {
-            setCategories(result.data.categories || []);
+            const cats = result.data.categories || [];
+            setCategories(cats);
           }
 
           // Transform items
@@ -360,6 +432,11 @@ const MenuPage: React.FC = () => {
             setMenuItems(items);
           }
 
+          // 검색용 전체 메뉴 캐시 (categoryId 없이 로드한 경우)
+          if (!categoryId && page === 1) {
+            setAllMenuItems(items);
+          }
+
           // Set pagination info
           if (result.pagination) {
             setPagination(result.pagination);
@@ -375,26 +452,189 @@ const MenuPage: React.FC = () => {
     }
   }, [slug, setCurrentStore, setError, setIsLoading]);
 
-  // Initial load
+  // 아이템 변환 헬퍼
+  const transformItems = useCallback((items: any[]): MenuItem[] => {
+    return items.map((item: any) => ({
+      id: item.id.toString(), code: item.code, name: item.name,
+      price: parseFloat(item.price), categoryId: item.categoryId?.toString() || '',
+      emoji: item.emoji || '🍽️', image: item.image,
+      is_set_menu: item.is_set_menu || false, set_items: item.set_items
+    }));
+  }, []);
+
+  // Initial load — 첫 카테고리만 빠르게 표시 + 전체 메뉴 백그라운드 로드
   useEffect(() => {
-    loadMenu();
+    const init = async () => {
+      if (!slug) return;
+      setIsLoading(true);
+      try {
+        // 레스토랑 정보 + 카테고리 목록 (첫 카테고리 아이템 포함)
+        const [storeRes, menuRes] = await Promise.all([
+          fetch(`/api/restaurants/slug/${slug}`),
+          fetch(`/api/mobile/menu/${slug}?page=1&limit=${ITEMS_PER_PAGE}`)
+        ]);
+
+        if (storeRes.ok) {
+          const r = await storeRes.json();
+          if (r.success && r.data) {
+            setCurrentStore({
+              id: r.data.id.toString(), name: r.data.name, slug: r.data.slug,
+              description: r.data.description || '', logo: r.data.logo_url || '',
+              isOpen: r.data.status === 'active', openingHours: r.data.opening_hours || {}
+            });
+          }
+        }
+
+        let firstCatId = '';
+        if (menuRes.ok) {
+          const r = await menuRes.json();
+          if (r.success && r.data) {
+            const cats = r.data.categories || [];
+            setCategories(cats);
+
+            if (cats.length > 0) {
+              firstCatId = cats[0].id.toString();
+              setSelectedCategory(cats[0].id);
+              // 첫 카테고리 아이템만 먼저 표시
+              const firstCatRes = await fetch(`/api/mobile/menu/${slug}?page=1&limit=${ITEMS_PER_PAGE}&categoryId=${firstCatId}`);
+              if (firstCatRes.ok) {
+                const cr = await firstCatRes.json();
+                if (cr.success && cr.data) {
+                  setMenuItems(transformItems(cr.data.items || []));
+                }
+              }
+            }
+          }
+        }
+
+        setIsLoading(false);
+
+        // 백그라운드에서 전체 메뉴 로드 (검색용) + Featured/Popular
+        const [allRes, featRes, popRes] = await Promise.all([
+          fetch(`/api/mobile/menu/${slug}?page=1&limit=500`),
+          fetch(`/api/mobile/featured/${slug}`),
+          fetch(`/api/mobile/popular/${slug}`)
+        ]);
+
+        if (allRes.ok) {
+          const r = await allRes.json();
+          if (r.success && r.data) {
+            setAllMenuItems(transformItems(r.data.items || []));
+            // mobile_settings from menu API
+            if (r.data.mobile_settings) {
+              setMobileSettings(r.data.mobile_settings);
+            }
+          }
+        }
+
+        // Featured items
+        if (featRes.ok) {
+          const fr = await featRes.json();
+          if (fr.success && fr.data) {
+            setFeaturedItems(transformItems(fr.data));
+          }
+        }
+
+        // Popular items
+        if (popRes.ok) {
+          const pr = await popRes.json();
+          if (pr.success && pr.data) {
+            setPopularItems(pr.data.map((item: any) => ({
+              ...transformItems([item])[0],
+              orderCount: item.orderCount
+            })));
+          }
+        }
+      } catch (e) {
+        setError('Failed to load menu');
+        setIsLoading(false);
+      }
+    };
+    init();
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Determine if Featured tab should show
+  useEffect(() => {
+    const hasFeatured = mobileSettings.show_featured && featuredItems.length > 0;
+    const hasPopular = mobileSettings.show_popular && popularItems.length > 0;
+    const shouldShow = hasFeatured || hasPopular;
+    setShowFeaturedTab(shouldShow);
+
+    // If Featured tab should show and no category selected yet, select it
+    if (shouldShow && !selectedCategory && !isSearchMode) {
+      setSelectedCategory('__featured__');
+    }
+  }, [mobileSettings, featuredItems, popularItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle category change
   const handleCategoryChange = useCallback((categoryId: string) => {
+    if (isSearchMode) {
+      setIsSearchMode(false);
+      setSearchQuery('');
+    }
     setSelectedCategory(categoryId);
-    setMenuItems([]);
     setPagination(null);
-    loadMenu(categoryId === 'all' ? undefined : categoryId, 1, false);
-  }, [loadMenu]);
+    const catId = categoryId.toString();
+    // allMenuItems 로드 완료 시 즉시 필터링, 아니면 API 호출
+    if (allMenuItems.length > 0) {
+      setMenuItems(allMenuItems.filter(item => item.categoryId === catId));
+    } else {
+      loadMenu(categoryId, 1, false);
+    }
+  }, [isSearchMode, allMenuItems, loadMenu]);
 
-  // Load more items (infinite scroll)
+  // 검색어 입력 처리
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+
+    if (query.trim()) {
+      if (!isSearchMode) {
+        setPreviousCategory(selectedCategory);
+        setIsSearchMode(true);
+        setSelectedCategory('');
+      }
+    } else {
+      if (isSearchMode) {
+        setIsSearchMode(false);
+        const restoreCategory = previousCategory || categories[0]?.id || '';
+        setSelectedCategory(restoreCategory);
+        setPreviousCategory('');
+        const catId = restoreCategory.toString();
+        setMenuItems(allMenuItems.filter(item => item.categoryId === catId));
+      }
+    }
+  }, [isSearchMode, selectedCategory, previousCategory, categories, allMenuItems]);
+
+  // 검색 클리어
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    if (isSearchMode) {
+      setIsSearchMode(false);
+      const restoreCategory = previousCategory || categories[0]?.id || '';
+      setSelectedCategory(restoreCategory);
+      setPreviousCategory('');
+      const catId = restoreCategory.toString();
+      setMenuItems(allMenuItems.filter(item => item.categoryId === catId));
+    }
+  }, [isSearchMode, previousCategory, categories, allMenuItems]);
+
+  // 검색 모드일 때 전체 메뉴에서 필터링
+  const displayItems = isSearchMode
+    ? allMenuItems.filter(item => {
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) return true;
+        return item.name.toLowerCase().includes(query) ||
+          (item.code && item.code.toLowerCase().includes(query));
+      })
+    : menuItems;
+
+  // Load more items (infinite scroll) — 검색 모드에서는 비활성화
   const loadMoreItems = useCallback(() => {
-    if (!pagination?.hasMore || isLoadingMore) return;
+    if (!pagination?.hasMore || isLoadingMore || isSearchMode) return;
 
     const nextPage = pagination.page + 1;
-    loadMenu(selectedCategory === 'all' ? undefined : selectedCategory, nextPage, true);
-  }, [pagination, isLoadingMore, selectedCategory, loadMenu]);
+    loadMenu(selectedCategory || undefined, nextPage, true);
+  }, [pagination, isLoadingMore, isSearchMode, selectedCategory, loadMenu]);
 
   // Set up Intersection Observer for infinite scroll
   useEffect(() => {
@@ -479,17 +719,37 @@ const MenuPage: React.FC = () => {
         </StoreHeader>
       )}
 
+      <SearchSection>
+        <SearchInputContainer>
+          <SearchIcon>🔍</SearchIcon>
+          <SearchInput
+            type="text"
+            placeholder="Search menu items..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+          {searchQuery && (
+            <ClearSearchBtn onClick={handleClearSearch} title="Clear search">
+              ×
+            </ClearSearchBtn>
+          )}
+        </SearchInputContainer>
+      </SearchSection>
+
       <CategoryTabs>
-        <CategoryTab
-          active={selectedCategory === 'all'}
-          onClick={() => handleCategoryChange('all')}
-        >
-          All Items
-        </CategoryTab>
+        {showFeaturedTab && (
+          <CategoryTab
+            active={selectedCategory === '__featured__' && !isSearchMode}
+            onClick={() => { setSelectedCategory('__featured__'); if (isSearchMode) { setIsSearchMode(false); setSearchQuery(''); } }}
+            style={selectedCategory === '__featured__' && !isSearchMode ? { color: '#635BFF', borderBottomColor: '#635BFF' } : {}}
+          >
+            Featured
+          </CategoryTab>
+        )}
         {categories.map(category => (
           <CategoryTab
             key={category.id}
-            active={selectedCategory === category.id}
+            active={selectedCategory === category.id && !isSearchMode}
             onClick={() => handleCategoryChange(category.id)}
           >
             {category.emoji} {category.name}
@@ -497,10 +757,53 @@ const MenuPage: React.FC = () => {
         ))}
       </CategoryTabs>
 
-      {menuItems.length > 0 ? (
+      {/* Featured Tab Content */}
+      {selectedCategory === '__featured__' && !isSearchMode ? (
+        <div>
+          {mobileSettings.show_featured && featuredItems.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Featured</div>
+              <MenuGrid>
+                {featuredItems.map(renderMenuItemCard)}
+              </MenuGrid>
+            </div>
+          )}
+          {mobileSettings.show_popular && popularItems.length > 0 && (
+            <div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Popular</div>
+              <MenuGrid>
+                {popularItems.map(item => (
+                  <MenuItemCard key={item.id} onClick={() => handleItemClick(item)}>
+                    {item.is_set_menu && <SetBadge>SET</SetBadge>}
+                    <ItemImage hasImage={!!item.image}>
+                      {item.image ? (
+                        <LazyImage src={item.image} alt={item.name} fallback={item.emoji || '🍽️'} />
+                      ) : (
+                        <span>{item.emoji || '🍽️'}</span>
+                      )}
+                    </ItemImage>
+                    <ItemInfo>
+                      <ItemName>{item.code ? `${item.code} ` : ''}{item.name}</ItemName>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <ItemPrice>{formatCurrency(item.price, currency)}</ItemPrice>
+                        {item.orderCount && (
+                          <span style={{ fontSize: '11px', color: '#6B7280' }}>{item.orderCount} sold</span>
+                        )}
+                      </div>
+                    </ItemInfo>
+                  </MenuItemCard>
+                ))}
+              </MenuGrid>
+            </div>
+          )}
+          {featuredItems.length === 0 && popularItems.length === 0 && (
+            <EmptyState><p>No featured or popular items available</p></EmptyState>
+          )}
+        </div>
+      ) : displayItems.length > 0 ? (
         <>
           <MenuGrid>
-            {menuItems.map(renderMenuItemCard)}
+            {displayItems.map(renderMenuItemCard)}
           </MenuGrid>
 
           {/* Infinite scroll trigger */}
@@ -516,7 +819,7 @@ const MenuPage: React.FC = () => {
             <path d="M12 2L2 7V12C2 16.5 4.23 20.68 7.62 23.15L12 24L16.38 23.15C19.77 20.68 22 16.5 22 12V7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M12 12V16M12 8H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <p>No items available in this category</p>
+          <p>{isSearchMode ? `No results for "${searchQuery}"` : 'No items available in this category'}</p>
         </EmptyState>
       )}
 

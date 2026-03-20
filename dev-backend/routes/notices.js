@@ -499,6 +499,31 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/notices/:id - Delete a notice (author only)
+// Update notice (author only)
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const notice = await Notice.findByPk(req.params.id);
+    if (!notice) {
+      return res.status(404).json({ success: false, message: 'Notice not found' });
+    }
+
+    if (notice.author_id !== req.user.id && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized to edit this notice' });
+    }
+
+    const { title, content, priority } = req.body;
+    if (title !== undefined) notice.title = title;
+    if (content !== undefined) notice.content = content;
+    if (priority !== undefined) notice.priority = priority;
+    await notice.save();
+
+    res.json({ success: true, data: notice });
+  } catch (error) {
+    console.error('Error updating notice:', error);
+    res.status(500).json({ success: false, message: 'Failed to update notice' });
+  }
+});
+
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const notice = await Notice.findByPk(req.params.id);
