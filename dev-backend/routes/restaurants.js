@@ -382,7 +382,72 @@ router.get('/manager/:managerId', async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    res.json(restaurants);
+    // Batch fetch today's sales, orders, and staff count
+    const restaurantIds = restaurants.map(r => r.id);
+    const todayStatsMap = {};
+    const staffCountMap = {};
+
+    if (restaurantIds.length > 0) {
+      try {
+        const { sequelize } = require('../config/database');
+        const { QueryTypes } = require('sequelize');
+
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        const salesStats = await sequelize.query(`
+          SELECT restaurant_id,
+            COALESCE(SUM(total_amount), 0) as total_sales,
+            COUNT(*) as order_count
+          FROM orders
+          WHERE restaurant_id IN (:ids)
+            AND status IN ('completed', 'served')
+            AND createdAt BETWEEN :start AND :end
+          GROUP BY restaurant_id
+        `, {
+          replacements: { ids: restaurantIds, start: todayStart, end: todayEnd },
+          type: QueryTypes.SELECT
+        });
+
+        salesStats.forEach(s => {
+          todayStatsMap[s.restaurant_id] = {
+            sales: parseFloat(s.total_sales) || 0,
+            orders: parseInt(s.order_count) || 0
+          };
+        });
+
+        const staffStats = await sequelize.query(`
+          SELECT restaurant_id, COUNT(*) as cnt
+          FROM users
+          WHERE restaurant_id IN (:ids)
+            AND role IN ('Staff', 'Restaurant Admin')
+          GROUP BY restaurant_id
+        `, {
+          replacements: { ids: restaurantIds },
+          type: QueryTypes.SELECT
+        });
+
+        staffStats.forEach(s => {
+          staffCountMap[s.restaurant_id] = parseInt(s.cnt) || 0;
+        });
+      } catch (err) {
+        console.error('Error fetching manager restaurant stats:', err.message);
+      }
+    }
+
+    const result = restaurants.map(r => {
+      const data = r.toJSON();
+      return {
+        ...data,
+        todaySales: todayStatsMap[data.id]?.sales || 0,
+        todayOrders: todayStatsMap[data.id]?.orders || 0,
+        staffCount: staffCountMap[data.id] || 0
+      };
+    });
+
+    res.json(result);
   } catch (error) {
     console.error('[Restaurants] Error fetching manager restaurants:', error.message);
     res.status(500).json({ error: 'Failed to fetch manager restaurants', details: error.message });
@@ -1106,8 +1171,17 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
 });
 
 // Update restaurant (no creation validation — fields are all optional on update)
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
+    // Sanitize string inputs to prevent XSS
+    const { sanitizeString } = require('../middleware/validation');
+    const stringFields = ['name', 'address', 'phone', 'email', 'cuisine', 'description', 'slug'];
+    stringFields.forEach(field => {
+      if (typeof req.body[field] === 'string') {
+        req.body[field] = sanitizeString(req.body[field]);
+      }
+    });
+
     // Validate brand_id permission if being changed
     if (req.body.brand_id !== undefined && req.body.brand_id) {
       const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);

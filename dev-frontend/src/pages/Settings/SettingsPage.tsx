@@ -12,7 +12,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import { useTabParam } from '../../hooks/useTabParam';
-import { getPrinterMode, setPrinterMode } from '../../utils/billPrint';
+import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint } from '../../utils/billPrint';
 import { getCurrencySymbol } from '../../utils/currency';
 
 // 스타일 컴포넌트
@@ -588,24 +588,30 @@ const SettingsPage: React.FC = () => {
     billPrinter: {
       enabled: false,
       name: '',
-      autoPrint: false
+      autoPrint: false,
+      address: ''
     },
     kitchenPrinter: {
       enabled: false,
       name: '',
       autoPrint: false,
-      printPerItem: false
+      printPerItem: false,
+      address: ''
     },
     kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean }>
   });
 
-  // Printer mode state (rawbt or browser)
+  // Printer mode state (rawbt, browser, or qztray)
   // Initialize from localStorage to prevent flicker on page load
-  const [printerMode, setPrinterModeState] = useState<'rawbt' | 'browser'>(() => {
+  const [printerMode, setPrinterModeState] = useState<'rawbt' | 'browser' | 'qztray'>(() => {
     const saved = localStorage.getItem('printerMode');
-    return (saved === 'browser' || saved === 'rawbt') ? saved : 'rawbt';
+    if (saved === 'browser' || saved === 'rawbt' || saved === 'qztray') return saved;
+    return 'rawbt';
   });
   const [printerSettingsLoading, setPrinterSettingsLoading] = useState(true);
+  const [qzTrayStatus, setQzTrayStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [qzTrayPrinters, setQzTrayPrinters] = useState<string[]>([]);
+  const [showQzGuide, setShowQzGuide] = useState(false);
 
   // Kitchen Stations state
   const [kitchenStations, setKitchenStations] = useState<any[]>([]);
@@ -1121,28 +1127,31 @@ const SettingsPage: React.FC = () => {
           const restaurant = await response.json();
           if (restaurant.printer_settings) {
             const dbSettings = restaurant.printer_settings;
-            const mode = dbSettings.printerMode || 'rawbt';
-            setPrinterModeState(mode);
+            const rawMode = dbSettings.printerMode || 'rawbt';
+            const mode = (rawMode === 'browser' || rawMode === 'qztray') ? rawMode : 'rawbt';
+            setPrinterModeState(mode as 'rawbt' | 'browser' | 'qztray');
             setPrinterMode(mode);
             setPrinterSettings({
               billPrinter: {
                 enabled: dbSettings.billPrinter?.enabled ?? false,
                 name: dbSettings.billPrinter?.name || '',
-                autoPrint: dbSettings.billPrinter?.autoPrint ?? false
+                autoPrint: dbSettings.billPrinter?.autoPrint ?? false,
+                address: dbSettings.billPrinter?.address || ''
               },
               kitchenPrinter: {
                 enabled: dbSettings.kitchenPrinter?.enabled ?? false,
                 name: dbSettings.kitchenPrinter?.name || '',
                 autoPrint: dbSettings.kitchenPrinter?.autoPrint ?? false,
-                printPerItem: dbSettings.kitchenPrinter?.printPerItem ?? false
+                printPerItem: dbSettings.kitchenPrinter?.printPerItem ?? false,
+                address: dbSettings.kitchenPrinter?.address || ''
               },
               kitchenStationPrinters: dbSettings.kitchenStationPrinters || {}
             });
             // Also sync to localStorage for billPrint.js
             localStorage.setItem('printerMode', mode);
             localStorage.setItem('printerSettings', JSON.stringify({
-              billPrinter: dbSettings.billPrinter || { enabled: false, name: '', autoPrint: false },
-              kitchenPrinter: dbSettings.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false },
+              billPrinter: dbSettings.billPrinter || { enabled: false, name: '', autoPrint: false, address: '' },
+              kitchenPrinter: dbSettings.kitchenPrinter || { enabled: false, name: '', autoPrint: false, printPerItem: false, address: '' },
               ...(dbSettings.kitchenStationPrinters ? { kitchenStationPrinters: dbSettings.kitchenStationPrinters } : {})
             }));
           }
@@ -3566,6 +3575,219 @@ const SettingsPage: React.FC = () => {
                       <div style={{ fontSize: '12px', color: '#6B7C93' }}>For Windows/Mac computers</div>
                     </div>
                   </label>
+
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px 16px',
+                    border: printerMode === 'qztray' ? '2px solid #635BFF' : '1px solid #E2E8F0',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    background: printerMode === 'qztray' ? '#F5F3FF' : '#fff',
+                    flex: '1',
+                    minWidth: '150px'
+                  }}>
+                    <input
+                      type="radio"
+                      name="printerMode"
+                      value="qztray"
+                      checked={printerMode === 'qztray'}
+                      onChange={async () => {
+                        setPrinterModeState('qztray');
+                        setPrinterMode('qztray');
+                        setQzTrayStatus('connecting');
+                        try {
+                          const ok = await connectQZTray();
+                          setQzTrayStatus(ok ? 'connected' : 'disconnected');
+                          if (ok) {
+                            const printers = await getQZTrayPrinters();
+                            setQzTrayPrinters(printers);
+                          }
+                        } catch {
+                          setQzTrayStatus('disconnected');
+                        }
+                      }}
+                      style={{ accentColor: '#635BFF' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 500, color: '#1F2937' }}>QZ Tray (Network)</div>
+                      <div style={{ fontSize: '12px', color: '#6B7C93' }}>For LAN network printers</div>
+                    </div>
+                  </label>
+                  </div>
+                )}
+
+                {/* QZ Tray Connection Status & Guide */}
+                {!printerSettingsLoading && printerMode === 'qztray' && (
+                  <div style={{ marginTop: '16px', padding: '14px 16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '8px', height: '8px', borderRadius: '50%',
+                          background: qzTrayStatus === 'connected' ? '#10B981' : qzTrayStatus === 'connecting' ? '#F59E0B' : '#EF4444'
+                        }} />
+                        <span style={{ fontSize: '14px', fontWeight: 500, color: '#374151' }}>
+                          {qzTrayStatus === 'connected' ? 'Connected to QZ Tray' : qzTrayStatus === 'connecting' ? 'Connecting...' : 'QZ Tray Not Connected'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => setShowQzGuide(true)}
+                          style={{
+                            padding: '6px 14px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px',
+                            background: '#F5F3FF', color: '#635BFF', cursor: 'pointer', fontWeight: 500
+                          }}
+                        >
+                          Setup Guide
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setQzTrayStatus('connecting');
+                            try {
+                              if (isQZTrayConnected()) await disconnectQZTray();
+                              const ok = await connectQZTray();
+                              setQzTrayStatus(ok ? 'connected' : 'disconnected');
+                              if (ok) {
+                                const printers = await getQZTrayPrinters();
+                                setQzTrayPrinters(printers);
+                              }
+                            } catch {
+                              setQzTrayStatus('disconnected');
+                            }
+                          }}
+                          style={{
+                            padding: '6px 14px', fontSize: '13px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                            background: '#fff', color: '#374151', cursor: 'pointer'
+                          }}
+                        >
+                          {qzTrayStatus === 'connecting' ? 'Connecting...' : 'Test Connection'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '10px 12px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', fontSize: '13px', color: '#92400E', lineHeight: '1.6', marginBottom: '10px' }}>
+                      <strong>Important:</strong> QZ Tray must be installed on the <strong>main POS device only</strong> (the PC or tablet that runs your POS).
+                      Kitchen display tablets or other devices do not need QZ Tray.
+                    </div>
+
+                    <div style={{ fontSize: '12px', color: '#6B7C93', lineHeight: '1.6' }}>
+                      QZ Tray connects your browser to network printers via LAN.{' '}
+                      <span style={{ color: '#635BFF', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => window.open('https://qz.io/download/', '_blank')}>
+                        Download QZ Tray
+                      </span>
+                    </div>
+                    {qzTrayPrinters.length > 0 && (
+                      <div style={{ marginTop: '10px', fontSize: '12px', color: '#6B7C93' }}>
+                        <strong>Detected printers:</strong> {qzTrayPrinters.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* QZ Tray Setup Guide Modal */}
+                {showQzGuide && (
+                  <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', zIndex: 9999,
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+                    padding: '40px 20px', overflowY: 'auto'
+                  }} onClick={(e) => { if (e.target === e.currentTarget) setShowQzGuide(false); }}>
+                    <div style={{
+                      background: '#fff', borderRadius: '12px', maxWidth: '600px', width: '100%',
+                      padding: '32px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', flexShrink: 0
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                        <h2 style={{ margin: 0, fontSize: '20px', color: '#1F2937' }}>QZ Tray Setup Guide</h2>
+                        <button onClick={() => setShowQzGuide(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6B7C93', padding: '4px' }}>&times;</button>
+                      </div>
+
+                      {/* What is QZ Tray */}
+                      <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>What is QZ Tray?</h3>
+                        <p style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.7', margin: 0 }}>
+                          QZ Tray is a small program that runs in the background on your POS device. It acts as a bridge between your web browser and your network printers.
+                          Without it, browsers cannot send print data directly to LAN printers.
+                        </p>
+                      </div>
+
+                      {/* Where to install */}
+                      <div style={{ marginBottom: '24px', padding: '14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px' }}>
+                        <h3 style={{ fontSize: '15px', color: '#92400E', marginBottom: '8px', marginTop: 0 }}>Where to Install</h3>
+                        <p style={{ fontSize: '14px', color: '#92400E', lineHeight: '1.7', margin: 0 }}>
+                          Install QZ Tray on your <strong>main POS device only</strong> &mdash; the PC or tablet where you process orders and payments.
+                          This device must be connected to the same network (router/WiFi) as your printers.
+                          <br /><br />
+                          Kitchen display tablets, customer displays, and other secondary devices do <strong>not</strong> need QZ Tray installed.
+                        </p>
+                      </div>
+
+                      {/* Step by step */}
+                      <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '12px' }}>Setup Steps</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          {[
+                            { step: '1', title: 'Download & Install QZ Tray', desc: 'Download from qz.io and install on your POS device. Available for Windows, Mac, and Linux.', action: <button onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>Download QZ Tray</button> },
+                            { step: '2', title: 'Start QZ Tray', desc: 'After installation, QZ Tray runs automatically in the system tray (bottom-right on Windows, top menu bar on Mac). It starts automatically when your device boots up.' },
+                            { step: '3', title: 'Allow Browser Connection', desc: 'When you first connect from this page, QZ Tray will ask for permission. Click "Allow" or "Remember this decision" to avoid being asked again.' },
+                            { step: '4', title: 'Find Your Printer IP Addresses', desc: 'Each network printer has an IP address assigned by your router (e.g. 192.168.1.100). You can find it by: printing a network status page from the printer itself, or checking your router\'s connected devices list. The standard print port is 9100.' },
+                            { step: '5', title: 'Enter Printer Addresses', desc: 'Enter the IP:Port for each printer in the Bill Printer and Kitchen Printer fields below (e.g. 192.168.1.100:9100). Use "Test Print" to verify each connection.' },
+                            { step: '6', title: 'Save & Done', desc: 'Click "Save Printer Settings" at the bottom. Your existing LAN printers will now work with the POS system through your browser.' }
+                          ].map(({ step, title, desc, action }) => (
+                            <div key={step} style={{ display: 'flex', gap: '14px' }}>
+                              <div style={{
+                                width: '28px', height: '28px', borderRadius: '50%', background: '#635BFF', color: '#fff',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 600, flexShrink: 0
+                              }}>{step}</div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>{title}</div>
+                                <div style={{ fontSize: '13px', color: '#6B7C93', lineHeight: '1.6' }}>{desc}</div>
+                                {action}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Network diagram */}
+                      <div style={{ marginBottom: '24px', padding: '16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px', marginTop: 0 }}>How It Works</h3>
+                        <div style={{ fontSize: '13px', color: '#6B7C93', fontFamily: 'monospace', lineHeight: '1.8', whiteSpace: 'pre-wrap' }}>
+{`Your Browser (POS)
+    │
+    ▼
+QZ Tray (installed on this device)
+    │
+    ▼  (via your existing LAN network)
+    │
+    ├── 192.168.x.x:9100 → Bill Printer
+    └── 192.168.x.x:9100 → Kitchen Printer`}
+                        </div>
+                        <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '10px 0 0 0' }}>
+                          Your existing LAN cables and network setup remain unchanged. QZ Tray simply enables the browser to send data through the same network.
+                        </p>
+                      </div>
+
+                      {/* Troubleshooting */}
+                      <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>Troubleshooting</h3>
+                        <div style={{ fontSize: '13px', color: '#6B7C93', lineHeight: '1.8' }}>
+                          <strong>"Not Connected" status:</strong> Make sure QZ Tray is running (check system tray icon).<br />
+                          <strong>"Test Print" fails:</strong> Verify the printer IP address is correct and the printer is turned on and connected to the network.<br />
+                          <strong>No printers detected:</strong> QZ Tray shows OS-registered printers. For network printers, manually enter the IP:Port address.
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setShowQzGuide(false)}
+                        style={{
+                          width: '100%', padding: '12px', fontSize: '15px', fontWeight: 600,
+                          border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff', cursor: 'pointer'
+                        }}
+                      >
+                        Got it
+                      </button>
+                    </div>
                   </div>
                 )}
               </SettingsCard>
@@ -3597,12 +3819,77 @@ const SettingsPage: React.FC = () => {
                   {printerSettings.billPrinter.enabled && (
                     <>
                       <div style={{ marginTop: '16px', padding: '10px 12px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
-                        {printerMode === 'rawbt' ? (
+                        {printerMode === 'qztray' ? (
+                          <>Send receipts directly to a network printer via QZ Tray.<br />Enter the printer's network IP address below.</>
+                        ) : printerMode === 'rawbt' ? (
                           <>Prints to RawBT default printer.<br />Set your bill printer as default in RawBT app.</>
                         ) : (
                           <>Opens browser print dialog for receipts.<br />Connect a receipt printer via USB or network.</>
                         )}
                       </div>
+
+                      {printerMode === 'qztray' && (
+                        <div style={{ marginTop: '16px' }}>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                            Printer Address
+                          </label>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                              type="text"
+                              value={printerSettings.billPrinter.address || ''}
+                              onChange={(e) => setPrinterSettings(prev => ({
+                                ...prev,
+                                billPrinter: { ...prev.billPrinter, address: e.target.value }
+                              }))}
+                              placeholder="192.168.1.100:9100"
+                              style={{
+                                flex: 1, padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                fontSize: '14px', fontFamily: 'monospace'
+                              }}
+                            />
+                            <button
+                              onClick={async () => {
+                                const addr = printerSettings.billPrinter.address;
+                                if (!addr) return;
+                                const ok = await qzTrayTestPrint(addr);
+                                if (ok) {
+                                  setSaveStatus({ type: 'success', message: 'Test print sent to bill printer!' });
+                                } else {
+                                  setSaveStatus({ type: 'error', message: 'Failed to send test print. Check QZ Tray connection and printer address.' });
+                                }
+                                setTimeout(() => setSaveStatus(null), 3000);
+                              }}
+                              style={{
+                                padding: '8px 14px', fontSize: '13px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                background: '#fff', color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap'
+                              }}
+                            >
+                              Test Print
+                            </button>
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
+                            IP:Port (e.g. 192.168.1.100:9100) or OS printer name
+                          </div>
+                          {qzTrayPrinters.length > 0 && (
+                            <div style={{ marginTop: '8px' }}>
+                              <label style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '4px', display: 'block' }}>Or select detected printer:</label>
+                              <select
+                                value={printerSettings.billPrinter.address || ''}
+                                onChange={(e) => setPrinterSettings(prev => ({
+                                  ...prev,
+                                  billPrinter: { ...prev.billPrinter, address: e.target.value }
+                                }))}
+                                style={{ width: '100%', padding: '6px 10px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '13px' }}
+                              >
+                                <option value="">-- Select printer --</option>
+                                {qzTrayPrinters.map(p => (
+                                  <option key={p} value={p}>{p}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
                         <input
@@ -3645,7 +3932,9 @@ const SettingsPage: React.FC = () => {
                   {printerSettings.kitchenPrinter.enabled && (
                     <>
                       <div style={{ marginTop: '16px', padding: '10px 12px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
-                        {printerMode === 'browser' ? (
+                        {printerMode === 'qztray' ? (
+                          <>Send kitchen tickets directly to a network printer via QZ Tray.<br />Enter the kitchen printer's network IP address below.</>
+                        ) : printerMode === 'browser' ? (
                           <>Opens browser print dialog for kitchen order tickets.</>
                         ) : kitchenStations.length > 0 ? (
                           <>
@@ -3662,6 +3951,134 @@ const SettingsPage: React.FC = () => {
                           </>
                         )}
                       </div>
+
+                      {printerMode === 'qztray' && (
+                        <div style={{ marginTop: '16px' }}>
+                          {kitchenStations.length > 0 ? (
+                            /* Station별 프린터 IP 설정 */
+                            <>
+                              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '10px' }}>
+                                Station Printer Addresses
+                              </label>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {kitchenStations.map((station: any) => (
+                                  <div key={station.id} style={{ padding: '10px 12px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px' }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                                      {station.name}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                      <input
+                                        type="text"
+                                        value={printerSettings.kitchenStationPrinters?.[station.id]?.address || ''}
+                                        onChange={(e) => setPrinterSettings(prev => ({
+                                          ...prev,
+                                          kitchenStationPrinters: {
+                                            ...prev.kitchenStationPrinters,
+                                            [station.id]: {
+                                              ...(prev.kitchenStationPrinters?.[station.id] || { name: '', autoPrint: true }),
+                                              address: e.target.value,
+                                              stationName: station.name
+                                            }
+                                          }
+                                        }))}
+                                        placeholder="192.168.1.101:9100"
+                                        style={{
+                                          flex: 1, padding: '7px 10px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                          fontSize: '13px', fontFamily: 'monospace'
+                                        }}
+                                      />
+                                      <button
+                                        onClick={async () => {
+                                          const addr = printerSettings.kitchenStationPrinters?.[station.id]?.address;
+                                          if (!addr) return;
+                                          const ok = await qzTrayTestPrint(addr);
+                                          if (ok) {
+                                            setSaveStatus({ type: 'success', message: `Test print sent to ${station.name}!` });
+                                          } else {
+                                            setSaveStatus({ type: 'error', message: `Failed to send test print to ${station.name}.` });
+                                          }
+                                          setTimeout(() => setSaveStatus(null), 3000);
+                                        }}
+                                        style={{
+                                          padding: '7px 12px', fontSize: '12px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                          background: '#fff', color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap'
+                                        }}
+                                      >
+                                        Test
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '6px' }}>
+                                Enter the network IP:Port for each station's printer. Orders will be routed to the correct printer based on station assignment.
+                              </div>
+                            </>
+                          ) : (
+                            /* Station 없을 때 단일 IP */
+                            <>
+                              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#374151', marginBottom: '6px' }}>
+                                Printer Address
+                              </label>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <input
+                                  type="text"
+                                  value={printerSettings.kitchenPrinter.address || ''}
+                                  onChange={(e) => setPrinterSettings(prev => ({
+                                    ...prev,
+                                    kitchenPrinter: { ...prev.kitchenPrinter, address: e.target.value }
+                                  }))}
+                                  placeholder="192.168.1.101:9100"
+                                  style={{
+                                    flex: 1, padding: '8px 12px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                    fontSize: '14px', fontFamily: 'monospace'
+                                  }}
+                                />
+                                <button
+                                  onClick={async () => {
+                                    const addr = printerSettings.kitchenPrinter.address;
+                                    if (!addr) return;
+                                    const ok = await qzTrayTestPrint(addr);
+                                    if (ok) {
+                                      setSaveStatus({ type: 'success', message: 'Test print sent to kitchen printer!' });
+                                    } else {
+                                      setSaveStatus({ type: 'error', message: 'Failed to send test print. Check QZ Tray connection and printer address.' });
+                                    }
+                                    setTimeout(() => setSaveStatus(null), 3000);
+                                  }}
+                                  style={{
+                                    padding: '8px 14px', fontSize: '13px', border: '1px solid #D1D5DB', borderRadius: '6px',
+                                    background: '#fff', color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  Test Print
+                                </button>
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
+                                IP:Port (e.g. 192.168.1.101:9100) or OS printer name
+                              </div>
+                            </>
+                          )}
+                          {qzTrayPrinters.length > 0 && kitchenStations.length === 0 && (
+                            <div style={{ marginTop: '8px' }}>
+                              <label style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '4px', display: 'block' }}>Or select detected printer:</label>
+                              <select
+                                value={printerSettings.kitchenPrinter.address || ''}
+                                onChange={(e) => setPrinterSettings(prev => ({
+                                  ...prev,
+                                  kitchenPrinter: { ...prev.kitchenPrinter, address: e.target.value }
+                                }))}
+                                style={{ width: '100%', padding: '6px 10px', border: '1px solid #D1D5DB', borderRadius: '6px', fontSize: '13px' }}
+                              >
+                                <option value="">-- Select printer --</option>
+                                {qzTrayPrinters.map(p => (
+                                  <option key={p} value={p}>{p}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
                         <input

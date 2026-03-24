@@ -289,9 +289,6 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
             Pricing
           </NavLink>
-          <NavLink active={isActive('/demo')} onClick={() => handleNavigate('/demo')}>
-            Demo
-          </NavLink>
           <NavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
             FAQ
           </NavLink>
@@ -301,11 +298,11 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             Contact
           </NavLink>
-          <SignUpButton onClick={() => handleNavigate('/signup')}>
-            Sign Up Free
+          <SignUpButton onClick={() => handleNavigate('/demo')}>
+            Try Demo
           </SignUpButton>
-          <LoginButton onClick={() => handleNavigate('/pos')}>
-            Sign In
+          <LoginButton onClick={() => window.open('/pos', '_blank')}>
+            POS System
           </LoginButton>
         </Nav>
 
@@ -330,9 +327,6 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <MobileNavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
             Pricing
           </MobileNavLink>
-          <MobileNavLink active={isActive('/demo')} onClick={() => handleNavigate('/demo')}>
-            Demo
-          </MobileNavLink>
           <MobileNavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
             FAQ
           </MobileNavLink>
@@ -342,11 +336,11 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             Contact
           </MobileNavLink>
-          <MobileSignUpButton onClick={() => handleNavigate('/signup')}>
-            Sign Up Free
+          <MobileSignUpButton onClick={() => handleNavigate('/demo')}>
+            Try Demo
           </MobileSignUpButton>
-          <MobileLoginButton onClick={() => handleNavigate('/pos')}>
-            Sign In
+          <MobileLoginButton onClick={() => window.open('/pos', '_blank')}>
+            POS System
           </MobileLoginButton>
         </MobileMenuContent>
       </MobileMenu>

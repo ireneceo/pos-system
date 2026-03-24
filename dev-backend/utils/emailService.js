@@ -169,25 +169,22 @@ async function sendPlatformEmail(mailOptions) {
  * Send test email
  */
 async function sendTestEmail(entityType, entityId, testEmail) {
+  const { emailLayout, getLogoAttachment } = require('./emailTemplates');
+
+  const bodyContent = `
+    <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">SMTP Configuration Test</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 20px;">This is a test email from your PurpleHere notification system.</p>
+    <div style="background:#ECFDF5;padding:16px;border-radius:8px;margin:0 0 20px;border-left:4px solid #10B981;">
+      <p style="color:#059669;font-size:14px;margin:0;font-weight:600;">SMTP configuration is working correctly!</p>
+    </div>
+    <p style="color:#9CA3AF;font-size:12px;margin:0;">Entity: ${entityType} / ID: ${entityId}</p>`;
+
   const mailOptions = {
     to: testEmail,
     subject: 'Test Email from PurpleHere',
-    html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="https://purplehere.com" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
-  <tr><td style="padding:32px;">
-    <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">SMTP Test</h2>
-    <p style="color:#374151;font-size:14px;line-height:1.6;">This is a test email from your PurpleHere notification system.</p>
-    <div style="background:#ECFDF5;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #10B981;">
-      <p style="color:#059669;font-size:14px;margin:0;font-weight:600;">SMTP configuration is working correctly!</p>
-    </div>
-    <p style="color:#9CA3AF;font-size:12px;">Entity: ${entityType} / ID: ${entityId}</p>
-  </td></tr>
-  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;"><a href="https://purplehere.com" style="color:#635BFF;text-decoration:none;">purplehere.com</a></p></td></tr>
-</table></td></tr></table></body></html>`,
-    text: `Test Email\n\nThis is a test email from your Purple POS notification system.\nIf you received this email, your SMTP configuration is working correctly!\n\nEntity Type: ${entityType}\nEntity ID: ${entityId}`
+    html: emailLayout(bodyContent),
+    text: `SMTP Configuration Test\n\nThis is a test email from your PurpleHere notification system.\nSMTP configuration is working correctly!\n\nEntity: ${entityType} / ID: ${entityId}`,
+    attachments: getLogoAttachment()
   };
 
   return await sendEmail(entityType, entityId, mailOptions);

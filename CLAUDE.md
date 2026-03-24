@@ -28,12 +28,17 @@
    - 해당 기능의 핵심 API를 실제 호출 (GET/POST/PUT/DELETE)
    - **저장 (Write)**: 데이터를 실제로 DB에 저장하고, 응답에서 성공 확인
    - **불러오기 (Read)**: 저장한 데이터를 다시 GET으로 조회하여 값이 일치하는지 검증
+   - **DB 컬럼 매칭**: API 응답의 필드명이 프론트엔드에서 참조하는 필드명과 일치하는지 확인 (예: `total` vs `total_amount`)
    - **정상 케이스 + 경계 케이스** 최소 1개씩 (예: 0값, null, 100% 할인 등)
    - 테스트 후 원래 데이터로 복원
-3. **프론트엔드 렌더링 확인**: 변경한 페이지의 HTML/JS가 정상 서빙되는지 확인
-4. **요구사항 대조**: 원래 요청한 항목을 하나씩 나열하고, 각각 구현 완료 여부를 ✅/❌로 표시
-5. **연관 페이지 영향 확인**: 수정한 공통 컴포넌트를 사용하는 다른 페이지에 부작용이 없는지 확인
-6. **검증 결과 보고**: 실제 API 호출 결과 포함하여 Irene에게 보고. 문제가 있으면 즉시 수정
+3. **유저 흐름 검증** (실제 사용자가 하는 동작 순서대로):
+   - 로그인 → 사이드바 메뉴 클릭 → 페이지 로드 → 데이터 표시 → 필터/검색 → 저장/수정
+   - 역할별 접근 가능 페이지가 실제로 데이터를 표시하는지 확인
+   - API 응답 데이터가 0건일 때도 빈 상태가 정상 표시되는지 (에러 아닌 빈 목록)
+4. **프론트엔드 렌더링 확인**: 변경한 페이지의 HTML/JS가 정상 서빙되는지 확인
+5. **요구사항 대조**: 원래 요청한 항목을 하나씩 나열하고, 각각 구현 완료 여부를 ✅/❌로 표시
+6. **연관 페이지 영향 확인**: 수정한 공통 컴포넌트를 사용하는 다른 페이지에 부작용이 없는지 확인
+7. **검증 결과 보고**: 실제 API 호출 결과 포함하여 Irene에게 보고. 문제가 있으면 즉시 수정
 
 **API 테스트 패턴** (Node.js 스크립트로 실행):
 ```bash
@@ -57,6 +62,9 @@ rm test-xxx.js      # 반드시 삭제
 
 ### 설계 문서
 - **대규모 작업**: `docs/` 폴더에 설계 문서 저장
+- **기존 문서가 있으면 기존 문서에 추가** — 새 파일 만들지 않는다
+- **관련 없는 주제를 하나의 문서에 묶지 않는다** — 1문서 = 1주제
+- **문서 생성 전 기존 docs/ 파일 목록을 확인**하고, 해당 주제의 문서가 이미 있는지 확인
 - **중소규모 작업**: 대화 내에서 정리하고 승인 (문서 생성 불필요)
 
 ### 핵심 원칙
@@ -112,6 +120,35 @@ Claude는 **각 기능 완료 시** 아래 파일을 즉시 업데이트한다. 
 
 ---
 
+## 코딩 가이드 (점진적 적용)
+
+> 새로 작성하는 코드는 반드시 따른다. 기존 코드를 수정할 때는 **수정하는 파일/함수 범위 내에서** 같이 정리한다. 수정하지 않는 파일까지 리팩토링하지 않는다.
+
+### API 응답 형식 (표준)
+```javascript
+// 성공
+res.json({ success: true, data: result });
+res.json({ success: true, data: result, message: '선택적 메시지' });
+
+// 실패
+res.status(400).json({ success: false, message: 'Error description' });
+res.status(404).json({ success: false, message: 'Resource not found' });
+res.status(500).json({ success: false, message: 'Internal server error' });
+```
+- `res.json({ error: '...' })` 형식 사용 금지 (레거시)
+- 기존 파일 수정 시 해당 파일의 응답 형식이 비표준이면 수정 범위 내에서 표준으로 변경
+
+### 파일 크기 기준
+- **라우트 파일**: 500줄 이상이면 기능별 분리 검토 (예: `invoices.js` → `invoices-crud.js` + `invoices-generation.js`)
+- **컴포넌트 파일**: 800줄 이상이면 하위 컴포넌트 분리 검토
+- 새로 만드는 파일은 처음부터 적절히 분리
+
+### 백엔드 엔트리 포인트
+- **PM2 실행 파일: `server.js`만 사용** (app.js는 제거됨)
+- 라우트 등록, 미들웨어, 스케줄러 모두 server.js에서 관리
+
+---
+
 ## 프로젝트 구조
 
 ### 개발서버 (87.106.11.184)
@@ -151,9 +188,33 @@ Claude는 **각 기능 완료 시** 아래 파일을 즉시 업데이트한다. 
 - **middleware/validation.js**: validateLogin, validateRegister, validateCreateOrder, validateMenuItem, sanitizeString
 - **middleware/auth.js**: authenticateToken, requireRole, checkRestaurantAccess
 
-### 개발 시 보안 체크리스트
-- 새 API 엔드포인트에 적절한 인증/인가 미들웨어 적용
-- 사용자 입력은 validation.js의 검증 규칙 사용
+### 개발 시 보안 체크리스트 (필수 — 새 API 작성 시 반드시 적용)
+
+#### 1. 인증/인가 — 3단계 필수 적용
+```javascript
+// 모든 보호 API는 반드시 이 순서로 미들웨어 적용:
+router.get('/', authenticateToken, requireRole('System Admin'), async (req, res) => { ... });
+router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) => { ... });
+```
+- **authenticateToken**: 로그인 여부 확인 (JWT 유효성)
+- **requireRole(...)**: 허용된 역할인지 확인 (System Admin, Brand General 등)
+- **checkRestaurantAccess**: 해당 레스토랑에 접근 권한이 있는지 확인 (restaurant_id 기반)
+
+#### 2. 접근 제어 필수 규칙
+| API 유형 | 필수 미들웨어 |
+|----------|-------------|
+| 공개 (로그인, 모바일 메뉴 조회) | 없음 또는 optionalAuth |
+| 사용자 본인 데이터 (프로필) | authenticateToken |
+| 레스토랑 데이터 (주문, 메뉴) | authenticateToken + checkRestaurantAccess |
+| 역할 전용 (유저 관리, 플랜) | authenticateToken + requireRole |
+| 시스템 관리 (설정, 삭제) | authenticateToken + requireRole('System Admin') |
+
+#### 3. 입력 검증
+- 사용자 입력은 반드시 validation.js의 검증 규칙 사용
+- **restaurant_id 파라미터를 신뢰하지 않는다** — 항상 checkRestaurantAccess로 소유권 확인
 - 외부 URL 접근 시 ssrfProtection 사용
+
+#### 4. 기타
 - 새 의존성 추가 후 `npm audit` 실행
 - 민감한 데이터 로깅 금지 (비밀번호, 토큰 등)
+- XSS: 사용자 입력을 DB에 저장할 때 sanitizeString 적용

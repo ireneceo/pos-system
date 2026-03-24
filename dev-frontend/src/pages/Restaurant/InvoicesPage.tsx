@@ -908,7 +908,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                 `).join('')}
                 <div class="summary-row total">
                     <span>Total:</span>
-                    <span>${invoice.total === 0 ? '<span style="color: #10B981; font-weight: 600;">Free</span>' : formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
+                    <span>${Number(invoice.total) === 0 ? '<span style="color: #10B981; font-weight: 600;">Free</span>' : formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
                 </div>
             </div>
         </div>
@@ -1092,7 +1092,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                   <DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="Total" align="right">
-                  <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
+                  <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="" mobileFullWidth>
                   <ActionButtons>
@@ -1101,14 +1101,14 @@ const RestaurantInvoicesPage: React.FC = () => {
                     </LocalActionButton>
 
                     {/* Pay button for pending/overdue invoices (not for free invoices) */}
-                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total > 0 && (
+                    {showPayButton && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                       <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
                         Pay
                       </LocalActionButton>
                     )}
 
                     {/* Confirm button for free invoices */}
-                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total === 0 && (
+                    {showPayButton && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
                       <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)} disabled={confirmingInvoiceId === invoice.id}>
                         {confirmingInvoiceId === invoice.id ? 'Confirming...' : 'Confirm'}
                       </LocalActionButton>
@@ -1231,7 +1231,7 @@ const RestaurantInvoicesPage: React.FC = () => {
             size="large"
             footer={
               <>
-                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total > 0 && (
+                {(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && (
                   <Button variant="success" onClick={() => {
                     setShowViewModal(false);
                     handlePayInvoice(selectedInvoice);
@@ -1239,7 +1239,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     Pay Now
                   </Button>
                 )}
-                {(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total === 0 && (
+                {(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && (
                   <Button variant="success" onClick={() => handleConfirmFreeInvoice(selectedInvoice)} disabled={!!confirmingInvoiceId}>
                     {confirmingInvoiceId ? 'Confirming...' : 'Confirm'}
                   </Button>

@@ -502,7 +502,7 @@ const BrandManagerDashboard: React.FC = () => {
             <Tbody>
               {restaurants.length > 0 ? (
                 restaurants.map((restaurant) => (
-                  <Tr key={restaurant.id} onClick={() => navigate(`/pos/brand/reports?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)}>
+                  <Tr key={restaurant.id} onClick={() => navigate(`/pos/brand/general/reports?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)}>
                     <Td style={{ fontWeight: 600, color: '#0A2540' }}>{restaurant.name}</Td>
                     <Td>{restaurant.adminName}</Td>
                     <Td>

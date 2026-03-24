@@ -152,7 +152,7 @@ const AudioToggleButton = styled.button<{ enabled: boolean }>`
   img {
     width: 22px;
     height: 22px;
-    filter: ${props => props.enabled ? 'brightness(0) invert(1)' : 'brightness(0) opacity(0.4)'};
+    filter: ${props => props.enabled ? 'invert(1)' : 'opacity(0.4)'};
   }
 
   &:hover {
@@ -994,7 +994,7 @@ const LiveOrdersPage: React.FC = () => {
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [timeDisplayKey, setTimeDisplayKey] = useState(0); // Time display update key
-  const [audioEnabled, setAudioEnabled] = useState(true); // Audio notification toggle
+  const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem('sound_enabled') !== 'false');
 
   // Membership settings (used by PaymentModal for membership info display)
   const [membershipSettings, setMembershipSettings] = useState<any>(null);
@@ -1059,7 +1059,7 @@ const LiveOrdersPage: React.FC = () => {
   const playNotificationSound = useCallback(() => {
     if (!audioEnabled) return;
     import('../../utils/notificationSound').then(({ startRepeatingSound }) => {
-      startRepeatingSound('bell', 5000);
+      startRepeatingSound('bell', 3000);
     });
   }, [audioEnabled]);
 
@@ -2666,7 +2666,7 @@ const LiveOrdersPage: React.FC = () => {
           )}
           <AudioToggleButton
             enabled={audioEnabled}
-            onClick={() => setAudioEnabled(!audioEnabled)}
+            onClick={() => { setAudioEnabled(prev => { const next = !prev; localStorage.setItem('sound_enabled', String(next)); return next; }); }}
             title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
           >
             <img

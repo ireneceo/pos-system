@@ -1,10 +1,12 @@
 /**
- * Bill Print Utility for RawBT Integration
+ * Bill Print Utility
  *
- * Uses RawBT Schema: rawbt:base64,<ESC/POS_BASE64>
- * NO window.print() or browser print dialog
- * Direct WiFi printer communication via RawBT app
+ * Supports 3 print modes:
+ * 1. RawBT (Android) - ESC/POS via RawBT Intent to Bluetooth printer
+ * 2. Browser Print (PC) - HTML via window.print() to OS printer dialog
+ * 3. QZ Tray (Network) - ESC/POS via QZ Tray to LAN network printers
  */
+import qz from 'qz-tray';
 
 // ============================================
 // ESC/POS Command Definitions
@@ -96,8 +98,15 @@ function shouldUseBrowserPrint() {
 }
 
 /**
+ * Check if QZ Tray mode is selected
+ */
+function shouldUseQZTray() {
+  return localStorage.getItem('printerMode') === 'qztray';
+}
+
+/**
  * Set printer mode
- * @param {'rawbt' | 'browser'} mode
+ * @param {'rawbt' | 'browser' | 'qztray'} mode
  */
 export function setPrinterMode(mode) {
   localStorage.setItem('printerMode', mode);
@@ -105,11 +114,175 @@ export function setPrinterMode(mode) {
 
 /**
  * Get current printer mode
- * @returns {'rawbt' | 'browser'}
+ * @returns {'rawbt' | 'browser' | 'qztray'}
  */
 export function getPrinterMode() {
   const mode = localStorage.getItem('printerMode');
-  return mode === 'browser' ? 'browser' : 'rawbt';
+  if (mode === 'browser') return 'browser';
+  if (mode === 'qztray') return 'qztray';
+  return 'rawbt';
+}
+
+// ============================================
+// QZ Tray Integration
+// ============================================
+
+let qzConnected = false;
+let qzConnecting = false;
+
+/**
+ * QZ Tray 서명 콜백 설정 (보안 인증)
+ * 프로덕션에서는 자체 인증서로 교체 가능
+ */
+function setupQZSecurity() {
+  if (qz.security.getSignatureAlgorithm() !== undefined) return;
+  qz.security.setCertificatePromise(function(resolve) {
+    resolve('');
+  });
+  qz.security.setSignaturePromise(function() {
+    return function(resolve) {
+      resolve('');
+    };
+  });
+}
+
+/**
+ * QZ Tray WebSocket 연결
+ * QZ Tray는 PC에 설치된 프로그램으로, localhost:8182에서 WebSocket 서버를 실행한다.
+ * 브라우저가 이 WebSocket에 연결하면 네트워크 프린터로 데이터를 전송할 수 있다.
+ */
+export async function connectQZTray() {
+  if (qzConnected && qz.websocket.isActive()) return true;
+  if (qzConnecting) {
+    // 이미 연결 시도 중이면 완료 대기
+    return new Promise((resolve) => {
+      const check = setInterval(() => {
+        if (!qzConnecting) {
+          clearInterval(check);
+          resolve(qzConnected);
+        }
+      }, 100);
+    });
+  }
+
+  qzConnecting = true;
+  try {
+    setupQZSecurity();
+    if (!qz.websocket.isActive()) {
+      await qz.websocket.connect({ retries: 2, delay: 0.5 });
+    }
+    qzConnected = true;
+    console.log('QZ Tray connected');
+    return true;
+  } catch (err) {
+    qzConnected = false;
+    console.error('QZ Tray connection failed:', err);
+    return false;
+  } finally {
+    qzConnecting = false;
+  }
+}
+
+/**
+ * QZ Tray 연결 해제
+ */
+export async function disconnectQZTray() {
+  if (qz.websocket.isActive()) {
+    await qz.websocket.disconnect();
+  }
+  qzConnected = false;
+}
+
+/**
+ * QZ Tray 연결 상태 확인
+ */
+export function isQZTrayConnected() {
+  return qzConnected && qz.websocket.isActive();
+}
+
+/**
+ * QZ Tray를 통해 설치된 프린터 목록 조회
+ * OS에 등록된 프린터(USB, 네트워크 등) 목록을 반환한다.
+ */
+export async function getQZTrayPrinters() {
+  try {
+    const connected = await connectQZTray();
+    if (!connected) return [];
+    const printers = await qz.printers.find();
+    return printers;
+  } catch (err) {
+    console.error('Failed to get printers via QZ Tray:', err);
+    return [];
+  }
+}
+
+/**
+ * QZ Tray를 통해 ESC/POS 데이터를 네트워크 프린터로 전송
+ *
+ * @param {string} escposContent - ESC/POS 명령 문자열
+ * @param {string} printerAddress - 프린터 식별자. 두 가지 형식 가능:
+ *   1. LAN IP:포트 (예: '192.168.1.100:9100') - 네트워크 RAW 소켓으로 직접 전송
+ *   2. OS 프린터 이름 (예: 'EPSON TM-T82') - OS에 등록된 프린터로 전송
+ * @returns {Promise<boolean>}
+ */
+async function sendViaQZTray(escposContent, printerAddress) {
+  try {
+    const connected = await connectQZTray();
+    if (!connected) {
+      console.error('QZ Tray not connected');
+      return false;
+    }
+
+    let config;
+    // IP:포트 형식이면 네트워크 RAW 소켓, 아니면 OS 프린터 이름으로 전송
+    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(printerAddress)) {
+      const [host, port] = printerAddress.split(':');
+      config = qz.configs.create(host + ':' + (port || '9100'), {
+        host: host,
+        port: parseInt(port || '9100', 10)
+      });
+    } else {
+      config = qz.configs.create(printerAddress);
+    }
+
+    // ESC/POS를 Base64로 인코딩하여 전송
+    const base64Data = btoa(unescape(encodeURIComponent(escposContent)));
+    await qz.print(config, [{
+      type: 'raw',
+      format: 'base64',
+      data: base64Data
+    }]);
+
+    console.log('QZ Tray: sent to', printerAddress);
+    return true;
+  } catch (err) {
+    console.error('QZ Tray print failed:', err);
+    return false;
+  }
+}
+
+/**
+ * QZ Tray 테스트 프린트
+ * Settings에서 연결 확인용으로 사용
+ */
+export async function qzTrayTestPrint(printerAddress) {
+  const content = CMD.INIT +
+    CMD.ALIGN_CENTER +
+    CMD.TEXT_DOUBLE +
+    CMD.BOLD_ON +
+    'QZ Tray Test' + CMD.LINE_FEED +
+    CMD.TEXT_NORMAL +
+    CMD.BOLD_OFF +
+    CMD.LINE_FEED +
+    'Connection OK' + CMD.LINE_FEED +
+    new Date().toLocaleString() + CMD.LINE_FEED +
+    CMD.LINE_FEED +
+    CMD.DASHED_LINE + CMD.LINE_FEED +
+    CMD.LINE_FEED +
+    CMD.LINE_FEED +
+    CMD.CUT_PARTIAL;
+
+  return sendViaQZTray(content, printerAddress);
 }
 
 // Currency symbol mapping
@@ -802,6 +975,18 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
       return true; // Return success but skip printing
     }
 
+    // QZ Tray mode: send ESC/POS via QZ Tray to network printer
+    if (shouldUseQZTray()) {
+      console.log('🖨️ QZ Tray mode - sending to network printer');
+      const address = settings.billPrinter.address;
+      if (!address) {
+        console.warn('QZ Tray: no bill printer address configured');
+        return false;
+      }
+      const escposContent = generateBillContent(orderData, storeInfo);
+      return await sendViaQZTray(escposContent, address);
+    }
+
     // Browser print mode selected in Settings
     if (shouldUseBrowserPrint()) {
       console.log('🖥️ Browser print mode - using browser print dialog');
@@ -847,10 +1032,12 @@ export async function printBillViaRawBT(orderData, storeInfo, printerName) {
 
   } catch (error) {
     console.error('❌ Print error:', error);
-    const isPC = shouldUseBrowserPrint();
+    const mode = getPrinterMode();
     alert(
       'Failed to print bill.\n\n' +
-      (isPC
+      (mode === 'qztray'
+        ? 'Please ensure:\n1. QZ Tray is running on this device\n2. Printer IP address is correct\n3. Printer is connected to the network'
+        : mode === 'browser'
         ? 'Please check your browser popup settings and try again.'
         : 'Please ensure:\n1. RawBT app is installed\n2. WiFi printer is configured in RawBT\n3. Printer is connected and ready'
       ) +
@@ -1323,6 +1510,30 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
       return true; // Return success but skip printing
     }
 
+    // QZ Tray mode
+    if (shouldUseQZTray()) {
+      console.log('🖨️ QZ Tray mode - sending kitchen ticket to network printer');
+      const address = settings.kitchenPrinter.address;
+      if (!address) {
+        console.warn('QZ Tray: no kitchen printer address configured');
+        return false;
+      }
+      const printPerItem = settings.kitchenPrinter.printPerItem || false;
+      if (printPerItem && orderData.items && orderData.items.length > 0) {
+        for (let i = 0; i < orderData.items.length; i++) {
+          const item = orderData.items[i];
+          const escpos = generateSingleItemKitchenTicket(orderData, item, i + 1, orderData.items.length, storeInfo);
+          await sendViaQZTray(escpos, address);
+          if (i < orderData.items.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
+        return true;
+      }
+      const escposContent = generateKitchenTicketContent(orderData, storeInfo);
+      return await sendViaQZTray(escposContent, address);
+    }
+
     // Use provided printerName or get from settings
     const targetPrinter = printerName || settings.kitchenPrinter.name;
 
@@ -1408,10 +1619,12 @@ export async function printKitchenTicketViaRawBT(orderData, storeInfo, printerNa
 
   } catch (error) {
     console.error('❌ Kitchen Ticket print error:', error);
-    const isPC = shouldUseBrowserPrint();
+    const mode = getPrinterMode();
     alert(
       'Failed to print kitchen order ticket.\n\n' +
-      (isPC
+      (mode === 'qztray'
+        ? 'Please ensure:\n1. QZ Tray is running on this device\n2. Printer IP address is correct\n3. Printer is connected to the network'
+        : mode === 'browser'
         ? 'Please check your browser popup settings and try again.'
         : 'Please ensure:\n1. RawBT app is installed\n2. WiFi printer is configured in RawBT\n3. Printer is connected and ready'
       ) +
@@ -1553,6 +1766,22 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
       return true; // Return success but skip printing
     }
 
+    // QZ Tray mode
+    if (shouldUseQZTray()) {
+      console.log('🖨️ QZ Tray mode - sending additional items ticket');
+      const address = settings.kitchenPrinter.address;
+      if (!address) {
+        console.warn('QZ Tray: no kitchen printer address configured');
+        return false;
+      }
+      const escposContent = generateAdditionalItemsTicketContent(orderData, storeInfo);
+      if (!escposContent) {
+        console.log('No additional items to print');
+        return true;
+      }
+      return await sendViaQZTray(escposContent, address);
+    }
+
     // PC: Use browser print dialog with HTML
     if (shouldUseBrowserPrint()) {
       console.log('🖥️ PC detected - using browser print dialog for additional items ticket');
@@ -1601,10 +1830,12 @@ export async function printAdditionalItemsTicketViaRawBT(orderData, storeInfo, p
 
   } catch (error) {
     console.error('Additional Items Ticket print error:', error);
-    const isPC = shouldUseBrowserPrint();
+    const mode = getPrinterMode();
     alert(
       'Failed to print additional items ticket.\n\n' +
-      (isPC
+      (mode === 'qztray'
+        ? 'Please ensure:\n1. QZ Tray is running on this device\n2. Printer IP address is correct\n3. Printer is connected to the network'
+        : mode === 'browser'
         ? 'Please check your browser popup settings and try again.'
         : 'Please ensure:\n1. RawBT app is installed\n2. WiFi printer is configured in RawBT\n3. Printer is connected and ready'
       ) +
@@ -1717,7 +1948,38 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
  * @param {HTMLCanvasElement} qrCanvas - QR code canvas element
  * @param {string} storeName - Restaurant name
  */
-export function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant') {
+export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant') {
+  // QZ Tray mode: send ESC/POS text (QR image not supported in ESC/POS text mode)
+  if (shouldUseQZTray()) {
+    const settings = getPrinterSettings();
+    const address = settings.billPrinter.address;
+    if (address) {
+      let content = '';
+      content += CMD.INIT;
+      content += CMD.ALIGN_CENTER;
+      content += CMD.TEXT_DOUBLE;
+      content += storeName + CMD.LINE_FEED;
+      content += CMD.TEXT_NORMAL;
+      content += CMD.LINE_FEED;
+      content += CMD.BOLD_ON;
+      content += CMD.TEXT_DOUBLE;
+      content += tableNumber + CMD.LINE_FEED;
+      content += CMD.TEXT_NORMAL;
+      content += CMD.BOLD_OFF;
+      content += CMD.LINE_FEED;
+      content += 'Scan to order' + CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+      content += CMD.DASHED_LINE + CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+      content += '1. Scan QR code with phone' + CMD.LINE_FEED;
+      content += '2. Browse menu & add items' + CMD.LINE_FEED;
+      content += '3. Place your order' + CMD.LINE_FEED;
+      content += CMD.LINE_FEED;
+      content += CMD.CUT_PARTIAL;
+      return await sendViaQZTray(content, address);
+    }
+  }
+
   // Check if RawBT is available (mobile/tablet)
   const isMobileOrTablet = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase()) ||
     ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -1833,12 +2095,23 @@ export function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant') {
  * @param {string} escposContent - Pre-generated ESC/POS content for thermal printer (optional)
  * @returns {boolean} Success status
  */
-export function printSettlementReport(htmlContent, escposContent) {
+export async function printSettlementReport(htmlContent, escposContent) {
   try {
     const settings = getPrinterSettings();
     if (!settings.billPrinter.enabled) {
       console.log('Bill printer is disabled in settings');
       return true;
+    }
+
+    // QZ Tray mode
+    if (shouldUseQZTray() && escposContent) {
+      console.log('🖨️ QZ Tray mode - printing settlement report');
+      const address = settings.billPrinter.address;
+      if (address) {
+        return await sendViaQZTray(escposContent, address);
+      }
+      // Fallback to browser print if no address
+      return printHTMLContent(htmlContent, 'Daily Settlement');
     }
 
     // Browser print mode
@@ -1881,11 +2154,33 @@ export function printSettlementReport(htmlContent, escposContent) {
 /**
  * RawBT 프린터로 주방 티켓 전송 (단일 프린터 대상)
  */
-async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName) {
+async function sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName, printerAddress) {
   const printPerItem = settings.kitchenPrinter.printPerItem || false;
   const items = orderData.items || [];
-  console.log(`🖨️ sendToRawBTPrinter: ${items.length} items, printPerItem=${printPerItem}, station=${stationName}, browser=${shouldUseBrowserPrint()}`);
+  console.log(`🖨️ sendToRawBTPrinter: ${items.length} items, printPerItem=${printPerItem}, station=${stationName}, mode=${getPrinterMode()}`);
   console.log(`🖨️ Item names:`, items.map(i => (i.menuItem?.name || i.name) + ' x' + i.quantity));
+
+  // QZ Tray mode: send ESC/POS via network
+  // printerAddress가 명시적으로 전달되면 우선 사용 (Station별 IP), 없으면 kitchenPrinter.address fallback
+  if (shouldUseQZTray()) {
+    const address = printerAddress || settings.kitchenPrinter.address;
+    if (!address) return false;
+
+    if (printPerItem && items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const perItemData = { ...orderData, items: [item], groupLabel: stationName ? stationName.toUpperCase() : undefined };
+        const escpos = generateKitchenTicketContent(perItemData, storeInfo);
+        await sendViaQZTray(escpos, address);
+        if (i < items.length - 1) await new Promise(r => setTimeout(r, 300));
+      }
+    } else {
+      const ticketData = { ...orderData, groupLabel: stationName ? stationName.toUpperCase() : undefined };
+      const escpos = generateKitchenTicketContent(ticketData, storeInfo);
+      await sendViaQZTray(escpos, address);
+    }
+    return true;
+  }
 
   if (printPerItem && items.length > 0) {
     for (let i = 0; i < items.length; i++) {
@@ -1949,7 +2244,58 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
     const stationName = sp.stationName || 'Kitchen';
 
     console.log(`🍳 Single station — sending all to: ${printerName} (${stationName})`);
-    return await sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName);
+    return await sendToRawBTPrinter(orderData, storeInfo, settings, printerName, stationName, sp.address);
+  }
+
+  // QZ Tray 모드: Station별 각각 다른 프린터 IP로 전송 가능
+  if (shouldUseQZTray()) {
+    let menuStationMap = {};
+    try {
+      const saved = localStorage.getItem('kitchenStationMenuMap');
+      if (saved) menuStationMap = JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed to load kitchen station menu map:', e);
+    }
+
+    const stationItems = {};
+    const unmappedItems = [];
+
+    (orderData.items || []).forEach(item => {
+      const itemName = item.menuItem?.name || item.name;
+      const stationId = menuStationMap[itemName];
+      if (stationId && stationPrinters[stationId]) {
+        if (!stationItems[stationId]) stationItems[stationId] = [];
+        stationItems[stationId].push(item);
+      } else {
+        unmappedItems.push(item);
+      }
+    });
+
+    // 매핑이 없으면 첫 번째 Station 프린터로 전부 전송
+    if (Object.keys(stationItems).length === 0 && unmappedItems.length > 0) {
+      const sp = stationPrinters[stationIds[0]];
+      console.log(`🍳 QZ Tray: No menu-station map — sending all to first station: ${sp.stationName}`);
+      return await sendToRawBTPrinter(orderData, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address);
+    }
+
+    // Station별 각각 전송
+    const mappedStationIds = Object.keys(stationItems);
+    for (let idx = 0; idx < mappedStationIds.length; idx++) {
+      const stationId = mappedStationIds[idx];
+      const sp = stationPrinters[stationId];
+      const items = stationItems[stationId];
+      const stationName = sp.stationName || `Station ${stationId}`;
+
+      await sendToRawBTPrinter({ ...orderData, items }, storeInfo, settings, sp.name, stationName, sp.address);
+    }
+
+    // 매핑 안 된 아이템 → 첫 번째 Station 프린터로
+    if (unmappedItems.length > 0) {
+      const sp = stationPrinters[stationIds[0]];
+      await sendToRawBTPrinter({ ...orderData, items: unmappedItems }, storeInfo, settings, sp.name, sp.stationName || 'Kitchen', sp.address);
+    }
+
+    return true;
   }
 
   // Station 2개 이상: RawBT 모드에서는 분리하지 않고 전체 합쳐서 한 장으로 출력

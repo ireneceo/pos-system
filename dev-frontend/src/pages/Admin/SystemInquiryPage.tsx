@@ -223,6 +223,22 @@ const MetaValue = styled.span`
   color: #374151;
 `;
 
+const CloseTicketButton = styled.button`
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  background: #fff;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: #E5E7EB;
+    color: #374151;
+  }
+`;
+
 
 const FormRow = styled.div`
   display: grid;
@@ -364,7 +380,7 @@ const SelectedUserBadge = styled.div`
 const SystemInquiryPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [activeTab, handleTabChange] = useTabParam<'all' | 'open' | 'in-progress'>('open');
+  const [activeTab, handleTabChange] = useTabParam<'active' | 'closed'>('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
@@ -459,7 +475,9 @@ const SystemInquiryPage: React.FC = () => {
     const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTab = activeTab === 'all' || ticket.status === activeTab;
+    const matchesTab = activeTab === 'active'
+      ? (ticket.status === 'open' || ticket.status === 'in-progress')
+      : (ticket.status === 'closed' || ticket.status === 'resolved');
     const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
     const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
     const matchesCategory = filterCategory === 'all' || ticket.category === filterCategory;
@@ -666,28 +684,15 @@ const SystemInquiryPage: React.FC = () => {
         </StatsGrid>
 
         <Tabs>
-          <Tab active={activeTab === 'open'} onClick={() => handleTabChange('open')}>
-            Open
+          <Tab active={activeTab === 'active'} onClick={() => handleTabChange('active')}>
+            Active Tickets ({openTickets + inProgressTickets})
           </Tab>
-          <Tab active={activeTab === 'in-progress'} onClick={() => handleTabChange('in-progress')}>
-            In Progress
-          </Tab>
-          <Tab active={activeTab === 'all'} onClick={() => handleTabChange('all')}>
-            All Tickets
+          <Tab active={activeTab === 'closed'} onClick={() => handleTabChange('closed')}>
+            Closed Tickets ({closedTickets})
           </Tab>
         </Tabs>
 
         <FiltersContainer>
-          {activeTab === 'all' && (
-            <FilterGroup>
-              <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={{ maxWidth: '180px' }}>
-                <option value="all">All Status</option>
-                <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
-                <option value="closed">Closed</option>
-              </FilterSelect>
-            </FilterGroup>
-          )}
           <FilterGroup>
             <FilterSelect value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={{ maxWidth: '180px' }}>
               <option value="all">All Priority</option>
@@ -754,6 +759,31 @@ const SystemInquiryPage: React.FC = () => {
                         </span>
                       )}
                     </span>
+                  </MetaItem>
+                )}
+                {activeTab === 'active' && (
+                  <MetaItem style={{ marginLeft: 'auto' }}>
+                    <CloseTicketButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        (async () => {
+                          try {
+                            const token = localStorage.getItem('auth_token');
+                            const response = await fetch(`/api/support-tickets/${ticket.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                              body: JSON.stringify({ status: 'closed' })
+                            });
+                            if (response.ok) {
+                              setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: 'closed' as SupportTicket['status'] } : t));
+                              window.dispatchEvent(new Event('refreshBadgeCounts'));
+                            }
+                          } catch (err) { /* silent */ }
+                        })();
+                      }}
+                    >
+                      Close
+                    </CloseTicketButton>
                   </MetaItem>
                 )}
               </TicketMeta>

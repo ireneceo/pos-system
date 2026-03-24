@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import CalendarPicker from './CalendarPicker';
 
 // Types
-export type PeriodType = 'today' | 'week' | 'month' | 'year' | 'all';
+export type PeriodType = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all';
 
 export interface DateRange {
   start: string;
@@ -58,6 +58,10 @@ export const calculatePeriodDateRange = (period: PeriodType, timezone?: string):
   switch (period) {
     case 'today':
       break;
+    case 'yesterday':
+      start.setDate(now.getDate() - 1);
+      end.setDate(now.getDate() - 1);
+      break;
     case 'week':
       start.setDate(now.getDate() - 6);
       break;
@@ -93,11 +97,12 @@ const DatePeriodFilter: React.FC<DatePeriodFilterProps> = ({
   };
 
   const periods: PeriodType[] = includeToday
-    ? ['today', 'week', 'month', 'year', 'all']
+    ? ['today', 'yesterday', 'week', 'month', 'year', 'all']
     : ['week', 'month', 'year', 'all'];
 
   const periodLabels: Record<PeriodType, string> = {
     today: 'Today',
+    yesterday: 'Yesterday',
     week: 'Week',
     month: 'Month',
     year: 'Year',

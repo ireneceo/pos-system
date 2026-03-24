@@ -305,14 +305,15 @@ const RelatedGrid = styled.div`
 `;
 
 const RelatedCard = styled.div`
-  background: #F8F9FF;
+  background: white;
   border-radius: 12px;
   padding: 24px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
   &:hover {
-    background: #F0EFFF;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     transform: translateY(-2px);
   }
 `;

@@ -2418,7 +2418,7 @@ const InvoicesPage: React.FC = () => {
                     )}
                   </DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
-                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>
                     <ActionButtons>
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
@@ -2440,7 +2440,7 @@ const InvoicesPage: React.FC = () => {
                       {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          {invoice.total === 0 && (
+                          {Number(invoice.total) === 0 && (
                             <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>Mark Paid</LocalActionButton>
                           )}
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
@@ -2502,7 +2502,7 @@ const InvoicesPage: React.FC = () => {
                       {invoice.status === 'overdue' && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          {invoice.total === 0 && (
+                          {Number(invoice.total) === 0 && (
                             <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>Mark Paid</LocalActionButton>
                           )}
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
@@ -2622,7 +2622,7 @@ const InvoicesPage: React.FC = () => {
                         {invoice.paidDate ? formatDate(invoice.paidDate) : '-'}
                       </DataTableCell>
                       <DataTableCell data-label="Amount" align="right">
-                        <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
+                        <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                       </DataTableCell>
                       <DataTableCell data-label="" mobileFullWidth>
                         <ActionButtons>

@@ -949,7 +949,7 @@ const ManagerInvoicesPage: React.FC = () => {
                     </DataTableCell>
 
                     <DataTableCell data-label="Total" align="right">
-                      <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total)}</DataTableAmount>
+                      <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total)}</DataTableAmount>
                     </DataTableCell>
 
                     <DataTableCell data-label="" mobileFullWidth>
@@ -961,18 +961,12 @@ const ManagerInvoicesPage: React.FC = () => {
                             <ActionButton onClick={() => handleSendInvoice(invoice)}>Send</ActionButton>
                           </>
                         )}
-                        {invoice.status === 'sent' && (
+                        {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
                           <>
-                            {invoice.total > 0 && <ActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>}
-                            {invoice.total === 0 && <ActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>}
-                            <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>Mark Overdue</ActionButton>
+                            {Number(invoice.total) > 0 && <ActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>}
+                            {Number(invoice.total) === 0 && <ActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>}
+                            {invoice.status === 'sent' && <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>Mark Overdue</ActionButton>}
                           </>
-                        )}
-                        {invoice.status === 'overdue' && invoice.total > 0 && (
-                          <ActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>
-                        )}
-                        {invoice.status === 'overdue' && invoice.total === 0 && (
-                          <ActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>
                         )}
                         {invoice.status === 'paid' && (
                           <ActionButton onClick={() => window.print()}>Print Receipt</ActionButton>

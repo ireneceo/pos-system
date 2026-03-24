@@ -676,10 +676,10 @@ const ManagerRestaurantsPage: React.FC = () => {
             cuisine: restaurant.cuisine || 'Various',
             status: restaurant.status,
             plan: (restaurant.planType || restaurant.plan_type)?.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise' || 'basic',
-            todaySales: 0, // This would need to be calculated from orders API
-            todayOrders: 0, // This would need to be calculated from orders API
-            staffCount: 0, // This would need to be calculated from users API
-            rating: 4.5, // Default rating
+            todaySales: parseFloat(restaurant.todaySales) || 0,
+            todayOrders: parseInt(restaurant.todayOrders) || 0,
+            staffCount: parseInt(restaurant.staffCount) || 0,
+            rating: 4.5,
             createdAt: new Date(restaurant.createdAt).toISOString().split('T')[0],
             lastOrder: 'No orders yet', // This would need to be calculated from orders API
             monthlyFee: parseFloat(restaurant.planAmount || restaurant.plan_amount) || 29,
@@ -910,9 +910,9 @@ const ManagerRestaurantsPage: React.FC = () => {
             cuisine: restaurant.cuisine || 'Various',
             status: restaurant.status,
             plan: (restaurant.planType || restaurant.plan_type)?.toLowerCase().replace(' plan', '') as 'basic' | 'professional' | 'enterprise' || 'basic',
-            todaySales: 0,
-            todayOrders: 0,
-            staffCount: 0,
+            todaySales: parseFloat(restaurant.todaySales) || 0,
+            todayOrders: parseInt(restaurant.todayOrders) || 0,
+            staffCount: parseInt(restaurant.staffCount) || 0,
             rating: 4.5,
             createdAt: new Date(restaurant.createdAt).toISOString().split('T')[0],
             lastOrder: 'No orders yet',

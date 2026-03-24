@@ -495,6 +495,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check if user was using demo account
     const isDemoAccount = user?.email?.includes('demo-') || user?.email?.includes('@purplehere.com');
 
+    // Stop any repeating notification sounds
+    import('../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound()).catch(() => {});
+
     setUser(null);
     // JWT 토큰 제거
     localStorage.removeItem('auth_token');

@@ -31,9 +31,8 @@ function parseImageData(imageStr, imageThumbnail = null, listOnly = false) {
     }
   }
 
-  // Legacy base64 — exclude from list views (too large)
-  if (listOnly) return null;
-  return { thumbnail: imageStr, medium: imageStr, original: imageStr };
+  // Legacy base64 — include in list views (until migrated to file URLs)
+  return listOnly ? { thumbnail: imageStr } : { thumbnail: imageStr, medium: imageStr, original: imageStr };
 }
 
 // Generate order number per restaurant with transaction support

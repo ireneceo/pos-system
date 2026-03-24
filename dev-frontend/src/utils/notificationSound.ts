@@ -117,7 +117,7 @@ export function playLiveOrderSound(volume: number = 0.8): void {
 let repeatInterval: ReturnType<typeof setInterval> | null = null;
 let repeatPreset: SoundPreset = 'bell';
 
-export function startRepeatingSound(preset: SoundPreset, intervalMs: number = 5000): void {
+export function startRepeatingSound(preset: SoundPreset, intervalMs: number = 3000): void {
   stopRepeatingSound();
   repeatPreset = preset;
   playPresetSound(preset);

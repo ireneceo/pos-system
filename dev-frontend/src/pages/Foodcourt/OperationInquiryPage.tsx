@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal as CommonModal } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import CommentSection from '../../components/Common/CommentSection';
 import AttachmentList from '../../components/Common/AttachmentList';
 
@@ -343,6 +345,22 @@ const TicketFooter = styled.div`
   gap: 12px;
 `;
 
+const CloseTicketButton = styled.button`
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  background: #fff;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: #E5E7EB;
+    color: #374151;
+  }
+`;
+
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
@@ -425,7 +443,7 @@ const OperationInquiryPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<OperationTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [activeTab, handleTabChange] = useTabParam<'active' | 'closed'>('active');
   const [filterPriority, setFilterPriority] = useState('all');
   const [selectedTicket, setSelectedTicket] = useState<OperationTicket | null>(null);
   const [detailStatus, setDetailStatus] = useState<OperationTicket['status']>('open');
@@ -485,7 +503,9 @@ const OperationInquiryPage: React.FC = () => {
                          ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.restaurantName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
+    const matchesStatus = activeTab === 'active'
+      ? (ticket.status === 'open' || ticket.status === 'in-progress')
+      : (ticket.status === 'closed' || ticket.status === 'resolved');
     const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
     return matchesSearch && matchesStatus && matchesPriority;
   });
@@ -494,6 +514,7 @@ const OperationInquiryPage: React.FC = () => {
   const openTickets = tickets.filter(t => t.status === 'open').length;
   const inProgressTickets = tickets.filter(t => t.status === 'in-progress').length;
   const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
+  const closedTickets = tickets.filter(t => t.status === 'closed').length;
 
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-MY');
@@ -569,6 +590,15 @@ const OperationInquiryPage: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
+          <Tabs>
+            <Tab active={activeTab === 'active'} onClick={() => handleTabChange('active')}>
+              Active Tickets ({openTickets + inProgressTickets})
+            </Tab>
+            <Tab active={activeTab === 'closed'} onClick={() => handleTabChange('closed')}>
+              Closed Tickets ({closedTickets + resolvedTickets})
+            </Tab>
+          </Tabs>
+
           <FiltersContainer>
             <FilterGroup>
               <FilterLabel>Search</FilterLabel>
@@ -577,16 +607,6 @@ const OperationInquiryPage: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Status</FilterLabel>
-              <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                <option value="all">All Status</option>
-                <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </Select>
             </FilterGroup>
             <FilterGroup>
               <FilterLabel>Priority</FilterLabel>
@@ -635,6 +655,30 @@ const OperationInquiryPage: React.FC = () => {
                         </span>
                       )}
                     </span>
+                  )}
+                  {activeTab === 'active' && (
+                    <CloseTicketButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        (async () => {
+                          try {
+                            const token = localStorage.getItem('auth_token');
+                            const response = await fetch(`/api/operation-tickets/${ticket.id}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                              body: JSON.stringify({ status: 'closed' })
+                            });
+                            if (response.ok) {
+                              setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: 'closed' as OperationTicket['status'] } : t));
+                              window.dispatchEvent(new Event('refreshBadgeCounts'));
+                            }
+                          } catch (err) { /* silent */ }
+                        })();
+                      }}
+                      style={{ marginLeft: 'auto' }}
+                    >
+                      Close
+                    </CloseTicketButton>
                   )}
                 </TicketFooter>
               </TicketCard>

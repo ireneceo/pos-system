@@ -586,7 +586,7 @@ const KitchenDisplayPage: React.FC = () => {
   const [preparingBatches, setPreparingBatches] = useState<PreparingBatch[]>([]);
 
   // ─── Sound toggle ───
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem('sound_enabled') !== 'false');
 
   // ─── Kitchen Station Filter ───
   const [kitchenStations, setKitchenStations] = useState<Array<{ id: number; name: string; alert_sound?: string }>>([]);
@@ -960,7 +960,7 @@ const KitchenDisplayPage: React.FC = () => {
         }
       }
 
-      startRepeatingSound(preset, 5000); // 5초마다 반복
+      startRepeatingSound(preset, 3000); // 3초마다 반복
     });
   }, [audioEnabled, selectedStation, kitchenStations, menuStationMap]);
 
@@ -2226,7 +2226,7 @@ const KitchenDisplayPage: React.FC = () => {
             </ViewToggle>
           )}
           <button
-            onClick={() => setAudioEnabled(!audioEnabled)}
+            onClick={() => { setAudioEnabled(prev => { const next = !prev; localStorage.setItem('sound_enabled', String(next)); return next; }); }}
             title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
             style={{
               width: '40px', height: '40px', borderRadius: '8px', border: 'none', cursor: 'pointer',
@@ -2240,7 +2240,7 @@ const KitchenDisplayPage: React.FC = () => {
               alt={audioEnabled ? 'Sound ON' : 'Sound OFF'}
               style={{
                 width: '22px', height: '22px',
-                filter: audioEnabled ? 'brightness(0) invert(1)' : 'brightness(0) opacity(0.4)'
+                filter: audioEnabled ? 'invert(1)' : 'opacity(0.4)'
               }}
             />
           </button>

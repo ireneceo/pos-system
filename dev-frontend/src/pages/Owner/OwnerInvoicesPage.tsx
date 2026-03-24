@@ -999,7 +999,7 @@ const OwnerInvoicesPage: React.FC = () => {
                   <DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="Total" align="right">
-                  <DataTableAmount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
+                  <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="" mobileFullWidth>
                   <ActionButtons>
@@ -1007,13 +1007,13 @@ const OwnerInvoicesPage: React.FC = () => {
                       View
                     </LocalActionButton>
 
-                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total > 0 && (
+                    {showPayButton && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                       <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
                         Pay
                       </LocalActionButton>
                     )}
 
-                    {showPayButton && (invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total === 0 && (
+                    {showPayButton && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
                       <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>
                         Confirm
                       </LocalActionButton>
@@ -1125,7 +1125,7 @@ const OwnerInvoicesPage: React.FC = () => {
           const payerCompany = selectedInvoice.payerInfo;
 
           return (
-          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total > 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> )}{(selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && selectedInvoice.total === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )} <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> )}{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )} <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
                 {/* Invoice Header with Issuer Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
                   <div style={{ flex: '0 0 55%' }}>

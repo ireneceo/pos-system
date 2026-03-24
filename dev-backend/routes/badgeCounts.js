@@ -58,6 +58,7 @@ router.get('/', authenticateToken, async (req, res) => {
     };
 
     // --- System Inquiry ---
+    // 배지: open 상태 티켓만 카운트 (in-progress는 이미 처리 중이므로 제외)
     if (role === 'System Admin') {
       counts.systemInquiry = await SupportTicket.count({
         where: { status: 'open' }
@@ -78,7 +79,7 @@ router.get('/', authenticateToken, async (req, res) => {
         where: {
           restaurantId: { [Op.in]: rIds },
           inquiryType: 'foodcourt',
-          status: 'open'
+          status: { [Op.in]: ['open', 'in-progress'] }
         }
       });
     } else if (role === 'Brand General' || role === 'Brand Manager') {
@@ -91,7 +92,7 @@ router.get('/', authenticateToken, async (req, res) => {
         where: {
           restaurantId: { [Op.in]: rIds },
           inquiryType: 'brand',
-          status: 'open'
+          status: { [Op.in]: ['open', 'in-progress'] }
         }
       });
     } else if (role === 'Restaurant Owner') {
@@ -104,7 +105,7 @@ router.get('/', authenticateToken, async (req, res) => {
         where: {
           restaurantId: { [Op.in]: rIds },
           inquiryType: 'owner',
-          status: 'open'
+          status: { [Op.in]: ['open', 'in-progress'] }
         }
       });
     }

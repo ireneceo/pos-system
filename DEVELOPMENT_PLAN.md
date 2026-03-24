@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-20
+> **최종 업데이트:** 2026-03-24
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,25 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: v3.5 — QZ Tray 프린터 + 보안 강화 + 리포트 통일 + 문의 UI 개선 (2026-03-24)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | QZ Tray 네트워크 프린터 | 기존 LAN 프린터 지원, Station별 IP 설정, Setup Guide 모달 | ✅ |
+| 2 | 보안 패치 5건 | users/orders/restaurants 접근제어 강화, XSS sanitize | ✅ |
+| 3 | FoodcourtReportsPage 생성 | BrandReportsPage와 동일 6탭 구조 | ✅ |
+| 4 | OwnerReportsPage 통화 수정 | RM 하드코딩 → 시스템 통화 자동 적용 | ✅ |
+| 5 | Manager Restaurants 실데이터 | todaySales/todayOrders/staffCount DB 연동 | ✅ |
+| 6 | Inquiry 탭 구조 통일 | 6개 페이지 Active/Closed 2탭 + Close 버튼 | ✅ |
+| 7 | 미사용 파일 삭제 | BrandReports, FranchiseSupport, ManagerCustomersPage, FoodcourtStats | ✅ |
+| 8 | app.js 엔트리 정리 | server.js 단일 엔트리로 통일 | ✅ |
+| 9 | CLAUDE.md 보안/코딩 가이드 | API 인증 규칙, 응답 형식, 파일 크기 기준 | ✅ |
+| 10 | /복원 명령어 + 긴급 대응 | 개발/운영 선택 복원, EMERGENCY_RESPONSE.md | ✅ |
+| 11 | 운영서버 배포 | Smoke 9/10 | ✅ |
 
 ---
 
@@ -4433,6 +4452,33 @@ ALTER TABLE users MODIFY COLUMN role ENUM(
 - 구독 활성화/비활성화
 - UI Routes 제어
 - 결제 연동
+
+### 이메일 시스템 강화 (v3.6 예정)
+
+- **템플릿 개선**: 로고 Base64 직접 삽입, 본문 줄바꿈 처리, 수신거부 링크
+- **이메일 인증**: 회원가입/변경 시 인증 링크 발송 → 클릭해야 활성화 → 미인증 시 로그인 차단
+- **MX 레코드 검증**: 이메일 등록 시 도메인 메일 서버 존재 확인
+- **바운스 처리**: 발송 실패 시 마킹 → 3회 이상 발송 차단
+- **설계**: `docs/EMAIL_SYSTEM.md` 하단 참조
+
+### CSV 데이터 마이그레이션 (v3.6 예정)
+
+- **목적**: 기존 POS 시스템에서 데이터 이관
+- **4단계 순차 임포트**: 카테고리 → 메뉴 → 옵션 → 주문
+- **자동 매핑**: CSV 컬럼명 정규화 + 동의어 사전으로 자동 매칭
+- **UI**: Settings > Import Data 탭
+- **설계**: `docs/CSV_IMPORT_SYSTEM.md` 참조
+
+### Coming Soon 페이지 처리 (v3.6 예정)
+
+- 미구현 9개 페이지 사이드바 메뉴 회색 + Coming Soon 표시
+- BackupRestorePage, RestaurantSubscriptionsPage, SecurityPage, SystemConfigPage
+- FoodcourtManagement, FoodcourtStats, TenantSupport, RentManagement
+- ManagerPromotionsPage는 유지 (Foodcourt 모바일오더 연동 시 활성화)
+
+### 전역 주문 알림 소리 (v3.6 예정)
+
+- MainLayout에서 WebSocket으로 어느 페이지에서든 새 주문 알림 소리
 
 ---
 

@@ -5,6 +5,8 @@ import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../.
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
+import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -306,6 +308,12 @@ const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'
 const OwnerReportsPage: React.FC = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { defaultCurrency } = useBrandCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState('MYR');
+
+  useEffect(() => {
+    if (defaultCurrency) setSelectedCurrency(defaultCurrency);
+  }, [defaultCurrency]);
 
   // Tab state
   const [activeTab, handleTabChange] = useTabParam<TabType>('ranking');
@@ -858,7 +866,7 @@ const OwnerReportsPage: React.FC = () => {
     link.click();
   };
 
-  const formatCurrency = (amount: number) => `RM ${amount.toFixed(2)}`;
+  const formatCurrency = (amount: number) => formatCurrencyUtil(amount, selectedCurrency);
 
   // Filter component
   const FilterComponent = () => (

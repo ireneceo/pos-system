@@ -16,8 +16,32 @@ const Hero = styled.section`
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 100px 20px 80px;
+  padding: 100px 20px 40px;
   color: white;
+`;
+
+const HeroImage = styled.div`
+  max-width: 900px;
+  width: 90%;
+  margin: 0 auto -200px;
+  padding: 0 20px;
+  position: relative;
+  z-index: 2;
+
+  img {
+    width: 100%;
+    height: auto;
+  }
+
+  @media (max-width: 1024px) {
+    margin-bottom: -150px;
+  }
+
+  @media (max-width: 768px) {
+    width: 95%;
+    margin-bottom: -100px;
+    padding: 0 16px;
+  }
 `;
 
 const Title = styled.h1`
@@ -105,6 +129,8 @@ const Features = styled.section`
   padding: 80px 50px;
   max-width: 1200px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
@@ -178,6 +204,10 @@ const HomePage: React.FC = () => {
             </SecondaryButton>
           </ButtonGroup>
         </Hero>
+
+        <HeroImage>
+          <img src="/images/hero-dashboard.webp" alt="PurpleHere POS Dashboard" />
+        </HeroImage>
 
         <Features>
           <FeatureCard>

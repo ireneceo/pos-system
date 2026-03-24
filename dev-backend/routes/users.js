@@ -4,11 +4,11 @@ const User = require('../models/User');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const bcrypt = require('bcrypt');
-const { authenticateToken, demoProtection } = require('../middleware/auth');
+const { authenticateToken, requireRole, demoProtection } = require('../middleware/auth');
 const { logActivity } = require('../utils/activityLogger');
 
-// Get all users
-router.get('/', authenticateToken, async (req, res) => {
+// Get all users (System Admin only)
+router.get('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
   console.log('🔄 GET /api/users - Request received');
   console.log('📝 Query params:', req.query);
 
@@ -160,11 +160,15 @@ router.get('/available-admins', authenticateToken, async (req, res) => {
 // Get single user
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
+    // 본인 정보 또는 System Admin만 조회 가능
+    if (req.user.id.toString() !== req.params.id && req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
     const user = await User.findByPk(req.params.id, {
       attributes: { exclude: ['password'] }
     });
     if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
     res.json({ success: true, data: user });
   } catch (error) {
@@ -172,8 +176,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Create user (admin only)
-router.post('/', authenticateToken, async (req, res) => {
+// Create user (System Admin only)
+router.post('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
   console.log('🔄 POST /api/users - Request received');
   console.log('📝 Request body:', req.body);
 
@@ -373,17 +377,17 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Update user
+// Update user (본인 또는 System Admin만)
 router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
-  console.log('🔄 PUT /api/users/:id - Request received');
-  console.log('📝 User ID:', req.params.id);
-  console.log('📝 Request body:', req.body);
+  // 본인 정보 수정 또는 System Admin만 허용
+  if (req.user.id.toString() !== req.params.id && req.user.role !== 'System Admin') {
+    return res.status(403).json({ success: false, message: 'Access denied' });
+  }
 
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) {
-      console.log('❌ User not found:', req.params.id);
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     console.log('✅ User found:', user.username, user.email);
@@ -485,7 +489,7 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
 });
 
 // Delete user (with cascade cleanup)
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req, res) => {
   const { sequelize } = require('../config/database');
   const RestaurantManager = require('../models/RestaurantManager');
   const Restaurant = require('../models/Restaurant');
@@ -601,7 +605,7 @@ router.patch('/:id/password', authenticateToken, demoProtection, async (req, res
 // What and Why: 패스워드 리셋 - System Admin 또는 Restaurant Admin(자기 스태프만)
 // - 강력한 임시 비밀번호 생성 (12자, 대소문자+숫자+특수문자)
 // - 응답에 임시 비밀번호 포함하여 관리자가 사용자에게 전달
-router.post('/:id/reset-password', authenticateToken, async (req, res) => {
+router.post('/:id/reset-password', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
 

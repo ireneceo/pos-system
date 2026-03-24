@@ -30,9 +30,12 @@ const HeroTitle = styled.h1`
   font-weight: 700;
   margin: 0;
   line-height: 1.2;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 28px;
+    padding: 0 8px;
   }
 `;
 
@@ -41,10 +44,13 @@ const HeroSubtitle = styled.p`
   opacity: 0.9;
   max-width: 600px;
   margin: 6px auto 0;
-  line-height: 1.3;
+  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 14px;
+    padding: 0 8px;
   }
 `;
 

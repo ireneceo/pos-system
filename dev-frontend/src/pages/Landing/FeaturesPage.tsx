@@ -49,9 +49,12 @@ const HeroTitle = styled.h1`
   font-weight: 700;
   margin: 0;
   line-height: 1.2;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 28px;
+    padding: 0 8px;
   }
 `;
 
@@ -60,20 +63,23 @@ const HeroSubtitle = styled.p`
   opacity: 0.9;
   max-width: 600px;
   margin: 6px auto 0;
-  line-height: 1.3;
+  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 14px;
+    padding: 0 8px;
   }
 `;
 
 const ContentSection = styled.section`
   max-width: 1200px;
   margin: 0 auto;
-  padding: 40px 20px 60px;
+  padding: 60px 20px;
 
   @media (max-width: 768px) {
-    padding: 24px 16px 40px;
+    padding: 40px 20px;
   }
 `;
 
@@ -116,7 +122,7 @@ const RoleHeading = styled.h2`
   font-weight: 700;
   color: #0A2540;
   margin: 0 0 12px 0;
-  text-align: center;
+  text-align: left;
   line-height: 1.3;
 
   @media (max-width: 768px) {
@@ -127,9 +133,8 @@ const RoleHeading = styled.h2`
 const RoleDescription = styled.p`
   font-size: 15px;
   color: #6B7C93;
-  margin: 0 auto 36px;
-  text-align: center;
-  max-width: 720px;
+  margin: 0 0 36px;
+  text-align: left;
   line-height: 1.7;
 
   @media (max-width: 768px) {

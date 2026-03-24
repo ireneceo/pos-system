@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
 import styled from 'styled-components';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStaff } from '../../contexts/StaffContext';
@@ -569,6 +570,66 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     return () => window.removeEventListener('refreshBadgeCounts', handler);
   }, [fetchBadgeCounts]);
 
+  // ─── 전역 주문 알림 소리 (Restaurant Admin, Staff만) ───
+  const [globalAudioEnabled, setGlobalAudioEnabled] = useState(() => {
+    const saved = localStorage.getItem('sound_enabled');
+    return saved !== 'false';
+  });
+  const globalSocketRef = useRef<Socket | null>(null);
+  const locationRef = useRef(location);
+  useEffect(() => { locationRef.current = location; }, [location]);
+
+  // Sound 토글 핸들러
+  const toggleGlobalAudio = useCallback(() => {
+    setGlobalAudioEnabled(prev => {
+      const next = !prev;
+      localStorage.setItem('sound_enabled', String(next));
+      if (!next) {
+        import('../../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound());
+      }
+      return next;
+    });
+  }, []);
+
+  // 전역 WebSocket 연결 (Restaurant Admin, Staff만)
+  const userRestaurantId = user?.restaurantId || user?.restaurant_id;
+  const isOrderRole = user?.role === 'Restaurant Admin' || user?.role === 'Staff';
+
+  useEffect(() => {
+    if (!userRestaurantId || !isOrderRole) return;
+
+    const socket = io('/orders', { transports: ['websocket', 'polling'] });
+    globalSocketRef.current = socket;
+
+    socket.on('connect', () => {
+      socket.emit('join-restaurant', userRestaurantId);
+    });
+
+    const playIfNotOnSoundPage = () => {
+      const path = locationRef.current.pathname;
+      // Live Orders, Kitchen Display는 자체 소리 관리
+      if (path.includes('/live-orders') || path.includes('/kitchen')) return;
+      const enabled = localStorage.getItem('sound_enabled') !== 'false';
+      if (!enabled) return;
+      import('../../utils/notificationSound').then(({ startRepeatingSound }) => {
+        startRepeatingSound('bell', 3000);
+      });
+    };
+
+    socket.on('order-created', () => playIfNotOnSoundPage());
+    socket.on('order-items-added', () => playIfNotOnSoundPage());
+
+    // 주문 상태 변경 시 소리 중지 (전역)
+    socket.on('order-updated', () => {
+      import('../../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound());
+    });
+
+    return () => {
+      socket.disconnect();
+      globalSocketRef.current = null;
+    };
+  }, [userRestaurantId, isOrderRole]);
+
   const handleLogout = () => {
     logout();
     authLogout();
@@ -833,6 +894,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           )}
         </MobileTitle>
         <HeaderActions>
+          {isOrderRole && (
+            <button onClick={toggleGlobalAudio} title={globalAudioEnabled ? 'Sound On' : 'Sound Off'}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', opacity: globalAudioEnabled ? 1 : 0.4 }}>
+              <img src={globalAudioEnabled ? '/sound-on.svg' : '/sound-off.svg'} alt="Sound" style={{ width: '20px', height: '20px' }} />
+            </button>
+          )}
           {isLoggedIn && currentStaff ? (
             <ProfileButton onClick={() => window.location.href = '/profile'}>
               <StaffAvatar role={currentStaff.role}>
@@ -1027,7 +1094,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 {hasManagerPermission('operations') && (
                   isRouteAllowed('/pos/brand/invoices') ||
                   isRouteAllowed('/pos/brand/general/reports') ||
-                  isRouteAllowed('/pos/brand/general/performance')
+                  isRouteAllowed('/pos/brand/general/performance') ||
+                  isRouteAllowed('/pos/manager/coupons')
                 ) && (
                   <>
                     <NavTitle>Operations</NavTitle>
@@ -1047,6 +1115,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       <NavItem to="/pos/brand/general/performance" active={isActive('/pos/brand/general/performance')} onClick={closeSidebar}>
                         <NavIcon>▲</NavIcon>
                         Performance
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/manager/coupons') && (
+                      <NavItem to="/pos/manager/coupons" active={isActive('/pos/manager/coupons')} onClick={closeSidebar}>
+                        <NavIcon>%</NavIcon>
+                        Coupons
                       </NavItem>
                     )}
                   </>
@@ -1157,8 +1231,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
                 {hasManagerPermission('operations') && (
                   isRouteAllowed('/pos/foodcourt/invoices') ||
-                  isRouteAllowed('/pos/foodcourt/general/stats') ||
-                  isRouteAllowed('/pos/manager/customers') ||
+                  isRouteAllowed('/pos/foodcourt/general/reports') ||
                   isRouteAllowed('/pos/manager/coupons')
                 ) && (
                   <>
@@ -1169,16 +1242,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                         Invoices
                       </NavItem>
                     )}
-                    {isRouteAllowed('/pos/foodcourt/general/stats') && (
-                      <NavItem to="/pos/foodcourt/general/stats" active={isActive('/pos/foodcourt/general/stats')} onClick={closeSidebar}>
-                        <NavIcon>▲</NavIcon>
-                        Statistics
-                      </NavItem>
-                    )}
-                    {isRouteAllowed('/pos/manager/customers') && (
-                      <NavItem to="/pos/manager/customers" active={isActive('/pos/manager/customers')} onClick={closeSidebar}>
-                        <NavIcon>○</NavIcon>
-                        Customers
+                    {isRouteAllowed('/pos/foodcourt/general/reports') && (
+                      <NavItem to="/pos/foodcourt/general/reports" active={isActive('/pos/foodcourt/general/reports')} onClick={closeSidebar}>
+                        <NavIcon>◉</NavIcon>
+                        Reports
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/manager/coupons') && (

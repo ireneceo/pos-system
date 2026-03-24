@@ -10,6 +10,8 @@ const PlanPrice = require('../models/PlanPrice');
 const { authenticateToken } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { sendPlatformEmail } = require('../utils/emailService');
+const { sendNotificationBatch, getSystemAdminIds } = require('../utils/notificationService');
+const { emailLayout, getLogoAttachment } = require('../utils/emailTemplates');
 
 // ==============================================
 // Public Contact Form API (인증 불필요)
@@ -77,30 +79,55 @@ router.post('/contact', async (req, res) => {
       const company = await CompanySettings.findOne({ where: { id: 1 } });
       const companyName = company?.company_name || 'PurpleHere';
 
+      const confirmBody = `
+        <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">We've received your inquiry</h2>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">Dear ${name},</p>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">Thank you for reaching out. We have received your message and will review it shortly.</p>
+        <p style="color:#374151;font-size:14px;line-height:1.6;"><strong>We typically respond within 24 hours during business days.</strong></p>
+        <div style="background:#F8FAFC;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #635BFF;">
+          <p style="color:#6B7280;font-size:13px;margin:0 0 8px;"><strong>Your message:</strong></p>
+          <p style="color:#374151;font-size:14px;margin:0;white-space:pre-wrap;">${message.length > 500 ? message.substring(0, 500) + '...' : message}</p>
+        </div>${inquiry_type === 'free_trial' ? '<div style="background:#EEF2FF;padding:16px;border-radius:8px;margin:20px 0;"><p style="color:#4338CA;font-size:14px;margin:0;"><strong>Free Trial Request</strong> — We will set up your account and get back to you with login details.</p></div>' : ''}`;
+
       await sendPlatformEmail({
         to: email,
         subject: `Thank you for contacting ${companyName}`,
-        html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="https://purplehere.com" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
-  <tr><td style="padding:32px;">
-    <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">We've received your inquiry</h2>
-    <p style="color:#374151;font-size:14px;line-height:1.6;">Dear ${name},</p>
-    <p style="color:#374151;font-size:14px;line-height:1.6;">Thank you for reaching out. We have received your message and will review it shortly.</p>
-    <p style="color:#374151;font-size:14px;line-height:1.6;"><strong>We typically respond within 24 hours during business days.</strong></p>
-    <div style="background:#F8FAFC;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #635BFF;">
-      <p style="color:#6B7280;font-size:13px;margin:0 0 8px;"><strong>Your message:</strong></p>
-      <p style="color:#374151;font-size:14px;margin:0;white-space:pre-wrap;">${message.length > 500 ? message.substring(0, 500) + '...' : message}</p>
-    </div>${inquiry_type === 'free_trial' ? '<div style="background:#EEF2FF;padding:16px;border-radius:8px;margin:20px 0;"><p style="color:#4338CA;font-size:14px;margin:0;"><strong>Free Trial Request</strong> — We will set up your account and get back to you with login details.</p></div>' : ''}
-  </td></tr>
-  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">This is an automated message from <a href="https://purplehere.com" style="color:#635BFF;text-decoration:none;">PurpleHere</a>. No-reply email.<br><span style="color:#9CA3AF;">help@purplehere.com</span></p></td></tr>
-</table></td></tr></table></body></html>`
+        html: emailLayout(confirmBody),
+        attachments: getLogoAttachment()
       });
     } catch (emailError) {
-      // Email failure should not block the inquiry submission
       console.error('Failed to send confirmation email:', emailError.message);
+    }
+
+    // Notify System Admins about new contact inquiry (non-blocking)
+    try {
+      const adminIds = await getSystemAdminIds();
+      if (adminIds.length > 0) {
+        const adminBody = `
+          <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">New Contact Inquiry</h2>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+            <tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;width:35%;">Name</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${name}</td></tr>
+            <tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;">Email</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${email}</td></tr>
+            ${phone ? `<tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;">Phone</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${phone}</td></tr>` : ''}
+            ${company_name ? `<tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;">Company</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${company_name}</td></tr>` : ''}
+            <tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;">Type</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${inquiry_type || 'other'}</td></tr>
+          </table>
+          <div style="background:#F8FAFC;padding:16px;border-radius:8px;margin:16px 0;border-left:4px solid #635BFF;">
+            <p style="color:#6B7280;font-size:13px;margin:0 0 8px;"><strong>Message:</strong></p>
+            <p style="color:#374151;font-size:14px;margin:0;white-space:pre-wrap;">${message.length > 1000 ? message.substring(0, 1000) + '...' : message}</p>
+          </div>
+          <div style="text-align:center;margin:24px 0 8px;">
+            <a href="https://purplehere.com/pos/admin/contact-inquiries" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View in Dashboard</a>
+          </div>`;
+
+        await sendNotificationBatch(adminIds, 'inquiry_received', {
+          subject: `[Contact] New inquiry from ${name} - ${inquiry_type || 'other'}`,
+          html: emailLayout(adminBody),
+          attachments: getLogoAttachment()
+        });
+      }
+    } catch (adminEmailError) {
+      console.error('Failed to notify admins:', adminEmailError.message);
     }
 
     res.status(201).json({

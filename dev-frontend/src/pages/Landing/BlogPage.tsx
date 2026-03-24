@@ -52,9 +52,12 @@ const HeroTitle = styled.h1`
   color: white;
   margin: 0;
   line-height: 1.2;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 28px;
+    padding: 0 8px;
   }
 `;
 
@@ -63,10 +66,13 @@ const HeroSubtitle = styled.p`
   opacity: 0.9;
   max-width: 600px;
   margin: 6px auto 0;
-  line-height: 1.3;
+  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 14px;
+    padding: 0 8px;
   }
 `;
 
@@ -85,7 +91,11 @@ const CategoryTabs = styled.div`
   flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
-  margin-bottom: 48px;
+  margin-bottom: 40px;
+
+  @media (max-width: 768px) {
+    margin-bottom: 24px;
+  }
 `;
 
 const CategoryTab = styled.button<{ active?: boolean }>`
@@ -105,6 +115,11 @@ const CategoryTab = styled.button<{ active?: boolean }>`
   &:hover {
     border-color: #635BFF;
     ${props => !props.active && 'background: #F8F9FF;'}
+  }
+
+  @media (max-width: 768px) {
+    padding: 10px 20px;
+    font-size: 13px;
   }
 `;
 

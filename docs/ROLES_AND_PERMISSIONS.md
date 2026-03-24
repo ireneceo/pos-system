@@ -10,7 +10,7 @@ System Admin (최고 관리자)
 │   └── Foodcourt Manager (푸드코트 매니저)
 ├── Restaurant Owner (레스토랑 소유자) ← NEW (재무/통계, N개 레스토랑)
 └── Restaurant Admin (레스토랑 관리자)
-    └── Staff (직원)
+    └── Restaurant Staff (직원)
 ```
 
 ---
@@ -251,7 +251,7 @@ System Admin (최고 관리자)
 
 ---
 
-## 8. Staff (직원)
+## 8. Restaurant Staff (직원)
 
 ### 생성 및 관리
 - **생성 가능한 역할**: Restaurant Admin, System Admin

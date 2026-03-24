@@ -2396,7 +2396,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 <MobileValue className="col-total">
                   <MobileLabel>Total</MobileLabel>
-                  <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
+                  <Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                 </MobileValue>
               </MobileGrid>
 
@@ -2649,20 +2649,20 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                       <MobileValue className="col-total">
                         <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
+                        <Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
                     </MobileGrid>
 
                     <ActionButtons className="col-actions">
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
 
-                      {/* Pay button for pending/overdue invoices (not for free) */}
-                      {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total > 0 && (
+                      {/* Pay button for pending/overdue/sent invoices (not for free) */}
+                      {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                         <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay</LocalActionButton>
                       )}
 
                       {/* Confirm button for free invoices */}
-                      {(invoice.status === 'pending_payment' || invoice.status === 'overdue') && invoice.total === 0 && (
+                      {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
                         <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</LocalActionButton>
                       )}
 
@@ -2767,7 +2767,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                       <MobileValue className="col-total">
                         <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{invoice.total === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
+                        <Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
                     </MobileGrid>
 

@@ -99,7 +99,7 @@ const ManagerAdminManagementPage = React.lazy(() => import('./pages/Manager/Admi
 const AdminStaffManagementPage = React.lazy(() => import('./pages/Admin/StaffManagementPage'));
 const ManagerSalesPage = React.lazy(() => import('./pages/Manager/SalesPage'));
 const ManagerReportsPage = React.lazy(() => import('./pages/Manager/ManagerReportsPage'));
-const ManagerCustomersPage = React.lazy(() => import('./pages/Manager/ManagerCustomersPage'));
+// ManagerCustomersPage 삭제됨 (restaurantId 하드코딩 버그 + 기획 미확정)
 const ManagerPromotionsPage = React.lazy(() => import('./pages/Manager/ManagerPromotionsPage'));
 const ManagerPlansPage = React.lazy(() => import('./pages/Manager/PlansPage'));
 const AdminSettingsPage = React.lazy(() => import('./pages/Admin/AdminSettingsPage'));
@@ -145,7 +145,7 @@ const OwnerOperationInquiryPage = React.lazy(() => import('./pages/Owner/OwnerOp
 
 // Manager Role Specific Pages
 const FoodcourtManagement = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtManagement'));
-const FoodcourtStats = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtStats'));
+const FoodcourtReportsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtReportsPage'));
 const FoodcourtSubscriptionsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtSubscriptionsPage'));
 const FoodcourtInvoicesPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtInvoicesPage'));
 const FoodcourtPlansPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtPlansPage'));
@@ -159,8 +159,7 @@ const BrandPlansPage = React.lazy(() => import('./pages/BrandGeneral/BrandPlansP
 const BrandPaymentSettingsPage = React.lazy(() => import('./pages/BrandGeneral/BrandPaymentSettingsPage'));
 const RentManagement = React.lazy(() => import('./pages/Foodcourt/RentManagement'));
 const TenantSupport = React.lazy(() => import('./pages/Foodcourt/TenantSupport'));
-const FranchiseSupport = React.lazy(() => import('./pages/Brand/FranchiseSupport'));
-const BrandReports = React.lazy(() => import('./pages/Brand/BrandReports'));
+// BrandReports, FranchiseSupport 삭제됨 (미사용 placeholder)
 
 // Brand General Inquiry Pages
 const BrandSystemInquiryPage = React.lazy(() => import('./pages/Brand/SystemInquiryPage'));
@@ -541,9 +540,9 @@ function App() {
                           <FoodcourtManagement />
                         </ProtectedRoute>
                       } />
-                      <Route path="/pos/foodcourt/general/stats" element={
+                      <Route path="/pos/foodcourt/general/reports" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
-                          <FoodcourtStats />
+                          <FoodcourtReportsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/general/subscriptions" element={
@@ -739,16 +738,7 @@ function App() {
                           <BrandManagerDashboard />
                         </ProtectedRoute>
                       } />
-                      <Route path="/pos/brand/franchise-support" element={
-                        <ProtectedRoute requiredRole={['Brand Manager']}>
-                          <FranchiseSupport />
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/pos/brand/reports" element={
-                        <ProtectedRoute requiredRole={['Brand Manager']}>
-                          <BrandReports />
-                        </ProtectedRoute>
-                      } />
+                      {/* BrandReports, FranchiseSupport 라우트 삭제됨 (미사용 placeholder) */}
 
                       {/* Manager Routes */}
                       <Route path="/pos/manager/dashboard" element={
@@ -781,11 +771,7 @@ function App() {
                           <ManagerReportsPage />
                         </ProtectedRoute>
                       } />
-                      <Route path="/pos/manager/customers" element={
-                        <ProtectedRoute requiredRole={['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager']}>
-                          <ManagerCustomersPage />
-                        </ProtectedRoute>
-                      } />
+                      {/* ManagerCustomersPage 라우트 삭제됨 */}
                       <Route path="/pos/manager/coupons" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager']}>
                           <ManagerPromotionsPage />

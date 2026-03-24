@@ -21,9 +21,31 @@ router.get('/', authenticateToken, async (req, res) => {
 
     let whereCondition = {};
 
-    // Restaurant ID 필터링 (필수)
-    if (finalRestaurantId) {
-      whereCondition.restaurant_id = parseInt(finalRestaurantId);
+    // 역할별 접근 가능 레스토랑 제한
+    if (req.user.role === 'System Admin') {
+      // System Admin: 전체 접근 가능
+      if (finalRestaurantId) {
+        whereCondition.restaurant_id = parseInt(finalRestaurantId);
+      }
+    } else if (req.user.role === 'Restaurant Admin' || req.user.role === 'Staff') {
+      // Restaurant Admin/Staff: 본인 레스토랑만
+      whereCondition.restaurant_id = req.user.restaurant_id;
+    } else if (['Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner'].includes(req.user.role)) {
+      // Manager 역할: 관리 하는 레스토랑만
+      const RestaurantManager = require('../models/RestaurantManager');
+      const managedRests = await RestaurantManager.findAll({
+        where: { manager_id: req.user.id },
+        attributes: ['restaurant_id']
+      });
+      const allowedIds = managedRests.map(r => r.restaurant_id);
+      if (finalRestaurantId && allowedIds.includes(parseInt(finalRestaurantId))) {
+        whereCondition.restaurant_id = parseInt(finalRestaurantId);
+      } else {
+        whereCondition.restaurant_id = { [Op.in]: allowedIds };
+      }
+    } else {
+      // 알 수 없는 역할: 접근 거부
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     if (status) {
@@ -279,8 +301,14 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       orderData.customer_id = orderData.customerId;
     }
 
-    // Get restaurant for timezone (needed for merge check and order numbering)
-    const restaurant = orderData.restaurant_id ? await Restaurant.findByPk(orderData.restaurant_id) : null;
+    // Validate restaurant_id exists
+    if (!orderData.restaurant_id) {
+      return res.status(400).json({ success: false, message: 'restaurant_id is required' });
+    }
+    const restaurant = await Restaurant.findByPk(orderData.restaurant_id);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    }
     const timezone = getRestaurantTimezone(restaurant);
 
     // Auto-merge: Check if there's an existing order to merge into

@@ -30,9 +30,12 @@ const HeroTitle = styled.h1`
   font-weight: 700;
   margin: 0;
   line-height: 1.2;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 28px;
+    padding: 0 8px;
   }
 `;
 
@@ -41,10 +44,13 @@ const HeroSubtitle = styled.p`
   opacity: 0.9;
   max-width: 600px;
   margin: 6px auto 0;
-  line-height: 1.3;
+  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 14px;
+    padding: 0 8px;
   }
 `;
 
@@ -63,6 +69,10 @@ const ContentSection = styled.section`
   max-width: 1200px;
   margin: 0 auto;
   padding: 60px 20px;
+
+  @media (max-width: 768px) {
+    padding: 40px 20px;
+  }
 `;
 
 const FilterBar = styled.div`
@@ -94,6 +104,11 @@ const PlanTab = styled.button<{ active: boolean }>`
   &:hover {
     border-color: #635BFF;
     ${props => !props.active && 'background: #F8F9FF;'}
+  }
+
+  @media (max-width: 768px) {
+    padding: 10px 20px;
+    font-size: 13px;
   }
 `;
 

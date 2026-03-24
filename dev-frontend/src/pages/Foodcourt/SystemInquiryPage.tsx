@@ -252,6 +252,22 @@ const TicketFooter = styled.div`
   gap: 8px;
 `;
 
+const CloseTicketButton = styled.button`
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  background: #fff;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: #E5E7EB;
+    color: #374151;
+  }
+`;
+
 
 const FormRow = styled.div`
   display: grid;
@@ -331,7 +347,7 @@ const FormTextArea = styled.textarea`
 const SystemInquiryPage: React.FC = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [activeTab, setActiveTab] = useTabParam<'all' | 'open' | 'in-progress' | 'resolved' | 'closed'>('all');
+  const [activeTab, setActiveTab] = useTabParam<'active' | 'closed'>('active');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
@@ -400,7 +416,9 @@ const SystemInquiryPage: React.FC = () => {
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = activeTab === 'all' || ticket.status === activeTab;
+    const matchesStatus = activeTab === 'active'
+      ? (ticket.status === 'open' || ticket.status === 'in-progress')
+      : (ticket.status === 'closed' || ticket.status === 'resolved');
     const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
     const matchesCategory = filterCategory === 'all' || ticket.category === filterCategory;
     return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
@@ -519,20 +537,11 @@ const SystemInquiryPage: React.FC = () => {
           </StatsGrid>
 
           <Tabs>
-            <Tab active={activeTab === 'all'} onClick={() => setActiveTab('all')}>
-              All ({totalTickets})
-            </Tab>
-            <Tab active={activeTab === 'open'} onClick={() => setActiveTab('open')}>
-              Open ({openTickets})
-            </Tab>
-            <Tab active={activeTab === 'in-progress'} onClick={() => setActiveTab('in-progress')}>
-              In Progress ({inProgressTickets})
-            </Tab>
-            <Tab active={activeTab === 'resolved'} onClick={() => setActiveTab('resolved')}>
-              Resolved ({resolvedTickets})
+            <Tab active={activeTab === 'active'} onClick={() => setActiveTab('active')}>
+              Active Tickets ({openTickets + inProgressTickets})
             </Tab>
             <Tab active={activeTab === 'closed'} onClick={() => setActiveTab('closed')}>
-              Closed ({closedTickets})
+              Closed Tickets ({closedTickets + resolvedTickets})
             </Tab>
           </Tabs>
 
@@ -589,6 +598,30 @@ const SystemInquiryPage: React.FC = () => {
                         </span>
                       )}
                     </span>
+                  )}
+                  {activeTab === 'active' && (
+                    <CloseTicketButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        (async () => {
+                          try {
+                            const token = localStorage.getItem('auth_token');
+                            const response = await fetch(`/api/support-tickets/${ticket.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                              body: JSON.stringify({ status: 'closed' })
+                            });
+                            if (response.ok) {
+                              setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, status: 'closed' as SupportTicket['status'] } : t));
+                              window.dispatchEvent(new Event('refreshBadgeCounts'));
+                            }
+                          } catch (err) { /* silent */ }
+                        })();
+                      }}
+                      style={{ marginLeft: 'auto' }}
+                    >
+                      Close
+                    </CloseTicketButton>
                   )}
                 </TicketFooter>
               </TicketCard>

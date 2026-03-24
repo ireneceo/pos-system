@@ -16,6 +16,8 @@ const Invoice = require('../models/Invoice');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const User = require('../models/User');
+const { sendIssuerEmail } = require('../utils/emailService');
+const { emailLayout, getLogoAttachment } = require('../utils/emailTemplates');
 
 // Configuration
 const TRIAL_PERIOD_DAYS = 7;
@@ -123,6 +125,10 @@ class SubscriptionScheduler {
               grace_period_start: today
             });
             console.log(`⚠️ ${restaurant.name}: Trial -> Overdue (no payment found)`);
+
+            // Send email notification via issuer SMTP
+            this.sendSubscriptionEmail(restaurant, 'trial_expired').catch(e =>
+              console.error(`[Subscription email error] ${restaurant.name}:`, e.message));
           }
           updated++;
         } catch (error) {
@@ -190,6 +196,10 @@ class SubscriptionScheduler {
             }
             await restaurant.update(suspendData);
             console.log(`🚫 ${restaurant.name}: Overdue -> Suspended (grace period expired)`);
+
+            // Send email notification via issuer SMTP
+            this.sendSubscriptionEmail(restaurant, 'suspended').catch(e =>
+              console.error(`[Subscription email error] ${restaurant.name}:`, e.message));
           }
           updated++;
         } catch (error) {
@@ -548,6 +558,75 @@ class SubscriptionScheduler {
   async runNow() {
     console.log('🔧 [SUBSCRIPTION SCHEDULER] Manual trigger initiated...');
     return await this.processAllSubscriptions();
+  }
+
+  /**
+   * Send subscription status change email via issuer SMTP
+   * Determines issuer based on restaurant's brand/foodcourt affiliation
+   */
+  async sendSubscriptionEmail(restaurant, type) {
+    const recipientEmail = restaurant.email;
+    if (!recipientEmail) return;
+
+    // Determine issuer: brand > foodcourt > system_admin
+    let issuerType = 'system_admin';
+    let issuerId = null;
+    if (restaurant.brand_id) {
+      issuerType = 'brand';
+      issuerId = restaurant.brand_id;
+    } else if (restaurant.foodcourt_id) {
+      issuerType = 'foodcourt';
+      issuerId = restaurant.foodcourt_id;
+    }
+
+    let subject, title, bodyContent;
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://purplehere.com';
+
+    if (type === 'trial_expired') {
+      subject = `[PurpleHere] Trial expired - ${restaurant.name}`;
+      title = 'Your Free Trial Has Ended';
+      bodyContent = `
+        <p style="color:#374151;font-size:14px;line-height:1.6;">Hi,</p>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">The free trial period for <strong>${restaurant.name}</strong> has ended.</p>
+        <div style="background:#FEF3C7;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #F59E0B;">
+          <p style="color:#92400E;font-size:14px;margin:0;font-weight:600;">You have ${GRACE_PERIOD_DAYS} days to complete payment before your account is suspended.</p>
+        </div>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">Please log in to your dashboard and complete the payment to continue using all features.</p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${FRONTEND_URL}/pos" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Go to Dashboard</a>
+        </div>`;
+    } else if (type === 'suspended') {
+      subject = `[PurpleHere] Account suspended - ${restaurant.name}`;
+      title = 'Your Account Has Been Suspended';
+      bodyContent = `
+        <p style="color:#374151;font-size:14px;line-height:1.6;">Hi,</p>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">The account for <strong>${restaurant.name}</strong> has been suspended due to non-payment.</p>
+        <div style="background:#FEE2E2;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #EF4444;">
+          <p style="color:#991B1B;font-size:14px;margin:0;font-weight:600;">Access to POS features has been restricted until payment is completed.</p>
+        </div>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">To restore access, please log in and complete the outstanding payment.</p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${FRONTEND_URL}/pos" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Go to Dashboard</a>
+        </div>`;
+    } else {
+      return;
+    }
+
+    const html = emailLayout(`
+      <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">${title}</h2>
+      ${bodyContent}`);
+
+    try {
+      await sendIssuerEmail(issuerType, issuerId, {
+        to: recipientEmail,
+        subject,
+        html,
+        attachments: getLogoAttachment()
+      });
+      console.log(`[Subscription] Sent '${type}' email to ${recipientEmail} via ${issuerType} SMTP`);
+    } catch (e) {
+      console.error(`[Subscription] Email failed for ${restaurant.name}:`, e.message);
+    }
   }
 
   stop() {
