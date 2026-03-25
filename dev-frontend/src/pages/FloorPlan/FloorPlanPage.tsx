@@ -196,6 +196,7 @@ const FloorPlanPage: React.FC = () => {
   const [timezone, setTimezone] = useState('Asia/Kuala_Lumpur');
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const socketRef = useRef<any>(null);
+  const checkoutSocketRef = useRef<any>(null);
 
   // Detail panel
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -360,6 +361,18 @@ const FloorPlanPage: React.FC = () => {
     };
   }, [restaurantId, fetchStatuses, debouncedFetch]);
 
+  // Checkout Display 소켓 (고객 화면 연동)
+  useEffect(() => {
+    if (!restaurantId) return;
+    const cs = io('/checkout-display', { transports: ['websocket', 'polling'] });
+    cs.on('connect', () => cs.emit('join-restaurant', restaurantId));
+    cs.on('customer-checkin', (data: any) => {
+      // 고객 체크인 수신 — 필요시 처리
+    });
+    checkoutSocketRef.current = cs;
+    return () => { cs.disconnect(); checkoutSocketRef.current = null; };
+  }, [restaurantId]);
+
   // Polling fallback (30s)
   useEffect(() => {
     const id = setInterval(() => fetchStatuses(), 30000);
@@ -418,6 +431,31 @@ const FloorPlanPage: React.FC = () => {
   // Payment → PaymentModal (like LiveOrders)
   const handlePayment = () => {
     setShowPaymentModal(true);
+
+    // Checkout Display에 주문 내역 전송
+    if (checkoutSocketRef.current && selectedTable) {
+      const statusInfo = tableStatuses[selectedTable];
+      if (statusInfo) {
+        const items = (statusInfo as any).items?.map((item: any) => ({
+          name: item.name || item.menu_item_name || 'Item',
+          quantity: item.quantity || 1,
+          price: parseFloat(item.price) || 0,
+          options: item.options || []
+        })) || [];
+        checkoutSocketRef.current.emit('cart-update', {
+          restaurantId,
+          items,
+          subtotal: parseFloat((statusInfo as any).subtotal || (statusInfo as any).totalAmount) || 0,
+          tax: parseFloat((statusInfo as any).tax) || 0,
+          taxRate: 0,
+          serviceCharge: parseFloat((statusInfo as any).serviceCharge) || 0,
+          serviceChargeRate: 0,
+          discount: parseFloat((statusInfo as any).discount) || 0,
+          total: parseFloat((statusInfo as any).totalAmount) || 0,
+          currency: 'MYR'
+        });
+      }
+    }
   };
 
   // Payment confirm (like LiveOrders handlePaymentConfirm)
@@ -472,6 +510,16 @@ const FloorPlanPage: React.FC = () => {
         }
         setShowPaymentModal(false);
         await fetchStatuses();
+
+        // Checkout Display에 결제 완료 전송
+        if (checkoutSocketRef.current) {
+          checkoutSocketRef.current.emit('checkout-complete', {
+            restaurantId,
+            orderNumber: (statusInfo as any).orderNumber || '',
+            total: parseFloat((statusInfo as any).totalAmount) || 0,
+            currency: 'MYR'
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to process payment:', err);

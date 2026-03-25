@@ -388,8 +388,32 @@ router.get('/phone/:phone', async (req, res) => {
   try {
     const { phone } = req.params;
 
+    // 국가코드 유무 모두 매칭: +60110000000 ↔ 0110000000 ↔ 110000000
+    const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+    const variants = [cleaned];
+    if (cleaned.startsWith('+')) {
+      // +60110000000 → 0110000000 (앞의 +국가코드 제거하고 0 추가)
+      const withoutPlus = cleaned.slice(1);
+      // 국가코드 길이 1~3자리 시도
+      for (let i = 1; i <= 3; i++) {
+        variants.push('0' + withoutPlus.slice(i));
+        variants.push(withoutPlus.slice(i));
+      }
+      variants.push(withoutPlus);
+    } else if (cleaned.startsWith('0')) {
+      // 0110000000 → +60110000000 시도 (일반적 국가코드)
+      variants.push('+60' + cleaned.slice(1));
+      variants.push('+82' + cleaned.slice(1));
+      variants.push('+1' + cleaned.slice(1));
+      variants.push(cleaned.slice(1));
+    } else {
+      variants.push('+' + cleaned);
+      variants.push('+60' + cleaned);
+      variants.push('0' + cleaned);
+    }
+
     const customer = await Customer.findOne({
-      where: { phone },
+      where: { phone: { [Op.in]: [...new Set(variants)] } },
       attributes: ['id', 'phone', 'name', 'email', 'type'],
       include: [{
         model: Restaurant,
@@ -557,10 +581,25 @@ router.get('/:restaurantId', async (req, res) => {
 
     const whereClause = {};
     if (search) {
+      const { sequelize } = require('../config/database');
+      // 전화번호: 숫자만 추출 후 뒷자리로 LIKE 매칭 (국가코드/하이픈 무시)
+      const digitsOnly = search.replace(/[^\d]/g, '');
+      const phoneConditions = [
+        { '$customer.phone$': { [Op.like]: `%${search}%` } }
+      ];
+      if (digitsOnly.length >= 6) {
+        // DB 전화번호에서 숫자만 추출해서 뒷자리 비교
+        phoneConditions.push(
+          sequelize.where(
+            sequelize.fn('REPLACE', sequelize.fn('REPLACE', sequelize.fn('REPLACE', sequelize.col('customer.phone'), '+', ''), '-', ''), ' ', ''),
+            { [Op.like]: `%${digitsOnly.slice(-8)}%` }
+          )
+        );
+      }
       whereClause[Op.or] = [
         { '$customer.name$': { [Op.like]: `%${search}%` } },
-        { '$customer.phone$': { [Op.like]: `%${search}%` } },
-        { '$customer.email$': { [Op.like]: `%${search}%` } }
+        { '$customer.email$': { [Op.like]: `%${search}%` } },
+        ...phoneConditions
       ];
     }
     if (tier) {

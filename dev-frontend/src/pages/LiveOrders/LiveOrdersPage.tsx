@@ -1177,6 +1177,16 @@ const LiveOrdersPage: React.FC = () => {
   }, [user?.restaurantId]);
 
 
+  // Checkout Display 소켓
+  const checkoutSocketRef = useRef<any>(null);
+  useEffect(() => {
+    if (!user?.restaurantId) return;
+    const cs = io('/checkout-display', { transports: ['websocket', 'polling'] });
+    cs.on('connect', () => cs.emit('join-restaurant', user.restaurantId));
+    checkoutSocketRef.current = cs;
+    return () => { cs.disconnect(); };
+  }, [user?.restaurantId]);
+
   // Store playNotificationSound in ref to avoid socket reconnection on audio state changes
   const playNotificationSoundRef = useRef(playNotificationSound);
   const fetchOrderCountsRef = useRef(fetchOrderCounts);
@@ -2536,6 +2546,24 @@ const LiveOrdersPage: React.FC = () => {
     // PaymentModal 열기 - 모달이 내부에서 customer points를 직접 로드함
     setOrderForPayment(order);
     setShowPaymentModal(true);
+
+    // Checkout Display에 주문 내역 전송
+    if (checkoutSocketRef.current) {
+      const items = (typeof order.order_items === 'string' ? JSON.parse(order.order_items) : order.order_items || []).map((item: any) => ({
+        name: item.name || item.menu_item_name || 'Item',
+        quantity: item.quantity || 1,
+        price: parseFloat(item.price) || 0,
+        options: item.options || []
+      }));
+      checkoutSocketRef.current.emit('cart-update', {
+        restaurantId: user?.restaurantId,
+        items,
+        subtotal: parseFloat(String(order.total_amount)) || 0,
+        tax: 0, taxRate: 0, serviceCharge: 0, serviceChargeRate: 0, discount: 0,
+        total: parseFloat(String(order.total_amount)) || 0,
+        currency: operationSettings.currency || 'MYR'
+      });
+    }
   };
 
   const handlePaymentConfirm = async (method: string, amountReceived?: number, change?: number, pointsUsed?: number, pointDiscount?: number, cardType?: string) => {
@@ -2587,6 +2615,16 @@ const LiveOrdersPage: React.FC = () => {
             status: 'completed'
           })
         }));
+      }
+
+      // Checkout Display에 결제 완료 전송
+      if (checkoutSocketRef.current) {
+        checkoutSocketRef.current.emit('checkout-complete', {
+          restaurantId: user?.restaurantId,
+          orderNumber: orderForPayment.order_number || '',
+          total: parseFloat(String(orderForPayment.total_amount)) || 0,
+          currency: operationSettings.currency || 'MYR'
+        });
       }
 
       // PaymentModal 닫기

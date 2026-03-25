@@ -4,489 +4,322 @@ import { useParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { formatCurrency } from '../../utils/currency';
 
-// ============================================
-// Styled Components
-// ============================================
+const fadeIn = keyframes`from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}`;
 
 const Container = styled.div`
   min-height: 100vh;
-  background: #0A0A0A;
-  color: #fff;
+  background: #FAFBFC;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   user-select: none;
 `;
 
-const fadeIn = keyframes`
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-`;
-
-const pulse = keyframes`
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-`;
-
 const Header = styled.div`
-  padding: 24px 32px;
+  background: white;
+  padding: 14px 32px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #1A1A2E;
+  border-bottom: 1px solid #E6EBF1;
 `;
 
-const StoreName = styled.h1`
-  font-size: 20px;
-  font-weight: 600;
-  color: #fff;
-  margin: 0;
-`;
-
-const StatusDot = styled.span<{ connected: boolean }>`
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: ${p => p.connected ? '#10B981' : '#EF4444'};
-  display: inline-block;
-  margin-right: 8px;
-`;
-
-// Welcome screen
-const WelcomeContainer = styled.div`
+const Main = styled.div`
   flex: 1;
   display: flex;
+  overflow: hidden;
+`;
+
+// 좌측: 전화번호 + 고객정보
+const LeftPanel = styled.div`
+  width: 360px;
+  min-width: 360px;
+  background: white;
+  border-right: 1px solid #E6EBF1;
+  display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 32px;
-  padding: 40px;
-`;
+  padding: 20px;
+  overflow-y: auto;
 
-const WelcomeText = styled.h2`
-  font-size: 36px;
-  font-weight: 300;
-  color: #E5E7EB;
-  margin: 0;
-`;
-
-const PhonePrompt = styled.div`
-  padding: 20px 32px;
-  background: #1A1A2E;
-  border: 1px solid #2D2D44;
-  border-radius: 12px;
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.2s;
-  &:hover {
-    background: #252540;
-    border-color: #635BFF;
+  @media (max-width: 768px) {
+    width: 280px;
+    min-width: 280px;
+    padding: 16px;
   }
 `;
 
-// Keypad
-const KeypadOverlay = styled.div`
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
+// 우측: 주문 내역
+const RightPanel = styled.div`
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-`;
-
-const KeypadCard = styled.div`
-  background: #1A1A2E;
-  border-radius: 16px;
-  padding: 32px;
-  width: 340px;
-`;
-
-const PhoneDisplay = styled.div`
-  font-size: 28px;
-  font-weight: 600;
-  color: #fff;
-  text-align: center;
-  padding: 16px;
-  margin-bottom: 20px;
-  min-height: 50px;
-  letter-spacing: 2px;
+  flex-direction: column;
+  padding: 20px 24px;
+  overflow-y: auto;
 `;
 
 const KeypadGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 6px;
 `;
 
 const Key = styled.button`
-  padding: 16px;
-  font-size: 24px;
-  font-weight: 500;
-  background: #252540;
-  border: none;
-  border-radius: 10px;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.15s;
-  &:hover { background: #353555; }
-  &:active { background: #635BFF; }
-`;
-
-const KeypadActions = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-`;
-
-const KeypadBtn = styled.button<{ variant?: 'primary' | 'secondary' }>`
-  flex: 1;
   padding: 14px;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  background: ${p => p.variant === 'primary' ? '#635BFF' : '#252540'};
-  color: #fff;
-  &:hover { opacity: 0.9; }
-`;
-
-// Order display
-const OrderContainer = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 0 32px 32px;
-  animation: ${fadeIn} 0.3s ease;
-`;
-
-const OrderTitle = styled.h2`
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 500;
-  color: #9CA3AF;
-  margin: 24px 0 16px;
+  background: #F6F9FC;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  color: #0A2540;
+  cursor: pointer;
+  &:active { background: #635BFF; color: white; }
 `;
 
-const ItemList = styled.div`
-  flex: 1;
-  overflow-y: auto;
-`;
-
-const Item = styled.div`
+const ItemRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   padding: 12px 0;
-  border-bottom: 1px solid #1A1A2E;
-  animation: ${fadeIn} 0.3s ease;
-`;
-
-const ItemInfo = styled.div`
-  flex: 1;
-`;
-
-const ItemName = styled.div`
-  font-size: 16px;
-  font-weight: 500;
-  color: #E5E7EB;
-`;
-
-const ItemOption = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  margin-top: 2px;
-`;
-
-const ItemPrice = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  color: #fff;
-  white-space: nowrap;
-  margin-left: 16px;
-`;
-
-const Divider = styled.div`
-  border-top: 1px solid #2D2D44;
-  margin: 16px 0;
+  border-bottom: 1px solid #F3F4F6;
+  animation: ${fadeIn} 0.2s ease;
+  &:last-child { border-bottom: none; }
 `;
 
 const SummaryRow = styled.div<{ bold?: boolean }>`
   display: flex;
   justify-content: space-between;
-  padding: 4px 0;
-  font-size: ${p => p.bold ? '22px' : '15px'};
+  padding: 3px 0;
+  font-size: ${p => p.bold ? '18px' : '13px'};
   font-weight: ${p => p.bold ? 700 : 400};
-  color: ${p => p.bold ? '#fff' : '#9CA3AF'};
+  color: ${p => p.bold ? '#0A2540' : '#6B7C93'};
 `;
 
-const PhoneLink = styled.div`
-  padding: 10px 0;
-  text-align: center;
-  font-size: 13px;
-  color: #6B7280;
-  cursor: pointer;
-  &:hover { color: #635BFF; }
-`;
-
-// Thank you screen
-const ThankYouContainer = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  animation: ${fadeIn} 0.5s ease;
-`;
-
-const ThankYouText = styled.h2`
-  font-size: 42px;
-  font-weight: 300;
-  color: #10B981;
-  margin: 0;
-`;
-
-const OrderNumber = styled.div`
-  font-size: 20px;
-  color: #9CA3AF;
-`;
-
-const TotalPaid = styled.div`
-  font-size: 28px;
-  font-weight: 700;
-  color: #fff;
-  margin-top: 8px;
-`;
-
-// ============================================
-// Component
-// ============================================
-
-interface CartItem {
-  name: string;
-  quantity: number;
-  price: number;
-  options?: string[];
-}
-
-interface CartData {
-  restaurantId: number;
-  items: CartItem[];
-  subtotal: number;
-  tax: number;
-  taxRate: number;
-  serviceCharge: number;
-  serviceChargeRate: number;
-  discount: number;
-  total: number;
-  currency: string;
-}
+interface CartItem { name: string; quantity: number; price: number; options?: string[]; }
+interface CartData { restaurantId: number; items: CartItem[]; subtotal: number; tax: number; taxRate: number; serviceCharge: number; serviceChargeRate: number; discount: number; total: number; currency: string; }
+interface CustomerInfo { id: number; name: string; phone: string; points: number; tier: string; totalOrders: number; }
 
 const CheckoutDisplayPage: React.FC = () => {
   const { restaurantId } = useParams<{ restaurantId: string }>();
-  const [screen, setScreen] = useState<'welcome' | 'order' | 'thankyou'>('welcome');
-  const [showKeypad, setShowKeypad] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [showRegister, setShowRegister] = useState(false);
+  const [registerName, setRegisterName] = useState('');
+  const [registering, setRegistering] = useState(false);
   const [cart, setCart] = useState<CartData | null>(null);
-  const [completedOrder, setCompletedOrder] = useState<{ orderNumber: string; total: number; currency: string } | null>(null);
+  const [customer, setCustomer] = useState<CustomerInfo | null>(null);
+  const [customerStatus, setCustomerStatus] = useState<'idle' | 'searching' | 'found' | 'not_found'>('idle');
+  const [completedOrder, setCompletedOrder] = useState<any>(null);
+  const [showThankYou, setShowThankYou] = useState(false);
   const [connected, setConnected] = useState(false);
   const [storeName, setStoreName] = useState('');
   const socketRef = useRef<Socket | null>(null);
-  const thankYouTimerRef = useRef<any>(null);
 
-  // Load store name
   useEffect(() => {
     if (!restaurantId) return;
-    fetch(`/api/restaurants/${restaurantId}`)
-      .then(r => r.json())
-      .then(d => setStoreName(d.name || d.data?.name || ''))
-      .catch(() => {});
+    fetch(`/api/restaurants/${restaurantId}`).then(r => r.json()).then(d => setStoreName(d.name || d.data?.name || '')).catch(() => {});
   }, [restaurantId]);
 
-  // WebSocket connection
   useEffect(() => {
     if (!restaurantId) return;
-
     const socket = io('/checkout-display', { transports: ['websocket', 'polling'] });
     socketRef.current = socket;
-
-    socket.on('connect', () => {
-      socket.emit('join-restaurant', restaurantId);
-      setConnected(true);
-    });
-
+    socket.on('connect', () => { socket.emit('join-restaurant', restaurantId); setConnected(true); });
     socket.on('disconnect', () => setConnected(false));
-
-    socket.on('cart-update', (data: CartData) => {
-      setCart(data);
-      if (data.items.length > 0) {
-        setScreen('order');
-        setShowKeypad(false);
-      } else {
-        setScreen('welcome');
-      }
-    });
-
-    socket.on('checkout-complete', (data: { orderNumber: string; total: number; currency: string }) => {
+    socket.on('cart-update', (data: CartData) => { setCart(data); if (showThankYou) setShowThankYou(false); });
+    socket.on('checkout-complete', (data) => {
       setCompletedOrder(data);
-      setScreen('thankyou');
+      setShowThankYou(true);
       setCart(null);
-
-      // 5초 후 welcome으로 복귀
-      if (thankYouTimerRef.current) clearTimeout(thankYouTimerRef.current);
-      thankYouTimerRef.current = setTimeout(() => {
-        setScreen('welcome');
-        setCompletedOrder(null);
-        setPhoneNumber('');
-      }, 5000);
+      setTimeout(() => { setShowThankYou(false); setCompletedOrder(null); setPhoneNumber(''); setCustomer(null); setCustomerStatus('idle'); setShowRegister(false); setRegisterName(''); }, 5000);
     });
-
-    return () => {
-      socket.disconnect();
-      if (thankYouTimerRef.current) clearTimeout(thankYouTimerRef.current);
-    };
+    return () => { socket.disconnect(); };
   }, [restaurantId]);
 
-  // Phone keypad handlers
-  const handleKeyPress = (key: string) => {
-    if (phoneNumber.length < 15) setPhoneNumber(prev => prev + key);
+  const handleKeyPress = (key: string) => { if (phoneNumber.length < 15) setPhoneNumber(prev => prev + key); };
+  const handleBackspace = () => { setPhoneNumber(prev => prev.slice(0, -1)); if (customerStatus !== 'idle') { setCustomerStatus('idle'); setCustomer(null); setShowRegister(false); } };
+  const handleClear = () => { setPhoneNumber(''); setCustomerStatus('idle'); setCustomer(null); setShowRegister(false); setRegisterName(''); };
+
+  const handlePhoneSubmit = async () => {
+    if (phoneNumber.length < 8) return;
+    setCustomerStatus('searching');
+    try {
+      const res = await fetch(`/api/customers/phone/${encodeURIComponent(phoneNumber)}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        const c = data.data;
+        const rel = c.restaurants?.find((r: any) => r.id === parseInt(restaurantId || '0'));
+        setCustomer({ id: c.id, name: c.name, phone: c.phone, points: rel?.RestaurantCustomer?.points || 0, tier: rel?.RestaurantCustomer?.loyalty_tier || 'Bronze', totalOrders: rel?.RestaurantCustomer?.total_orders || 0 });
+        setCustomerStatus('found');
+      } else { setCustomerStatus('not_found'); }
+    } catch { setCustomerStatus('not_found'); }
+    if (socketRef.current) socketRef.current.emit('customer-checkin', { phone: phoneNumber, restaurantId });
   };
 
-  const handleBackspace = () => {
-    setPhoneNumber(prev => prev.slice(0, -1));
-  };
-
-  const handlePhoneSubmit = () => {
-    if (phoneNumber.length >= 8 && socketRef.current) {
-      socketRef.current.emit('customer-checkin', { phone: phoneNumber, restaurantId });
-      setShowKeypad(false);
-    }
+  const handleRegister = async () => {
+    if (!registerName.trim()) return;
+    setRegistering(true);
+    try {
+      const res = await fetch('/api/customers/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: registerName.trim(), phone: phoneNumber, restaurantId: restaurantId })
+      });
+      const data = await res.json();
+      if (data.success || res.ok) {
+        const newCust = { id: data.data?.id || 0, name: registerName.trim(), phone: phoneNumber, points: 0, tier: 'Bronze', totalOrders: 0 };
+        setCustomer(newCust);
+        setCustomerStatus('found');
+        setShowRegister(false);
+        // POS에 고객 정보 전달
+        if (socketRef.current) {
+          socketRef.current.emit('customer-checkin', { phone: phoneNumber, restaurantId });
+        }
+      } else {
+        // 이미 등록된 번호 등 에러
+        alert(data.message || 'Registration failed');
+      }
+    } catch { /* silent */ }
+    setRegistering(false);
   };
 
   const currency = cart?.currency || 'MYR';
+  const hasItems = cart && cart.items.length > 0;
+
+  // Thank you 전체화면
+  if (showThankYou && completedOrder) {
+    return (
+      <Container>
+        <Header>
+          <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540', margin: 0 }}>{storeName}</h1>
+        </Header>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <div style={{ fontSize: '48px' }}>✓</div>
+          <div style={{ fontSize: '28px', fontWeight: 300, color: '#10B981' }}>Thank You!</div>
+          <div style={{ fontSize: '16px', color: '#6B7C93' }}>Order {completedOrder.orderNumber}</div>
+          <div style={{ fontSize: '24px', fontWeight: 700, color: '#0A2540', marginTop: '8px' }}>{formatCurrency(completedOrder.total, completedOrder.currency)}</div>
+          {customer && <div style={{ fontSize: '14px', color: '#635BFF', marginTop: '4px' }}>⭐ Points earned</div>}
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
       <Header>
-        <StoreName>{storeName || 'POS'}</StoreName>
-        <div style={{ fontSize: '12px', color: '#6B7280', display: 'flex', alignItems: 'center' }}>
-          <StatusDot connected={connected} />
-          {connected ? 'Connected' : 'Connecting...'}
+        <h1 style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540', margin: 0 }}>{storeName || 'POS'}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: connected ? '#10B981' : '#EF4444', display: 'inline-block' }} />
+          <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{connected ? 'Connected' : 'Connecting...'}</span>
         </div>
       </Header>
 
-      {/* Welcome Screen */}
-      {screen === 'welcome' && (
-        <WelcomeContainer>
-          <WelcomeText>Welcome</WelcomeText>
-          <PhonePrompt onClick={() => setShowKeypad(true)}>
-            <div style={{ fontSize: '16px', color: '#E5E7EB', marginBottom: '6px' }}>
-              Enter your phone number
+      <Main>
+        {/* ===== LEFT: 전화번호 + 고객정보 ===== */}
+        <LeftPanel>
+          <div style={{ fontSize: '13px', color: '#6B7C93', marginBottom: '8px', textAlign: 'center' }}>
+            Enter phone number for points
+          </div>
+          <div style={{ fontSize: '24px', fontWeight: 600, color: '#0A2540', textAlign: 'center', padding: '10px 0', minHeight: '40px', letterSpacing: '2px' }}>
+            {phoneNumber || '—'}
+          </div>
+
+          {/* 고객 정보 */}
+          {customerStatus === 'found' && customer && (
+            <div style={{ padding: '14px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', marginBottom: '12px', animation: 'fadeIn 0.3s' }}>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#065F46' }}>{customer.name}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>Points</div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#635BFF' }}>{customer.points.toLocaleString()}</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>Tier</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.tier}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>Orders</div>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.totalOrders}</div>
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: '13px', color: '#6B7280' }}>
-              Earn points & view your order history
+          )}
+          {customerStatus === 'searching' && (
+            <div style={{ textAlign: 'center', color: '#6B7C93', fontSize: '14px', padding: '12px 0' }}>Checking...</div>
+          )}
+          {customerStatus === 'not_found' && !showRegister && (
+            <div style={{ padding: '12px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '8px', marginBottom: '12px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: '#92400E', marginBottom: '8px' }}>No account found</div>
+              <button onClick={() => setShowRegister(true)} style={{ padding: '10px', fontSize: '13px', fontWeight: 600, width: '100%', border: 'none', borderRadius: '6px', background: '#F59E0B', color: 'white', cursor: 'pointer' }}>
+                Register for Points
+              </button>
             </div>
-          </PhonePrompt>
-        </WelcomeContainer>
-      )}
-
-      {/* Order Screen */}
-      {screen === 'order' && cart && (
-        <OrderContainer>
-          <OrderTitle>Your Order</OrderTitle>
-          <ItemList>
-            {cart.items.map((item, i) => (
-              <Item key={i}>
-                <ItemInfo>
-                  <ItemName>{item.quantity > 1 ? `${item.quantity}x ` : ''}{item.name}</ItemName>
-                  {item.options?.map((opt, j) => (
-                    <ItemOption key={j}>★ {opt}</ItemOption>
-                  ))}
-                </ItemInfo>
-                <ItemPrice>{formatCurrency(item.price * item.quantity, currency)}</ItemPrice>
-              </Item>
-            ))}
-          </ItemList>
-
-          <Divider />
-          {cart.subtotal !== cart.total && (
-            <SummaryRow>
-              <span>Subtotal</span>
-              <span>{formatCurrency(cart.subtotal, currency)}</span>
-            </SummaryRow>
           )}
-          {cart.tax > 0 && (
-            <SummaryRow>
-              <span>Tax ({cart.taxRate}%)</span>
-              <span>{formatCurrency(cart.tax, currency)}</span>
-            </SummaryRow>
-          )}
-          {cart.serviceCharge > 0 && (
-            <SummaryRow>
-              <span>Service Charge ({cart.serviceChargeRate}%)</span>
-              <span>{formatCurrency(cart.serviceCharge, currency)}</span>
-            </SummaryRow>
-          )}
-          {cart.discount > 0 && (
-            <SummaryRow>
-              <span>Discount</span>
-              <span style={{ color: '#10B981' }}>-{formatCurrency(cart.discount, currency)}</span>
-            </SummaryRow>
-          )}
-          <Divider />
-          <SummaryRow bold>
-            <span>Total</span>
-            <span>{formatCurrency(cart.total, currency)}</span>
-          </SummaryRow>
-
-          {!phoneNumber && (
-            <PhoneLink onClick={() => setShowKeypad(true)}>
-              📱 Tap to enter phone number for points
-            </PhoneLink>
-          )}
-        </OrderContainer>
-      )}
-
-      {/* Thank You Screen */}
-      {screen === 'thankyou' && completedOrder && (
-        <ThankYouContainer>
-          <ThankYouText>Thank You!</ThankYouText>
-          <OrderNumber>Order {completedOrder.orderNumber}</OrderNumber>
-          <TotalPaid>{formatCurrency(completedOrder.total, completedOrder.currency)}</TotalPaid>
-        </ThankYouContainer>
-      )}
-
-      {/* Phone Keypad Overlay */}
-      {showKeypad && (
-        <KeypadOverlay onClick={(e) => { if (e.target === e.currentTarget) setShowKeypad(false); }}>
-          <KeypadCard>
-            <div style={{ fontSize: '14px', color: '#9CA3AF', textAlign: 'center', marginBottom: '8px' }}>
-              Enter your phone number
+          {showRegister && (
+            <div style={{ padding: '12px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px', marginBottom: '12px' }}>
+              <input type="text" placeholder="Your name" value={registerName} onChange={e => setRegisterName(e.target.value)} autoFocus
+                style={{ width: '100%', padding: '10px', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', marginBottom: '8px' }} />
+              <button onClick={handleRegister} disabled={!registerName.trim() || registering} style={{
+                padding: '10px', fontSize: '13px', fontWeight: 600, width: '100%', border: 'none', borderRadius: '6px', background: '#635BFF', color: 'white', cursor: 'pointer', opacity: !registerName.trim() ? 0.5 : 1
+              }}>{registering ? 'Registering...' : 'Complete'}</button>
             </div>
-            <PhoneDisplay>{phoneNumber || '—'}</PhoneDisplay>
-            <KeypadGrid>
-              {['1','2','3','4','5','6','7','8','9'].map(k => (
-                <Key key={k} onClick={() => handleKeyPress(k)}>{k}</Key>
-              ))}
-              <Key onClick={handleBackspace}>←</Key>
-              <Key onClick={() => handleKeyPress('0')}>0</Key>
-              <Key onClick={() => handleKeyPress('+')}>+</Key>
-            </KeypadGrid>
-            <KeypadActions>
-              <KeypadBtn variant="secondary" onClick={() => setShowKeypad(false)}>Skip</KeypadBtn>
-              <KeypadBtn
-                variant="primary"
-                onClick={handlePhoneSubmit}
-                style={{ opacity: phoneNumber.length < 8 ? 0.5 : 1 }}
-              >
-                Done
-              </KeypadBtn>
-            </KeypadActions>
-          </KeypadCard>
-        </KeypadOverlay>
-      )}
+          )}
+
+          {/* 키패드 — 고객 찾았으면 숨김 */}
+          {customerStatus !== 'found' && customerStatus !== 'not_found' && !showRegister && (
+            <>
+              <KeypadGrid>
+                {['1','2','3','4','5','6','7','8','9'].map(k => <Key key={k} onClick={() => handleKeyPress(k)}>{k}</Key>)}
+                <Key onClick={() => handleKeyPress('+')}>+</Key>
+                <Key onClick={() => handleKeyPress('0')}>0</Key>
+                <Key onClick={handleBackspace} style={{ fontSize: '16px' }}>⌫</Key>
+              </KeypadGrid>
+              <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
+                <button onClick={handleClear} style={{ flex: 1, padding: '12px', fontSize: '13px', border: '1px solid #E6EBF1', borderRadius: '6px', background: 'white', color: '#6B7C93', cursor: 'pointer' }}>Clear</button>
+                <button onClick={handlePhoneSubmit} disabled={phoneNumber.length < 8} style={{ flex: 1, padding: '12px', fontSize: '13px', fontWeight: 600, border: 'none', borderRadius: '6px', background: '#635BFF', color: 'white', cursor: 'pointer', opacity: phoneNumber.length < 8 ? 0.5 : 1 }}>Done</button>
+              </div>
+            </>
+          )}
+          {/* 처음으로 돌아가기 — 모든 상태에서 표시 */}
+          {(customerStatus !== 'idle' || phoneNumber) && (
+            <button onClick={handleClear} style={{ marginTop: '12px', padding: '10px', fontSize: '13px', border: 'none', borderRadius: '6px', background: 'transparent', color: '#635BFF', cursor: 'pointer', width: '100%', textDecoration: 'underline' }}>
+              {customerStatus === 'found' ? 'Change Number' : 'Start Over'}
+            </button>
+          )}
+        </LeftPanel>
+
+        {/* ===== RIGHT: 주문 내역 ===== */}
+        <RightPanel>
+          {hasItems ? (
+            <>
+              <h3 style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Your Order</h3>
+              <div style={{ flex: 1, overflow: 'auto' }}>
+                {cart!.items.map((item, i) => (
+                  <ItemRow key={i}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '15px', fontWeight: 500, color: '#0A2540' }}>{item.quantity > 1 ? `${item.quantity}× ` : ''}{item.name}</div>
+                      {item.options?.map((opt, j) => <div key={j} style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px' }}>+ {opt}</div>)}
+                    </div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#0A2540', whiteSpace: 'nowrap', marginLeft: '16px' }}>{formatCurrency(item.price * item.quantity, currency)}</div>
+                  </ItemRow>
+                ))}
+              </div>
+              <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '14px', marginTop: '12px' }}>
+                {cart!.subtotal !== cart!.total && <SummaryRow><span>Subtotal</span><span>{formatCurrency(cart!.subtotal, currency)}</span></SummaryRow>}
+                {cart!.tax > 0 && <SummaryRow><span>Tax ({cart!.taxRate}%)</span><span>{formatCurrency(cart!.tax, currency)}</span></SummaryRow>}
+                {cart!.serviceCharge > 0 && <SummaryRow><span>Service ({cart!.serviceChargeRate}%)</span><span>{formatCurrency(cart!.serviceCharge, currency)}</span></SummaryRow>}
+                {cart!.discount > 0 && <SummaryRow><span>Discount</span><span style={{ color: '#10B981' }}>-{formatCurrency(cart!.discount, currency)}</span></SummaryRow>}
+                <div style={{ borderTop: '1px solid #E6EBF1', margin: '6px 0' }} />
+                <SummaryRow bold><span>Total</span><span>{formatCurrency(cart!.total, currency)}</span></SummaryRow>
+              </div>
+            </>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.3 }}>🛒</div>
+              <div style={{ fontSize: '16px' }}>Waiting for order...</div>
+              <div style={{ fontSize: '13px', marginTop: '4px' }}>Items will appear here as the cashier adds them</div>
+            </div>
+          )}
+        </RightPanel>
+      </Main>
     </Container>
   );
 };

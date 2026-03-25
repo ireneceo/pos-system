@@ -2152,9 +2152,33 @@ const POSTerminalPage: React.FC = () => {
     checkoutSocketRef.current = socket;
     socket.on('connect', () => { socket.emit('join-restaurant', user.restaurantId); });
     // Receive customer phone from checkout display
-    socket.on('customer-checkin', (data: { phone: string }) => {
-      if (data.phone) {
+    socket.on('customer-checkin', async (data: { phone: string }) => {
+      if (data.phone && user?.restaurantId) {
         setCustomerSearchQuery(data.phone);
+        // 자동 검색 + 1건이면 자동 선택
+        try {
+          const res = await fetch(`/api/customers/${user.restaurantId}?search=${encodeURIComponent(data.phone)}`);
+          if (res.ok) {
+            const result = await res.json();
+            if (result.success && result.data && result.data.length > 0) {
+              const item = result.data[0];
+              const cust = {
+                id: item.customer?.id || item.customer_id,
+                name: item.customer?.name || 'Unknown',
+                phone: item.customer?.phone || data.phone,
+                email: item.customer?.email || '',
+                type: item.customer?.type || 'member',
+                points: item.points || 0,
+                loyaltyTier: item.loyalty_tier || 'Bronze',
+                totalOrders: item.total_orders || 0,
+                totalSpent: item.total_spent || 0
+              };
+              setSelectedCustomerForOrder(cust);
+              setCustomerSearchQuery('');
+              setShowCustomerDropdown(false);
+            }
+          }
+        } catch { /* silent */ }
       }
     });
     return () => { socket.disconnect(); };
@@ -2322,6 +2346,18 @@ const POSTerminalPage: React.FC = () => {
             <span style={{ fontSize: '11px', color: '#8898AA', marginLeft: '4px' }}>▼</span>
           </StaffInfo>
           <DateTime>{formatDateTime(currentDateTime)}</DateTime>
+          <button
+            onClick={() => window.open(`/restaurant/${user?.restaurantId}/checkout-display`, '_blank')}
+            title="Open Customer Checkout Display"
+            style={{
+              padding: '6px 12px', fontSize: '12px', fontWeight: 500,
+              border: '1px solid #E6EBF1', borderRadius: '6px',
+              background: '#F6F9FC', color: '#6B7C93', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px'
+            }}
+          >
+            Customer Screen
+          </button>
         </HeaderInfo>
       </Header>
 

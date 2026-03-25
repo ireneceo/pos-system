@@ -88,6 +88,12 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 | 23 | 사운드 아이콘 교체 | sound-on/off → speaker-on/off 새 아이콘 | ✅ |
 | 24 | 고객 결제 확인 화면 | CheckoutDisplayPage — POS 카트 실시간 표시 + 전화번호 입력 + 결제 완료 | ✅ |
 | 25 | Live Orders CSV 다운로드 개선 | Item Details 컬럼 추가 (카테고리 + 옵션) | ✅ |
+| 26 | Checkout Display 2영역 레이아웃 | 좌측 키패드+고객정보 / 우측 주문내역 분리 | ✅ |
+| 27 | Floor Plan → Checkout Display 연동 | Payment 시 주문 전송 + 결제 완료 전송 | ✅ |
+| 28 | Live Orders → Checkout Display 연동 | Payment 시 주문 전송 + 결제 완료 전송 | ✅ |
+| 29 | 전화번호 국가코드 매칭 강화 | 숫자 정규화 LIKE + POS 자동 고객 선택 | ✅ |
+| 30 | 회원가입 (Checkout Display) | 미등록 번호 → 이름 입력 → 즉시 가입 → POS 전달 | ✅ |
+| 31 | 운영서버 배포 v3.6 | Smoke 9/10 | ✅ |
 
 ---
 
