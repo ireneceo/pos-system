@@ -6,28 +6,21 @@
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 — 2026-03-24~25)
-1. QZ Tray 네트워크 프린터 연동
-2. 보안 패치 5건 + CLAUDE.md 보안/코딩 가이드
-3. FoodcourtReportsPage + OwnerReportsPage 통화 수정
-4. Manager Restaurants 실데이터 연동
-5. Inquiry 탭 통일 6개 페이지 (Active/Closed + Close 버튼)
-6. 미사용 파일 4개 삭제 + app.js 정리
-7. /복원 명령어 + 긴급 대응 체계
-8. 이메일 템플릿 개선 (로고 Base64, 줄바꿈, 수신거부)
-9. 이메일 인증 시스템 (인증 링크, 로그인 차단, 재발송)
-10. MX 레코드 검증 + 바운스 처리
-11. 회원가입 UX (버튼 비활성화, PhoneInput, 인증 안내)
-12. 인보이스 플랜명 수정 (Brand/FC/Owner payer plan_type)
-13. 대시보드 구독 배지 (Brand/FC/Owner)
-14. 트라이얼 인보이스 안내
-15. 이메일 URL 환경 분리 (dev/prod)
-16. 운영서버 배포 v3.5
+### 완료된 작업 (이번 세션 — 2026-03-25)
+1. CSV 주문 Import 시스템 (업로드 + 자동매핑 + unmatched 매칭 + 히스토리 + Undo)
+2. System Settings 페이지 (Notification Settings → 3탭: Preferences/Email/Import)
+3. Coming Soon 처리 (Subscriptions, Foodcourts 사이드바 회색)
+4. 사운드 아이콘 교체 (speaker-on/off.svg)
+5. 고객 결제 확인 화면 (CheckoutDisplayPage — POS 카트 실시간 + 전화번호 입력)
+6. Live Orders CSV 다운로드 개선 (Item Details 카테고리/옵션 포함)
 
 ### 다음 할 일
-- CSV 데이터 마이그레이션 (카테고리→메뉴→옵션→주문 4단계)
-- Coming Soon 페이지 처리 (미구현 9개 페이지)
-- 전역 주문 알림 소리
+- 고객 결제 확인 화면 실사용 테스트 (POS + 태블릿 동시 테스트)
+- POS Terminal에 "Customer Screen" 버튼 추가 (checkout-display URL 열기)
+- 운영서버 배포
+- Foodcourt General/Owner 데모 계정 Phase 2
+- Kitchen Station 시스템 Phase 3~5
+- 운영서버 base64 이미지 → 파일 URL 마이그레이션
 
 ---
 

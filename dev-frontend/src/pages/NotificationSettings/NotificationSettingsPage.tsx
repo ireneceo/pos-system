@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
+import ImportDataTab from '../../components/Settings/ImportDataTab';
 
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -378,7 +379,7 @@ interface NotificationCategory {
 const NotificationSettingsPage: React.FC = () => {
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
-  const [activeTab, handleTabChange] = useTabParam<'preferences' | 'email'>('preferences');
+  const [activeTab, handleTabChange] = useTabParam<'preferences' | 'email' | 'import'>('preferences');
 
   // SMTP Settings state
   const [smtpSettings, setSmtpSettings] = useState<SmtpSettings>({
@@ -592,7 +593,7 @@ const NotificationSettingsPage: React.FC = () => {
   if (loading && prefsLoading) {
     return (
       <SettingsContainer>
-        <Header><HeaderTitle>Notification Settings</HeaderTitle></Header>
+        <Header><HeaderTitle>System Settings</HeaderTitle></Header>
         <Content><SettingsCard>Loading...</SettingsCard></Content>
       </SettingsContainer>
     );
@@ -602,7 +603,7 @@ const NotificationSettingsPage: React.FC = () => {
     <>
       <SettingsContainer>
         <Header>
-          <HeaderTitle>Notification Settings</HeaderTitle>
+          <HeaderTitle>System Settings</HeaderTitle>
         </Header>
 
         <Content>
@@ -612,6 +613,9 @@ const NotificationSettingsPage: React.FC = () => {
             </Tab>
             <Tab active={activeTab === 'email'} onClick={() => handleTabChange('email')}>
               Email Setup
+            </Tab>
+            <Tab active={activeTab === 'import'} onClick={() => handleTabChange('import')}>
+              Import Data
             </Tab>
           </Tabs>
 
@@ -790,6 +794,10 @@ const NotificationSettingsPage: React.FC = () => {
                 <Alert type={message.type}>{message.text}</Alert>
               )}
             </SettingsCard>
+          )}
+
+          {activeTab === 'import' && (
+            <ImportDataTab restaurantId={user?.restaurantId || urlRestaurantId} />
           )}
         </Content>
       </SettingsContainer>

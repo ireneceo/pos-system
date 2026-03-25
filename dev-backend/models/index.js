@@ -61,6 +61,7 @@ const CommentRead = require('./CommentRead');
 const Notice = require('./Notice');
 const NoticeRecipient = require('./NoticeRecipient');
 const KitchenStation = require('./KitchenStation');
+const ImportHistory = require('./ImportHistory');
 
 // Define associations
 // Brand - Restaurant associations
@@ -511,5 +512,6 @@ module.exports = {
   CommentRead,
   Notice,
   NoticeRecipient,
-  KitchenStation
+  KitchenStation,
+  ImportHistory
 };

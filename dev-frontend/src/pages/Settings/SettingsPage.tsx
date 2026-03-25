@@ -5078,4 +5078,7 @@ QZ Tray (installed on this device)
   );
 };
 
+// ImportDataTab moved to /components/Settings/ImportDataTab.tsx
+// Accessed via System Settings > Import Data tab
+
 export default SettingsPage;

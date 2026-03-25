@@ -2236,7 +2236,7 @@ const KitchenDisplayPage: React.FC = () => {
             }}
           >
             <img
-              src={audioEnabled ? '/sound-on.svg' : '/sound-off.svg'}
+              src={audioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'}
               alt={audioEnabled ? 'Sound ON' : 'Sound OFF'}
               style={{
                 width: '22px', height: '22px',

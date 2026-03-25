@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
+import { io, Socket } from 'socket.io-client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import OptionModal from '../../components/POSTerminal/OptionModal';
@@ -1846,6 +1847,16 @@ const POSTerminalPage: React.FC = () => {
       });
       setShowOrderCompleteModal(true);
 
+      // Notify checkout display
+      if (checkoutSocketRef.current) {
+        checkoutSocketRef.current.emit('checkout-complete', {
+          restaurantId: user?.restaurantId,
+          orderNumber: completedOrderData?.orderNumber || orderData.orderNumber || '',
+          total: savedOrder?.total || orderData.total || total,
+          currency: operationSettings.currency || 'MYR'
+        });
+      }
+
       // Clear the order
       setOrderItems([]);
       setDiscount(0);
@@ -2020,6 +2031,16 @@ const POSTerminalPage: React.FC = () => {
       setShowOrderCompleteModal(true);
       setShowPaymentModal(false);
 
+      // Notify checkout display
+      if (checkoutSocketRef.current) {
+        checkoutSocketRef.current.emit('checkout-complete', {
+          restaurantId: user?.restaurantId,
+          orderNumber: completedOrderData?.orderNumber || orderData.orderNumber || '',
+          total: savedOrder?.total || orderData.total || total,
+          currency: operationSettings.currency || 'MYR'
+        });
+      }
+
       // Auto-print bill + kitchen ticket
       const printSettings = getPrinterSettings();
       const printStoreInfo = getStoreInfo();
@@ -2122,6 +2143,45 @@ const POSTerminalPage: React.FC = () => {
   };
 
   const { subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, takeawayCharge, serviceCharge } = calculateTotal();
+
+  // Checkout Display: WebSocket connection for customer-facing screen
+  const checkoutSocketRef = useRef<Socket | null>(null);
+  useEffect(() => {
+    if (!user?.restaurantId) return;
+    const socket = io('/checkout-display', { transports: ['websocket', 'polling'] });
+    checkoutSocketRef.current = socket;
+    socket.on('connect', () => { socket.emit('join-restaurant', user.restaurantId); });
+    // Receive customer phone from checkout display
+    socket.on('customer-checkin', (data: { phone: string }) => {
+      if (data.phone) {
+        setCustomerSearchQuery(data.phone);
+      }
+    });
+    return () => { socket.disconnect(); };
+  }, [user?.restaurantId]);
+
+  // Emit cart updates to checkout display
+  useEffect(() => {
+    if (!checkoutSocketRef.current || !user?.restaurantId) return;
+    const items = orderItems.map(item => ({
+      name: item.menuItem.name,
+      quantity: item.quantity,
+      price: item.menuItem.price + (item.selectedOptions?.reduce((s, o) => s + o.price, 0) || 0),
+      options: item.selectedOptions?.map(o => o.name) || []
+    }));
+    checkoutSocketRef.current.emit('cart-update', {
+      restaurantId: user.restaurantId,
+      items,
+      subtotal,
+      tax,
+      taxRate: operationSettings.taxEnabled ? operationSettings.taxRate : 0,
+      serviceCharge,
+      serviceChargeRate: operationSettings.serviceChargeEnabled ? operationSettings.serviceChargeRate : 0,
+      discount: discountAmount + couponDiscount + policyDiscount,
+      total,
+      currency: operationSettings.currency || 'MYR'
+    });
+  }, [orderItems, subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, serviceCharge, user?.restaurantId, operationSettings]);
 
   const formatDateTime = (date: Date) => {
     const time = date.toLocaleTimeString('en-US', {

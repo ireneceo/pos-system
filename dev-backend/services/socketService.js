@@ -82,6 +82,29 @@ function initSocketServer(server) {
     });
   });
 
+  // Checkout Display namespace — POS → 고객 결제 화면
+  io.of('/checkout-display').on('connection', (socket) => {
+    socket.on('join-restaurant', (restaurantId) => {
+      socket.join(`restaurant_${restaurantId}`);
+    });
+
+    // POS에서 카트 업데이트 전송
+    socket.on('cart-update', (data) => {
+      // 같은 레스토랑의 checkout-display에만 전송
+      socket.to(`restaurant_${data.restaurantId}`).emit('cart-update', data);
+    });
+
+    // POS에서 고객 체크인 수신 → POS로 전달
+    socket.on('customer-checkin', (data) => {
+      socket.to(`restaurant_${data.restaurantId}`).emit('customer-checkin', data);
+    });
+
+    // POS에서 결제 완료
+    socket.on('checkout-complete', (data) => {
+      socket.to(`restaurant_${data.restaurantId}`).emit('checkout-complete', data);
+    });
+  });
+
   return io;
 }
 

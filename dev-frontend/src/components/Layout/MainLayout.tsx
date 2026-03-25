@@ -897,7 +897,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {isOrderRole && (
             <button onClick={toggleGlobalAudio} title={globalAudioEnabled ? 'Sound On' : 'Sound Off'}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', opacity: globalAudioEnabled ? 1 : 0.4 }}>
-              <img src={globalAudioEnabled ? '/sound-on.svg' : '/sound-off.svg'} alt="Sound" style={{ width: '20px', height: '20px' }} />
+              <img src={globalAudioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'} alt="Sound" style={{ width: '20px', height: '20px' }} />
             </button>
           )}
           {isLoggedIn && currentStaff ? (
@@ -971,10 +971,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
                   Invoices
                 </NavItem>
-                <NavItem to="/pos/admin/subscriptions" active={isActive('/pos/admin/subscriptions')} onClick={closeSidebar}>
-                  <NavIcon>◈</NavIcon>
+                <DisabledNavItem title="Coming Soon">
+                  <DisabledNavIcon>⊘</DisabledNavIcon>
                   Subscriptions
-                </NavItem>
+                </DisabledNavItem>
                 <NavItem to="/pos/admin/report" active={isActive('/pos/admin/report')} onClick={closeSidebar}>
                   <NavIcon>☰</NavIcon>
                   Report
@@ -1203,10 +1203,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <>
                     <NavTitle>Management</NavTitle>
                     {isRouteAllowed('/pos/foodcourt/general/management') && (
-                      <NavItem to="/pos/foodcourt/general/management" active={isActive('/pos/foodcourt/general/management')} onClick={closeSidebar}>
-                        <NavIcon>◉</NavIcon>
+                      <DisabledNavItem title="Coming Soon">
+                        <DisabledNavIcon>⊘</DisabledNavIcon>
                         Foodcourts
-                      </NavItem>
+                      </DisabledNavItem>
                     )}
                     {isRouteAllowed('/pos/manager/restaurants') && (
                       <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>
@@ -1792,24 +1792,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {/* Restaurant Admin & Staff (with permission) Settings */}
             {hasMenuPermission('settings') && (
               <>
-                <NavItem to={`/restaurant/${restaurantId}/settings`} active={isActive(`/restaurant/${restaurantId}/settings`)} onClick={closeSidebar}>
-                  <NavIcon>⚙</NavIcon>
-                  Store Settings
-                </NavItem>
                 <NavItem to={`/restaurant/${restaurantId}/company-information`} active={isActive(`/restaurant/${restaurantId}/company-information`)} onClick={closeSidebar}>
                   <NavIcon>◐</NavIcon>
                   Company Info
                 </NavItem>
-                <NavItem to={`/restaurant/${restaurantId}/notification-settings`} active={isActive(`/restaurant/${restaurantId}/notification-settings`)} onClick={closeSidebar}>
-                  <NavIcon>✉</NavIcon>
-                  Notifications
+                <NavItem to={`/restaurant/${restaurantId}/settings`} active={isActive(`/restaurant/${restaurantId}/settings`)} onClick={closeSidebar}>
+                  <NavIcon>⚙</NavIcon>
+                  Store Settings
                 </NavItem>
-                {user?.role === 'Restaurant Admin' && isRouteAllowed(`/restaurant/${restaurantId}/floor-plan`) && (
-                  <NavItem to={`/restaurant/${restaurantId}/floor-plan-editor`} active={isActive(`/restaurant/${restaurantId}/floor-plan-editor`)} onClick={closeSidebar}>
-                    <NavIcon>▦</NavIcon>
-                    Floor Plan Editor
-                  </NavItem>
-                )}
+                <NavItem to={`/restaurant/${restaurantId}/notification-settings`} active={isActive(`/restaurant/${restaurantId}/notification-settings`)} onClick={closeSidebar}>
+                  <NavIcon>⚙</NavIcon>
+                  System Settings
+                </NavItem>
               </>
             )}
 

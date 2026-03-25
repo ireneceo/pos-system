@@ -1326,7 +1326,7 @@ const LiveOrdersPage: React.FC = () => {
   };
 
   // CSV Download function
-  const handleDownloadCSV = () => {
+  const handleDownloadCSV = async () => {
     const filtered = getFilteredOrders();
 
     if (filtered.length === 0) {
@@ -1334,7 +1334,27 @@ const LiveOrdersPage: React.FC = () => {
       return;
     }
 
-    // CSV Headers - 모든 컬럼 포함
+    // 메뉴 데이터 로드 (카테고리 매칭용)
+    let menuCategoryMap: Record<string, string> = {};
+    try {
+      const token = localStorage.getItem('auth_token');
+      const menuRes = await fetch(`/api/menu?restaurant_id=${user?.restaurantId}&excludeImage=true`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (menuRes.ok) {
+        const menuData = await menuRes.json();
+        const items = menuData.data?.items || [];
+        const categories = menuData.data?.categories || [];
+        const catMap: Record<number, string> = {};
+        categories.forEach((c: any) => { catMap[c.id] = c.name; });
+        items.forEach((item: any) => {
+          const catName = catMap[item.category_id] || item.category || '';
+          if (item.name) menuCategoryMap[item.name.toLowerCase()] = catName;
+        });
+      }
+    } catch { /* silent — category will be empty */ }
+
+    // CSV Headers
     const headers = [
       'Order Number',
       'Date & Time',
@@ -1350,10 +1370,11 @@ const LiveOrdersPage: React.FC = () => {
       'Tax',
       'Discount',
       'Total Amount',
-      'Items'
+      'Items',
+      'Item Details'
     ];
 
-    // CSV Rows - 모든 항목 포함
+    // CSV Rows
     const rows = filtered.map(order => {
       const orderDate = new Date(order.order_date || order.createdAt);
       const formattedDate = orderDate.toLocaleString('en-MY', {
@@ -1365,9 +1386,35 @@ const LiveOrdersPage: React.FC = () => {
         hour12: true
       });
 
+      // Items summary: "2x Nasi Goreng; 1x Teh Tarik"
       const items = order.order_items?.map((item: any) =>
         `${item.quantity}x ${item.menu_item_name || item.name || 'Unknown'}`
       ).join('; ') || '';
+
+      // Item details with category + options: "2x Nasi Goreng [Main Course] (Size: Large, Extra: Egg); ..."
+      const itemDetails = order.order_items?.map((item: any) => {
+        const name = item.menu_item_name || item.name || 'Unknown';
+        const qty = item.quantity || 1;
+        const category = item.category || item.category_name || menuCategoryMap[(name || '').toLowerCase()] || '';
+        const price = item.price ? ` ${item.price}` : '';
+
+        // Options from item.options (array of strings or objects)
+        let optionsStr = '';
+        if (item.options && Array.isArray(item.options) && item.options.length > 0) {
+          optionsStr = ' (' + item.options.map((opt: any) =>
+            typeof opt === 'string' ? opt : `${opt.name || opt.option_name}${opt.price ? ':' + opt.price : ''}`
+          ).join(', ') + ')';
+        }
+        // Also check selectedOptions
+        if (!optionsStr && item.selectedOptions && Array.isArray(item.selectedOptions) && item.selectedOptions.length > 0) {
+          optionsStr = ' (' + item.selectedOptions.map((opt: any) =>
+            typeof opt === 'string' ? opt : `${opt.name || opt.optionName}${opt.price ? ':' + opt.price : ''}`
+          ).join(', ') + ')';
+        }
+
+        const categoryStr = category ? ` [${category}]` : '';
+        return `${qty}x ${name}${categoryStr}${price}${optionsStr}`;
+      }).join('; ') || '';
 
       const orderAny = order as any;
 
@@ -1386,7 +1433,8 @@ const LiveOrdersPage: React.FC = () => {
         formatCurrency(orderAny.tax || 0, operationSettings.currency),
         formatCurrency(orderAny.discount || 0, operationSettings.currency),
         formatCurrency(order.total_amount || 0, operationSettings.currency),
-        items
+        items,
+        itemDetails
       ];
     });
 
@@ -2670,7 +2718,7 @@ const LiveOrdersPage: React.FC = () => {
             title={audioEnabled ? 'Sound ON' : 'Sound OFF'}
           >
             <img
-              src={audioEnabled ? '/sound-on.svg' : '/sound-off.svg'}
+              src={audioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'}
               alt={audioEnabled ? 'Sound ON' : 'Sound OFF'}
             />
           </AudioToggleButton>

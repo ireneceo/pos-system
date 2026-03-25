@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-24
+> **최종 업데이트:** 2026-03-25
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -82,6 +82,12 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 | 17 | 대시보드 구독 배지 | Brand/FC/Owner 대시보드 헤더에 플랜명+상태+클릭 링크 | ✅ |
 | 18 | 트라이얼 인보이스 안내 | "No payment required during trial" 안내 추가 | ✅ |
 | 19 | 이메일 URL 환경 분리 | 하드코딩 purplehere.com → BASE_URL (dev/prod 자동) | ✅ |
+| 20 | CSV 주문 Import | 주문 CSV 업로드 + 자동 매핑 + unmatched 메뉴 매칭 + 히스토리 + Undo | ✅ |
+| 21 | System Settings 페이지 | Notification Settings → System Settings 리네임 + 3탭 (Preferences/Email/Import) | ✅ |
+| 22 | Coming Soon 처리 | 미구현 페이지 사이드바 회색 (Subscriptions, Foodcourts) | ✅ |
+| 23 | 사운드 아이콘 교체 | sound-on/off → speaker-on/off 새 아이콘 | ✅ |
+| 24 | 고객 결제 확인 화면 | CheckoutDisplayPage — POS 카트 실시간 표시 + 전화번호 입력 + 결제 완료 | ✅ |
+| 25 | Live Orders CSV 다운로드 개선 | Item Details 컬럼 추가 (카테고리 + 옵션) | ✅ |
 
 ---
 

@@ -68,6 +68,7 @@ const LiveOrdersPage = React.lazy(() => import('./pages/LiveOrders/LiveOrdersPag
 const POSTerminalPage = React.lazy(() => import('./pages/POSTerminal/POSTerminalPage'));
 const KitchenDisplayPage = React.lazy(() => import('./pages/KitchenDisplay/KitchenDisplayPage'));
 const CustomerDisplayPage = React.lazy(() => import('./pages/CustomerDisplay/CustomerDisplayPage'));
+const CheckoutDisplayPage = React.lazy(() => import('./pages/CheckoutDisplay/CheckoutDisplayPage'));
 const PromotionsPage = React.lazy(() => import('./pages/Promotions/PromotionsPage'));
 const ReportsPage = React.lazy(() => import('./pages/Reports/ReportsPage'));
 const SettingsPage = React.lazy(() => import('./pages/Settings/SettingsPage'));
@@ -371,6 +372,11 @@ function App() {
                       <Route path="/restaurant/:restaurantId/display" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <CustomerDisplayPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/checkout-display" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <CheckoutDisplayPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/floor-plan" element={

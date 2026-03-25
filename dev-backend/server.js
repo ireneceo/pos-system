@@ -541,6 +541,8 @@ app.use('/api/comments', commentsRouter);  // Polymorphic comments (notices, tic
 app.use('/api/notices', noticesRouter);  // Notices (공지) system
 app.use('/api/badge-counts', badgeCountsRouter);  // Sidebar badge counts
 app.use('/api/kitchen-stations', kitchenStationsRouter);  // Kitchen station management
+const importRouter = require('./routes/import');
+app.use('/api/import', importRouter);  // CSV data import (migration)
 
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');
