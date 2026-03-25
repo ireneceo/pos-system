@@ -1032,7 +1032,8 @@ class InvoiceScheduler {
 
     // 2. New: send receiver-based notification to Restaurant Admin + Owner
     try {
-      const mail = invoiceCreatedEmail(invoice, restaurant.name);
+      const isTrial = restaurant.status === 'trial';
+      const mail = invoiceCreatedEmail(invoice, restaurant.name, { isTrial });
       // Notify restaurant admin
       if (restaurant.admin_id) {
         sendNotification(restaurant.admin_id, 'invoice_created', mail);

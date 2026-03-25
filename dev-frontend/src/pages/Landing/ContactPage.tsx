@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
+import PhoneInput from '../../components/Common/PhoneInput';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -417,12 +418,9 @@ const ContactPage: React.FC = () => {
 
                   <FormGroup>
                     <Label>Phone</Label>
-                    <Input
-                      type="tel"
-                      name="phone"
+                    <PhoneInput
                       value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="+60-XX-XXX-XXXX"
+                      onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
                     />
                   </FormGroup>
 

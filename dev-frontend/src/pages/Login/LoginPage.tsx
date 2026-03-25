@@ -434,6 +434,10 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
   const brandLogo = '/uploads/logos/brand-logo.png';
   const [showPassword, setShowPassword] = useState(false);
   const [showTestAccounts, setShowTestAccounts] = useState(false);
@@ -498,6 +502,8 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setEmailNotVerified(false);
+    setResendMessage('');
     setIsLoading(true);
 
     try {
@@ -512,7 +518,12 @@ const LoginPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      setError(error?.message || 'Login failed. Please try again.');
+      if (error?.code === 'EMAIL_NOT_VERIFIED') {
+        setEmailNotVerified(true);
+        setUnverifiedEmail(error.email || email);
+      } else {
+        setError(error?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -565,7 +576,54 @@ const LoginPage: React.FC = () => {
             </InputGroup>
             
             {error && <ErrorMessage>{error}</ErrorMessage>}
-            
+
+            {emailNotVerified && (
+              <div style={{ padding: '14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', marginBottom: '16px' }}>
+                <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#92400E', fontWeight: 500 }}>
+                  Please verify your email address
+                </p>
+                <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#92400E' }}>
+                  Check your inbox ({unverifiedEmail}) for the verification link.
+                </p>
+                {resendMessage && (
+                  <p style={{ margin: '0 0 8px', fontSize: '13px', color: resendMessage.includes('sent') ? '#059669' : '#DC2626' }}>
+                    {resendMessage}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={resendingVerification}
+                  onClick={async () => {
+                    setResendingVerification(true);
+                    setResendMessage('');
+                    try {
+                      const response = await fetch('/api/auth/resend-verification', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: unverifiedEmail })
+                      });
+                      const data = await response.json();
+                      if (response.ok) {
+                        setResendMessage('Verification email sent. Please check your inbox.');
+                      } else {
+                        setResendMessage(data?.error?.message || data?.message || 'Failed to send. Please try again.');
+                      }
+                    } catch {
+                      setResendMessage('Failed to send. Please try again.');
+                    }
+                    setResendingVerification(false);
+                  }}
+                  style={{
+                    padding: '8px 16px', fontSize: '13px', fontWeight: 500,
+                    border: '1px solid #D97706', borderRadius: '6px',
+                    background: '#FEF3C7', color: '#92400E', cursor: 'pointer'
+                  }}
+                >
+                  {resendingVerification ? 'Sending...' : 'Resend Verification Email'}
+                </button>
+              </div>
+            )}
+
             <Button type="submit" disabled={isLoading}>
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>

@@ -8,12 +8,22 @@
  */
 
 const path = require('path');
+const fs = require('fs');
 
 const PLATFORM_LOGO_PATH = path.join(__dirname, '..', '..', 'dev-frontend', 'public', 'images', 'logo-email.png');
 const PLATFORM_LOGO_CID = 'purplehere-logo';
 
+// 로고를 Base64로 미리 로드 (서버 시작 시 1회)
+let PLATFORM_LOGO_BASE64 = '';
+try {
+  const logoBuffer = fs.readFileSync(PLATFORM_LOGO_PATH);
+  PLATFORM_LOGO_BASE64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+} catch (e) {
+  console.error('Failed to load logo for email:', e.message);
+}
+
 /**
- * Get logo attachment for CID embedding in emails
+ * Get logo attachment for CID embedding in emails (레거시 호환용)
  * @returns {Array} nodemailer attachments array
  */
 function getLogoAttachment() {
@@ -33,12 +43,13 @@ function getLogoAttachment() {
 function emailLayout(bodyContent, issuerInfo) {
   const brandName = issuerInfo?.name || 'PurpleHere';
   const brandColor = issuerInfo?.color || '#635BFF';
-  const logoHtml = issuerInfo?.logoUrl
-    ? `<a href="${issuerInfo?.website || 'https://purplehere.com'}" style="text-decoration:none;"><img src="${issuerInfo.logoUrl}" alt="${brandName}" style="height:32px;display:block;" /></a>`
-    : `<a href="https://purplehere.com" style="text-decoration:none;"><img src="cid:${PLATFORM_LOGO_CID}" alt="${brandName}" style="height:32px;display:block;" /></a>`;
+  const logoSrc = issuerInfo?.logoUrl || PLATFORM_LOGO_BASE64 || `cid:${PLATFORM_LOGO_CID}`;
+  const platformUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
+  const logoLink = issuerInfo?.website || platformUrl;
+  const logoHtml = `<a href="${logoLink}" style="text-decoration:none;"><img src="${logoSrc}" alt="${brandName}" style="height:32px;display:block;" /></a>`;
   const footerText = issuerInfo?.companyName || 'PurpleHere POS System';
-  const footerUrl = issuerInfo?.website || 'https://purplehere.com';
-  const footerDomain = issuerInfo?.website ? issuerInfo.website.replace(/^https?:\/\//, '') : 'purplehere.com';
+  const footerUrl = issuerInfo?.website || platformUrl;
+  const footerDomain = issuerInfo?.website ? issuerInfo.website.replace(/^https?:\/\//, '') : platformUrl.replace(/^https?:\/\//, '');
 
   return `<!DOCTYPE html>
 <html>
@@ -68,7 +79,7 @@ function emailLayout(bodyContent, issuerInfo) {
         <tr><td style="padding:20px 32px;border-top:1px solid #EEEEF0;">
           <p style="margin:0;color:#9CA3AF;font-size:12px;line-height:1.6;text-align:center;">
             This is an automated message from ${footerText}.<br>
-            This is a no-reply email. Manage preferences in Settings.<br>
+            <a href="${footerUrl}/notification-preferences" style="color:#6B7280;text-decoration:underline;">Manage notification preferences</a><br>
             <a href="${footerUrl}" style="color:#6B7280;text-decoration:none;">${footerDomain}</a>
           </p>
         </td></tr>

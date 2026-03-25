@@ -5,6 +5,7 @@ import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardSta
 import { formatCurrency } from '../../utils/currency';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -54,6 +55,34 @@ const Title = styled.h1`
   @media (max-width: 768px) {
     font-size: 20px;
   }
+`;
+
+const Subtitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6B7C93;
+  margin-top: 4px;
+`;
+
+const SubscriptionBadge = styled.span<{ variant: 'trial' | 'active' | 'expiring' | 'expired' }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  ${({ variant }) => {
+    switch (variant) {
+      case 'trial': return 'background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;';
+      case 'active': return 'background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;';
+      case 'expiring': return 'background: #FFF7ED; color: #9A3412; border: 1px solid #FDBA74;';
+      case 'expired': return 'background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA;';
+    }
+  }}
+  &:hover { opacity: 0.8; }
 `;
 
 const MainGrid = styled.div`
@@ -394,6 +423,7 @@ const SubscriptionBanner = styled.div<{ $type: 'trial' | 'warning' | 'danger' }>
 
 const OwnerDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { paymentStatus } = usePaymentStatus();
   const [loading, setLoading] = useState(true);
   const [chartPeriod, setChartPeriod] = useState('month');
@@ -412,6 +442,7 @@ const OwnerDashboardPage: React.FC = () => {
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
   const [compareData, setCompareData] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }>>([]);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<{ planType?: string; status?: string; daysLeft?: number }>({});
   const [currency, setCurrency] = useState('RM');
   const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
 
@@ -520,6 +551,21 @@ const OwnerDashboardPage: React.FC = () => {
         alertList.push({ type: 'success', title: 'All Clear', message: 'All systems running smoothly. No issues detected.' });
       }
       setAlerts(alertList);
+
+      // Subscription info
+      try {
+        const subRes = await fetch('/api/restaurants/subscription-status', { headers });
+        const subData = await subRes.json();
+        const s = subData.data || subData;
+        const userRes2 = await fetch(`/api/users/${user?.id}`, { headers });
+        const uData = await userRes2.json();
+        const u = uData.data || uData;
+        setSubscriptionInfo({
+          planType: u.plan_type,
+          status: s.subscriptionStatus,
+          daysLeft: u.subscription_end ? Math.ceil((new Date(u.subscription_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : undefined
+        });
+      } catch (e) { /* silent */ }
     } catch (error) {
       console.error('Error fetching dashboard:', error);
     } finally {
@@ -565,6 +611,22 @@ const OwnerDashboardPage: React.FC = () => {
     <Container>
       <Header>
         <Title>Owner Dashboard</Title>
+        {subscriptionInfo.planType && (
+          <Subtitle>
+            <span>{subscriptionInfo.planType}</span>
+            {(() => {
+              const s = subscriptionInfo;
+              if (s.status === 'trial') return <SubscriptionBadge variant="trial" onClick={() => navigate('/pos/profile?tab=subscription')}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
+              if (s.status === 'active' && s.daysLeft !== undefined) {
+                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>Expired</SubscriptionBadge>;
+                if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
+                return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
+              }
+              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.status}</SubscriptionBadge>;
+              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>Active</SubscriptionBadge>;
+            })()}
+          </Subtitle>
+        )}
       </Header>
 
       <Content>

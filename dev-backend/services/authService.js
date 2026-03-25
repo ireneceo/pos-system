@@ -53,6 +53,14 @@ async function login(emailOrUsername, password) {
     }
   }
 
+  // Email verification check (demo/test 계정 bypass)
+  if (!user.is_demo && !user.is_test && user.email_verified === false) {
+    const err = new Error('Please verify your email address before logging in. Check your inbox for the verification link.');
+    err.code = 'EMAIL_NOT_VERIFIED';
+    err.email = user.email;
+    throw err;
+  }
+
   // JWT_SECRET 필수 검증
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is required');
@@ -156,6 +164,13 @@ async function signup(data) {
       planAmount = data.billing_cycle === 'annual' ? planPrice.annual_price : planPrice.monthly_price;
     }
 
+    // 2c. MX record verification
+    const { verifyMxRecord, generateVerificationToken, getVerificationUrl } = require('../utils/emailValidator');
+    const mxResult = await verifyMxRecord(data.email);
+    if (!mxResult.valid) {
+      throw new Error(mxResult.message);
+    }
+
     // 3. Hash password & create user
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const userFields = {
@@ -164,7 +179,8 @@ async function signup(data) {
       password: hashedPassword,
       full_name: data.full_name,
       phone: data.phone || null,
-      role: data.role
+      role: data.role,
+      email_verified: false
     };
 
     // 4. Role-specific entity creation
@@ -206,8 +222,8 @@ async function signup(data) {
         console.error('[Signup] Trial start failed:', e.message);
       }
 
-      // Generate JWT
-      const response = generateSignupResponse(user, { restaurant_id: restaurant.id });
+      // Send verification email (non-blocking)
+      sendVerificationEmail(user);
 
       // Send welcome email (non-blocking)
       sendSignupWelcomeEmail({
@@ -217,7 +233,7 @@ async function signup(data) {
       });
       notifyAdminNewSignup({ user, role: 'Restaurant', entityName: data.restaurant_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
 
-      return response;
+      return { email_verification_required: true, email: user.email };
 
     } else if (data.role === 'Brand General') {
       const trialEndDate = new Date();
@@ -251,7 +267,7 @@ async function signup(data) {
         console.error('[Signup] Brand invoice generation failed:', e.message);
       }
 
-      const response = generateSignupResponse(user, { brand_id: brand.id });
+      sendVerificationEmail(user);
 
       sendSignupWelcomeEmail({
         user, role: 'Brand', entityName: data.brand_name,
@@ -260,7 +276,7 @@ async function signup(data) {
       });
       notifyAdminNewSignup({ user, role: 'Brand General', entityName: data.brand_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
 
-      return response;
+      return { email_verification_required: true, email: user.email };
 
     } else if (data.role === 'Foodcourt General') {
       const trialEndDate = new Date();
@@ -295,7 +311,7 @@ async function signup(data) {
         console.error('[Signup] Foodcourt invoice generation failed:', e.message);
       }
 
-      const response = generateSignupResponse(user, { foodcourt_id: foodcourt.id });
+      sendVerificationEmail(user);
 
       sendSignupWelcomeEmail({
         user, role: 'Food Court', entityName: data.foodcourt_name,
@@ -304,7 +320,7 @@ async function signup(data) {
       });
       notifyAdminNewSignup({ user, role: 'Foodcourt General', entityName: data.foodcourt_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
 
-      return response;
+      return { email_verification_required: true, email: user.email };
 
     } else if (data.role === 'Restaurant Owner') {
       const trialEndDate = new Date();
@@ -328,7 +344,7 @@ async function signup(data) {
         console.error('[Signup] Owner invoice generation failed:', e.message);
       }
 
-      const response = generateSignupResponse(user, {});
+      sendVerificationEmail(user);
 
       sendSignupWelcomeEmail({
         user, role: 'Owner', entityName: data.company_name,
@@ -337,7 +353,7 @@ async function signup(data) {
       });
       notifyAdminNewSignup({ user, role: 'Restaurant Owner', entityName: data.company_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
 
-      return response;
+      return { email_verification_required: true, email: user.email };
 
     } else {
       throw new Error('Invalid account type');
@@ -459,6 +475,36 @@ function notifyAdminNewSignup({ user, role, entityName, planName, billingCycle }
     });
   } catch (err) {
     console.error('[Signup] Admin notification setup failed:', err.message);
+  }
+}
+
+/**
+ * 회원가입 후 이메일 인증 토큰 생성 + 인증 이메일 발송 (non-blocking)
+ */
+async function sendVerificationEmail(user) {
+  try {
+    const { generateVerificationToken, getVerificationUrl } = require('../utils/emailValidator');
+    const { emailVerificationEmail } = require('../utils/notificationTemplates');
+    const { sendPlatformEmail } = require('../utils/emailService');
+
+    const { rawToken, hashedToken, expires } = await generateVerificationToken();
+    await user.update({
+      email_verification_token: hashedToken,
+      email_verification_expires: expires
+    });
+
+    const verificationUrl = getVerificationUrl(rawToken, user.email);
+    const emailContent = emailVerificationEmail(user.full_name || user.username, verificationUrl);
+
+    await sendPlatformEmail({
+      to: user.email,
+      subject: emailContent.subject,
+      html: emailContent.html,
+      text: emailContent.text
+    });
+    console.log(`[Signup] Verification email sent to ${user.email}`);
+  } catch (err) {
+    console.error('[Signup] Verification email failed:', err.message);
   }
 }
 

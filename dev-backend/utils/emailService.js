@@ -5,6 +5,36 @@ const { decrypt } = require('./encryption');
 const { getLogoAttachment } = require('./emailTemplates');
 
 /**
+ * 바운스 처리: 발송 실패한 이메일의 bounce_count 증가
+ * bounce_count >= 3이면 해당 이메일로는 발송 차단
+ */
+async function handleBounce(toEmail) {
+  try {
+    await sequelize.query(
+      `UPDATE users SET email_bounce_count = COALESCE(email_bounce_count, 0) + 1 WHERE email = :email`,
+      { replacements: { email: toEmail }, type: QueryTypes.UPDATE }
+    );
+  } catch (e) {
+    console.error('Bounce count update failed:', e.message);
+  }
+}
+
+/**
+ * 발송 전 바운스 체크: bounce_count >= 3이면 발송 차단
+ */
+async function isEmailBlocked(toEmail) {
+  try {
+    const [result] = await sequelize.query(
+      `SELECT email_bounce_count FROM users WHERE email = :email`,
+      { replacements: { email: toEmail }, type: QueryTypes.SELECT }
+    );
+    return result && result.email_bounce_count >= 3;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
  * Get email settings for a specific entity
  */
 async function getEmailSettings(entityType, entityId) {
@@ -81,6 +111,10 @@ const isDev = process.env.NODE_ENV !== 'production';
  */
 async function sendEmail(entityType, entityId, mailOptions) {
   try {
+    if (mailOptions.to && await isEmailBlocked(mailOptions.to)) {
+      console.log(`Email blocked (bounce count >= 3): ${mailOptions.to}`);
+      return { success: false, blocked: true };
+    }
     const settings = await getEmailSettings(entityType, entityId);
     const transporter = createTransporter(settings);
 
@@ -116,6 +150,7 @@ async function sendEmail(entityType, entityId, mailOptions) {
     };
   } catch (error) {
     console.error('Email sending error:', error);
+    if (mailOptions.to) await handleBounce(mailOptions.to);
     throw error;
   }
 }
@@ -126,6 +161,12 @@ async function sendEmail(entityType, entityId, mailOptions) {
  */
 async function sendPlatformEmail(mailOptions) {
   try {
+    // 바운스 체크: 3회 이상 실패한 이메일은 발송 차단
+    if (mailOptions.to && await isEmailBlocked(mailOptions.to)) {
+      console.log(`Email blocked (bounce count >= 3): ${mailOptions.to}`);
+      return { success: false, blocked: true, message: 'Email address blocked due to repeated delivery failures' };
+    }
+
     const settings = await getPlatformEmailSettings();
     const transporter = createTransporter(settings);
 
@@ -161,6 +202,10 @@ async function sendPlatformEmail(mailOptions) {
     };
   } catch (error) {
     console.error('Platform email sending error:', error);
+    // 바운스 카운트 증가
+    if (mailOptions.to) {
+      await handleBounce(mailOptions.to);
+    }
     throw error;
   }
 }
@@ -236,6 +281,10 @@ async function getIssuerEmailSettings(issuerType, issuerId) {
  */
 async function sendIssuerEmail(issuerType, issuerId, mailOptions) {
   try {
+    if (mailOptions.to && await isEmailBlocked(mailOptions.to)) {
+      console.log(`Email blocked (bounce count >= 3): ${mailOptions.to}`);
+      return { success: false, blocked: true };
+    }
     const settings = await getIssuerEmailSettings(issuerType, issuerId);
     const transporter = createTransporter(settings);
 
@@ -263,6 +312,7 @@ async function sendIssuerEmail(issuerType, issuerId, mailOptions) {
     };
   } catch (error) {
     console.error(`Issuer email sending error (${issuerType}/${issuerId}):`, error);
+    if (mailOptions.to) await handleBounce(mailOptions.to);
     throw error;
   }
 }

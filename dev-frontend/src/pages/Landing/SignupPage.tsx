@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Helmet } from 'react-helmet-async';
 import { LandingLayout } from '../../components/Landing';
+import PhoneInput from '../../components/Common/PhoneInput';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface Plan {
@@ -197,6 +198,8 @@ const SignupPage: React.FC = () => {
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState(draft?.currency || 'USD');
   const [error, setError] = useState('');
+  const [signupComplete, setSignupComplete] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -341,6 +344,23 @@ const SignupPage: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
+  // 각 스텝의 필수 필드가 채워졌는지 확인 (버튼 활성화용)
+  const isStepComplete = (): boolean => {
+    if (step === 1) return !!form.role;
+    if (step === 2) {
+      return !!(form.full_name.trim() && form.email.trim() && form.username.trim() && form.password && form.confirm_password && form.password === form.confirm_password);
+    }
+    if (step === 3) {
+      const role = form.role as string;
+      if (role === 'Restaurant Admin' && !form.restaurant_name.trim()) return false;
+      if (role === 'Brand General' && !form.brand_name.trim()) return false;
+      if (role === 'Foodcourt General' && !form.foodcourt_name.trim()) return false;
+      return !!form.plan_id;
+    }
+    if (step === 4) return true; // 리뷰 단계
+    return false;
+  };
+
   // ─── Navigation ──────────────────────────────────────────────
   const handleNext = () => {
     setError('');
@@ -407,11 +427,18 @@ const SignupPage: React.FC = () => {
         throw new Error(result.message || 'Signup failed');
       }
 
-      // Auto-login: store token and redirect
       clearDraft();
+
+      // Email verification required — show confirmation instead of auto-login
+      if (result.data?.email_verification_required) {
+        setSignupComplete(true);
+        setVerificationEmail(result.data.email || form.email);
+        return;
+      }
+
+      // Fallback: auto-login if token returned (for backward compat)
       if (result.data?.token) {
         localStorage.setItem('auth_token', result.data.token);
-        // Trigger auth context refresh by navigating
         const user = result.data.user;
         if (user.role === 'Restaurant Admin' && user.restaurant_id) {
           navigate(`/restaurant/${user.restaurant_id}/dashboard`, { replace: true });
@@ -424,7 +451,6 @@ const SignupPage: React.FC = () => {
         } else {
           navigate('/pos', { replace: true });
         }
-        // Force page reload to pick up new auth state
         window.location.reload();
       }
     } catch (err: any) {
@@ -526,11 +552,9 @@ const SignupPage: React.FC = () => {
 
         <FormGroup>
           <FormLabel>Phone</FormLabel>
-          <FormInput
-            type="tel"
+          <PhoneInput
             value={form.phone}
-            onChange={e => updateField('phone', e.target.value)}
-            placeholder="Optional"
+            onChange={(value) => updateField('phone', value)}
           />
         </FormGroup>
 
@@ -850,6 +874,38 @@ const SignupPage: React.FC = () => {
   };
 
   // ─── Main Render ─────────────────────────────────────────────
+  // 회원가입 완료 → 이메일 인증 안내
+  if (signupComplete) {
+    return (
+      <LandingLayout>
+        <div style={{ maxWidth: '500px', margin: '80px auto', padding: '48px 32px', textAlign: 'center', background: '#fff', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>✉</div>
+          <h2 style={{ color: '#1F2937', margin: '0 0 12px', fontSize: '24px' }}>Check your email</h2>
+          <p style={{ color: '#6B7280', fontSize: '15px', lineHeight: '1.6', margin: '0 0 24px' }}>
+            We've sent a verification link to<br />
+            <strong style={{ color: '#374151' }}>{verificationEmail}</strong>
+          </p>
+          <p style={{ color: '#9CA3AF', fontSize: '13px', lineHeight: '1.6', margin: '0 0 32px' }}>
+            Please click the link in the email to verify your account.<br />
+            The link expires in 24 hours.
+          </p>
+          <button
+            onClick={() => navigate('/pos')}
+            style={{
+              padding: '12px 32px', fontSize: '15px', fontWeight: 600,
+              border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff', cursor: 'pointer'
+            }}
+          >
+            Go to Login
+          </button>
+          <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '16px' }}>
+            Didn't receive the email? Check your spam folder.
+          </p>
+        </div>
+      </LandingLayout>
+    );
+  }
+
   return (
     <LandingLayout>
       <Helmet>
@@ -895,7 +951,7 @@ const SignupPage: React.FC = () => {
             )}
             <ButtonSpacer />
             {step < 4 ? (
-              <NextButton onClick={handleNext}>Continue</NextButton>
+              <NextButton onClick={handleNext} disabled={!isStepComplete()}>Continue</NextButton>
             ) : (
               <SubmitButton onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? 'Creating Account...' : 'Create Account & Start Free Trial'}
@@ -1430,10 +1486,16 @@ const NextButton = styled.button`
   cursor: pointer;
   transition: all 0.2s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: #5A51E6;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(99, 91, 255, 0.3);
+  }
+  &:disabled {
+    background: #C4C1F7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
   }
 `;
 

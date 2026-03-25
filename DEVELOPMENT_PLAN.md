@@ -74,6 +74,14 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 | 9 | CLAUDE.md 보안/코딩 가이드 | API 인증 규칙, 응답 형식, 파일 크기 기준 | ✅ |
 | 10 | /복원 명령어 + 긴급 대응 | 개발/운영 선택 복원, EMERGENCY_RESPONSE.md | ✅ |
 | 11 | 운영서버 배포 | Smoke 9/10 | ✅ |
+| 12 | 이메일 템플릿 개선 | 로고 Base64 직접 삽입, 줄바꿈 처리, 수신거부 링크 | ✅ |
+| 13 | 이메일 인증 시스템 | 회원가입 시 인증 링크 발송, 미인증 로그인 차단, 재발송 API | ✅ |
+| 14 | MX 레코드 검증 + 바운스 | 가짜 도메인 차단, 발송 실패 시 bounce_count, 3회 이상 발송 차단 | ✅ |
+| 15 | 회원가입 UX 개선 | 버튼 비활성화(필수 필드), PhoneInput 국가코드, 인증 안내 페이지 | ✅ |
+| 16 | 인보이스 플랜명 수정 | Brand/FC/Owner 인보이스에 payer의 plan_type 반영 | ✅ |
+| 17 | 대시보드 구독 배지 | Brand/FC/Owner 대시보드 헤더에 플랜명+상태+클릭 링크 | ✅ |
+| 18 | 트라이얼 인보이스 안내 | "No payment required during trial" 안내 추가 | ✅ |
+| 19 | 이메일 URL 환경 분리 | 하드코딩 purplehere.com → BASE_URL (dev/prod 자동) | ✅ |
 
 ---
 

@@ -188,6 +188,26 @@ User.init({
     allowNull: true,
     comment: 'Password reset token expiry'
   },
+  email_verified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether user email has been verified'
+  },
+  email_verification_token: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Email verification token (hashed)'
+  },
+  email_verification_expires: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Email verification token expiry'
+  },
+  email_bounce_count: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Number of email delivery failures'
+  },
   notification_preferences: {
     type: DataTypes.TEXT,
     allowNull: true,

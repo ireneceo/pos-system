@@ -6,6 +6,7 @@
 const { emailLayout } = require('./emailTemplates');
 
 const BRAND_COLOR = '#635BFF';
+const BASE_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 
 function ctaButton(label, url) {
   if (!url) return '';
@@ -47,10 +48,10 @@ function noticeReceivedEmail(notice, authorName) {
       infoRow('Priority', notice.priority || 'Normal') +
       infoRow('Date', new Date(notice.created_at || notice.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))
     )}
-    <p style="color: #6B7280; font-size: 14px; margin: 0 0 24px;">
-      ${(notice.content || '').replace(/<[^>]*>/g, '').slice(0, 300)}${(notice.content || '').length > 300 ? '...' : ''}
-    </p>
-    ${ctaButton('View Notice', 'https://purplehere.com/pos/notices')}`;
+    <div style="color: #6B7280; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
+      ${(notice.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}${(notice.content || '').length > 500 ? '...' : ''}
+    </div>
+    ${ctaButton('View Notice', `${BASE_URL}/pos/notices`)}`;
 
   return {
     subject: `New Notice: ${(notice.title || 'Untitled').slice(0, 60)}`,
@@ -69,10 +70,10 @@ function commentReceivedEmail(comment, entityTitle, commenterName) {
     </p>
     <div style="background: #F9FAFB; border-left: 4px solid #635BFF; padding: 16px; margin: 0 0 24px; border-radius: 0 8px 8px 0;">
       <p style="color: #374151; font-size: 14px; margin: 0;">
-        ${(comment.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}
+        ${(comment.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}
       </p>
     </div>
-    ${ctaButton('View & Reply', 'https://purplehere.com/pos/dashboard')}`;
+    ${ctaButton('View & Reply', `${BASE_URL}/pos/dashboard`)}`;
 
   return {
     subject: `New Comment on: ${(entityTitle || 'item').slice(0, 50)}`,
@@ -95,10 +96,10 @@ function inquiryReceivedEmail(ticket, requesterName) {
       infoRow('Category', ticket.category || 'General') +
       infoRow('Priority', ticket.priority || 'Normal')
     )}
-    <p style="color: #6B7280; font-size: 14px; margin: 0 0 24px;">
-      ${(ticket.description || ticket.content || '').replace(/<[^>]*>/g, '').slice(0, 300)}
-    </p>
-    ${ctaButton('Review Inquiry', 'https://purplehere.com/pos/dashboard')}`;
+    <div style="color: #6B7280; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
+      ${(ticket.description || ticket.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}
+    </div>
+    ${ctaButton('Review Inquiry', `${BASE_URL}/pos/dashboard`)}`;
 
   return {
     subject: `New Inquiry: ${(ticket.title || ticket.subject || 'No subject').slice(0, 50)}`,
@@ -121,10 +122,10 @@ function inquiryRepliedEmail(ticket, reply, replierName) {
     )}
     <div style="background: #F9FAFB; border-left: 4px solid #635BFF; padding: 16px; margin: 0 0 24px; border-radius: 0 8px 8px 0;">
       <p style="color: #374151; font-size: 14px; margin: 0;">
-        ${(reply.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}
+        ${(reply.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}
       </p>
     </div>
-    ${ctaButton('View Conversation', 'https://purplehere.com/pos/dashboard')}`;
+    ${ctaButton('View Conversation', `${BASE_URL}/pos/dashboard`)}`;
 
   return {
     subject: `Reply to: ${(ticket.title || ticket.subject || 'Your inquiry').slice(0, 50)}`,
@@ -154,7 +155,7 @@ function ticketStatusChangedEmail(ticket, newStatus) {
       infoRow('Subject', ticket.title || ticket.subject || 'No subject') +
       infoRow('New Status', `<span style="display: inline-block; padding: 4px 12px; background: ${color}20; color: ${color}; border-radius: 12px; font-weight: 600; font-size: 13px;">${newStatus}</span>`)
     )}
-    ${ctaButton('View Ticket', 'https://purplehere.com/pos/dashboard')}`;
+    ${ctaButton('View Ticket', `${BASE_URL}/pos/dashboard`)}`;
 
   return {
     subject: `Ticket Update: ${(ticket.title || ticket.subject || 'Ticket').slice(0, 40)} - ${newStatus}`,
@@ -166,21 +167,31 @@ function ticketStatusChangedEmail(ticket, newStatus) {
 /**
  * Invoice created notification (for restaurant admin/owner)
  */
-function invoiceCreatedEmail(invoice, restaurantName) {
+function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
   const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
   const dueDate = new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const trialNotice = options.isTrial ? `
+    <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 16px; margin: 0 0 20px;">
+      <p style="color: #065F46; font-size: 14px; font-weight: 600; margin: 0 0 6px;">
+        You're currently on a free trial
+      </p>
+      <p style="color: #047857; font-size: 13px; margin: 0; line-height: 1.6;">
+        No payment is required during your trial period. This invoice will become active after your trial ends.
+      </p>
+    </div>` : '';
 
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
       A new invoice has been issued for <strong>${restaurantName}</strong>.
     </p>
+    ${trialNotice}
     ${infoTable(
       infoRow('Invoice No.', invoice.invoice_number) +
       infoRow('Amount', `<span style="color: #635BFF; font-weight: 700; font-size: 16px;">${amount}</span>`) +
       infoRow('Due Date', dueDate) +
-      infoRow('Status', 'Pending')
+      infoRow('Status', options.isTrial ? '<span style="color: #059669;">Trial Period</span>' : 'Pending')
     )}
-    ${ctaButton('View Invoice', 'https://purplehere.com/pos/invoices')}`;
+    ${ctaButton('View Invoice', `${BASE_URL}/pos/invoices`)}`;
 
   return {
     subject: `Invoice ${invoice.invoice_number} - ${amount} Due ${dueDate}`,
@@ -206,7 +217,7 @@ function invoiceOverdueEmail(invoice, restaurantName) {
       infoRow('Due Date', `<span style="color: #EF4444;">${dueDate}</span>`) +
       infoRow('Status', '<span style="color: #EF4444; font-weight: 600;">Overdue</span>')
     )}
-    ${ctaButton('Pay Now', 'https://purplehere.com/pos/invoices')}`;
+    ${ctaButton('Pay Now', `${BASE_URL}/pos/invoices`)}`;
 
   return {
     subject: `OVERDUE: Invoice ${invoice.invoice_number} - ${amount}`,
@@ -230,12 +241,35 @@ function invoicePaidEmail(invoice, restaurantName) {
       infoRow('Amount', `<span style="color: #10B981; font-weight: 700; font-size: 16px;">${amount}</span>`) +
       infoRow('Status', '<span style="color: #10B981; font-weight: 600;">Paid</span>')
     )}
-    ${ctaButton('View Details', 'https://purplehere.com/pos/invoices')}`;
+    ${ctaButton('View Details', `${BASE_URL}/pos/invoices`)}`;
 
   return {
     subject: `Payment Confirmed: Invoice ${invoice.invoice_number} - ${amount}`,
     html: wrapTemplate('Payment Confirmed', body),
     text: `Payment Confirmed for Invoice ${invoice.invoice_number}\nAmount: ${amount}\nRestaurant: ${restaurantName}`
+  };
+}
+
+/**
+ * Email Verification Email
+ */
+function emailVerificationEmail(fullName, verificationUrl) {
+  const body = `
+    <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
+      Hi ${fullName || 'there'},
+    </p>
+    <p style="color: #6B7280; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
+      Please verify your email address to activate your account. Click the button below to complete verification.
+    </p>
+    ${ctaButton('Verify Email', verificationUrl)}
+    <p style="color: #9CA3AF; font-size: 12px; margin: 24px 0 0; line-height: 1.6;">
+      This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
+    </p>`;
+
+  return {
+    subject: 'Verify your email - PurpleHere',
+    html: wrapTemplate('Email Verification', body),
+    text: `Hi ${fullName},\n\nPlease verify your email: ${verificationUrl}\n\nThis link expires in 24 hours.`
   };
 }
 
@@ -247,5 +281,6 @@ module.exports = {
   ticketStatusChangedEmail,
   invoiceCreatedEmail,
   invoiceOverdueEmail,
-  invoicePaidEmail
+  invoicePaidEmail,
+  emailVerificationEmail
 };

@@ -59,6 +59,34 @@ const Title = styled.h1`
   }
 `;
 
+const Subtitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #6B7C93;
+  margin-top: 4px;
+`;
+
+const SubscriptionBadge = styled.span<{ variant: 'trial' | 'active' | 'expiring' | 'expired' }>`
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  ${({ variant }) => {
+    switch (variant) {
+      case 'trial': return 'background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D;';
+      case 'active': return 'background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0;';
+      case 'expiring': return 'background: #FFF7ED; color: #9A3412; border: 1px solid #FDBA74;';
+      case 'expired': return 'background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA;';
+    }
+  }}
+  &:hover { opacity: 0.8; }
+`;
+
 const MainGrid = styled.div`
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -379,6 +407,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
   const [trendData, setTrendData] = useState<any[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }>>([]);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<{ planType?: string; status?: string; daysLeft?: number }>({});
   const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
 
   useEffect(() => {
@@ -500,6 +529,21 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       }
       setAlerts(alertList);
 
+      // Subscription info for header
+      try {
+        const subStatusRes = await fetch('/api/restaurants/subscription-status', { headers });
+        const subStatusData = await subStatusRes.json();
+        const subStatus = subStatusData.data || subStatusData;
+        const userRes = await fetch(`/api/users/${user?.id}`, { headers });
+        const userData = await userRes.json();
+        const u = userData.data || userData;
+        setSubscriptionInfo({
+          planType: u.plan_type || foodcourt.plan_type,
+          status: subStatus.subscriptionStatus,
+          daysLeft: u.subscription_end ? Math.ceil((new Date(u.subscription_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : undefined
+        });
+      } catch (e) { /* silent */ }
+
       fetchTrendData(foodcourt.id);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -546,6 +590,22 @@ const FoodcourtGeneralDashboard: React.FC = () => {
     <Container>
       <Header>
         <Title>Foodcourt Dashboard</Title>
+        {subscriptionInfo.planType && (
+          <Subtitle>
+            <span>{subscriptionInfo.planType}</span>
+            {(() => {
+              const s = subscriptionInfo;
+              if (s.status === 'trial') return <SubscriptionBadge variant="trial" onClick={() => navigate('/pos/profile?tab=subscription')}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
+              if (s.status === 'active' && s.daysLeft !== undefined) {
+                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>Expired</SubscriptionBadge>;
+                if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
+                return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
+              }
+              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.status}</SubscriptionBadge>;
+              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>Active</SubscriptionBadge>;
+            })()}
+          </Subtitle>
+        )}
       </Header>
 
       <Content>

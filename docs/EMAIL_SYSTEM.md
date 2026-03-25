@@ -233,7 +233,7 @@
 
 ---
 
-## 템플릿 개선 (v3.5 예정)
+## 템플릿 개선 (v3.5 완료)
 
 ### 로고 — Base64 직접 삽입
 - **현재**: `cid:purplehere-logo` CID 방식 (일부 메일 클라이언트에서 차단)
@@ -247,12 +247,12 @@
 
 ### 수신거부 링크
 - **현재**: 푸터에 텍스트만 있음
-- **변경**: `{FRONTEND_URL}/pos/profile?tab=notifications` 링크 추가
-- **파일**: `utils/emailService.js` — emailLayout() 푸터
+- **변경**: `{FRONTEND_URL}/notification-preferences` 링크 추가 (역할별 자동 리다이렉트)
+- **파일**: `utils/emailTemplates.js` — emailLayout() 푸터
 
 ---
 
-## 이메일 인증 시스템 (v3.5 예정)
+## 이메일 인증 시스템 (v3.5 완료)
 
 ### DB 변경 (users 테이블)
 - `email_verified` BOOLEAN DEFAULT FALSE

@@ -471,6 +471,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (errorResult?.error?.code === 'ACCOUNT_SUSPENDED') {
         throw new Error(errorResult.error.message || 'Your account has been suspended. Please contact your administrator.');
       }
+      if (errorResult?.error?.code === 'EMAIL_NOT_VERIFIED') {
+        const err: any = new Error(errorResult.error.message || 'Please verify your email address.');
+        err.code = 'EMAIL_NOT_VERIFIED';
+        err.email = errorResult.error.email;
+        throw err;
+      }
 
       return false;
     } catch (error) {

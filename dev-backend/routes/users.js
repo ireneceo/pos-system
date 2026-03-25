@@ -268,6 +268,13 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       }
     }
 
+    // MX 레코드 검증: 이메일 도메인에 메일 서버가 존재하는지 확인
+    const { verifyMxRecord, generateVerificationToken, getVerificationUrl } = require('../utils/emailValidator');
+    const mxResult = await verifyMxRecord(email);
+    if (!mxResult.valid) {
+      return res.status(400).json({ success: false, message: mxResult.message });
+    }
+
     const hashedPassword = await bcrypt.hash(finalPassword, 10);
 
     // Generate full_name from first_name and last_name if not provided
@@ -317,7 +324,38 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       userCreateData.subscription_end = calcSubscriptionEnd;
     }
 
+    // skip_verification: System Admin이 인증 완료 상태로 생성하는 옵션
+    const skipVerification = req.body.skip_verification === true;
+    if (skipVerification) {
+      userCreateData.email_verified = true;
+    }
+
     const user = await User.create(userCreateData);
+
+    // 이메일 인증 토큰 생성 + 발송 (skip_verification이 아닌 경우)
+    if (!skipVerification) {
+      try {
+        const { rawToken, hashedToken, expires } = await generateVerificationToken();
+        await user.update({
+          email_verification_token: hashedToken,
+          email_verification_expires: expires
+        });
+
+        const verificationUrl = getVerificationUrl(rawToken, user.email);
+        const { emailVerificationEmail } = require('../utils/notificationTemplates');
+        const { sendPlatformEmail } = require('../utils/emailService');
+        const emailContent = emailVerificationEmail(user.full_name || user.username, verificationUrl);
+
+        await sendPlatformEmail({
+          to: user.email,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          text: emailContent.text
+        }).catch(err => console.error('[USERS] Verification email failed:', err.message));
+      } catch (verifyErr) {
+        console.error('[USERS] Verification setup failed:', verifyErr.message);
+      }
+    }
 
     // For Brand General: create Brand entity with subscription
     if (role === 'Brand General') {

@@ -14,6 +14,12 @@ router.post('/login', validateLogin, async (req, res, next) => {
     if (error.code === 'ACCOUNT_SUSPENDED') {
       return errorResponse(res, error.message, 403, 'ACCOUNT_SUSPENDED');
     }
+    if (error.code === 'EMAIL_NOT_VERIFIED') {
+      return res.status(403).json({
+        success: false,
+        error: { message: error.message, code: 'EMAIL_NOT_VERIFIED', email: error.email }
+      });
+    }
     if (error.message === 'Invalid email/username or password') {
       return errorResponse(res, error.message, 401, 'INVALID_CREDENTIALS');
     }
@@ -290,6 +296,117 @@ router.post('/logout', async (req, res, next) => {
     // 예외 발생 시에도 쿠키 삭제 후 성공 응답
     res.clearCookie('connect.sid');
     successResponse(res, null, 'Logout successful');
+  }
+});
+
+// ============================================
+// Email Verification
+// ============================================
+
+const { verifyMxRecord, generateVerificationToken, verifyToken, getVerificationUrl } = require('../utils/emailValidator');
+const { emailVerificationEmail } = require('../utils/notificationTemplates');
+const { sendPlatformEmail } = require('../utils/emailService');
+const User = require('../models/User');
+
+/**
+ * 이메일 인증 링크 클릭 시
+ * GET /api/auth/verify-email?token=...&email=...
+ */
+router.get('/verify-email', async (req, res) => {
+  try {
+    const { token, email } = req.query;
+    if (!token || !email) {
+      return errorResponse(res, 'Token and email are required', 400);
+    }
+
+    const user = await User.findOne({ where: { email: decodeURIComponent(email) } });
+    if (!user) {
+      return errorResponse(res, 'User not found', 404);
+    }
+
+    if (user.email_verified) {
+      return successResponse(res, { already_verified: true }, 'Email already verified');
+    }
+
+    if (!user.email_verification_token || !user.email_verification_expires) {
+      return errorResponse(res, 'No verification token found. Please request a new one.', 400);
+    }
+
+    if (new Date() > new Date(user.email_verification_expires)) {
+      return errorResponse(res, 'Verification link has expired. Please request a new one.', 400);
+    }
+
+    const isValid = await verifyToken(decodeURIComponent(token), user.email_verification_token);
+    if (!isValid) {
+      return errorResponse(res, 'Invalid verification token', 400);
+    }
+
+    await user.update({
+      email_verified: true,
+      email_verification_token: null,
+      email_verification_expires: null
+    });
+
+    successResponse(res, { verified: true }, 'Email verified successfully');
+  } catch (error) {
+    console.error('[AUTH] Email verification error:', error.message);
+    errorResponse(res, 'Verification failed', 500);
+  }
+});
+
+/**
+ * 인증 이메일 재발송
+ * POST /api/auth/resend-verification
+ */
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return errorResponse(res, 'Email is required', 400);
+    }
+
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      // 보안: 유저 존재 여부 노출하지 않음
+      return successResponse(res, null, 'If an account exists with this email, a verification link has been sent.');
+    }
+
+    if (user.email_verified) {
+      return successResponse(res, { already_verified: true }, 'Email is already verified');
+    }
+
+    // 쿨다운: 마지막 토큰 생성 후 1분 이내면 거부
+    if (user.email_verification_expires) {
+      const tokenCreatedAt = new Date(user.email_verification_expires).getTime() - 24 * 60 * 60 * 1000;
+      if (Date.now() - tokenCreatedAt < 60 * 1000) {
+        return errorResponse(res, 'Please wait 1 minute before requesting another verification email', 429);
+      }
+    }
+
+    const { rawToken, hashedToken, expires } = await generateVerificationToken();
+    await user.update({
+      email_verification_token: hashedToken,
+      email_verification_expires: expires
+    });
+
+    const verificationUrl = getVerificationUrl(rawToken, user.email);
+    const emailContent = emailVerificationEmail(user.full_name || user.username, verificationUrl);
+
+    try {
+      await sendPlatformEmail({
+        to: user.email,
+        subject: emailContent.subject,
+        html: emailContent.html,
+        text: emailContent.text
+      });
+    } catch (emailError) {
+      console.error('[AUTH] Failed to send verification email:', emailError.message);
+    }
+
+    successResponse(res, null, 'If an account exists with this email, a verification link has been sent.');
+  } catch (error) {
+    console.error('[AUTH] Resend verification error:', error.message);
+    errorResponse(res, 'Failed to resend verification email', 500);
   }
 });
 

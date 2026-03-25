@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { OrderProvider } from './contexts/OrderContext';
 import { StoreProvider } from './contexts/StoreContext';
@@ -48,7 +48,22 @@ const PageLoader = () => (
   </div>
 );
 
+// Notification Preferences redirect — routes to the correct page based on user role
+const NotificationPreferencesRedirect: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    if (!user) { navigate('/pos', { replace: true }); return; }
+    if (user.role === 'System Admin') navigate('/pos/admin/notification-settings', { replace: true });
+    else if (user.role === 'Restaurant Admin' || user.role === 'Staff') navigate(`/restaurant/${user.restaurantId}/notification-settings`, { replace: true });
+    else if (user.role === 'Restaurant Owner') navigate('/pos/owner/notification-settings', { replace: true });
+    else navigate('/pos/manager/notification-settings', { replace: true });
+  }, [user, navigate]);
+  return null;
+};
+
 // Lazy load all other pages
+const VerifyEmailPage = React.lazy(() => import('./pages/Login/VerifyEmailPage'));
 const LiveOrdersPage = React.lazy(() => import('./pages/LiveOrders/LiveOrdersPage'));
 const POSTerminalPage = React.lazy(() => import('./pages/POSTerminal/POSTerminalPage'));
 const KitchenDisplayPage = React.lazy(() => import('./pages/KitchenDisplay/KitchenDisplayPage'));
@@ -332,8 +347,12 @@ function App() {
                       <Route path="/blog" element={<BlogPage />} />
                       <Route path="/blog/:slug" element={<BlogPostPage />} />
 
-                      {/* Login */}
+                      {/* Login & Email Verification */}
                       <Route path="/pos" element={<LoginPage />} />
+                      <Route path="/verify-email" element={<VerifyEmailPage />} />
+                      <Route path="/notification-preferences" element={
+                        <NotificationPreferencesRedirect />
+                      } />
 
                       {/* Mobile */}
                       <Route path="/mobile/*" element={<MobileApp />} />

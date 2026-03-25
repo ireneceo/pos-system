@@ -494,14 +494,23 @@ router.get('/', authenticateToken, async (req, res) => {
         }
       }
 
-      // Get payer name based on payer type
+      // Get payer info (name + plan_type)
       let payerName;
+      let payerPlanType = null;
+      let payerBillingCycle = null;
       if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
         payerName = invoice.restaurant?.admin_name || invoice.restaurant?.name || 'Unknown Restaurant';
+        payerPlanType = invoice.restaurant?.plan_type;
+        payerBillingCycle = invoice.restaurant?.billing_cycle;
       } else {
         const payer = payers.find(p => p.id === invoice.payer_id);
         payerName = payer?.full_name || payer?.company_name || customerName || 'Unknown Payer';
+        payerPlanType = payer?.plan_type;
+        payerBillingCycle = payer?.billing_cycle;
       }
+
+      // Resolve plan type: restaurant → users table for Brand/FC/Owner
+      const resolvedPlanType = invoice.restaurant?.plan_type || payerPlanType;
 
       return {
         id: invoice.id.toString(),
@@ -527,7 +536,7 @@ router.get('/', authenticateToken, async (req, res) => {
         total: parseFloat(invoice.total_amount),
         items: (invoice.items && invoice.items.length > 0) ? invoice.items.map(item => {
           // Build description: category name + user description
-          const categoryName = invoice.category_display_name || getCategoryDisplayName(item.item_type || invoice.invoice_category, invoice.custom_description, invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle);
+          const categoryName = invoice.category_display_name || getCategoryDisplayName(item.item_type || invoice.invoice_category, invoice.custom_description, resolvedPlanType, payerBillingCycle || invoice.restaurant?.billing_cycle);
           const userDescription = item.description?.trim();
           let fullDescription;
 
@@ -547,13 +556,13 @@ router.get('/', authenticateToken, async (req, res) => {
           };
         }) : [{
           // Fallback for invoices without items: create item from invoice data
-          description: getCategoryDisplayName(invoice.invoice_category, invoice.custom_description || invoice.notes?.split('\n').pop(), invoice.restaurant?.plan_type, invoice.restaurant?.billing_cycle),
+          description: getCategoryDisplayName(invoice.invoice_category, invoice.custom_description || invoice.notes?.split('\n').pop(), resolvedPlanType, payerBillingCycle || invoice.restaurant?.billing_cycle),
           quantity: 1,
           unitPrice: parseFloat(invoice.total_amount),
           total: parseFloat(invoice.total_amount)
         }],
         billingPeriod: formatBillingPeriod(invoice.billing_period_start, invoice.billing_period_end),
-        planType: invoice.restaurant?.plan_type || 'Basic Plan',
+        planType: resolvedPlanType || 'Basic Plan',
         type: invoice.type,
         payerType: invoice.payer_type,
         payerId: invoice.payer_id?.toString(),
@@ -563,8 +572,8 @@ router.get('/', authenticateToken, async (req, res) => {
         categoryDisplayName: invoice.category_display_name || getCategoryDisplayName(
           invoice.items?.[0]?.item_type || invoice.invoice_category,
           invoice.custom_description || invoice.items?.[0]?.description || invoice.notes?.split('\n').pop(),
-          invoice.restaurant?.plan_type,
-          invoice.restaurant?.billing_cycle
+          resolvedPlanType,
+          payerBillingCycle || invoice.restaurant?.billing_cycle
         ),
         // Payment info for confirmation
         paymentMethod: invoice.payment_method,
