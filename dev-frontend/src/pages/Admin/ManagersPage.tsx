@@ -1671,11 +1671,48 @@ const ManagersPage: React.FC = () => {
         {showConfirmModal && (
                 <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button><Button variant={confirmAction === 'delete' ? 'danger' : 'primary'} onClick={handleConfirmAction} > {confirmAction === 'delete' ? 'Delete' : confirmAction === 'resetPassword' ? 'Reset Password' : 'Confirm'} </Button></>}>
 
-              <p>
-                {confirmAction === 'delete' && `Are you sure you want to delete Manager ID: ${selectedManager?.managerId}? This action cannot be undone.`}
-                {confirmAction === 'resetPassword' && `Are you sure you want to reset password for Manager ID: ${selectedManager?.managerId}?`}
-                {confirmAction === 'toggle' && `Are you sure you want to ${selectedManager?.status === 'active' ? 'deactivate' : 'activate'} Manager ID: ${selectedManager?.managerId}?`}
-              </p>
+              <div>
+                {confirmAction === 'delete' && (
+                  <div>
+                    <p style={{ margin: '0 0 12px', fontWeight: '600', color: '#DC2626' }}>
+                      Are you sure you want to delete "{selectedManager?.fullName}" ({selectedManager?.managerId})?
+                    </p>
+                    <div style={{ padding: '12px 16px', backgroundColor: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA', fontSize: '13px', color: '#991B1B', lineHeight: '1.6' }}>
+                      {selectedManager?.role === 'Brand General' && (
+                        <>
+                          <div>• Brands owned by this user will be unlinked (owner cleared, brands remain)</div>
+                          <div>• Restaurants under those brands will not be affected</div>
+                          <div>• Operation tickets and notices by this user will be preserved</div>
+                          <div>• Activity logs will be preserved (user reference cleared)</div>
+                        </>
+                      )}
+                      {selectedManager?.role === 'Foodcourt General' && (
+                        <>
+                          <div>• Foodcourts owned by this user will be unlinked (owner cleared, foodcourts remain)</div>
+                          <div>• Restaurants under those foodcourts will not be affected</div>
+                          <div>• Operation tickets and notices by this user will be preserved</div>
+                          <div>• Activity logs will be preserved (user reference cleared)</div>
+                        </>
+                      )}
+                      {selectedManager?.role === 'Restaurant Owner' && (
+                        <>
+                          <div>• All restaurant ownership links will be removed</div>
+                          <div>• Restaurants will remain but without an owner</div>
+                          <div>• Operation tickets and notices by this user will be preserved</div>
+                          <div>• Activity logs will be preserved (user reference cleared)</div>
+                        </>
+                      )}
+                      <div style={{ marginTop: '8px', fontWeight: '600' }}>This action cannot be undone.</div>
+                    </div>
+                  </div>
+                )}
+                {confirmAction === 'resetPassword' && (
+                  <p>Are you sure you want to reset the password for "{selectedManager?.fullName}" ({selectedManager?.managerId})?</p>
+                )}
+                {confirmAction === 'toggle' && (
+                  <p>Are you sure you want to {selectedManager?.status === 'active' ? 'deactivate' : 'activate'} "{selectedManager?.fullName}" ({selectedManager?.managerId})?</p>
+                )}
+              </div>
             
         </CommonModal>
         )}

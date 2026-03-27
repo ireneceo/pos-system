@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-25
+> **최종 업데이트:** 2026-03-27
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,29 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: v3.7 — 쿠폰-고객 통합 + UX 개선 + Checkout Display 국가번호 (2026-03-27)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 쿠폰-고객 통합 | 고객 목록 쿠폰 요약 컬럼 + 상세 모달 Available/Used 섹션 | ✅ |
+| 2 | per_user_limit 검증 | 쿠폰 validate 시 orders 테이블 기반 실사용 횟수 검증 | ✅ |
+| 3 | 모바일 My Coupons | Account 페이지에 사용 가능한 쿠폰 표시 | ✅ |
+| 4 | Checkout Display 국가번호 | 레스토랑 country 기반 자동 국가코드 + E.164 저장 | ✅ |
+| 5 | Profile Save UX 통일 | saving state, 에러 처리, formData 재동기화 | ✅ |
+| 6 | Profile Performance 탭 삭제 | 미사용 탭 제거 | ✅ |
+| 7 | Profile Schedule 반응형 | 3단계 breakpoint (1024/768/480) | ✅ |
+| 8 | Subscription 에러 메시지 | RA-specific "No restaurant linked" 메시지 | ✅ |
+| 9 | Operation Inquiry 필터 | 7개 페이지 FilterLabel 중복 래퍼 제거 | ✅ |
+| 10 | 주문 Activity Log | 주문 생성/상태 변경 시 logActivity 기록 | ✅ |
+| 11 | 멤버십 비활성 통계 | 멤버십 off여도 total_orders/total_spent/tier 업데이트 | ✅ |
+| 12 | Managers 삭제 모달 | 역할별 영향 범위 상세 안내 (Brand/FC/Owner) | ✅ |
+| 13 | 빌드 메모리 증설 | max-old-space-size 400→1024MB | ✅ |
+| 14 | 배포 --skip-build | 빌드 완료 시 스킵 가능 옵션 | ✅ |
+| 15 | 운영서버 배포 | Smoke 9/10 | ✅ |
 
 ---
 

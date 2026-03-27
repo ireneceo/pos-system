@@ -86,7 +86,7 @@ const CustomersTable = styled.div`
 
 const TableHeader = styled.div`
   display: grid;
-  grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.5fr) 80px 80px 70px 100px 140px 36px;
+  grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.5fr) 80px 80px 70px 100px 100px 140px 36px;
   gap: 12px;
   padding: 14px 20px;
   background: #F8FAFC;
@@ -102,7 +102,8 @@ const TableHeader = styled.div`
   & > span:nth-child(4) { text-align: right; }
   & > span:nth-child(5) { text-align: right; }
   & > span:nth-child(6) { text-align: right; }
-  & > span:nth-child(7) { text-align: right; }
+  & > span:nth-child(7) { text-align: center; }
+  & > span:nth-child(8) { text-align: right; }
 
   @media (max-width: 768px) {
     display: none;
@@ -111,7 +112,7 @@ const TableHeader = styled.div`
 
 const TableRow = styled.div<{ clickable?: boolean }>`
   display: grid;
-  grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.5fr) 80px 80px 70px 100px 140px 36px;
+  grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.5fr) 80px 80px 70px 100px 100px 140px 36px;
   gap: 12px;
   padding: 14px 20px;
   border-bottom: 1px solid #F6F9FC;
@@ -123,7 +124,8 @@ const TableRow = styled.div<{ clickable?: boolean }>`
   & > *:nth-child(4) { text-align: right; }
   & > *:nth-child(5) { text-align: right; }
   & > *:nth-child(6) { text-align: right; }
-  & > *:nth-child(7) { justify-self: end; }
+  & > *:nth-child(7) { text-align: center; justify-self: center; }
+  & > *:nth-child(8) { justify-self: end; }
 
   &:hover {
     background: ${props => props.clickable ? '#F8FAFC' : 'transparent'};
@@ -375,6 +377,8 @@ const CustomersPage: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [customerCoupons, setCustomerCoupons] = useState<{ available: any[]; history: any[] } | null>(null);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
 
@@ -435,9 +439,20 @@ const CustomersPage: React.FC = () => {
     averageOrders: customers.length > 0 ? Math.round(customers.reduce((sum, c) => sum + c.totalOrders, 0) / customers.length) : 0
   };
 
-  const handleCustomerClick = (customer: Customer) => {
+  const handleCustomerClick = async (customer: Customer) => {
     setSelectedCustomer(customer);
     setShowDetailModal(true);
+    setCustomerCoupons(null);
+    setLoadingCoupons(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/coupons/customer/${customer.id}?restaurant_id=${restaurantId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) setCustomerCoupons(data.data);
+    } catch { /* silent */ }
+    setLoadingCoupons(false);
   };
 
   const handleToggleStatus = async (customer: Customer) => {
@@ -569,13 +584,14 @@ const CustomersPage: React.FC = () => {
           </StatsGrid>
 
           <CustomersTable>
-            <TableHeader style={{ minWidth: '860px' }}>
+            <TableHeader style={{ minWidth: '960px' }}>
               <span>Customer</span>
               <span>Contact</span>
               <span>Tier</span>
               <span>Points</span>
               <span>Orders</span>
               <span>Total Spent</span>
+              <span>Coupons</span>
               <span>Actions</span>
               <span></span>
             </TableHeader>
@@ -595,7 +611,7 @@ const CustomersPage: React.FC = () => {
             ) : (
               <>
                 {/* Desktop Table */}
-                <div className="desktop-only" style={{ minWidth: '860px' }}>
+                <div className="desktop-only" style={{ minWidth: '960px' }}>
                   {filteredCustomers.map(customer => (
                     <TableRow key={customer.id} clickable onClick={() => handleCustomerClick(customer)}>
                       <CustomerInfo>
@@ -637,7 +653,13 @@ const CustomersPage: React.FC = () => {
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#059669' }}>
                         {formatCurrency(customer.totalSpent, selectedCurrency)}
                       </div>
-                      
+
+                      <div style={{ fontSize: '12px', color: '#6B7C93', lineHeight: '1.5' }}>
+                        {customer.couponsAvailable > 0 && <div style={{ color: '#059669', fontWeight: 500 }}>{customer.couponsAvailable} available</div>}
+                        {customer.couponsUsed > 0 && <div>{customer.couponsUsed} used</div>}
+                        {customer.couponsAvailable === 0 && customer.couponsUsed === 0 && <div>—</div>}
+                      </div>
+
                       <ActionButtons onClick={(e) => e.stopPropagation()}>
                         <ActionButton onClick={() => handleCustomerClick(customer)}>
                           View
@@ -697,6 +719,12 @@ const CustomersPage: React.FC = () => {
                         <span>{customer.totalOrders} orders</span>
                         <span style={{ color: '#059669', fontWeight: '600' }}>{formatCurrency(customer.totalSpent, selectedCurrency)}</span>
                       </div>
+                      {(customer.couponsAvailable > 0 || customer.couponsUsed > 0) && (
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px', fontSize: '12px' }}>
+                          {customer.couponsAvailable > 0 && <span style={{ color: '#059669', fontWeight: 500 }}>{customer.couponsAvailable} coupons available</span>}
+                          {customer.couponsUsed > 0 && <span style={{ color: '#6B7280' }}>{customer.couponsUsed} used</span>}
+                        </div>
+                      )}
                     </MobileTableRow>
                   ))}
                 </div>
@@ -805,10 +833,64 @@ const CustomersPage: React.FC = () => {
                 )}
 
                 <DetailSection>
-                  <DetailTitle>Recent Activity</DetailTitle>
-                  <div style={{ color: '#6B7280', fontSize: '14px', fontStyle: 'italic' }}>
-                    Order history integration coming soon...
-                  </div>
+                  <DetailTitle>Coupons</DetailTitle>
+                  {loadingCoupons ? (
+                    <div style={{ color: '#6B7280', fontSize: '14px' }}>Loading...</div>
+                  ) : customerCoupons ? (
+                    <>
+                      {customerCoupons.available.length > 0 && (
+                        <div style={{ marginBottom: '16px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#059669', marginBottom: '8px' }}>
+                            Available ({customerCoupons.available.length})
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {customerCoupons.available.map((c: any) => (
+                              <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px' }}>
+                                <div>
+                                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#059669', fontFamily: 'monospace', letterSpacing: '0.5px' }}>{c.code}</span>
+                                  {c.name && <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>{c.name}</span>}
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937' }}>
+                                    {c.type === 'percentage' ? `${c.value}% off` : formatCurrency(c.value, selectedCurrency) + ' off'}
+                                  </div>
+                                  {c.min_order > 0 && <div style={{ fontSize: '11px', color: '#6B7280' }}>Min. {formatCurrency(c.min_order, selectedCurrency)}</div>}
+                                  {c.per_user_limit && <div style={{ fontSize: '11px', color: '#6B7280' }}>{c.my_usage}/{c.per_user_limit} used</div>}
+                                  {c.valid_until && <div style={{ fontSize: '11px', color: '#6B7280' }}>Until {new Date(c.valid_until).toLocaleDateString()}</div>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {customerCoupons.history.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280', marginBottom: '8px' }}>
+                            Used ({customerCoupons.history.length})
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {customerCoupons.history.map((h: any, i: number) => (
+                              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', fontSize: '13px' }}>
+                                <div>
+                                  <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{h.code}</span>
+                                  <span style={{ color: '#6B7280', marginLeft: '8px' }}>#{h.order_number}</span>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <span style={{ fontWeight: 600, color: '#DC2626' }}>-{formatCurrency(h.discount, selectedCurrency)}</span>
+                                  <span style={{ color: '#9CA3AF', marginLeft: '8px', fontSize: '12px' }}>{new Date(h.used_at).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {customerCoupons.available.length === 0 && customerCoupons.history.length === 0 && (
+                        <div style={{ color: '#6B7280', fontSize: '14px' }}>No coupons available or used</div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ color: '#6B7280', fontSize: '14px' }}>No coupon data</div>
+                  )}
                 </DetailSection>
               </>
             )}

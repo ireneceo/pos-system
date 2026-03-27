@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { Customer, RestaurantCustomer, Restaurant, Order } = require('../models');
+const Coupon = require('../models/Coupon');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const emailService = require('../utils/emailService');
@@ -625,9 +626,53 @@ router.get('/:restaurantId', async (req, res) => {
       order: [['total_spent', 'DESC']]
     });
 
+    // 쿠폰 요약 집계: 사용 가능 + 사용 이력
+    const now = new Date();
+    const activeCoupons = await Coupon.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        is_active: true,
+        [Op.and]: [
+          { [Op.or]: [{ valid_until: null }, { valid_until: { [Op.gte]: now } }] },
+          { [Op.or]: [{ valid_from: null }, { valid_from: { [Op.lte]: now } }] }
+        ]
+      }
+    });
+
+    // 고객별 쿠폰 사용횟수
+    const couponOrders = await Order.findAll({
+      where: { restaurant_id: restaurantId, coupon_code: { [Op.ne]: null } },
+      attributes: ['customer_id', 'coupon_code']
+    });
+    const usageMap = {};
+    couponOrders.forEach(o => {
+      if (!o.customer_id) return;
+      if (!usageMap[o.customer_id]) usageMap[o.customer_id] = {};
+      const code = o.coupon_code?.toUpperCase();
+      usageMap[o.customer_id][code] = (usageMap[o.customer_id][code] || 0) + 1;
+    });
+
+    const result = customers.map(rc => {
+      const cid = rc.customer_id;
+      const cTier = rc.loyalty_tier || 'Bronze';
+      const myUsage = usageMap[cid] || {};
+
+      const availableCount = activeCoupons.filter(c => {
+        if (c.usage_limit !== null && c.usage_count >= c.usage_limit) return false;
+        if (c.per_user_limit !== null && (myUsage[c.code] || 0) >= c.per_user_limit) return false;
+        if (c.target_type === 'customers' && c.target_customer_ids && !c.target_customer_ids.includes(cid)) return false;
+        if (c.target_type === 'tiers' && c.target_loyalty_tiers && !c.target_loyalty_tiers.includes(cTier)) return false;
+        return true;
+      }).length;
+
+      const usedCount = Object.values(myUsage).reduce((sum, v) => sum + v, 0);
+
+      return { ...rc.toJSON(), coupons_available: availableCount, coupons_used: usedCount };
+    });
+
     res.json({
       success: true,
-      data: customers
+      data: result
     });
   } catch (error) {
     console.error('Get customers error:', error);

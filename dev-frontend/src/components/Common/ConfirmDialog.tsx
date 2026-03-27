@@ -61,6 +61,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       onClose={onClose}
       title={title}
       footer={footer}
+      zIndex={1100}
     >
       <div style={{ textAlign: 'center', padding: '32px 0' }}>
         <div style={{ fontSize: '56px', marginBottom: '24px' }}>{getIcon()}</div>

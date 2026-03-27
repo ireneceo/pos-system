@@ -1394,6 +1394,8 @@ const RestaurantsPage: React.FC = () => {
   };
 
   const handleDeleteRestaurant = (restaurant: Restaurant) => {
+    setShowEditModal(false);
+    setEditingRestaurant(null);
     setDeletingRestaurant(restaurant);
     setShowDeleteConfirm(true);
   };
@@ -2873,7 +2875,7 @@ const RestaurantsPage: React.FC = () => {
         <ConfirmModal
           isOpen={showDeleteConfirm}
           title="Delete Restaurant"
-          message={`Are you sure you want to delete "${deletingRestaurant?.name}"? This action cannot be undone. All related data (orders, invoices, menu items, etc.) will be permanently removed.`}
+          message={`Are you sure you want to delete "${deletingRestaurant?.name}"?\n\n• All orders, menu items, categories, and options will be deleted\n• All invoices and payment records will be deleted\n• All staff accounts linked to this restaurant will be disconnected\n• Kitchen stations, floor plans, and import history will be deleted\n• Activity logs will be preserved (restaurant reference cleared)\n\nThis action cannot be undone.`}
           onConfirm={confirmDeleteRestaurant}
           onCancel={() => { setShowDeleteConfirm(false); setDeletingRestaurant(null); }}
           confirmText="Delete"

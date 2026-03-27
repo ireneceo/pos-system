@@ -16,7 +16,7 @@ OperationTicket.init({
   },
   managerId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'users',
       key: 'id'
@@ -28,7 +28,7 @@ OperationTicket.init({
   },
   requesterId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'users',
       key: 'id'
@@ -48,7 +48,7 @@ OperationTicket.init({
   },
   restaurantId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'restaurants',
       key: 'id'

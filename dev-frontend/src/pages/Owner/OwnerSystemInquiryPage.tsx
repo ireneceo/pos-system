@@ -572,54 +572,39 @@ const OwnerSystemInquiryPage: React.FC = () => {
           </StatsGrid>
 
           <FiltersContainer>
-            <FilterGroup>
-              <FilterLabel>Restaurant</FilterLabel>
-              <Select value={filterRestaurant} onChange={(e) => setFilterRestaurant(e.target.value)}>
-                <option value="all">All Restaurants</option>
-                {ownedRestaurants.map(r => (
-                  <option key={r.id} value={String(r.id)}>{r.name}</option>
-                ))}
-              </Select>
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Status</FilterLabel>
-              <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                <option value="all">All Status</option>
-                <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </Select>
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Priority</FilterLabel>
-              <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-                <option value="all">All Priority</option>
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </Select>
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Category</FilterLabel>
-              <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-                <option value="all">All Categories</option>
-                <option value="technical">Technical</option>
-                <option value="billing">Billing</option>
-                <option value="feature-request">Feature Request</option>
-                <option value="bug-report">Bug Report</option>
-                <option value="general">General</option>
-              </Select>
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Search</FilterLabel>
-              <SearchInput
-                placeholder="Search inquiries..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </FilterGroup>
+            <Select value={filterRestaurant} onChange={(e) => setFilterRestaurant(e.target.value)}>
+              <option value="all">All Restaurants</option>
+              {ownedRestaurants.map(r => (
+                <option key={r.id} value={String(r.id)}>{r.name}</option>
+              ))}
+            </Select>
+            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="open">Open</option>
+              <option value="in-progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </Select>
+            <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+              <option value="all">All Priority</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </Select>
+            <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+              <option value="all">All Categories</option>
+              <option value="technical">Technical</option>
+              <option value="billing">Billing</option>
+              <option value="feature-request">Feature Request</option>
+              <option value="bug-report">Bug Report</option>
+              <option value="general">General</option>
+            </Select>
+            <SearchInput
+              placeholder="Search inquiries..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </FiltersContainer>
 
           <TicketsGrid>

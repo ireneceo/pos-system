@@ -1,0 +1,534 @@
+"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[9968],{2597:(e,n,r)=>{r.d(n,{Ex:()=>c,oz:()=>d,tU:()=>l});r(9950);var i=r(4752),t=r(4414);const a=i.Ay.div`
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #E6EBF1;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #F8FAFC;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 3px;
+  }
+`,o=i.Ay.button`
+  padding: 12px 0;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: ${e=>e.active?"#635BFF":"#6B7C93"};
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &:hover {
+    color: #635BFF;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: ${e=>e.active?"#635BFF":"transparent"};
+    transition: all 0.15s;
+  }
+`,s=i.Ay.span`
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: ${e=>{switch(e.variant){case"danger":return"#DC2626";case"warning":return"#F59E0B";default:return"#E6EBF1"}}};
+  color: ${e=>{switch(e.variant){case"danger":case"warning":return"white";default:return"#6B7C93"}}};
+`,l=e=>{let{children:n,className:r,style:i}=e;return(0,t.jsx)(a,{className:r,style:i,children:n})},d=e=>{let{active:n,onClick:r,children:i,className:a}=e;return(0,t.jsx)(o,{active:n,onClick:r,className:a,children:i})},c=e=>{let{count:n,variant:r="default",showZero:i=!1}=e;return 0!==n||i?(0,t.jsx)(s,{variant:r,children:n}):null}},2653:(e,n,r)=>{r.d(n,{M:()=>a});var i=r(9950),t=r(4492);function a(e){const[n,r]=(0,t.ok)(),a=(0,i.useCallback)(()=>n.get("tab")||e,[n,e]),[o,s]=(0,i.useState)(a());return[o,(0,i.useCallback)(e=>{s(e),r({tab:e})},[r])]}},8012:(e,n,r)=>{r.d(n,{Ay:()=>l});r(9950);var i=r(4752),t=r(4414);const a=i.Ay.div`
+  background: white;
+  padding: 16px 32px;
+  border-bottom: 1px solid #E6EBF1;
+  margin-bottom: 0;
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    padding: 12px 16px;
+    height: auto;
+    min-height: 48px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+`,o=i.Ay.h1`
+  font-size: 24px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0;
+
+  @media (max-width: 768px) {
+    font-size: 18px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+`,s=i.Ay.div`
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    gap: 8px;
+  }
+`,l=e=>{let{title:n,children:r}=e;return(0,t.jsxs)(a,{children:[(0,t.jsx)(o,{children:n}),r&&(0,t.jsx)(s,{children:r})]})}},9968:(e,n,r)=>{r.r(n),r.d(n,{default:()=>fe});var i=r(9950),t=r(4752),a=r(5781),o=r(1367),s=r(9610),l=r(2597),d=r(2653),c=r(8666),p=r(8012),x=r(6038),u=r(4414);const h=t.Ay.div`
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E6EBF1;
+  padding: 32px;
+`,g=t.Ay.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 16px;
+  }
+`,m=t.Ay.h3`
+  font-size: 20px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0 0 4px 0;
+`,y=t.Ay.div`
+  font-size: 16px;
+  color: #6B7280;
+`,f=t.Ay.span`
+  font-size: 13px;
+  color: #059669;
+  font-style: italic;
+`,v=t.Ay.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`,j=t.Ay.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #F9FAFB;
+  border-radius: 8px;
+`,b=t.Ay.span`
+  font-size: 13px;
+  color: #6B7280;
+`,w=t.Ay.span`
+  font-size: 14px;
+  font-weight: 500;
+  color: #1F2937;
+`,F=t.Ay.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  background: ${e=>{switch(e.status){case"active":return"#ECFDF5";case"trial":return"#EFF6FF";case"overdue":return"#FEF3C7";case"suspended":return"#FEE2E2";default:return"#F3F4F6"}}};
+  color: ${e=>{switch(e.status){case"active":return"#059669";case"trial":return"#2563EB";case"overdue":return"#D97706";case"suspended":return"#DC2626";default:return"#6B7280"}}};
+`,A=t.Ay.div`
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+`,C=t.Ay.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400E;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`,_=t.Ay.div`
+  font-size: 13px;
+  color: #78350F;
+  line-height: 1.5;
+`,k=t.Ay.div`
+  background: ${e=>"warning"===e.variant?"#FEF3C7":"#EFF6FF"};
+  border: 1px solid ${e=>"warning"===e.variant?"#FDE68A":"#BFDBFE"};
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: ${e=>"warning"===e.variant?"#92400E":"#1E40AF"};
+  line-height: 1.5;
+`,B=t.Ay.button`
+  padding: 10px 20px;
+  background: #635BFF;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: #5046E5; }
+  &:disabled { background: #D1D5DB; cursor: not-allowed; }
+`,S=t.Ay.button`
+  padding: 6px 14px;
+  background: white;
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 12px;
+
+  &:hover { background: #FEE2E2; }
+`,E=t.Ay.button`
+  background: none;
+  border: none;
+  color: #635BFF;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+
+  &:hover { color: #5046E5; }
+`,z=t.Ay.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+`,D=t.Ay.div`
+  border: 2px solid ${e=>e.isCurrent?"#635BFF":e.isSelected?"#10B981":"#E6EBF1"};
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+  cursor: ${e=>e.isCurrent?"default":"pointer"};
+  background: ${e=>e.isCurrent?"#F8F7FF":"white"};
+  transition: border-color 0.15s;
+
+  &:hover {
+    border-color: ${e=>(e.isCurrent,"#635BFF")};
+  }
+`,P=t.Ay.div`
+  position: absolute;
+  top: -10px;
+  right: 16px;
+  background: #635BFF;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 10px;
+`,$=t.Ay.div`
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 8px;
+`,I=t.Ay.div`
+  font-size: 24px;
+  font-weight: 700;
+  color: #1F2937;
+  margin-bottom: 4px;
+
+  span {
+    font-size: 14px;
+    font-weight: 400;
+    color: #6B7280;
+  }
+`,M=t.Ay.div`
+  font-size: 13px;
+  color: #6B7280;
+  padding: 3px 0;
+`,N=t.Ay.div`
+  font-size: 12px;
+  font-weight: 500;
+  color: ${e=>"upgrade"===e.type?"#059669":"#D97706"};
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #F3F4F6;
+`,T=t.Ay.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #1F2937;
+`,U=t.Ay.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+`,R=t.Ay.button`
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid ${e=>e.active?"#635BFF":"#E6EBF1"};
+  background: ${e=>e.active?"#F8F7FF":"white"};
+  color: ${e=>e.disabled?"#D1D5DB":e.active?"#635BFF":"#6B7280"};
+  font-size: 14px;
+  font-weight: 500;
+  cursor: ${e=>e.disabled?"not-allowed":"pointer"};
+  opacity: ${e=>e.disabled?.5:1};
+`,L=t.Ay.div`
+  background: #F9FAFB;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+`,O=t.Ay.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: ${e=>e.bold?"15px":"14px"};
+  font-weight: ${e=>e.bold?"600":"400"};
+  color: ${e=>e.highlight?"#059669":"#1F2937"};
+`,G=t.Ay.hr`
+  border: none;
+  border-top: 1px dashed #D1D5DB;
+  margin: 8px 0;
+`,W=t.Ay.div`
+  font-size: 13px;
+  color: #059669;
+  padding: 3px 0;
+`,Y=t.Ay.div`
+  font-size: 13px;
+  color: #D97706;
+  padding: 3px 0;
+`,q=t.Ay.div`
+  font-size: 13px;
+  color: #6B7280;
+  padding: 3px 0;
+  display: flex;
+  justify-content: space-between;
+`,H=t.Ay.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #6B7280;
+  font-size: 14px;
+`;function J(e){return e?new Date(e).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"-"}function Z(e){return-1===e?"Unlimited":String(e)}const K=()=>{var e,n,r,t,a,l;const{user:d}=(0,o.As)(),[c,p]=(0,i.useState)(null),[K,V]=(0,i.useState)(!0),[Q,X]=(0,i.useState)(null),ee=()=>{const e=null===d||void 0===d?void 0:d.role,n=(null===d||void 0===d?void 0:d.restaurantId)||(null===d||void 0===d?void 0:d.restaurant_id);return"Restaurant Admin"===e&&n?`/restaurant/${n}/invoices`:"Brand General"===e?"/pos/brand/invoices":"Foodcourt General"===e?"/pos/foodcourt/invoices":"Restaurant Owner"===e?"/pos/owner/invoices":"/pos/profile"},[ne,re]=(0,i.useState)(!1),[ie,te]=(0,i.useState)(null),[ae,oe]=(0,i.useState)("monthly"),[se,le]=(0,i.useState)(!1),[de,ce]=(0,i.useState)(!1),[pe,xe]=(0,i.useState)(!1),[ue,he]=(0,i.useState)(!1),[ge,me]=(0,i.useState)(null),[ye,fe]=(0,i.useState)(!1),[ve,je]=(0,i.useState)(null),[be,we]=(0,i.useState)([]),Fe=localStorage.getItem("auth_token"),Ae=(0,i.useCallback)(async()=>{try{V(!0);const e=await fetch("/api/subscriptions/my-plan",{headers:{Authorization:`Bearer ${Fe}`}}),n=await e.json();n.success?(p(n),oe(n.current.billing_cycle||"monthly")):X(n.message||"Failed to load subscription data")}catch{X("Failed to load subscription data")}finally{V(!1)}},[Fe]);(0,i.useEffect)(()=>{Ae()},[Ae]);const Ce=async()=>{if(ie&&c){fe(!0),je(null);try{const e=await fetch("/api/subscriptions/change-plan",{method:"POST",headers:{Authorization:`Bearer ${Fe}`,"Content-Type":"application/json"},body:JSON.stringify({new_plan_id:ie.id,new_billing_cycle:ae})}),n=await e.json();n.success?(me(n),le(!1),he(!0),Ae()):(n.exceeded&&we(n.exceeded),je(n.message||"Failed to change plan"))}catch{je("Network error. Please try again.")}finally{fe(!1)}}};if(K)return(0,u.jsx)(H,{children:"Loading subscription data..."});if(Q||!c)return(0,u.jsx)(k,{variant:"warning",children:Q||"Failed to load subscription data."});const{current:_e,pending_change:ke,available_plans:Be}=c,Se=(e,n)=>{const r=e.currency_prices[_e.currency];return r?"annual"===n?r.annual:r.monthly:"annual"===n?e.annual_price:e.monthly_price},Ee=(e,n)=>{var r,i,t;if(e.is_current&&n===_e.billing_cycle)return null;if(e.is_current&&n!==_e.billing_cycle)return"cycle_change";const a=null!==(r=null===(i=Be.find(e=>e.is_current))||void 0===i?void 0:i.sort_order)&&void 0!==r?r:0;return(null!==(t=e.sort_order)&&void 0!==t?t:0)>a?"upgrade":"downgrade"};return(0,u.jsxs)(u.Fragment,{children:[(0,u.jsxs)(h,{children:[(0,u.jsxs)(g,{children:[(0,u.jsxs)("div",{children:[(0,u.jsx)(m,{children:_e.plan_type}),(0,u.jsxs)(y,{children:[(0,x.vv)(_e.plan_amount,_e.currency)," / ","annual"===_e.billing_cycle?"year":"month",_e.discount_type&&"none"!==_e.discount_type&&_e.discount_value&&(0,u.jsxs)(u.Fragment,{children:[" ",(0,u.jsx)(f,{children:"(discount applied by administrator)"})]})]})]}),_e.can_change&&(0,u.jsx)(B,{onClick:()=>{re(!0),je(null)},children:"Change Plan"})]}),(0,u.jsxs)(v,{children:[(0,u.jsxs)(j,{children:[(0,u.jsx)(b,{children:"Status"}),(0,u.jsx)(F,{status:_e.status,children:"active"===_e.status?"\u25cf Active":"trial"===_e.status?"\u25cf Trial":_e.status.charAt(0).toUpperCase()+_e.status.slice(1)})]}),(0,u.jsxs)(j,{children:[(0,u.jsx)(b,{children:"Billing Cycle"}),(0,u.jsx)(w,{children:"annual"===_e.billing_cycle?"Annual":"Monthly"})]}),(0,u.jsxs)(j,{children:[(0,u.jsx)(b,{children:"Current Period"}),(0,u.jsxs)(w,{children:[J(_e.subscription_start)," \u2013 ",J(_e.subscription_end)]})]}),(0,u.jsxs)(j,{children:[(0,u.jsx)(b,{children:"Next Billing"}),(0,u.jsx)(w,{children:J(_e.next_billing_date)})]})]}),ke&&(0,u.jsxs)(A,{children:[(0,u.jsx)(C,{children:"\u23f3 Scheduled Change"}),(0,u.jsxs)(_,{children:[(0,u.jsx)("strong",{children:"New Plan:"})," ",ke.plan_type," (",(0,x.vv)(ke.plan_amount,_e.currency),"/","annual"===ke.billing_cycle?"year":"month",")",(0,u.jsx)("br",{}),(0,u.jsx)("strong",{children:"Effective:"})," ",J(ke.effective_date)," (next billing date)",(0,u.jsx)("br",{}),(0,u.jsx)("br",{}),"Your current features remain available until the change takes effect."]}),(0,u.jsx)(S,{onClick:()=>ce(!0),children:"Cancel Change"})]}),!_e.can_change&&_e.change_blocked_reason&&(0,u.jsxs)(k,{variant:"overdue"===_e.status||"suspended"===_e.status?"warning":"info",children:[_e.change_blocked_reason,("overdue"===_e.status||"suspended"===_e.status)&&(0,u.jsx)("div",{style:{marginTop:"8px"},children:(0,u.jsx)(E,{onClick:()=>window.location.href=ee(),children:"Go to Invoices \u2192"})})]})]}),(0,u.jsxs)(s.aF,{isOpen:ne,onClose:()=>re(!1),title:"Change Your Plan",size:"large",footer:(0,u.jsx)(s.yl,{variant:"secondary",onClick:()=>re(!1),children:"Close"}),children:[(0,u.jsxs)(U,{children:[(0,u.jsx)("span",{style:{fontSize:"14px",color:"#6B7280"},children:"Billing:"}),(0,u.jsx)(R,{active:"monthly"===ae,disabled:!1,onClick:()=>oe("monthly"),children:"Monthly"}),(0,u.jsx)(R,{active:"annual"===ae,disabled:"annual"===_e.billing_cycle,onClick:()=>{"annual"!==_e.billing_cycle&&oe("annual")},children:"Annual"}),"annual"===_e.billing_cycle&&(0,u.jsx)("span",{style:{fontSize:"12px",color:"#9CA3AF"},children:"Monthly not available for annual plans"})]}),(0,u.jsx)(z,{children:Be.map(e=>{const n=Se(e,ae),r=Ee(e,ae),i=e.is_current&&ae===_e.billing_cycle;return(0,u.jsxs)(D,{isCurrent:i,onClick:()=>!i&&(e=>{if(e.is_current&&ae===(null===c||void 0===c?void 0:c.current.billing_cycle))return;if(te(e),je(null),we([]),"annual"===(null===c||void 0===c?void 0:c.current.billing_cycle)&&"monthly"===ae)return xe(!0),void re(!1);le(!0),re(!1)})(e),children:[i&&(0,u.jsx)(P,{children:"Current"}),(0,u.jsx)($,{children:e.display_name}),(0,u.jsxs)(I,{children:[(0,x.vv)(n,_e.currency)," ",(0,u.jsxs)("span",{children:["/ ","annual"===ae?"year":"month"]})]}),(0,u.jsxs)("div",{style:{marginTop:"12px"},children:[(0,u.jsxs)(M,{children:[Z(e.limits.orders)," orders/month"]}),(0,u.jsxs)(M,{children:[Z(e.limits.menu_items)," menu items"]}),(0,u.jsxs)(M,{children:[Z(e.limits.staff)," staff"]})]}),!i&&r&&(0,u.jsxs)(N,{type:r,children:["upgrade"===r&&(0,u.jsxs)(u.Fragment,{children:["\u2191 Upgrade ",e.proration_estimate&&"trial"!==_e.status?(0,u.jsxs)(T,{children:[(0,x.vv)(e.proration_estimate.net_amount,_e.currency)," due now"]}):null]}),"downgrade"===r&&(0,u.jsx)(u.Fragment,{children:"\u2193 Downgrade \u2014 from next billing"}),"cycle_change"===r&&(0,u.jsx)(u.Fragment,{children:"Billing cycle change \u2014 from next billing"})]})]},e.id)})})]}),ie&&se&&"upgrade"===Ee(ie,ae)&&(0,u.jsxs)(s.aF,{isOpen:se,onClose:()=>le(!1),title:(_e.status,`Upgrade to ${ie.display_name}`),footer:(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)(s.yl,{variant:"secondary",onClick:()=>{le(!1),re(!0)},children:"Back"}),(0,u.jsx)(s.yl,{variant:"primary",onClick:Ce,disabled:ye,children:ye?"Processing...":"Confirm Upgrade"})]}),children:["trial"===_e.status?(0,u.jsxs)(u.Fragment,{children:[(0,u.jsxs)("p",{style:{color:"#6B7280",fontSize:"14px"},children:["You're currently on a free trial (",_e.plan_type,")."]}),(0,u.jsxs)(L,{children:[(0,u.jsxs)(W,{children:["\u2713 ",ie.display_name," features available immediately"]}),(0,u.jsx)(W,{children:"\u2713 No charge during your trial period"}),(0,u.jsxs)(W,{children:["\u2713 First invoice (",(0,x.vv)(Se(ie,ae),_e.currency),"/","annual"===ae?"year":"month",") after trial ends on ",J(_e.subscription_end)]})]})]}):(0,u.jsxs)(u.Fragment,{children:[(0,u.jsxs)(L,{children:[(0,u.jsxs)(O,{children:[(0,u.jsx)("span",{children:"Current"}),(0,u.jsxs)("span",{children:[_e.plan_type," \u2014 ",(0,x.vv)(_e.plan_amount,_e.currency),"/","annual"===_e.billing_cycle?"yr":"mo"]})]}),(0,u.jsxs)(O,{children:[(0,u.jsx)("span",{children:"New"}),(0,u.jsxs)("span",{children:[ie.display_name," \u2014 ",(0,x.vv)(Se(ie,ae),_e.currency),"/","annual"===ae?"yr":"mo"]})]}),ie.proration_estimate&&(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)(G,{}),(0,u.jsxs)("div",{style:{fontSize:"13px",color:"#6B7280",marginBottom:"4px"},children:["Prorated charge for remaining period (",ie.proration_estimate.remaining_days," days)"]}),(0,u.jsxs)(O,{children:[(0,u.jsx)("span",{children:"New plan cost"}),(0,u.jsx)("span",{children:(0,x.vv)(ie.proration_estimate.charge,_e.currency)})]}),(0,u.jsxs)(O,{children:[(0,u.jsx)("span",{children:"Current plan credit"}),(0,u.jsxs)("span",{children:["-",(0,x.vv)(ie.proration_estimate.credit,_e.currency)]})]}),(0,u.jsx)(G,{}),(0,u.jsxs)(O,{bold:!0,children:[(0,u.jsx)("span",{children:"Prorated amount"}),(0,u.jsx)("span",{children:(0,x.vv)(ie.proration_estimate.net_amount,_e.currency)})]})]})]}),(0,u.jsx)(W,{children:"\u2713 New features available immediately"}),(0,u.jsxs)(W,{children:["\u2713 Invoice due by ",J(_e.next_billing_date)," (next billing date)"]}),(0,u.jsxs)(W,{children:["\u2713 Next regular billing: ",J(_e.next_billing_date)," at ",(0,x.vv)(Se(ie,ae),_e.currency),"/","annual"===ae?"yr":"mo"]})]}),ve&&(0,u.jsx)("div",{style:{marginTop:"12px",padding:"10px 14px",background:"#FEE2E2",border:"1px solid #FCA5A5",borderRadius:"6px",color:"#991B1B",fontSize:"13px"},children:ve})]}),ie&&se&&("downgrade"===Ee(ie,ae)||"cycle_change"===Ee(ie,ae))&&(0,u.jsxs)(s.aF,{isOpen:se,onClose:()=>le(!1),title:"cycle_change"===Ee(ie,ae)?`Change to ${"annual"===ae?"Annual":"Monthly"} Billing`:`Downgrade to ${ie.display_name}`,footer:(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)(s.yl,{variant:"secondary",onClick:()=>{le(!1),re(!0)},children:"Back"}),(0,u.jsx)(s.yl,{variant:"primary",onClick:Ce,disabled:ye,children:ye?"Processing...":"cycle_change"===Ee(ie,ae)?"Confirm Change":"Confirm Downgrade"})]}),children:[(0,u.jsxs)(L,{children:[(0,u.jsxs)(O,{children:[(0,u.jsx)("span",{children:"Current"}),(0,u.jsxs)("span",{children:[_e.plan_type," \u2014 ",(0,x.vv)(_e.plan_amount,_e.currency),"/","annual"===_e.billing_cycle?"yr":"mo"]})]}),(0,u.jsxs)(O,{children:[(0,u.jsx)("span",{children:"New"}),(0,u.jsxs)("span",{children:[ie.display_name," \u2014 ",(0,x.vv)(Se(ie,ae),_e.currency),"/","annual"===ae?"yr":"mo"]})]})]}),(0,u.jsxs)(Y,{children:["\u26a0 Effective from ",J(_e.next_billing_date)," (next billing date)"]}),"downgrade"===Ee(ie,ae)&&(0,u.jsxs)("div",{style:{marginTop:"12px"},children:[(0,u.jsxs)("div",{style:{fontSize:"13px",color:"#6B7280",marginBottom:"8px"},children:["\u2022 Current features available until ",J(_e.next_billing_date)]}),(0,u.jsxs)("div",{style:{fontSize:"13px",color:"#6B7280",marginBottom:"8px"},children:["\u2022 After ",J(_e.next_billing_date),":"]}),(0,u.jsxs)("div",{style:{paddingLeft:"16px"},children:[(0,u.jsxs)(q,{children:[(0,u.jsx)("span",{children:"Orders"}),(0,u.jsxs)("span",{children:[Z(null!==(e=null===c||void 0===c||null===(n=c.available_plans.find(e=>e.is_current))||void 0===n?void 0:n.limits.orders)&&void 0!==e?e:-1)," \u2192 ",Z(ie.limits.orders),"/month"]})]}),(0,u.jsxs)(q,{children:[(0,u.jsx)("span",{children:"Menu items"}),(0,u.jsxs)("span",{children:[Z(null!==(r=null===c||void 0===c||null===(t=c.available_plans.find(e=>e.is_current))||void 0===t?void 0:t.limits.menu_items)&&void 0!==r?r:-1)," \u2192 ",Z(ie.limits.menu_items)]})]}),(0,u.jsxs)(q,{children:[(0,u.jsx)("span",{children:"Staff"}),(0,u.jsxs)("span",{children:[Z(null!==(a=null===c||void 0===c||null===(l=c.available_plans.find(e=>e.is_current))||void 0===l?void 0:l.limits.staff)&&void 0!==a?a:-1)," \u2192 ",Z(ie.limits.staff)]})]})]}),(0,u.jsxs)("div",{style:{fontSize:"13px",color:"#6B7280",marginTop:"8px"},children:["\u2022 You can cancel this change anytime before ",J(_e.next_billing_date)]})]}),ve&&(0,u.jsxs)("div",{style:{marginTop:"12px",padding:"10px 14px",background:"#FEE2E2",border:"1px solid #FCA5A5",borderRadius:"6px",color:"#991B1B",fontSize:"13px"},children:[ve,be.length>0&&(0,u.jsx)("ul",{style:{margin:"8px 0 0 0",paddingLeft:"18px"},children:be.map((e,n)=>(0,u.jsx)("li",{children:e},n))})]})]}),(0,u.jsx)(s.aF,{isOpen:de,onClose:()=>ce(!1),title:"Cancel Scheduled Change?",footer:(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)(s.yl,{variant:"secondary",onClick:()=>ce(!1),children:"Keep Scheduled Change"}),(0,u.jsx)(s.yl,{variant:"primary",onClick:async()=>{try{fe(!0);const e=await fetch("/api/subscriptions/change-plan",{method:"DELETE",headers:{Authorization:`Bearer ${Fe}`}});(await e.json()).success&&(ce(!1),Ae())}catch{}finally{fe(!1)}},disabled:ye,children:ye?"Cancelling...":"Cancel Change"})]}),children:(0,u.jsxs)("p",{style:{fontSize:"14px",color:"#374151"},children:["Your current plan (",_e.plan_type,", ",(0,x.vv)(_e.plan_amount,_e.currency),"/","annual"===_e.billing_cycle?"year":"month",") will continue without changes."]})}),(0,u.jsxs)(s.aF,{isOpen:pe,onClose:()=>xe(!1),title:"Annual to Monthly",footer:(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)(s.yl,{variant:"secondary",onClick:()=>{xe(!1),window.location.href=(()=>{const e=null===d||void 0===d?void 0:d.role,n=(null===d||void 0===d?void 0:d.restaurantId)||(null===d||void 0===d?void 0:d.restaurant_id);return"Restaurant Admin"===e&&n?`/restaurant/${n}/support`:"Brand General"===e?"/pos/brand/general/system-inquiry":"Foodcourt General"===e?"/pos/foodcourt/general/system-inquiry":"Restaurant Owner"===e?"/pos/owner/system-inquiry":"/pos/profile"})()},children:"Contact Support"}),(0,u.jsx)(s.yl,{onClick:()=>xe(!1),children:"Close"})]}),children:[(0,u.jsx)("p",{style:{fontSize:"14px",color:"#374151",lineHeight:"1.6"},children:"Annual plans cannot be switched to monthly billing directly."}),(0,u.jsx)("p",{style:{fontSize:"14px",color:"#374151",lineHeight:"1.6",marginTop:"12px"},children:"To change to monthly billing:"}),(0,u.jsxs)("ol",{style:{fontSize:"14px",color:"#374151",lineHeight:"1.8",paddingLeft:"20px"},children:[(0,u.jsx)("li",{children:"Contact support to request a full refund for the remaining annual period"}),(0,u.jsx)("li",{children:"Once refunded, subscribe to a monthly plan"})]})]}),(0,u.jsx)(s.aF,{isOpen:ue,onClose:()=>he(!1),title:"upgrade"===(null===ge||void 0===ge?void 0:ge.change_type)?"Plan Upgraded":"Change Scheduled",footer:(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)(s.yl,{variant:"secondary",onClick:()=>he(!1),children:"Close"}),(null===ge||void 0===ge?void 0:ge.proration_invoice)&&(0,u.jsx)(s.yl,{variant:"primary",onClick:()=>{he(!1),window.location.href=ee()},children:"Go to Invoices"})]}),children:"upgrade"===(null===ge||void 0===ge?void 0:ge.change_type)?(0,u.jsxs)(u.Fragment,{children:[(0,u.jsxs)(W,{children:["\u2713 Plan upgraded to ",ge.new_plan]}),(0,u.jsx)(W,{children:"\u2713 New features are now available"}),ge.proration_invoice&&(0,u.jsxs)("div",{style:{marginTop:"12px",padding:"12px 16px",background:"#EFF6FF",border:"1px solid #BFDBFE",borderRadius:"8px",fontSize:"13px",color:"#1E40AF"},children:["A prorated invoice of ",(0,x.vv)(ge.proration_invoice.amount,c.current.currency)," has been created (due by ",J(ge.proration_invoice.due_date),")."]})]}):(0,u.jsxs)(u.Fragment,{children:[(0,u.jsxs)(W,{children:["\u2713 ",null===ge||void 0===ge?void 0:ge.message]}),(0,u.jsx)("div",{style:{marginTop:"8px",fontSize:"13px",color:"#6B7280"},children:"Your current features remain available until the change takes effect."})]})})]})},V=t.Ay.div`
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #FAFBFC;
+  min-height: 100vh;
+`,Q=t.Ay.main`
+  padding: 32px;
+
+  @media (max-width: 768px) {
+    padding: 20px 16px;
+  }
+`,X=(t.Ay.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0 0 20px 0;
+`,t.Ay.div`
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E6EBF1;
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 32px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+`),ee=t.Ay.div`
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 24px;
+  color: white;
+  flex-shrink: 0;
+  background: ${e=>{switch(e.role){case"System Admin":case"Brand General":return"#DC2626";case"Foodcourt General":return"#EA580C";case"Foodcourt Manager":return"#F59E0B";case"Brand Manager":return"#EF4444";case"Restaurant Admin":return"#059669";case"Staff":return"#D97706";default:return"#6B7280"}}};
+`,ne=t.Ay.div`
+  flex: 1;
+`,re=t.Ay.div`
+  font-size: 28px;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 8px;
+`,ie=t.Ay.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
+`,te=t.Ay.span`
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  background: ${e=>{switch(e.role){case"System Admin":case"Brand General":case"Brand Manager":return"#FEE2E2";case"Foodcourt General":return"#FED7AA";case"Foodcourt Manager":case"Staff":return"#FEF3C7";case"Restaurant Admin":return"#ECFDF5";default:return"#F3F4F6"}}};
+  color: ${e=>{switch(e.role){case"System Admin":case"Brand General":return"#DC2626";case"Foodcourt General":return"#EA580C";case"Foodcourt Manager":return"#F59E0B";case"Brand Manager":return"#EF4444";case"Restaurant Admin":return"#059669";case"Staff":return"#D97706";default:return"#6B7280"}}};
+`,ae=t.Ay.div`
+  font-size: 14px;
+  color: #6B7280;
+`,oe=t.Ay.div`
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E6EBF1;
+  padding: 32px;
+`,se=t.Ay.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`,le=t.Ay.div`
+  margin-bottom: 20px;
+`,de=t.Ay.label`
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7C93;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+`,ce=t.Ay.input`
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.15s;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &:disabled {
+    background: #F9FAFB;
+    color: #6B7280;
+    cursor: not-allowed;
+  }
+
+  &::placeholder {
+    color: #9CA3AF;
+  }
+`,pe=t.Ay.div`
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: flex-end;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`,xe=t.Ay.button`
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: ${e=>"primary"===e.variant?"none":"1px solid #E5E7EB"};
+  background: ${e=>"primary"===e.variant?"#635BFF":"white"};
+  color: ${e=>"primary"===e.variant?"white":"#6B7280"};
+  
+  &:hover {
+    background: ${e=>"primary"===e.variant?"#5A51E6":"#F9FAFB"};
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`,ue=t.Ay.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+`,he=t.Ay.div`
+  padding: 16px 12px;
+  border: 2px solid ${e=>e.active?"#635BFF":"#E5E7EB"};
+  border-radius: 8px;
+  text-align: center;
+  background: ${e=>e.active?"rgba(99, 91, 255, 0.05)":"white"};
+  transition: all 0.2s;
+`,ge=t.Ay.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+`,me=t.Ay.div`
+  font-size: 12px;
+  color: #6B7280;
+`,ye=t.Ay.div`
+  min-height: 40px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: ${e=>e.show?1:0};
+  visibility: ${e=>e.show?"visible":"hidden"};
+  transition: opacity 0.3s, visibility 0.3s;
+  background: linear-gradient(135deg, #E0F2FE 0%, #DBEAFE 100%);
+  color: #0369A1;
+  border: 1px solid #BAE6FD;
+
+  &::before {
+    content: '✓';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #0369A1;
+    color: white;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+`,fe=()=>{const{currentStaff:e,updateStaff:n,isLoggedIn:r}=(0,a.g)(),{user:t,isAuthenticated:x,updateUser:h,isLoading:g}=(0,o.As)(),[m,y]=(0,d.M)("profile"),[f,v]=(0,i.useState)({name:"",email:"",phone:"",department:"",company_name:""}),[j,b]=(0,i.useState)({currentPassword:"",newPassword:"",confirmPassword:""}),[w,F]=(0,i.useState)(""),[A,C]=(0,i.useState)(!1),[_,k]=(0,i.useState)(!1),[B,S]=(0,i.useState)(!1),[E,z]=(0,i.useState)(!1),D=(e,n)=>{v(r=>({...r,[e]:n})),P||($(!0),R(!1))},[P,$]=(0,i.useState)(!1),[I,M]=(0,i.useState)(!1),[N,T]=(0,i.useState)(null),[U,R]=(0,i.useState)(!1),[L,O]=(0,i.useState)(!1),[G,W]=(0,i.useState)(null),[Y,q]=(0,i.useState)(!0);(0,i.useEffect)(()=>{(async()=>{if(console.log("\ud83d\udd04 Starting user data fetch..."),console.log("\ud83d\udd04 authUser:",t),console.log("\ud83d\udd04 authUser.id:",null===t||void 0===t?void 0:t.id),null!==t&&void 0!==t&&t.id)try{console.log("\ud83d\udd04 Fetching user from API, ID:",t.id);const e=localStorage.getItem("auth_token"),n=await fetch(`/api/users/${t.id}`,{headers:{Authorization:`Bearer ${e}`}});if(!n.ok)throw new Error("Failed to fetch user");const r=await n.json(),i=r.data||r;console.log(" Fetched user:",i),W(i)}catch(e){console.error("\u274c Failed to load user from database:",e)}else console.log(" No authUser ID available");q(!1)})()},[null===t||void 0===t?void 0:t.id]);const H=(0,i.useMemo)(()=>{const e=G||t;return e?{id:e.id,name:(null===G||void 0===G?void 0:G.full_name)||(null===G||void 0===G?void 0:G.name)||(null===t||void 0===t?void 0:t.name)||(null===t||void 0===t?void 0:t.full_name)||"Unknown",email:e.email,phone:e.phone||"",username:(null===G||void 0===G?void 0:G.username)||e.email,role:e.role,department:(null===G||void 0===G?void 0:G.department)||(null===G||void 0===G?void 0:G.position)||("System Admin"===e.role?"System Administration":"Administration"),company_name:(null===G||void 0===G?void 0:G.company_name)||("System Admin"===e.role?"Purple Here Technologies Sdn Bhd":""),joinDate:(null===G||void 0===G?void 0:G.createdAt)||(new Date).toISOString(),lastLogin:(new Date).toISOString(),schedule:{monday:{active:!0,start:"09:00",end:"17:00"},tuesday:{active:!0,start:"09:00",end:"17:00"},wednesday:{active:!0,start:"09:00",end:"17:00"},thursday:{active:!0,start:"09:00",end:"17:00"},friday:{active:!0,start:"09:00",end:"17:00"},saturday:{active:!1,start:"09:00",end:"17:00"},sunday:{active:!1,start:"09:00",end:"17:00"}}}:null},[G,t]);(0,i.useEffect)(()=>{G&&(console.log("\ud83d\udc64 Profile Page - DB User Data:",{full_name:G.full_name,username:G.username,email:G.email,role:G.role,department:G.department,position:G.position,createdAt:G.createdAt,updatedAt:G.updatedAt}),console.log("\ud83d\udc64 Profile Page - Current User:",H))},[G]);const[J,Z]=(0,i.useState)(!1);(0,i.useEffect)(()=>{if(G&&!J){console.log("\ud83d\udd25 Initializing formData from dbUser:",G);const e={name:G.full_name||G.name||"",email:G.email||"",phone:G.phone||"",department:G.department||G.position||"",company_name:G.company_name||""};console.log("\ud83d\udd25 New formData from DB:",e),v(e),$(!1),Z(!0)}else if(H&&""===f.name&&!G){console.log("\ud83d\udd25 Initializing formData from authUser (fallback):",H);const e={name:H.name||"",email:H.email||"",phone:H.phone||"",department:H.department||"",company_name:H.company_name||""};v(e),$(!1)}},[G,H,J]),(0,i.useEffect)(()=>{if(H){const e=f.name!==H.name||f.email!==H.email||f.phone!==H.phone||f.department!==(H.department||"")||f.company_name!==(H.company_name||"");$(e),e&&U&&R(!1)}},[f,H,U]);const fe=e=>{y(e)};(0,i.useEffect)(()=>{const e=e=>{if(P)return e.preventDefault(),e.returnValue="",""};return window.addEventListener("beforeunload",e),()=>window.removeEventListener("beforeunload",e)},[P]);const ve=(e,n,r)=>{T(i=>({...i,[e]:{...i[e],[n]:r}}))};return g||Y?(0,u.jsx)(u.Fragment,{children:(0,u.jsxs)(V,{children:[(0,u.jsx)(p.Ay,{title:"My Profile"}),(0,u.jsx)(Q,{children:(0,u.jsx)(oe,{children:(0,u.jsx)("div",{style:{textAlign:"center",padding:"40px",color:"#6B7280"},children:(0,u.jsx)("div",{children:"Loading profile..."})})})})]})}):x&&H?(0,u.jsx)(u.Fragment,{children:(0,u.jsxs)(V,{children:[(0,u.jsx)(p.Ay,{title:"My Profile"}),(0,u.jsxs)(Q,{children:[(0,u.jsxs)(X,{children:[(0,u.jsx)(ee,{role:H.role,children:(e=>{if(!e)return"?";const n=e.trim().split(" ").filter(e=>e.length>0);return 0===n.length?"?":1===n.length?n[0].substring(0,2).toUpperCase():n.slice(0,2).map(e=>e[0]).join("").toUpperCase()})(H.name)}),(0,u.jsxs)(ne,{children:[(0,u.jsxs)(re,{children:[H.name," ",G&&(0,u.jsx)("span",{style:{fontSize:"12px",color:"#10B981",fontWeight:"normal"},children:"\u2713 DB"})]}),(0,u.jsxs)(ie,{children:[(0,u.jsx)(te,{role:H.role,children:H.role}),(0,u.jsx)("span",{style:{fontSize:"14px",color:"#6B7280",textTransform:"capitalize"},children:H.department})]}),(0,u.jsxs)(ae,{children:["Member since ",(je=H.joinDate,new Date(je).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"}))," \u2022 Last login ",(e=>{if(!e)return"Never";const n=new Date(e),r=(new Date).getTime()-n.getTime(),i=Math.floor(r/36e5);if(i<1)return"Just now";if(i<24)return`${i}h ago`;return`${Math.floor(i/24)}d ago`})(H.lastLogin),G&&(0,u.jsxs)("span",{style:{fontSize:"11px",color:"#10B981",marginLeft:"8px"},children:["\u2022 Database ID: ",G.id]})]})]})]}),(0,u.jsxs)(l.tU,{children:[(0,u.jsx)(l.oz,{active:"profile"===m,onClick:()=>fe("profile"),children:"Personal Information"}),["Restaurant Admin","Brand General","Foodcourt General","Restaurant Owner"].includes(H.role)&&!(null!==G&&void 0!==G&&G.is_demo)&&(0,u.jsx)(l.oz,{active:"subscription"===m,onClick:()=>fe("subscription"),children:"Subscription"}),(0,u.jsx)(l.oz,{active:"schedule"===m,onClick:()=>fe("schedule"),children:"Work Schedule"}),(0,u.jsx)(l.oz,{active:"security"===m,onClick:()=>fe("security"),children:"Change Password"})]}),"profile"===m&&(0,u.jsx)(oe,{children:(0,u.jsxs)("div",{children:[(0,u.jsxs)(se,{children:[(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"Full Name"}),(0,u.jsx)(ce,{type:"text",value:f.name||"",onChange:e=>{console.log("\ud83d\udd25 Name input onChange:",e.target.value),D("name",e.target.value)},placeholder:"Enter full name"})]}),(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"Role"}),(0,u.jsx)(ce,{type:"text",value:H.role,disabled:!0})]}),(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"Email Address"}),(0,u.jsx)(ce,{type:"email",value:f.email||"",onChange:e=>D("email",e.target.value),placeholder:"Enter email address"})]}),(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"Username"}),(0,u.jsx)(ce,{type:"text",value:H.username,disabled:!0})]}),(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"Phone Number"}),(0,u.jsx)(c.A,{value:f.phone||"",onChange:e=>D("phone",e)})]}),"System Admin"===H.role&&(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"Company Name"}),(0,u.jsx)(ce,{type:"text",value:f.company_name||"",onChange:e=>D("company_name",e.target.value),placeholder:"Enter company name"})]}),(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"Department"}),(0,u.jsx)(ce,{type:"text",value:f.department||"",onChange:e=>D("department",e.target.value),placeholder:"Enter department"})]})]}),(0,u.jsxs)(pe,{children:[(0,u.jsx)(xe,{type:"button",onClick:()=>{H&&(v({name:H.name,email:H.email,phone:H.phone,department:H.department||"",company_name:H.company_name||""}),$(!1),R(!1))},disabled:!P||L,children:"Reset"}),(0,u.jsx)(xe,{type:"button",variant:"primary",disabled:!P||L,onClick:async e=>{if(e.preventDefault(),console.log("\ud83d\udd25 handleSubmit called"),console.log("\ud83d\udd25 currentUser:",H),console.log("\ud83d\udd25 hasChanges:",P),console.log("\ud83d\udd25 formData:",f),console.log("\ud83d\udd25 dbUser:",G),console.log("\ud83d\udd25 authUser:",t),H&&P&&!L)try{if(O(!0),R(!1),G&&null!==t&&void 0!==t&&t.id){const e=localStorage.getItem("auth_token"),n=await fetch(`/api/users/${t.id}`,{method:"PUT",headers:{"Content-Type":"application/json",Authorization:`Bearer ${e}`},body:JSON.stringify({full_name:f.name,email:f.email,phone:f.phone,department:f.department,company_name:f.company_name})});if(!n.ok){const e=await n.json().catch(()=>null);throw new Error((null===e||void 0===e?void 0:e.message)||(null===e||void 0===e?void 0:e.error)||"Failed to update profile")}const r=await fetch(`/api/users/${t.id}`,{headers:{Authorization:`Bearer ${e}`}});if(r.ok){const e=await r.json(),n=e.data||e;W(n),v({name:n.full_name||"",email:n.email||"",phone:n.phone||"",department:n.department||"",company_name:n.company_name||""}),Z(!0)}h({name:f.name,email:f.email}),$(!1),R(!0),setTimeout(()=>R(!1),3e3)}}catch(n){console.error("Failed to update profile:",n),R(!1),v(e=>({...e})),window.alert(n.message||"Failed to save profile")}finally{O(!1)}},children:L?"Saving...":"Save Changes"})]}),(0,u.jsx)(ye,{show:U,children:"Profile updated successfully."})]})}),"subscription"===m&&(0,u.jsx)(K,{}),"schedule"===m&&(0,u.jsxs)(oe,{children:[(0,u.jsx)("div",{style:{display:"flex",justifyContent:"flex-end",alignItems:"center",marginBottom:"20px"},children:("System Admin"===(null===H||void 0===H?void 0:H.role)||"manager"===(null===H||void 0===H?void 0:H.role))&&(0,u.jsx)(xe,{variant:"primary",style:{flex:"none",padding:"10px 16px",fontSize:"14px",minWidth:"120px"},onClick:()=>{H&&(T({...H.schedule}),M(!0))},children:"Edit Schedule"})}),"System Admin"!==(null===H||void 0===H?void 0:H.role)&&"manager"!==(null===H||void 0===H?void 0:H.role)&&(0,u.jsx)("div",{style:{background:"#F8FAFC",border:"1px solid #E2E8F0",borderRadius:"8px",padding:"12px 16px",marginBottom:"20px",fontSize:"14px",color:"#6B7280"},children:"\u2139\ufe0f Work schedules are managed by administrators and managers. Contact your manager to make changes."}),(0,u.jsx)(ue,{children:Object.entries(H.schedule).map(e=>{let[n,r]=e;return(0,u.jsxs)(he,{active:r.active,children:[(0,u.jsx)(ge,{children:n}),(0,u.jsx)(me,{children:r.active?`${r.start} - ${r.end}`:"Off"})]},n)})})]}),"security"===m&&(0,u.jsx)(oe,{children:(0,u.jsxs)("div",{children:[(0,u.jsxs)("div",{style:{padding:"12px 16px",backgroundColor:"#F0F9FF",border:"1px solid #BAE6FD",borderRadius:"6px",color:"#0C4A6E",fontSize:"13px",marginBottom:"20px",lineHeight:"1.5"},children:[(0,u.jsx)("strong",{children:"Password Requirements:"}),(0,u.jsxs)("ul",{style:{margin:"6px 0 0 0",paddingLeft:"18px"},children:[(0,u.jsx)("li",{children:"At least 8 characters"}),(0,u.jsx)("li",{children:"At least one lowercase letter (a-z)"}),(0,u.jsx)("li",{children:"At least one uppercase letter (A-Z)"}),(0,u.jsx)("li",{children:"At least one number (0-9)"})]})]}),(0,u.jsxs)(se,{children:[(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"Current Password"}),(0,u.jsxs)("div",{style:{position:"relative",display:"flex",alignItems:"center"},children:[(0,u.jsx)(ce,{type:_?"text":"password",value:j.currentPassword,onChange:e=>b({...j,currentPassword:e.target.value}),placeholder:"Enter current password",style:{paddingRight:"42px"}}),(0,u.jsx)("button",{type:"button",onClick:()=>k(!_),tabIndex:-1,style:{position:"absolute",right:"14px",background:"none",border:"none",cursor:"pointer",padding:"4px",display:"flex",alignItems:"center",color:"#9CA3AF"},children:(0,u.jsx)("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round",style:{width:"20px",height:"20px"},children:_?(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)("path",{d:"M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"}),(0,u.jsx)("line",{x1:"1",y1:"1",x2:"23",y2:"23"})]}):(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)("path",{d:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"}),(0,u.jsx)("circle",{cx:"12",cy:"12",r:"3"})]})})})]})]}),(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"New Password"}),(0,u.jsxs)("div",{style:{position:"relative",display:"flex",alignItems:"center"},children:[(0,u.jsx)(ce,{type:B?"text":"password",value:j.newPassword,onChange:e=>b({...j,newPassword:e.target.value}),placeholder:"Min 8 chars, uppercase + lowercase + number",style:{paddingRight:"42px"}}),(0,u.jsx)("button",{type:"button",onClick:()=>S(!B),tabIndex:-1,style:{position:"absolute",right:"14px",background:"none",border:"none",cursor:"pointer",padding:"4px",display:"flex",alignItems:"center",color:"#9CA3AF"},children:(0,u.jsx)("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round",style:{width:"20px",height:"20px"},children:B?(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)("path",{d:"M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"}),(0,u.jsx)("line",{x1:"1",y1:"1",x2:"23",y2:"23"})]}):(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)("path",{d:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"}),(0,u.jsx)("circle",{cx:"12",cy:"12",r:"3"})]})})})]})]}),(0,u.jsxs)(le,{children:[(0,u.jsx)(de,{children:"Confirm New Password"}),(0,u.jsxs)("div",{style:{position:"relative",display:"flex",alignItems:"center"},children:[(0,u.jsx)(ce,{type:E?"text":"password",value:j.confirmPassword,onChange:e=>b({...j,confirmPassword:e.target.value}),placeholder:"Confirm new password",style:{paddingRight:"42px"}}),(0,u.jsx)("button",{type:"button",onClick:()=>z(!E),tabIndex:-1,style:{position:"absolute",right:"14px",background:"none",border:"none",cursor:"pointer",padding:"4px",display:"flex",alignItems:"center",color:"#9CA3AF"},children:(0,u.jsx)("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round",style:{width:"20px",height:"20px"},children:E?(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)("path",{d:"M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"}),(0,u.jsx)("line",{x1:"1",y1:"1",x2:"23",y2:"23"})]}):(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)("path",{d:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"}),(0,u.jsx)("circle",{cx:"12",cy:"12",r:"3"})]})})})]})]})]}),w&&(0,u.jsx)("div",{style:{padding:"12px 16px",backgroundColor:"#FEE2E2",border:"1px solid #FCA5A5",borderRadius:"6px",color:"#991B1B",fontSize:"14px",marginTop:"20px"},children:w}),A&&(0,u.jsx)("div",{style:{padding:"12px 16px",backgroundColor:"#ECFDF5",border:"1px solid #10B981",borderRadius:"6px",color:"#047857",fontSize:"14px",marginTop:"20px"},children:"Password changed successfully!"}),(0,u.jsx)(pe,{children:(0,u.jsx)(xe,{variant:"primary",onClick:async()=>{if(F(""),C(!1),j.currentPassword&&j.newPassword&&j.confirmPassword)if(j.newPassword.length<8)F("Password must be at least 8 characters long");else if(/[a-z]/.test(j.newPassword))if(/[A-Z]/.test(j.newPassword))if(/[0-9]/.test(j.newPassword))if(j.newPassword===j.confirmPassword)if(j.currentPassword!==j.newPassword)try{const e=localStorage.getItem("auth_token"),n=await fetch(`/api/users/${null===H||void 0===H?void 0:H.id}/password`,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${e}`},body:JSON.stringify({currentPassword:j.currentPassword,newPassword:j.newPassword})});if(!n.ok){const e=await n.json();return void F(e.error||"Failed to change password")}C(!0),b({currentPassword:"",newPassword:"",confirmPassword:""}),setTimeout(()=>{C(!1)},5e3)}catch(e){console.error("Error changing password:",e),F("An error occurred while changing password")}else F("New password must be different from current password");else F("New passwords do not match");else F("Password must contain at least one number");else F("Password must contain at least one uppercase letter");else F("Password must contain at least one lowercase letter");else F("All fields are required")},children:"Change Password"})})]})})]}),(0,u.jsx)(s.aF,{isOpen:I,onClose:()=>M(!1),title:"Edit Schedule",footer:(0,u.jsxs)(u.Fragment,{children:[(0,u.jsx)(s.yl,{variant:"secondary",onClick:()=>M(!1),children:"Cancel"}),(0,u.jsx)(s.yl,{onClick:async()=>{H&&N&&(e&&await n(e.id,{schedule:N}),M(!1),T(null))},children:"Save Schedule"})]}),children:N&&(0,u.jsx)("div",{style:{display:"flex",flexDirection:"column",gap:"8px"},children:Object.entries(N).map(e=>{let[n,r]=e;return(0,u.jsxs)("div",{style:{display:"grid",gridTemplateColumns:"100px 1fr",alignItems:"center",gap:"12px",padding:"8px 0",borderBottom:"1px solid #F3F4F6"},children:[(0,u.jsx)("div",{style:{fontWeight:"500",textTransform:"capitalize",fontSize:"14px",color:"#374151"},children:n}),(0,u.jsxs)("div",{style:{display:"flex",alignItems:"center",gap:"12px",flexWrap:"wrap"},children:[(0,u.jsxs)("label",{style:{display:"flex",alignItems:"center",gap:"6px",cursor:"pointer",fontSize:"14px",minWidth:"80px"},children:[(0,u.jsx)("input",{type:"checkbox",checked:r.active,onChange:e=>ve(n,"active",e.target.checked),style:{cursor:"pointer"}}),(0,u.jsx)("span",{style:{color:r.active?"#059669":"#6B7280"},children:r.active?"Active":"Off"})]}),r.active&&(0,u.jsxs)("div",{style:{display:"flex",alignItems:"center",gap:"8px"},children:[(0,u.jsx)("input",{type:"time",value:r.start,onChange:e=>ve(n,"start",e.target.value),style:{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:"6px",fontSize:"14px",width:"100px"}}),(0,u.jsx)("span",{style:{color:"#9CA3AF",fontSize:"14px"},children:"-"}),(0,u.jsx)("input",{type:"time",value:r.end,onChange:e=>ve(n,"end",e.target.value),style:{padding:"6px 8px",border:"1px solid #D1D5DB",borderRadius:"6px",fontSize:"14px",width:"100px"}})]})]})]},n)})})})]})}):(0,u.jsx)(u.Fragment,{children:(0,u.jsxs)(V,{children:[(0,u.jsx)(p.Ay,{title:"My Profile"}),(0,u.jsx)(Q,{children:(0,u.jsx)(oe,{children:(0,u.jsxs)("div",{style:{textAlign:"center",padding:"40px",color:"#6B7280"},children:[(0,u.jsx)("div",{style:{fontSize:"18px",marginBottom:"8px"},children:"Please log in to view your profile"}),(0,u.jsx)("div",{style:{fontSize:"14px"},children:"You need to be logged in to access this page."})]})})})]})});var je}}}]);

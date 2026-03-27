@@ -277,6 +277,7 @@ interface ModalComponentProps {
   maxWidth?: string;
   size?: 'small' | 'medium' | 'large';
   headerActions?: React.ReactNode;
+  zIndex?: number;
 }
 
 const ModalComponentInternal: React.FC<ModalComponentProps> = ({
@@ -287,7 +288,8 @@ const ModalComponentInternal: React.FC<ModalComponentProps> = ({
   footer,
   maxWidth,
   size = 'medium',
-  headerActions
+  headerActions,
+  zIndex
 }) => {
   if (!isOpen) return null;
 
@@ -304,7 +306,7 @@ const ModalComponentInternal: React.FC<ModalComponentProps> = ({
   // React Portal을 사용하여 document.body에 직접 렌더링
   // 이렇게 하면 부모 컴포넌트의 CSS 리셋 영향을 받지 않음
   const modalContent = (
-    <ModalOverlay onClick={onClose}>
+    <ModalOverlay onClick={onClose} style={zIndex ? { zIndex } : undefined}>
       <ModalContent style={{ maxWidth: getMaxWidth() }} onClick={e => e.stopPropagation()}>
         <ModalHeader>
           <ModalTitle>{title}</ModalTitle>

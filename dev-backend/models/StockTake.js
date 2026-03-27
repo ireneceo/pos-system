@@ -49,7 +49,7 @@ StockTake.init({
   },
   created_by: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   }
 }, {
   sequelize: database.sequelize,

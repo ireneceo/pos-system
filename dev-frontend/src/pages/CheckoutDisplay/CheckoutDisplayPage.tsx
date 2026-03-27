@@ -3,6 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import { useParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { formatCurrency } from '../../utils/currency';
+import { COUNTRIES, formatPhoneNumber } from '../../utils/phoneUtils';
 
 const fadeIn = keyframes`from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}`;
 
@@ -101,6 +102,7 @@ interface CustomerInfo { id: number; name: string; phone: string; points: number
 const CheckoutDisplayPage: React.FC = () => {
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('MY');
   const [showRegister, setShowRegister] = useState(false);
   const [registerName, setRegisterName] = useState('');
   const [registering, setRegistering] = useState(false);
@@ -115,7 +117,15 @@ const CheckoutDisplayPage: React.FC = () => {
 
   useEffect(() => {
     if (!restaurantId) return;
-    fetch(`/api/restaurants/${restaurantId}`).then(r => r.json()).then(d => setStoreName(d.name || d.data?.name || '')).catch(() => {});
+    fetch(`/api/restaurants/${restaurantId}`).then(r => r.json()).then(d => {
+      const rest = d.data || d;
+      setStoreName(rest.name || '');
+      // 레스토랑 국가 설정 → 전화번호 국가코드 자동 매핑
+      const restCountry = rest.country || 'MY';
+      if (COUNTRIES.find(c => c.code === restCountry)) {
+        setCountryCode(restCountry);
+      }
+    }).catch(() => {});
   }, [restaurantId]);
 
   useEffect(() => {
@@ -134,15 +144,22 @@ const CheckoutDisplayPage: React.FC = () => {
     return () => { socket.disconnect(); };
   }, [restaurantId]);
 
-  const handleKeyPress = (key: string) => { if (phoneNumber.length < 15) setPhoneNumber(prev => prev + key); };
+  const selectedCountry = COUNTRIES.find(c => c.code === countryCode) || COUNTRIES[0];
+  // 고객은 0으로 시작하는 로컬 번호를 그대로 입력 (010, 017 등)
+  // 화면에도 그대로 표시, 저장 시에만 formatPhoneNumber로 E.164 변환 (0 제거 + 국가코드)
+  const inputMaxLength = selectedCountry.maxLength + 1; // 앞 0 포함 허용
+  const handleKeyPress = (key: string) => { if (phoneNumber.length < inputMaxLength) setPhoneNumber(prev => prev + key); };
   const handleBackspace = () => { setPhoneNumber(prev => prev.slice(0, -1)); if (customerStatus !== 'idle') { setCustomerStatus('idle'); setCustomer(null); setShowRegister(false); } };
   const handleClear = () => { setPhoneNumber(''); setCustomerStatus('idle'); setCustomer(null); setShowRegister(false); setRegisterName(''); };
+  const getFullPhone = () => formatPhoneNumber(phoneNumber, countryCode);
 
   const handlePhoneSubmit = async () => {
-    if (phoneNumber.length < 8) return;
+    const digits = phoneNumber.startsWith('0') ? phoneNumber.length - 1 : phoneNumber.length;
+    if (digits < selectedCountry.minLength) return;
+    const fullPhone = getFullPhone();
     setCustomerStatus('searching');
     try {
-      const res = await fetch(`/api/customers/phone/${encodeURIComponent(phoneNumber)}`);
+      const res = await fetch(`/api/customers/phone/${encodeURIComponent(fullPhone)}`);
       const data = await res.json();
       if (data.success && data.data) {
         const c = data.data;
@@ -151,30 +168,29 @@ const CheckoutDisplayPage: React.FC = () => {
         setCustomerStatus('found');
       } else { setCustomerStatus('not_found'); }
     } catch { setCustomerStatus('not_found'); }
-    if (socketRef.current) socketRef.current.emit('customer-checkin', { phone: phoneNumber, restaurantId });
+    if (socketRef.current) socketRef.current.emit('customer-checkin', { phone: fullPhone, restaurantId });
   };
 
   const handleRegister = async () => {
     if (!registerName.trim()) return;
     setRegistering(true);
+    const fullPhone = getFullPhone();
     try {
       const res = await fetch('/api/customers/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: registerName.trim(), phone: phoneNumber, restaurantId: restaurantId })
+        body: JSON.stringify({ name: registerName.trim(), phone: fullPhone, restaurantId: restaurantId })
       });
       const data = await res.json();
       if (data.success || res.ok) {
-        const newCust = { id: data.data?.id || 0, name: registerName.trim(), phone: phoneNumber, points: 0, tier: 'Bronze', totalOrders: 0 };
+        const newCust = { id: data.data?.id || 0, name: registerName.trim(), phone: fullPhone, points: 0, tier: 'Bronze', totalOrders: 0 };
         setCustomer(newCust);
         setCustomerStatus('found');
         setShowRegister(false);
-        // POS에 고객 정보 전달
         if (socketRef.current) {
-          socketRef.current.emit('customer-checkin', { phone: phoneNumber, restaurantId });
+          socketRef.current.emit('customer-checkin', { phone: fullPhone, restaurantId });
         }
       } else {
-        // 이미 등록된 번호 등 에러
         alert(data.message || 'Registration failed');
       }
     } catch { /* silent */ }
@@ -268,14 +284,13 @@ const CheckoutDisplayPage: React.FC = () => {
             <>
               <KeypadGrid>
                 {['1','2','3','4','5','6','7','8','9'].map(k => <Key key={k} onClick={() => handleKeyPress(k)}>{k}</Key>)}
-                <Key onClick={() => handleKeyPress('+')}>+</Key>
+                <Key onClick={handleClear} style={{ fontSize: '13px', color: '#6B7C93' }}>Clear</Key>
                 <Key onClick={() => handleKeyPress('0')}>0</Key>
                 <Key onClick={handleBackspace} style={{ fontSize: '16px' }}>⌫</Key>
               </KeypadGrid>
-              <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
-                <button onClick={handleClear} style={{ flex: 1, padding: '12px', fontSize: '13px', border: '1px solid #E6EBF1', borderRadius: '6px', background: 'white', color: '#6B7C93', cursor: 'pointer' }}>Clear</button>
-                <button onClick={handlePhoneSubmit} disabled={phoneNumber.length < 8} style={{ flex: 1, padding: '12px', fontSize: '13px', fontWeight: 600, border: 'none', borderRadius: '6px', background: '#635BFF', color: 'white', cursor: 'pointer', opacity: phoneNumber.length < 8 ? 0.5 : 1 }}>Done</button>
-              </div>
+              {(() => { const d = phoneNumber.startsWith('0') ? phoneNumber.length - 1 : phoneNumber.length; const ok = d >= selectedCountry.minLength; return (
+              <button onClick={handlePhoneSubmit} disabled={!ok} style={{ width: '100%', marginTop: '10px', padding: '14px', fontSize: '15px', fontWeight: 600, border: 'none', borderRadius: '8px', background: '#635BFF', color: 'white', cursor: 'pointer', opacity: ok ? 1 : 0.5 }}>Done</button>
+              ); })()}
             </>
           )}
           {/* 처음으로 돌아가기 — 모든 상태에서 표시 */}

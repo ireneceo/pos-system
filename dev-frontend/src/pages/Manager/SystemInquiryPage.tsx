@@ -651,45 +651,33 @@ const SupportTicketsPage: React.FC = () => {
           </StatsGrid>
 
           <FiltersContainer>
-            <FilterGroup>
-              <FilterLabel>Search</FilterLabel>
-              <SearchInput
-                placeholder="Search tickets..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Status</FilterLabel>
-              <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                <option value="all">All Status</option>
-                <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </Select>
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Priority</FilterLabel>
-              <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-                <option value="all">All Priority</option>
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </Select>
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Category</FilterLabel>
-              <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-                <option value="all">All Categories</option>
-                <option value="technical">Technical</option>
-                <option value="billing">Billing</option>
-                <option value="feature-request">Feature Request</option>
-                <option value="bug-report">Bug Report</option>
-                <option value="general">General</option>
-              </Select>
-            </FilterGroup>
+            <SearchInput
+              placeholder="Search tickets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="open">Open</option>
+              <option value="in-progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </Select>
+            <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+              <option value="all">All Priority</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </Select>
+            <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
+              <option value="all">All Categories</option>
+              <option value="technical">Technical</option>
+              <option value="billing">Billing</option>
+              <option value="feature-request">Feature Request</option>
+              <option value="bug-report">Bug Report</option>
+              <option value="general">General</option>
+            </Select>
           </FiltersContainer>
 
           <TicketsGrid>

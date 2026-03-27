@@ -14,7 +14,7 @@ const AddonModule = require('../models/AddonModule');
 const { Recipe, Ingredient, RecipeIngredient } = require('../models');
 const CompanySettings = require('../models/CompanySettings');
 const { Op } = require('sequelize');
-const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess, requireRole } = require('../middleware/auth');
 const { validateRestaurantCreation } = require('../middleware/validation');
 const jwt = require('jsonwebtoken');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
@@ -1468,7 +1468,7 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
 });
 
 // Delete restaurant (with cascade cleanup)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req, res) => {
   const { sequelize } = require('../config/database');
   const RestaurantManager = require('../models/RestaurantManager');
   const RestaurantCustomer = require('../models/RestaurantCustomer');
@@ -1529,18 +1529,34 @@ router.delete('/:id', async (req, res) => {
     await IngredientCategory.destroy({ where: { restaurant_id: rid }, transaction: t });
 
     // 5. Remove menu data (options → option groups → products → categories)
+    const KitchenStation = require('../models/KitchenStation');
+    const ActivityLog = require('../models/ActivityLog');
+    const ImportHistory = require('../models/ImportHistory');
+    await KitchenStation.destroy({ where: { restaurant_id: rid }, transaction: t });
     await OptionGroup.destroy({ where: { restaurant_id: rid }, transaction: t });
     await Product.destroy({ where: { restaurant_id: rid }, transaction: t });
     await Category.destroy({ where: { restaurant_id: rid }, transaction: t });
 
-    // 6. Remove orders and invoices
-    await Order.destroy({ where: { restaurant_id: rid }, transaction: t });
+    // 6. Remove orders and invoices (child tables first)
+    const InvoiceItem = require('../models/InvoiceItem');
+    const invoiceIds = (await Invoice.findAll({ where: { restaurant_id: rid }, attributes: ['id'], transaction: t })).map(i => i.id);
+    if (invoiceIds.length > 0) {
+      await InvoiceItem.destroy({ where: { invoice_id: invoiceIds }, transaction: t });
+    }
     await Invoice.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await Order.destroy({ where: { restaurant_id: rid }, transaction: t });
 
-    // 7. Unlink operation tickets (set NULL instead of delete)
+    // 6b. Remove subscriptions
+    await sequelize.query('DELETE FROM subscriptions WHERE restaurant_id = ?', { replacements: [rid], transaction: t });
+
+    // 7. Remove activity logs and import history
+    await ActivityLog.destroy({ where: { restaurant_id: rid }, transaction: t });
+    await ImportHistory.destroy({ where: { restaurant_id: rid }, transaction: t });
+
+    // 8. Unlink operation tickets (set NULL instead of delete)
     await OperationTicket.update({ restaurantId: null }, { where: { restaurantId: rid }, transaction: t });
 
-    // 8. Unlink admin user
+    // 9. Unlink admin user
     await User.update({ restaurant_id: null }, { where: { restaurant_id: rid }, transaction: t });
 
     // 9. Delete the restaurant

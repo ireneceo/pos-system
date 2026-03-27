@@ -19,7 +19,7 @@ const ImportHistory = sequelize.define('ImportHistory', {
   },
   user_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   },
   import_type: {
     type: DataTypes.ENUM('categories', 'menu', 'options', 'orders'),

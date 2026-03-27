@@ -191,33 +191,7 @@ const Input = styled.input`
   }
 `;
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-`;
 
-const StatCard = styled.div`
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 12px;
-  padding: 20px;
-  text-align: center;
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 600;
-  color: #1F2937;
-  margin-bottom: 4px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 12px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-`;
 
 const ButtonContainer = styled.div`
   display: flex;
@@ -257,13 +231,17 @@ const ScheduleGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 12px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(4, 1fr);
   }
-  
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
   @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 `;
 
@@ -328,7 +306,7 @@ const ProfilePage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { currentStaff, updateStaff, isLoggedIn } = useStaff();
   const { user: authUser, isAuthenticated, updateUser, isLoading: authLoading } = useAuth();
-  const [activeTab, handleTabParamChange] = useTabParam<'profile' | 'subscription' | 'schedule' | 'performance' | 'security'>('profile');
+  const [activeTab, handleTabParamChange] = useTabParam<'profile' | 'subscription' | 'schedule' | 'security'>('profile');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -360,6 +338,7 @@ const ProfilePage: React.FC = () => {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<any>(null);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // State for actual user data from database (single source of truth)
   const [dbUser, setDbUser] = useState<any>(null);
@@ -431,13 +410,6 @@ const ProfilePage: React.FC = () => {
         saturday: { active: false, start: '09:00', end: '17:00' },
         sunday: { active: false, start: '09:00', end: '17:00' }
       },
-      totalShifts: 0,
-      totalSales: 0,
-      performance: {
-        efficiency: 100,
-        customerRating: 5.0,
-        ordersProcessed: 0
-      }
     };
   }, [dbUser, authUser]);
 
@@ -514,12 +486,7 @@ const ProfilePage: React.FC = () => {
 
   // Tab change handler
   const handleTabChange = (tab: string) => {
-    // System Admin should not access performance tab
-    if (currentUser?.role === 'System Admin' && tab === 'performance') {
-      handleTabParamChange('profile');
-    } else {
-      handleTabParamChange(tab as 'profile' | 'subscription' | 'schedule' | 'performance' | 'security');
-    }
+    handleTabParamChange(tab as 'profile' | 'subscription' | 'schedule' | 'security');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -531,19 +498,13 @@ const ProfilePage: React.FC = () => {
     console.log('🔥 dbUser:', dbUser);
     console.log('🔥 authUser:', authUser);
 
-    if (!currentUser || !hasChanges) {
-      console.log('❌ Early return: no currentUser or no changes');
-      return;
-    }
+    if (!currentUser || !hasChanges || saving) return;
 
     try {
-      console.log('🔥 Saving profile data...');
+      setSaving(true);
+      setSavedSuccessfully(false);
 
-      // ONLY handle database users - NO staff context for System Admin
       if (dbUser && authUser?.id) {
-        console.log('🔥 Updating database user with ID:', authUser.id);
-
-        // Update database
         const token = localStorage.getItem('auth_token');
         const response = await fetch(`/api/users/${authUser.id}`, {
           method: 'PUT',
@@ -561,42 +522,41 @@ const ProfilePage: React.FC = () => {
         });
 
         if (!response.ok) {
-          console.error('❌ Database update failed:', response.status);
-          throw new Error('Failed to update user in database');
+          const errData = await response.json().catch(() => null);
+          throw new Error(errData?.message || errData?.error || 'Failed to update profile');
         }
-
-        const result = await response.json();
-        console.log('✅ Database update result:', result);
 
         // Reload fresh data from database
         const updatedResponse = await fetch(`/api/users/${authUser.id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
         if (updatedResponse.ok) {
           const updatedResult = await updatedResponse.json();
           const updatedUserData = updatedResult.data || updatedResult;
-          console.log('🔥 Reloaded user data:', updatedUserData);
           setDbUser(updatedUserData);
+          // Re-sync formData with updated DB data
+          setFormData({
+            name: updatedUserData.full_name || '',
+            email: updatedUserData.email || '',
+            phone: updatedUserData.phone || '',
+            department: updatedUserData.department || '',
+            company_name: updatedUserData.company_name || '',
+          });
+          setInitializedFromDb(true);
         }
 
-        // Update AuthContext for sidebar sync
-        updateUser({
-          name: formData.name,
-          email: formData.email
-        });
-
+        updateUser({ name: formData.name, email: formData.email });
         setHasChanges(false);
         setSavedSuccessfully(true);
-        console.log('✅ Profile save completed');
-      } else {
-        console.error('❌ No database user or authUser ID available');
-        alert('Failed to save profile. Please check database connection.');
+        setTimeout(() => setSavedSuccessfully(false), 3000);
       }
-    } catch (error) {
-      console.error('❌ Failed to update profile:', error);
-      alert('Failed to save profile: ' + error.message);
+    } catch (error: any) {
+      console.error('Failed to update profile:', error);
+      setSavedSuccessfully(false);
+      setFormData(prev => ({ ...prev })); // force re-render
+      window.alert(error.message || 'Failed to save profile');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -852,11 +812,6 @@ const ProfilePage: React.FC = () => {
             <Tab active={activeTab === 'schedule'} onClick={() => handleTabChange('schedule')}>
               Work Schedule
             </Tab>
-            {currentUser.role !== 'System Admin' && (
-              <Tab active={activeTab === 'performance'} onClick={() => handleTabChange('performance')}>
-                Performance
-              </Tab>
-            )}
             <Tab active={activeTab === 'security'} onClick={() => handleTabChange('security')}>
               Change Password
             </Tab>
@@ -936,16 +891,16 @@ const ProfilePage: React.FC = () => {
                 </FormGrid>
 
                 <ButtonContainer>
-                  <Button type="button" onClick={handleReset} disabled={!hasChanges}>
+                  <Button type="button" onClick={handleReset} disabled={!hasChanges || saving}>
                     Reset
                   </Button>
-                  <Button type="button" variant="primary" disabled={!hasChanges} onClick={handleSubmit}>
-                    Save Changes
+                  <Button type="button" variant="primary" disabled={!hasChanges || saving} onClick={handleSubmit}>
+                    {saving ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </ButtonContainer>
 
-                <SaveStatusMessage show={savedSuccessfully && !hasChanges}>
-                  Your profile has been successfully updated.
+                <SaveStatusMessage show={savedSuccessfully}>
+                  Profile updated successfully.
                 </SaveStatusMessage>
               </div>
             </ContentCard>
@@ -1002,42 +957,6 @@ const ProfilePage: React.FC = () => {
             </ContentCard>
           )}
 
-          {activeTab === 'performance' && (
-            <ContentCard>
-              <SectionTitle>Performance Statistics</SectionTitle>
-              <StatsGrid>
-                <StatCard>
-                  <StatValue>{currentUser.totalShifts}</StatValue>
-                  <StatLabel>Total Shifts</StatLabel>
-                </StatCard>
-                <StatCard>
-                  <StatValue>RM {currentUser.totalSales.toLocaleString()}</StatValue>
-                  <StatLabel>Total Sales</StatLabel>
-                </StatCard>
-                <StatCard>
-                  <StatValue>{currentUser.performance.efficiency}%</StatValue>
-                  <StatLabel>Efficiency</StatLabel>
-                </StatCard>
-                <StatCard>
-                  <StatValue>{currentUser.performance.customerRating.toFixed(1)}</StatValue>
-                  <StatLabel>Customer Rating</StatLabel>
-                </StatCard>
-                <StatCard>
-                  <StatValue>{currentUser.performance.ordersProcessed.toLocaleString()}</StatValue>
-                  <StatLabel>Orders Processed</StatLabel>
-                </StatCard>
-                <StatCard>
-                  <StatValue>
-                    {currentUser.performance.ordersProcessed > 0
-                      ? (currentUser.totalSales / currentUser.performance.ordersProcessed).toFixed(2)
-                      : '0.00'
-                    }
-                  </StatValue>
-                  <StatLabel>Avg Order Value</StatLabel>
-                </StatCard>
-              </StatsGrid>
-            </ContentCard>
-          )}
 
           {activeTab === 'security' && (
             <ContentCard>

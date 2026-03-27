@@ -95,10 +95,11 @@ rm test-xxx.js      # 반드시 삭제
 
 ### 4. 빌드 & 반영
 ```bash
-# 프론트엔드 빌드 + 개발서버 반영 (두 단계 모두 필수!)
-cd /var/www/dev-frontend && npm run build
-sudo rm -rf /var/www/dev-frontend-build/static
-sudo cp -r /var/www/dev-frontend/build/* /var/www/dev-frontend-build/
+# 프론트엔드 빌드 + 개발서버 반영 (이 한 줄로 빌드+배포 완료)
+cd /var/www/dev-frontend && npm run build:dev
+
+# ⚠️ npm run build 직접 실행 금지! build:dev가 빌드+nginx 배포까지 자동 처리
+# deploy-dev.sh: 권한 수정 → 빌드 → dev-frontend-build/ 복사
 
 # 백엔드 변경 시
 pm2 restart dev-backend

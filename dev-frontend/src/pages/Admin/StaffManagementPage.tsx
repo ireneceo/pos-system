@@ -2044,8 +2044,21 @@ const AdminStaffManagementPage: React.FC = () => {
                         Are you sure you want to delete?
                       </div>
                     </div>
-                    <div style={{ fontSize: '13px', color: '#991B1B', lineHeight: '1.4' }}>
-                      This action cannot be undone. All staff data will be permanently deleted.
+                    <div style={{ fontSize: '13px', color: '#991B1B', lineHeight: '1.6' }}>
+                      {deletingStaff.role === 'Restaurant Admin' ? (
+                        <>
+                          <div>• The restaurant's admin will be unlinked (restaurant remains)</div>
+                          <div>• Orders processed by this admin will keep their records</div>
+                          <div>• Activity logs will be preserved (user reference cleared)</div>
+                        </>
+                      ) : (
+                        <>
+                          <div>• This staff account will be permanently deleted</div>
+                          <div>• POS cashier sessions by this staff will keep their records</div>
+                          <div>• Activity logs will be preserved (user reference cleared)</div>
+                        </>
+                      )}
+                      <div style={{ marginTop: '8px', fontWeight: '600' }}>This action cannot be undone.</div>
                     </div>
                   </div>
                 </div>

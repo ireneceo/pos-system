@@ -28,10 +28,12 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Flags
 AUTO_MODE=false
+SKIP_BUILD=false
 
 for arg in "$@"; do
     case $arg in
         --auto) AUTO_MODE=true ;;
+        --skip-build) SKIP_BUILD=true ;;
     esac
 done
 
@@ -131,12 +133,20 @@ success "Backup created: /var/www/backups/${TIMESTAMP}"
 # ──────────────────────────────────────────
 # 5. Build frontend locally
 # ──────────────────────────────────────────
-log "Building frontend..."
-cd $LOCAL_DEV_FRONTEND
-npm run build:dev > /tmp/build.log 2>&1 || {
-    error "Frontend build failed. Check /tmp/build.log"
-}
-success "Frontend built successfully"
+if [ "$SKIP_BUILD" = true ]; then
+    log "Skipping frontend build (--skip-build)"
+    if [ ! -f "$LOCAL_DEV_FRONTEND/build/index.html" ]; then
+        error "No existing build found. Remove --skip-build to build."
+    fi
+    success "Using existing build"
+else
+    log "Building frontend..."
+    cd $LOCAL_DEV_FRONTEND
+    npm run build:dev > /tmp/build.log 2>&1 || {
+        error "Frontend build failed. Check /tmp/build.log"
+    }
+    success "Frontend built successfully"
+fi
 
 # ──────────────────────────────────────────
 # 6. Sync backend to production

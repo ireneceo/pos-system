@@ -7,31 +7,15 @@
  * Templates support issuer branding (logo, name, color) via issuerInfo parameter.
  */
 
-const path = require('path');
-const fs = require('fs');
-
-const PLATFORM_LOGO_PATH = path.join(__dirname, '..', '..', 'dev-frontend', 'public', 'images', 'logo-email.png');
-const PLATFORM_LOGO_CID = 'purplehere-logo';
-
-// 로고를 Base64로 미리 로드 (서버 시작 시 1회)
-let PLATFORM_LOGO_BASE64 = '';
-try {
-  const logoBuffer = fs.readFileSync(PLATFORM_LOGO_PATH);
-  PLATFORM_LOGO_BASE64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-} catch (e) {
-  console.error('Failed to load logo for email:', e.message);
-}
+// 로고: 모바일 이메일 클라이언트 호환을 위해 공개 URL 사용 (base64 인라인은 Gmail 모바일 등에서 차단됨)
+const PLATFORM_LOGO_URL = (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com') + '/images/logo-email.png';
 
 /**
- * Get logo attachment for CID embedding in emails (레거시 호환용)
+ * Get logo attachment for CID embedding in emails (레거시 호환용 — URL 방식에서는 불필요)
  * @returns {Array} nodemailer attachments array
  */
 function getLogoAttachment() {
-  return [{
-    filename: 'logo.png',
-    path: PLATFORM_LOGO_PATH,
-    cid: PLATFORM_LOGO_CID
-  }];
+  return [];
 }
 
 /**
@@ -43,7 +27,7 @@ function getLogoAttachment() {
 function emailLayout(bodyContent, issuerInfo) {
   const brandName = issuerInfo?.name || 'PurpleHere';
   const brandColor = issuerInfo?.color || '#635BFF';
-  const logoSrc = issuerInfo?.logoUrl || PLATFORM_LOGO_BASE64 || `cid:${PLATFORM_LOGO_CID}`;
+  const logoSrc = issuerInfo?.logoUrl || PLATFORM_LOGO_URL;
   const platformUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
   const logoLink = issuerInfo?.website || platformUrl;
   const logoHtml = `<a href="${logoLink}" style="text-decoration:none;"><img src="${logoSrc}" alt="${brandName}" style="height:32px;display:block;" /></a>`;

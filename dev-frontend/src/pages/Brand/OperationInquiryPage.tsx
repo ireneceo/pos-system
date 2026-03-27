@@ -605,24 +605,18 @@ const OperationInquiryPage: React.FC = () => {
           </Tabs>
 
           <FiltersContainer>
-            <FilterGroup>
-              <FilterLabel>Search</FilterLabel>
-              <SearchInput
-                placeholder="Search inquiries..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </FilterGroup>
-            <FilterGroup>
-              <FilterLabel>Priority</FilterLabel>
-              <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-                <option value="all">All Priority</option>
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </Select>
-            </FilterGroup>
+            <SearchInput
+              placeholder="Search inquiries..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+              <option value="all">All Priority</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </Select>
           </FiltersContainer>
 
           <TicketsGrid>

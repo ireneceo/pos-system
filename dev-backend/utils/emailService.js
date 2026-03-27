@@ -214,7 +214,7 @@ async function sendPlatformEmail(mailOptions) {
  * Send test email
  */
 async function sendTestEmail(entityType, entityId, testEmail) {
-  const { emailLayout, getLogoAttachment } = require('./emailTemplates');
+  const { emailLayout } = require('./emailTemplates');
 
   const bodyContent = `
     <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">SMTP Configuration Test</h2>
@@ -228,8 +228,7 @@ async function sendTestEmail(entityType, entityId, testEmail) {
     to: testEmail,
     subject: 'Test Email from PurpleHere',
     html: emailLayout(bodyContent),
-    text: `SMTP Configuration Test\n\nThis is a test email from your PurpleHere notification system.\nSMTP configuration is working correctly!\n\nEntity: ${entityType} / ID: ${entityId}`,
-    attachments: getLogoAttachment()
+    text: `SMTP Configuration Test\n\nThis is a test email from your PurpleHere notification system.\nSMTP configuration is working correctly!\n\nEntity: ${entityType} / ID: ${entityId}`
   };
 
   return await sendEmail(entityType, entityId, mailOptions);

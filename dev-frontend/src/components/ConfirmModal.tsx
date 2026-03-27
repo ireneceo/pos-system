@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { ModalOverlay } from './UI/Modal';
 
@@ -40,6 +41,8 @@ const Message = styled.p`
   color: #6B7C93;
   line-height: 1.5;
   margin: 0;
+  white-space: pre-line;
+  text-align: left;
 `;
 
 const Footer = styled.div`
@@ -115,8 +118,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <ModalOverlay onClick={handleOverlayClick}>
+  return ReactDOM.createPortal(
+    <ModalOverlay onClick={handleOverlayClick} style={{ zIndex: 1100 }}>
       <Modal onClick={e => e.stopPropagation()}>
         <Header>
           <Title>{title}</Title>
@@ -132,7 +135,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           </Button>
         </Footer>
       </Modal>
-    </ModalOverlay>
+    </ModalOverlay>,
+    document.body
   );
 };
 

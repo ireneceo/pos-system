@@ -24,10 +24,34 @@ async function earnPointsForOrder(restaurantId, customerId, orderId, orderAmount
       transaction: t
     });
 
-    // 멤버십이 비활성화되어 있거나 설정이 없으면 스킵
-    if (!settings || !settings.is_active) {
+    const membershipActive = settings && settings.is_active;
+
+    // 멤버십 비활성이어도 주문 통계(total_orders/total_spent)는 업데이트
+    if (!membershipActive) {
+      // 고객-레스토랑 관계 조회/생성 후 통계만 업데이트
+      let relation = await RestaurantCustomer.findOne({
+        where: { restaurant_id: restaurantId, customer_id: customerId },
+        transaction: t
+      });
+      if (!relation) {
+        relation = await RestaurantCustomer.create({
+          restaurant_id: restaurantId, customer_id: customerId,
+          points: 0, total_orders: 0, total_spent: 0, loyalty_tier: 'Bronze'
+        }, { transaction: t });
+      }
+      const newSpent = parseFloat(relation.total_spent) + orderAmount;
+      let newTier = 'Bronze';
+      if (newSpent >= 5000) newTier = 'VIP';
+      else if (newSpent >= 2000) newTier = 'Gold';
+      else if (newSpent >= 500) newTier = 'Silver';
+      await relation.update({
+        total_spent: newSpent,
+        total_orders: relation.total_orders + 1,
+        loyalty_tier: newTier,
+        last_order_at: new Date()
+      }, { transaction: t });
       await t.commit();
-      return { success: true, earnedPoints: 0, message: 'Membership not active' };
+      return { success: true, earnedPoints: 0, message: 'Membership not active — stats updated' };
     }
 
     // 고객-레스토랑 관계 조회

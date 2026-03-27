@@ -10,6 +10,7 @@ const { deductInventoryForOrder } = require('../services/inventoryDeductionServi
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
 const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
 const ActivityLog = require('../models/ActivityLog');
+const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 
 // Get all orders
@@ -583,6 +584,19 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
       });
     }
 
+    // Activity log
+    if (req.user) {
+      const itemCount = Array.isArray(order.order_items) ? order.order_items.length : 0;
+      logActivity(req, {
+        action_type: 'create',
+        entity_type: 'order',
+        entity_id: order.id,
+        entity_name: order.order_number,
+        description: `New ${order.order_type || 'dine_in'} order #${order.order_number} (${itemCount} items, ${order.currency || 'MYR'} ${parseFloat(order.total || 0).toFixed(2)})`,
+        restaurant_id: order.restaurant_id
+      });
+    }
+
     res.status(201).json({ success: true, data: order });
   } catch (error) {
     console.error('❌ Order creation failed:', error.message);
@@ -805,6 +819,18 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     } else {
       console.warn('⚠️ [STATUS] Socket.IO not available or restaurant_id missing');
     }
+
+    // Activity log for status changes
+    const oldStatus = wasCompleted ? 'completed' : (req.body.status !== finalStatus ? req.body.status : null);
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'order',
+      entity_id: order.id,
+      entity_name: order.order_number,
+      description: `Order #${order.order_number} status → ${finalStatus}${order.table_number ? ` (Table ${order.table_number})` : ''}`,
+      changes: { before: { status: oldStatus || order.status }, after: { status: finalStatus } },
+      restaurant_id: order.restaurant_id
+    });
 
     res.json({ success: true, data: order });
   } catch (error) {

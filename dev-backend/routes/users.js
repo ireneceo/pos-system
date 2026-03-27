@@ -575,6 +575,22 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
     await EntityPlan.update({ created_by: null }, { where: { created_by: uid }, transaction: t });
     await RestaurantIngredientCost.update({ updated_by: null }, { where: { updated_by: uid }, transaction: t });
 
+    // 6b. Unlink activity logs and orders (cashier)
+    const ActivityLog = require('../models/ActivityLog');
+    await ActivityLog.update({ user_id: null }, { where: { user_id: uid }, transaction: t });
+    const Order = require('../models/Order');
+    await Order.update({ cashier_id: null }, { where: { cashier_id: uid }, transaction: t });
+
+    // 6c. Unlink comment reads, import history, inventory, stock takes
+    const CommentRead = require('../models/CommentRead');
+    await CommentRead.update({ user_id: null }, { where: { user_id: uid }, transaction: t });
+    const ImportHistory = require('../models/ImportHistory');
+    await ImportHistory.update({ user_id: null }, { where: { user_id: uid }, transaction: t });
+    const InventoryTransaction = require('../models/InventoryTransaction');
+    await InventoryTransaction.update({ created_by: null }, { where: { created_by: uid }, transaction: t });
+    const StockTake = require('../models/StockTake');
+    await StockTake.update({ created_by: null }, { where: { created_by: uid }, transaction: t });
+
     // 7. Delete the user
     const userName = user.full_name || user.username;
     const userRole = user.role;

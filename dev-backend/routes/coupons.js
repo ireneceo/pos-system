@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Coupon = require('../models/Coupon');
 const RestaurantCustomer = require('../models/RestaurantCustomer');
+const Order = require('../models/Order');
 const { Op } = require('sequelize');
 const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
 
@@ -37,6 +38,95 @@ router.get('/', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('❌ [COUPONS] Error fetching coupons:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Get customer's available coupons + usage history
+// GET /api/coupons/customer/:customerId?restaurant_id=X
+router.get('/customer/:customerId', authenticateToken, async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const restaurantId = req.query.restaurant_id || req.query.restaurantId;
+    if (!restaurantId) {
+      return res.status(400).json({ success: false, message: 'restaurant_id is required' });
+    }
+
+    // 고객의 tier 조회
+    const relation = await RestaurantCustomer.findOne({
+      where: { restaurant_id: restaurantId, customer_id: customerId }
+    });
+    const customerTier = relation?.loyalty_tier || 'Bronze';
+
+    // 사용 가능한 쿠폰: active + 유효기간 내 + 사용한도 안 찬 + 타겟 매칭
+    const now = new Date();
+    const allCoupons = await Coupon.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        is_active: true,
+        [Op.or]: [
+          { valid_from: null },
+          { valid_from: { [Op.lte]: now } }
+        ]
+      }
+    });
+
+    // 고객의 쿠폰별 사용횟수 (orders 테이블에서 집계)
+    const usedOrders = await Order.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        customer_id: customerId,
+        coupon_code: { [Op.ne]: null }
+      },
+      attributes: ['coupon_code', 'coupon_discount', 'order_number', 'total_amount', 'createdAt'],
+      order: [['createdAt', 'DESC']]
+    });
+
+    const usageCountMap = {};
+    usedOrders.forEach(o => {
+      const code = o.coupon_code?.toUpperCase();
+      if (code) usageCountMap[code] = (usageCountMap[code] || 0) + 1;
+    });
+
+    // 사용 가능 쿠폰 필터링
+    const available = allCoupons.filter(c => {
+      // 유효기간 만료 체크
+      if (c.valid_until && new Date(c.valid_until) < now) return false;
+      // 전체 사용한도
+      if (c.usage_limit !== null && c.usage_count >= c.usage_limit) return false;
+      // 1인당 사용한도
+      const myUsage = usageCountMap[c.code] || 0;
+      if (c.per_user_limit !== null && myUsage >= c.per_user_limit) return false;
+      // 타겟 매칭
+      if (c.target_type === 'customers' && c.target_customer_ids) {
+        if (!c.target_customer_ids.includes(parseInt(customerId))) return false;
+      }
+      if (c.target_type === 'tiers' && c.target_loyalty_tiers) {
+        if (!c.target_loyalty_tiers.includes(customerTier)) return false;
+      }
+      return true;
+    }).map(c => ({
+      id: c.id, code: c.code, name: c.name, type: c.type,
+      value: parseFloat(c.value), min_order: parseFloat(c.min_order || 0),
+      max_discount: c.max_discount ? parseFloat(c.max_discount) : null,
+      valid_until: c.valid_until,
+      per_user_limit: c.per_user_limit,
+      my_usage: usageCountMap[c.code] || 0,
+      applicable_order_types: c.applicable_order_types
+    }));
+
+    // 사용 이력
+    const history = usedOrders.map(o => ({
+      code: o.coupon_code,
+      discount: parseFloat(o.coupon_discount || 0),
+      order_number: o.order_number,
+      order_total: parseFloat(o.total_amount || 0),
+      used_at: o.createdAt
+    }));
+
+    res.json({ success: true, data: { available, history } });
+  } catch (error) {
+    console.error('❌ [COUPONS] Error fetching customer coupons:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -119,6 +209,24 @@ router.post('/validate', optionalAuthenticateToken, async (req, res) => {
         error: 'This coupon has reached its usage limit',
         valid: false
       });
+    }
+
+    // Check per-user limit (orders 테이블에서 실사용 횟수 집계)
+    if (coupon.per_user_limit !== null && finalCustomerId) {
+      const userUsageCount = await Order.count({
+        where: {
+          restaurant_id: finalRestaurantId,
+          customer_id: finalCustomerId,
+          coupon_code: code.toUpperCase()
+        }
+      });
+      if (userUsageCount >= coupon.per_user_limit) {
+        return res.status(400).json({
+          success: false,
+          error: `You have already used this coupon ${userUsageCount} time(s). Limit: ${coupon.per_user_limit}`,
+          valid: false
+        });
+      }
     }
 
     // Check minimum order amount

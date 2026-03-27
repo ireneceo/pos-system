@@ -345,6 +345,7 @@ const AccountPage: React.FC = () => {
   }>({ totalOrders: 0, totalSpent: 0, points: 0 });
 
   const [pointsEnabled, setPointsEnabled] = useState<boolean>(true);
+  const [myCoupons, setMyCoupons] = useState<any[]>([]);
 
   // Load restaurant data from slug on mount
   useEffect(() => {
@@ -416,6 +417,22 @@ const AccountPage: React.FC = () => {
       }
     };
     loadCustomerStats();
+  }, [currentCustomer, currentStore]);
+
+  // Load available coupons
+  useEffect(() => {
+    const loadCoupons = async () => {
+      if (currentCustomer && currentStore) {
+        try {
+          const res = await fetch(`/api/coupons/customer/${currentCustomer.id}?restaurant_id=${currentStore.id}`);
+          if (res.ok) {
+            const result = await res.json();
+            if (result.success) setMyCoupons(result.data?.available || []);
+          }
+        } catch { /* silent */ }
+      }
+    };
+    loadCoupons();
   }, [currentCustomer, currentStore]);
 
   const showAlertModal = (type: 'error' | 'success' | 'warning' | 'info', title: string, message: string, onConfirm?: () => void) => {
@@ -577,6 +594,29 @@ const AccountPage: React.FC = () => {
             )}
           </StatsRow>
         </ProfileSection>
+
+        {myCoupons.length > 0 && (
+          <ProfileSection>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: '#1F2937', marginBottom: '12px' }}>My Coupons</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {myCoupons.map((c: any) => (
+                <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#F0FDF4', border: '1px dashed #86EFAC', borderRadius: '10px' }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#059669', fontFamily: 'monospace' }}>{c.code}</div>
+                    {c.name && <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>{c.name}</div>}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937' }}>
+                      {c.type === 'percentage' ? `${c.value}% off` : formatCurrency(c.value, currency) + ' off'}
+                    </div>
+                    {c.min_order > 0 && <div style={{ fontSize: '11px', color: '#6B7280' }}>Min. {formatCurrency(c.min_order, currency)}</div>}
+                    {c.valid_until && <div style={{ fontSize: '11px', color: '#6B7280' }}>Until {new Date(c.valid_until).toLocaleDateString()}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ProfileSection>
+        )}
 
         <MenuSection>
           <MenuItem onClick={() => navigate(`/mobile/${slug}/orders`)}>

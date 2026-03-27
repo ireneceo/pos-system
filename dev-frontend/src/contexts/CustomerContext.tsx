@@ -16,6 +16,8 @@ export interface Customer {
   lastOrderDate?: string;
   loyaltyTier: 'Bronze' | 'Silver' | 'Gold' | 'VIP';
   isActive: boolean;
+  couponsAvailable: number;
+  couponsUsed: number;
 }
 
 export interface CustomerAddress {
@@ -202,7 +204,9 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           joinDate: item.first_order_at ? new Date(item.first_order_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
           lastOrderDate: item.last_order_at ? new Date(item.last_order_at).toISOString().split('T')[0] : undefined,
           loyaltyTier: item.loyalty_tier || 'Bronze',
-          isActive: true
+          isActive: true,
+          couponsAvailable: item.coupons_available || 0,
+          couponsUsed: item.coupons_used || 0
         }));
 
         setCustomers(customersData);
@@ -253,7 +257,9 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addresses: [],
         joinDate: new Date().toISOString().split('T')[0],
         loyaltyTier: data.data.loyaltyTier || 'Bronze',
-        isActive: true
+        isActive: true,
+        couponsAvailable: 0,
+        couponsUsed: 0
       };
 
       setCurrentCustomer(newCustomer);
@@ -303,7 +309,9 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         addresses: [],
         joinDate: new Date().toISOString().split('T')[0],
         loyaltyTier: data.data.loyaltyTier || 'Bronze',
-        isActive: true
+        isActive: true,
+        couponsAvailable: 0,
+        couponsUsed: 0
       };
 
       setCurrentCustomer(customer);

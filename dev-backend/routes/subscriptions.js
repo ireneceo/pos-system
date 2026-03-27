@@ -235,7 +235,11 @@ router.get('/my-plan', authenticateToken, async (req, res) => {
 
     const current = await getCurrentSubscription(user);
     if (!current) {
-      return res.status(404).json({ success: false, message: 'Subscription data not found.' });
+      // More specific error messages
+      if (user.role === 'Restaurant Admin') {
+        return res.status(404).json({ success: false, message: 'No restaurant is linked to your account. Please contact your administrator.' });
+      }
+      return res.status(404).json({ success: false, message: 'Subscription data not found. Please contact your administrator.' });
     }
 
     // Auto-fill subscription_start/end if null (legacy data)

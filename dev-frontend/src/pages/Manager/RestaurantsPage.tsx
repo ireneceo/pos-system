@@ -1916,10 +1916,18 @@ const ManagerRestaurantsPage: React.FC = () => {
                 <h3 style={{ margin: '0 0 12px', fontSize: '18px', fontWeight: '600', color: '#0A2540' }}>
                   Are you sure you want to delete this restaurant?
                 </h3>
-                <p style={{ margin: 0, fontSize: '14px', color: '#6B7280', lineHeight: '1.5' }}>
-                  <strong style={{ color: '#DC2626' }}>{restaurantToDelete.name}</strong> will be permanently deleted.
-                  <br />This action cannot be undone.
-                </p>
+                <div style={{ textAlign: 'left', margin: '0 auto', maxWidth: '320px' }}>
+                  <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#6B7280' }}>
+                    <strong style={{ color: '#DC2626' }}>{restaurantToDelete.name}</strong> and all its data will be permanently deleted:
+                  </p>
+                  <div style={{ padding: '12px 16px', backgroundColor: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA', fontSize: '13px', color: '#991B1B', lineHeight: '1.6' }}>
+                    <div>• All orders, menu items, and categories</div>
+                    <div>• All invoices and payment records</div>
+                    <div>• Staff accounts linked to this restaurant</div>
+                    <div>• Kitchen stations and floor plans</div>
+                    <div style={{ marginTop: '8px', fontWeight: '600' }}>This action cannot be undone.</div>
+                  </div>
+                </div>
               </div>
             
         </CommonModal>
