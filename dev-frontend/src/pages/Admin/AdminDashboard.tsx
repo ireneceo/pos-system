@@ -596,7 +596,8 @@ const AdminDashboard: React.FC = () => {
           throw new Error('Failed to fetch users');
         }
         const usersData = await usersResponse.json();
-        const managerUsers = usersData.data || usersData;
+        const managerUsersRaw = usersData.data || usersData;
+        const managerUsers = managerUsersRaw.filter((u: any) => !u.is_demo && !u.is_test);
 
         // Fetch restaurants
         const restaurantsResponse = await fetch('/api/restaurants', { headers });
@@ -604,7 +605,8 @@ const AdminDashboard: React.FC = () => {
           throw new Error('Failed to fetch restaurants');
         }
         const restaurantsData = await restaurantsResponse.json();
-        const allRestaurants = restaurantsData.data || restaurantsData;
+        const allRestaurantsRaw = restaurantsData.data || restaurantsData;
+        const allRestaurants = allRestaurantsRaw.filter((r: any) => !r.is_demo && !r.is_test);
 
         // Convert restaurants to subscription data (same as SubscriptionsPage)
         let subscriptionsData = [];

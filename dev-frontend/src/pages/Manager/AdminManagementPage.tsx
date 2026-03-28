@@ -413,6 +413,8 @@ const ManagerAdminManagementPage: React.FC = () => {
   // Success modal
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [successPassword, setSuccessPassword] = useState('');
+  const [passwordCopied, setPasswordCopied] = useState(false);
 
   const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
 
@@ -525,8 +527,9 @@ const ManagerAdminManagementPage: React.FC = () => {
       }
 
       setShowCreateModal(false);
-      const generatedPw = data.generatedPassword || '(check with admin)';
-      setSuccessMessage(`Restaurant Admin created successfully!\n\nUsername: ${createForm.username}\nPassword: ${generatedPw}\n\nPlease save this information and share it securely.`);
+      setSuccessMessage(`Restaurant Admin "${createForm.username}" created successfully.`);
+      setSuccessPassword(data.generatedPassword || '');
+      setPasswordCopied(false);
       setShowSuccessModal(true);
       fetchData();
     } catch (error) {
@@ -961,15 +964,23 @@ const ManagerAdminManagementPage: React.FC = () => {
       <Modal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
-        title="Admin Created"
+        title="Password Generated"
         size="small"
-        footer={
-          <ModalButton variant="primary" onClick={() => setShowSuccessModal(false)}>OK</ModalButton>
-        }
+        footer={<>
+          {successPassword && <ModalButton variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</ModalButton>}
+          <ModalButton variant="primary" onClick={() => setShowSuccessModal(false)}>Done</ModalButton>
+        </>}
       >
-        <div style={{ whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.6', color: '#1F2937' }}>
-          {successMessage}
+        <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+          {successMessage} Please share this password securely. They should change it after first login.
         </div>
+        {successPassword && (
+          <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>Temporary Password</div>
+            <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
+          </div>
+        )}
+        <div style={{ fontSize: '12px', color: '#DC2626' }}>This password will not be shown again. Please copy it now.</div>
       </Modal>
     </Container>
   );

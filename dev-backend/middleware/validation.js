@@ -210,16 +210,7 @@ const validateRestaurantCreation = [
     .isEmail()
     .withMessage('Valid admin email is required')
     .normalizeEmail(),
-  body('adminPassword')
-    .if(body('adminAction').equals('create'))
-    .isLength({ min: 8, max: 128 })
-    .withMessage('Admin password must be at least 8 characters')
-    .matches(/[a-z]/)
-    .withMessage('Admin password must contain a lowercase letter')
-    .matches(/[A-Z]/)
-    .withMessage('Admin password must contain an uppercase letter')
-    .matches(/[0-9]/)
-    .withMessage('Admin password must contain a number'),
+  // adminPassword removed — auto-generated on server side
   body('adminUsername')
     .if(body('adminAction').equals('create'))
     .trim()

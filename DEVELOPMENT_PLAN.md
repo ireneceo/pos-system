@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-27
+> **최종 업데이트:** 2026-03-28
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,41 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: 비밀번호 시스템 통일 + 대시보드 통계 수정 + Brand 구조 정리 (2026-03-28)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 비밀번호 자동 생성 통일 | Manager/Restaurant Admin 생성 시 비밀번호 입력 제거, 서버 자동 생성 (12자 강력 비밀번호) | ✅ |
+| 2 | 비밀번호 리셋 버그 수정 | 프론트가 자체 비밀번호를 표시하고 백엔드는 다른 비밀번호를 저장하던 문제 (tempPassword 응답 사용) | ✅ |
+| 3 | Password Generated 모달 통일 | 8개 페이지 비밀번호 모달을 Copy Password + monospace 박스 패턴으로 통일 | ✅ |
+| 4 | OK 버튼 중복 수정 | ManagersPage Success 모달 footer+body 중복 OK 제거 | ✅ |
+| 5 | 관리자 생성 계정 이메일 인증 skip | 관리자가 만든 계정은 email_verified=true 자동 설정 (셀프 가입만 인증 필요) | ✅ |
+| 6 | Admin 대시보드 통계 수정 | managers/restaurants에서 is_demo/is_test 제외하여 실제 통계만 표시 | ✅ |
+| 7 | Brand 자동 생성 제거 | Brand General/Foodcourt General 유저 생성 시 Brand/Foodcourt 자동 생성 코드 제거 (본인이 직접 추가) | ✅ |
+| 8 | Brand Management Owner→Description | 테이블 Owner 컬럼을 Description으로 변경 | ✅ |
+| 9 | 빌드 스크립트 개선 | GENERATE_SOURCEMAP=false, max-old-space-size 1536MB, deploy-dev.sh 빌드 시간 표시 | ✅ |
+| 10 | StaffManagementPage 타입 에러 수정 | Staff interface에 is_demo/is_test 추가 | ✅ |
+
+### 수정된 파일 (주요)
+**백엔드:**
+- `routes/users.js` (Brand/Foodcourt 자동 생성 제거, email_verified=true, password 자동 생성)
+- `routes/restaurants.js` (adminPassword 필수 제거, 자동 생성, email_verified=true)
+- `middleware/validation.js` (adminPassword 검증 제거)
+
+**프론트엔드:**
+- `pages/Admin/AdminDashboard.tsx` (is_demo/is_test 필터링)
+- `pages/Admin/ManagersPage.tsx` (password 제거, tempPassword 사용, 모달 통일)
+- `pages/Admin/RestaurantsPage.tsx` (password 필드 제거, 모달 추가)
+- `pages/Admin/StaffManagementPage.tsx` (모달 통일, 타입 수정)
+- `pages/Manager/RestaurantsPage.tsx` (password 필드 제거, 모달 추가)
+- `pages/Manager/AdminManagementPage.tsx` (모달 통일)
+- `pages/BrandGeneral/BrandManagement.tsx` (Owner→Description)
+- `deploy-dev.sh` (빌드 시간 표시, sourcemap 제거)
+- `package.json` (GENERATE_SOURCEMAP=false, max-old-space-size 1536)
 
 ---
 

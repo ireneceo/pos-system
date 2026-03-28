@@ -850,11 +850,11 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
 
     if (adminAction === 'create') {
       // 새 Restaurant Admin 계정 생성
-      const { adminEmail, adminPassword, adminUsername, adminFullName, adminPhone } = req.body;
+      const { adminEmail, adminUsername, adminFullName, adminPhone } = req.body;
 
-      if (!adminEmail || !adminPassword || !adminUsername || !adminFullName) {
+      if (!adminEmail || !adminUsername || !adminFullName) {
         await transaction.rollback();
-        return res.status(400).json({ error: 'Admin email, password, username, and full name are required' });
+        return res.status(400).json({ error: 'Admin email, username, and full name are required' });
       }
 
       // 이메일/유저네임 중복 체크
@@ -869,16 +869,29 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
         return res.status(400).json({ error: 'Admin username is already in use' });
       }
 
-      // 비밀번호 해싱 & 유저 생성
-      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      // 비밀번호 자동 생성 (12자, 대소문자+숫자+특수문자)
+      const pwChars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+      let generatedAdminPassword = '';
+      generatedAdminPassword += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)];
+      generatedAdminPassword += 'abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 23)];
+      generatedAdminPassword += '23456789'[Math.floor(Math.random() * 8)];
+      generatedAdminPassword += '!@#$%'[Math.floor(Math.random() * 5)];
+      for (let i = 0; i < 8; i++) {
+        generatedAdminPassword += pwChars.charAt(Math.floor(Math.random() * pwChars.length));
+      }
+      generatedAdminPassword = generatedAdminPassword.split('').sort(() => Math.random() - 0.5).join('');
+
+      const hashedPassword = await bcrypt.hash(generatedAdminPassword, 10);
       adminUser = await User.create({
         username: adminUsername,
         email: adminEmail,
         password: hashedPassword,
         role: 'Restaurant Admin',
         full_name: adminFullName,
-        phone: adminPhone || null
+        phone: adminPhone || null,
+        email_verified: true
       }, { transaction });
+      adminUser._generatedPassword = generatedAdminPassword;
 
     } else if (adminAction === 'assign') {
       // 기존 유저를 Restaurant Admin으로 배정
@@ -1018,7 +1031,7 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
           restaurantName: restaurant.name,
           email: adminUser.email,
           username: adminUser.username,
-          temporaryPassword: adminAction === 'create' ? req.body.adminPassword : null,
+          temporaryPassword: adminAction === 'create' ? adminUser._generatedPassword : null,
           planType: restaurant.plan_type || 'Basic Plan',
           dashboardUrl: siteUrl + '/pos/login',
           issuerInfo
@@ -1160,6 +1173,9 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
         username: adminUser.username,
         fullName: adminUser.full_name
       };
+      if (adminUser._generatedPassword) {
+        responseData.generatedPassword = adminUser._generatedPassword;
+      }
     }
 
     res.status(201).json(responseData);
@@ -1345,10 +1361,10 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
         let newAdminUser = null;
 
         if (adminAction === 'create') {
-          const { adminEmail, adminPassword, adminUsername, adminFullName, adminPhone } = req.body;
-          if (!adminEmail || !adminPassword || !adminUsername || !adminFullName) {
+          const { adminEmail, adminUsername, adminFullName, adminPhone } = req.body;
+          if (!adminEmail || !adminUsername || !adminFullName) {
             await adminTransaction.rollback();
-            return res.status(400).json({ error: 'Admin email, password, username, and full name are required' });
+            return res.status(400).json({ error: 'Admin email, username, and full name are required' });
           }
           const existingEmail = await User.findOne({ where: { email: adminEmail } });
           if (existingEmail) {
@@ -1360,7 +1376,19 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
             await adminTransaction.rollback();
             return res.status(400).json({ error: 'Admin username is already in use' });
           }
-          const hashedPassword = await bcrypt.hash(adminPassword, 10);
+          // 비밀번호 자동 생성
+          const pwChars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+          let generatedAdminPassword = '';
+          generatedAdminPassword += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random() * 24)];
+          generatedAdminPassword += 'abcdefghjkmnpqrstuvwxyz'[Math.floor(Math.random() * 23)];
+          generatedAdminPassword += '23456789'[Math.floor(Math.random() * 8)];
+          generatedAdminPassword += '!@#$%'[Math.floor(Math.random() * 5)];
+          for (let i = 0; i < 8; i++) {
+            generatedAdminPassword += pwChars.charAt(Math.floor(Math.random() * pwChars.length));
+          }
+          generatedAdminPassword = generatedAdminPassword.split('').sort(() => Math.random() - 0.5).join('');
+
+          const hashedPassword = await bcrypt.hash(generatedAdminPassword, 10);
           newAdminUser = await User.create({
             username: adminUsername,
             email: adminEmail,
@@ -1368,8 +1396,10 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
             role: 'Restaurant Admin',
             full_name: adminFullName,
             phone: adminPhone || null,
-            restaurant_id: restaurant.id
+            restaurant_id: restaurant.id,
+            email_verified: true
           }, { transaction: adminTransaction });
+          newAdminUser._generatedPassword = generatedAdminPassword;
         } else if (adminAction === 'change') {
           const { adminUserId } = req.body;
           if (!adminUserId) {

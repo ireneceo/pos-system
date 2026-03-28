@@ -324,11 +324,8 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       userCreateData.subscription_end = calcSubscriptionEnd;
     }
 
-    // skip_verification: System Admin이 인증 완료 상태로 생성하는 옵션
-    const skipVerification = req.body.skip_verification === true;
-    if (skipVerification) {
-      userCreateData.email_verified = true;
-    }
+    // 관리자가 만드는 계정은 이메일 인증 건너뛰기 (셀프 가입만 인증 필요)
+    userCreateData.email_verified = true;
 
     const user = await User.create(userCreateData);
 
@@ -357,39 +354,8 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       }
     }
 
-    // For Brand General: create Brand entity with subscription
-    if (role === 'Brand General') {
-      const brand = await Brand.create({
-        name: company_name || `${generatedFullName}'s Brand`,
-        owner_id: user.id,
-        status: 'active',
-        subscription_status: subscription_start ? 'active' : 'trial',
-        plan_type: plan_type || null,
-        plan_amount: plan_amount || null,
-        billing_cycle: billing_cycle || 'monthly',
-        currency: currency || 'MYR',
-        subscription_start: subscription_start || new Date(),
-        subscription_end: calcSubscriptionEnd
-      });
-      await user.update({ brand_id: brand.id });
-    }
-
-    // For Foodcourt General: create Foodcourt entity with subscription
-    if (role === 'Foodcourt General') {
-      const foodcourt = await Foodcourt.create({
-        name: company_name || `${generatedFullName}'s Foodcourt`,
-        owner_id: user.id,
-        status: 'active',
-        subscription_status: subscription_start ? 'active' : 'trial',
-        plan_type: plan_type || null,
-        plan_amount: plan_amount || null,
-        billing_cycle: billing_cycle || 'monthly',
-        currency: currency || 'MYR',
-        subscription_start: subscription_start || new Date(),
-        subscription_end: calcSubscriptionEnd
-      });
-      await user.update({ foodcourt_id: foodcourt.id });
-    }
+    // Brand General / Foodcourt General: 유저만 생성
+    // Brand/Foodcourt 엔티티는 본인이 로그인 후 직접 추가 (Brand Management / Foodcourt Management 페이지)
 
     console.log('✅ User created successfully:', user.id, user.username);
 

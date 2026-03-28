@@ -555,7 +555,11 @@ const ManagerRestaurantsPage: React.FC = () => {
   const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
   // Restaurant Admin states
   const [adminAction, setAdminAction] = useState<'create' | 'assign'>('create');
-  const [newAdminData, setNewAdminData] = useState({ fullName: '', email: '', username: '', password: '', phone: '' });
+  const [newAdminData, setNewAdminData] = useState({ fullName: '', email: '', username: '', phone: '' });
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successPassword, setSuccessPassword] = useState('');
+  const [passwordCopied, setPasswordCopied] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<any>(null);
   const [adminCandidates, setAdminCandidates] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
@@ -768,7 +772,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       enableTrial: false
     });
     setAdminAction('create');
-    setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' });
+    setNewAdminData({ fullName: '', email: '', username: '', phone: '' });
     setSelectedAdmin(null);
     setAdminCandidates([]);
     setAdminSearchQuery('');
@@ -806,16 +810,8 @@ const ManagerRestaurantsPage: React.FC = () => {
     try {
       // Validate admin fields
       if (adminAction === 'create') {
-        if (!newAdminData.fullName || !newAdminData.email || !newAdminData.username || !newAdminData.password) {
-          setFormError('Please fill in all required Restaurant Admin fields.');
-          return;
-        }
-        if (newAdminData.password.length < 8) {
-          setFormError('Admin password must be at least 8 characters.');
-          return;
-        }
-        if (!/[a-z]/.test(newAdminData.password) || !/[A-Z]/.test(newAdminData.password) || !/[0-9]/.test(newAdminData.password)) {
-          setFormError('Admin password must contain uppercase, lowercase letters and a number.');
+        if (!newAdminData.fullName || !newAdminData.email || !newAdminData.username) {
+          setFormError('Please fill in all required Restaurant Admin fields (Full Name, Email, Username).');
           return;
         }
       } else if (adminAction === 'assign' && !selectedAdmin) {
@@ -869,7 +865,6 @@ const ManagerRestaurantsPage: React.FC = () => {
       // Add admin-specific fields
       if (adminAction === 'create') {
         restaurantData.adminEmail = newAdminData.email;
-        restaurantData.adminPassword = newAdminData.password;
         restaurantData.adminUsername = newAdminData.username;
         restaurantData.adminFullName = newAdminData.fullName;
         restaurantData.adminPhone = newAdminData.phone || undefined;
@@ -888,7 +883,15 @@ const ManagerRestaurantsPage: React.FC = () => {
       });
       
       if (response.ok) {
-        await response.json();
+        const result = await response.json();
+
+        // Show generated password if admin was created
+        if (result.generatedPassword) {
+          setSuccessMessage('Restaurant Admin created successfully.');
+          setSuccessPassword(result.generatedPassword);
+          setPasswordCopied(false);
+          setShowSuccessModal(true);
+        }
         
         // Refresh the restaurants list using same API as initial load
         const token2 = localStorage.getItem('auth_token');
@@ -954,7 +957,7 @@ const ManagerRestaurantsPage: React.FC = () => {
           enableTrial: false
         });
         setAdminAction('create');
-        setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' });
+        setNewAdminData({ fullName: '', email: '', username: '', phone: '' });
         setSelectedAdmin(null);
         setAdminCandidates([]);
         setAdminSearchQuery('');
@@ -1372,7 +1375,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       border: adminAction === 'assign' ? '2px solid #635BFF' : '2px solid #E5E7EB'
                     }}>
                       <input type="radio" name="adminActionMgr" checked={adminAction === 'assign'}
-                        onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' }); }}
+                        onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', phone: '' }); }}
                         style={{ accentColor: '#635BFF' }} />
                       <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Select Existing User</span>
                     </label>
@@ -1398,12 +1401,6 @@ const ManagerRestaurantsPage: React.FC = () => {
                       <FormInput type="text" placeholder="e.g., kim_owner"
                         value={newAdminData.username}
                         onChange={(e) => setNewAdminData({...newAdminData, username: e.target.value})} />
-                    </FormGroup>
-                    <FormGroup>
-                      <FormLabel>Admin Password *</FormLabel>
-                      <FormInput type="password" placeholder="Min 8 chars, uppercase + lowercase + number"
-                        value={newAdminData.password}
-                        onChange={(e) => setNewAdminData({...newAdminData, password: e.target.value})} />
                     </FormGroup>
                     <FormGroup style={{gridColumn: '1 / -1'}}>
                       <FormLabel>Admin Phone</FormLabel>
@@ -1930,6 +1927,24 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </div>
               </div>
             
+        </CommonModal>
+      )}
+
+      {showSuccessModal && (
+        <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Password Generated" size="small" footer={<>
+          {successPassword && <ThemedButton variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</ThemedButton>}
+          <ThemedButton onClick={() => setShowSuccessModal(false)}>Done</ThemedButton>
+        </>}>
+          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+            {successMessage} Please share this password securely. They should change it after first login.
+          </div>
+          {successPassword && (
+            <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>Temporary Password</div>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
+            </div>
+          )}
+          <div style={{ fontSize: '12px', color: '#DC2626' }}>This password will not be shown again. Please copy it now.</div>
         </CommonModal>
       )}
     </>

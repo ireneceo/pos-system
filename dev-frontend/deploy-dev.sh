@@ -1,25 +1,23 @@
 #!/bin/bash
 # Dev Frontend 빌드 및 배포 자동화 스크립트
 
-set -e  # 에러 발생 시 중단
+set -e
 
-# 색상 정의
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# 경로 설정
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
 CACHE_DIR="$SCRIPT_DIR/node_modules/.cache"
+DEPLOY_DIR="/var/www/dev-frontend-build"
+CURRENT_USER=$(whoami)
 
 echo -e "${BLUE}Dev Frontend 배포 시작...${NC}"
 
-# 0. 권한 문제 자동 해결 (캐시, 빌드, node_modules)
-CURRENT_USER=$(whoami)
-
+# 0. 권한 문제 자동 해결
 fix_ownership() {
     local dir=$1
     local name=$2
@@ -27,7 +25,6 @@ fix_ownership() {
         local owner=$(stat -c '%U' "$dir" 2>/dev/null || echo "unknown")
         if [ "$owner" = "root" ] && [ "$CURRENT_USER" != "root" ]; then
             echo -e "${YELLOW}$name 권한 문제 감지 - 자동 수정 중...${NC}"
-            # sudoers 설정으로 비밀번호 없이 실행 (sudo -n)
             if sudo -n chown -R "$CURRENT_USER":"$CURRENT_USER" "$dir" 2>/dev/null; then
                 echo -e "${GREEN}$name 권한 수정 완료${NC}"
             else
@@ -41,15 +38,24 @@ fix_ownership() {
 
 fix_ownership "$CACHE_DIR" "캐시 폴더"
 fix_ownership "$BUILD_DIR" "빌드 폴더"
-fix_ownership "$SCRIPT_DIR/node_modules" "node_modules"
 
 # 1. 빌드 실행
-echo -e "\n${YELLOW}React 앱 빌드 중...${NC}"
+echo -e "\n${YELLOW}React 앱 빌드 중... (1~3분 소요)${NC}"
 cd "$SCRIPT_DIR"
 
-# TypeScript 에러를 경고로 처리
 export TSC_COMPILE_ON_ERROR=true
-npm run build 2>&1 | grep -v "deploy.sh" || true
+BUILD_START=$(date +%s)
+
+# 빌드 실행 — 진행 상황을 실시간 출력
+npm run build 2>&1 | while IFS= read -r line; do
+    # 핵심 진행 메시지만 출력 (Creating, Compiled, error)
+    if echo "$line" | grep -qiE "Creating|Compiled|error|warning|Failed"; then
+        echo -e "  ${line}"
+    fi
+done
+
+BUILD_END=$(date +%s)
+BUILD_TIME=$((BUILD_END - BUILD_START))
 
 # 2. 빌드 확인
 if [ ! -f "$BUILD_DIR/index.html" ]; then
@@ -58,7 +64,7 @@ if [ ! -f "$BUILD_DIR/index.html" ]; then
 fi
 
 # 3. 빌드 파일 정보 출력
-echo -e "\n${GREEN}✅ 빌드 완료!${NC}"
+echo -e "\n${GREEN}✅ 빌드 완료! (${BUILD_TIME}초)${NC}"
 echo -e "${BLUE}📁 빌드된 파일:${NC}"
 ls -lh "$BUILD_DIR/index.html" | awk '{print "   index.html (" $5 ")"}'
 if [ -d "$BUILD_DIR/static/js" ]; then
@@ -68,13 +74,11 @@ if [ -d "$BUILD_DIR/static/js" ]; then
     fi
 fi
 
-# 4. 파일 권한 설정
+# 4. 파일 권한 설정 + nginx 배포
 echo -e "\n${YELLOW}🔐 파일 권한 설정 중...${NC}"
 chmod -R 755 "$BUILD_DIR"
 find "$BUILD_DIR" -type f -exec chmod 644 {} \;
 
-# 5. nginx 서빙 폴더로 복사 (핵심!)
-DEPLOY_DIR="/var/www/dev-frontend-build"
 echo -e "\n${YELLOW}📦 nginx 배포 폴더로 복사 중...${NC}"
 if sudo cp -r "$BUILD_DIR"/* "$DEPLOY_DIR"/; then
     sudo chown -R root:root "$DEPLOY_DIR"

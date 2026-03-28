@@ -58,6 +58,8 @@ interface Staff {
   lastActive: string;
   salary?: number;
   permissions: string[];
+  is_demo?: boolean;
+  is_test?: boolean;
 }
 
 // Common components now imported from ../../components/UI
@@ -416,6 +418,8 @@ const AdminStaffManagementPage: React.FC = () => {
   const [formError, setFormError] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [successPassword, setSuccessPassword] = useState('');
+  const [passwordCopied, setPasswordCopied] = useState(false);
 
   useEffect(() => {
     const fetchStaff = async () => {
@@ -721,8 +725,9 @@ const AdminStaffManagementPage: React.FC = () => {
       handleCloseModal();
 
       // Show success message with generated password
-      const generatedPw = result.generatedPassword || '(check with admin)';
-      setSuccessMessage(`Staff member created successfully!\n\nUsername: ${newStaff.username}\nPassword: ${generatedPw}\n\nPlease save this information and share it securely with the staff member.`);
+      setSuccessMessage(`Staff member "${newStaff.username}" created successfully.`);
+      setSuccessPassword(result.generatedPassword || '');
+      setPasswordCopied(false);
       setShowSuccessModal(true);
 
       // Refresh staff list only after successful creation
@@ -1091,10 +1096,9 @@ const AdminStaffManagementPage: React.FC = () => {
 
         if (response.ok) {
           const result = await response.json();
-          const newPassword = result.tempPassword || '(check with admin)';
-
-          // Show success message in modal
-          setSuccessMessage(`Password reset successfully!\n\nUsername: ${selectedStaff.username || selectedStaff.email}\nNew Password: ${newPassword}\n\nPlease save this information and share it securely with the staff member.`);
+          setSuccessMessage(`Password for "${selectedStaff.username || selectedStaff.email}" has been reset.`);
+          setSuccessPassword(result.tempPassword || '');
+          setPasswordCopied(false);
           setShowSuccessModal(true);
         } else {
           const errorData = await response.json();
@@ -2099,25 +2103,20 @@ const AdminStaffManagementPage: React.FC = () => {
 
         {/* Success Message Modal */}
         {showSuccessModal && (
-        <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" footer={<Button variant="primary" onClick={() => setShowSuccessModal(false)}>OK</Button>}>
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{
-                  padding: '20px',
-                  backgroundColor: '#ECFDF5',
-                  borderRadius: '8px',
-                  border: '1px solid #10B981'
-                }}>
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#047857',
-                    whiteSpace: 'pre-line',
-                    lineHeight: '1.8',
-                    fontFamily: 'monospace'
-                  }}>
-                    {successMessage}
-                  </div>
-                </div>
-              </div>
+        <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Password Generated" size="small" footer={<>
+          {successPassword && <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</Button>}
+          <Button variant="primary" onClick={() => setShowSuccessModal(false)}>Done</Button>
+        </>}>
+          <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+            {successMessage} Please share this password securely. They should change it after first login.
+          </div>
+          {successPassword && (
+            <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>Temporary Password</div>
+              <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
+            </div>
+          )}
+          <div style={{ fontSize: '12px', color: '#DC2626' }}>This password will not be shown again. Please copy it now.</div>
         </CommonModal>
         )}
       </Container>

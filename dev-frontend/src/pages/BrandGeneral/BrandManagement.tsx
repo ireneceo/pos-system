@@ -378,21 +378,21 @@ const BrandManagement: React.FC = () => {
             </EmptyState>
           ) : (
             <Table>
-              <TableHeader columns="2fr 1fr 1fr 1fr 1fr 120px">
+              <TableHeader columns="2fr 2fr 1fr 1fr 1fr 120px">
                 <span className="col-info">Brand</span>
-                <span>Owner</span>
+                <span>Description</span>
                 <span>Restaurants</span>
                 <span>Status</span>
                 <span>Contact</span>
                 <span className="col-action">Actions</span>
               </TableHeader>
               {brands.map((brand) => (
-                <TableRow key={brand.id} columns="2fr 1fr 1fr 1fr 1fr 120px">
+                <TableRow key={brand.id} columns="2fr 2fr 1fr 1fr 1fr 120px">
                   <BrandInfo className="col-info">
                     <BrandName>{brand.name}</BrandName>
                     <BrandCode>{brand.code}</BrandCode>
                   </BrandInfo>
-                  <div>{brand.owner?.full_name || 'N/A'}</div>
+                  <div style={{ fontSize: '13px', color: '#6B7280' }}>{brand.description || '-'}</div>
                   <div>
                     <RestaurantLink onClick={() => handleNavigateToRestaurants(brand)}>
                       {brand.restaurants?.length || 0} stores

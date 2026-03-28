@@ -606,14 +606,18 @@ const RestaurantsPage: React.FC = () => {
 
   // Restaurant Admin states
   const [adminAction, setAdminAction] = useState<'create' | 'assign'>('create');
-  const [newAdminData, setNewAdminData] = useState({ fullName: '', email: '', username: '', password: '', phone: '' });
+  const [newAdminData, setNewAdminData] = useState({ fullName: '', email: '', username: '', phone: '' });
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successPassword, setSuccessPassword] = useState('');
+  const [passwordCopied, setPasswordCopied] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<any>(null);
   const [adminCandidates, setAdminCandidates] = useState<any[]>([]);
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
   // Edit modal admin states
   const [editAdminAction, setEditAdminAction] = useState<'keep' | 'create' | 'change'>('keep');
-  const [editNewAdminData, setEditNewAdminData] = useState({ fullName: '', email: '', username: '', password: '', phone: '' });
+  const [editNewAdminData, setEditNewAdminData] = useState({ fullName: '', email: '', username: '', phone: '' });
   const [editSelectedAdmin, setEditSelectedAdmin] = useState<any>(null);
   const [editAdminSearchQuery, setEditAdminSearchQuery] = useState('');
   const [showEditAdminDropdown, setShowEditAdminDropdown] = useState(false);
@@ -921,7 +925,7 @@ const RestaurantsPage: React.FC = () => {
     setSelectedManagers([]);
     // Reset admin states
     setAdminAction('create');
-    setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' });
+    setNewAdminData({ fullName: '', email: '', username: '', phone: '' });
     setSelectedAdmin(null);
     setAdminCandidates([]);
     setAdminSearchQuery('');
@@ -1103,7 +1107,7 @@ const RestaurantsPage: React.FC = () => {
     setShowEditManagerDropdown(false);
     // Reset edit admin states
     setEditAdminAction('keep');
-    setEditNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' });
+    setEditNewAdminData({ fullName: '', email: '', username: '', phone: '' });
     setEditSelectedAdmin(null);
     setEditAdminSearchQuery('');
     setShowEditAdminDropdown(false);
@@ -1124,16 +1128,8 @@ const RestaurantsPage: React.FC = () => {
 
       // Validate admin fields
       if (adminAction === 'create') {
-        if (!newAdminData.fullName || !newAdminData.email || !newAdminData.username || !newAdminData.password) {
-          setAddModalWarning('Please fill in all required Restaurant Admin fields (Full Name, Email, Username, Password).');
-          return;
-        }
-        if (newAdminData.password.length < 8) {
-          setAddModalWarning('Admin password must be at least 8 characters.');
-          return;
-        }
-        if (!/[a-z]/.test(newAdminData.password) || !/[A-Z]/.test(newAdminData.password) || !/[0-9]/.test(newAdminData.password)) {
-          setAddModalWarning('Admin password must contain uppercase, lowercase letters and a number.');
+        if (!newAdminData.fullName || !newAdminData.email || !newAdminData.username) {
+          setAddModalWarning('Please fill in all required Restaurant Admin fields (Full Name, Email, Username).');
           return;
         }
       } else if (adminAction === 'assign') {
@@ -1174,7 +1170,6 @@ const RestaurantsPage: React.FC = () => {
       // Add admin-specific fields
       if (adminAction === 'create') {
         restaurantData.adminEmail = newAdminData.email;
-        restaurantData.adminPassword = newAdminData.password;
         restaurantData.adminUsername = newAdminData.username;
         restaurantData.adminFullName = newAdminData.fullName;
         restaurantData.adminPhone = newAdminData.phone || undefined;
@@ -1203,6 +1198,15 @@ const RestaurantsPage: React.FC = () => {
 
         setAddModalWarning('');
         setShowAddModal(false);
+
+        // Show generated password if admin was created
+        if (result.generatedPassword) {
+          setSuccessMessage('Restaurant Admin created successfully.');
+          setSuccessPassword(result.generatedPassword);
+          setPasswordCopied(false);
+          setShowSuccessModal(true);
+        }
+
         // Refresh restaurant list
         await fetchRestaurants();
       } else {
@@ -1294,7 +1298,7 @@ const RestaurantsPage: React.FC = () => {
 
       // Validate admin change fields
       if (editAdminAction === 'create') {
-        if (!editNewAdminData.fullName || !editNewAdminData.email || !editNewAdminData.username || !editNewAdminData.password) {
+        if (!editNewAdminData.fullName || !editNewAdminData.email || !editNewAdminData.username) {
           setEditModalWarning('Please fill in all required new Admin fields.');
           return;
         }
@@ -1338,7 +1342,6 @@ const RestaurantsPage: React.FC = () => {
       if (editAdminAction === 'create') {
         updateData.adminAction = 'create';
         updateData.adminEmail = editNewAdminData.email;
-        updateData.adminPassword = editNewAdminData.password;
         updateData.adminUsername = editNewAdminData.username;
         updateData.adminFullName = editNewAdminData.fullName;
         updateData.adminPhone = editNewAdminData.phone || undefined;
@@ -1787,7 +1790,7 @@ const RestaurantsPage: React.FC = () => {
                           type="radio"
                           name="adminAction"
                           checked={adminAction === 'assign'}
-                          onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' }); }}
+                          onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', phone: '' }); }}
                           style={{ accentColor: '#635BFF' }}
                         />
                         <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Select Existing User</span>
@@ -1822,15 +1825,6 @@ const RestaurantsPage: React.FC = () => {
                           placeholder="e.g., kim_owner"
                           value={newAdminData.username}
                           onChange={(e) => setNewAdminData({...newAdminData, username: e.target.value})}
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <FormLabel>Admin Password *</FormLabel>
-                        <FormInput
-                          type="password"
-                          placeholder="Min 8 chars, uppercase + lowercase + number"
-                          value={newAdminData.password}
-                          onChange={(e) => setNewAdminData({...newAdminData, password: e.target.value})}
                         />
                       </FormGroup>
                       <FormGroup style={{gridColumn: '1 / -1'}}>
@@ -2326,7 +2320,7 @@ const RestaurantsPage: React.FC = () => {
                           border: editAdminAction === 'change' ? '2px solid #635BFF' : '2px solid #E5E7EB'
                         }}>
                           <input type="radio" name="editAdminAction" checked={editAdminAction === 'change'}
-                            onChange={() => { setEditAdminAction('change'); setEditNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' }); }}
+                            onChange={() => { setEditAdminAction('change'); setEditNewAdminData({ fullName: '', email: '', username: '', phone: '' }); }}
                             style={{ accentColor: '#635BFF' }} />
                           <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Select Existing User</span>
                         </label>
@@ -2355,12 +2349,6 @@ const RestaurantsPage: React.FC = () => {
                             <FormInput type="text" placeholder="e.g., kim_owner"
                               value={editNewAdminData.username}
                               onChange={(e) => setEditNewAdminData({...editNewAdminData, username: e.target.value})} />
-                          </FormGroup>
-                          <FormGroup>
-                            <FormLabel>New Admin Password *</FormLabel>
-                            <FormInput type="password" placeholder="Min 8 chars, uppercase + lowercase + number"
-                              value={editNewAdminData.password}
-                              onChange={(e) => setEditNewAdminData({...editNewAdminData, password: e.target.value})} />
                           </FormGroup>
                         </>
                       ) : (
@@ -2884,6 +2872,25 @@ const RestaurantsPage: React.FC = () => {
         />
 
         </Content>
+
+        {showSuccessModal && (
+          <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Password Generated" size="small" footer={<>
+            {successPassword && <ThemedButton variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</ThemedButton>}
+            <ThemedButton onClick={() => setShowSuccessModal(false)}>Done</ThemedButton>
+          </>}>
+            <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
+              {successMessage} Please share this password securely. They should change it after first login.
+            </div>
+            {successPassword && (
+              <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>Temporary Password</div>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
+              </div>
+            )}
+            <div style={{ fontSize: '12px', color: '#DC2626' }}>This password will not be shown again. Please copy it now.</div>
+          </CommonModal>
+        )}
+
       </Container>
     </>
   );
