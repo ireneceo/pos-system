@@ -62,6 +62,38 @@ const BrandProduct = sequelize.define('BrandProduct', {
     defaultValue: true,
     comment: 'Whether to sync to ingredients table for recipes'
   },
+  emoji: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    comment: 'Product emoji icon'
+  },
+  is_set_menu: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Whether this product is a set/combo'
+  },
+  set_items: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'JSON array of set items: [{productId, name, quantity}]',
+    get() {
+      const rawValue = this.getDataValue('set_items');
+      if (!rawValue) return null;
+      try {
+        return JSON.parse(rawValue);
+      } catch (e) {
+        return null;
+      }
+    },
+    set(value) {
+      this.setDataValue('set_items', value ? JSON.stringify(value) : null);
+    }
+  },
+  set_display_order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Display order for set menus within category'
+  },
   sort_order: {
     type: DataTypes.INTEGER,
     defaultValue: 0

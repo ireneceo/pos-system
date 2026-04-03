@@ -7,19 +7,21 @@
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- Kitchen Display 기본 탭 Order 고정
-- Kitchen Station URL 파라미터 (?station=1 순서 기반)
-- Item View 아이템 묶기 제한 (time_limit/max_count) — 기존 로직 미수정 후처리
-- Kitchen Display Merge 설정 UI (Item 탭 좌측 표시 + Settings 바로가기)
-- Settings Kitchen Stations 탭 Item Merge Settings 카드
-- Restaurant 모델 kitchen_item_merge JSON 필드
-- 테스트 계정 비밀번호 보호 (demoProtection에 is_test 추가 + 리셋 API 차단)
-- 테스트 계정 비밀번호 복원 + owner 계정 생성
-- 시재/발주 통합 기획서 작성 (docs/PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md)
-- CLAUDE.md 빌드 규칙 추가 (백그라운드 필수, 캐시 삭제 금지)
-- 빌드 스크립트 개선 (GENERATE_SOURCEMAP=false, 빌드 시간 표시)
+- 시스템 프로덕트 + 하드웨어 패키지 견적 시스템 전체 구현
+  - BrandProduct 보강 (세트/이모지/복제/토글)
+  - 모델 5개 (SystemProduct, SystemProductCategory, SystemProductPrice, SystemProductAddon, HardwareQuote)
+  - Admin SystemProductManagementPage (2탭: Products, Categories)
+  - Admin HardwareQuotesPage (견적 관리 + 인보이스 발행)
+  - PackagesPage (/packages, 공개 견적 UI)
+  - Public API (packages, hardware-quotes)
+  - 이메일 알림 (견적 접수 확인 + Admin 알림)
+  - 20개 개별상품 + 6개 패키지 데이터 등록 (MY/SG/KR 3개국 가격)
+- PricingPage 하단 → PackagesPage 링크 추가
+- Subscriptions 메뉴 복원 (Coming Soon → 활성)
+- 설계서: docs/SYSTEM_PRODUCT_AND_HARDWARE_PACKAGE.md
 
 ### 다음 할 일
+- SystemProductManagementPage forEach 버그 수정 빌드 반영 확인
 - 시재/발주 시스템 구현 Phase A (시재 관리) — docs/PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md 참조
 - 또는 데모 데이터 Phase 2 (Foodcourt/Owner 데모 계정)
 

@@ -566,12 +566,35 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
   try {
     const {
       name, description, sku, unit, base_quantity, unit_price,
-      min_order_quantity, image_url, category_id,
-      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids
+      min_order_quantity, image_url, category_id, emoji,
+      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids,
+      is_set_menu, set_items, set_display_order
     } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Product name is required' });
+    }
+
+    // Set menu validation
+    if (is_set_menu) {
+      if (!set_items || !Array.isArray(set_items) || set_items.length === 0) {
+        return res.status(400).json({ error: 'Set menu must have at least 1 item' });
+      }
+      // Validate each set item
+      for (const item of set_items) {
+        if (!item.productId || !item.name || !item.quantity || item.quantity < 1) {
+          return res.status(400).json({ error: 'Each set item must have productId, name, and quantity >= 1' });
+        }
+      }
+      // Prevent circular reference: set cannot contain other sets
+      const referencedIds = set_items.map(i => i.productId);
+      const referencedProducts = await BrandProduct.findAll({
+        where: { id: referencedIds },
+        attributes: ['id', 'is_set_menu']
+      });
+      if (referencedProducts.some(p => p.is_set_menu)) {
+        return res.status(400).json({ error: 'Set menu cannot contain other set menus' });
+      }
     }
 
     // Auto-generate SKU if not provided
@@ -588,7 +611,11 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
       unit_price: unit_price || 0,
       min_order_quantity: min_order_quantity || 1,
       image_url: image_url || null,
+      emoji: emoji || null,
       is_active: is_active !== false,
+      is_set_menu: is_set_menu || false,
+      set_items: is_set_menu ? set_items : null,
+      set_display_order: set_display_order || 0,
       product_recipe_id: product_recipe_id || null,
       sort_order: sort_order || 0
     });
@@ -651,14 +678,36 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
     const { productId } = req.params;
     const {
       name, description, sku, unit, base_quantity, unit_price,
-      min_order_quantity, image_url, category_id,
-      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids
+      min_order_quantity, image_url, category_id, emoji,
+      is_active, product_recipe_id, sort_order, brand_ids, option_group_ids,
+      is_set_menu, set_items, set_display_order
     } = req.body;
 
     const product = await BrandProduct.findByPk(productId);
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Set menu validation
+    const finalIsSet = is_set_menu !== undefined ? is_set_menu : product.is_set_menu;
+    if (finalIsSet && set_items !== undefined) {
+      if (!Array.isArray(set_items) || set_items.length === 0) {
+        return res.status(400).json({ error: 'Set menu must have at least 1 item' });
+      }
+      for (const item of set_items) {
+        if (!item.productId || !item.name || !item.quantity || item.quantity < 1) {
+          return res.status(400).json({ error: 'Each set item must have productId, name, and quantity >= 1' });
+        }
+      }
+      const referencedIds = set_items.map(i => i.productId);
+      const referencedProducts = await BrandProduct.findAll({
+        where: { id: referencedIds },
+        attributes: ['id', 'is_set_menu']
+      });
+      if (referencedProducts.some(p => p.is_set_menu)) {
+        return res.status(400).json({ error: 'Set menu cannot contain other set menus' });
+      }
     }
 
     // Update product
@@ -671,8 +720,12 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
       unit_price: unit_price !== undefined ? unit_price : product.unit_price,
       min_order_quantity: min_order_quantity !== undefined ? min_order_quantity : product.min_order_quantity,
       image_url: image_url !== undefined ? image_url : product.image_url,
+      emoji: emoji !== undefined ? emoji : product.emoji,
       category_id: category_id !== undefined ? category_id : product.category_id,
       is_active: is_active !== undefined ? is_active : product.is_active,
+      is_set_menu: is_set_menu !== undefined ? is_set_menu : product.is_set_menu,
+      set_items: set_items !== undefined ? (finalIsSet ? set_items : null) : product.set_items,
+      set_display_order: set_display_order !== undefined ? set_display_order : product.set_display_order,
       product_recipe_id: product_recipe_id !== undefined ? product_recipe_id : product.product_recipe_id,
       sort_order: sort_order !== undefined ? sort_order : product.sort_order
     });
@@ -759,6 +812,108 @@ router.delete('/brand-products/:productId', authenticateToken, isBrandManager, a
   } catch (error) {
     console.error('Delete brand product error:', error);
     res.status(500).json({ error: 'Failed to delete product' });
+  }
+});
+
+/**
+ * POST /api/brand-products/:productId/copy
+ * Duplicate a product
+ */
+router.post('/brand-products/:productId/copy', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    const original = await BrandProduct.findByPk(productId, {
+      include: [
+        { model: Brand, as: 'brands', through: { attributes: [] } },
+        { model: BrandProductOptionGroup, as: 'optionGroups', through: { attributes: [] } }
+      ]
+    });
+
+    if (!original) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const newSku = await generateProductSKU();
+
+    const copy = await BrandProduct.create({
+      category_id: original.category_id,
+      name: `${original.name} (Copy)`,
+      description: original.description,
+      sku: newSku,
+      unit: original.unit,
+      base_quantity: original.base_quantity,
+      unit_price: original.unit_price,
+      min_order_quantity: original.min_order_quantity,
+      image_url: original.image_url,
+      emoji: original.emoji,
+      is_active: true,
+      is_set_menu: original.is_set_menu,
+      set_items: original.set_items,
+      set_display_order: original.set_display_order,
+      sort_order: original.sort_order,
+      product_recipe_id: original.product_recipe_id
+    });
+
+    // Copy brand links
+    if (original.brands && original.brands.length > 0) {
+      for (const brand of original.brands) {
+        await BrandProductBrand.create({ product_id: copy.id, brand_id: brand.id });
+      }
+    }
+
+    // Copy option group links
+    if (original.optionGroups && original.optionGroups.length > 0) {
+      for (const og of original.optionGroups) {
+        await BrandProductOptionGroupProduct.create({ product_id: copy.id, option_group_id: og.id });
+      }
+    }
+
+    // Sync to ingredients
+    await syncProductToIngredients(copy.id);
+
+    const createdProduct = await BrandProduct.findByPk(copy.id, {
+      include: [
+        { model: BrandProductCategory, as: 'category' },
+        { model: Brand, as: 'brands', through: { attributes: [] } },
+        { model: BrandProductOptionGroup, as: 'optionGroups', through: { attributes: [] }, include: [{ model: BrandProductOption, as: 'options' }] },
+        { model: ProductRecipe, as: 'productRecipe', attributes: ['id', 'name', 'total_ingredient_cost'] }
+      ]
+    });
+
+    res.status(201).json({ success: true, data: createdProduct });
+  } catch (error) {
+    console.error('Copy brand product error:', error);
+    res.status(500).json({ success: false, message: 'Failed to copy product' });
+  }
+});
+
+/**
+ * PUT /api/brand-products/:productId/toggle-active
+ * Toggle product active status
+ */
+router.put('/brand-products/:productId/toggle-active', authenticateToken, isBrandManager, async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    const product = await BrandProduct.findByPk(productId);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    await product.update({ is_active: !product.is_active });
+
+    // Sync to ingredients
+    await syncProductToIngredients(productId);
+
+    res.json({
+      success: true,
+      data: { id: product.id, is_active: product.is_active },
+      message: product.is_active ? 'Product activated' : 'Product deactivated'
+    });
+  } catch (error) {
+    console.error('Toggle brand product active error:', error);
+    res.status(500).json({ success: false, message: 'Failed to toggle product status' });
   }
 });
 

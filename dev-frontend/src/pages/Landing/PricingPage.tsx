@@ -938,12 +938,12 @@ const PricingPage: React.FC = () => {
         </ContentSection>
 
         <CTASection>
-          <CTATitle>Ready to get started?</CTATitle>
+          <CTATitle>Need POS hardware?</CTATitle>
           <CTASubtitle>
-            Start your 7-day free trial today. No credit card required.
+            Choose from ready-made hardware packages with everything you need to get started.
           </CTASubtitle>
-          <CTAButton onClick={() => navigate('/signup')}>
-            Start Free Trial
+          <CTAButton onClick={() => navigate('/packages')}>
+            View Hardware Packages
           </CTAButton>
         </CTASection>
       </PageContainer>

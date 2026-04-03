@@ -971,10 +971,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
                   Invoices
                 </NavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/admin/subscriptions" active={isActive('/pos/admin/subscriptions')} onClick={closeSidebar}>
+                  <NavIcon>◈</NavIcon>
                   Subscriptions
-                </DisabledNavItem>
+                </NavItem>
                 <NavItem to="/pos/admin/report" active={isActive('/pos/admin/report')} onClick={closeSidebar}>
                   <NavIcon>☰</NavIcon>
                   Report
@@ -991,6 +991,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/admin/contact-inquiries" active={isActive('/pos/admin/contact-inquiries')} onClick={closeSidebar}>
                   <NavIcon>@</NavIcon>
                   Contact Inquiries
+                </NavItem>
+
+                <NavTitle>Products & Hardware</NavTitle>
+                <NavItem to="/pos/admin/system-products" active={isActive('/pos/admin/system-products')} onClick={closeSidebar}>
+                  <NavIcon>▣</NavIcon>
+                  System Products
+                </NavItem>
+                <NavItem to="/pos/admin/hardware-quotes" active={isActive('/pos/admin/hardware-quotes')} onClick={closeSidebar}>
+                  <NavIcon>✎</NavIcon>
+                  Hardware Quotes
                 </NavItem>
 
                 <NavTitle>Plans & Payments</NavTitle>

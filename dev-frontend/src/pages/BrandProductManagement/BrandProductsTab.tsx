@@ -42,6 +42,12 @@ interface ProductRecipe {
   category?: { name: string; emoji?: string };
 }
 
+interface SetMenuItem {
+  productId: number;
+  name: string;
+  quantity: number;
+}
+
 interface Product {
   id: number;
   category_id: number | null;
@@ -54,7 +60,11 @@ interface Product {
   unit_price: number;
   min_order_quantity: number;
   image_url: string | null;
+  emoji: string | null;
   is_active: boolean;
+  is_set_menu: boolean;
+  set_items: SetMenuItem[] | null;
+  set_display_order: number;
   product_recipe_id: number | null;
   productRecipe?: ProductRecipe;
   sort_order: number;
@@ -236,6 +246,52 @@ const OptionBadge = styled(Badge)`
   color: #374151;
 `;
 
+const SetBadge = styled.span`
+  display: inline-block;
+  padding: 2px 8px;
+  background: #667eea;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+`;
+
+const SetItemsSummary = styled.div`
+  font-size: 11px;
+  color: #667eea;
+  margin-top: 4px;
+  line-height: 1.4;
+`;
+
+const CopyButton = styled.button`
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #E6EBF1;
+  background: #F9FAFB;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover { background: #F3F4F6; border-color: #D1D5DB; }
+`;
+
+const ToggleButton = styled.button<{ isActive: boolean }>`
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid ${props => props.isActive ? '#D1FAE5' : '#FEE2E2'};
+  background: ${props => props.isActive ? '#ECFDF5' : '#FEF2F2'};
+  color: ${props => props.isActive ? '#059669' : '#DC2626'};
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover {
+    background: ${props => props.isActive ? '#D1FAE5' : '#FEE2E2'};
+  }
+`;
+
 const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
@@ -306,11 +362,16 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     min_order_quantity: '1',
     category_id: '',
     image_url: '',
+    emoji: '',
     is_active: true,
+    is_set_menu: false,
+    set_items: [] as SetMenuItem[],
+    set_display_order: '0',
     product_recipe_id: null as number | null,
     brand_ids: [] as number[],
     option_group_ids: [] as number[]
   });
+  const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -426,7 +487,11 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         min_order_quantity: product.min_order_quantity.toString(),
         category_id: product.category_id?.toString() || '',
         image_url: product.image_url || '',
+        emoji: product.emoji || '',
         is_active: product.is_active,
+        is_set_menu: product.is_set_menu || false,
+        set_items: product.set_items || [],
+        set_display_order: (product.set_display_order || 0).toString(),
         product_recipe_id: product.product_recipe_id || null,
         brand_ids: product.brands?.map(b => b.id) || [],
         option_group_ids: product.optionGroups?.map(og => og.id) || []
@@ -443,12 +508,17 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         min_order_quantity: '1',
         category_id: categories.length > 0 ? categories[0].id.toString() : '',
         image_url: '',
+        emoji: '',
         is_active: true,
+        is_set_menu: false,
+        set_items: [],
+        set_display_order: '0',
         product_recipe_id: null,
         brand_ids: [],
         option_group_ids: []
       });
     }
+    setSetMenuSearchQuery('');
     setShowModal(true);
   };
 
@@ -498,7 +568,11 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           min_order_quantity: parseInt(formData.min_order_quantity) || 1,
           category_id: formData.category_id ? parseInt(formData.category_id) : null,
           image_url: formData.image_url || null,
+          emoji: formData.emoji || null,
           is_active: formData.is_active,
+          is_set_menu: formData.is_set_menu,
+          set_items: formData.is_set_menu ? formData.set_items : null,
+          set_display_order: parseInt(formData.set_display_order) || 0,
           product_recipe_id: formData.product_recipe_id,
           brand_ids: formData.brand_ids,
           option_group_ids: formData.option_group_ids
@@ -519,6 +593,83 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCopyProduct = async (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const token = getToken();
+      const response = await fetch(`/api/brand-products/${product.id}/copy`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        fetchProducts();
+      } else {
+        alert(data.error || data.message || 'Failed to copy product');
+      }
+    } catch (error) {
+      console.error('Failed to copy product:', error);
+    }
+  };
+
+  const handleToggleActive = async (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const token = getToken();
+      const response = await fetch(`/api/brand-products/${product.id}/toggle-active`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        fetchProducts();
+      }
+    } catch (error) {
+      console.error('Failed to toggle product:', error);
+    }
+  };
+
+  // Set menu helpers
+  const handleAddSetMenuItem = (menuItemId: number) => {
+    const menuItem = products.find(p => p.id === menuItemId);
+    if (!menuItem || menuItem.is_set_menu) return;
+
+    const existing = formData.set_items.find(item => item.productId === menuItemId);
+    if (existing) {
+      setFormData(prev => ({
+        ...prev,
+        set_items: prev.set_items.map(item =>
+          item.productId === menuItemId ? { ...item, quantity: item.quantity + 1 } : item
+        )
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        set_items: [...prev.set_items, { productId: menuItemId, name: menuItem.name, quantity: 1 }]
+      }));
+    }
+  };
+
+  const handleRemoveSetMenuItem = (productId: number) => {
+    setFormData(prev => ({
+      ...prev,
+      set_items: prev.set_items.filter(item => item.productId !== productId)
+    }));
+  };
+
+  const handleUpdateSetMenuItemQuantity = (productId: number, delta: number) => {
+    setFormData(prev => ({
+      ...prev,
+      set_items: prev.set_items.map(item => {
+        if (item.productId === productId) {
+          const newQuantity = Math.max(1, item.quantity + delta);
+          return { ...item, quantity: newQuantity };
+        }
+        return item;
+      })
+    }));
   };
 
   const handleDeleteClick = (product: Product, e: React.MouseEvent) => {
@@ -649,15 +800,23 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             >
               <ProductHeader>
                 <ProductImage src={product.image_url}>
-                  {!product.image_url && '📦'}
+                  {!product.image_url && (product.emoji || '📦')}
                 </ProductImage>
                 <ProductInfo>
-                  <ProductName>{product.name}</ProductName>
+                  <ProductName>
+                    {product.name}
+                    {product.is_set_menu && <SetBadge>SET</SetBadge>}
+                  </ProductName>
                   {product.sku && <ProductSku>SKU: {product.sku}</ProductSku>}
                   {product.category && (
                     <ProductCategory>
                       {product.category.emoji} {product.category.name}
                     </ProductCategory>
+                  )}
+                  {product.is_set_menu && product.set_items && product.set_items.length > 0 && (
+                    <SetItemsSummary>
+                      Set: {product.set_items.map(si => `${si.name} x${si.quantity}`).join(', ')}
+                    </SetItemsSummary>
                   )}
                 </ProductInfo>
               </ProductHeader>
@@ -699,6 +858,12 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 <ActionButton onClick={() => handleOpenModal(product)}>
                   Edit
                 </ActionButton>
+                <CopyButton onClick={(e) => handleCopyProduct(product, e)}>
+                  Copy
+                </CopyButton>
+                <ToggleButton isActive={product.is_active} onClick={(e) => handleToggleActive(product, e)}>
+                  {product.is_active ? 'Active' : 'Inactive'}
+                </ToggleButton>
                 <ActionButton variant="danger" onClick={(e) => handleDeleteClick(product, e)}>
                   Delete
                 </ActionButton>
@@ -826,6 +991,64 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 helpText="Upload a product image (max 2MB)"
               />
             </UIFormGroup>
+
+            <UIFormGroup>
+              <CheckboxLabel>
+                <input
+                  type="checkbox"
+                  checked={formData.is_set_menu}
+                  onChange={(e) => setFormData({ ...formData, is_set_menu: e.target.checked, set_items: e.target.checked ? formData.set_items : [] })}
+                />
+                Set Menu (bundle multiple products)
+              </CheckboxLabel>
+            </UIFormGroup>
+
+            {formData.is_set_menu && (
+              <UIFormGroup>
+                <FormLabel>Set Items *</FormLabel>
+                {formData.set_items.length > 0 && (
+                  <div style={{ marginBottom: '12px' }}>
+                    {formData.set_items.map(item => (
+                      <div key={item.productId} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#F9FAFB', borderRadius: '6px', marginBottom: '4px' }}>
+                        <span style={{ flex: 1, fontSize: '14px' }}>{item.name}</span>
+                        <button type="button" onClick={() => handleUpdateSetMenuItemQuantity(item.productId, -1)} style={{ width: '28px', height: '28px', border: '1px solid #D1D5DB', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>-</button>
+                        <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
+                        <button type="button" onClick={() => handleUpdateSetMenuItemQuantity(item.productId, 1)} style={{ width: '28px', height: '28px', border: '1px solid #D1D5DB', borderRadius: '4px', background: 'white', cursor: 'pointer' }}>+</button>
+                        <button type="button" onClick={() => handleRemoveSetMenuItem(item.productId)} style={{ color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' }}>x</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <FormInput
+                  type="text"
+                  placeholder="Search products to add..."
+                  value={setMenuSearchQuery}
+                  onChange={(e) => setSetMenuSearchQuery(e.target.value)}
+                  style={{ marginBottom: '8px' }}
+                />
+                <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#F9FAFB', borderRadius: '8px', padding: '8px' }}>
+                  {products
+                    .filter(p => !p.is_set_menu && (editingProduct ? p.id !== editingProduct.id : true))
+                    .filter(p => !setMenuSearchQuery || p.name.toLowerCase().includes(setMenuSearchQuery.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(setMenuSearchQuery.toLowerCase())))
+                    .map(p => (
+                      <div
+                        key={p.id}
+                        onClick={() => handleAddSetMenuItem(p.id)}
+                        style={{
+                          padding: '8px 12px', cursor: 'pointer', borderRadius: '6px', marginBottom: '2px',
+                          background: formData.set_items.some(si => si.productId === p.id) ? '#EEF2FF' : 'white',
+                          border: '1px solid #E5E7EB', fontSize: '13px',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        }}
+                      >
+                        <span>{p.emoji || '📦'} {p.sku ? `${p.sku} ` : ''}{p.name}</span>
+                        <span style={{ color: '#6B7280' }}>RM {(Number(p.unit_price) || 0).toFixed(2)}</span>
+                      </div>
+                    ))
+                  }
+                </div>
+              </UIFormGroup>
+            )}
 
             <UIFormGroup>
               <FormLabel>Linked Brands</FormLabel>

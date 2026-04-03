@@ -464,6 +464,9 @@ const commentsRouter = require('./routes/comments');
 const noticesRouter = require('./routes/notices');
 const badgeCountsRouter = require('./routes/badgeCounts');
 const kitchenStationsRouter = require('./routes/kitchen-stations');
+const systemProductsRouter = require('./routes/system-products');
+const systemProductCategoriesRouter = require('./routes/system-product-categories');
+const hardwareQuotesRouter = require('./routes/hardware-quotes');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -541,6 +544,9 @@ app.use('/api/comments', commentsRouter);  // Polymorphic comments (notices, tic
 app.use('/api/notices', noticesRouter);  // Notices (공지) system
 app.use('/api/badge-counts', badgeCountsRouter);  // Sidebar badge counts
 app.use('/api/kitchen-stations', kitchenStationsRouter);  // Kitchen station management
+app.use('/api/system-products', systemProductsRouter);  // System products (hardware)
+app.use('/api/system-product-categories', systemProductCategoriesRouter);  // System product categories
+app.use('/api/hardware-quotes', hardwareQuotesRouter);  // Hardware quote management
 const importRouter = require('./routes/import');
 app.use('/api/import', importRouter);  // CSV data import (migration)
 

@@ -18,6 +18,7 @@ import HomePage from './pages/Landing/HomePage';
 import AboutPage from './pages/Landing/AboutPage';
 import FeaturesPage from './pages/Landing/FeaturesPage';
 import PricingPage from './pages/Landing/PricingPage';
+import PackagesPage from './pages/Landing/PackagesPage';
 import ContactPage from './pages/Landing/ContactPage';
 import DemoPage from './pages/Landing/DemoPage';
 import SignupPage from './pages/Landing/SignupPage';
@@ -103,6 +104,8 @@ const RestaurantSupportTicketsPage = React.lazy(() => import('./pages/Restaurant
 const OperationInquiryPage = React.lazy(() => import('./pages/Manager/OperationInquiryPage'));
 const RestaurantOperationInquiryPage = React.lazy(() => import('./pages/Restaurant/OperationInquiryPage'));
 const SystemConfigPage = React.lazy(() => import('./pages/Admin/SystemConfigPage'));
+const SystemProductManagementPage = React.lazy(() => import('./pages/Admin/SystemProductManagementPage'));
+const HardwareQuotesPage = React.lazy(() => import('./pages/Admin/HardwareQuotesPage'));
 const SecurityPage = React.lazy(() => import('./pages/Admin/SecurityPage'));
 const BackupRestorePage = React.lazy(() => import('./pages/Admin/BackupRestorePage'));
 const SystemLogsPage = React.lazy(() => import('./pages/Admin/SystemLogsPage'));
@@ -336,6 +339,7 @@ function App() {
                       <Route path="/features" element={<FeaturesPage />} />
                       <Route path="/service" element={<Navigate to="/features" replace />} />
                       <Route path="/pricing" element={<PricingPage />} />
+                      <Route path="/packages" element={<PackagesPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/demo" element={<DemoPage />} />
                       <Route path="/signup" element={<SignupPage />} />
@@ -447,6 +451,16 @@ function App() {
                       <Route path="/pos/admin/system-config" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <SystemConfigPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/system-products" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <SystemProductManagementPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/hardware-quotes" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <HardwareQuotesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/security" element={

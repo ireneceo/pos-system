@@ -62,6 +62,11 @@ const Notice = require('./Notice');
 const NoticeRecipient = require('./NoticeRecipient');
 const KitchenStation = require('./KitchenStation');
 const ImportHistory = require('./ImportHistory');
+const SystemProduct = require('./SystemProduct');
+const SystemProductCategory = require('./SystemProductCategory');
+const SystemProductPrice = require('./SystemProductPrice');
+const SystemProductAddon = require('./SystemProductAddon');
+const HardwareQuote = require('./HardwareQuote');
 
 // Define associations
 // Brand - Restaurant associations
@@ -449,6 +454,23 @@ Category.belongsTo(KitchenStation, { foreignKey: 'kitchen_station_id', as: 'kitc
 KitchenStation.hasMany(Product, { foreignKey: 'kitchen_station_id', as: 'products' });
 Product.belongsTo(KitchenStation, { foreignKey: 'kitchen_station_id', as: 'kitchenStation' });
 
+// SystemProduct associations
+SystemProduct.belongsTo(SystemProductCategory, { foreignKey: 'category_id', as: 'category' });
+SystemProductCategory.hasMany(SystemProduct, { foreignKey: 'category_id', as: 'products' });
+
+SystemProductPrice.belongsTo(SystemProduct, { foreignKey: 'product_id', as: 'product' });
+SystemProduct.hasMany(SystemProductPrice, { foreignKey: 'product_id', as: 'prices' });
+
+SystemProductAddon.belongsTo(SystemProduct, { foreignKey: 'set_product_id', as: 'setProduct' });
+SystemProductAddon.belongsTo(SystemProduct, { foreignKey: 'addon_product_id', as: 'addonProduct' });
+SystemProduct.hasMany(SystemProductAddon, { foreignKey: 'set_product_id', as: 'addons' });
+
+// HardwareQuote associations
+HardwareQuote.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+HardwareQuote.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+HardwareQuote.belongsTo(SystemProduct, { foreignKey: 'package_product_id', as: 'packageProduct' });
+HardwareQuote.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
+
 module.exports = {
   User,
   Restaurant,
@@ -513,5 +535,10 @@ module.exports = {
   Notice,
   NoticeRecipient,
   KitchenStation,
-  ImportHistory
+  ImportHistory,
+  SystemProduct,
+  SystemProductCategory,
+  SystemProductPrice,
+  SystemProductAddon,
+  HardwareQuote
 };

@@ -451,4 +451,201 @@ router.get('/admin/inquiries-stats', authenticateToken, async (req, res) => {
   }
 });
 
+// ==============================================
+// Public Hardware Packages API (인증 불필요)
+// ==============================================
+
+const { SystemProduct, SystemProductCategory, SystemProductPrice, SystemProductAddon } = require('../models');
+
+/**
+ * GET /api/public/packages?country=MY
+ * Returns set products (packages) with included items, addons, and prices
+ * Filtered by country (shipping_countries)
+ */
+router.get('/packages', async (req, res) => {
+  try {
+    const { country } = req.query;
+
+    // Get all active set products
+    const setProducts = await SystemProduct.findAll({
+      where: { is_set: true, is_active: true },
+      include: [
+        { model: SystemProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] },
+        { model: SystemProductPrice, as: 'prices', where: { is_active: true }, required: false },
+        {
+          model: SystemProductAddon, as: 'addons',
+          include: [{
+            model: SystemProduct, as: 'addonProduct',
+            attributes: ['id', 'name', 'sku', 'emoji', 'image_url', 'is_active', 'shipping_countries'],
+            include: [
+              { model: SystemProductPrice, as: 'prices', where: { is_active: true }, required: false },
+              { model: SystemProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }
+            ]
+          }],
+          order: [['sort_order', 'ASC']]
+        }
+      ],
+      order: [['set_group', 'ASC'], ['set_display_order', 'ASC'], ['sort_order', 'ASC']]
+    });
+
+    // Filter by country if provided
+    let filtered = setProducts;
+    if (country) {
+      filtered = setProducts.filter(p => {
+        const countries = p.shipping_countries;
+        return countries && Array.isArray(countries) && countries.includes(country.toUpperCase());
+      });
+    }
+
+    // Build response with prices mapped by currency
+    const data = filtered.map(p => {
+      const json = p.toJSON();
+
+      // Map prices to currency_prices object
+      const currency_prices = {};
+      if (json.prices) {
+        json.prices.forEach(pr => {
+          currency_prices[pr.currency] = parseFloat(pr.price);
+        });
+      }
+
+      // Map addon product prices
+      if (json.addons) {
+        json.addons = json.addons
+          .filter(a => a.addonProduct && a.addonProduct.is_active)
+          .map(a => {
+            const addonPrices = {};
+            if (a.addonProduct.prices) {
+              a.addonProduct.prices.forEach(pr => {
+                addonPrices[pr.currency] = parseFloat(pr.price);
+              });
+            }
+            return {
+              ...a,
+              addonProduct: {
+                ...a.addonProduct,
+                currency_prices: addonPrices
+              }
+            };
+          });
+      }
+
+      return {
+        ...json,
+        currency_prices
+      };
+    });
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Get public packages error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch packages' });
+  }
+});
+
+/**
+ * POST /api/public/hardware-quotes
+ * Submit a hardware quote request (no auth required)
+ */
+router.post('/hardware-quotes', async (req, res) => {
+  try {
+    const {
+      contact_name, contact_email, contact_phone, company_name, message,
+      country_code, currency,
+      package_product_id, package_snapshot, addon_items,
+      package_price, addon_total, total_amount
+    } = req.body;
+
+    if (!contact_name || !contact_email) {
+      return res.status(400).json({ success: false, message: 'Name and email are required' });
+    }
+
+    // Generate quote number: QUO-YYMMDDNNN
+    const now = new Date();
+    const dateStr = now.toISOString().slice(2, 10).replace(/-/g, '');
+    const { HardwareQuote } = require('../models');
+    const todayCount = await HardwareQuote.count({
+      where: {
+        created_at: {
+          [Op.gte]: new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        }
+      }
+    });
+    const quoteNumber = `QUO-${dateStr}${String(todayCount + 1).padStart(3, '0')}`;
+
+    const quote = await HardwareQuote.create({
+      quote_number: quoteNumber,
+      contact_name: contact_name.trim(),
+      contact_email: contact_email.trim(),
+      contact_phone: contact_phone || null,
+      company_name: company_name || null,
+      message: message || null,
+      country_code: country_code || null,
+      currency: currency || null,
+      package_product_id: package_product_id || null,
+      package_snapshot: package_snapshot || null,
+      addon_items: addon_items || [],
+      package_price: package_price || null,
+      addon_total: addon_total || 0,
+      total_amount: total_amount || null,
+      status: 'new'
+    });
+
+    // Send confirmation email to customer
+    try {
+      const CompanySettings = require('../models/CompanySettings');
+      const companySettings = await CompanySettings.findOne();
+      const companyName = companySettings?.company_name || 'Purple POS';
+
+      await sendPlatformEmail({
+        to: contact_email,
+        subject: `Quote Request Received - ${quoteNumber}`,
+        html: emailLayout(companyName, `
+          <h2 style="color: #0A2540; margin: 0 0 16px 0;">Quote Request Received</h2>
+          <p>Hi ${contact_name},</p>
+          <p>Thank you for your interest! We've received your hardware package quote request.</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;">Quote Number</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; font-weight: 600;">${quoteNumber}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;">Estimated Total</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; font-weight: 600;">${currency || ''} ${total_amount ? Number(total_amount).toLocaleString() : 'TBD'}</td></tr>
+          </table>
+          <p>Our team will review your configuration and contact you within 1-2 business days.</p>
+          <p style="color: #6B7280; font-size: 14px;">If you have any questions, please reply to this email.</p>
+        `)
+      });
+    } catch (emailErr) {
+      console.error('Quote confirmation email error:', emailErr.message);
+    }
+
+    // Notify system admins
+    try {
+      const adminIds = await getSystemAdminIds();
+      if (adminIds.length > 0) {
+        await sendNotificationBatch(adminIds, {
+          subject: `New Hardware Quote: ${quoteNumber}`,
+          html: emailLayout('Purple POS', `
+            <h2 style="color: #0A2540;">New Hardware Quote Request</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">Quote</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${quoteNumber}</td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">Name</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${contact_name}</td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">Email</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${contact_email}</td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">Total</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${currency || ''} ${total_amount ? Number(total_amount).toLocaleString() : 'N/A'}</td></tr>
+            </table>
+          `)
+        });
+      }
+    } catch (notifyErr) {
+      console.error('Admin notification error:', notifyErr.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Quote request submitted successfully',
+      data: { quote_number: quoteNumber, id: quote.id }
+    });
+  } catch (error) {
+    console.error('Create hardware quote error:', error);
+    res.status(500).json({ success: false, message: 'Failed to submit quote request' });
+  }
+});
+
 module.exports = router;

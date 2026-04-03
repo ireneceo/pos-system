@@ -58,6 +58,55 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
+## ✅ 완료: 시스템 프로덕트 + 하드웨어 패키지 견적 시스템 (2026-04-03)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | BrandProduct 보강 | 세트/이모지/복제/활성토글 기능 추가 (메뉴관리 수준) | ✅ |
+| 2 | SystemProduct 모델 5개 | SystemProduct, Category, Price, Addon, HardwareQuote | ✅ |
+| 3 | SystemProduct 라우트 | 상품+카테고리 CRUD, 가격, addon, copy, toggle | ✅ |
+| 4 | Admin SystemProductManagementPage | 2탭 (Products, Categories), 세트/가격/배송 설정 | ✅ |
+| 5 | Public Packages API | 국가별 패키지 필터링, 통화별 가격, addon 포함 | ✅ |
+| 6 | PackagesPage (/packages) | 그룹 선택 → 패키지 비교 → 추가 장비 → 견적 문의 | ✅ |
+| 7 | Hardware Quotes 라우트 | 견적 CRUD, 상태 관리, 유저 연결, 인보이스 발행 | ✅ |
+| 8 | Admin HardwareQuotesPage | ContactInquiry 패턴, 견적→인보이스 발행 | ✅ |
+| 9 | 이메일 알림 | 견적 접수 확인 (고객) + Admin 알림 | ✅ |
+| 10 | 상품 데이터 등록 | 20개 개별상품 + 6개 패키지(세트), 3개국(MY/SG/KR) 가격 | ✅ |
+| 11 | PricingPage 하단 링크 | "Need POS hardware?" → PackagesPage 링크 | ✅ |
+| 12 | Subscriptions 메뉴 복원 | System Admin 사이드바 Coming Soon → 활성 복원 | ✅ |
+
+### 수정된 파일 (주요)
+**백엔드 (신규):**
+- `models/SystemProduct.js`, `SystemProductCategory.js`, `SystemProductPrice.js`, `SystemProductAddon.js`, `HardwareQuote.js`
+- `routes/system-products.js`, `system-product-categories.js`, `hardware-quotes.js`
+
+**백엔드 (수정):**
+- `models/BrandProduct.js` (세트/이모지 필드)
+- `models/index.js` (association)
+- `routes/brand-products.js` (copy, toggle-active, 세트 검증)
+- `routes/public.js` (packages, hardware-quotes 공개 API)
+- `server.js` (라우트 등록)
+
+**프론트엔드 (신규):**
+- `pages/Admin/SystemProductManagementPage.tsx`
+- `pages/Admin/HardwareQuotesPage.tsx`
+- `pages/Landing/PackagesPage.tsx`
+
+**프론트엔드 (수정):**
+- `App.tsx` (라우트)
+- `components/Layout/MainLayout.tsx` (사이드바 메뉴 + Subscriptions 복원)
+- `pages/BrandProductManagement/BrandProductsTab.tsx` (세트/이모지/복제/토글)
+- `pages/Landing/PricingPage.tsx` (PackagesPage 링크)
+
+**문서:**
+- `docs/SYSTEM_PRODUCT_AND_HARDWARE_PACKAGE.md` (설계서)
+
+### 알려진 이슈
+- SystemProductManagementPage: shipping_settings forEach 에러 수정 완료, 최종 빌드 대기 중
+
+---
+
 ## ✅ 완료: Kitchen Display 개선 + 테스트 계정 보호 + 시재/발주 기획 (2026-04-03)
 
 ### 완료된 작업
