@@ -20,10 +20,14 @@
 - Subscriptions 메뉴 복원 (Coming Soon → 활성)
 - 설계서: docs/SYSTEM_PRODUCT_AND_HARDWARE_PACKAGE.md
 
-### 다음 할 일
-- SystemProductManagementPage forEach 버그 수정 빌드 반영 확인
-- 시재/발주 시스템 구현 Phase A (시재 관리) — docs/PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md 참조
-- 또는 데모 데이터 Phase 2 (Foodcourt/Owner 데모 계정)
+### 다음 할 일 (우선순위 순)
+1. **Hardware Quotes + System Products 전체 기능 테스트** (최우선)
+   - /pos/admin/system-products: 상품 CRUD, 카테고리 CRUD, 세트 생성/수정, 가격 설정, 배송 설정, 복제, 활성토글, 삭제
+   - /pos/admin/hardware-quotes: 견적 목록, 상세 보기, 상태 변경, 유저 연결, 내부 메모, 인보이스 발행, 삭제
+   - forEach 버그 수정 빌드 반영 확인 (Ctrl+Shift+R)
+   - 모든 버튼/모달/필터/검색 동작 확인
+2. 시재/발주 시스템 구현 Phase A (시재 관리) — docs/PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md 참조
+3. 또는 데모 데이터 Phase 2 (Foodcourt/Owner 데모 계정)
 
 ---
 
