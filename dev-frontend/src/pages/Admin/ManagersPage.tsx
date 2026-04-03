@@ -216,27 +216,6 @@ const FormTextarea = styled.textarea`
   }
 `;
 
-const SuccessIcon = styled.div`
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-  color: white;
-  font-size: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 24px;
-  font-weight: bold;
-`;
-
-const SuccessMessage = styled.p`
-  font-size: 16px;
-  color: #6B7280;
-  margin: 0 0 32px 0;
-  line-height: 1.5;
-`;
-
 // Helper function to get auth headers
 const getAuthHeaders = () => {
   const token = localStorage.getItem('auth_token');

@@ -525,6 +525,19 @@ Restaurant.init({
     allowNull: false,
     comment: 'Kitchen station assignment mode: category or menu_item'
   },
+  kitchen_item_merge: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    get() {
+      const value = this.getDataValue('kitchen_item_merge');
+      if (!value) return { time_limit: 0, max_count: 0 };
+      try { return JSON.parse(value); } catch { return { time_limit: 0, max_count: 0 }; }
+    },
+    set(value) {
+      this.setDataValue('kitchen_item_merge', typeof value === 'string' ? value : JSON.stringify(value));
+    },
+    comment: 'Item merge settings for Kitchen Display Item View: {time_limit: minutes, max_count: number}'
+  },
   mobile_settings: {
     type: DataTypes.TEXT,
     allowNull: true,

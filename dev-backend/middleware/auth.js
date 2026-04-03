@@ -234,12 +234,14 @@ const checkSubscriptionStatus = async (req, res, next) => {
   }
 };
 
-// Block demo accounts from modifying their own account (password, email, profile)
+// Block demo/test accounts from modifying their own account (password, email, profile)
 const demoProtection = (req, res, next) => {
-  if (req.user && req.user.is_demo) {
+  if (req.user && (req.user.is_demo || req.user.is_test)) {
     return res.status(403).json({
       success: false,
-      message: 'Demo accounts cannot modify account settings. This account resets daily.'
+      message: req.user.is_demo
+        ? 'Demo accounts cannot modify account settings. This account resets daily.'
+        : 'Test accounts cannot modify account settings.'
     });
   }
   next();

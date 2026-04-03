@@ -616,6 +616,9 @@ const SettingsPage: React.FC = () => {
   // Kitchen Stations state
   const [kitchenStations, setKitchenStations] = useState<any[]>([]);
   const [kitchenAssignmentMode, setKitchenAssignmentMode] = useState<'category' | 'menu_item'>('category');
+  const [itemMergeTimeLimit, setItemMergeTimeLimit] = useState<number>(0);
+  const [itemMergeMaxCount, setItemMergeMaxCount] = useState<number>(0);
+  const [itemMergeSaving, setItemMergeSaving] = useState(false);
   const [kitchenStationsLoading, setKitchenStationsLoading] = useState(true);
   const [showStationModal, setShowStationModal] = useState(false);
   const [editingStation, setEditingStation] = useState<any>(null);
@@ -1189,10 +1192,11 @@ const SettingsPage: React.FC = () => {
       const token = localStorage.getItem('auth_token');
       const authHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-      const [stationsRes, categoriesRes, productsRes] = await Promise.all([
+      const [stationsRes, categoriesRes, productsRes, restaurantRes] = await Promise.all([
         fetch(`/api/kitchen-stations?restaurant_id=${user.restaurantId}`, { headers: authHeaders }),
         fetch(`/api/categories?restaurant_id=${user.restaurantId}`, { headers: authHeaders }),
-        fetch(`/api/menu?restaurant_id=${user.restaurantId}`, { headers: authHeaders })
+        fetch(`/api/menu?restaurant_id=${user.restaurantId}`, { headers: authHeaders }),
+        fetch(`/api/restaurants/${user.restaurantId}`, { headers: authHeaders })
       ]);
 
       if (stationsRes.ok) {
@@ -1206,9 +1210,16 @@ const SettingsPage: React.FC = () => {
       }
       if (productsRes.ok) {
         const prodData = await productsRes.json();
-        // /api/menu returns { data: { categories, items } }
         const items = prodData.data?.items || prodData.data || [];
         setAllProducts(Array.isArray(items) ? items : []);
+      }
+      if (restaurantRes.ok) {
+        const restData = await restaurantRes.json();
+        const restaurant = restData.data || restData;
+        if (restaurant.kitchen_item_merge) {
+          setItemMergeTimeLimit(restaurant.kitchen_item_merge.time_limit || 0);
+          setItemMergeMaxCount(restaurant.kitchen_item_merge.max_count || 0);
+        }
       }
     } catch (error) {
       console.error('Failed to load kitchen stations:', error);
@@ -4191,6 +4202,51 @@ QZ Tray (installed on this device)
                   If no stations are registered, everything works the same as before. Printer settings are configured in the Printer tab.
                 </p>
               </div>
+
+              {/* Item Merge Settings */}
+              <SettingsCard style={{ marginBottom: '24px' }}>
+                <CardTitle>Item View Merge Settings</CardTitle>
+                <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 16px' }}>
+                  Control how same-name items are grouped in Kitchen Display Item View. Leave empty or 0 for unlimited merging (default).
+                </p>
+                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div style={{ flex: '1', minWidth: '180px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Time Limit (minutes)</label>
+                    <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '0 0 6px' }}>Only merge items ordered within this time window</p>
+                    <input type="number" min="0" value={itemMergeTimeLimit || ''} placeholder="0 = unlimited"
+                      onChange={(e) => setItemMergeTimeLimit(parseInt(e.target.value) || 0)}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px' }} />
+                  </div>
+                  <div style={{ flex: '1', minWidth: '180px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Max Count per Group</label>
+                    <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '0 0 6px' }}>Split into separate rows when quantity exceeds this</p>
+                    <input type="number" min="0" value={itemMergeMaxCount || ''} placeholder="0 = unlimited"
+                      onChange={(e) => setItemMergeMaxCount(parseInt(e.target.value) || 0)}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px' }} />
+                  </div>
+                  <button
+                    disabled={itemMergeSaving}
+                    onClick={async () => {
+                      setItemMergeSaving(true);
+                      try {
+                        const token = localStorage.getItem('auth_token');
+                        await fetch(`/api/restaurants/${user?.restaurantId}`, {
+                          method: 'PUT',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ kitchen_item_merge: { time_limit: itemMergeTimeLimit, max_count: itemMergeMaxCount } })
+                        });
+                      } catch (e) {
+                        console.error('Failed to save merge settings:', e);
+                      } finally {
+                        setItemMergeSaving(false);
+                      }
+                    }}
+                    style={{ padding: '8px 20px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', height: '38px', whiteSpace: 'nowrap' }}
+                  >
+                    {itemMergeSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </SettingsCard>
 
               {/* Assignment Mode */}
               <SettingsCard style={{ marginBottom: '24px' }}>

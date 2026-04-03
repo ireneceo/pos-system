@@ -189,6 +189,19 @@ Station을 모두 지우면 다시 기존 단일 카드로 복원.
 **Order View**: 해당 주방 아이템이 포함된 주문만 표시. 다른 주방 아이템은 회색 처리 + 축소.
 **Item View**: 해당 주방 아이템만 그룹핑.
 
+### Station 직접 접속 URL
+`/restaurant/{id}/kitchen?station={순서}` — 순서는 1부터 시작 (DB ID가 아닌 표시 순서).
+Station 버튼 클릭 시 URL도 동기화됨. 기본 탭은 항상 Order View.
+
+### Item View Merge 설정 (2026-04-03)
+Settings > Kitchen Stations 탭에서 설정.
+- **Time Limit (분)**: 주문 시간 기준 N분 이내 아이템만 합침. 초과 시 별도 행.
+- **Max Count (개수)**: 한 그룹 수량이 N개 초과 시 분리. 예: max 3, 같은 메뉴 7개 → 3+3+1.
+- 미설정(0) = 무제한 (기존 동작).
+- 기존 그룹핑 로직은 미수정, 후처리(applyMergeLimits)로 제한 적용.
+- Kitchen Display Item 탭 좌측에 현재 설정값 표시 + Settings 바로가기.
+- DB: `restaurants.kitchen_item_merge` JSON (`{time_limit, max_count}`).
+
 ---
 
 ## 7. 오더티켓 분리 인쇄

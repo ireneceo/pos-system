@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import io, { Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
@@ -574,14 +575,13 @@ const KitchenDisplayPage: React.FC = () => {
   const { user } = useAuth();
   const { menuItems, categories } = useMenu();
   const { getStoreInfo, operationSettings: storeOpSettings } = useStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [operationSettings, setOperationSettings] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'order' | 'item'>(() => {
-    return (localStorage.getItem('kitchenDisplayViewMode') as 'order' | 'item') || 'order';
-  });
+  const [viewMode, setViewMode] = useState<'order' | 'item'>('order');
 
   const [preparingBatches, setPreparingBatches] = useState<PreparingBatch[]>([]);
 
@@ -590,7 +590,12 @@ const KitchenDisplayPage: React.FC = () => {
 
   // ─── Kitchen Station Filter ───
   const [kitchenStations, setKitchenStations] = useState<Array<{ id: number; name: string; alert_sound?: string }>>([]);
+  const urlStationParam = searchParams.get('station');
   const [selectedStation, setSelectedStation] = useState<number | 'all'>('all');
+  const urlStationApplied = useRef(false);
+
+  // ─── Item Merge Settings ───
+  const [itemMergeSettings, setItemMergeSettings] = useState<{ time_limit: number; max_count: number }>({ time_limit: 0, max_count: 0 });
   // menuName → station_id 매핑 (카테고리 or 프로덕트 기반, 프로덕트 오버라이드 우선)
   const [menuStationMap, setMenuStationMap] = useState<Map<string, number>>(new Map());
 
@@ -727,8 +732,35 @@ const KitchenDisplayPage: React.FC = () => {
       }
     };
     loadStations();
+
+    // Load item merge settings
+    const loadMergeSettings = async () => {
+      try {
+        const res = await fetch(`/api/restaurants/${user.restaurantId}`, { headers: apiHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          const restaurant = data.data || data;
+          if (restaurant.kitchen_item_merge) {
+            setItemMergeSettings(restaurant.kitchen_item_merge);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load item merge settings:', e);
+      }
+    };
+    loadMergeSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.restaurantId]);
+
+  // Apply URL station parameter after stations are loaded
+  useEffect(() => {
+    if (urlStationApplied.current || !urlStationParam || kitchenStations.length === 0) return;
+    const idx = parseInt(urlStationParam);
+    if (!isNaN(idx) && idx >= 1 && idx <= kitchenStations.length) {
+      setSelectedStation(kitchenStations[idx - 1].id);
+      urlStationApplied.current = true;
+    }
+  }, [kitchenStations, urlStationParam]);
 
   // Menu→Station 매핑: MenuContext 데이터로 구축 (별도 /api/menu 호출 제거)
   useEffect(() => {
@@ -1640,8 +1672,105 @@ const KitchenDisplayPage: React.FC = () => {
     return Array.from(groupMap.values()).sort((a, b) => a.earliestTime.getTime() - b.earliestTime.getTime());
   };
 
+  // Apply item merge limits (time_limit, max_count) as post-processing
+  const applyMergeLimits = (groups: MenuGroup[]): MenuGroup[] => {
+    const { time_limit, max_count } = itemMergeSettings;
+    if (!time_limit && !max_count) return groups; // No limits = unchanged
+
+    const result: MenuGroup[] = [];
+
+    for (const group of groups) {
+      // Time limit: split plainSources into time-based sub-groups
+      let subGroups: { plainQty: number; plainSources: typeof group.plainSources; earliestTime: Date }[] = [];
+
+      if (time_limit > 0 && group.plainSources.length > 0) {
+        // Find order times for each source
+        const sourcesWithTime = group.plainSources.map(s => {
+          const order = orders.find(o => o.id === s.orderId);
+          return { ...s, orderTime: order?.orderTime || group.earliestTime };
+        }).sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime());
+
+        let currentBucket: typeof sourcesWithTime = [];
+        let bucketStart = sourcesWithTime[0]?.orderTime;
+
+        for (const s of sourcesWithTime) {
+          const diffMin = (s.orderTime.getTime() - bucketStart.getTime()) / 60000;
+          if (diffMin > time_limit && currentBucket.length > 0) {
+            subGroups.push({
+              plainQty: currentBucket.reduce((sum, x) => sum + x.quantity, 0),
+              plainSources: currentBucket,
+              earliestTime: bucketStart
+            });
+            currentBucket = [s];
+            bucketStart = s.orderTime;
+          } else {
+            currentBucket.push(s);
+          }
+        }
+        if (currentBucket.length > 0) {
+          subGroups.push({
+            plainQty: currentBucket.reduce((sum, x) => sum + x.quantity, 0),
+            plainSources: currentBucket,
+            earliestTime: bucketStart
+          });
+        }
+      } else {
+        subGroups = [{ plainQty: group.plainQty, plainSources: [...group.plainSources], earliestTime: group.earliestTime }];
+      }
+
+      // Max count: split each sub-group if quantity exceeds limit
+      const finalBuckets: typeof subGroups = [];
+      for (const sub of subGroups) {
+        if (max_count > 0 && sub.plainQty > max_count) {
+          let remaining = [...sub.plainSources];
+          while (remaining.length > 0) {
+            let bucketQty = 0;
+            const bucketSources: typeof remaining = [];
+            const leftover: typeof remaining = [];
+            for (const s of remaining) {
+              if (bucketQty + s.quantity <= max_count) {
+                bucketSources.push(s);
+                bucketQty += s.quantity;
+              } else if (bucketQty < max_count) {
+                const take = max_count - bucketQty;
+                bucketSources.push({ ...s, quantity: take });
+                leftover.push({ ...s, quantity: s.quantity - take });
+                bucketQty = max_count;
+              } else {
+                leftover.push(s);
+              }
+            }
+            finalBuckets.push({
+              plainQty: bucketQty,
+              plainSources: bucketSources,
+              earliestTime: sub.earliestTime
+            });
+            remaining = leftover;
+          }
+        } else {
+          finalBuckets.push(sub);
+        }
+      }
+
+      // Create MenuGroup for each bucket (first one gets optionSources, rest get empty)
+      finalBuckets.forEach((bucket, i) => {
+        result.push({
+          menuName: group.menuName,
+          formattedName: group.formattedName,
+          plainQty: bucket.plainQty,
+          plainSources: bucket.plainSources,
+          optionSources: i === 0 ? group.optionSources : [],
+          earliestTime: bucket.earliestTime
+        });
+      });
+    }
+
+    return result.sort((a, b) => a.earliestTime.getTime() - b.earliestTime.getTime());
+  };
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const pendingGroups = useMemo(() => getItemViewPendingGroupsRaw(), [orders, selectedStation, menuStationMap]);
+  const pendingGroupsRaw = useMemo(() => getItemViewPendingGroupsRaw(), [orders, selectedStation, menuStationMap]);
+  const pendingGroups = useMemo(() => applyMergeLimits(pendingGroupsRaw), [pendingGroupsRaw, itemMergeSettings, orders]);
 
   const getItemViewPendingGroups = () => pendingGroups;
 
@@ -2213,15 +2342,30 @@ const KitchenDisplayPage: React.FC = () => {
     <Container>
       <PageHeader title="Kitchen Display">
         <HeaderInfo>
+          {viewMode === 'item' && (
+            <a href="/pos/settings?tab=kitchenStations" target="_blank" rel="noopener noreferrer" style={{
+              display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
+              background: (itemMergeSettings.time_limit > 0 || itemMergeSettings.max_count > 0) ? '#635BFF' : '#E8E5FF',
+              color: (itemMergeSettings.time_limit > 0 || itemMergeSettings.max_count > 0) ? 'white' : '#635BFF',
+              borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
+              border: 'none'
+            }}>
+              {(itemMergeSettings.time_limit > 0 || itemMergeSettings.max_count > 0)
+                ? `Merge: ${itemMergeSettings.time_limit > 0 ? itemMergeSettings.time_limit + 'min' : ''}${itemMergeSettings.time_limit > 0 && itemMergeSettings.max_count > 0 ? ', ' : ''}${itemMergeSettings.max_count > 0 ? 'max ' + itemMergeSettings.max_count : ''}`
+                : 'Merge: No limit'
+              }
+              <span style={{ fontSize: '14px' }}>⚙</span>
+            </a>
+          )}
           <ViewToggle>
             <ViewToggleBtn active={viewMode === 'order'} onClick={() => { setViewMode('order'); localStorage.setItem('kitchenDisplayViewMode', 'order'); }}>Order</ViewToggleBtn>
             <ViewToggleBtn active={viewMode === 'item'} onClick={() => { setViewMode('item'); localStorage.setItem('kitchenDisplayViewMode', 'item'); }}>Item</ViewToggleBtn>
           </ViewToggle>
           {kitchenStations.length > 0 && (
             <ViewToggle>
-              <ViewToggleBtn active={selectedStation === 'all'} onClick={() => setSelectedStation('all')}>All</ViewToggleBtn>
-              {kitchenStations.map(s => (
-                <ViewToggleBtn key={s.id} active={selectedStation === s.id} onClick={() => setSelectedStation(s.id)}>{s.name}</ViewToggleBtn>
+              <ViewToggleBtn active={selectedStation === 'all'} onClick={() => { setSelectedStation('all'); setSearchParams({}); }}>All</ViewToggleBtn>
+              {kitchenStations.map((s, idx) => (
+                <ViewToggleBtn key={s.id} active={selectedStation === s.id} onClick={() => { setSelectedStation(s.id); setSearchParams({ station: String(idx + 1) }); }}>{s.name}</ViewToggleBtn>
               ))}
             </ViewToggle>
           )}

@@ -633,6 +633,11 @@ router.post('/:id/reset-password', authenticateToken, requireRole('System Admin'
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
+    // 데모/테스트 계정 비밀번호 리셋 차단
+    if (user.is_demo || user.is_test) {
+      return res.status(403).json({ success: false, error: `${user.is_demo ? 'Demo' : 'Test'} account passwords cannot be changed.` });
+    }
+
     // 권한 체크: System Admin은 모두 가능, Restaurant Admin은 자기 레스토랑 스태프만
     if (req.user.role === 'System Admin') {
       // OK

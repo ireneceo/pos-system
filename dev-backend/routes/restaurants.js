@@ -1348,6 +1348,13 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
 
     // Kitchen station assignment mode
     if (req.body.kitchen_assignment_mode !== undefined) updateData.kitchen_assignment_mode = req.body.kitchen_assignment_mode;
+    if (req.body.kitchen_item_merge !== undefined) {
+      const merge = req.body.kitchen_item_merge;
+      updateData.kitchen_item_merge = {
+        time_limit: Math.max(0, parseInt(merge.time_limit) || 0),
+        max_count: Math.max(0, parseInt(merge.max_count) || 0)
+      };
+    }
 
     // === Restaurant Admin (Owner) 변경 처리 ===
     const adminAction = req.body.adminAction; // 'create' | 'change' | undefined

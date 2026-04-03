@@ -94,6 +94,13 @@ rm test-xxx.js      # 반드시 삭제
 - 운영: `purplehere.com` (배포 명령 시에만)
 
 ### 4. 빌드 & 반영
+
+**빌드 실행 규칙 (절대 준수!):**
+- **반드시 `run_in_background: true`로 실행** (포그라운드 시 Claude Code가 not responding됨)
+- **빌드 실행 후 "빌드 진행 중입니다" 안내** → 완료 알림 오면 결과 보고
+- **node_modules/.cache 삭제 금지** (삭제 시 빌드 5분+ 소요, 캐시 있으면 1분 이내)
+- **이전 빌드가 실행 중이면 kill 후 새 빌드 시작** (동시 실행 시 메모리 부족)
+
 ```bash
 # 프론트엔드 빌드 + 개발서버 반영 (이 한 줄로 빌드+배포 완료)
 cd /var/www/dev-frontend && npm run build:dev

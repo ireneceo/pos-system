@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-03-28
+> **최종 업데이트:** 2026-04-03
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,43 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: Kitchen Display 개선 + 테스트 계정 보호 + 시재/발주 기획 (2026-04-03)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Kitchen Display 기본 탭 Order 고정 | localStorage 무시, 항상 Order View로 시작 | ✅ |
+| 2 | Kitchen Station URL 파라미터 | ?station=1 순서 기반 직접 접속 링크 + 클릭 시 URL 동기화 | ✅ |
+| 3 | Item View 아이템 묶기 제한 설정 | time_limit(분)/max_count(개수) 설정, 기존 로직 미수정 후처리 방식 | ✅ |
+| 4 | Kitchen Display Merge 설정 UI | Item 탭 좌측에 설정값 표시 + Settings 바로가기 버튼 | ✅ |
+| 5 | Settings Kitchen Stations 탭 | Item View Merge Settings 카드 추가 (시간/수량 제한) | ✅ |
+| 6 | Restaurant 모델 kitchen_item_merge | JSON 필드 추가 + PUT API + 음수 보정 | ✅ |
+| 7 | 테스트 계정 비밀번호 보호 | is_test 계정도 demoProtection 미들웨어 적용 + 리셋 API 차단 | ✅ |
+| 8 | 테스트 계정 복원 | brand_general/admin@kdine/staff@kdine 비밀번호 복원 + owner 계정 생성 | ✅ |
+| 9 | 시재/발주 통합 기획서 | docs/PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md 작성 | ✅ |
+| 10 | CLAUDE.md 빌드 규칙 추가 | 백그라운드 실행 필수, 캐시 삭제 금지, 동시 빌드 금지 | ✅ |
+
+### 수정된 파일 (주요)
+**백엔드:**
+- `middleware/auth.js` (demoProtection에 is_test 추가)
+- `routes/users.js` (reset-password 테스트/데모 차단)
+- `routes/restaurants.js` (kitchen_item_merge 저장 + 음수 보정)
+- `models/Restaurant.js` (kitchen_item_merge JSON 필드)
+
+**프론트엔드:**
+- `pages/KitchenDisplay/KitchenDisplayPage.tsx` (기본 Order, station URL, merge 후처리, 설정 표시)
+- `pages/Settings/SettingsPage.tsx` (Item Merge Settings 카드)
+- `pages/Admin/AdminDashboard.tsx` (is_demo/is_test 필터링)
+- `pages/BrandGeneral/BrandManagement.tsx` (Owner→Description)
+- `deploy-dev.sh` (빌드 시간 표시)
+- `package.json` (GENERATE_SOURCEMAP=false)
+
+**문서:**
+- `docs/PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md` (신규)
+- `CLAUDE.md` (빌드 규칙)
 
 ---
 

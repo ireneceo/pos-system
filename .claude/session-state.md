@@ -1,5 +1,5 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-03-28
+**마지막 업데이트:** 2026-04-03
 **작업 상태:** 완료
 **버전:** v3.7
 
@@ -7,20 +7,21 @@
 - 없음
 
 ### 완료된 작업 (이번 세션)
-- 비밀번호 자동 생성 통일 (Manager/Restaurant Admin 생성 시 서버 자동 생성)
-- 비밀번호 리셋 버그 수정 (프론트가 백엔드 응답의 tempPassword 사용)
-- Password Generated 모달 통일 (8개 페이지 Copy 버튼 + monospace 패턴)
-- OK 버튼 중복 수정 (ManagersPage)
-- 관리자 생성 계정 이메일 인증 skip (email_verified=true)
-- Admin 대시보드 데모/테스트 필터링 (실제 통계만 표시)
-- Brand/Foodcourt 자동 생성 제거 (유저 생성 시 → 본인이 직접 추가)
-- Brand Management Owner→Description 컬럼 변경
-- 빌드 스크립트 개선 (sourcemap 제거, 메모리 증설, 시간 표시)
-- StaffManagementPage is_demo/is_test 타입 에러 수정
+- Kitchen Display 기본 탭 Order 고정
+- Kitchen Station URL 파라미터 (?station=1 순서 기반)
+- Item View 아이템 묶기 제한 (time_limit/max_count) — 기존 로직 미수정 후처리
+- Kitchen Display Merge 설정 UI (Item 탭 좌측 표시 + Settings 바로가기)
+- Settings Kitchen Stations 탭 Item Merge Settings 카드
+- Restaurant 모델 kitchen_item_merge JSON 필드
+- 테스트 계정 비밀번호 보호 (demoProtection에 is_test 추가 + 리셋 API 차단)
+- 테스트 계정 비밀번호 복원 + owner 계정 생성
+- 시재/발주 통합 기획서 작성 (docs/PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md)
+- CLAUDE.md 빌드 규칙 추가 (백그라운드 필수, 캐시 삭제 금지)
+- 빌드 스크립트 개선 (GENERATE_SOURCEMAP=false, 빌드 시간 표시)
 
 ### 다음 할 일
-- DEVELOPMENT_PLAN.md 기반 다음 기능
-- 데모 데이터 Phase 2 (Foodcourt/Owner 데모 계정) 또는 재료/재고/발주 시스템 Phase 2
+- 시재/발주 시스템 구현 Phase A (시재 관리) — docs/PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md 참조
+- 또는 데모 데이터 Phase 2 (Foodcourt/Owner 데모 계정)
 
 ---
 

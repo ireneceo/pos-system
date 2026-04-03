@@ -32,6 +32,14 @@
 | `brands` | BOOLEAN DEFAULT false | BOOLEAN DEFAULT false | 브랜드 |
 | `foodcourts` | BOOLEAN DEFAULT false | BOOLEAN DEFAULT false | 푸드코트 |
 
+### 보호 규칙 (2026-04-03 확장)
+
+| 보호 | is_demo | is_test |
+|------|:---:|:---:|
+| 프로필/비밀번호 변경 차단 (demoProtection 미들웨어) | ✅ | ✅ |
+| 비밀번호 리셋 API 차단 (reset-password) | ✅ | ✅ |
+| 매일 리셋 (demoResetScheduler) | ✅ | ❌ |
+
 ### 필터링 범위
 
 | System Admin 페이지 | is_demo=false만 | is_demo 전체 (뱃지 표시) |
