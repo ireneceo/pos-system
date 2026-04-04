@@ -565,7 +565,7 @@ const InvoicesPage: React.FC = () => {
   const { operationSettings } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));

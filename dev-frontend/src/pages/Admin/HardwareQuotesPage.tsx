@@ -1187,6 +1187,21 @@ const HardwareQuotesPage: React.FC = () => {
                     {formatCurrency(quote.total_amount, quote.currency)}
                   </TotalAmount>
 
+                  {quote.invoice_id && (
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 600, background: '#ECFDF5', color: '#059669', borderRadius: '4px' }}>Invoice Created</span>
+                      {quote.invoice?.invoice_number && (
+                        <a
+                          href={`/pos/admin/invoices?search=${quote.invoice.invoice_number}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ fontSize: '11px', color: '#635BFF', textDecoration: 'none', fontWeight: 500 }}
+                        >
+                          {quote.invoice.invoice_number} →
+                        </a>
+                      )}
+                    </div>
+                  )}
+
                   <CardSpacer />
 
                   <QuoteFooter>
@@ -1433,7 +1448,11 @@ const HardwareQuotesPage: React.FC = () => {
                   <DetailGrid style={{ marginBottom: 0 }}>
                     <DetailItem>
                       <DetailItemLabel>Invoice Number</DetailItemLabel>
-                      <DetailItemValue style={{ fontFamily: 'monospace' }}>{selectedQuote.invoice.invoice_number}</DetailItemValue>
+                      <DetailItemValue>
+                        <a href={`/pos/admin/invoices?search=${selectedQuote.invoice.invoice_number}`} style={{ fontFamily: 'monospace', color: '#635BFF', textDecoration: 'none', fontWeight: 600 }}>
+                          {selectedQuote.invoice.invoice_number} →
+                        </a>
+                      </DetailItemValue>
                     </DetailItem>
                     <DetailItem>
                       <DetailItemLabel>Status</DetailItemLabel>
@@ -1462,7 +1481,11 @@ const HardwareQuotesPage: React.FC = () => {
                   <DetailGrid style={{ marginBottom: 0 }}>
                     <DetailItem>
                       <DetailItemLabel>Invoice Number</DetailItemLabel>
-                      <DetailItemValue style={{ fontFamily: 'monospace' }}>{selectedQuote.subscription_invoice.invoice_number}</DetailItemValue>
+                      <DetailItemValue>
+                        <a href={`/pos/admin/invoices?search=${selectedQuote.subscription_invoice.invoice_number}`} style={{ fontFamily: 'monospace', color: '#635BFF', textDecoration: 'none', fontWeight: 600 }}>
+                          {selectedQuote.subscription_invoice.invoice_number} →
+                        </a>
+                      </DetailItemValue>
                     </DetailItem>
                     <DetailItem>
                       <DetailItemLabel>Status</DetailItemLabel>
