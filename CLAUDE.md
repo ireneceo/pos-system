@@ -171,6 +171,37 @@ res.status(500).json({ success: false, message: 'Internal server error' });
 
 ---
 
+## 기능 확장 시 필수 체크리스트
+
+새 기능을 추가하거나 기존 기능을 확장할 때 아래 항목을 반드시 점검한다.
+
+### 이메일 알림 연동
+- [ ] 새 이벤트가 이메일 알림이 필요한지 확인
+- [ ] 필요하면 `NOTIFICATION_CATEGORIES`에 카테고리 추가 (`notification-settings.js`)
+- [ ] `sendNotification` 또는 `sendNotificationBatch` 호출 시 카테고리 문자열 전달 (2번째 인자)
+- [ ] 이메일 템플릿: `emailLayout(bodyContent)` 사용 (첫 번째 인자가 bodyContent)
+- [ ] 로고 첨부: `sendPlatformEmail`은 CID 자동 감지, `sendNotificationBatch`는 `attachments: getLogoAttachment()` 포함
+- [ ] URL: 하드코딩 금지 → `process.env.FRONTEND_URL || (NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')` 사용
+- [ ] Comment 모델 ENUM 확장 시 → `Comment.js`, `CommentRead.js`, `comments.js validTypes` 3곳 모두 수정
+
+### DB 스키마 변경
+- [ ] 모델 + DB 테이블 + `models/index.js` association + export 모두 확인
+- [ ] ENUM 추가 시 → 모델 파일 + ALTER TABLE 쿼리 모두 실행
+
+### 프론트엔드 연동
+- [ ] 새 Admin 메뉴 → `MainLayout.tsx` 사이드바 + `App.tsx` 라우트 + lazy import
+- [ ] 새 공개 페이지 → `LandingHeader.tsx` GNB + `App.tsx` 라우트 + static import
+- [ ] API 응답 필드명 일치 확인 (snake_case ↔ camelCase 매핑)
+- [ ] 인터페이스 타입과 실제 API 응답 구조 대조
+
+### 콘텐츠 연동
+- [ ] 새 기능/페이지 추가 시 FAQ 페이지에 관련 Q&A 추가 필요 여부 확인
+- [ ] 블로그에 기능 소개 콘텐츠 필요 여부 확인
+- [ ] Landing 페이지(Features, Pricing 등) 업데이트 필요 여부 확인
+- [ ] 운영 DB에도 콘텐츠 동기화 필요 시 배포 스크립트에 포함
+
+---
+
 ## 보안 가이드라인
 
 ### 적용된 보안 체계

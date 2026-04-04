@@ -15,7 +15,8 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'comment_received', label: 'New Comment', description: 'When someone comments on your notice or ticket', section: 'Communication', roles: ['all'] },
   { key: 'inquiry_received', label: 'New Inquiry Received', description: 'When a new support inquiry is submitted', section: 'Inquiries & Tickets', roles: ['Brand General', 'Foodcourt General', 'System Admin'] },
   { key: 'inquiry_replied', label: 'Inquiry Reply', description: 'When your inquiry receives a reply', section: 'Inquiries & Tickets', roles: ['Restaurant Admin', 'Restaurant Owner'] },
-  { key: 'ticket_status_changed', label: 'Ticket Status Changed', description: 'When a ticket status is updated', section: 'Inquiries & Tickets', roles: ['all'] }
+  { key: 'ticket_status_changed', label: 'Ticket Status Changed', description: 'When a ticket status is updated', section: 'Inquiries & Tickets', roles: ['all'] },
+  { key: 'hardware_quote', label: 'Hardware Quote Request', description: 'When a new hardware package quote is submitted', section: 'Inquiries & Tickets', roles: ['System Admin'] }
 ];
 
 // GET - User notification preferences
