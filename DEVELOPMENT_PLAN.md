@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-03
+> **최종 업데이트:** 2026-04-04
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,24 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: v3.8 배포 — 견적 시스템 보완 + QR 세션 + 비회원 인보이스 (2026-04-04)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 하드웨어 패키지 보완 | 국가설정, 옵션그룹, addon 중복제거, 카테고리 통일 | ✅ |
+| 2 | 비회원 인보이스 | external payer 지원, 계정연결, 3개 인보이스 페이지 | ✅ |
+| 3 | 구독 플랜 연동 | 견적에서 구독 선택, Proceed Contract → 인보이스 2개 | ✅ |
+| 4 | QR 세션 시스템 | TableQRSession, Static/Session 모드, FloorPlan Print QR | ✅ |
+| 5 | 카드 UI 통일 | CardSpacer 패턴 9개 페이지 | ✅ |
+| 6 | 문의 관리 통일 | Active/Closed 탭, Close 버튼 (HardwareQuotes, ContactInquiries) | ✅ |
+| 7 | 이메일 시스템 | CID 로고, URL 환경변수, emailLayout 인자 수정, 매트릭스 문서 | ✅ |
+| 8 | Features/FAQ 보완 | QR/비회원인보이스 기능 추가, FAQ 5건 등록 | ✅ |
+| 9 | CLAUDE.md 체크리스트 | 기능 확장 시 필수 체크리스트 추가 | ✅ |
+| 10 | 운영 DB 플랜 동기화 | 운영서버 구독플랜 → 개발서버 반영 | ✅ |
 
 ---
 
