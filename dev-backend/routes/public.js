@@ -627,6 +627,9 @@ router.post('/hardware-quotes', async (req, res) => {
           </table>
           ${message ? `<div style="background: #F8FAFC; padding: 12px 16px; border-radius: 8px; margin: 16px 0;"><p style="color: #6B7280; font-size: 13px; margin: 0 0 4px;">Your message:</p><p style="color: #374151; font-size: 14px; margin: 0;">${message}</p></div>` : ''}
           <p>Our team will review your configuration and contact you within 1-2 business days.</p>
+          <div style="text-align: center; margin: 24px 0 8px;">
+            <a href="${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')}/packages" style="display: inline-block; background: #635BFF; color: #ffffff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 15px;">View Packages</a>
+          </div>
           <p style="color: #6B7280; font-size: 14px;">If you have any questions, please reply to this email.</p>
         `),
         attachments: getLogoAttachment()
@@ -649,6 +652,9 @@ router.post('/hardware-quotes', async (req, res) => {
               <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">Email</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${contact_email}</td></tr>
               <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">Total</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${currency || ''} ${total_amount ? Number(total_amount).toLocaleString() : 'N/A'}</td></tr>
             </table>
+            <div style="text-align: center; margin: 24px 0 8px;">
+              <a href="${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')}/pos/admin/hardware-quotes" style="display: inline-block; background: #635BFF; color: #ffffff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 15px;">View in Dashboard</a>
+            </div>
           `),
           attachments: getLogoAttachment()
         });
