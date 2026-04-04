@@ -62,6 +62,16 @@ const HardwareQuote = sequelize.define('HardwareQuote', {
     defaultValue: false,
     comment: 'Customer requested formal invoice'
   },
+  plan_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Selected subscription plan (PlanTemplate ID)'
+  },
+  billing_cycle: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: 'monthly or annual'
+  },
   message: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -155,7 +165,16 @@ const HardwareQuote = sequelize.define('HardwareQuote', {
       model: 'invoices',
       key: 'id'
     },
-    comment: 'Linked invoice after issuance'
+    comment: 'Hardware invoice'
+  },
+  subscription_invoice_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'invoices',
+      key: 'id'
+    },
+    comment: 'Subscription first payment invoice'
   },
   replied_at: {
     type: DataTypes.DATE,

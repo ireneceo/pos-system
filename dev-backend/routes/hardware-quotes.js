@@ -304,4 +304,233 @@ router.post('/:id/invoice', authenticateToken, requireRole('System Admin'), asyn
   }
 });
 
+/**
+ * POST /api/hardware-quotes/:id/proceed
+ * 계약 진행: hardware + subscription 인보이스 생성
+ * 계정 연결 필수
+ */
+router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { due_date, discount_type, discount_value, additional_charges, mark_as_paid } = req.body;
+
+    const quote = await HardwareQuote.findByPk(id, {
+      include: [
+        { model: User, as: 'user' },
+        { model: Restaurant, as: 'restaurant' }
+      ]
+    });
+
+    if (!quote) {
+      return res.status(404).json({ success: false, message: 'Quote not found' });
+    }
+
+    const isExternal = !quote.user_id;
+
+    if (quote.status === 'invoiced') {
+      return res.status(400).json({ success: false, message: 'Already processed' });
+    }
+
+    const { sequelize } = require('../config/database');
+    const { PlanTemplate, PlanPrice } = require('../models');
+
+    // Generate invoice numbers
+    const now = new Date();
+    const dateStr = now.toISOString().slice(2, 10).replace(/-/g, '');
+    const [countResult] = await sequelize.query(
+      `SELECT COUNT(*) as cnt FROM invoices WHERE DATE(createdAt) = CURDATE()`
+    );
+    let seqNum = (countResult[0]?.cnt || 0) + 1;
+
+    const dueDate = due_date || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const invoiceStatus = mark_as_paid ? 'paid' : 'pending_payment';
+    const paidFields = mark_as_paid ? { paid_at: now, paid_amount: 0, confirmed_by: req.user.id, confirmed_at: now } : {};
+
+    const results = { hardware_invoice: null, subscription_invoice: null };
+
+    // === 1. Hardware Invoice ===
+    const hwSubtotal = parseFloat(quote.total_amount) || 0;
+    let hwDiscount = 0;
+    if (discount_type === 'percentage' && discount_value) {
+      hwDiscount = hwSubtotal * (parseFloat(discount_value) / 100);
+    } else if (discount_type === 'fixed' && discount_value) {
+      hwDiscount = parseFloat(discount_value);
+    }
+    const hwAfterDiscount = hwSubtotal - hwDiscount;
+    let hwChargesTotal = 0;
+    const charges = additional_charges || [];
+    charges.forEach(charge => {
+      if (charge.rate) {
+        charge.amount = hwAfterDiscount * (parseFloat(charge.rate) / 100);
+        hwChargesTotal += charge.amount;
+      }
+    });
+    const hwTotal = hwAfterDiscount + hwChargesTotal;
+
+    const hwInvoiceNumber = `INV-${dateStr}${String(seqNum).padStart(3, '0')}`;
+    seqNum++;
+
+    const hwInvoice = await Invoice.create({
+      restaurant_id: quote.restaurant_id || null,
+      invoice_number: hwInvoiceNumber,
+      type: 'manual',
+      invoice_category: 'hardware',
+      category_display_name: 'Hardware Package',
+      due_date: dueDate,
+      subtotal: hwSubtotal,
+      discount_type: discount_type || 'none',
+      discount_value: discount_value || 0,
+      discount_amount: hwDiscount,
+      total_amount: hwTotal,
+      currency: quote.currency || 'MYR',
+      status: invoiceStatus,
+      issuer_type: 'system_admin',
+      issued_by: req.user.id,
+      issued_at: now,
+      payer_type: isExternal ? 'external' : 'restaurant',
+      payer_id: isExternal ? null : quote.user_id,
+      ...(isExternal ? {
+        external_payer_name: quote.contact_name,
+        external_payer_email: quote.contact_email,
+        external_payer_phone: quote.contact_phone,
+        external_payer_company: quote.company_name,
+        external_payer_address: quote.company_address,
+        external_payer_tax_id: quote.tax_id
+      } : {}),
+      additional_charges: charges.length > 0 ? charges : null,
+      notes: [
+        `Hardware Quote: ${quote.quote_number}`,
+        `${quote.contact_name} (${quote.contact_email})`,
+        quote.company_name ? `Company: ${quote.company_name}` : null,
+        quote.company_address ? `Address: ${quote.company_address}` : null,
+        quote.tax_id ? `Tax ID: ${quote.tax_id}` : null
+      ].filter(Boolean).join('\n'),
+      ...paidFields,
+      ...(mark_as_paid ? { paid_amount: hwTotal } : {})
+    });
+
+    // Hardware invoice items
+    if (quote.package_snapshot) {
+      const snapshot = typeof quote.package_snapshot === 'string'
+        ? JSON.parse(quote.package_snapshot) : quote.package_snapshot;
+      await InvoiceItem.create({
+        invoice_id: hwInvoice.id,
+        item_type: 'hardware_package',
+        description: `${snapshot.name || 'Hardware Package'} - ${(snapshot.set_items || []).map(i => `${i.name} x${i.quantity}`).join(', ')}`,
+        calculation_method: 'fixed',
+        fixed_amount: parseFloat(quote.package_price) || 0,
+        calculated_amount: parseFloat(quote.package_price) || 0,
+        tax_rate: 0, tax_amount: 0,
+        total_amount: parseFloat(quote.package_price) || 0
+      });
+    }
+
+    const addonItems = quote.addon_items || [];
+    for (const addon of addonItems) {
+      if (addon.quantity > 0) {
+        await InvoiceItem.create({
+          invoice_id: hwInvoice.id,
+          item_type: 'hardware_addon',
+          description: `${addon.name} x${addon.quantity}`,
+          calculation_method: 'fixed',
+          fixed_amount: parseFloat(addon.subtotal || addon.total_price || 0),
+          calculated_amount: parseFloat(addon.subtotal || addon.total_price || 0),
+          tax_rate: 0, tax_amount: 0,
+          total_amount: parseFloat(addon.subtotal || addon.total_price || 0)
+        });
+      }
+    }
+
+    results.hardware_invoice = { id: hwInvoice.id, invoice_number: hwInvoiceNumber, total_amount: hwTotal };
+
+    // === 2. Subscription Invoice (if plan selected) ===
+    let subInvoice = null;
+    if (quote.plan_id) {
+      const plan = await PlanTemplate.findByPk(quote.plan_id);
+      if (plan) {
+        const cycle = quote.billing_cycle || 'monthly';
+        const currency = quote.currency || 'MYR';
+
+        // Get plan price for currency
+        const planPrice = await PlanPrice.findOne({
+          where: { plan_id: plan.id, currency, is_active: true }
+        });
+        const price = planPrice
+          ? (cycle === 'annual' ? parseFloat(planPrice.annual_price) : parseFloat(planPrice.monthly_price))
+          : (cycle === 'annual' ? parseFloat(plan.base_price_annual) : parseFloat(plan.base_price_monthly));
+
+        const subInvoiceNumber = `INV-${dateStr}${String(seqNum).padStart(3, '0')}`;
+
+        const billingEnd = new Date(dueDate);
+        if (cycle === 'annual') {
+          billingEnd.setFullYear(billingEnd.getFullYear() + 1);
+        } else {
+          billingEnd.setMonth(billingEnd.getMonth() + 1);
+        }
+
+        subInvoice = await Invoice.create({
+          restaurant_id: quote.restaurant_id || null,
+          invoice_number: subInvoiceNumber,
+          type: 'manual',
+          invoice_category: 'subscription',
+          category_display_name: `Subscription - ${plan.display_name || plan.name}`,
+          billing_period_start: dueDate,
+          billing_period_end: billingEnd,
+          due_date: dueDate,
+          subtotal: price,
+          total_amount: price,
+          currency: currency,
+          status: invoiceStatus,
+          issuer_type: 'system_admin',
+          issued_by: req.user.id,
+          issued_at: now,
+          payer_type: isExternal ? 'external' : 'restaurant',
+          payer_id: isExternal ? null : quote.user_id,
+          ...(isExternal ? {
+            external_payer_name: quote.contact_name,
+            external_payer_email: quote.contact_email,
+            external_payer_phone: quote.contact_phone,
+            external_payer_company: quote.company_name,
+            external_payer_address: quote.company_address,
+            external_payer_tax_id: quote.tax_id
+          } : {}),
+          notes: `${plan.display_name || plan.name} - ${cycle} subscription. From hardware quote ${quote.quote_number}`,
+          ...paidFields,
+          ...(mark_as_paid ? { paid_amount: price } : {})
+        });
+
+        await InvoiceItem.create({
+          invoice_id: subInvoice.id,
+          item_type: 'subscription',
+          description: `${plan.display_name || plan.name} - ${cycle === 'annual' ? 'Annual' : 'Monthly'} Subscription`,
+          calculation_method: 'fixed',
+          fixed_amount: price,
+          calculated_amount: price,
+          tax_rate: 0, tax_amount: 0,
+          total_amount: price
+        });
+
+        results.subscription_invoice = { id: subInvoice.id, invoice_number: subInvoiceNumber, total_amount: price };
+      }
+    }
+
+    // Update quote
+    await quote.update({
+      status: 'invoiced',
+      invoice_id: hwInvoice.id,
+      subscription_invoice_id: subInvoice ? subInvoice.id : null,
+      invoiced_at: now
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Contract proceeded successfully',
+      data: results
+    });
+  } catch (error) {
+    console.error('Proceed contract error:', error);
+    res.status(500).json({ success: false, message: 'Failed to proceed contract' });
+  }
+});
+
 module.exports = router;

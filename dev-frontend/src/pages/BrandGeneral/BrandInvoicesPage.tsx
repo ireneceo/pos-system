@@ -61,12 +61,18 @@ interface Invoice {
   receiptUrl?: string;
   hasPaymentInfo?: boolean;
   type?: 'automatic' | 'manual';
-  payerType?: 'restaurant' | 'foodcourt_manager' | 'brand_manager';
+  payerType?: 'restaurant' | 'foodcourt_manager' | 'brand_manager' | 'external';
   payerId?: string;
   invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'others';
   customDescription?: string;
   serviceDescription?: string;
   categoryDisplayName?: string;
+  externalPayerName?: string;
+  externalPayerEmail?: string;
+  externalPayerPhone?: string;
+  externalPayerCompany?: string;
+  externalPayerAddress?: string;
+  externalPayerTaxId?: string;
   issuerType?: 'system_admin' | 'brand' | 'foodcourt';
   issuerId?: number | string;
   issuerName?: string;
@@ -698,6 +704,12 @@ const BrandInvoicesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
+  const [payerMode, setPayerMode] = useState<'member' | 'external'>('member');
+  const [externalPayer, setExternalPayer] = useState({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
+  const [showLinkAccountModal, setShowLinkAccountModal] = useState(false);
+  const [linkSearchQuery, setLinkSearchQuery] = useState('');
+  const [linkSearchResults, setLinkSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
+  const [showLinkSearchDropdown, setShowLinkSearchDropdown] = useState(false);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [, setCurrencyConfig] = useState<Record<string, any>>({});
   const [invoiceCategories, setInvoiceCategories] = useState<InvoiceCategory[]>([]);
@@ -1887,6 +1899,8 @@ const BrandInvoicesPage: React.FC = () => {
     setSelectedTarget(null);
     setSearchQuery('');
     setShowSearchDropdown(false);
+    setPayerMode('member');
+    setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
   };
 
   // Helper functions - must be defined before filteredInvoices
@@ -1932,6 +1946,7 @@ const BrandInvoicesPage: React.FC = () => {
       case 'restaurant': return 'Restaurant Admin';
       case 'foodcourt_manager': return 'Foodcourt General';
       case 'brand_manager': return 'Brand General';
+      case 'external': return 'Non-Member';
       default: return 'Restaurant Admin';
     }
   };
@@ -2039,6 +2054,48 @@ const BrandInvoicesPage: React.FC = () => {
   const handleCreateInvoice = () => {
     resetInvoiceForm();
     setShowCreateInvoiceModal(true);
+  };
+
+  const handleLinkSearch = (query: string) => {
+    setLinkSearchQuery(query);
+    if (!query.trim()) {
+      setLinkSearchResults({managers: [], restaurants: []});
+      return;
+    }
+    const q = query.toLowerCase();
+    const filteredRestaurants = restaurants.filter(r =>
+      r.name.toLowerCase().includes(q) || (r.address && r.address.toLowerCase().includes(q))
+    ).slice(0, 5);
+    setLinkSearchResults({managers: [], restaurants: filteredRestaurants});
+  };
+
+  const handleLinkAccount = async (targetType: 'restaurant' | 'manager', targetData: Restaurant | Manager) => {
+    if (!selectedInvoice) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const linkData: any = { payer_type: 'restaurant' };
+      if (targetType === 'restaurant') {
+        linkData.restaurant_id = (targetData as Restaurant).id;
+      }
+      const response = await fetch(`/api/invoices/${selectedInvoice.id}/link-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(linkData)
+      });
+      if (response.ok) {
+        await fetchInvoices();
+        setShowLinkAccountModal(false);
+        setShowViewModal(false);
+        setSuccessMessage('Invoice linked to member account successfully.');
+        setShowSuccessModal(true);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to link account: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error linking account:', error);
+      alert('Error linking account. Please try again.');
+    }
   };
 
   const handleViewInvoice = (invoice: Invoice) => {
@@ -2206,8 +2263,12 @@ const BrandInvoicesPage: React.FC = () => {
   };
 
   const handleSubmitInvoice = async () => {
-    if (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate) {
-      alert('Please select a manager/restaurant, enter amount, and set due date.');
+    if (payerMode === 'member' && (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate)) {
+      alert('Please select a restaurant, enter amount, and set due date.');
+      return;
+    }
+    if (payerMode === 'external' && (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)) {
+      alert('Please fill in name, email, amount, and due date.');
       return;
     }
 
@@ -2245,7 +2306,15 @@ const BrandInvoicesPage: React.FC = () => {
       let companyName = '';
       let restaurantName = '';
 
-      if (selectedTarget.type === 'restaurant') {
+      if (payerMode === 'external') {
+        customerName = externalPayer.name;
+        companyName = externalPayer.company || externalPayer.name;
+        const addressParts = [];
+        if (externalPayer.address) addressParts.push(externalPayer.address);
+        if (externalPayer.phone) addressParts.push(`Phone: ${externalPayer.phone}`);
+        if (externalPayer.email) addressParts.push(`Email: ${externalPayer.email}`);
+        customerAddress = addressParts.join('\n');
+      } else if (selectedTarget?.type === 'restaurant') {
         const restaurant = selectedTarget.data as Restaurant;
         customerName = restaurant.name;
         restaurantName = restaurant.name;
@@ -2257,7 +2326,7 @@ const BrandInvoicesPage: React.FC = () => {
         if (restaurant.phone) addressParts.push(`Phone: ${restaurant.phone}`);
         if (restaurant.email) addressParts.push(`Email: ${restaurant.email}`);
         customerAddress = addressParts.join('\n');
-      } else if (selectedTarget.type === 'manager') {
+      } else if (selectedTarget?.type === 'manager') {
         const manager = selectedTarget.data as Manager;
         customerName = manager.fullName;
         companyName = manager.companyName || manager.fullName;
@@ -2273,14 +2342,16 @@ const BrandInvoicesPage: React.FC = () => {
       let payerType = 'restaurant';
       let payerId: number | null = null;
 
-      if (selectedTarget.type === 'restaurant') {
+      if (payerMode === 'external') {
+        payerType = 'external';
+      } else if (selectedTarget?.type === 'restaurant') {
         const restaurant = selectedTarget.data as Restaurant;
         payerType = 'restaurant';
         payerId = parseInt(restaurant.id);
       }
 
-      const invoiceData = {
-        restaurant_id: selectedTarget.type === 'restaurant' ? (selectedTarget.data as Restaurant).id : null,
+      const invoiceData: any = {
+        restaurant_id: payerMode === 'external' ? null : (selectedTarget?.type === 'restaurant' ? (selectedTarget.data as Restaurant).id : null),
         customer_name: customerName,
         customer_address: customerAddress,
         company_name: companyName,
@@ -2309,6 +2380,15 @@ const BrandInvoicesPage: React.FC = () => {
         service_description: newInvoice.invoiceCategory !== 'others' ? newInvoice.serviceDescription : null,
         additional_charges: calculatedCharges
       };
+
+      if (payerMode === 'external') {
+        invoiceData.external_payer_name = externalPayer.name;
+        invoiceData.external_payer_email = externalPayer.email;
+        invoiceData.external_payer_phone = externalPayer.phone || null;
+        invoiceData.external_payer_company = externalPayer.company || null;
+        invoiceData.external_payer_address = externalPayer.address || null;
+        invoiceData.external_payer_tax_id = externalPayer.tax_id || null;
+      }
 
       const items = [{
         item_type: newInvoice.invoiceCategory,
@@ -2559,7 +2639,10 @@ const BrandInvoicesPage: React.FC = () => {
                   </DataTableCell>
                   <DataTableCell data-label="Customer" align="left">
                     <InvoiceInfo>
-                      <InvoiceNumber>{invoice.customerName || invoice.restaurantName || 'Unknown'}</InvoiceNumber>
+                      <InvoiceNumber>
+                        {invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}
+                        {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>Non-Member</span>}
+                      </InvoiceNumber>
                       <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
                     </InvoiceInfo>
                   </DataTableCell>
@@ -3218,9 +3301,22 @@ const BrandInvoicesPage: React.FC = () => {
 
         {/* Create Invoice Modal */}
         {showCreateInvoiceModal && (
-                    <CommonModal isOpen={true} onClose={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }} title="Create Invoice" footer={<><Button variant="secondary" onClick={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }}> Cancel </Button> {paymentMethodWarning && ( <div style={{ padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', fontSize: '13px', color: '#92400E', marginBottom: '12px', flex: '1 1 100%' }}> {paymentMethodWarning} </div> )} <Button variant="primary" onClick={handleSubmitInvoice} disabled={!selectedTarget || !newInvoice.amount || !newInvoice.dueDate} > Create Invoice </Button></>}>
+                    <CommonModal isOpen={true} onClose={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }} title="Create Invoice" footer={<><Button variant="secondary" onClick={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }}> Cancel </Button> {paymentMethodWarning && ( <div style={{ padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', fontSize: '13px', color: '#92400E', marginBottom: '12px', flex: '1 1 100%' }}> {paymentMethodWarning} </div> )} <Button variant="primary" onClick={handleSubmitInvoice} disabled={payerMode === 'member' ? (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate) : (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)} > Create Invoice </Button></>}>
 
                 <FormGroup>
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', border: '1px solid ' + (payerMode === 'member' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: payerMode === 'member' ? '#F0F0FF' : 'white', flex: 1 }}>
+                      <input type="radio" name="payerMode" value="member" checked={payerMode === 'member'} onChange={() => { setPayerMode('member'); setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' }); }} />
+                      Existing Member
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', border: '1px solid ' + (payerMode === 'external' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: payerMode === 'external' ? '#F0F0FF' : 'white', flex: 1 }}>
+                      <input type="radio" name="payerMode" value="external" checked={payerMode === 'external'} onChange={() => { setPayerMode('external'); setSelectedTarget(null); setSearchQuery(''); }} />
+                      Non-Member
+                    </label>
+                  </div>
+
+                  {payerMode === 'member' ? (
+                    <>
                   <FormLabel>Search Restaurant *</FormLabel>
                   <div style={{position: 'relative'}}>
                     <FormInput
@@ -3342,6 +3438,42 @@ const BrandInvoicesPage: React.FC = () => {
                         ×
                       </button>
                     </div>
+                  )}
+                    </>
+                  ) : (
+                    <>
+                      <FormLabel>Non-Member Details</FormLabel>
+                      <FormRow>
+                        <FormGroup>
+                          <FormLabel>Name *</FormLabel>
+                          <FormInput type="text" value={externalPayer.name} onChange={(e) => setExternalPayer({...externalPayer, name: e.target.value})} placeholder="Full name" required />
+                        </FormGroup>
+                        <FormGroup>
+                          <FormLabel>Email *</FormLabel>
+                          <FormInput type="email" value={externalPayer.email} onChange={(e) => setExternalPayer({...externalPayer, email: e.target.value})} placeholder="Email address" required />
+                        </FormGroup>
+                      </FormRow>
+                      <FormRow>
+                        <FormGroup>
+                          <FormLabel>Phone</FormLabel>
+                          <FormInput type="text" value={externalPayer.phone} onChange={(e) => setExternalPayer({...externalPayer, phone: e.target.value})} placeholder="Phone number" />
+                        </FormGroup>
+                        <FormGroup>
+                          <FormLabel>Company</FormLabel>
+                          <FormInput type="text" value={externalPayer.company} onChange={(e) => setExternalPayer({...externalPayer, company: e.target.value})} placeholder="Company name" />
+                        </FormGroup>
+                      </FormRow>
+                      <FormRow>
+                        <FormGroup>
+                          <FormLabel>Address</FormLabel>
+                          <FormInput type="text" value={externalPayer.address} onChange={(e) => setExternalPayer({...externalPayer, address: e.target.value})} placeholder="Address" />
+                        </FormGroup>
+                        <FormGroup>
+                          <FormLabel>Tax ID</FormLabel>
+                          <FormInput type="text" value={externalPayer.tax_id} onChange={(e) => setExternalPayer({...externalPayer, tax_id: e.target.value})} placeholder="Tax ID" />
+                        </FormGroup>
+                      </FormRow>
+                    </>
                   )}
                 </FormGroup>
                 <FormRow>
@@ -3596,6 +3728,34 @@ const BrandInvoicesPage: React.FC = () => {
                           <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{companySettings.email}</div>
                         )}
                       </>
+                    ) : selectedInvoice.payerType === 'external' ? (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.externalPayerName || selectedInvoice.customerName}</div>
+                          <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px' }}>Non-Member</span>
+                        </div>
+                        {selectedInvoice.externalPayerCompany && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {selectedInvoice.externalPayerCompany}</div>
+                        )}
+                        {selectedInvoice.externalPayerEmail && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Email: {selectedInvoice.externalPayerEmail}</div>
+                        )}
+                        {selectedInvoice.externalPayerPhone && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Phone: {selectedInvoice.externalPayerPhone}</div>
+                        )}
+                        {selectedInvoice.externalPayerAddress && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.externalPayerAddress}</div>
+                        )}
+                        {selectedInvoice.externalPayerTaxId && (
+                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Tax ID: {selectedInvoice.externalPayerTaxId}</div>
+                        )}
+                        <button
+                          onClick={() => { setShowLinkAccountModal(true); setLinkSearchQuery(''); setLinkSearchResults({managers: [], restaurants: []}); }}
+                          style={{ marginTop: '10px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, color: '#635BFF', background: '#F0F0FF', border: '1px solid #635BFF', borderRadius: '6px', cursor: 'pointer' }}
+                        >
+                          Link to Member Account
+                        </button>
+                      </>
                     ) : (
                       <>
                         <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.customerName}</div>
@@ -3734,6 +3894,41 @@ const BrandInvoicesPage: React.FC = () => {
           </CommonModal>
           );
         })()}
+
+        {/* Link Account Modal */}
+        {showLinkAccountModal && selectedInvoice && (
+          <CommonModal isOpen={true} onClose={() => setShowLinkAccountModal(false)} title="Link to Member Account" footer={<Button variant="secondary" onClick={() => setShowLinkAccountModal(false)}>Cancel</Button>}>
+            <FormGroup>
+              <FormLabel>Search Restaurant *</FormLabel>
+              <div style={{position: 'relative'}}>
+                <FormInput
+                  type="text"
+                  value={linkSearchQuery}
+                  onChange={(e) => handleLinkSearch(e.target.value)}
+                  onFocus={() => setShowLinkSearchDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowLinkSearchDropdown(false), 200)}
+                  placeholder="Type to search for restaurants"
+                />
+                {showLinkSearchDropdown && linkSearchResults.restaurants.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #E6EBF1', borderRadius: '8px', maxHeight: '300px', overflowY: 'auto', zIndex: 1000, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                    <div>
+                      <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>RESTAURANTS</div>
+                      {linkSearchResults.restaurants.map(restaurant => (
+                        <div key={restaurant.id} onClick={() => handleLinkAccount('restaurant', restaurant)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
+                          <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
+                          <div style={{fontSize: '13px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div style={{ marginTop: '12px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
+                This will convert the non-member invoice to a member invoice and link it to the selected restaurant.
+              </div>
+            </FormGroup>
+          </CommonModal>
+        )}
 
         {/* Payment Confirmation Modal */}
         {showPaymentConfirmModal && selectedInvoice && (

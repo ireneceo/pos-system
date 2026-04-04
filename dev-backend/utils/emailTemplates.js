@@ -15,7 +15,19 @@ const PLATFORM_LOGO_URL = (process.env.NODE_ENV === 'production' ? 'https://purp
  * @returns {Array} nodemailer attachments array
  */
 function getLogoAttachment() {
-  return [];
+  const path = require('path');
+  const logoPath = path.join(__dirname, '..', 'assets', 'logo-email.png');
+  try {
+    require('fs').accessSync(logoPath);
+    return [{
+      filename: 'logo-email.png',
+      path: logoPath,
+      cid: 'purplehere-logo',
+      contentDisposition: 'inline'
+    }];
+  } catch (e) {
+    return [];
+  }
 }
 
 /**

@@ -1596,6 +1596,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     if (dueDate !== undefined) updateData.due_date = dueDate;
     if (payerType !== undefined) updateData.payer_type = payerType;
     if (payerId !== undefined) updateData.payer_id = payerId || null;
+    const { restaurantId } = req.body;
+    if (restaurantId !== undefined) updateData.restaurant_id = restaurantId || null;
     if (invoiceCategory !== undefined) updateData.invoice_category = invoiceCategory;
     if (customDescription !== undefined) updateData.custom_description = customDescription;
     if (serviceDescription !== undefined) updateData.service_description = serviceDescription;
@@ -2934,10 +2936,60 @@ router.put('/update-payer/:restaurantId', authenticateToken, async (req, res) =>
 });
 
 // Send invoice via email (uses issuer's SMTP settings)
+/**
+ * POST /api/invoices/:id/link-account
+ * Link an external (non-member) invoice to a user account
+ */
+router.post('/:id/link-account', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { restaurant_id, payer_id, payer_type } = req.body;
+
+    const invoice = await Invoice.findByPk(id);
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found' });
+    }
+
+    if (invoice.status === 'paid' || invoice.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: `Cannot modify invoice with status: ${invoice.status}` });
+    }
+
+    const updateData = {};
+    if (restaurant_id !== undefined) updateData.restaurant_id = restaurant_id;
+    if (payer_id !== undefined) updateData.payer_id = payer_id;
+    if (payer_type !== undefined) updateData.payer_type = payer_type;
+
+    await invoice.update(updateData);
+
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'invoice',
+      entity_id: invoice.id,
+      entity_name: invoice.invoice_number,
+      description: `Linked invoice ${invoice.invoice_number} to account (restaurant_id: ${restaurant_id}, payer_id: ${payer_id})`,
+      restaurant_id: restaurant_id
+    });
+
+    res.json({ success: true, message: 'Account linked successfully', data: invoice });
+  } catch (error) {
+    console.error('Link account error:', error);
+    res.status(500).json({ success: false, message: 'Failed to link account' });
+  }
+});
+
+// Send invoice via email (uses issuer's SMTP settings)
 router.post('/:id/send-email', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { recipientEmail } = req.body;
+    let { recipientEmail } = req.body;
+
+    // Fallback to external payer email if not provided
+    if (!recipientEmail) {
+      const tempInvoice = await Invoice.findByPk(id, { attributes: ['external_payer_email'] });
+      if (tempInvoice?.external_payer_email) {
+        recipientEmail = tempInvoice.external_payer_email;
+      }
+    }
 
     if (!recipientEmail || !recipientEmail.includes('@')) {
       return res.status(400).json({ error: 'Valid recipient email is required' });

@@ -88,14 +88,40 @@ Invoice.init({
     comment: 'Payment receipt image URL or base64 data'
   },
   payer_type: {
-    type: DataTypes.ENUM('restaurant', 'foodcourt_manager', 'brand_manager', 'restaurant_owner'),
+    type: DataTypes.ENUM('restaurant', 'foodcourt_manager', 'brand_manager', 'restaurant_owner', 'external'),
     defaultValue: 'restaurant',
-    comment: 'Who is responsible for payment'
+    comment: 'Who is responsible for payment. external = non-member'
   },
   payer_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: 'ID of the payer (manager_id if payer_type is manager)'
+    comment: 'ID of the payer (manager_id if payer_type is manager, null for external)'
+  },
+  external_payer_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Non-member payer name'
+  },
+  external_payer_email: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Non-member payer email for invoice delivery'
+  },
+  external_payer_phone: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+  external_payer_company: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  external_payer_address: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  external_payer_tax_id: {
+    type: DataTypes.STRING(100),
+    allowNull: true
   },
   invoice_category: {
     type: DataTypes.STRING(50),

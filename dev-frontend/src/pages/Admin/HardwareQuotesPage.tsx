@@ -52,11 +52,16 @@ interface HardwareQuote {
   addon_total: number;
   total_amount: number;
   currency: string;
+  plan_id?: number | null;
+  billing_cycle?: string | null;
+  plan_snapshot?: { display_name: string; base_price_monthly: number; base_price_annual: number; currency_prices?: Record<string, any> } | null;
   user_id?: number;
   user?: LinkedUser;
   restaurant_id?: number;
   invoice_id?: number;
   invoice?: LinkedInvoice;
+  subscription_invoice_id?: number | null;
+  subscription_invoice?: LinkedInvoice | null;
   packageProduct?: { id: number; name: string; set_group: string; set_tier: string } | null;
   created_at: string;
   updated_at: string;
@@ -593,6 +598,16 @@ const HardwareQuotesPage: React.FC = () => {
   const [additionalCharges, setAdditionalCharges] = useState<Array<{ name: string; amount: string }>>([]);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
 
+  // Proceed Contract modal (for quotes with plan_id)
+  const [showProceedModal, setShowProceedModal] = useState(false);
+  const [proceedDueDate, setProceedDueDate] = useState('');
+  const [proceedDiscountType, setProceedDiscountType] = useState<'none' | 'percentage' | 'fixed'>('none');
+  const [proceedDiscountValue, setProceedDiscountValue] = useState('');
+  const [proceedCharges, setProceedCharges] = useState<Array<{ name: string; amount: string }>>([]);
+  const [proceedMarkAsPaid, setProceedMarkAsPaid] = useState(false);
+  const [proceeding, setProceeding] = useState(false);
+  const [proceedResult, setProceedResult] = useState<{ hardware_invoice?: string; subscription_invoice?: string } | null>(null);
+
   const getToken = () => localStorage.getItem('auth_token');
 
   const loadData = useCallback(async (silent = false) => {
@@ -928,6 +943,98 @@ const HardwareQuotesPage: React.FC = () => {
     }
   };
 
+  // Proceed Contract (for quotes with plan_id)
+  const openProceedModal = () => {
+    const defaultDue = new Date();
+    defaultDue.setDate(defaultDue.getDate() + 14);
+    setProceedDueDate(defaultDue.toISOString().split('T')[0]);
+    setProceedDiscountType('none');
+    setProceedDiscountValue('');
+    setProceedCharges([]);
+    setProceedMarkAsPaid(false);
+    setProceedResult(null);
+    setShowProceedModal(true);
+  };
+
+  const addProceedCharge = () => {
+    setProceedCharges(prev => [...prev, { name: '', amount: '' }]);
+  };
+
+  const updateProceedCharge = (index: number, field: 'name' | 'amount', value: string) => {
+    setProceedCharges(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
+  };
+
+  const removeProceedCharge = (index: number) => {
+    setProceedCharges(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const calculateProceedTotal = (): number => {
+    if (!selectedQuote) return 0;
+    let total = selectedQuote.total_amount;
+
+    if (proceedDiscountType === 'percentage' && proceedDiscountValue) {
+      total -= total * (parseFloat(proceedDiscountValue) / 100);
+    } else if (proceedDiscountType === 'fixed' && proceedDiscountValue) {
+      total -= parseFloat(proceedDiscountValue);
+    }
+
+    proceedCharges.forEach(c => {
+      if (c.amount) total += parseFloat(c.amount);
+    });
+
+    return Math.max(0, total);
+  };
+
+  const proceedContract = async () => {
+    if (!selectedQuote) return;
+    setProceeding(true);
+    try {
+      const token = getToken();
+      const body: Record<string, unknown> = {
+        due_date: proceedDueDate,
+        mark_as_paid: proceedMarkAsPaid,
+      };
+
+      if (proceedDiscountType !== 'none' && proceedDiscountValue) {
+        body.discount_type = proceedDiscountType;
+        body.discount_value = parseFloat(proceedDiscountValue);
+      }
+
+      const validCharges = proceedCharges.filter(c => c.name && c.amount);
+      if (validCharges.length > 0) {
+        body.additional_charges = validCharges.map(c => ({
+          name: c.name,
+          amount: parseFloat(c.amount)
+        }));
+      }
+
+      const res = await fetch(`/api/hardware-quotes/${selectedQuote.id}/proceed`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setProceedResult({
+          hardware_invoice: data.data?.hardware_invoice?.invoice_number || data.hardware_invoice?.invoice_number,
+          subscription_invoice: data.data?.subscription_invoice?.invoice_number || data.subscription_invoice?.invoice_number,
+        });
+        loadData(true);
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Failed to proceed contract');
+      }
+    } catch (error) {
+      console.error('Error proceeding contract:', error);
+    } finally {
+      setProceeding(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('en-US', {
       year: 'numeric',
@@ -1054,6 +1161,22 @@ const HardwareQuotesPage: React.FC = () => {
                   </QuoteHeader>
 
                   <PackageBadge>{quote.packageProduct?.name || quote.package_snapshot?.name || 'N/A'}</PackageBadge>
+                  {quote.plan_id && (
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      background: '#ECFDF5',
+                      color: '#059669',
+                      marginBottom: '4px',
+                    }}>
+                      + Subscription: {quote.plan_snapshot?.display_name || 'Plan'} ({quote.billing_cycle || 'monthly'})
+                    </span>
+                  )}
                   {quote.addon_items && quote.addon_items.length > 0 && (
                     <AddonSummary>{getAddonSummary(quote.addon_items)}</AddonSummary>
                   )}
@@ -1107,9 +1230,27 @@ const HardwareQuotesPage: React.FC = () => {
                 </ActionButton>
                 <div style={{ flex: 1 }} />
                 {selectedQuote.status !== 'invoiced' && selectedQuote.status !== 'cancelled' && !selectedQuote.invoice_id && (
-                  <ActionButton variant="primary" onClick={openInvoiceModal}>
-                    Create Invoice
-                  </ActionButton>
+                  selectedQuote.plan_id ? (
+                    <ActionButton variant="primary" onClick={() => {
+                      if (!selectedQuote.user_id) {
+                        alert('Please link a user to this quote before proceeding.');
+                        return;
+                      }
+                      openProceedModal();
+                    }}>
+                      Proceed Contract
+                    </ActionButton>
+                  ) : (
+                    <ActionButton variant="primary" onClick={() => {
+                      if (!selectedQuote.user_id) {
+                        alert('Please link a user to this quote before creating an invoice.');
+                        return;
+                      }
+                      openInvoiceModal();
+                    }}>
+                      Create Invoice
+                    </ActionButton>
+                  )
                 )}
                 <ActionButton onClick={() => setShowDetailModal(false)}>
                   Close
@@ -1222,6 +1363,43 @@ const HardwareQuotesPage: React.FC = () => {
               </TotalRow>
             </div>
 
+            {/* Subscription Plan Info */}
+            {selectedQuote.plan_id && selectedQuote.plan_snapshot && (
+              <>
+                <SectionTitle>Subscription Plan</SectionTitle>
+                <div style={{ background: '#ECFDF5', borderRadius: 8, padding: 16, marginBottom: 16, borderLeft: '3px solid #059669' }}>
+                  <DetailGrid style={{ marginBottom: 0 }}>
+                    <DetailItem>
+                      <DetailItemLabel>Plan</DetailItemLabel>
+                      <DetailItemValue style={{ fontWeight: 600 }}>{selectedQuote.plan_snapshot.display_name}</DetailItemValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailItemLabel>Billing Cycle</DetailItemLabel>
+                      <DetailItemValue style={{ textTransform: 'capitalize' }}>{selectedQuote.billing_cycle || 'monthly'}</DetailItemValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailItemLabel>Monthly Price</DetailItemLabel>
+                      <DetailItemValue>
+                        {formatCurrency(
+                          selectedQuote.plan_snapshot.currency_prices?.[quoteCurrency]?.monthly || selectedQuote.plan_snapshot.base_price_monthly,
+                          quoteCurrency
+                        )}/mo
+                      </DetailItemValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailItemLabel>Annual Price</DetailItemLabel>
+                      <DetailItemValue>
+                        {formatCurrency(
+                          selectedQuote.plan_snapshot.currency_prices?.[quoteCurrency]?.annual || selectedQuote.plan_snapshot.base_price_annual,
+                          quoteCurrency
+                        )}/yr
+                      </DetailItemValue>
+                    </DetailItem>
+                  </DetailGrid>
+                </div>
+              </>
+            )}
+
             {/* Customer Message */}
             {selectedQuote.message && (
               <>
@@ -1251,7 +1429,6 @@ const HardwareQuotesPage: React.FC = () => {
             </FormGroup>
 
             {/* Comments */}
-            <SectionTitle>Comments</SectionTitle>
             <CommentSection
               entityType="hardware_quote"
               entityId={String(selectedQuote.id)}
@@ -1261,7 +1438,7 @@ const HardwareQuotesPage: React.FC = () => {
             {/* Invoice Info */}
             {selectedQuote.invoice && (
               <>
-                <SectionTitle>Invoice</SectionTitle>
+                <SectionTitle>Hardware Invoice</SectionTitle>
                 <InvoiceInfoBox>
                   <DetailGrid style={{ marginBottom: 0 }}>
                     <DetailItem>
@@ -1280,6 +1457,35 @@ const HardwareQuotesPage: React.FC = () => {
                       <DetailItemLabel>Amount</DetailItemLabel>
                       <DetailItemValue style={{ fontWeight: 600 }}>
                         {formatCurrency(selectedQuote.invoice.total_amount, selectedQuote.invoice.currency)}
+                      </DetailItemValue>
+                    </DetailItem>
+                  </DetailGrid>
+                </InvoiceInfoBox>
+              </>
+            )}
+
+            {/* Subscription Invoice Info */}
+            {selectedQuote.subscription_invoice && (
+              <>
+                <SectionTitle>Subscription Invoice</SectionTitle>
+                <InvoiceInfoBox style={{ borderLeftColor: '#059669' }}>
+                  <DetailGrid style={{ marginBottom: 0 }}>
+                    <DetailItem>
+                      <DetailItemLabel>Invoice Number</DetailItemLabel>
+                      <DetailItemValue style={{ fontFamily: 'monospace' }}>{selectedQuote.subscription_invoice.invoice_number}</DetailItemValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailItemLabel>Status</DetailItemLabel>
+                      <DetailItemValue>
+                        <StatusBadge status={selectedQuote.subscription_invoice.status}>
+                          {formatStatusLabel(selectedQuote.subscription_invoice.status)}
+                        </StatusBadge>
+                      </DetailItemValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailItemLabel>Amount</DetailItemLabel>
+                      <DetailItemValue style={{ fontWeight: 600 }}>
+                        {formatCurrency(selectedQuote.subscription_invoice.total_amount, selectedQuote.subscription_invoice.currency)}
                       </DetailItemValue>
                     </DetailItem>
                   </DetailGrid>
@@ -1436,6 +1642,178 @@ const HardwareQuotesPage: React.FC = () => {
               <div>Invoice Total</div>
               <div>{formatCurrency(calculateInvoiceTotal(), quoteCurrency)}</div>
             </TotalRow>
+          </CommonModal>
+        )}
+
+        {/* Proceed Contract Modal */}
+        {showProceedModal && selectedQuote && (
+          <CommonModal
+            isOpen={true}
+            onClose={() => { setShowProceedModal(false); setProceedResult(null); }}
+            title="Proceed Contract"
+            footer={
+              proceedResult ? (
+                <ActionButton onClick={() => { setShowProceedModal(false); setShowDetailModal(false); setProceedResult(null); loadData(); }}>
+                  Close
+                </ActionButton>
+              ) : (
+                <>
+                  <ActionButton onClick={() => setShowProceedModal(false)}>Cancel</ActionButton>
+                  <ActionButton variant="primary" onClick={proceedContract} disabled={proceeding || !selectedQuote.user_id}>
+                    {proceeding ? 'Processing...' : 'Proceed Contract'}
+                  </ActionButton>
+                </>
+              )
+            }
+          >
+            {proceedResult ? (
+              <div style={{ background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8, padding: 24, textAlign: 'center', color: '#065F46', lineHeight: 1.6 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>Contract Created Successfully</div>
+                {proceedResult.hardware_invoice && (
+                  <div>Hardware Invoice: <strong style={{ fontFamily: 'monospace' }}>{proceedResult.hardware_invoice}</strong></div>
+                )}
+                {proceedResult.subscription_invoice && (
+                  <div>Subscription Invoice: <strong style={{ fontFamily: 'monospace' }}>{proceedResult.subscription_invoice}</strong></div>
+                )}
+              </div>
+            ) : (
+              <>
+                {!selectedQuote.user_id && (
+                  <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13, color: '#92400E' }}>
+                    A linked user is required to proceed. Please link a user first.
+                  </div>
+                )}
+
+                {/* Hardware Summary */}
+                <SectionTitle style={{ marginTop: 0 }}>Hardware</SectionTitle>
+                <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 20 }}>
+                  <AddonRow>
+                    <div><strong>{selectedQuote.packageProduct?.name || selectedQuote.package_snapshot?.name || 'N/A'}</strong></div>
+                    <div>{formatCurrency(selectedQuote.package_price, quoteCurrency)}</div>
+                  </AddonRow>
+                  {selectedQuote.addon_items && selectedQuote.addon_items.map((addon, idx) => (
+                    <AddonRow key={idx}>
+                      <div>{addon.name} x {addon.quantity}</div>
+                      <div>{formatCurrency(addon.subtotal || addon.total_price || (addon.unit_price * addon.quantity), quoteCurrency)}</div>
+                    </AddonRow>
+                  ))}
+                  <TotalRow>
+                    <div>Hardware Subtotal</div>
+                    <div>{formatCurrency(selectedQuote.total_amount, quoteCurrency)}</div>
+                  </TotalRow>
+                </div>
+
+                {/* Subscription Plan Summary */}
+                {selectedQuote.plan_snapshot && (
+                  <>
+                    <SectionTitle>Subscription Plan</SectionTitle>
+                    <div style={{ background: '#ECFDF5', borderRadius: 8, padding: 16, marginBottom: 20, borderLeft: '3px solid #059669' }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: '#0A2540', marginBottom: 4 }}>
+                        {selectedQuote.plan_snapshot.display_name}
+                      </div>
+                      <div style={{ fontSize: 13, color: '#6B7280' }}>
+                        {selectedQuote.billing_cycle === 'annual' ? 'Annual' : 'Monthly'} billing -{' '}
+                        {formatCurrency(
+                          selectedQuote.billing_cycle === 'annual'
+                            ? (selectedQuote.plan_snapshot.currency_prices?.[quoteCurrency]?.annual || selectedQuote.plan_snapshot.base_price_annual)
+                            : (selectedQuote.plan_snapshot.currency_prices?.[quoteCurrency]?.monthly || selectedQuote.plan_snapshot.base_price_monthly),
+                          quoteCurrency
+                        )}
+                        {selectedQuote.billing_cycle === 'annual' ? '/yr' : '/mo'}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Due Date */}
+                <FormGroup>
+                  <FormLabel>Due Date</FormLabel>
+                  <FormInput
+                    type="date"
+                    value={proceedDueDate}
+                    onChange={(e) => setProceedDueDate(e.target.value)}
+                  />
+                </FormGroup>
+
+                {/* Discount (for hardware) */}
+                <FormGroup>
+                  <FormLabel>Hardware Discount</FormLabel>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <FormSelect
+                      style={{ width: 'auto', minWidth: 150 }}
+                      value={proceedDiscountType}
+                      onChange={(e) => setProceedDiscountType(e.target.value as 'none' | 'percentage' | 'fixed')}
+                    >
+                      <option value="none">No Discount</option>
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </FormSelect>
+                    {proceedDiscountType !== 'none' && (
+                      <FormInput
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={proceedDiscountValue}
+                        onChange={(e) => setProceedDiscountValue(e.target.value)}
+                        placeholder={proceedDiscountType === 'percentage' ? 'e.g. 10' : 'e.g. 50.00'}
+                        style={{ width: 150 }}
+                      />
+                    )}
+                  </div>
+                </FormGroup>
+
+                {/* Additional Charges */}
+                <FormGroup>
+                  <FormLabel>Additional Charges</FormLabel>
+                  {proceedCharges.map((charge, idx) => (
+                    <ChargeRow key={idx}>
+                      <InlineFormGroup>
+                        <FormInput
+                          value={charge.name}
+                          onChange={(e) => updateProceedCharge(idx, 'name', e.target.value)}
+                          placeholder="Charge name"
+                        />
+                      </InlineFormGroup>
+                      <InlineFormGroup>
+                        <FormInput
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={charge.amount}
+                          onChange={(e) => updateProceedCharge(idx, 'amount', e.target.value)}
+                          placeholder="Amount"
+                        />
+                      </InlineFormGroup>
+                      <ActionButton variant="danger" onClick={() => removeProceedCharge(idx)} style={{ flexShrink: 0 }}>
+                        Remove
+                      </ActionButton>
+                    </ChargeRow>
+                  ))}
+                  <ActionButton onClick={addProceedCharge} style={{ marginTop: 8 }}>
+                    + Add Charge
+                  </ActionButton>
+                </FormGroup>
+
+                {/* Mark as Paid */}
+                <FormGroup>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}>
+                    <input
+                      type="checkbox"
+                      checked={proceedMarkAsPaid}
+                      onChange={(e) => setProceedMarkAsPaid(e.target.checked)}
+                      style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                    />
+                    Mark hardware invoice as paid
+                  </label>
+                </FormGroup>
+
+                {/* Calculated Total */}
+                <TotalRow style={{ fontSize: 18 }}>
+                  <div>Hardware Invoice Total</div>
+                  <div>{formatCurrency(calculateProceedTotal(), quoteCurrency)}</div>
+                </TotalRow>
+              </>
+            )}
           </CommonModal>
         )}
 

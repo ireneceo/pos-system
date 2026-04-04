@@ -148,12 +148,12 @@ const CountriesBannerInner = styled.div`
   background: white;
   border: 1px solid #E6EBF1;
   border-radius: 12px;
-  padding: 20px 28px;
+  padding: 16px 28px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  text-align: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 `;
 
 const CountriesList = styled.div`
@@ -252,50 +252,56 @@ const GroupGrid = styled.div`
 
 const GroupCard = styled.div<{ selected: boolean }>`
   background: white;
-  border-radius: 16px;
-  padding: 32px;
+  border-radius: 12px;
+  padding: 20px 24px;
   border: 2px solid ${props => props.selected ? '#635BFF' : '#E6EBF1'};
   cursor: pointer;
   transition: all 0.2s;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 16px;
   opacity: ${props => props.selected ? 1 : 0.85};
 
   ${props => props.selected && `
-    box-shadow: 0 8px 24px rgba(99, 91, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(99, 91, 255, 0.15);
   `}
 
   &:hover {
     border-color: #635BFF;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     opacity: 1;
   }
 `;
 
 const GroupIcon = styled.div`
-  margin-bottom: 16px;
+  flex-shrink: 0;
 
   svg {
-    width: 56px;
-    height: 56px;
+    width: 40px;
+    height: 40px;
     stroke: #635BFF;
     stroke-width: 1.5;
     fill: none;
   }
 `;
 
+const GroupTextWrap = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
 const GroupName = styled.h3`
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: #0A2540;
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
 `;
 
 const GroupDesc = styled.p`
-  font-size: 14px;
+  font-size: 13px;
   color: #6B7280;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.4;
 `;
 
 // ─── Package Cards ──────────────────────────────────────────────────
@@ -541,7 +547,7 @@ const AddonGroupTitle = styled.h4`
   margin: 24px 0 12px 0;
 
   &:first-of-type {
-    margin-top: 0;
+    margin-top: 8px;
   }
 `;
 
@@ -948,6 +954,7 @@ const PackagesPage: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
   const [supportedCountries, setSupportedCountries] = useState<SupportedCountry[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Selection
@@ -975,6 +982,8 @@ const PackagesPage: React.FC = () => {
     tax_id: '',
     wants_invoice: false,
     message: '',
+    plan_id: null as number | null,
+    billing_cycle: 'monthly' as 'monthly' | 'annual',
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [formTouched, setFormTouched] = useState<Record<string, boolean>>({});
@@ -1059,6 +1068,18 @@ const PackagesPage: React.FC = () => {
       } catch (err) {
         console.error('Failed to load packages:', err);
       }
+
+      // Load subscription plans
+      try {
+        const plansRes = await fetch('/api/public/plans');
+        if (plansRes.ok) {
+          const plansData = await plansRes.json();
+          setPlans(plansData.filter((p: any) => p.plan_target === 'restaurant' && p.is_active !== false));
+        }
+      } catch (err) {
+        console.error('Failed to load plans:', err);
+      }
+
       setLoading(false);
     };
 
@@ -1108,7 +1129,8 @@ const PackagesPage: React.FC = () => {
   const isFormValid = formData.name.trim() !== '' &&
     formData.email.trim() !== '' &&
     EMAIL_REGEX.test(formData.email.trim()) &&
-    formData.phone.trim() !== '';
+    formData.phone.trim() !== '' &&
+    (!formData.wants_invoice || (formData.company_name.trim() !== '' && formData.company_address.trim() !== ''));
 
   // ─── Derived Data ──────────────────────────────────────────────
 
@@ -1250,6 +1272,8 @@ const PackagesPage: React.FC = () => {
       package_price: packagePrice,
       addon_total: addonTotal,
       total_amount: totalAmount,
+      plan_id: formData.plan_id || null,
+      billing_cycle: formData.plan_id ? formData.billing_cycle : null,
     };
 
     try {
@@ -1276,7 +1300,7 @@ const PackagesPage: React.FC = () => {
     setShowQuoteModal(false);
     setQuoteSubmitted(false);
     setSubmitError('');
-    setFormData({ name: '', email: '', phone: '', company_name: '', message: '' });
+    setFormData({ name: '', email: '', phone: '', company_name: '', company_address: '', tax_id: '', wants_invoice: false, message: '', plan_id: null as number | null, billing_cycle: 'monthly' as 'monthly' | 'annual' });
     setFormErrors({});
     setFormTouched({});
   };
@@ -1305,37 +1329,38 @@ const PackagesPage: React.FC = () => {
         {supportedCountries.length > 0 && (
           <CountriesBanner>
             <CountriesBannerInner>
-              <CountriesList>
-                <span style={{ color: '#6B7280', fontWeight: 500 }}>Available in:</span>
-                {supportedCountries.map(c => (
-                  <CountryItem key={c.code}>
-                    {c.flag} {c.name}
-                  </CountryItem>
-                ))}
-              </CountriesList>
-              <SoftwareNote>
-                Don't need hardware? You can subscribe to our software and use your own devices and printers.{' '}
-                <Link to="/pricing">View Plans &rarr;</Link>
-              </SoftwareNote>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <span style={{ color: '#6B7280', fontWeight: 500, fontSize: '14px' }}>Available in:</span>
+                <CountriesList>
+                  {supportedCountries.map(c => (
+                    <CountryItem key={c.code}>
+                      {c.flag} {c.name}
+                    </CountryItem>
+                  ))}
+                </CountriesList>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CurrencyLabel>Currency:</CurrencyLabel>
+                <CurrencySelect
+                  value={selectedCurrency}
+                  onChange={(e) => setSelectedCurrency(e.target.value)}
+                >
+                  {currencies.map(c => (
+                    <option key={c.code} value={c.code}>
+                      {c.symbol} {c.code}
+                    </option>
+                  ))}
+                </CurrencySelect>
+              </div>
             </CountriesBannerInner>
+            <SoftwareNote style={{ textAlign: 'center', marginTop: '8px' }}>
+              Don't need hardware? You can subscribe to our software and use your own devices and printers.{' '}
+              <Link to="/pricing">View Plans &rarr;</Link>
+            </SoftwareNote>
           </CountriesBanner>
         )}
 
         <ContentSection>
-          {/* Currency Selector */}
-          <CurrencyBar>
-            <CurrencyLabel>Currency:</CurrencyLabel>
-            <CurrencySelect
-              value={selectedCurrency}
-              onChange={(e) => setSelectedCurrency(e.target.value)}
-            >
-              {currencies.map(c => (
-                <option key={c.code} value={c.code}>
-                  {c.symbol} {c.code} - {c.name}
-                </option>
-              ))}
-            </CurrencySelect>
-          </CurrencyBar>
 
           {loading ? (
             <LoadingText>Loading packages...</LoadingText>
@@ -1360,8 +1385,10 @@ const PackagesPage: React.FC = () => {
                       <line x1="24" y1="46" x2="32" y2="46" />
                     </svg>
                   </GroupIcon>
-                  <GroupName>All Tablet</GroupName>
-                  <GroupDesc>POS, kitchen display, and customer screen all run on tablets. Compact, portable, and quick to set up.</GroupDesc>
+                  <GroupTextWrap>
+                    <GroupName>Compact (All Tablet)</GroupName>
+                    <GroupDesc>All screens use tablets. Compact setup, easy to install.</GroupDesc>
+                  </GroupTextWrap>
                 </GroupCard>
                 <GroupCard
                   selected={selectedGroup === 'monitor'}
@@ -1374,8 +1401,10 @@ const PackagesPage: React.FC = () => {
                       <line x1="18" y1="48" x2="38" y2="48" />
                     </svg>
                   </GroupIcon>
-                  <GroupName>Tablet + Touchscreen</GroupName>
-                  <GroupDesc>POS runs on a tablet, but the kitchen uses a 15"+ touchscreen monitor for better visibility across larger kitchens with multiple staff.</GroupDesc>
+                  <GroupTextWrap>
+                    <GroupName>Pro (with Touchscreen)</GroupName>
+                    <GroupDesc>Includes 15"+ touchscreen for larger kitchens with multiple staff.</GroupDesc>
+                  </GroupTextWrap>
                 </GroupCard>
               </GroupGrid>
 
@@ -1432,13 +1461,25 @@ const PackagesPage: React.FC = () => {
                               <>
                                 <SetupTitle>Included Equipment</SetupTitle>
                                 <EquipmentList>
-                                  {items.map((item, idx) => (
-                                    <EquipmentItem key={idx}>
-                                      {item.role_label && <EquipmentRole>{item.role_label}</EquipmentRole>}
-                                      <span>{item.name}</span>
-                                      <EquipmentQty>x{item.quantity}</EquipmentQty>
-                                    </EquipmentItem>
-                                  ))}
+                                  {(() => {
+                                    // Merge same products, sum quantities, keep role_label as category
+                                    const merged: Record<string, { name: string; quantity: number; role_label: string }> = {};
+                                    items.forEach(item => {
+                                      const key = item.name;
+                                      if (merged[key]) {
+                                        merged[key].quantity += item.quantity;
+                                      } else {
+                                        merged[key] = { name: item.name, quantity: item.quantity, role_label: item.role_label || '' };
+                                      }
+                                    });
+                                    return Object.values(merged).map((item, idx) => (
+                                      <EquipmentItem key={idx}>
+                                        {item.role_label && <EquipmentRole>{item.role_label}</EquipmentRole>}
+                                        <span>{item.name}</span>
+                                        <EquipmentQty>x{item.quantity}</EquipmentQty>
+                                      </EquipmentItem>
+                                    ));
+                                  })()}
                                 </EquipmentList>
                               </>
                             )}
@@ -1647,7 +1688,7 @@ const PackagesPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Company Name</Label>
+                    <Label>Company Name {formData.wants_invoice && <span style={{ color: '#DC2626' }}>*</span>}</Label>
                     <Input
                       type="text"
                       name="company_name"
@@ -1655,6 +1696,9 @@ const PackagesPage: React.FC = () => {
                       onChange={handleFormChange}
                       placeholder="Your company or restaurant name"
                     />
+                    {formData.wants_invoice && !formData.company_name.trim() && formTouched.company_name && (
+                      <FieldError>Company name is required for invoice</FieldError>
+                    )}
                   </FormGroup>
 
                   <FormGroup>
@@ -1690,6 +1734,94 @@ const PackagesPage: React.FC = () => {
                           onChange={handleFormChange}
                           placeholder="Business registration or tax ID"
                         />
+                      </FormGroup>
+                    </>
+                  )}
+
+                  {/* Software Subscription Option */}
+                  <FormGroup>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!formData.plan_id}
+                        onChange={(e) => setFormData(prev => ({ ...prev, plan_id: e.target.checked ? (plans[0]?.id || null) : null }))}
+                        style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                      />
+                      Include software subscription
+                    </label>
+                  </FormGroup>
+
+                  {formData.plan_id && plans.length > 0 && (
+                    <>
+                      <FormGroup>
+                        <Label>Subscription Plan</Label>
+                        <select
+                          style={{
+                            padding: '12px 16px',
+                            fontSize: '15px',
+                            border: '1px solid #E6EBF1',
+                            borderRadius: '8px',
+                            width: '100%',
+                            background: 'white',
+                            cursor: 'pointer',
+                          }}
+                          value={formData.plan_id || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, plan_id: parseInt(e.target.value) || null }))}
+                        >
+                          {plans.map((p: any) => (
+                            <option key={p.id} value={p.id}>
+                              {p.display_name} - {currencyInfo.symbol} {formatPrice(p.currency_prices?.[selectedCurrency]?.monthly || p.base_price_monthly, selectedCurrency)}/mo
+                            </option>
+                          ))}
+                        </select>
+                      </FormGroup>
+                      <FormGroup>
+                        <Label>Billing Cycle</Label>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                          {(['monthly', 'annual'] as const).map(cycle => {
+                            const isActive = formData.billing_cycle === cycle;
+                            const plan = plans.find((p: any) => p.id === formData.plan_id);
+                            const price = cycle === 'annual'
+                              ? (plan?.currency_prices?.[selectedCurrency]?.annual || plan?.base_price_annual)
+                              : (plan?.currency_prices?.[selectedCurrency]?.monthly || plan?.base_price_monthly);
+                            return (
+                              <label
+                                key={cycle}
+                                style={{
+                                  flex: 1,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '12px 16px',
+                                  border: `2px solid ${isActive ? '#635BFF' : '#E6EBF1'}`,
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  background: isActive ? '#F5F3FF' : 'white',
+                                  transition: 'all 0.2s',
+                                }}
+                              >
+                                <input
+                                  type="radio"
+                                  name="billing_cycle"
+                                  value={cycle}
+                                  checked={isActive}
+                                  onChange={() => setFormData(prev => ({ ...prev, billing_cycle: cycle }))}
+                                  style={{ display: 'none' }}
+                                />
+                                <div>
+                                  <div style={{ fontWeight: 500, fontSize: '14px', color: '#0A2540' }}>
+                                    {cycle === 'monthly' ? 'Monthly' : 'Annual'}
+                                  </div>
+                                  {price ? (
+                                    <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                                      {currencyInfo.symbol} {formatPrice(price, selectedCurrency)}{cycle === 'annual' ? '/yr' : '/mo'}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
                       </FormGroup>
                     </>
                   )}

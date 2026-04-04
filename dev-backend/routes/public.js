@@ -554,7 +554,8 @@ router.post('/hardware-quotes', async (req, res) => {
       country_code, currency,
       package_product_id, package_snapshot, addon_items,
       package_price, addon_total, total_amount,
-      company_address, tax_id, wants_invoice
+      company_address, tax_id, wants_invoice,
+      plan_id, billing_cycle
     } = req.body;
 
     if (!contact_name || !contact_email) {
@@ -583,6 +584,8 @@ router.post('/hardware-quotes', async (req, res) => {
       company_address: company_address || null,
       tax_id: tax_id || null,
       wants_invoice: wants_invoice || false,
+      plan_id: plan_id || null,
+      billing_cycle: billing_cycle || null,
       message: message || null,
       country_code: country_code || null,
       currency: currency || null,
