@@ -1233,23 +1233,11 @@ const HardwareQuotesPage: React.FC = () => {
                 <div style={{ flex: 1 }} />
                 {selectedQuote.status !== 'invoiced' && selectedQuote.status !== 'cancelled' && !selectedQuote.invoice_id && (
                   selectedQuote.plan_id ? (
-                    <ActionButton variant="primary" onClick={() => {
-                      if (!selectedQuote.user_id) {
-                        alert('Please link a user to this quote before proceeding.');
-                        return;
-                      }
-                      openProceedModal();
-                    }}>
+                    <ActionButton variant="primary" onClick={() => openProceedModal()}>
                       Proceed Contract
                     </ActionButton>
                   ) : (
-                    <ActionButton variant="primary" onClick={() => {
-                      if (!selectedQuote.user_id) {
-                        alert('Please link a user to this quote before creating an invoice.');
-                        return;
-                      }
-                      openInvoiceModal();
-                    }}>
+                    <ActionButton variant="primary" onClick={() => openInvoiceModal()}>
                       Create Invoice
                     </ActionButton>
                   )
