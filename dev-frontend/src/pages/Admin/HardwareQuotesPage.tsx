@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { Modal as CommonModal, Container, Header, Title, Content } from '../../components/UI';
@@ -570,7 +571,8 @@ const HardwareQuotesPage: React.FC = () => {
   const [quotes, setQuotes] = useState<HardwareQuote[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, new: 0, contacted: 0, confirmed: 0, invoiced: 0 });
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [urlSearchParams] = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(urlSearchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState('all');
   const [activeTab, handleTabChange] = useTabParam<'new' | 'progress' | 'closed'>('new');
 

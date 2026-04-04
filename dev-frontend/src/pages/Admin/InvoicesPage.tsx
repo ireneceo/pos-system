@@ -167,7 +167,12 @@ interface CompanySettings {
 // Button 컴포넌트는 BaseButton으로 교체됨
 const Button = styled(BaseButton)``;
 
-const InvoiceInfo = styled.div``;
+const InvoiceInfo = styled.div`
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
 
 const InvoiceNumber = styled.div`
   font-weight: 600;
@@ -2469,7 +2474,7 @@ const InvoicesPage: React.FC = () => {
             <DataTableHead>
               <tr>
                 <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('invoiceNumber')}>Invoice{getSortIndicator('invoiceNumber')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('companyName')}>Customer{getSortIndicator('companyName')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left" style={{ cursor: 'pointer', width: '200px', minWidth: '200px' }} onClick={() => handleSort('companyName')}>Customer{getSortIndicator('companyName')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
                 <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('dueDate')}>Due{getSortIndicator('dueDate')}</DataTableHeaderCell>
@@ -2499,13 +2504,15 @@ const InvoicesPage: React.FC = () => {
                         {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>Non-Member</span>}
                       </InvoiceNumber>
                       <CompanyName>
-                        {getPayerDisplay(invoice.payerType || 'restaurant')}
-                        {invoice.hardwareQuoteNumber && (
-                          <a href={`/pos/admin/hardware-quotes`} style={{ marginLeft: '8px', fontSize: '11px', color: '#635BFF', textDecoration: 'none' }}>
-                            {invoice.hardwareQuoteNumber}
-                          </a>
-                        )}
+                        {invoice.externalPayerName ? 'Non-Member' : getPayerDisplay(invoice.payerType || 'restaurant')}
                       </CompanyName>
+                      {invoice.hardwareQuoteNumber && (
+                        <div>
+                          <a href={`/pos/admin/hardware-quotes?search=${invoice.hardwareQuoteNumber}`} style={{ fontSize: '11px', color: '#635BFF', textDecoration: 'none' }}>
+                            {invoice.hardwareQuoteNumber} →
+                          </a>
+                        </div>
+                      )}
                     </InvoiceInfo>
                   </DataTableCell>
                   <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
