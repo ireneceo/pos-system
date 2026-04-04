@@ -167,12 +167,7 @@ interface CompanySettings {
 // Button 컴포넌트는 BaseButton으로 교체됨
 const Button = styled(BaseButton)``;
 
-const InvoiceInfo = styled.div`
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
+const InvoiceInfo = styled.div``;
 
 const InvoiceNumber = styled.div`
   font-weight: 600;
@@ -2474,7 +2469,7 @@ const InvoicesPage: React.FC = () => {
             <DataTableHead>
               <tr>
                 <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('invoiceNumber')}>Invoice{getSortIndicator('invoiceNumber')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left" style={{ cursor: 'pointer', width: '200px', minWidth: '200px' }} onClick={() => handleSort('companyName')}>Customer{getSortIndicator('companyName')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('companyName')}>Customer{getSortIndicator('companyName')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
                 <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('dueDate')}>Due{getSortIndicator('dueDate')}</DataTableHeaderCell>
@@ -2501,10 +2496,10 @@ const InvoicesPage: React.FC = () => {
                       <InvoiceNumber>
                         {invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}
                         {invoice.isDemo && <DemoBadge>DEMO</DemoBadge>}
-                        {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>Non-Member</span>}
+                        {(invoice.payerType === 'external' || invoice.externalPayerName || (invoice.hardwareQuoteNumber && !invoice.restaurantId)) && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>Non-Member</span>}
                       </InvoiceNumber>
                       <CompanyName>
-                        {invoice.externalPayerName ? 'Non-Member' : getPayerDisplay(invoice.payerType || 'restaurant')}
+                        {(invoice.payerType === 'external' || invoice.externalPayerName || (invoice.hardwareQuoteNumber && !invoice.restaurantId)) ? 'Non-Member' : getPayerDisplay(invoice.payerType || 'restaurant')}
                       </CompanyName>
                       {invoice.hardwareQuoteNumber && (
                         <div>
@@ -2722,7 +2717,7 @@ const InvoicesPage: React.FC = () => {
                         <InvoiceInfo>
                           <InvoiceNumber>
                             {invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}
-                            {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>Non-Member</span>}
+                            {(invoice.payerType === 'external' || invoice.externalPayerName || (invoice.hardwareQuoteNumber && !invoice.restaurantId)) && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>Non-Member</span>}
                           </InvoiceNumber>
                           <CompanyName>{invoice.companyName}</CompanyName>
                         </InvoiceInfo>
