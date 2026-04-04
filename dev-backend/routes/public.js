@@ -117,7 +117,7 @@ router.post('/contact', async (req, res) => {
             <p style="color:#374151;font-size:14px;margin:0;white-space:pre-wrap;">${message.length > 1000 ? message.substring(0, 1000) + '...' : message}</p>
           </div>
           <div style="text-align:center;margin:24px 0 8px;">
-            <a href="https://purplehere.com/pos/admin/contact-inquiries" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View in Dashboard</a>
+            <a href="${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')}/pos/admin/contact-inquiries" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View in Dashboard</a>
           </div>`;
 
         await sendNotificationBatch(adminIds, 'inquiry_received', {
@@ -360,7 +360,7 @@ router.post('/admin/inquiries/:id/reply', authenticateToken, async (req, res) =>
 <body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="https://purplehere.com" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
+  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')}" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
   <tr><td style="padding:32px;">
     <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">Response to Your Inquiry</h2>
     <p style="color:#374151;font-size:14px;line-height:1.6;">Dear ${inquiry.name},</p>
@@ -373,7 +373,7 @@ router.post('/admin/inquiries/:id/reply', authenticateToken, async (req, res) =>
       <p style="color:#9CA3AF;font-size:13px;margin:0;line-height:1.5;">${inquiry.message.replace(/\n/g, '<br>')}</p>
     </div>
   </td></tr>
-  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">Best regards, ${companyName} Team<br>This is a no-reply email. <a href="https://purplehere.com" style="color:#635BFF;text-decoration:none;">purplehere.com</a></p></td></tr>
+  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">Best regards, ${companyName} Team<br>This is a no-reply email. <a href="${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')}" style="color:#635BFF;text-decoration:none;">purplehere.com</a></p></td></tr>
 </table></td></tr></table></body></html>`
         });
 
@@ -604,6 +604,11 @@ router.post('/hardware-quotes', async (req, res) => {
       const companySettings = await CompanySettings.findOne();
       const companyName = companySettings?.company_name || 'Purple POS';
 
+      // Build package details for email
+      const pkgName = package_snapshot?.name || 'Hardware Package';
+      const pkgItems = (package_snapshot?.set_items || []).map(i => `${i.name} x${i.quantity}`).join(', ');
+      const addonList = (addon_items || []).filter(a => a.quantity > 0).map(a => `${a.name} x${a.quantity}`).join(', ');
+
       await sendPlatformEmail({
         to: contact_email,
         subject: `Quote Request Received - ${quoteNumber}`,
@@ -613,8 +618,14 @@ router.post('/hardware-quotes', async (req, res) => {
           <p>Thank you for your interest! We've received your hardware package quote request.</p>
           <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
             <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;">Quote Number</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; font-weight: 600;">${quoteNumber}</td></tr>
-            <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;">Estimated Total</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; font-weight: 600;">${currency || ''} ${total_amount ? Number(total_amount).toLocaleString() : 'TBD'}</td></tr>
+            <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;">Package</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; font-weight: 500;">${pkgName}</td></tr>
+            ${pkgItems ? `<tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;">Included</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${pkgItems}</td></tr>` : ''}
+            ${addonList ? `<tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;">Additional</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${addonList}</td></tr>` : ''}
+            <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;">Package Price</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${currency || ''} ${package_price ? Number(package_price).toLocaleString() : '-'}</td></tr>
+            ${addon_total ? `<tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;">Additional Total</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${currency || ''} ${Number(addon_total).toLocaleString()}</td></tr>` : ''}
+            <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; color: #6B7280;"><strong>Estimated Total</strong></td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1; font-weight: 600; font-size: 16px;">${currency || ''} ${total_amount ? Number(total_amount).toLocaleString() : 'TBD'}</td></tr>
           </table>
+          ${message ? `<div style="background: #F8FAFC; padding: 12px 16px; border-radius: 8px; margin: 16px 0;"><p style="color: #6B7280; font-size: 13px; margin: 0 0 4px;">Your message:</p><p style="color: #374151; font-size: 14px; margin: 0;">${message}</p></div>` : ''}
           <p>Our team will review your configuration and contact you within 1-2 business days.</p>
           <p style="color: #6B7280; font-size: 14px;">If you have any questions, please reply to this email.</p>
         `),

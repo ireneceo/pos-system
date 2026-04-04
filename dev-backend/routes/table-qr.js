@@ -42,7 +42,7 @@ router.post('/:restaurantId/tables/:tableNumber/qr', authenticateToken, checkRes
 
     // Build QR URL
     const slug = restaurant.slug || restaurantId;
-    const baseUrl = process.env.BASE_URL || 'https://dev.purplehere.com';
+    const baseUrl = process.env.SITE_URL || process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
     const qrUrl = `${baseUrl}/mobile/${slug}?table=${tableNumber}&token=${token}`;
 
     res.status(201).json({
@@ -87,7 +87,7 @@ router.get('/:restaurantId/tables/:tableNumber/qr', authenticateToken, checkRest
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     const slug = restaurant?.slug || restaurantId;
-    const baseUrl = process.env.BASE_URL || 'https://dev.purplehere.com';
+    const baseUrl = process.env.SITE_URL || process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
     const qrUrl = `${baseUrl}/mobile/${slug}?table=${tableNumber}&token=${session.token}`;
 
     const remainingMs = new Date(session.expires_at).getTime() - Date.now();
