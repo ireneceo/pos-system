@@ -39,6 +39,8 @@ interface TableDetailPanelProps {
   orders?: TableStatusInfo[];
   selectedOrderIndex?: number;
   onOrderIndexChange?: (index: number) => void;
+  // QR mode
+  qrMode?: 'static' | 'session';
 }
 
 // ─── Styled Components ───
@@ -517,13 +519,14 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   onClearAllCompleted,
   orders = [],
   selectedOrderIndex = 0,
-  onOrderIndexChange
+  onOrderIndexChange,
+  qrMode = 'static'
 }) => {
   const [loading, setLoading] = useState(false);
   const { getStoreInfo, paymentSettings } = useStore();
 
   // ─── QR Session state ───
-  const [qrSession, setQrSession] = useState<{ token: string; qr_url: string; remaining_minutes: number; expires_at: string } | null>(null);
+  const [qrSession, setQrSession] = useState<{ token: string; qr_url: string; remaining_minutes: number; expires_at: string; created_at: string } | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
 
   // ─── QR Session: fetch status ───
@@ -1606,9 +1609,11 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 </ActionBtn>
               )}
               {/* QR Session for occupied table */}
+              {qrMode === 'session' && (
+              <>
               <ActionRow>
                 <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
-                  {qrLoading ? 'Printing...' : '🖨️ Reprint QR'}
+                  {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Reprint QR</>}
                 </ActionBtn>
                 {qrSession && (
                   <ActionBtn $variant="danger" onClick={handleExpireQR} disabled={qrLoading} style={{ flex: '0 0 auto', width: 'auto', padding: '9px 16px' }}>
@@ -1618,10 +1623,18 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               </ActionRow>
               {qrSession ? (
                 <QRStatusInfo>
-                  <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
+                  <div>
+                    <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
+                    <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
+                      Printed: {new Date(qrSession.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {' · '}Orders until {new Date(qrSession.expires_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
                 </QRStatusInfo>
               ) : (
                 <QRStatusInfo style={{ color: '#6B7280' }}>○ No active QR</QRStatusInfo>
+              )}
+              </>
               )}
               <ActionBtn $variant="link" onClick={onNavigateToPOS}>
                 Open in POS Terminal &#x2197;
@@ -1639,18 +1652,28 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             <ActionBtn $variant="primary" onClick={onNewOrder}>
               + New Order
             </ActionBtn>
+            {qrMode === 'session' && (
+            <>
             <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
-              {qrLoading ? 'Printing...' : '🖨️ Print QR'}
+              {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print QR</>}
             </ActionBtn>
             {qrSession ? (
               <QRStatusInfo>
-                <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
+                <div>
+                  <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
+                  <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
+                    Printed: {new Date(qrSession.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {' · '}Orders accepted until {new Date(qrSession.expires_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
                 <ActionBtn $variant="link" onClick={handleExpireQR} style={{ padding: '4px 8px', fontSize: '12px', width: 'auto' }}>
                   Expire
                 </ActionBtn>
               </QRStatusInfo>
             ) : (
               <QRStatusInfo style={{ color: '#6B7280' }}>○ No active QR</QRStatusInfo>
+            )}
+            </>
             )}
             <ActionBtn $variant="link" onClick={onNavigateToPOS}>
               Open in POS Terminal &#x2197;

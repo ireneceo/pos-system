@@ -194,6 +194,7 @@ const FloorPlanPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState('');
   const [timezone, setTimezone] = useState('Asia/Kuala_Lumpur');
+  const [qrMode, setQrMode] = useState<'static' | 'session'>('static');
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const socketRef = useRef<any>(null);
   const checkoutSocketRef = useRef<any>(null);
@@ -276,6 +277,12 @@ const FloorPlanPage: React.FC = () => {
         }
         if (restaurant.currency) {
           setCurrency(restaurant.currency);
+        }
+        if (restaurant.table_settings) {
+          const ts = typeof restaurant.table_settings === 'string'
+            ? JSON.parse(restaurant.table_settings)
+            : restaurant.table_settings;
+          if (ts.qrMode) setQrMode(ts.qrMode);
         }
         if (restaurant.operation_settings) {
           const opSettings = typeof restaurant.operation_settings === 'string'
@@ -696,6 +703,7 @@ const FloorPlanPage: React.FC = () => {
             orders={selectedOrders}
             selectedOrderIndex={safeOrderIndex}
             onOrderIndexChange={setSelectedOrderIndex}
+            qrMode={qrMode}
           />
         )}
       </MainContent>

@@ -3229,6 +3229,8 @@ const SettingsPage: React.FC = () => {
                     <HelpText>QR codes expire automatically after this time</HelpText>
                   </FormGroup>
                 )}
+                {tableSettings.qrMode === 'static' && (
+                <>
                 <button onClick={handleGenerateQRCodes}
                   style={{ padding: '10px 20px', background: '#E6EBF1', color: '#0A2540', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s', marginTop: '16px' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = '#D1D5DB'; }}
@@ -3258,6 +3260,13 @@ const SettingsPage: React.FC = () => {
                     })}
                   </TablesGrid>
                 </div>
+                </>
+                )}
+                {tableSettings.qrMode === 'session' && (
+                  <div style={{ marginTop: '24px', padding: '16px', background: '#F0F0FF', borderRadius: '8px', color: '#635BFF', fontSize: '14px' }}>
+                    Session mode is active. QR codes are generated per visit from the <strong>Floor Plan</strong> page.
+                  </div>
+                )}
               </SettingsCard>
 
               </SettingsGrid>
