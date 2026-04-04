@@ -53,7 +53,8 @@ router.post('/:restaurantId/tables/:tableNumber/qr', authenticateToken, checkRes
         table_number: tableNumber,
         qr_url: qrUrl,
         expires_at: expiresAt,
-        expiration_minutes: expirationMinutes,
+        remaining_minutes: expirationMinutes,
+        created_at: session.created_at,
         restaurant_name: restaurant.name
       }
     });

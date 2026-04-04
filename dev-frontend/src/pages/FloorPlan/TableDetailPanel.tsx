@@ -957,22 +957,31 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     setQrLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const res = await fetch(`/api/restaurants/${restaurantId}/tables/${tableNumber}/qr`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const result = await res.json();
-        if (result.success && result.data) {
-          setQrSession(result.data);
-          const storeInfo = getStoreInfo();
-          const storeName = storeInfo?.name || 'Restaurant';
-          // Create a temporary canvas with QR code for printing
-          const QRCode = (await import('qrcode')).default;
-          const canvas = document.createElement('canvas');
-          await QRCode.toCanvas(canvas, result.data.qr_url, { width: 200, margin: 2 });
-          await printTableQR(tableNumber, canvas, storeName);
+      let qrData = qrSession;
+
+      if (!qrData) {
+        // No active QR → create new one
+        const res = await fetch(`/api/restaurants/${restaurantId}/tables/${tableNumber}/qr`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && result.data) {
+            qrData = result.data;
+            setQrSession(result.data);
+          }
         }
+      }
+
+      // Print existing or newly created QR
+      if (qrData) {
+        const storeInfo = getStoreInfo();
+        const storeName = storeInfo?.name || 'Restaurant';
+        const QRCode = (await import('qrcode')).default;
+        const canvas = document.createElement('canvas');
+        await QRCode.toCanvas(canvas, qrData.qr_url, { width: 200, margin: 2 });
+        await printTableQR(tableNumber, canvas, storeName);
       }
     } catch (err) {
       console.error('Failed to print QR:', err);
@@ -1624,7 +1633,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               {qrSession ? (
                 <QRStatusInfo>
                   <div>
-                    <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
+                    <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes ?? 0}min left)</span>
                     <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
                       Printed: {new Date(qrSession.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       {' · '}Orders until {new Date(qrSession.expires_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}
@@ -1632,7 +1641,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   </div>
                 </QRStatusInfo>
               ) : (
-                <QRStatusInfo style={{ color: '#6B7280' }}>○ No active QR</QRStatusInfo>
+                <></>
               )}
               </>
               )}
@@ -1662,8 +1671,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 <div>
                   <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
                   <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
-                    Printed: {new Date(qrSession.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    {' · '}Orders accepted until {new Date(qrSession.expires_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    Printed: {qrSession.created_at ? new Date(qrSession.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'just now'}
+                    <br />Orders accepted until {new Date(qrSession.expires_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
                 <ActionBtn $variant="link" onClick={handleExpireQR} style={{ padding: '4px 8px', fontSize: '12px', width: 'auto' }}>
@@ -1671,7 +1680,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 </ActionBtn>
               </QRStatusInfo>
             ) : (
-              <QRStatusInfo style={{ color: '#6B7280' }}>○ No active QR</QRStatusInfo>
+              <QRStatusInfo style={{ color: '#6B7280', fontSize: '12px' }}>Print QR to generate a session-based ordering code for this table.</QRStatusInfo>
             )}
             </>
             )}
