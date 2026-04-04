@@ -72,6 +72,7 @@ interface Invoice {
   serviceDescription?: string;
   categoryDisplayName?: string;
   additionalCharges?: AdditionalCharge[];
+  hardwareQuoteNumber?: string;
   externalPayerName?: string;
   externalPayerEmail?: string;
   externalPayerPhone?: string;
@@ -2497,7 +2498,14 @@ const InvoicesPage: React.FC = () => {
                         {invoice.isDemo && <DemoBadge>DEMO</DemoBadge>}
                         {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>Non-Member</span>}
                       </InvoiceNumber>
-                      <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
+                      <CompanyName>
+                        {getPayerDisplay(invoice.payerType || 'restaurant')}
+                        {invoice.hardwareQuoteNumber && (
+                          <a href={`/pos/admin/hardware-quotes`} style={{ marginLeft: '8px', fontSize: '11px', color: '#635BFF', textDecoration: 'none' }}>
+                            {invoice.hardwareQuoteNumber}
+                          </a>
+                        )}
+                      </CompanyName>
                     </InvoiceInfo>
                   </DataTableCell>
                   <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>

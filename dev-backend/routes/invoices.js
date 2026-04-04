@@ -475,7 +475,12 @@ router.get('/', authenticateToken, async (req, res) => {
       // Determine customer info based on payer type
       let customerName, customerAddress, customerCompany;
 
-      if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
+      if (invoice.payer_type === 'external') {
+        // Non-member payer
+        customerName = invoice.external_payer_name || 'Non-Member';
+        customerAddress = invoice.external_payer_address || 'No address';
+        customerCompany = invoice.external_payer_company || invoice.external_payer_name || 'Non-Member';
+      } else if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
         // Restaurant pays
         customerName = invoice.restaurant?.name || 'Unknown Restaurant';
         customerAddress = invoice.restaurant?.address || 'No address';
@@ -498,7 +503,11 @@ router.get('/', authenticateToken, async (req, res) => {
       let payerName;
       let payerPlanType = null;
       let payerBillingCycle = null;
-      if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
+      if (invoice.payer_type === 'external') {
+        payerName = invoice.external_payer_name || 'Non-Member';
+        payerPlanType = null;
+        payerBillingCycle = null;
+      } else if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
         payerName = invoice.restaurant?.admin_name || invoice.restaurant?.name || 'Unknown Restaurant';
         payerPlanType = invoice.restaurant?.plan_type;
         payerBillingCycle = invoice.restaurant?.billing_cycle;
@@ -595,6 +604,15 @@ router.get('/', authenticateToken, async (req, res) => {
         // Modification tracking
         isModified: invoice.is_modified || false,
         modificationHistory: invoice.modification_history || [],
+        // Hardware quote link (extract from notes)
+        hardwareQuoteNumber: invoice.notes?.match(/Hardware Quote: (QUO-\d+)/)?.[1] || null,
+        // External payer info
+        externalPayerName: invoice.external_payer_name || null,
+        externalPayerEmail: invoice.external_payer_email || null,
+        externalPayerPhone: invoice.external_payer_phone || null,
+        externalPayerCompany: invoice.external_payer_company || null,
+        externalPayerAddress: invoice.external_payer_address || null,
+        externalPayerTaxId: invoice.external_payer_tax_id || null,
         // Demo flag
         isDemo: invoice.restaurant?.is_demo || false
       };
