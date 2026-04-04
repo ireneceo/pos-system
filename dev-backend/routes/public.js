@@ -612,7 +612,7 @@ router.post('/hardware-quotes', async (req, res) => {
       await sendPlatformEmail({
         to: contact_email,
         subject: `Quote Request Received - ${quoteNumber}`,
-        html: emailLayout(companyName, `
+        html: emailLayout(`
           <h2 style="color: #0A2540; margin: 0 0 16px 0;">Quote Request Received</h2>
           <p>Hi ${contact_name},</p>
           <p>Thank you for your interest! We've received your hardware package quote request.</p>
@@ -641,7 +641,7 @@ router.post('/hardware-quotes', async (req, res) => {
       if (adminIds.length > 0) {
         await sendNotificationBatch(adminIds, 'hardware_quote', {
           subject: `[Hardware Quote] New request: ${quoteNumber}`,
-          html: emailLayout('Purple POS', `
+          html: emailLayout(`
             <h2 style="color: #0A2540;">New Hardware Quote Request</h2>
             <table style="width: 100%; border-collapse: collapse;">
               <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">Quote</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${quoteNumber}</td></tr>
