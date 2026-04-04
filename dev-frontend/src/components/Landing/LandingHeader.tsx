@@ -295,6 +295,9 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
             Blog
           </NavLink>
+          <NavLink active={isActive('/packages')} onClick={() => handleNavigate('/packages')}>
+            Setup Quote
+          </NavLink>
           <NavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             Contact
           </NavLink>
@@ -332,6 +335,9 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           </MobileNavLink>
           <MobileNavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
             Blog
+          </MobileNavLink>
+          <MobileNavLink active={isActive('/packages')} onClick={() => handleNavigate('/packages')}>
+            Setup Quote
           </MobileNavLink>
           <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             Contact

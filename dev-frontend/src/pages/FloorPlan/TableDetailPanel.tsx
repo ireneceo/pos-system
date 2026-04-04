@@ -4,7 +4,7 @@ import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
-import { printBillViaRawBT, printKitchenTicketViaRawBT } from '../../utils/billPrint';
+import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR } from '../../utils/billPrint';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { Modal, ModalButton } from '../../components/UI';
 
@@ -443,6 +443,17 @@ const ConfirmBtn = styled.button<{ $danger?: boolean }>`
   }
 `;
 
+const QRStatusInfo = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #F9FAFB;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-top: 8px;
+`;
+
 // ─── Status helpers ───
 
 const STATUS_LABELS: Record<string, string> = {
@@ -510,6 +521,37 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const { getStoreInfo, paymentSettings } = useStore();
+
+  // ─── QR Session state ───
+  const [qrSession, setQrSession] = useState<{ token: string; qr_url: string; remaining_minutes: number; expires_at: string } | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+
+  // ─── QR Session: fetch status ───
+  const fetchQRStatus = useCallback(async () => {
+    if (!restaurantId || !tableNumber) return;
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/restaurants/${restaurantId}/tables/${tableNumber}/qr`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          setQrSession(result.data);
+        } else {
+          setQrSession(null);
+        }
+      } else {
+        setQrSession(null);
+      }
+    } catch {
+      setQrSession(null);
+    }
+  }, [restaurantId, tableNumber]);
+
+  useEffect(() => {
+    fetchQRStatus();
+  }, [fetchQRStatus]);
 
   // ─── Confirm modal state ───
   const [confirmModal, setConfirmModal] = useState<{
@@ -905,6 +947,50 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     const orderData = buildKitchenDataForPrint(latestGroupItems, `+Order ${latestGroup}`);
     if (!orderData) return;
     await printKitchenTicketViaRawBT(orderData, getStoreInfo());
+  };
+
+  const handlePrintQR = async () => {
+    if (qrLoading) return;
+    setQrLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(`/api/restaurants/${restaurantId}/tables/${tableNumber}/qr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          setQrSession(result.data);
+          const storeInfo = getStoreInfo();
+          const storeName = storeInfo?.name || 'Restaurant';
+          // Create a temporary canvas with QR code for printing
+          const QRCode = (await import('qrcode')).default;
+          const canvas = document.createElement('canvas');
+          await QRCode.toCanvas(canvas, result.data.qr_url, { width: 200, margin: 2 });
+          await printTableQR(tableNumber, canvas, storeName);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to print QR:', err);
+    }
+    setQrLoading(false);
+  };
+
+  const handleExpireQR = async () => {
+    if (qrLoading) return;
+    setQrLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      await fetch(`/api/restaurants/${restaurantId}/tables/${tableNumber}/qr`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setQrSession(null);
+    } catch (err) {
+      console.error('Failed to expire QR:', err);
+    }
+    setQrLoading(false);
   };
 
   const previousStatus = orderStatus === 'pending' ? 'outstanding' : getPreviousStatus(orderStatus);
@@ -1519,7 +1605,25 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   Leaved
                 </ActionBtn>
               )}
-<ActionBtn $variant="link" onClick={onNavigateToPOS}>
+              {/* QR Session for occupied table */}
+              <ActionRow>
+                <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
+                  {qrLoading ? 'Printing...' : '🖨️ Reprint QR'}
+                </ActionBtn>
+                {qrSession && (
+                  <ActionBtn $variant="danger" onClick={handleExpireQR} disabled={qrLoading} style={{ flex: '0 0 auto', width: 'auto', padding: '9px 16px' }}>
+                    Expire QR
+                  </ActionBtn>
+                )}
+              </ActionRow>
+              {qrSession ? (
+                <QRStatusInfo>
+                  <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
+                </QRStatusInfo>
+              ) : (
+                <QRStatusInfo style={{ color: '#6B7280' }}>○ No active QR</QRStatusInfo>
+              )}
+              <ActionBtn $variant="link" onClick={onNavigateToPOS}>
                 Open in POS Terminal &#x2197;
               </ActionBtn>
             </ActionGroup>
@@ -1535,6 +1639,19 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             <ActionBtn $variant="primary" onClick={onNewOrder}>
               + New Order
             </ActionBtn>
+            <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
+              {qrLoading ? 'Printing...' : '🖨️ Print QR'}
+            </ActionBtn>
+            {qrSession ? (
+              <QRStatusInfo>
+                <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
+                <ActionBtn $variant="link" onClick={handleExpireQR} style={{ padding: '4px 8px', fontSize: '12px', width: 'auto' }}>
+                  Expire
+                </ActionBtn>
+              </QRStatusInfo>
+            ) : (
+              <QRStatusInfo style={{ color: '#6B7280' }}>○ No active QR</QRStatusInfo>
+            )}
             <ActionBtn $variant="link" onClick={onNavigateToPOS}>
               Open in POS Terminal &#x2197;
             </ActionBtn>

@@ -1,16 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
-import { Modal as CommonModal } from '../../components/UI';
+import { Modal as CommonModal, Container, Header, Title, Content } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency } from '../../utils/currency';
+import CommentSection from '../../components/Common/CommentSection';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Types ───────────────────────────────────────────────────────
 
 interface AddonItem {
-  id: number;
+  product_id: number;
   name: string;
-  price: number;
   quantity: number;
+  unit_price: number;
+  subtotal?: number;
+  total_price?: number;
 }
 
 interface LinkedUser {
@@ -31,26 +37,31 @@ interface LinkedInvoice {
 interface HardwareQuote {
   id: number;
   quote_number: string;
-  name: string;
-  email: string;
-  phone?: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone?: string;
   company_name?: string;
   message?: string;
+  country_code?: string;
   status: 'new' | 'contacted' | 'confirmed' | 'invoiced' | 'cancelled';
   admin_notes?: string;
-  package_name: string;
-  set_group: string;
-  set_tier: string;
+  package_product_id?: number;
+  package_snapshot?: { name: string; set_items?: { name: string; quantity: number }[] } | null;
   package_price: number;
   addon_items: AddonItem[];
+  addon_total: number;
   total_amount: number;
   currency: string;
   user_id?: number;
   user?: LinkedUser;
+  restaurant_id?: number;
   invoice_id?: number;
   invoice?: LinkedInvoice;
-  createdAt: string;
-  updatedAt: string;
+  packageProduct?: { id: number; name: string; set_group: string; set_tier: string } | null;
+  created_at: string;
+  updated_at: string;
+  confirmed_at?: string;
+  invoiced_at?: string;
 }
 
 interface Stats {
@@ -70,42 +81,7 @@ interface UserSearchResult {
 
 // ─── Styled Components ──────────────────────────────────────────
 
-const Container = styled.div`
-  min-height: 100vh;
-`;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-`;
-
-const Content = styled.div`
-  padding: 32px;
-  background: #FAFBFC;
-  min-height: calc(100vh - 120px);
-
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
 
 const StatsGrid = styled.div`
   display: grid;
@@ -188,6 +164,8 @@ const QuoteCard = styled.div`
   transition: all 0.2s;
   overflow: hidden;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
@@ -199,7 +177,7 @@ const QuoteHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   gap: 16px;
 `;
 
@@ -209,10 +187,10 @@ const QuoteInfo = styled.div`
 `;
 
 const QuoteNumber = styled.div`
-  font-size: 16px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #635BFF;
+  margin-bottom: 8px;
   font-family: monospace;
 `;
 
@@ -226,11 +204,17 @@ const QuoteName = styled.div`
 `;
 
 const QuoteEmail = styled.div`
-  font-size: 14px;
-  color: #635BFF;
+  font-size: 13px;
+  color: #6B7C93;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+`;
+
+const QuoteCompany = styled.div`
+  font-size: 13px;
+  color: #6B7280;
+  margin-top: 2px;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -243,20 +227,20 @@ const StatusBadge = styled.span<{ status: string }>`
   background: ${props => {
     switch (props.status) {
       case 'new': return '#FEF3C7';
-      case 'contacted': return '#3B82F6';
-      case 'confirmed': return '#10B981';
-      case 'invoiced': return '#635BFF';
-      case 'cancelled': return '#6B7280';
+      case 'contacted': return '#DBEAFE';
+      case 'confirmed': return '#ECFDF5';
+      case 'invoiced': return '#F0F0FF';
+      case 'cancelled': return '#F3F4F6';
       default: return '#F3F4F6';
     }
   }};
   color: ${props => {
     switch (props.status) {
-      case 'new': return '#92400E';
-      case 'contacted': return '#FFFFFF';
-      case 'confirmed': return '#FFFFFF';
-      case 'invoiced': return '#FFFFFF';
-      case 'cancelled': return '#FFFFFF';
+      case 'new': return '#D97706';
+      case 'contacted': return '#1E40AF';
+      case 'confirmed': return '#059669';
+      case 'invoiced': return '#635BFF';
+      case 'cancelled': return '#6B7280';
       default: return '#6B7280';
     }
   }};
@@ -272,17 +256,28 @@ const PackageBadge = styled.div`
   font-weight: 500;
   background: #F0F4FF;
   color: #635BFF;
-  margin: 8px 0;
+  margin: 8px 0 4px 0;
+`;
+
+const AddonSummary = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 4px;
 `;
 
 const TotalAmount = styled.div`
   font-size: 18px;
   font-weight: 700;
   color: #0A2540;
-  margin: 8px 0;
+  margin: 4px 0;
 `;
 
-const QuoteMeta = styled.div`
+const CardSpacer = styled.div`
+  flex: 1;
+  min-height: 12px;
+`;
+
+const QuoteFooter = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -294,10 +289,20 @@ const QuoteMeta = styled.div`
   gap: 12px;
 `;
 
-const ViewDetailsLink = styled.span`
-  font-size: 13px;
+const CloseQuoteButton = styled.button`
+  padding: 4px 12px;
+  font-size: 12px;
   font-weight: 500;
-  color: #635BFF;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  background: #fff;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: #E5E7EB;
+    color: #374151;
+  }
 `;
 
 // Modal styled components
@@ -551,12 +556,18 @@ const InlineFormGroup = styled.div`
 
 // ─── Component ──────────────────────────────────────────────────
 
+const NEW_STATUSES = ['new'];
+const PROGRESS_STATUSES = ['contacted', 'confirmed'];
+const CLOSED_STATUSES = ['invoiced', 'cancelled'];
+
 const HardwareQuotesPage: React.FC = () => {
+  const { user } = useAuth();
   const [quotes, setQuotes] = useState<HardwareQuote[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, new: 0, contacted: 0, confirmed: 0, invoiced: 0 });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [activeTab, handleTabChange] = useTabParam<'new' | 'progress' | 'closed'>('new');
 
   // Detail modal
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -626,8 +637,22 @@ const HardwareQuotesPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [loadData]);
 
+  // Filter quotes by tab + search
+  const filteredQuotes = quotes.filter(q => {
+    const tabStatuses = activeTab === 'new' ? NEW_STATUSES : activeTab === 'progress' ? PROGRESS_STATUSES : CLOSED_STATUSES;
+    return tabStatuses.includes(q.status);
+  });
+
+  const newCount = quotes.filter(q => NEW_STATUSES.includes(q.status)).length;
+  const progressCount = quotes.filter(q => PROGRESS_STATUSES.includes(q.status)).length;
+  const closedCount = quotes.filter(q => CLOSED_STATUSES.includes(q.status)).length;
+
+  const getAddonSummary = (addons: AddonItem[] | undefined): string => {
+    if (!addons || addons.length === 0) return '';
+    return '+ ' + addons.map(a => `${a.name} x${a.quantity}`).join(', ');
+  };
+
   const openDetail = async (quote: HardwareQuote) => {
-    // Fetch full detail
     try {
       const token = getToken();
       const res = await fetch(`/api/hardware-quotes/${quote.id}`, {
@@ -691,6 +716,50 @@ const HardwareQuotesPage: React.FC = () => {
       console.error('Error saving notes:', error);
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const handleCloseQuote = async (quote: HardwareQuote) => {
+    try {
+      const token = getToken();
+      const response = await fetch(`/api/hardware-quotes/${quote.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+      if (response.ok) {
+        setQuotes(prev => prev.map(q =>
+          q.id === quote.id ? { ...q, status: 'cancelled' as HardwareQuote['status'] } : q
+        ));
+        loadData(true);
+      }
+    } catch (error) {
+      console.error('Error closing quote:', error);
+    }
+  };
+
+  const handleStartProcess = async (quote: HardwareQuote) => {
+    try {
+      const token = getToken();
+      const response = await fetch(`/api/hardware-quotes/${quote.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'contacted' })
+      });
+      if (response.ok) {
+        setQuotes(prev => prev.map(q =>
+          q.id === quote.id ? { ...q, status: 'contacted' as HardwareQuote['status'] } : q
+        ));
+        loadData(true);
+      }
+    } catch (error) {
+      console.error('Error starting process:', error);
     }
   };
 
@@ -766,7 +835,6 @@ const HardwareQuotesPage: React.FC = () => {
       });
       if (res.ok) {
         setShowLinkUserModal(false);
-        // Refresh detail
         openDetail(selectedQuote);
       }
     } catch (error) {
@@ -801,14 +869,12 @@ const HardwareQuotesPage: React.FC = () => {
     if (!selectedQuote) return 0;
     let total = selectedQuote.total_amount;
 
-    // Discount
     if (discountType === 'percentage' && discountValue) {
       total -= total * (parseFloat(discountValue) / 100);
     } else if (discountType === 'fixed' && discountValue) {
       total -= parseFloat(discountValue);
     }
 
-    // Additional charges
     additionalCharges.forEach(c => {
       if (c.amount) total += parseFloat(c.amount);
     });
@@ -873,7 +939,14 @@ const HardwareQuotesPage: React.FC = () => {
   };
 
   const formatStatusLabel = (status: string) => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    const labels: Record<string, string> = {
+      new: 'New',
+      contacted: 'In Progress',
+      confirmed: 'Confirmed',
+      invoiced: 'Invoiced',
+      cancelled: 'Closed'
+    };
+    return labels[status] || status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   const quoteCurrency = selectedQuote?.currency || 'MYR';
@@ -903,62 +976,118 @@ const HardwareQuotesPage: React.FC = () => {
               <StatValue>{stats.confirmed}</StatValue>
               <StatLabel>Confirmed</StatLabel>
             </StatCard>
-            <StatCard color="#635BFF">
+            <StatCard color="#8B5CF6">
               <StatValue>{stats.invoiced}</StatValue>
               <StatLabel>Invoiced</StatLabel>
             </StatCard>
           </StatsGrid>
 
+          <Tabs>
+            <Tab active={activeTab === 'new'} onClick={() => handleTabChange('new')}>
+              New ({newCount})
+            </Tab>
+            <Tab active={activeTab === 'progress'} onClick={() => handleTabChange('progress')}>
+              In Progress ({progressCount})
+            </Tab>
+            <Tab active={activeTab === 'closed'} onClick={() => handleTabChange('closed')}>
+              Closed ({closedCount})
+            </Tab>
+          </Tabs>
+
           <FilterBar>
-            <FilterSelect
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">All Status</option>
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="invoiced">Invoiced</option>
-              <option value="cancelled">Cancelled</option>
-            </FilterSelect>
             <SearchInput
               placeholder="Search by name, email, company, quote number..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            <FilterSelect
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All Status</option>
+              {activeTab === 'new' ? (
+                <option value="new">New</option>
+              ) : activeTab === 'progress' ? (
+                <>
+                  <option value="contacted">Contacted</option>
+                  <option value="confirmed">Confirmed</option>
+                </>
+              ) : (
+                <>
+                  <option value="invoiced">Invoiced</option>
+                  <option value="cancelled">Cancelled</option>
+                </>
+              )}
+            </FilterSelect>
           </FilterBar>
 
           {loading ? (
             <EmptyState>Loading...</EmptyState>
-          ) : quotes.length === 0 ? (
-            <EmptyState>No hardware quotes found</EmptyState>
+          ) : filteredQuotes.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              color: '#6B7280',
+              gridColumn: '1 / -1'
+            }}>
+              <h3 style={{ color: '#374151', marginBottom: '8px' }}>
+                No {activeTab === 'new' ? 'new' : activeTab === 'progress' ? 'in progress' : 'closed'} quotes
+              </h3>
+              <p>Hardware quotes will appear here when submitted.</p>
+            </div>
           ) : (
             <QuoteGrid>
-              {quotes.map((quote) => (
+              {filteredQuotes.map((quote) => (
                 <QuoteCard key={quote.id} onClick={() => openDetail(quote)}>
                   <QuoteHeader>
                     <QuoteInfo>
                       <QuoteNumber>{quote.quote_number}</QuoteNumber>
-                      <QuoteName>{quote.name}</QuoteName>
-                      <QuoteEmail>{quote.email}</QuoteEmail>
+                      <QuoteName>{quote.contact_name}</QuoteName>
+                      <QuoteEmail>{quote.contact_email}</QuoteEmail>
+                      {quote.company_name && (
+                        <QuoteCompany>{quote.company_name}</QuoteCompany>
+                      )}
                     </QuoteInfo>
                     <StatusBadge status={quote.status}>
                       {formatStatusLabel(quote.status)}
                     </StatusBadge>
                   </QuoteHeader>
 
-                  <PackageBadge>
-                    {quote.package_name} - {quote.set_group}/{quote.set_tier}
-                  </PackageBadge>
+                  <PackageBadge>{quote.packageProduct?.name || quote.package_snapshot?.name || 'N/A'}</PackageBadge>
+                  {quote.addon_items && quote.addon_items.length > 0 && (
+                    <AddonSummary>{getAddonSummary(quote.addon_items)}</AddonSummary>
+                  )}
 
                   <TotalAmount>
                     {formatCurrency(quote.total_amount, quote.currency)}
                   </TotalAmount>
 
-                  <QuoteMeta>
-                    <span>{formatDate(quote.createdAt)}</span>
-                    <ViewDetailsLink>View Details</ViewDetailsLink>
-                  </QuoteMeta>
+                  <CardSpacer />
+
+                  <QuoteFooter>
+                    <span>{formatDate(quote.created_at)}</span>
+                    {activeTab === 'new' && (
+                      <CloseQuoteButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartProcess(quote);
+                        }}
+                        style={{ background: '#F0F0FF', color: '#635BFF', borderColor: '#635BFF' }}
+                      >
+                        Start Process
+                      </CloseQuoteButton>
+                    )}
+                    {activeTab === 'progress' && (
+                      <CloseQuoteButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCloseQuote(quote);
+                        }}
+                      >
+                        Close
+                      </CloseQuoteButton>
+                    )}
+                  </QuoteFooter>
                 </QuoteCard>
               ))}
             </QuoteGrid>
@@ -977,7 +1106,7 @@ const HardwareQuotesPage: React.FC = () => {
                   Delete
                 </ActionButton>
                 <div style={{ flex: 1 }} />
-                {selectedQuote.status === 'confirmed' && !selectedQuote.invoice_id && (
+                {selectedQuote.status !== 'invoiced' && selectedQuote.status !== 'cancelled' && !selectedQuote.invoice_id && (
                   <ActionButton variant="primary" onClick={openInvoiceModal}>
                     Create Invoice
                   </ActionButton>
@@ -1001,18 +1130,19 @@ const HardwareQuotesPage: React.FC = () => {
                   <StatusSelect
                     value={detailStatus}
                     onChange={(e) => handleStatusChange(e.target.value)}
+                    disabled={detailStatus === 'invoiced'}
                   >
                     <option value="new">New</option>
-                    <option value="contacted">Contacted</option>
+                    <option value="contacted">In Progress</option>
                     <option value="confirmed">Confirmed</option>
-                    <option value="invoiced">Invoiced</option>
-                    <option value="cancelled">Cancelled</option>
+                    {detailStatus === 'invoiced' && <option value="invoiced">Invoiced</option>}
+                    <option value="cancelled">Closed</option>
                   </StatusSelect>
                 </DetailItemValue>
               </DetailItem>
               <DetailItem>
                 <DetailItemLabel>Created</DetailItemLabel>
-                <DetailItemValue>{formatDate(selectedQuote.createdAt)}</DetailItemValue>
+                <DetailItemValue>{formatDate(selectedQuote.created_at)}</DetailItemValue>
               </DetailItem>
             </DetailGrid>
 
@@ -1021,16 +1151,16 @@ const HardwareQuotesPage: React.FC = () => {
             <DetailGrid>
               <DetailItem>
                 <DetailItemLabel>Name</DetailItemLabel>
-                <DetailItemValue>{selectedQuote.name}</DetailItemValue>
+                <DetailItemValue>{selectedQuote.contact_name}</DetailItemValue>
               </DetailItem>
               <DetailItem>
                 <DetailItemLabel>Email</DetailItemLabel>
-                <DetailItemValue>{selectedQuote.email}</DetailItemValue>
+                <DetailItemValue>{selectedQuote.contact_email}</DetailItemValue>
               </DetailItem>
-              {selectedQuote.phone && (
+              {selectedQuote.contact_phone && (
                 <DetailItem>
                   <DetailItemLabel>Phone</DetailItemLabel>
-                  <DetailItemValue>{selectedQuote.phone}</DetailItemValue>
+                  <DetailItemValue>{selectedQuote.contact_phone}</DetailItemValue>
                 </DetailItem>
               )}
               {selectedQuote.company_name && (
@@ -1064,9 +1194,9 @@ const HardwareQuotesPage: React.FC = () => {
             <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 16 }}>
               <AddonRow>
                 <div>
-                  <strong>{selectedQuote.package_name}</strong>
+                  <strong>{selectedQuote.packageProduct?.name || selectedQuote.package_snapshot?.name || 'N/A'}</strong>
                   <span style={{ color: '#6B7280', marginLeft: 8 }}>
-                    ({selectedQuote.set_group} - {selectedQuote.set_tier})
+                    ({selectedQuote.packageProduct?.set_group || ''} - {selectedQuote.packageProduct?.set_tier || ''})
                   </span>
                 </div>
                 <div style={{ fontWeight: 600 }}>{formatCurrency(selectedQuote.package_price, quoteCurrency)}</div>
@@ -1074,13 +1204,13 @@ const HardwareQuotesPage: React.FC = () => {
 
               {selectedQuote.addon_items && selectedQuote.addon_items.length > 0 && (
                 <>
-                  <div style={{ fontSize: 12, color: '#6B7280', marginTop: 12, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: 12, color: '#6B7280', marginTop: 12, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' as const }}>
                     Add-ons
                   </div>
                   {selectedQuote.addon_items.map((addon, idx) => (
                     <AddonRow key={idx}>
                       <div>{addon.name} x {addon.quantity}</div>
-                      <div>{formatCurrency(addon.price * addon.quantity, quoteCurrency)}</div>
+                      <div>{formatCurrency(addon.subtotal || addon.total_price || (addon.unit_price * addon.quantity), quoteCurrency)}</div>
                     </AddonRow>
                   ))}
                 </>
@@ -1119,6 +1249,14 @@ const HardwareQuotesPage: React.FC = () => {
                 </ActionButton>
               </div>
             </FormGroup>
+
+            {/* Comments */}
+            <SectionTitle>Comments</SectionTitle>
+            <CommentSection
+              entityType="hardware_quote"
+              entityId={String(selectedQuote.id)}
+              currentUserId={user?.id ? Number(user.id) : undefined}
+            />
 
             {/* Invoice Info */}
             {selectedQuote.invoice && (
@@ -1209,13 +1347,13 @@ const HardwareQuotesPage: React.FC = () => {
             <SectionTitle style={{ marginTop: 0 }}>Quote Summary</SectionTitle>
             <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 20 }}>
               <AddonRow>
-                <div><strong>{selectedQuote.package_name}</strong> ({selectedQuote.set_group} - {selectedQuote.set_tier})</div>
+                <div><strong>{selectedQuote.packageProduct?.name || selectedQuote.package_snapshot?.name || 'N/A'}</strong> ({selectedQuote.packageProduct?.set_group || ''} - {selectedQuote.packageProduct?.set_tier || ''})</div>
                 <div>{formatCurrency(selectedQuote.package_price, quoteCurrency)}</div>
               </AddonRow>
               {selectedQuote.addon_items && selectedQuote.addon_items.map((addon, idx) => (
                 <AddonRow key={idx}>
                   <div>{addon.name} x {addon.quantity}</div>
-                  <div>{formatCurrency(addon.price * addon.quantity, quoteCurrency)}</div>
+                  <div>{formatCurrency(addon.subtotal || addon.total_price || (addon.unit_price * addon.quantity), quoteCurrency)}</div>
                 </AddonRow>
               ))}
               <TotalRow>

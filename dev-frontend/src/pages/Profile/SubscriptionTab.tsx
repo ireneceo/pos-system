@@ -268,6 +268,8 @@ const PlanCard = styled.div<{ isCurrent?: boolean; isSelected?: boolean }>`
   cursor: ${p => p.isCurrent ? 'default' : 'pointer'};
   background: ${p => p.isCurrent ? '#F8F7FF' : 'white'};
   transition: border-color 0.15s;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     border-color: ${p => p.isCurrent ? '#635BFF' : '#635BFF'};
@@ -312,11 +314,15 @@ const PlanCardFeature = styled.div`
   padding: 3px 0;
 `;
 
+const CardSpacer = styled.div`
+  flex: 1;
+  min-height: 12px;
+`;
+
 const ChangeLabel = styled.div<{ type: string }>`
   font-size: 12px;
   font-weight: 500;
   color: ${p => p.type === 'upgrade' ? '#059669' : '#D97706'};
-  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #F3F4F6;
 `;
@@ -691,6 +697,7 @@ const SubscriptionTab: React.FC = () => {
                   <PlanCardFeature>{formatLimit(plan.limits.menu_items)} menu items</PlanCardFeature>
                   <PlanCardFeature>{formatLimit(plan.limits.staff)} staff</PlanCardFeature>
                 </div>
+                <CardSpacer />
                 {!isCurrent && changeType && (
                   <ChangeLabel type={changeType}>
                     {changeType === 'upgrade' && (

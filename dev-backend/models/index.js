@@ -66,7 +66,11 @@ const SystemProduct = require('./SystemProduct');
 const SystemProductCategory = require('./SystemProductCategory');
 const SystemProductPrice = require('./SystemProductPrice');
 const SystemProductAddon = require('./SystemProductAddon');
+const SystemProductOptionGroup = require('./SystemProductOptionGroup');
+const SystemProductOption = require('./SystemProductOption');
+const SystemProductOptionGroupProduct = require('./SystemProductOptionGroupProduct');
 const HardwareQuote = require('./HardwareQuote');
+const TableQRSession = require('./TableQRSession');
 
 // Define associations
 // Brand - Restaurant associations
@@ -465,6 +469,17 @@ SystemProductAddon.belongsTo(SystemProduct, { foreignKey: 'set_product_id', as: 
 SystemProductAddon.belongsTo(SystemProduct, { foreignKey: 'addon_product_id', as: 'addonProduct' });
 SystemProduct.hasMany(SystemProductAddon, { foreignKey: 'set_product_id', as: 'addons' });
 
+// SystemProduct Option associations
+SystemProductOptionGroup.hasMany(SystemProductOption, { foreignKey: 'option_group_id', as: 'options' });
+SystemProductOption.belongsTo(SystemProductOptionGroup, { foreignKey: 'option_group_id', as: 'optionGroup' });
+
+SystemProduct.belongsToMany(SystemProductOptionGroup, { through: SystemProductOptionGroupProduct, foreignKey: 'product_id', otherKey: 'option_group_id', as: 'optionGroups' });
+SystemProductOptionGroup.belongsToMany(SystemProduct, { through: SystemProductOptionGroupProduct, foreignKey: 'option_group_id', otherKey: 'product_id', as: 'products' });
+
+// TableQRSession associations
+TableQRSession.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(TableQRSession, { foreignKey: 'restaurant_id', as: 'qrSessions' });
+
 // HardwareQuote associations
 HardwareQuote.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 HardwareQuote.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
@@ -540,5 +555,9 @@ module.exports = {
   SystemProductCategory,
   SystemProductPrice,
   SystemProductAddon,
-  HardwareQuote
+  SystemProductOptionGroup,
+  SystemProductOption,
+  SystemProductOptionGroupProduct,
+  HardwareQuote,
+  TableQRSession
 };

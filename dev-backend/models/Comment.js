@@ -10,7 +10,7 @@ Comment.init({
     autoIncrement: true
   },
   entity_type: {
-    type: DataTypes.ENUM('notice', 'operation_ticket', 'support_ticket'),
+    type: DataTypes.ENUM('notice', 'operation_ticket', 'support_ticket', 'hardware_quote'),
     allowNull: false,
     comment: 'Polymorphic type: which table this comment belongs to'
   },

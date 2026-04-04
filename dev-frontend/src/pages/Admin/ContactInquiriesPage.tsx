@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { Modal as CommonModal } from '../../components/UI';
+import { Tabs, Tab } from '../../components/Common/TabComponents';
+import { useTabParam } from '../../hooks/useTabParam';
 
 interface ContactInquiry {
   id: number;
@@ -148,6 +150,8 @@ const InquiryCard = styled.div`
   transition: all 0.2s;
   overflow: hidden;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
@@ -312,6 +316,11 @@ const ReplyMeta = styled.div`
   margin-top: 8px;
 `;
 
+const CardSpacer = styled.div`
+  flex: 1;
+  min-height: 12px;
+`;
+
 const InquiryMeta = styled.div`
   display: flex;
   justify-content: space-between;
@@ -333,6 +342,22 @@ const RepliedBadge = styled.span`
   border-radius: 4px;
 `;
 
+
+const CloseInquiryButton = styled.button`
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  background: #fff;
+  color: #6B7280;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover {
+    background: #E5E7EB;
+    color: #374151;
+  }
+`;
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
@@ -455,6 +480,7 @@ const ContactInquiriesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [activeTab, handleTabChange] = useTabParam<'active' | 'closed'>('active');
 
   // Detail modal state
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -475,7 +501,6 @@ const ContactInquiriesPage: React.FC = () => {
       if (!silent) setLoading(true);
       const token = localStorage.getItem('auth_token');
       const params = new URLSearchParams();
-      if (statusFilter !== 'all') params.append('status', statusFilter);
       if (searchTerm) params.append('search', searchTerm);
 
       const [inquiriesRes, statsRes] = await Promise.all([
@@ -498,7 +523,7 @@ const ContactInquiriesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm]);
 
   useEffect(() => {
     loadData();
@@ -592,6 +617,39 @@ const ContactInquiriesPage: React.FC = () => {
     }
   };
 
+  const handleCloseInquiry = async (inquiryId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/public/admin/inquiries/${inquiryId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'closed' })
+      });
+      if (response.ok) {
+        setInquiries(prev => prev.map(i =>
+          i.id === inquiryId ? { ...i, status: 'closed' as ContactInquiry['status'] } : i
+        ));
+      }
+    } catch (error) {
+      console.error('Error closing inquiry:', error);
+    }
+  };
+
+  const activeCount = inquiries.filter(i => i.status === 'new' || i.status === 'in_progress').length;
+  const closedCount = inquiries.filter(i => i.status === 'resolved' || i.status === 'closed').length;
+
+  const filteredInquiries = inquiries.filter(inquiry => {
+    const matchesTab = activeTab === 'active'
+      ? (inquiry.status === 'new' || inquiry.status === 'in_progress')
+      : (inquiry.status === 'resolved' || inquiry.status === 'closed');
+    const matchesStatus = statusFilter === 'all' || inquiry.status === statusFilter;
+    return matchesTab && matchesStatus;
+  });
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleString('en-US', {
       year: 'numeric',
@@ -646,16 +704,33 @@ const ContactInquiriesPage: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
+          <Tabs>
+            <Tab active={activeTab === 'active'} onClick={() => { handleTabChange('active'); setStatusFilter('all'); }}>
+              Active ({activeCount})
+            </Tab>
+            <Tab active={activeTab === 'closed'} onClick={() => { handleTabChange('closed'); setStatusFilter('all'); }}>
+              Closed ({closedCount})
+            </Tab>
+          </Tabs>
+
           <FilterBar>
             <FilterSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">All Status</option>
-              <option value="new">New</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              {activeTab === 'active' ? (
+                <>
+                  <option value="all">All Status</option>
+                  <option value="new">New</option>
+                  <option value="in_progress">In Progress</option>
+                </>
+              ) : (
+                <>
+                  <option value="all">All Status</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </>
+              )}
             </FilterSelect>
             <SearchInput
               placeholder="Search by name, email, company..."
@@ -666,11 +741,11 @@ const ContactInquiriesPage: React.FC = () => {
 
           {loading ? (
             <EmptyState>Loading...</EmptyState>
-          ) : inquiries.length === 0 ? (
+          ) : filteredInquiries.length === 0 ? (
             <EmptyState>No inquiries found</EmptyState>
           ) : (
             <InquiryGrid>
-              {inquiries.map((inquiry) => (
+              {filteredInquiries.map((inquiry) => (
                 <InquiryCard key={inquiry.id} onClick={() => openDetail(inquiry)}>
                   <InquiryHeader>
                     <InquiryInfo>
@@ -689,6 +764,7 @@ const ContactInquiriesPage: React.FC = () => {
 
                   <CardMessagePreview>{inquiry.message}</CardMessagePreview>
 
+                  <CardSpacer />
                   <InquiryMeta>
                     <span>{formatDate(inquiry.createdAt)}</span>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -699,6 +775,11 @@ const ContactInquiriesPage: React.FC = () => {
                       )}
                       {inquiry.reply_message && (
                         <RepliedBadge>Replied</RepliedBadge>
+                      )}
+                      {activeTab === 'active' && (
+                        <CloseInquiryButton onClick={(e) => handleCloseInquiry(inquiry.id, e)}>
+                          Close
+                        </CloseInquiryButton>
                       )}
                     </div>
                   </InquiryMeta>

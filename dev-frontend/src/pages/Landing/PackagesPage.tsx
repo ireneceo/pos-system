@@ -65,6 +65,13 @@ interface Package {
   addons: Addon[];
 }
 
+interface SupportedCountry {
+  code: string;
+  name: string;
+  currency: string;
+  flag: string;
+}
+
 // ─── Constants ───────────────────────────────────────────────────────
 
 const countryToCurrency: Record<string, string> = {
@@ -74,6 +81,8 @@ const countryToCurrency: Record<string, string> = {
   'GB': 'GBP', 'DE': 'EUR', 'FR': 'EUR', 'IT': 'EUR',
   'ES': 'EUR', 'NL': 'EUR', 'US': 'USD', 'CA': 'CAD',
 };
+
+const ZERO_DECIMAL_CURRENCIES = ['KRW', 'JPY', 'VND', 'IDR', 'TWD'];
 
 type SetGroup = 'tablet' | 'monitor';
 
@@ -126,6 +135,54 @@ const HeroSubtitle = styled.p`
   @media (max-width: 768px) {
     font-size: 14px;
     padding: 0 8px;
+  }
+`;
+
+const CountriesBanner = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px 0;
+`;
+
+const CountriesBannerInner = styled.div`
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 12px;
+  padding: 20px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+`;
+
+const CountriesList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  font-size: 15px;
+  color: #0A2540;
+  font-weight: 600;
+`;
+
+const CountryItem = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const SoftwareNote = styled.p`
+  font-size: 13px;
+  color: #6B7280;
+  margin: 0;
+  line-height: 1.5;
+
+  a {
+    color: #635BFF;
+    text-decoration: none;
+    font-weight: 600;
+    &:hover { text-decoration: underline; }
   }
 `;
 
@@ -348,6 +405,20 @@ const PackageCurrencySymbol = styled.span`
   font-weight: 600;
   color: #6B7280;
   margin-right: 4px;
+`;
+
+const SubscriptionNotice = styled.div`
+  font-size: 11px;
+  color: #9CA3AF;
+  margin-top: 6px;
+  line-height: 1.4;
+
+  a {
+    color: #635BFF;
+    text-decoration: none;
+    font-weight: 600;
+    &:hover { text-decoration: underline; }
+  }
 `;
 
 const EquipmentList = styled.ul`
@@ -736,18 +807,24 @@ const Required = styled.span`
   margin-left: 2px;
 `;
 
-const Input = styled.input`
+const Input = styled.input<{ hasError?: boolean }>`
   padding: 12px 16px;
   font-size: 15px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid ${props => props.hasError ? '#EF4444' : '#E6EBF1'};
   border-radius: 8px;
   transition: all 0.2s;
 
   &:focus {
     outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+    border-color: ${props => props.hasError ? '#EF4444' : '#635BFF'};
+    box-shadow: 0 0 0 3px ${props => props.hasError ? 'rgba(239, 68, 68, 0.1)' : 'rgba(99, 91, 255, 0.1)'};
   }
+`;
+
+const FieldError = styled.span`
+  font-size: 12px;
+  color: #EF4444;
+  margin-top: -4px;
 `;
 
 const TextArea = styled.textarea`
@@ -858,10 +935,19 @@ const LoadingText = styled.div`
 
 // ─── Component ──────────────────────────────────────────────────────
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+interface FormErrors {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 const PackagesPage: React.FC = () => {
   // Data
   const [packages, setPackages] = useState<Package[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
+  const [supportedCountries, setSupportedCountries] = useState<SupportedCountry[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Selection
@@ -885,8 +971,13 @@ const PackagesPage: React.FC = () => {
     email: '',
     phone: '',
     company_name: '',
+    company_address: '',
+    tax_id: '',
+    wants_invoice: false,
     message: '',
   });
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [formTouched, setFormTouched] = useState<Record<string, boolean>>({});
 
   // ─── Currency Detection ─────────────────────────────────────────
 
@@ -922,6 +1013,17 @@ const PackagesPage: React.FC = () => {
     const init = async () => {
       const { country, currency } = await detectCountryAndCurrency();
       setDetectedCountry(country);
+
+      // Load supported countries
+      try {
+        const res = await fetch('/api/currencies/countries/supported');
+        if (res.ok) {
+          const data = await res.json();
+          setSupportedCountries(data.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to load supported countries:', err);
+      }
 
       // Load currencies
       let loadedCurrencies: CurrencyInfo[] = [];
@@ -970,9 +1072,11 @@ const PackagesPage: React.FC = () => {
   };
 
   const formatPrice = (price: number, currency: string): string => {
-    const info = getCurrencyInfo(currency);
-    if (info.decimals === 0) return Math.round(price).toLocaleString();
-    return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const isZeroDecimal = ZERO_DECIMAL_CURRENCIES.includes(currency);
+    if (isZeroDecimal) {
+      return Math.round(price).toLocaleString('en-US');
+    }
+    return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const getPackagePrice = (pkg: Package): number => {
@@ -983,6 +1087,29 @@ const PackagesPage: React.FC = () => {
     return addon.addonProduct.currency_prices[selectedCurrency] || 0;
   };
 
+  // ─── Form Validation ──────────────────────────────────────────
+
+  const validateForm = (): FormErrors => {
+    const errors: FormErrors = {};
+    if (!formData.name.trim()) {
+      errors.name = 'Name is required';
+    }
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!EMAIL_REGEX.test(formData.email.trim())) {
+      errors.email = 'Please enter a valid email address';
+    }
+    if (!formData.phone.trim()) {
+      errors.phone = 'Phone number is required';
+    }
+    return errors;
+  };
+
+  const isFormValid = formData.name.trim() !== '' &&
+    formData.email.trim() !== '' &&
+    EMAIL_REGEX.test(formData.email.trim()) &&
+    formData.phone.trim() !== '';
+
   // ─── Derived Data ──────────────────────────────────────────────
 
   const groupPackages = selectedGroup
@@ -991,12 +1118,16 @@ const PackagesPage: React.FC = () => {
 
   const availableAddons: Addon[] = selectedPackage?.addons || [];
 
-  // Group addons by label
-  const addonsByLabel: Record<string, Addon[]> = {};
+  // Group addons by category name, deduplicated by product ID
+  const addonsByCategory: Record<string, Addon[]> = {};
+  const seenProductIds = new Set<number>();
   availableAddons.forEach(addon => {
-    const label = addon.addon_label || 'Additional Equipment';
-    if (!addonsByLabel[label]) addonsByLabel[label] = [];
-    addonsByLabel[label].push(addon);
+    const productId = addon.addonProduct.id;
+    if (seenProductIds.has(productId)) return;
+    seenProductIds.add(productId);
+    const categoryName = addon.addonProduct.category?.name || 'Additional Equipment';
+    if (!addonsByCategory[categoryName]) addonsByCategory[categoryName] = [];
+    addonsByCategory[categoryName].push(addon);
   });
 
   // Calculate totals
@@ -1004,7 +1135,9 @@ const PackagesPage: React.FC = () => {
   let addonTotal = 0;
   const addonSummaryItems: string[] = [];
 
-  availableAddons.forEach(addon => {
+  // Use deduplicated addons for total calculation
+  const deduplicatedAddons = Object.values(addonsByCategory).flat();
+  deduplicatedAddons.forEach(addon => {
     const qty = addonQuantities[addon.addonProduct.id] || 0;
     if (qty > 0) {
       addonTotal += getAddonPrice(addon) * qty;
@@ -1045,16 +1178,47 @@ const PackagesPage: React.FC = () => {
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error on change if field was touched
+    if (formTouched[name]) {
+      setFormErrors(prev => {
+        const next = { ...prev };
+        delete next[name as keyof FormErrors];
+        return next;
+      });
+    }
+  };
+
+  const handleFieldBlur = (fieldName: string) => {
+    setFormTouched(prev => ({ ...prev, [fieldName]: true }));
+    // Validate single field on blur
+    const errors = validateForm();
+    if (errors[fieldName as keyof FormErrors]) {
+      setFormErrors(prev => ({ ...prev, [fieldName]: errors[fieldName as keyof FormErrors] }));
+    } else {
+      setFormErrors(prev => {
+        const next = { ...prev };
+        delete next[fieldName as keyof FormErrors];
+        return next;
+      });
+    }
   };
 
   const handleQuoteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPackage) return;
 
+    // Validate all fields
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      setFormTouched({ name: true, email: true, phone: true });
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError('');
 
-    const addonItems = availableAddons
+    const addonItems = deduplicatedAddons
       .filter(a => (addonQuantities[a.addonProduct.id] || 0) > 0)
       .map(a => ({
         product_id: a.addonProduct.id,
@@ -1069,6 +1233,9 @@ const PackagesPage: React.FC = () => {
       contact_email: formData.email.trim(),
       contact_phone: formData.phone || null,
       company_name: formData.company_name || null,
+      company_address: formData.company_address || null,
+      tax_id: formData.tax_id || null,
+      wants_invoice: formData.wants_invoice,
       message: formData.message || null,
       country_code: detectedCountry || null,
       currency: selectedCurrency,
@@ -1110,6 +1277,8 @@ const PackagesPage: React.FC = () => {
     setQuoteSubmitted(false);
     setSubmitError('');
     setFormData({ name: '', email: '', phone: '', company_name: '', message: '' });
+    setFormErrors({});
+    setFormTouched({});
   };
 
   // ─── Render ────────────────────────────────────────────────────
@@ -1131,6 +1300,26 @@ const PackagesPage: React.FC = () => {
             Choose the right hardware setup for your restaurant. Select a package, add extra equipment, and get an instant quote.
           </HeroSubtitle>
         </HeroSection>
+
+        {/* Supported Countries Banner */}
+        {supportedCountries.length > 0 && (
+          <CountriesBanner>
+            <CountriesBannerInner>
+              <CountriesList>
+                <span style={{ color: '#6B7280', fontWeight: 500 }}>Available in:</span>
+                {supportedCountries.map(c => (
+                  <CountryItem key={c.code}>
+                    {c.flag} {c.name}
+                  </CountryItem>
+                ))}
+              </CountriesList>
+              <SoftwareNote>
+                Don't need hardware? You can subscribe to our software and use your own devices and printers.{' '}
+                <Link to="/pricing">View Plans &rarr;</Link>
+              </SoftwareNote>
+            </CountriesBannerInner>
+          </CountriesBanner>
+        )}
 
         <ContentSection>
           {/* Currency Selector */}
@@ -1224,10 +1413,16 @@ const PackagesPage: React.FC = () => {
 
                             <PackagePriceSection>
                               {price > 0 ? (
-                                <PackagePrice>
-                                  <PackageCurrencySymbol>{currencyInfo.symbol}</PackageCurrencySymbol>
-                                  {formatPrice(price, selectedCurrency)}
-                                </PackagePrice>
+                                <>
+                                  <PackagePrice>
+                                    <PackageCurrencySymbol>{currencyInfo.symbol}</PackageCurrencySymbol>
+                                    {formatPrice(price, selectedCurrency)}
+                                  </PackagePrice>
+                                  <SubscriptionNotice>
+                                    * Software subscription charged separately.{' '}
+                                    <Link to="/pricing">View Plans &rarr;</Link>
+                                  </SubscriptionNotice>
+                                </>
                               ) : (
                                 <PackagePrice style={{ color: '#0A2540' }}>Contact Us</PackagePrice>
                               )}
@@ -1283,21 +1478,21 @@ const PackagesPage: React.FC = () => {
                         <AddonsOverlayText>Select a package first</AddonsOverlayText>
                       </AddonsOverlay>
                     )}
-                    {Object.keys(addonsByLabel).length === 0 && selectedPackage && (
+                    {Object.keys(addonsByCategory).length === 0 && selectedPackage && (
                       <div style={{ textAlign: 'center', padding: '32px', color: '#6B7280' }}>
                         No additional equipment available for this package.
                       </div>
                     )}
-                    {Object.entries(addonsByLabel).map(([label, addons]) => (
-                      <div key={label}>
-                        <AddonGroupTitle>{label}</AddonGroupTitle>
+                    {Object.entries(addonsByCategory).map(([categoryName, addons]) => (
+                      <div key={categoryName}>
+                        <AddonGroupTitle>{categoryName}</AddonGroupTitle>
                         <AddonsGrid>
                           {addons.map(addon => {
                             const price = getAddonPrice(addon);
                             const qty = addonQuantities[addon.addonProduct.id] || 0;
 
                             return (
-                              <AddonRow key={addon.id}>
+                              <AddonRow key={addon.addonProduct.id}>
                                 <AddonEmoji>
                                   {addon.addonProduct.emoji || addon.addonProduct.category?.emoji || '\uD83D\uDCE6'}
                                 </AddonEmoji>
@@ -1337,7 +1532,7 @@ const PackagesPage: React.FC = () => {
                       </div>
                     ))}
                     {/* Spacer when no addons to keep overlay visible */}
-                    {!selectedPackage && Object.keys(addonsByLabel).length === 0 && (
+                    {!selectedPackage && Object.keys(addonsByCategory).length === 0 && (
                       <div style={{ minHeight: 120 }} />
                     )}
                   </AddonsContainer>
@@ -1406,9 +1601,11 @@ const PackagesPage: React.FC = () => {
                       name="name"
                       value={formData.name}
                       onChange={handleFormChange}
-                      required
+                      onBlur={() => handleFieldBlur('name')}
+                      hasError={!!formErrors.name}
                       placeholder="Your name"
                     />
+                    {formErrors.name && <FieldError>{formErrors.name}</FieldError>}
                   </FormGroup>
 
                   <FormGroup>
@@ -1418,17 +1615,35 @@ const PackagesPage: React.FC = () => {
                       name="email"
                       value={formData.email}
                       onChange={handleFormChange}
-                      required
+                      onBlur={() => handleFieldBlur('email')}
+                      hasError={!!formErrors.email}
                       placeholder="your@email.com"
                     />
+                    {formErrors.email && <FieldError>{formErrors.email}</FieldError>}
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Phone</Label>
+                    <Label>Phone<Required>*</Required></Label>
                     <PhoneInput
                       value={formData.phone}
-                      onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                      onChange={(value) => {
+                        setFormData(prev => ({ ...prev, phone: value }));
+                        if (formTouched.phone) {
+                          if (!value.trim()) {
+                            setFormErrors(prev => ({ ...prev, phone: 'Phone number is required' }));
+                          } else {
+                            setFormErrors(prev => {
+                              const next = { ...prev };
+                              delete next.phone;
+                              return next;
+                            });
+                          }
+                        }
+                      }}
+                      onBlur={() => handleFieldBlur('phone')}
+                      required
                     />
+                    {formErrors.phone && <FieldError>{formErrors.phone}</FieldError>}
                   </FormGroup>
 
                   <FormGroup>
@@ -1441,6 +1656,43 @@ const PackagesPage: React.FC = () => {
                       placeholder="Your company or restaurant name"
                     />
                   </FormGroup>
+
+                  <FormGroup>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', color: '#374151' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.wants_invoice}
+                        onChange={(e) => setFormData(prev => ({ ...prev, wants_invoice: e.target.checked }))}
+                        style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+                      />
+                      I need a formal invoice
+                    </label>
+                  </FormGroup>
+
+                  {formData.wants_invoice && (
+                    <>
+                      <FormGroup>
+                        <Label>Company Address <span style={{ color: '#DC2626' }}>*</span></Label>
+                        <TextArea
+                          name="company_address"
+                          value={formData.company_address}
+                          onChange={handleFormChange}
+                          placeholder="Full company address for invoice"
+                          rows={2}
+                        />
+                      </FormGroup>
+                      <FormGroup>
+                        <Label>Tax ID / Registration Number</Label>
+                        <Input
+                          type="text"
+                          name="tax_id"
+                          value={formData.tax_id}
+                          onChange={handleFormChange}
+                          placeholder="Business registration or tax ID"
+                        />
+                      </FormGroup>
+                    </>
+                  )}
 
                   <FormGroup>
                     <Label>Message</Label>
@@ -1492,7 +1744,7 @@ const PackagesPage: React.FC = () => {
 
                   <ModalButtonRow>
                     <CancelButton type="button" onClick={closeModal}>Cancel</CancelButton>
-                    <SubmitButton type="submit" disabled={submitting}>
+                    <SubmitButton type="submit" disabled={submitting || !isFormValid}>
                       {submitting ? 'Submitting...' : 'Submit Quote Request'}
                     </SubmitButton>
                   </ModalButtonRow>

@@ -860,7 +860,9 @@ const SettingsPage: React.FC = () => {
     tableNumberRequired: false,
     tablePrefix: 'T',
     totalTables: 20,
-    qrCodeBaseUrl: window.location.origin
+    qrCodeBaseUrl: window.location.origin,
+    qrMode: 'static' as 'static' | 'session',
+    qrExpirationMinutes: 180
   });
   
   const [tables, setTables] = useState<Table[]>([]);
@@ -1053,7 +1055,9 @@ const SettingsPage: React.FC = () => {
                 tableNumberRequired: restaurant.table_settings.tableNumberRequired ?? false,
                 tablePrefix: restaurant.table_settings.tablePrefix || 'T',
                 totalTables: restaurant.table_settings.totalTables || 20,
-                qrCodeBaseUrl: restaurant.table_settings.qrCodeBaseUrl || window.location.origin
+                qrCodeBaseUrl: restaurant.table_settings.qrCodeBaseUrl || window.location.origin,
+                qrMode: restaurant.table_settings.qrMode || 'static',
+                qrExpirationMinutes: restaurant.table_settings.qrExpirationMinutes || 180
               });
             }
 
@@ -3190,6 +3194,41 @@ const SettingsPage: React.FC = () => {
                     placeholder="https://yourdomain.com" />
                   <HelpText>Base URL for QR codes (usually your domain)</HelpText>
                 </FormGroup>
+
+                {/* QR Code Mode */}
+                <FormGroup>
+                  <Label>QR Code Mode</Label>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'static' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'static' ? '#F0F0FF' : 'white', flex: 1 }}>
+                      <input type="radio" name="qrMode" value="static" checked={tableSettings.qrMode === 'static'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'static'}); setHasChanges(true); }} />
+                      <div>
+                        <div style={{ fontWeight: 500 }}>Static</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>Permanent QR, no expiration</div>
+                      </div>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'session' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'session' ? '#F0F0FF' : 'white', flex: 1 }}>
+                      <input type="radio" name="qrMode" value="session" checked={tableSettings.qrMode === 'session'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'session'}); setHasChanges(true); }} />
+                      <div>
+                        <div style={{ fontWeight: 500 }}>Session</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>Expiring QR, generated per visit</div>
+                      </div>
+                    </label>
+                  </div>
+                </FormGroup>
+
+                {tableSettings.qrMode === 'session' && (
+                  <FormGroup>
+                    <Label>QR Expiration Time (hours)</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="24"
+                      value={Math.round(tableSettings.qrExpirationMinutes / 60)}
+                      onChange={(e) => { setTableSettings({...tableSettings, qrExpirationMinutes: parseInt(e.target.value) * 60 || 180}); setHasChanges(true); }}
+                    />
+                    <HelpText>QR codes expire automatically after this time</HelpText>
+                  </FormGroup>
+                )}
                 <button onClick={handleGenerateQRCodes}
                   style={{ padding: '10px 20px', background: '#E6EBF1', color: '#0A2540', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s', marginTop: '16px' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = '#D1D5DB'; }}

@@ -402,7 +402,9 @@ const MobilePromotionCard = styled.div`
   padding: 16px;
   cursor: pointer;
   transition: all 0.2s;
-  
+  display: flex;
+  flex-direction: column;
+
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
@@ -415,13 +417,17 @@ const MobilePromotionHeader = styled.div`
   margin-bottom: 12px;
 `;
 
+const CardSpacer = styled.div`
+  flex: 1;
+  min-height: 12px;
+`;
+
 const MobilePromotionStats = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
   color: #6B7280;
-  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #F3F4F6;
 `;
@@ -1012,6 +1018,7 @@ const ManagerPromotionsPage: React.FC = () => {
                         </div>
                       </MobilePromotionHeader>
                       
+                      <CardSpacer />
                       <MobilePromotionStats>
                         <span>{promotion.usageCount} used</span>
                         <span style={{ color: '#059669', fontWeight: '600' }}>{formatCurrency(promotion.generatedRevenue, selectedCurrency)}</span>

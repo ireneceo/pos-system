@@ -25,7 +25,7 @@ interface Comment {
 }
 
 interface CommentSectionProps {
-  entityType: 'support_ticket' | 'operation_ticket' | 'notice';
+  entityType: 'support_ticket' | 'operation_ticket' | 'notice' | 'hardware_quote';
   entityId: string;
   currentUserId?: number;
   onMarkRead?: () => void;

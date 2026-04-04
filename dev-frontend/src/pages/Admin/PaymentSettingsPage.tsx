@@ -340,6 +340,12 @@ const PaymentSettingsPage: React.FC = () => {
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [tempSelectedCurrencies, setTempSelectedCurrencies] = useState<string[]>([]);
 
+  // Country settings
+  const [countryConfig, setCountryConfig] = useState<Record<string, { name: string; currency: string; flag: string }>>({});
+  const [supportedCountries, setSupportedCountries] = useState<string[]>([]);
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  const [tempSelectedCountries, setTempSelectedCountries] = useState<string[]>([]);
+
   // Payment settings
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(defaultPaymentSettings);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('');
@@ -365,10 +371,12 @@ const PaymentSettingsPage: React.FC = () => {
       const token = localStorage.getItem('auth_token');
       const headers = { 'Authorization': `Bearer ${token}` };
 
-      const [configRes, supportedRes, paymentRes] = await Promise.all([
+      const [configRes, supportedRes, paymentRes, countryConfigRes, supportedCountriesRes] = await Promise.all([
         fetch('/api/currencies/config'),
         fetch('/api/currencies/supported'),
-        fetch('/api/admin/payment-settings', { headers })
+        fetch('/api/admin/payment-settings', { headers }),
+        fetch('/api/currencies/countries/config'),
+        fetch('/api/currencies/countries/supported')
       ]);
 
       if (configRes.ok) {
@@ -410,10 +418,59 @@ const PaymentSettingsPage: React.FC = () => {
           });
         }
       }
+      // Country config
+      if (countryConfigRes.ok) {
+        const data = await countryConfigRes.json();
+        if (data.success && data.data) {
+          const config: Record<string, { name: string; currency: string; flag: string }> = {};
+          data.data.forEach((c: { code: string; name: string; currency: string; flag: string }) => {
+            config[c.code] = { name: c.name, currency: c.currency, flag: c.flag };
+          });
+          setCountryConfig(config);
+        }
+      }
+
+      if (supportedCountriesRes.ok) {
+        const data = await supportedCountriesRes.json();
+        if (data.success && data.data) {
+          setSupportedCountries(data.data.map((c: { code: string }) => c.code));
+        }
+      }
     } catch (error) {
       console.error('Error loading settings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Country functions
+  const toggleCountrySelection = (code: string) => {
+    setTempSelectedCountries(prev =>
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    );
+  };
+
+  const updateSupportedCountries = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/currencies/countries/supported', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ countries: tempSelectedCountries })
+      });
+
+      if (response.ok) {
+        setSupportedCountries(tempSelectedCountries);
+        setShowCountryModal(false);
+        setSaveStatus({ type: 'success', message: 'Supported countries updated' });
+        setTimeout(() => setSaveStatus(null), 3000);
+      }
+    } catch (error) {
+      console.error('Error updating supported countries:', error);
+      setSaveStatus({ type: 'error', message: 'Failed to update supported countries' });
     }
   };
 
@@ -660,6 +717,29 @@ const PaymentSettingsPage: React.FC = () => {
                   )}
                 </CurrencySelector>
                 <HelpText>Currencies available for pricing plans and invoices</HelpText>
+              </FormGroup>
+            </FormRow>
+
+            <FormRow>
+              <FormGroup>
+                <Label>Supported Countries</Label>
+                <CurrencySelector
+                  onClick={() => {
+                    setTempSelectedCountries(supportedCountries);
+                    setShowCountryModal(true);
+                  }}
+                >
+                  {supportedCountries.length > 0 ? (
+                    supportedCountries.map(code => (
+                      <CurrencyTag key={code}>
+                        {countryConfig[code]?.flag} {countryConfig[code]?.name || code}
+                      </CurrencyTag>
+                    ))
+                  ) : (
+                    <PlaceholderText>Click to select countries</PlaceholderText>
+                  )}
+                </CurrencySelector>
+                <HelpText>Countries where hardware products are available for sale</HelpText>
               </FormGroup>
             </FormRow>
           </Section>
@@ -1021,6 +1101,71 @@ const PaymentSettingsPage: React.FC = () => {
                 </div>
                 <div style={{ fontSize: '12px', color: '#6B7280' }}>
                   {config.name}
+                </div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </Modal>
+
+      {/* Country Selection Modal */}
+      <Modal
+        isOpen={showCountryModal}
+        onClose={() => setShowCountryModal(false)}
+        title="Select Supported Countries"
+        size="medium"
+        footer={
+          <>
+            <ModalButton variant="secondary" onClick={() => setShowCountryModal(false)}>
+              Cancel
+            </ModalButton>
+            <ModalButton
+              variant="primary"
+              onClick={updateSupportedCountries}
+              disabled={tempSelectedCountries.length === 0}
+            >
+              Save ({tempSelectedCountries.length} selected)
+            </ModalButton>
+          </>
+        }
+      >
+        <p style={{ color: '#6B7280', marginBottom: '16px' }}>
+          Select the countries where you sell hardware products. These will be shown on the Packages page and available in product settings.
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '8px',
+          maxHeight: '400px',
+          overflowY: 'auto'
+        }}>
+          {Object.entries(countryConfig).map(([code, config]) => (
+            <label
+              key={code}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px',
+                border: `1px solid ${tempSelectedCountries.includes(code) ? '#635BFF' : '#E6EBF1'}`,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                background: tempSelectedCountries.includes(code) ? '#F0F0FF' : 'white',
+                transition: 'all 0.2s'
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={tempSelectedCountries.includes(code)}
+                onChange={() => toggleCountrySelection(code)}
+                style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
+              />
+              <div>
+                <div style={{ fontWeight: 500 }}>
+                  {config.flag} {config.name}
+                </div>
+                <div style={{ fontSize: '12px', color: '#6B7280' }}>
+                  {config.currency}
                 </div>
               </div>
             </label>

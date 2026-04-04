@@ -553,7 +553,8 @@ router.post('/hardware-quotes', async (req, res) => {
       contact_name, contact_email, contact_phone, company_name, message,
       country_code, currency,
       package_product_id, package_snapshot, addon_items,
-      package_price, addon_total, total_amount
+      package_price, addon_total, total_amount,
+      company_address, tax_id, wants_invoice
     } = req.body;
 
     if (!contact_name || !contact_email) {
@@ -579,6 +580,9 @@ router.post('/hardware-quotes', async (req, res) => {
       contact_email: contact_email.trim(),
       contact_phone: contact_phone || null,
       company_name: company_name || null,
+      company_address: company_address || null,
+      tax_id: tax_id || null,
+      wants_invoice: wants_invoice || false,
       message: message || null,
       country_code: country_code || null,
       currency: currency || null,
@@ -610,7 +614,8 @@ router.post('/hardware-quotes', async (req, res) => {
           </table>
           <p>Our team will review your configuration and contact you within 1-2 business days.</p>
           <p style="color: #6B7280; font-size: 14px;">If you have any questions, please reply to this email.</p>
-        `)
+        `),
+        attachments: getLogoAttachment()
       });
     } catch (emailErr) {
       console.error('Quote confirmation email error:', emailErr.message);
@@ -620,8 +625,8 @@ router.post('/hardware-quotes', async (req, res) => {
     try {
       const adminIds = await getSystemAdminIds();
       if (adminIds.length > 0) {
-        await sendNotificationBatch(adminIds, {
-          subject: `New Hardware Quote: ${quoteNumber}`,
+        await sendNotificationBatch(adminIds, 'hardware_quote', {
+          subject: `[Hardware Quote] New request: ${quoteNumber}`,
           html: emailLayout('Purple POS', `
             <h2 style="color: #0A2540;">New Hardware Quote Request</h2>
             <table style="width: 100%; border-collapse: collapse;">
@@ -630,7 +635,8 @@ router.post('/hardware-quotes', async (req, res) => {
               <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">Email</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${contact_email}</td></tr>
               <tr><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">Total</td><td style="padding: 8px; border-bottom: 1px solid #E6EBF1;">${currency || ''} ${total_amount ? Number(total_amount).toLocaleString() : 'N/A'}</td></tr>
             </table>
-          `)
+          `),
+          attachments: getLogoAttachment()
         });
       }
     } catch (notifyErr) {

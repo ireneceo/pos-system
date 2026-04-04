@@ -179,8 +179,12 @@ const CostValue = styled.div`
   color: #0A2540;
 `;
 
+const CardSpacer = styled.div`
+  flex: 1;
+  min-height: 12px;
+`;
+
 const RecipeIngredients = styled.div`
-  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #E6EBF1;
 `;
@@ -1069,6 +1073,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                 </InstructionsPreview>
               )}
 
+              <CardSpacer />
               {recipe.recipeIngredients && recipe.recipeIngredients.length > 0 && (
                 <RecipeIngredients>
                   <IngredientsCount>

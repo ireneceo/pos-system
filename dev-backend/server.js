@@ -466,7 +466,9 @@ const badgeCountsRouter = require('./routes/badgeCounts');
 const kitchenStationsRouter = require('./routes/kitchen-stations');
 const systemProductsRouter = require('./routes/system-products');
 const systemProductCategoriesRouter = require('./routes/system-product-categories');
+const systemProductOptionGroupsRouter = require('./routes/system-product-option-groups');
 const hardwareQuotesRouter = require('./routes/hardware-quotes');
+const tableQRRouter = require('./routes/table-qr');
 
 // Health check endpoint - PM2 모니터링 및 로드밸런서용 (가장 먼저)
 app.get('/api/health', (req, res) => {
@@ -546,7 +548,9 @@ app.use('/api/badge-counts', badgeCountsRouter);  // Sidebar badge counts
 app.use('/api/kitchen-stations', kitchenStationsRouter);  // Kitchen station management
 app.use('/api/system-products', systemProductsRouter);  // System products (hardware)
 app.use('/api/system-product-categories', systemProductCategoriesRouter);  // System product categories
+app.use('/api/system-product-option-groups', systemProductOptionGroupsRouter);  // System product option groups
 app.use('/api/hardware-quotes', hardwareQuotesRouter);  // Hardware quote management
+app.use('/api/restaurants', tableQRRouter);  // Table QR session management
 const importRouter = require('./routes/import');
 app.use('/api/import', importRouter);  // CSV data import (migration)
 

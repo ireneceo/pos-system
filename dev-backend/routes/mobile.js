@@ -157,6 +157,62 @@ function getProductOptions(category) {
   return [];
 }
 
+// QR Token Verification
+const TableQRSession = require('../models/TableQRSession');
+
+/**
+ * GET /api/mobile/verify-qr?token=xxx
+ * Verify QR token validity (public, no auth)
+ */
+router.get('/verify-qr', async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.json({ success: true, data: { valid: true, mode: 'static' } });
+    }
+
+    const session = await TableQRSession.findOne({
+      where: { token },
+      include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'slug'] }]
+    });
+
+    if (!session) {
+      return res.json({ success: true, data: { valid: false, reason: 'invalid_token' } });
+    }
+
+    // Check time expiration
+    if (new Date() > new Date(session.expires_at)) {
+      if (session.status === 'active') {
+        await session.update({ status: 'expired', expired_by: 'time' });
+      }
+      return res.json({ success: true, data: { valid: false, reason: 'expired', table_number: session.table_number } });
+    }
+
+    if (session.status === 'expired') {
+      return res.json({ success: true, data: { valid: false, reason: 'expired', expired_by: session.expired_by, table_number: session.table_number } });
+    }
+
+    const remainingMs = new Date(session.expires_at).getTime() - Date.now();
+    const remainingMinutes = Math.floor(remainingMs / 60000);
+
+    res.json({
+      success: true,
+      data: {
+        valid: true,
+        mode: 'session',
+        table_number: session.table_number,
+        restaurant_id: session.restaurant_id,
+        remaining_minutes: remainingMinutes,
+        expires_at: session.expires_at
+      }
+    });
+  } catch (error) {
+    console.error('Verify QR token error:', error);
+    res.status(500).json({ success: false, message: 'Failed to verify QR token' });
+  }
+});
+
 // Store & Menu endpoints
 router.get('/store/:slug', async (req, res) => {
   try {

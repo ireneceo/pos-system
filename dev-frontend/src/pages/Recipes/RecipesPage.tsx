@@ -81,6 +81,8 @@ const RecipeCard = styled.div<{ isActive?: boolean }>`
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -165,8 +167,12 @@ const CostValue = styled.div`
   color: #0A2540;
 `;
 
+const CardSpacer = styled.div`
+  flex: 1;
+  min-height: 12px;
+`;
+
 const RecipeIngredients = styled.div`
-  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #E6EBF1;
 `;
@@ -959,6 +965,7 @@ const RecipesPage: React.FC = () => {
                     </InstructionsPreview>
                   )}
 
+                  <CardSpacer />
                   <RecipeIngredients>
                     <IngredientsCount>
                       {recipe.recipeIngredients?.length || 0} ingredients

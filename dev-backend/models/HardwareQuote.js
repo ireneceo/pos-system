@@ -47,6 +47,21 @@ const HardwareQuote = sequelize.define('HardwareQuote', {
     type: DataTypes.STRING(255),
     allowNull: true
   },
+  company_address: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Company address for invoice'
+  },
+  tax_id: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Tax registration number for invoice'
+  },
+  wants_invoice: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Customer requested formal invoice'
+  },
   message: {
     type: DataTypes.TEXT,
     allowNull: true,

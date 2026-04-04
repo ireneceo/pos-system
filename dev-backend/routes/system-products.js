@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { SystemProduct, SystemProductCategory, SystemProductPrice, SystemProductAddon } = require('../models');
+const { SystemProduct, SystemProductCategory, SystemProductPrice, SystemProductAddon, SystemProductOptionGroup, SystemProductOption, SystemProductOptionGroupProduct } = require('../models');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 /**
@@ -32,7 +32,8 @@ router.get('/', authenticateToken, requireRole('System Admin'), async (req, res)
       include: [
         { model: SystemProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] },
         { model: SystemProductPrice, as: 'prices' },
-        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] }
+        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] },
+        { model: SystemProductOptionGroup, as: 'optionGroups', through: { attributes: [] }, include: [{ model: SystemProductOption, as: 'options' }] }
       ],
       order: [
         ['is_set', 'DESC'],
@@ -58,7 +59,8 @@ router.get('/:id', authenticateToken, requireRole('System Admin'), async (req, r
       include: [
         { model: SystemProductCategory, as: 'category' },
         { model: SystemProductPrice, as: 'prices' },
-        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] }
+        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] },
+        { model: SystemProductOptionGroup, as: 'optionGroups', through: { attributes: [] }, include: [{ model: SystemProductOption, as: 'options' }] }
       ]
     });
 
@@ -82,7 +84,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       name, description, sku, category_id, image_url, emoji, is_active,
       is_set, set_items, set_display_order, set_group, set_tier, set_use_case,
       set_setup_items, is_recommended, shipping_countries, shipping_settings,
-      prices, addons
+      prices, addons, option_group_ids
     } = req.body;
 
     if (!name || !name.trim()) {
@@ -158,12 +160,20 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       }
     }
 
+    // Link option groups (only for non-set products)
+    if (!is_set && option_group_ids && Array.isArray(option_group_ids)) {
+      for (const ogId of option_group_ids) {
+        await SystemProductOptionGroupProduct.create({ product_id: product.id, option_group_id: ogId });
+      }
+    }
+
     // Fetch with associations
     const created = await SystemProduct.findByPk(product.id, {
       include: [
         { model: SystemProductCategory, as: 'category' },
         { model: SystemProductPrice, as: 'prices' },
-        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] }
+        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] },
+        { model: SystemProductOptionGroup, as: 'optionGroups', through: { attributes: [] }, include: [{ model: SystemProductOption, as: 'options' }] }
       ]
     });
 
@@ -184,7 +194,7 @@ router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, r
       name, description, sku, category_id, image_url, emoji, is_active,
       is_set, set_items, set_display_order, set_group, set_tier, set_use_case,
       set_setup_items, is_recommended, shipping_countries, shipping_settings,
-      prices, addons
+      prices, addons, option_group_ids
     } = req.body;
 
     const product = await SystemProduct.findByPk(id);
@@ -264,11 +274,22 @@ router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, r
       }
     }
 
+    // Update option group links
+    if (option_group_ids !== undefined) {
+      await SystemProductOptionGroupProduct.destroy({ where: { product_id: id } });
+      if (!finalIsSet && option_group_ids && Array.isArray(option_group_ids)) {
+        for (const ogId of option_group_ids) {
+          await SystemProductOptionGroupProduct.create({ product_id: id, option_group_id: ogId });
+        }
+      }
+    }
+
     const updated = await SystemProduct.findByPk(id, {
       include: [
         { model: SystemProductCategory, as: 'category' },
         { model: SystemProductPrice, as: 'prices' },
-        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] }
+        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] },
+        { model: SystemProductOptionGroup, as: 'optionGroups', through: { attributes: [] }, include: [{ model: SystemProductOption, as: 'options' }] }
       ]
     });
 
@@ -371,7 +392,8 @@ router.post('/:id/copy', authenticateToken, requireRole('System Admin'), async (
       include: [
         { model: SystemProductCategory, as: 'category' },
         { model: SystemProductPrice, as: 'prices' },
-        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] }
+        { model: SystemProductAddon, as: 'addons', include: [{ model: SystemProduct, as: 'addonProduct', attributes: ['id', 'name', 'sku', 'emoji', 'image_url'] }] },
+        { model: SystemProductOptionGroup, as: 'optionGroups', through: { attributes: [] }, include: [{ model: SystemProductOption, as: 'options' }] }
       ]
     });
 

@@ -27,7 +27,7 @@ function getLogoAttachment() {
 function emailLayout(bodyContent, issuerInfo) {
   const brandName = issuerInfo?.name || 'PurpleHere';
   const brandColor = issuerInfo?.color || '#635BFF';
-  const logoSrc = issuerInfo?.logoUrl || PLATFORM_LOGO_URL;
+  const logoSrc = issuerInfo?.logoUrl || 'cid:purplehere-logo';
   const platformUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
   const logoLink = issuerInfo?.website || platformUrl;
   const logoHtml = `<a href="${logoLink}" style="text-decoration:none;"><img src="${logoSrc}" alt="${brandName}" style="height:32px;display:block;" /></a>`;

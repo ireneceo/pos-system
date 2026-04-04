@@ -234,7 +234,13 @@ router.post('/:id/invoice', authenticateToken, requireRole('System Admin'), asyn
       payer_type: 'restaurant',
       payer_id: quote.user_id || null,
       additional_charges: charges.length > 0 ? charges : null,
-      notes: `Hardware Quote: ${quote.quote_number}. ${quote.contact_name} (${quote.contact_email})`,
+      notes: [
+        `Hardware Quote: ${quote.quote_number}`,
+        `${quote.contact_name} (${quote.contact_email})`,
+        quote.company_name ? `Company: ${quote.company_name}` : null,
+        quote.company_address ? `Address: ${quote.company_address}` : null,
+        quote.tax_id ? `Tax ID: ${quote.tax_id}` : null
+      ].filter(Boolean).join('\n'),
       custom_description: `Hardware package quote ${quote.quote_number}`
     });
 

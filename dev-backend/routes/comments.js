@@ -224,6 +224,18 @@ router.post('/', authenticateToken, async (req, res) => {
           }
         }
 
+        if (entity_type === 'hardware_quote') {
+          const { HardwareQuote } = require('../models');
+          const quote = await HardwareQuote.findByPk(entity_id);
+          if (quote) {
+            entityTitle = `Hardware Quote ${quote.quote_number}`;
+            // Notify assigned admin if different from commenter
+            if (quote.assigned_to && quote.assigned_to !== req.user.id) {
+              entityOwnerId = quote.assigned_to;
+            }
+          }
+        }
+
         // For notices: notify entity owner if commenter is different
         if (entityOwnerId && entityOwnerId !== req.user.id) {
           const mail = commentReceivedEmail(comment, entityTitle, req.user.full_name);

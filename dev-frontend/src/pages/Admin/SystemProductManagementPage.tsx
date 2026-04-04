@@ -44,34 +44,32 @@ interface AddonForm {
   is_inquiry_only: boolean;
 }
 
-interface AddonAPI {
-  id: number;
-  set_product_id: number;
-  addon_product_id: number;
-  addon_label: string;
-  max_quantity: number;
-  is_inquiry_only: boolean;
-  sort_order: number;
-  addonProduct?: {
-    id: number;
-    name: string;
-    sku: string;
-    emoji: string | null;
-    image_url: string | null;
-  };
-}
-
 interface SupportedCurrency {
   code: string;
   name: string;
   symbol: string;
 }
 
-interface ShippingSetting {
-  country_code: string;
-  shipping_fee: number;
-  free_shipping_threshold: number;
-  estimated_days: string;
+interface SupportedCountry {
+  code: string;
+  name: string;
+  currency: string;
+  flag: string;
+}
+
+interface OptionGroup {
+  id: number;
+  name: string;
+  is_required: boolean;
+  min_selections: number;
+  max_selections: number;
+  options: OptionItem[];
+}
+
+interface OptionItem {
+  id?: number;
+  name: string;
+  price_adjustment: number;
 }
 
 interface Product {
@@ -92,24 +90,14 @@ interface Product {
   set_setup_items: string[] | null;
   is_recommended: boolean;
   shipping_countries: string[] | null;
-  shipping_settings: ShippingSetting[] | null;
+  shipping_settings: any;
   prices: ProductPrice[];
-  addons: Addon[] | null;
+  addons: any[] | null;
   sort_order: number;
+  optionGroups?: OptionGroup[];
 }
 
-type TabType = 'products' | 'categories';
-
-const COUNTRIES = [
-  { code: 'MY', name: 'Malaysia', currency: 'MYR' },
-  { code: 'SG', name: 'Singapore', currency: 'SGD' },
-  { code: 'KR', name: 'South Korea', currency: 'KRW' },
-  { code: 'JP', name: 'Japan', currency: 'JPY' },
-  { code: 'TH', name: 'Thailand', currency: 'THB' },
-  { code: 'US', name: 'United States', currency: 'USD' },
-  { code: 'GB', name: 'United Kingdom', currency: 'GBP' },
-  { code: 'AU', name: 'Australia', currency: 'AUD' },
-];
+type TabType = 'products' | 'categories' | 'options';
 
 // ─── Styled Components ───────────────────────────────────────────────────────
 
@@ -121,19 +109,22 @@ const ProductsGrid = styled.div`
   margin-top: 24px;
 `;
 
-const ProductCard = styled.div<{ isActive?: boolean }>`
+const ProductCard = styled.div<{ isActive?: boolean; isHighlighted?: boolean }>`
   background: white;
   border-radius: 12px;
-  border: 1px solid #E6EBF1;
+  border: 1px solid ${props => props.isHighlighted ? '#635BFF' : '#E6EBF1'};
   padding: 20px;
   transition: all 0.2s;
   opacity: ${props => props.isActive ? 1 : 0.6};
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  box-shadow: ${props => props.isHighlighted ? '0 0 0 2px rgba(99, 91, 255, 0.3)' : 'none'};
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: ${props => props.isHighlighted
+      ? '0 0 0 2px rgba(99, 91, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.08)'
+      : '0 4px 12px rgba(0, 0, 0, 0.08)'};
     transform: translateY(-2px);
     border-color: #635BFF;
   }
@@ -217,10 +208,14 @@ const PriceValue = styled.span`
   font-size: 16px;
 `;
 
+const CardSpacer = styled.div`
+  flex: 1;
+  min-height: 12px;
+`;
+
 const ProductActions = styled.div`
   display: flex;
   gap: 8px;
-  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #E6EBF1;
 `;
@@ -341,6 +336,17 @@ const EmptyDescription = styled.p`
   font-size: 14px;
   color: #6B7280;
   margin: 0 0 20px 0;
+`;
+
+const RecommendedBadge = styled.span`
+  display: inline-block;
+  padding: 2px 8px;
+  background: #FEF3C7;
+  color: #D97706;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
 `;
 
 // -- Categories Tab --
@@ -496,16 +502,212 @@ const SectionTitle = styled.h4`
   border-top: 1px solid #E6EBF1;
 `;
 
-const RecommendedBadge = styled.span`
-  display: inline-block;
+// -- Options Tab --
+const OptionsGrid = styled.div`
+  display: grid;
+  gap: 16px;
+`;
+
+const OptionCard = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.2s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+`;
+
+const OptionCardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+`;
+
+const OptionCardInfo = styled.div`
+  flex: 1;
+`;
+
+const OptionCardTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0 0 8px 0;
+`;
+
+const OptionCardMeta = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const OptionTypeBadge = styled.span<{ type: 'required' | 'optional' }>`
   padding: 2px 8px;
-  background: #FEF3C7;
-  color: #D97706;
   border-radius: 4px;
   font-size: 11px;
-  font-weight: 600;
-  margin-left: 6px;
+  font-weight: 500;
+  ${props => props.type === 'required' ? `
+    background: #FEE2E2;
+    color: #DC2626;
+  ` : `
+    background: #E0F2FE;
+    color: #0369A1;
+  `}
 `;
+
+const OptionCardActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const OptionsList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const OptionChip = styled.div`
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: #F3F4F6;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+`;
+
+const OptionPrice = styled.span`
+  margin-left: 6px;
+  color: #6B7280;
+  font-size: 12px;
+`;
+
+const OptionFormGroup = styled.div`
+  margin-bottom: 20px;
+`;
+
+const OptionFormLabel = styled.label`
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+`;
+
+const OptionFormInput = styled.input`
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-size: 14px;
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+  }
+`;
+
+const OptionFormCheckboxGroup = styled.div`
+  display: flex;
+  gap: 16px;
+`;
+
+const OptionFormCheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+`;
+
+const OptionItemRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #F3F4F6;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const OptionRemoveButton = styled.button`
+  background: #FEE2E2;
+  color: #DC2626;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #FECACA;
+  }
+`;
+
+const OptionFormButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  ${props => {
+    switch (props.variant) {
+      case 'danger':
+        return `
+          background: #EF4444;
+          color: white;
+          &:hover { background: #DC2626; }
+        `;
+      case 'secondary':
+        return `
+          background: white;
+          color: #6B7280;
+          border: 1px solid #E5E7EB;
+          &:hover { background: #F9FAFB; }
+        `;
+      default:
+        return `
+          background: #635BFF;
+          color: white;
+          &:hover { background: #5246ED; }
+        `;
+    }
+  }}
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const NO_DECIMAL_CURRENCIES = ['KRW', 'JPY', 'VND', 'IDR', 'TWD'];
+
+const formatPrice = (value: number, currency: string): string => {
+  if (NO_DECIMAL_CURRENCIES.includes(currency)) {
+    return Math.round(value).toLocaleString('en-US');
+  }
+  return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const getToken = () => localStorage.getItem('auth_token');
 
 // ─── Main Page Component ─────────────────────────────────────────────────────
 
@@ -513,12 +715,14 @@ const SystemProductManagementPage: React.FC = () => {
   const [activeTab, handleTabChange] = useTabParam<TabType>('products');
   const [productsCount, setProductsCount] = useState(0);
   const [categoriesCount, setCategoriesCount] = useState(0);
+  const [optionsCount, setOptionsCount] = useState(0);
   const [categoryRefreshKey, setCategoryRefreshKey] = useState(0);
+  const [optionRefreshKey, setOptionRefreshKey] = useState(0);
 
   return (
     <Container>
       <Header>
-        <Title>System Product Management</Title>
+        <Title>System Products</Title>
       </Header>
 
       <Content>
@@ -531,18 +735,29 @@ const SystemProductManagementPage: React.FC = () => {
             Categories
             <Badge count={categoriesCount} showZero />
           </Tab>
+          <Tab active={activeTab === 'options'} onClick={() => handleTabChange('options')}>
+            Options
+            <Badge count={optionsCount} showZero />
+          </Tab>
         </Tabs>
 
         <div style={{ display: activeTab === 'products' ? 'block' : 'none' }}>
           <ProductsTab
             onCountChange={setProductsCount}
             categoryRefreshKey={categoryRefreshKey}
+            optionRefreshKey={optionRefreshKey}
           />
         </div>
         <div style={{ display: activeTab === 'categories' ? 'block' : 'none' }}>
           <CategoriesTab
             onCountChange={setCategoriesCount}
             onCategoryChange={() => setCategoryRefreshKey(k => k + 1)}
+          />
+        </div>
+        <div style={{ display: activeTab === 'options' ? 'block' : 'none' }}>
+          <OptionsTab
+            onCountChange={setOptionsCount}
+            onOptionChange={() => setOptionRefreshKey(k => k + 1)}
           />
         </div>
       </Content>
@@ -555,6 +770,7 @@ const SystemProductManagementPage: React.FC = () => {
 interface ProductsTabProps {
   onCountChange: (count: number) => void;
   categoryRefreshKey: number;
+  optionRefreshKey: number;
 }
 
 interface ProductFormData {
@@ -572,10 +788,10 @@ interface ProductFormData {
   set_setup_items: string;
   is_recommended: boolean;
   set_items: SetItem[];
-  addons: Addon[];
+  addons: AddonForm[];
   prices: Record<string, { price: string; is_active: boolean }>;
   shipping_countries: string[];
-  shipping_settings: Record<string, { shipping_fee: string; free_shipping_threshold: string; estimated_days: string }>;
+  option_group_ids: number[];
 }
 
 const getDefaultFormData = (): ProductFormData => ({
@@ -596,13 +812,17 @@ const getDefaultFormData = (): ProductFormData => ({
   addons: [],
   prices: {},
   shipping_countries: [],
-  shipping_settings: {},
+  option_group_ids: [],
 });
 
-const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefreshKey }) => {
+const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefreshKey, optionRefreshKey }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [supportedCurrencies, setSupportedCurrencies] = useState<SupportedCurrency[]>([]);
+  const [supportedCountries, setSupportedCountries] = useState<SupportedCountry[]>([]);
+  const [systemOptionGroups, setSystemOptionGroups] = useState<OptionGroup[]>([]);
+  const [defaultCurrency, setDefaultCurrency] = useState('MYR');
+  const [currencyFilter, setCurrencyFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -615,8 +835,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
   const [addonSearchQuery, setAddonSearchQuery] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const [highlightedProductId, setHighlightedProductId] = useState<number | null>(null);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -632,7 +851,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
     } catch (error) {
       console.error('Failed to fetch system products:', error);
     }
-  }, [getToken, onCountChange]);
+  }, [onCountChange]);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -647,7 +866,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
     } catch (error) {
       console.error('Failed to fetch categories:', error);
     }
-  }, [getToken]);
+  }, []);
 
   const fetchCurrencies = useCallback(async () => {
     try {
@@ -662,16 +881,56 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
     } catch (error) {
       console.error('Failed to fetch currencies:', error);
     }
-  }, [getToken]);
+  }, []);
+
+  const fetchDefaultCurrency = useCallback(async () => {
+    try {
+      const response = await fetch('/api/currencies/default');
+      const data = await response.json();
+      if (data.success) {
+        setDefaultCurrency(data.defaultCurrency || 'MYR');
+        setCurrencyFilter(data.defaultCurrency || 'MYR');
+      }
+    } catch (error) {
+      console.error('Failed to fetch default currency:', error);
+    }
+  }, []);
+
+  const fetchCountries = useCallback(async () => {
+    try {
+      const response = await fetch('/api/currencies/countries/supported');
+      const data = await response.json();
+      if (data.success) {
+        setSupportedCountries(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch countries:', error);
+    }
+  }, []);
+
+  const fetchOptionGroups = useCallback(async () => {
+    try {
+      const token = getToken();
+      const response = await fetch('/api/system-product-option-groups', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSystemOptionGroups(data.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch option groups:', error);
+    }
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchProducts(), fetchCategories(), fetchCurrencies()]);
+      await Promise.all([fetchProducts(), fetchCategories(), fetchCurrencies(), fetchDefaultCurrency(), fetchCountries(), fetchOptionGroups()]);
       setLoading(false);
     };
     loadData();
-  }, [fetchProducts, fetchCategories, fetchCurrencies]);
+  }, [fetchProducts, fetchCategories, fetchCurrencies, fetchDefaultCurrency, fetchCountries, fetchOptionGroups]);
 
   useEffect(() => {
     if (categoryRefreshKey > 0) {
@@ -679,12 +938,21 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
     }
   }, [categoryRefreshKey, fetchCategories]);
 
-  const getDisplayPrice = (product: Product): string => {
+  useEffect(() => {
+    if (optionRefreshKey > 0) {
+      fetchOptionGroups();
+    }
+  }, [optionRefreshKey, fetchOptionGroups]);
+
+  const getDisplayPrice = (product: Product, currency?: string): string => {
     if (!product.prices || product.prices.length === 0) return 'N/A';
+    const cur = currency || currencyFilter || defaultCurrency;
+    const match = product.prices.find(p => p.currency === cur && p.is_active);
+    if (match) return `${cur} ${formatPrice(Number(match.price), cur)}`;
     const activePrice = product.prices.find(p => p.is_active);
-    if (activePrice) return `${activePrice.currency} ${Number(activePrice.price).toFixed(2)}`;
+    if (activePrice) return `${activePrice.currency} ${formatPrice(Number(activePrice.price), activePrice.currency)}`;
     const firstPrice = product.prices[0];
-    return `${firstPrice.currency} ${Number(firstPrice.price).toFixed(2)}`;
+    return `${firstPrice.currency} ${formatPrice(Number(firstPrice.price), firstPrice.currency)}`;
   };
 
   const buildPricesMap = (prices: ProductPrice[]): Record<string, { price: string; is_active: boolean }> => {
@@ -692,31 +960,6 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
     prices.forEach(p => {
       map[p.currency] = { price: p.price.toString(), is_active: p.is_active };
     });
-    return map;
-  };
-
-  const buildShippingMap = (settings: any): Record<string, { shipping_fee: string; free_shipping_threshold: string; estimated_days: string }> => {
-    const map: Record<string, { shipping_fee: string; free_shipping_threshold: string; estimated_days: string }> = {};
-    if (!settings) return map;
-    // Handle array format: [{country_code, shipping_fee, ...}]
-    if (Array.isArray(settings)) {
-      settings.forEach((s: any) => {
-        map[s.country_code] = {
-          shipping_fee: (s.shipping_fee || 0).toString(),
-          free_shipping_threshold: (s.free_shipping_threshold || 0).toString(),
-          estimated_days: s.estimated_days || '',
-        };
-      });
-    } else if (typeof settings === 'object') {
-      // Handle object format: {"MY": {delivery_fee, free_delivery_threshold, estimated_days}}
-      Object.entries(settings).forEach(([cc, val]: [string, any]) => {
-        map[cc] = {
-          shipping_fee: (val.delivery_fee || val.shipping_fee || 0).toString(),
-          free_shipping_threshold: (val.free_delivery_threshold || val.free_shipping_threshold || 0).toString(),
-          estimated_days: val.estimated_days || '',
-        };
-      });
-    }
     return map;
   };
 
@@ -742,12 +985,12 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
           productId: a.addon_product_id || a.productId,
           name: a.addonProduct?.name || a.name || '',
           addon_label: a.addon_label || '',
-          max_quantity: a.max_quantity || 0,
+          max_quantity: a.max_quantity || 1,
           is_inquiry_only: a.is_inquiry_only || false,
         })),
         prices: buildPricesMap(product.prices || []),
         shipping_countries: product.shipping_countries || [],
-        shipping_settings: buildShippingMap(product.shipping_settings),
+        option_group_ids: product.optionGroups?.map(og => og.id) || [],
       });
     } else {
       setEditingProduct(null);
@@ -797,18 +1040,6 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
         }
       });
 
-      // Build shipping settings array
-      const shippingSettingsArray: ShippingSetting[] = [];
-      formData.shipping_countries.forEach(cc => {
-        const s = formData.shipping_settings[cc];
-        shippingSettingsArray.push({
-          country_code: cc,
-          shipping_fee: parseFloat(s?.shipping_fee || '0') || 0,
-          free_shipping_threshold: parseFloat(s?.free_shipping_threshold || '0') || 0,
-          estimated_days: s?.estimated_days || '',
-        });
-      });
-
       // Build setup items
       const setupItems = formData.set_setup_items
         .split('\n')
@@ -844,7 +1075,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
           })) : null,
           prices: pricesArray,
           shipping_countries: formData.shipping_countries.length > 0 ? formData.shipping_countries : null,
-          shipping_settings: shippingSettingsArray.length > 0 ? shippingSettingsArray : null,
+          option_group_ids: !formData.is_set ? formData.option_group_ids : [],
         })
       });
 
@@ -873,7 +1104,12 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
       });
       const data = await response.json();
       if (data.success) {
-        fetchProducts();
+        await fetchProducts();
+        // Highlight the new copy product
+        if (data.data && data.data.id) {
+          setHighlightedProductId(data.data.id);
+          setTimeout(() => setHighlightedProductId(null), 3000);
+        }
       } else {
         alert(data.message || data.error || 'Failed to copy product');
       }
@@ -997,7 +1233,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
     }));
   };
 
-  const handleUpdateAddon = (productId: number, field: keyof Addon, value: string | number | boolean) => {
+  const handleUpdateAddon = (productId: number, field: keyof AddonForm, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
       addons: prev.addons.map(a =>
@@ -1030,16 +1266,13 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
     });
   };
 
-  const handleShippingSettingChange = (countryCode: string, field: string, value: string) => {
+  // Option group helpers
+  const handleOptionGroupToggle = (ogId: number) => {
     setFormData(prev => ({
       ...prev,
-      shipping_settings: {
-        ...prev.shipping_settings,
-        [countryCode]: {
-          ...(prev.shipping_settings[countryCode] || { shipping_fee: '0', free_shipping_threshold: '0', estimated_days: '' }),
-          [field]: value,
-        }
-      }
+      option_group_ids: prev.option_group_ids.includes(ogId)
+        ? prev.option_group_ids.filter(id => id !== ogId)
+        : [...prev.option_group_ids, ogId]
     }));
   };
 
@@ -1080,6 +1313,18 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
               </option>
             ))}
           </FilterSelect>
+          {supportedCurrencies.length > 1 && (
+            <FilterSelect
+              value={currencyFilter}
+              onChange={(e) => setCurrencyFilter(e.target.value)}
+            >
+              {supportedCurrencies.map(cur => (
+                <option key={cur.code} value={cur.code}>
+                  {cur.code} ({cur.symbol})
+                </option>
+              ))}
+            </FilterSelect>
+          )}
         </FilterBar>
         <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
           Add Product
@@ -1106,11 +1351,12 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             <ProductCard
               key={product.id}
               isActive={product.is_active}
+              isHighlighted={highlightedProductId === product.id}
               onClick={() => handleOpenModal(product)}
             >
               <ProductHeader>
                 <ProductImage src={product.image_url}>
-                  {!product.image_url && (product.emoji || '\uD83D\uDCE6')}
+                  {!product.image_url && (product.emoji || '📦')}
                 </ProductImage>
                 <ProductInfo>
                   <ProductName>
@@ -1153,15 +1399,13 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                   <DetailRow>
                     <DetailLabel>Ships to</DetailLabel>
                     <span style={{ color: '#0A2540', fontWeight: 500 }}>
-                      {product.shipping_countries.map(cc => {
-                        const c = COUNTRIES.find(co => co.code === cc);
-                        return c ? c.code : cc;
-                      }).join(', ')}
+                      {product.shipping_countries.join(', ')}
                     </span>
                   </DetailRow>
                 )}
               </ProductDetails>
 
+              <CardSpacer />
               <ProductActions onClick={(e) => e.stopPropagation()}>
                 <ActionButton onClick={() => handleOpenModal(product)}>
                   Edit
@@ -1254,6 +1498,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                 {supportedCurrencies.map(cur => {
                   const priceData = formData.prices[cur.code] || { price: '', is_active: true };
+                  const isNoDecimal = NO_DECIMAL_CURRENCIES.includes(cur.code);
                   return (
                     <div key={cur.code} style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -1271,11 +1516,11 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                       </div>
                       <FormInput
                         type="number"
-                        step="0.01"
+                        step={isNoDecimal ? '1' : '0.01'}
                         min="0"
                         value={priceData.price}
                         onChange={(e) => handlePriceChange(cur.code, 'price', e.target.value)}
-                        placeholder="0.00"
+                        placeholder={isNoDecimal ? '0' : '0.00'}
                       />
                     </div>
                   );
@@ -1299,6 +1544,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                     is_set: e.target.checked,
                     set_items: e.target.checked ? formData.set_items : [],
                     addons: e.target.checked ? formData.addons : [],
+                    option_group_ids: e.target.checked ? [] : formData.option_group_ids,
                   })}
                 />
                 Set Product (bundle multiple products)
@@ -1411,7 +1657,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                           }}
                         >
-                          <span>{p.emoji || '\uD83D\uDCE6'} {p.sku ? `${p.sku} ` : ''}{p.name}</span>
+                          <span>{p.emoji || '📦'} {p.sku ? `${p.sku} ` : ''}{p.name}</span>
                           <span style={{ color: '#6B7280' }}>{getDisplayPrice(p)}</span>
                         </div>
                       ))
@@ -1479,7 +1725,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                           }}
                         >
-                          <span>{p.emoji || '\uD83D\uDCE6'} {p.sku ? `${p.sku} ` : ''}{p.name}</span>
+                          <span>{p.emoji || '📦'} {p.sku ? `${p.sku} ` : ''}{p.name}</span>
                           <span style={{ color: '#6B7280' }}>{getDisplayPrice(p)}</span>
                         </div>
                       ))
@@ -1489,71 +1735,50 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
               </>
             )}
 
+            {/* Option Groups - only for non-set products */}
+            {!formData.is_set && systemOptionGroups.length > 0 && (
+              <>
+                <SectionTitle>Option Groups</SectionTitle>
+                <UIFormGroup>
+                  <CheckboxGroup>
+                    {systemOptionGroups.map(og => (
+                      <CheckboxItem key={og.id}>
+                        <input
+                          type="checkbox"
+                          checked={formData.option_group_ids.includes(og.id)}
+                          onChange={() => handleOptionGroupToggle(og.id)}
+                        />
+                        <span>{og.name} ({og.options?.length || 0} options)</span>
+                      </CheckboxItem>
+                    ))}
+                  </CheckboxGroup>
+                </UIFormGroup>
+              </>
+            )}
+
             {/* Shipping */}
             <SectionTitle>Shipping</SectionTitle>
             <UIFormGroup>
               <FormLabel>Available Countries</FormLabel>
-              <CheckboxGroup>
-                {COUNTRIES.map(country => (
-                  <CheckboxItem key={country.code}>
-                    <input
-                      type="checkbox"
-                      checked={formData.shipping_countries.includes(country.code)}
-                      onChange={() => handleShippingCountryToggle(country.code)}
-                    />
-                    <span>{country.name} ({country.currency})</span>
-                  </CheckboxItem>
-                ))}
-              </CheckboxGroup>
+              {supportedCountries.length > 0 ? (
+                <CheckboxGroup>
+                  {supportedCountries.map(country => (
+                    <CheckboxItem key={country.code}>
+                      <input
+                        type="checkbox"
+                        checked={formData.shipping_countries.includes(country.code)}
+                        onChange={() => handleShippingCountryToggle(country.code)}
+                      />
+                      <span>{country.flag} {country.name} ({country.currency})</span>
+                    </CheckboxItem>
+                  ))}
+                </CheckboxGroup>
+              ) : (
+                <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', color: '#6B7280', fontSize: '13px' }}>
+                  No supported countries configured. Set up countries in System Settings first.
+                </div>
+              )}
             </UIFormGroup>
-
-            {formData.shipping_countries.length > 0 && (
-              <UIFormGroup>
-                <FormLabel>Shipping Settings per Country</FormLabel>
-                {formData.shipping_countries.map(cc => {
-                  const country = COUNTRIES.find(c => c.code === cc);
-                  const settings = formData.shipping_settings[cc] || { shipping_fee: '0', free_shipping_threshold: '0', estimated_days: '' };
-                  return (
-                    <div key={cc} style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', marginBottom: '8px' }}>
-                      <div style={{ fontWeight: 600, fontSize: '13px', color: '#0A2540', marginBottom: '8px' }}>
-                        {country?.name || cc}
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                        <div>
-                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>Shipping Fee ({country?.currency})</div>
-                          <FormInput
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={settings.shipping_fee}
-                            onChange={(e) => handleShippingSettingChange(cc, 'shipping_fee', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>Free Shipping Threshold</div>
-                          <FormInput
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={settings.free_shipping_threshold}
-                            onChange={(e) => handleShippingSettingChange(cc, 'free_shipping_threshold', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '4px' }}>Estimated Days</div>
-                          <FormInput
-                            type="text"
-                            value={settings.estimated_days}
-                            onChange={(e) => handleShippingSettingChange(cc, 'estimated_days', e.target.value)}
-                            placeholder="e.g., 3-5"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </UIFormGroup>
-            )}
 
             {/* Active */}
             <UIFormGroup style={{ marginBottom: 0, marginTop: '16px' }}>
@@ -1631,19 +1856,17 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
   });
 
   const emojiOptions = [
-    '\uD83D\uDCE6', '\uD83D\uDCBB', '\uD83D\uDDA8\uFE0F', '\uD83D\uDCF1', '\uD83D\uDDA5\uFE0F',
-    '\u2328\uFE0F', '\uD83D\uDDB1\uFE0F', '\uD83D\uDD0C', '\uD83D\uDD0B', '\uD83D\uDCF7',
-    '\uD83C\uDFA7', '\uD83D\uDD0A', '\uD83D\uDCFA', '\uD83D\uDCBD', '\uD83D\uDCBE',
-    '\uD83D\uDCBF', '\uD83D\uDCC0', '\uD83E\uDDEE', '\uD83D\uDCDE', '\uD83D\uDCDF',
-    '\uD83D\uDCE0', '\uD83D\uDCE1', '\uD83D\uDD27', '\uD83D\uDD29', '\u2699\uFE0F',
-    '\uD83D\uDEE0\uFE0F', '\uD83D\uDDDC\uFE0F', '\uD83C\uDF10', '\uD83D\uDD17', '\uD83D\uDCC8',
-    '\uD83D\uDCCA', '\uD83D\uDCC1', '\uD83D\uDCC2', '\uD83D\uDCC4', '\uD83D\uDCCB',
-    '\uD83D\uDCCC', '\uD83D\uDCCE', '\uD83D\uDCCF', '\uD83D\uDCD0', '\u2702\uFE0F',
-    '\uD83D\uDCB3', '\uD83C\uDFF7\uFE0F', '\uD83D\uDED2', '\uD83D\uDEF5', '\uD83D\uDE9A',
-    '\uD83C\uDFE2', '\uD83C\uDFED', '\uD83C\uDFEA', '\u26A1', '\uD83D\uDD0D'
+    '📦', '💻', '🖨️', '📱', '🖥️',
+    '⌨️', '🖱️', '🔌', '🔋', '📷',
+    '🎧', '🔊', '📺', '💽', '💾',
+    '💿', '📀', '🧮', '📞', '📟',
+    '📠', '📡', '🔧', '🔩', '⚙️',
+    '🛠️', '🗜️', '🌐', '🔗', '📈',
+    '📊', '📁', '📂', '📄', '📋',
+    '📌', '📎', '📏', '📐', '✂️',
+    '💳', '🏷️', '🛒', '🛵', '🚚',
+    '🏢', '🏭', '🏪', '⚡', '🔍'
   ];
-
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
 
   const fetchCategories = useCallback(async () => {
     try {
@@ -1661,7 +1884,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
     } finally {
       setLoading(false);
     }
-  }, [getToken, onCountChange]);
+  }, [onCountChange]);
 
   useEffect(() => {
     setLoading(true);
@@ -1816,7 +2039,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
               />
 
               <CategoryIcon>
-                {category.emoji || '\uD83D\uDCE6'}
+                {category.emoji || '📦'}
               </CategoryIcon>
 
               <CategoryInfo>
@@ -1923,6 +2146,331 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
         cancelText="Cancel"
       />
     </CategoryContainer>
+  );
+};
+
+// ─── Options Tab ──────────────────────────────────────────────────────────────
+
+interface OptionsTabProps {
+  onCountChange: (count: number) => void;
+  onOptionChange?: () => void;
+}
+
+const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }) => {
+  const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<OptionGroup | null>(null);
+  const [deletingGroupId, setDeletingGroupId] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    is_required: false,
+    options: [] as OptionItem[]
+  });
+  const [newOption, setNewOption] = useState({ name: '', price_adjustment: 0 });
+
+  const fetchOptionGroups = useCallback(async () => {
+    try {
+      const token = getToken();
+      const response = await fetch('/api/system-product-option-groups', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setOptionGroups(data.data);
+          onCountChange(data.data.length);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching option groups:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [onCountChange]);
+
+  useEffect(() => {
+    fetchOptionGroups();
+  }, [fetchOptionGroups]);
+
+  const handleOpenModal = (group?: OptionGroup) => {
+    if (group) {
+      setEditingGroup(group);
+      setFormData({
+        name: group.name,
+        is_required: group.is_required,
+        options: group.options.map(o => ({ ...o }))
+      });
+    } else {
+      setEditingGroup(null);
+      setFormData({
+        name: '',
+        is_required: false,
+        options: []
+      });
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingGroup(null);
+    setFormData({ name: '', is_required: false, options: [] });
+    setNewOption({ name: '', price_adjustment: 0 });
+  };
+
+  const handleAddOption = () => {
+    if (!newOption.name.trim()) return;
+    const priceAdj = isNaN(newOption.price_adjustment) ? 0 : newOption.price_adjustment;
+    setFormData(prev => ({
+      ...prev,
+      options: [...prev.options, { name: newOption.name.trim(), price_adjustment: priceAdj }]
+    }));
+    setNewOption({ name: '', price_adjustment: 0 });
+  };
+
+  const handleRemoveOption = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      options: prev.options.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!formData.name.trim() || formData.options.length === 0) return;
+
+    try {
+      const token = getToken();
+      const url = editingGroup
+        ? `/api/system-product-option-groups/${editingGroup.id}`
+        : '/api/system-product-option-groups';
+      const method = editingGroup ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          is_required: formData.is_required,
+          options: formData.options
+        })
+      });
+
+      if (response.ok) {
+        fetchOptionGroups();
+        handleCloseModal();
+        onOptionChange?.();
+      }
+    } catch (error) {
+      console.error('Error saving option group:', error);
+    }
+  };
+
+  const handleDeleteClick = (groupId: number) => {
+    setDeletingGroupId(groupId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingGroupId) return;
+
+    try {
+      const token = getToken();
+      const response = await fetch(`/api/system-product-option-groups/${deletingGroupId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        fetchOptionGroups();
+        onOptionChange?.();
+      } else {
+        const data = await response.json();
+        alert(data.message || data.error || 'Failed to delete option group');
+      }
+    } catch (error) {
+      console.error('Error deleting option group:', error);
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeletingGroupId(null);
+    }
+  };
+
+  const filteredGroups = optionGroups.filter(group =>
+    group.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>Loading...</div>;
+  }
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', marginTop: '24px' }}>
+        <FilterBar style={{ marginBottom: 0 }}>
+          <SearchInput
+            type="text"
+            placeholder="Search option groups..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </FilterBar>
+        <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
+          Add Option Group
+        </ThemedButton>
+      </div>
+
+      {filteredGroups.length === 0 ? (
+        <EmptyState>
+          <EmptyTitle>No option groups yet</EmptyTitle>
+          <EmptyDescription>
+            Create option groups to add customizable options to your system products
+          </EmptyDescription>
+          <ThemedButton onClick={() => handleOpenModal()}>
+            Add Option Group
+          </ThemedButton>
+        </EmptyState>
+      ) : (
+        <OptionsGrid>
+          {filteredGroups.map(group => (
+            <OptionCard key={group.id}>
+              <OptionCardHeader>
+                <OptionCardInfo>
+                  <OptionCardTitle>{group.name}</OptionCardTitle>
+                  <OptionCardMeta>
+                    <OptionTypeBadge type={group.is_required ? 'required' : 'optional'}>
+                      {group.is_required ? 'Required' : 'Optional'}
+                    </OptionTypeBadge>
+                    <span style={{ fontSize: '13px', color: '#6B7280' }}>
+                      {group.options.length} options
+                    </span>
+                  </OptionCardMeta>
+                </OptionCardInfo>
+                <OptionCardActions>
+                  <IconButton onClick={() => handleOpenModal(group)} title="Edit">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </IconButton>
+                  <IconButton onClick={() => handleDeleteClick(group.id)} title="Delete">
+                    <svg viewBox="0 0 24 24" fill="none">
+                      <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </IconButton>
+                </OptionCardActions>
+              </OptionCardHeader>
+              <OptionsList>
+                {group.options.map((option, idx) => (
+                  <OptionChip key={idx}>
+                    {option.name}
+                    {Number(option.price_adjustment) !== 0 && (
+                      <OptionPrice>
+                        {Number(option.price_adjustment) > 0 ? '+' : ''}{Number(option.price_adjustment).toFixed(2)}
+                      </OptionPrice>
+                    )}
+                  </OptionChip>
+                ))}
+              </OptionsList>
+            </OptionCard>
+          ))}
+        </OptionsGrid>
+      )}
+
+      {/* Add/Edit Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        title={editingGroup ? 'Edit Option Group' : 'New Option Group'}
+      >
+        <OptionFormGroup>
+          <OptionFormLabel>Group Name</OptionFormLabel>
+          <OptionFormInput
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g., Size, Grade, Packaging"
+          />
+        </OptionFormGroup>
+
+        <OptionFormGroup>
+          <OptionFormCheckboxGroup>
+            <OptionFormCheckboxLabel>
+              <input
+                type="checkbox"
+                checked={formData.is_required}
+                onChange={(e) => setFormData({ ...formData, is_required: e.target.checked })}
+              />
+              Required Selection
+            </OptionFormCheckboxLabel>
+          </OptionFormCheckboxGroup>
+        </OptionFormGroup>
+
+        <OptionFormGroup>
+          <OptionFormLabel>Options</OptionFormLabel>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <OptionFormInput
+              type="text"
+              value={newOption.name}
+              onChange={(e) => setNewOption({ ...newOption, name: e.target.value })}
+              placeholder="Option name"
+              style={{ flex: 2 }}
+            />
+            <OptionFormInput
+              type="number"
+              value={newOption.price_adjustment}
+              onChange={(e) => setNewOption({ ...newOption, price_adjustment: parseFloat(e.target.value) || 0 })}
+              placeholder="Price adj."
+              step="0.50"
+              style={{ flex: 1 }}
+            />
+            <OptionFormButton type="button" variant="secondary" onClick={handleAddOption} disabled={!newOption.name.trim()}>
+              Add
+            </OptionFormButton>
+          </div>
+
+          {formData.options.map((option, idx) => (
+            <OptionItemRow key={idx}>
+              <div style={{ flex: 1 }}>
+                <strong>{option.name}</strong>
+                {Number(option.price_adjustment) !== 0 && (
+                  <span style={{ marginLeft: '8px', color: '#6B7280' }}>
+                    ({Number(option.price_adjustment) > 0 ? '+' : ''}{Number(option.price_adjustment).toFixed(2)})
+                  </span>
+                )}
+              </div>
+              <OptionRemoveButton onClick={() => handleRemoveOption(idx)}>x</OptionRemoveButton>
+            </OptionItemRow>
+          ))}
+        </OptionFormGroup>
+
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+          <OptionFormButton type="button" variant="secondary" onClick={handleCloseModal}>Cancel</OptionFormButton>
+          <OptionFormButton type="button" onClick={handleSave} disabled={!formData.name.trim() || formData.options.length === 0}>
+            {editingGroup ? 'Update' : 'Create'}
+          </OptionFormButton>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        title="Delete Option Group"
+      >
+        <p>Are you sure you want to delete this option group? This action cannot be undone.</p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+          <OptionFormButton type="button" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancel</OptionFormButton>
+          <OptionFormButton type="button" variant="danger" onClick={handleConfirmDelete}>Delete</OptionFormButton>
+        </div>
+      </Modal>
+    </>
   );
 };
 

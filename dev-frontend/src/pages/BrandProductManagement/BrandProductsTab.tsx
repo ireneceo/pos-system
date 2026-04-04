@@ -180,10 +180,14 @@ const PriceValue = styled.span`
   font-size: 16px;
 `;
 
+const CardSpacer = styled.div`
+  flex: 1;
+  min-height: 12px;
+`;
+
 const ProductActions = styled.div`
   display: flex;
   gap: 8px;
-  margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid #E6EBF1;
 `;
@@ -854,6 +858,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 </BadgeContainer>
               )}
 
+              <CardSpacer />
               <ProductActions onClick={(e) => e.stopPropagation()}>
                 <ActionButton onClick={() => handleOpenModal(product)}>
                   Edit

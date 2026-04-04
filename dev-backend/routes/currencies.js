@@ -516,4 +516,105 @@ router.post('/recipes/:recipeId/calculate', authenticateToken, async (req, res) 
   }
 });
 
+// ============================================
+// Country Configuration (same pattern as currencies)
+// ============================================
+
+const COUNTRY_CONFIG = {
+  MY: { name: 'Malaysia', currency: 'MYR', flag: '🇲🇾' },
+  SG: { name: 'Singapore', currency: 'SGD', flag: '🇸🇬' },
+  KR: { name: 'South Korea', currency: 'KRW', flag: '🇰🇷' },
+  JP: { name: 'Japan', currency: 'JPY', flag: '🇯🇵' },
+  TH: { name: 'Thailand', currency: 'THB', flag: '🇹🇭' },
+  VN: { name: 'Vietnam', currency: 'VND', flag: '🇻🇳' },
+  PH: { name: 'Philippines', currency: 'PHP', flag: '🇵🇭' },
+  ID: { name: 'Indonesia', currency: 'IDR', flag: '🇮🇩' },
+  IN: { name: 'India', currency: 'INR', flag: '🇮🇳' },
+  CN: { name: 'China', currency: 'CNY', flag: '🇨🇳' },
+  TW: { name: 'Taiwan', currency: 'TWD', flag: '🇹🇼' },
+  HK: { name: 'Hong Kong', currency: 'HKD', flag: '🇭🇰' },
+  US: { name: 'United States', currency: 'USD', flag: '🇺🇸' },
+  GB: { name: 'United Kingdom', currency: 'GBP', flag: '🇬🇧' },
+  AU: { name: 'Australia', currency: 'AUD', flag: '🇦🇺' },
+  DE: { name: 'Germany', currency: 'EUR', flag: '🇩🇪' },
+  FR: { name: 'France', currency: 'EUR', flag: '🇫🇷' },
+  CA: { name: 'Canada', currency: 'CAD', flag: '🇨🇦' }
+};
+
+/**
+ * GET /api/currencies/countries/config
+ * Get all available country configurations
+ */
+router.get('/countries/config', async (req, res) => {
+  try {
+    const countries = Object.entries(COUNTRY_CONFIG).map(([code, config]) => ({
+      code,
+      ...config
+    }));
+    res.json({ success: true, data: countries });
+  } catch (error) {
+    console.error('Get country config error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get country config' });
+  }
+});
+
+/**
+ * GET /api/currencies/countries/supported
+ * Get system supported countries
+ */
+router.get('/countries/supported', async (req, res) => {
+  try {
+    const setting = await SystemSettings.findOne({
+      where: { setting_key: 'supported_countries' }
+    });
+
+    const countries = setting ? setting.setting_value : ['MY'];
+    const result = countries
+      .filter(code => COUNTRY_CONFIG[code])
+      .map(code => ({
+        code,
+        ...COUNTRY_CONFIG[code]
+      }));
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Get supported countries error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get supported countries' });
+  }
+});
+
+/**
+ * PUT /api/currencies/countries/supported
+ * Update system supported countries (System Admin only)
+ */
+router.put('/countries/supported', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'System Admin') {
+      return res.status(403).json({ success: false, message: 'System Admin only' });
+    }
+
+    const { countries } = req.body;
+
+    if (!Array.isArray(countries) || countries.length === 0) {
+      return res.status(400).json({ success: false, message: 'countries must be a non-empty array' });
+    }
+
+    const invalid = countries.filter(c => !COUNTRY_CONFIG[c]);
+    if (invalid.length > 0) {
+      return res.status(400).json({ success: false, message: `Invalid countries: ${invalid.join(', ')}` });
+    }
+
+    await SystemSettings.upsert({
+      setting_key: 'supported_countries',
+      setting_value: countries,
+      description: 'List of supported countries for product sales'
+    });
+
+    res.json({ success: true, data: countries });
+  } catch (error) {
+    console.error('Update supported countries error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update supported countries' });
+  }
+});
+
 module.exports = router;
