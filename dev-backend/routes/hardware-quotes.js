@@ -227,7 +227,7 @@ router.post('/:id/invoice', authenticateToken, requireRole('System Admin'), asyn
       discount_amount: discountAmount,
       total_amount: totalAmount,
       currency: quote.currency || 'MYR',
-      status: 'pending_payment',
+      status: 'draft',
       issuer_type: 'system_admin',
       issued_by: req.user.id,
       issued_at: new Date(),
@@ -281,11 +281,9 @@ router.post('/:id/invoice', authenticateToken, requireRole('System Admin'), asyn
       }
     }
 
-    // Update quote
+    // Update quote - link invoice but keep current status (not closed)
     await quote.update({
-      status: 'invoiced',
-      invoice_id: invoice.id,
-      invoiced_at: new Date()
+      invoice_id: invoice.id
     });
 
     res.status(201).json({
@@ -343,7 +341,7 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
     let seqNum = (countResult[0]?.cnt || 0) + 1;
 
     const dueDate = due_date || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-    const invoiceStatus = mark_as_paid ? 'paid' : 'pending_payment';
+    const invoiceStatus = mark_as_paid ? 'paid' : 'draft';
     const paidFields = mark_as_paid ? { paid_at: now, paid_amount: 0, confirmed_by: req.user.id, confirmed_at: now } : {};
 
     const results = { hardware_invoice: null, subscription_invoice: null };
@@ -514,12 +512,10 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
       }
     }
 
-    // Update quote
+    // Update quote - link invoices but keep current status (not closed)
     await quote.update({
-      status: 'invoiced',
       invoice_id: hwInvoice.id,
-      subscription_invoice_id: subInvoice ? subInvoice.id : null,
-      invoiced_at: now
+      subscription_invoice_id: subInvoice ? subInvoice.id : null
     });
 
     res.status(201).json({

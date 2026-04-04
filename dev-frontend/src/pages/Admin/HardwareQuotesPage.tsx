@@ -865,7 +865,8 @@ const HardwareQuotesPage: React.FC = () => {
     setDiscountType('none');
     setDiscountValue('');
     setAdditionalCharges([]);
-    setShowInvoiceModal(true);
+    setShowDetailModal(false);
+    setTimeout(() => setShowInvoiceModal(true), 200);
   };
 
   const addCharge = () => {
@@ -953,7 +954,8 @@ const HardwareQuotesPage: React.FC = () => {
     setProceedCharges([]);
     setProceedMarkAsPaid(false);
     setProceedResult(null);
-    setShowProceedModal(true);
+    setShowDetailModal(false);
+    setTimeout(() => setShowProceedModal(true), 200);
   };
 
   const addProceedCharge = () => {
