@@ -10,6 +10,10 @@ const {
   Restaurant,
   RestaurantIngredientCost
 } = require('../models');
+const { authenticateToken } = require('../middleware/auth');
+
+// All routes require authentication
+router.use(authenticateToken);
 
 // 레스토랑의 코스트 오버라이드 맵 조회 헬퍼
 async function getRestaurantCostMap(restaurantId) {

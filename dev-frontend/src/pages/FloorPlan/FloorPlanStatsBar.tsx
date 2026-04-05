@@ -107,7 +107,8 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
     available: 0,
     occupied: 0,
     ready: 0,
-    'needs-attention': 0
+    'needs-attention': 0,
+    completed: 0
   };
 
   tables.forEach(t => {

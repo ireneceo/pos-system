@@ -134,7 +134,7 @@ export const BaseButton = styled.button<{
 
 // 공통 상태 배지 스타일
 export const StatusBadge = styled.span<{
-  status?: 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | 'active' | 'inactive' | 'success' | 'warning' | 'error' | 'info' | '';
+  status?: 'draft' | 'sent' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | 'active' | 'inactive' | 'success' | 'warning' | 'error' | 'info' | '';
   size?: 'small' | 'medium' | 'large';
 }>`
   display: inline-block;
@@ -163,6 +163,11 @@ export const StatusBadge = styled.span<{
         return css`
           background: #F3F4F6;
           color: #6B7280;
+        `;
+      case 'sent':
+        return css`
+          background: #E0E7FF;
+          color: #4F46E5;
         `;
       case 'pending_payment':
         return css`

@@ -1172,13 +1172,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     {isRouteAllowed('/pos/brand/plans') && (
                       <NavItem to="/pos/brand/plans" active={isActive('/pos/brand/plans')} onClick={closeSidebar}>
                         <NavIcon>☰</NavIcon>
-                        Subscription Plans
+                        Brand Plans
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/brand/general/subscriptions') && (
                       <NavItem to="/pos/brand/general/subscriptions" active={isActive('/pos/brand/general/subscriptions')} onClick={closeSidebar}>
                         <NavIcon>◈</NavIcon>
-                        Subscriptions
+                        Brand Subscriptions
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/brand/payment-settings') && (
@@ -1303,13 +1303,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     {isRouteAllowed('/pos/foodcourt/plans') && (
                       <NavItem to="/pos/foodcourt/plans" active={isActive('/pos/foodcourt/plans')} onClick={closeSidebar}>
                         <NavIcon>☰</NavIcon>
-                        Subscription Plans
+                        Foodcourt Plans
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/foodcourt/general/subscriptions') && (
                       <NavItem to="/pos/foodcourt/general/subscriptions" active={isActive('/pos/foodcourt/general/subscriptions')} onClick={closeSidebar}>
                         <NavIcon>◈</NavIcon>
-                        Subscriptions
+                        Foodcourt Subscriptions
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/foodcourt/payment-settings') && (
@@ -1639,7 +1639,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             isRouteAllowed(`/restaurant/${restaurantId}/menu`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/categories`) ||
             isRouteAllowed(`/restaurant/${restaurantId}/options`) ||
-            isRouteAllowed(`/restaurant/${restaurantId}/recipe-management`)
+            isRouteAllowed(`/restaurant/${restaurantId}/recipe-management`) ||
+            isRouteAllowed(`/restaurant/${restaurantId}/ingredients`)
           ) && (
             <NavSection>
               <NavTitle>Products</NavTitle>
@@ -1664,7 +1665,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               {isRouteAllowed(`/restaurant/${restaurantId}/recipe-management`) && (
                 <NavItem to={`/restaurant/${restaurantId}/recipe-management`} active={isActive(`/restaurant/${restaurantId}/recipe-management`)} onClick={closeSidebar}>
                   <NavIcon>◘</NavIcon>
-                  Recipe
+                  Recipes
+                </NavItem>
+              )}
+              {isRouteAllowed(`/restaurant/${restaurantId}/ingredients`) && (
+                <NavItem to={`/restaurant/${restaurantId}/ingredients`} active={isActive(`/restaurant/${restaurantId}/ingredients`)} onClick={closeSidebar}>
+                  <NavIcon>▤</NavIcon>
+                  Ingredients
                 </NavItem>
               )}
             </NavSection>

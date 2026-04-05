@@ -6,9 +6,7 @@ import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import RecipesTab from './RecipesTab';
-import IngredientsTab from './IngredientsTab';
 import RecipeCategoriesTab from './RecipeCategoriesTab';
-import IngredientCategoriesTab from './IngredientCategoriesTab';
 
 const HeaderActions = styled.div`
   display: flex;
@@ -43,7 +41,7 @@ interface Brand {
   logo_url?: string;
 }
 
-type TabType = 'recipes' | 'ingredients' | 'recipe-categories' | 'ingredient-categories';
+type TabType = 'recipes' | 'recipe-categories';
 
 interface RecipeManagementPageProps {}
 
@@ -53,13 +51,10 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, handleTabParamChange] = useTabParam<TabType>('recipes');
   const [recipesCount, setRecipesCount] = useState(0);
-  const [ingredientsCount, setIngredientsCount] = useState(0);
   const [recipeCategoriesCount, setRecipeCategoriesCount] = useState(0);
-  const [ingredientCategoriesCount, setIngredientCategoriesCount] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [recipeCategoryRefreshKey, setRecipeCategoryRefreshKey] = useState(0);
-  const [ingredientCategoryRefreshKey, setIngredientCategoryRefreshKey] = useState(0);
 
   const brandIdFromUrl = searchParams.get('brandId');
   const selectedBrand = brandIdFromUrl ? Number(brandIdFromUrl) : (brands.length > 0 ? brands[0].id : null);
@@ -176,12 +171,6 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
             <Tab active={activeTab === 'recipe-categories'} onClick={() => handleTabChange('recipe-categories')}>
               Recipe Categories <Badge count={recipeCategoriesCount} showZero />
             </Tab>
-            <Tab active={activeTab === 'ingredients'} onClick={() => handleTabChange('ingredients')}>
-              Ingredients <Badge count={ingredientsCount} showZero />
-            </Tab>
-            <Tab active={activeTab === 'ingredient-categories'} onClick={() => handleTabChange('ingredient-categories')}>
-              Ingredient Categories <Badge count={ingredientCategoriesCount} showZero />
-            </Tab>
           </Tabs>
 
           {(selectedBrand || user?.role !== 'Brand General') && (
@@ -191,12 +180,6 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
               </div>
               <div style={{ display: activeTab === 'recipe-categories' ? 'block' : 'none' }}>
                 <RecipeCategoriesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setRecipeCategoriesCount} onCategoryChange={() => setRecipeCategoryRefreshKey(k => k + 1)} />
-              </div>
-              <div style={{ display: activeTab === 'ingredients' ? 'block' : 'none' }}>
-                <IngredientsTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setIngredientsCount} categoryRefreshKey={ingredientCategoryRefreshKey} />
-              </div>
-              <div style={{ display: activeTab === 'ingredient-categories' ? 'block' : 'none' }}>
-                <IngredientCategoriesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setIngredientCategoriesCount} onCategoryChange={() => setIngredientCategoryRefreshKey(k => k + 1)} />
               </div>
             </>
           )}

@@ -653,6 +653,33 @@ async function updateAvgDailyUsage(ingredientId) {
 |------|------|-----------|--------|
 | 2025-12-19 | 1.0 | 초안 작성 | Claude |
 | 2026-02-24 | 1.1 | 레스토랑 코스트 오버라이드(effective_cost) 반영 - 입고/실사/발주제안에 적용 | Claude |
+| 2026-04-05 | 2.0 | 구조 재정리 — 레시피 없는 상품 재고 차감, 역할별 확장 (RECIPE_MANAGEMENT_SYSTEM.md v5.0 참조) | Claude |
+
+---
+
+## 구조 재정리 (v2.0, 2026-04-05)
+
+상세 설계는 `RECIPE_MANAGEMENT_SYSTEM.md` v5.0 "구조 재정리" 섹션 참조.
+
+### 재고 차감 확장 요약
+
+기존: Product → Recipe → Ingredient 경로에서만 차감
+추가: Product → Ingredient 직접 연결 시에도 동일 FIFO 차감
+
+```
+주문 완료 → recipe_id 있으면 → 기존 레시피 경로 (변경 없음)
+         → ingredient_id 있으면 → Ingredient 직접 FIFO 차감 (신규)
+         → 둘 다 없으면 → skip (변경 없음)
+```
+
+### 역할별 재고 관리 확장
+
+| 역할 | 재고 방식 | 비고 |
+|------|----------|------|
+| Restaurant Admin | Ingredient FIFO (기존 + 직접 연결 추가) | 기존 데이터 영향 없음 |
+| Brand General | ProductIngredient 기반 | 기존 구조 활용 |
+| System Admin | SystemProduct.track_stock + current_stock | 신규 필드 추가 |
+| Foodcourt General | FoodcourtProduct.track_stock + current_stock | 신규 테이블 |
 
 ---
 

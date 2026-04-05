@@ -72,7 +72,6 @@ const IngredientsGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
   margin-top: 24px;
-  align-items: start;
 `;
 
 const IngredientCard = styled.div<{ isActive?: boolean }>`
@@ -485,6 +484,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [viewMode, setViewMode] = useState<'compact' | 'image'>('compact');
+  const [detailIngredient, setDetailIngredient] = useState<Ingredient | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [linkedItems, setLinkedItems] = useState<{recipes: any[]; products: any[]}>({ recipes: [], products: [] });
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -1005,9 +1008,19 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             ))}
           </FilterSelect>
         </FilterBar>
-        <ThemedButton variant="primary" onClick={() => handleOpenModal(null)} style={{ flexShrink: 0 }}>
-          New Ingredient
-        </ThemedButton>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
+            <button onClick={() => setViewMode('compact')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+              Compact
+            </button>
+            <button onClick={() => setViewMode('image')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+              Image
+            </button>
+          </div>
+          <ThemedButton variant="primary" onClick={() => handleOpenModal(null)}>
+            New Ingredient
+          </ThemedButton>
+        </div>
       </div>
 
       {loading ? (
@@ -1034,8 +1047,18 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       ) : (
         <IngredientsGrid>
           {filteredIngredients.map(ingredient => (
-            <IngredientCard key={ingredient.id} isActive={ingredient.is_active}>
-              {ingredient.image_url && (
+            <IngredientCard key={ingredient.id} isActive={ingredient.is_active} onClick={() => {
+              setDetailIngredient(ingredient);
+              setShowDetailModal(true);
+              setLinkedItems({ recipes: [], products: [] });
+              const token = localStorage.getItem('auth_token');
+              fetch(`/api/restaurants/${effectiveRestaurantId}/ingredients/${ingredient.id}/usage`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              }).then(r => r.json()).then(data => {
+                if (data.success) setLinkedItems(data.data);
+              }).catch(() => {});
+            }}>
+              {viewMode === 'image' && ingredient.image_url && (
                 <IngredientImageContainer>
                   <IngredientImage src={ingredient.image_url} alt={ingredient.name} />
                 </IngredientImageContainer>
@@ -1165,7 +1188,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   </InfoRow>
                 )}
               </IngredientInfo>
-
               {/* Track Stock 토글 - Restaurant Admin만 표시 (브랜드 재료도 재고 연동은 가능) */}
               {isRestaurantAdmin && (
                 <TrackStockRow>
@@ -1188,13 +1210,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 <IngredientActions>
                   <ActionButton
                     variant="secondary"
-                    onClick={() => handleOpenModal(ingredient)}
+                    onClick={(e) => { e.stopPropagation(); handleOpenModal(ingredient); }}
                   >
                     Edit
                   </ActionButton>
                   <ActionButton
                     variant="danger"
-                    onClick={() => handleDeleteClick(ingredient)}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(ingredient); }}
                   >
                     Delete
                   </ActionButton>
@@ -1364,6 +1386,84 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         cancelText="Cancel"
         type="danger"
       />
+
+      {/* Detail Modal */}
+      {showDetailModal && detailIngredient && (
+        <Modal isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} title={detailIngredient.name} size="medium">
+          {detailIngredient.image_url && (
+            <div style={{ marginBottom: '16px', borderRadius: '8px', overflow: 'hidden' }}>
+              <img src={detailIngredient.image_url} alt={detailIngredient.name} style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }} />
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Category</div>
+              <div style={{ fontSize: '14px', fontWeight: 500 }}>{detailIngredient.ingredientCategory?.emoji} {detailIngredient.ingredientCategory?.name || 'Uncategorized'}</div>
+            </div>
+            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Unit Cost</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{formatCurrency(Number(detailIngredient.effective_cost ?? detailIngredient.unit_cost), selectedCurrency)} / {detailIngredient.unit}</div>
+            </div>
+            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Base Quantity</div>
+              <div style={{ fontSize: '14px', fontWeight: 500 }}>{Number(detailIngredient.base_quantity || 1)} {detailIngredient.unit}</div>
+            </div>
+            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Stock</div>
+              <div style={{ fontSize: '14px', fontWeight: 500 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}` : 'Not tracked'}</div>
+            </div>
+          </div>
+
+          {(detailIngredient.supplier?.name || detailIngredient.supplier_name) && (
+            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Supplier</div>
+              <div style={{ fontSize: '14px', fontWeight: 500 }}>{detailIngredient.supplier?.name || detailIngredient.supplier_name}</div>
+            </div>
+          )}
+
+          {detailIngredient.code && (
+            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Code</div>
+              <div style={{ fontSize: '14px', fontWeight: 500 }}>{detailIngredient.code}</div>
+            </div>
+          )}
+
+          {/* Connected recipes/menus */}
+          <div style={{ padding: '12px', background: '#F0F4FF', borderRadius: '8px', border: '1px solid #DBEAFE', marginBottom: '16px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1E40AF', marginBottom: '8px' }}>Used In</div>
+            {linkedItems.recipes.length === 0 && linkedItems.products.length === 0 ? (
+              <div style={{ fontSize: '13px', color: '#6B7280' }}>Not linked to any recipe or menu yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {linkedItems.recipes.map((r: any) => (
+                  <div key={'r' + r.id} style={{ fontSize: '13px', color: '#1E40AF' }}>
+                    <span style={{ fontSize: '11px', background: '#EFF6FF', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>Recipe</span>
+                    {r.name}
+                  </div>
+                ))}
+                {linkedItems.products.map((p: any) => (
+                  <div key={'p' + p.id} style={{ fontSize: '13px', color: '#059669' }}>
+                    <span style={{ fontSize: '11px', background: '#ECFDF5', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>Menu</span>
+                    {p.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {!isItemReadOnly(detailIngredient) && (
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <ModalButton variant="secondary" onClick={() => { setShowDetailModal(false); handleOpenModal(detailIngredient); }}>
+                Edit
+              </ModalButton>
+              <ModalButton variant="danger" onClick={() => { setShowDetailModal(false); handleDeleteClick(detailIngredient); }}>
+                Delete
+              </ModalButton>
+            </div>
+          )}
+        </Modal>
+      )}
     </>
   );
 };

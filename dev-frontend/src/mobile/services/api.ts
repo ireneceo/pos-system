@@ -29,7 +29,7 @@ class MobileApiService {
         console.error('API Error Response:', errorText);
         try {
           const error = JSON.parse(errorText);
-          throw new Error(error.message || `Request failed: ${response.status}`);
+          throw new Error(error.message || error.error || `Request failed: ${response.status}`);
         } catch {
           throw new Error(`Request failed: ${response.status}`);
         }

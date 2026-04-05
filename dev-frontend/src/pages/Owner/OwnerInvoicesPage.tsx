@@ -49,7 +49,7 @@ interface Invoice {
   issueDate: string;
   dueDate: string;
   paidDate?: string;
-  status: 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
+  status: 'draft' | 'sent' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
   currency?: string;
   amount: number;
   tax: number;
@@ -590,7 +590,7 @@ const OwnerInvoicesPage: React.FC = () => {
         })
       });
       if (response.ok) {
-        fetchInvoices();
+        fetchAllInvoices();
       }
     } catch (error) {
       console.error('Failed to confirm free invoice:', error);

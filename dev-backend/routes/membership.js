@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { MembershipSettings, PointTransaction, RestaurantCustomer, Customer } = require('../models');
 const { sequelize } = require('../config/database');
+const { authenticateToken } = require('../middleware/auth');
+
+// All routes require authentication
+router.use(authenticateToken);
 
 // ========================================
 // 멤버십 설정 조회/수정

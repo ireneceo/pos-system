@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const OptionGroup = require('../models/OptionGroup');
 const Option = require('../models/Option');
+const { OptionIngredient, Ingredient } = require('../models');
+const { authenticateToken } = require('../middleware/auth');
+
+// All routes require authentication
+router.use(authenticateToken);
 
 // Get all option groups with their options
 router.get('/', async (req, res) => {
@@ -21,7 +26,12 @@ router.get('/', async (req, res) => {
         model: Option,
         as: 'options',
         where: { isActive: true },
-        required: false
+        required: false,
+        include: [{
+          model: OptionIngredient,
+          as: 'optionIngredients',
+          include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'name', 'unit', 'unit_cost'] }]
+        }]
       }],
       order: [
         ['created_at', 'DESC'],
@@ -38,7 +48,11 @@ router.get('/', async (req, res) => {
       options: group.options ? group.options.map(opt => ({
         id: opt.id.toString(),
         name: opt.name,
-        price: parseFloat(opt.price)
+        price: parseFloat(opt.price),
+        ingredient_id: opt.optionIngredients?.[0]?.ingredient_id || null,
+        ingredient_name: opt.optionIngredients?.[0]?.ingredient?.name || null,
+        ingredient_quantity: opt.optionIngredients?.[0]?.quantity ? parseFloat(opt.optionIngredients[0].quantity) : null,
+        ingredient_unit: opt.optionIngredients?.[0]?.ingredient?.unit || null
       })) : []
     }));
 
@@ -103,7 +117,18 @@ router.post('/', async (req, res) => {
         isActive: true
       }));
 
-      await Option.bulkCreate(optionsData);
+      const createdOptions = await Option.bulkCreate(optionsData);
+
+      // Save option_ingredients if provided
+      for (let i = 0; i < options.length; i++) {
+        if (options[i].ingredient_id && createdOptions[i]) {
+          await OptionIngredient.create({
+            option_id: createdOptions[i].id,
+            ingredient_id: options[i].ingredient_id,
+            quantity: options[i].ingredient_quantity || 1
+          });
+        }
+      }
     }
 
     // Fetch the created group with options
@@ -158,6 +183,12 @@ router.put('/:id', async (req, res) => {
 
     // Update options if provided
     if (options && Array.isArray(options)) {
+      // Delete existing option_ingredients first
+      const existingOptions = await Option.findAll({ where: { option_group_id: optionGroup.id } });
+      for (const eo of existingOptions) {
+        await OptionIngredient.destroy({ where: { option_id: eo.id } });
+      }
+
       // Delete existing options
       await Option.destroy({
         where: { option_group_id: optionGroup.id }
@@ -172,7 +203,18 @@ router.put('/:id', async (req, res) => {
           displayOrder: index
         }));
 
-        await Option.bulkCreate(optionsData);
+        const createdOptions = await Option.bulkCreate(optionsData);
+
+        // Save option_ingredients
+        for (let i = 0; i < options.length; i++) {
+          if (options[i].ingredient_id && createdOptions[i]) {
+            await OptionIngredient.create({
+              option_id: createdOptions[i].id,
+              ingredient_id: options[i].ingredient_id,
+              quantity: options[i].ingredient_quantity || 1
+            });
+          }
+        }
       }
     }
 

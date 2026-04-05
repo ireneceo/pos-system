@@ -1639,7 +1639,7 @@ const PaymentPage: React.FC = () => {
         parseInt(currentStore.id as string, 10),
         subtotal,
         orderType,
-        currentCustomer?.id
+        currentCustomer?.id ? parseInt(currentCustomer.id as string, 10) : undefined
       );
 
       if (result.valid && result.data) {

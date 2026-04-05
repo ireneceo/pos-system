@@ -1135,6 +1135,7 @@ const ManagerRestaurantsPage: React.FC = () => {
             subscriptionStart: '',
             subscriptionEnd: '',
             autoRenew: true,
+            currency: '',
             enableTrial: false
           });
         } else {

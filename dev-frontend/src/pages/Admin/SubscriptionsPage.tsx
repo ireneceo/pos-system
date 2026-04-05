@@ -293,6 +293,7 @@ const SubscriptionsPage: React.FC = () => {
     phone: '',
     address: '',
     monthlyFee: 29,
+    currency: 'MYR',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0]
   });

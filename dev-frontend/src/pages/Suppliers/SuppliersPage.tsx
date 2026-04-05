@@ -571,8 +571,8 @@ const SuppliersPage: React.FC = () => {
     try {
       const token = localStorage.getItem('auth_token');
       let url = '';
-      if (isBrandUser && selectedBrand) {
-        url = `/api/brands/${selectedBrand}/suppliers/${supplier.id}`;
+      if (isBrandUser) {
+        url = `/api/suppliers/${supplier.id}`;
       } else if (isRestaurantAdmin && effectiveRestaurantId) {
         url = `/api/restaurants/${effectiveRestaurantId}/suppliers/${supplier.id}`;
       }

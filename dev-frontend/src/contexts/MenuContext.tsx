@@ -493,7 +493,8 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         is_set_menu: updatedItem.is_set_menu,
         set_items: updatedItem.set_items,
         set_display_order: updatedItem.set_display_order,
-        recipe_id: updatedItem.recipe_id || null
+        recipe_id: updatedItem.recipe_id || null,
+        directIngredients: (updatedItem as any).directIngredients || undefined
       };
 
       const url = restaurantId
@@ -567,6 +568,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         set_items: newItem.set_items,
         set_display_order: newItem.set_display_order,
         recipe_id: newItem.recipe_id || null,
+        directIngredients: (newItem as any).directIngredients || undefined,
         ...(restaurantId && { restaurant_id: restaurantId })
       };
 

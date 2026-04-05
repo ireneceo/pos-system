@@ -3,6 +3,7 @@ const router = express.Router();
 const Product = require('../models/Product');
 const Restaurant = require('../models/Restaurant');
 const Category = require('../models/Category');
+const { Recipe, RecipeIngredient, Ingredient } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { processImage, deleteOldImages } = require('../utils/imageProcessor');
 const { logActivity } = require('../utils/activityLogger');
@@ -383,7 +384,46 @@ router.post('/product', async (req, res) => {
       }
     }
 
+    // Remove directIngredients from productData before creating product
+    const directIngredients = productData.directIngredients;
+    delete productData.directIngredients;
+
     const product = await Product.create(productData);
+
+    // Auto-create recipe if directIngredients provided
+    if (directIngredients && Array.isArray(directIngredients) && directIngredients.length > 0 && !product.recipe_id) {
+      try {
+        const recipe = await Recipe.create({
+          name: `${product.name} (auto)`,
+          owner_type: 'restaurant',
+          restaurant_id: restaurantId,
+          is_active: true,
+          total_ingredient_cost: 0
+        });
+
+        let totalCost = 0;
+        for (const di of directIngredients) {
+          if (!di.ingredient_id || !di.quantity) continue;
+          const ingredient = await Ingredient.findByPk(di.ingredient_id);
+          if (!ingredient) continue;
+          const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
+          await RecipeIngredient.create({
+            recipe_id: recipe.id,
+            ingredient_id: di.ingredient_id,
+            quantity: di.quantity,
+            unit: di.unit || ingredient.unit,
+            cost: cost
+          });
+          totalCost += cost;
+        }
+
+        await recipe.update({ total_ingredient_cost: totalCost });
+        await product.update({ recipe_id: recipe.id });
+      } catch (recipeError) {
+        console.error('Auto-recipe creation error:', recipeError.message);
+        // Product is already created, recipe creation failure is non-fatal
+      }
+    }
 
     logActivity(req, {
       action_type: 'create',
@@ -394,6 +434,8 @@ router.post('/product', async (req, res) => {
       restaurant_id: restaurantId
     });
 
+    // Reload to include recipe_id
+    await product.reload();
     res.status(201).json({ success: true, data: product });
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -520,7 +562,66 @@ router.put('/product/:id', async (req, res) => {
       // JSON 형식(이전 데이터)이면 그대로 유지
     }
 
+    // Handle directIngredients: auto-create or update recipe
+    const directIngredients = updateData.directIngredients;
+    delete updateData.directIngredients;
+
     await product.update(updateData);
+
+    if (directIngredients && Array.isArray(directIngredients)) {
+      try {
+        const rid = product.restaurant_id;
+        if (directIngredients.length > 0) {
+          let recipe;
+          if (product.recipe_id) {
+            // Update existing auto-recipe: clear old ingredients, add new
+            recipe = await Recipe.findByPk(product.recipe_id);
+            if (recipe) {
+              await RecipeIngredient.destroy({ where: { recipe_id: recipe.id } });
+            }
+          }
+          if (!recipe) {
+            // Create new recipe
+            recipe = await Recipe.create({
+              name: `${product.name} (auto)`,
+              owner_type: 'restaurant',
+              restaurant_id: rid,
+              is_active: true,
+              total_ingredient_cost: 0
+            });
+            await product.update({ recipe_id: recipe.id });
+          }
+
+          let totalCost = 0;
+          for (const di of directIngredients) {
+            if (!di.ingredient_id || !di.quantity) continue;
+            const ingredient = await Ingredient.findByPk(di.ingredient_id);
+            if (!ingredient) continue;
+            const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
+            await RecipeIngredient.create({
+              recipe_id: recipe.id,
+              ingredient_id: di.ingredient_id,
+              quantity: di.quantity,
+              unit: di.unit || ingredient.unit,
+              cost: cost
+            });
+            totalCost += cost;
+          }
+          await recipe.update({ total_ingredient_cost: totalCost, name: `${product.name} (auto)` });
+        } else if (directIngredients.length === 0 && product.recipe_id) {
+          // Empty array = remove direct ingredients, but keep recipe_id if it was manually linked
+          const recipe = await Recipe.findByPk(product.recipe_id);
+          if (recipe && recipe.name.endsWith('(auto)')) {
+            // Only remove auto-generated recipes
+            await RecipeIngredient.destroy({ where: { recipe_id: recipe.id } });
+            await recipe.destroy();
+            await product.update({ recipe_id: null });
+          }
+        }
+      } catch (recipeError) {
+        console.error('Auto-recipe update error:', recipeError.message);
+      }
+    }
 
     logActivity(req, {
       action_type: 'update',

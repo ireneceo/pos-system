@@ -529,7 +529,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Subscriptions</Title>
+          <Title>Foodcourt Subscriptions</Title>
           <ActionSection>
             <ThemedButton variant="outline" onClick={handleExportData}>Export</ThemedButton>
           </ActionSection>

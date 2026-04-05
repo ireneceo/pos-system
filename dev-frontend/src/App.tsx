@@ -138,6 +138,7 @@ const FoodcourtStaffPage = React.lazy(() => import('./pages/Foodcourt/FoodcourtS
 
 // Recipe Management
 const RecipeManagementPage = React.lazy(() => import('./pages/RecipeManagement/RecipeManagementPage'));
+const RestaurantIngredientsPage = React.lazy(() => import('./pages/RecipeManagement/IngredientsPage'));
 const RecipesPage = React.lazy(() => import('./pages/Recipes/RecipesPage'));
 const IngredientsPage = React.lazy(() => import('./pages/Ingredients/IngredientsPage'));
 const SuppliersPage = React.lazy(() => import('./pages/Suppliers/SuppliersPage'));
@@ -567,6 +568,11 @@ function App() {
                           <ActivityHistoryPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/owner/notification-settings" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <NotificationSettingsPage />
+                        </ProtectedRoute>
+                      } />
 
                       {/* Foodcourt General / Foodcourt Manager Routes */}
                       <Route path="/pos/foodcourt/general/dashboard" element={
@@ -884,6 +890,11 @@ function App() {
                       <Route path="/restaurant/:restaurantId/recipe-management" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <RecipeManagementPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/ingredients" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
+                          <RestaurantIngredientsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/suppliers" element={

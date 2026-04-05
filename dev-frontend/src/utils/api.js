@@ -25,7 +25,7 @@ export async function fetchAPI(endpoint, options = {}) {
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Network error' }));
-    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    throw new Error(error.message || error.error || `HTTP error! status: ${response.status}`);
   }
   
   return response.json();

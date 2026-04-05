@@ -256,7 +256,9 @@ const LoginPage: React.FC = () => {
           addresses: [],
           joinDate: new Date().toISOString().split('T')[0],
           loyaltyTier: result.data.loyaltyTier || 'Bronze',
-          isActive: true
+          isActive: true,
+          couponsAvailable: result.data.couponsAvailable || 0,
+          couponsUsed: result.data.couponsUsed || 0
         };
         setCurrentCustomer(customerData);
         // 바로 account 페이지로 이동

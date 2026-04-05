@@ -17,6 +17,7 @@ const Product = require('./Product');
 const Category = require('./Category');
 const OptionGroup = require('./OptionGroup');
 const Option = require('./Option');
+const OptionIngredient = require('./OptionIngredient');
 const AddonModule = require('./AddonModule');
 const Recipe = require('./Recipe');
 const Ingredient = require('./Ingredient');
@@ -175,6 +176,10 @@ Option.belongsTo(OptionGroup, {
   foreignKey: 'option_group_id',
   as: 'optionGroup'
 });
+Option.hasMany(OptionIngredient, { foreignKey: 'option_id', as: 'optionIngredients' });
+OptionIngredient.belongsTo(Option, { foreignKey: 'option_id', as: 'option' });
+OptionIngredient.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(OptionIngredient, { foreignKey: 'ingredient_id', as: 'optionIngredients' });
 
 // OptionGroup - Restaurant associations
 OptionGroup.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
@@ -506,6 +511,7 @@ module.exports = {
   Category,
   OptionGroup,
   Option,
+  OptionIngredient,
   AddonModule,
   Recipe,
   Ingredient,

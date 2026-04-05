@@ -40,7 +40,7 @@ const TEST_ACCOUNTS = [
   {
     role: 'Restaurant Owner',
     email: 'owner@purplehere.com',
-    password: 'Owner1234',
+    password: 'Test1234',
     description: 'Restaurant Owner (Multi-Restaurant Financial Dashboard)',
     color: '#7C3AED'
   },

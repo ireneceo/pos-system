@@ -361,6 +361,8 @@ interface OptionGroup {
   }>;
 }
 
+type OptionItem = { id: string; name: string; price: number; ingredient_id?: number | null; ingredient_quantity?: number; ingredient_name?: string; ingredient_unit?: string };
+
 const OptionManagementPage: React.FC = () => {
   const { optionGroups, addOptionGroup, updateOptionGroup, deleteOptionGroup } = useMenu();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -371,9 +373,31 @@ const OptionManagementPage: React.FC = () => {
     name: '',
     required: false,
     multiple: false,
-    options: [] as Array<{ id: string; name: string; price: number }>
+    options: [] as OptionItem[]
   });
-  const [newOption, setNewOption] = useState({ name: '', price: 0 });
+  const [newOption, setNewOption] = useState<OptionItem>({ id: '', name: '', price: 0, ingredient_id: null, ingredient_quantity: 1 });
+  const [ingredients, setIngredients] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
+
+  // Fetch ingredients
+  React.useEffect(() => {
+    const fetchIngredients = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const pathParts = window.location.pathname.split('/');
+        const ridIdx = pathParts.indexOf('restaurant');
+        const rid = ridIdx >= 0 ? pathParts[ridIdx + 1] : null;
+        if (!rid) return;
+        const response = await fetch(`/api/restaurants/${rid}/ingredients`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setIngredients((data.success ? data.data : data) || []);
+        }
+      } catch (e) { console.error('Failed to fetch ingredients:', e); }
+    };
+    fetchIngredients();
+  }, []);
 
   const handleOpenModal = (group?: OptionGroup) => {
     if (group) {
@@ -405,24 +429,29 @@ const OptionManagementPage: React.FC = () => {
       multiple: false,
       options: []
     });
-    setNewOption({ name: '', price: 0 });
+    setNewOption({ id: '', name: '', price: 0, ingredient_id: null, ingredient_quantity: 1 });
   };
 
   const handleAddOption = () => {
     if (!newOption.name.trim()) return;
-    
-    const option = {
+
+    const ing = newOption.ingredient_id ? ingredients.find(i => i.id === newOption.ingredient_id) : null;
+    const option: OptionItem = {
       id: `opt-${Date.now()}`,
       name: newOption.name,
-      price: newOption.price
+      price: newOption.price,
+      ingredient_id: newOption.ingredient_id || null,
+      ingredient_quantity: newOption.ingredient_quantity || 1,
+      ingredient_name: ing?.name || undefined,
+      ingredient_unit: ing?.unit || undefined
     };
-    
+
     setFormData({
       ...formData,
       options: [...formData.options, option]
     });
     
-    setNewOption({ name: '', price: 0 });
+    setNewOption({ id: '', name: '', price: 0, ingredient_id: null, ingredient_quantity: 1 });
   };
 
   const handleRemoveOption = (optionId: string) => {
@@ -594,7 +623,7 @@ const OptionManagementPage: React.FC = () => {
 
           <FormGroup>
             <Label>Add Option</Label>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
               <Input
                 type="text"
                 value={newOption.name}
@@ -619,6 +648,29 @@ const OptionManagementPage: React.FC = () => {
                 Add
               </Button>
             </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              <select
+                value={newOption.ingredient_id || ''}
+                onChange={(e) => setNewOption({ ...newOption, ingredient_id: e.target.value ? Number(e.target.value) : null })}
+                style={{ flex: 2, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: newOption.ingredient_id ? '#0A2540' : '#9CA3AF' }}
+              >
+                <option value="">Linked ingredient (optional)</option>
+                {ingredients.map(ing => (
+                  <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>
+                ))}
+              </select>
+              {newOption.ingredient_id && (
+                <Input
+                  type="number"
+                  value={newOption.ingredient_quantity || 1}
+                  onChange={(e) => setNewOption({ ...newOption, ingredient_quantity: parseFloat(e.target.value) || 1 })}
+                  placeholder="Qty"
+                  step="0.01"
+                  min="0.01"
+                  style={{ flex: 1 }}
+                />
+              )}
+            </div>
 
             <OptionItemsList>
               {formData.options.map(option => (
@@ -626,6 +678,7 @@ const OptionManagementPage: React.FC = () => {
                   <div style={{ flex: 1 }}>
                     <strong>{option.name}</strong>
                     {option.price > 0 && <span> (+RM {option.price.toFixed(2)})</span>}
+                    {option.ingredient_name && <span style={{ fontSize: '11px', color: '#6B7280', marginLeft: '8px' }}>→ {option.ingredient_name} {option.ingredient_quantity}{option.ingredient_unit}</span>}
                   </div>
                   <RemoveOptionButton onClick={() => handleRemoveOption(option.id)}>
                     ×

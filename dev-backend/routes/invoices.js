@@ -750,11 +750,11 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
 
     // Condition 1: Invoices for restaurants where manager is responsible for payment
     if (restaurantIds.length > 0) {
-      // Get restaurants where manager pays
+      // Get restaurants where manager pays (brand_manager or foodcourt_manager)
       const managerPayRestaurants = await Restaurant.findAll({
         where: {
           id: { [Op.in]: restaurantIds },
-          payment_responsibility: 'manager'
+          payment_model: { [Op.in]: ['brand_manager', 'foodcourt_manager'] }
         }
       });
       const managerPayRestaurantIds = managerPayRestaurants.map(r => r.id);
@@ -766,9 +766,9 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
       }
     }
 
-    // Condition 2: Invoices directly issued to this manager (custom invoices from system admin)
+    // Condition 2: Invoices directly issued to this manager (payer_type: brand_manager or foodcourt_manager)
     whereConditions.push({
-      payer_type: 'manager',
+      payer_type: { [Op.in]: ['brand_manager', 'foodcourt_manager'] },
       payer_id: managerId
     });
 
@@ -1090,30 +1090,18 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       // Build OR condition
       let conditions = [];
 
-      // Condition 1: Direct invoices to the brand (old format)
-      conditions.push({
-        payer_type: 'brand',
-        payer_id: brand.id
-      });
-
-      // Condition 2: Direct invoices with payer_type: 'brand_manager' and payer_id is user id
+      // Condition 1: Direct invoices with payer_type: 'brand_manager' and payer_id is user id
       conditions.push({
         payer_type: 'brand_manager',
         payer_id: req.user.id
       });
 
-      // Condition 3: Invoices for brand-pay restaurants
+      // Condition 2: Invoices for brand-pay restaurants
       if (brandPayRestaurantIds.length > 0) {
         conditions.push({
           restaurant_id: { [Op.in]: brandPayRestaurantIds }
         });
       }
-
-      // Condition 4: Invoices directly to this user (as manager - legacy)
-      conditions.push({
-        payer_type: 'manager',
-        payer_id: req.user.id
-      });
 
       // IMPORTANT: Exclude invoices issued by this brand (본인이 발행한 인보이스 제외)
       whereClause = {
@@ -1153,30 +1141,18 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       // Build OR condition
       let conditions = [];
 
-      // Condition 1: Direct invoices to the foodcourt (old format)
-      conditions.push({
-        payer_type: 'foodcourt',
-        payer_id: foodcourt.id
-      });
-
-      // Condition 2: Direct invoices with payer_type: 'foodcourt_manager' and payer_id is user id
+      // Condition 1: Direct invoices with payer_type: 'foodcourt_manager' and payer_id is user id
       conditions.push({
         payer_type: 'foodcourt_manager',
         payer_id: req.user.id
       });
 
-      // Condition 3: Invoices for foodcourt-pay restaurants
+      // Condition 2: Invoices for foodcourt-pay restaurants
       if (foodcourtPayRestaurantIds.length > 0) {
         conditions.push({
           restaurant_id: { [Op.in]: foodcourtPayRestaurantIds }
         });
       }
-
-      // Condition 4: Invoices directly to this user (as manager)
-      conditions.push({
-        payer_type: 'manager',
-        payer_id: req.user.id
-      });
 
       // IMPORTANT: Exclude invoices issued by this foodcourt (본인이 발행한 인보이스 제외)
       whereClause = {
@@ -2830,17 +2806,8 @@ async function checkPaymentPermission(user, invoice) {
   if (user.role === 'Brand General' || user.role === 'Brand Manager') {
     const brand = await Brand.findOne({ where: { owner_id: user.id } });
 
-    // Check various payer_type combinations:
-    // 1. payer_type: 'brand', payer_id: brand.id (legacy)
-    // 2. payer_type: 'brand_manager', payer_id: user.id
-    // 3. payer_type: 'manager', payer_id: user.id (legacy)
-    if (brand && invoice.payer_type === 'brand' && invoice.payer_id === brand.id) {
-      return true;
-    }
+    // payer_type: 'brand_manager', payer_id: user.id
     if (invoice.payer_type === 'brand_manager' && invoice.payer_id === user.id) {
-      return true;
-    }
-    if (invoice.payer_type === 'manager' && invoice.payer_id === user.id) {
       return true;
     }
     return false;
@@ -2848,19 +2815,8 @@ async function checkPaymentPermission(user, invoice) {
 
   // Foodcourt General/Manager can pay invoices where they are the payer
   if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') {
-    const foodcourt = await Foodcourt.findOne({ where: { owner_id: user.id } });
-
-    // Check various payer_type combinations:
-    // 1. payer_type: 'foodcourt', payer_id: foodcourt.id (legacy)
-    // 2. payer_type: 'foodcourt_manager', payer_id: user.id
-    // 3. payer_type: 'manager', payer_id: user.id (legacy)
-    if (foodcourt && invoice.payer_type === 'foodcourt' && invoice.payer_id === foodcourt.id) {
-      return true;
-    }
+    // payer_type: 'foodcourt_manager', payer_id: user.id
     if (invoice.payer_type === 'foodcourt_manager' && invoice.payer_id === user.id) {
-      return true;
-    }
-    if (invoice.payer_type === 'manager' && invoice.payer_id === user.id) {
       return true;
     }
     return false;

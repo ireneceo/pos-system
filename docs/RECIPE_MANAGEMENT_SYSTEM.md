@@ -449,6 +449,154 @@ Recipe: 토마토 수프 (Restaurant My Cost 적용)
 | 2025-11-30 | 2.0 | 권한 구조 설계 (recipe_manager_type 방식) | Claude |
 | 2025-12-10 | 3.0 | 구현 완료 반영 - owner_type 기반 권한, UI 기능 추가 | Claude |
 | 2026-02-24 | 4.0 | 레스토랑별 코스트 오버라이드 시스템 추가 - restaurant_ingredient_costs 테이블, effective_cost 로직, My Cost UI | Claude |
+| 2026-04-05 | 5.0 | 상품-재료 직접 연결 + 사이드바 재구성 + 역할별 확장 설계 | Claude |
+
+---
+
+## 구조 재정리 (v5.0, 2026-04-05)
+
+### 배경
+
+레시피 없는 상품(생수, 캔음료, 기성품)의 원가/재고 관리가 안 되는 문제. 모든 역할에서 상품→재료 직접 연결이 필요.
+
+### 역할별 상품/레시피/재료 체계
+
+| 역할 | 상품 모델 | 레시피 | 재료 직접 연결 | 재고 |
+|------|----------|--------|:---:|:---:|
+| Restaurant Admin | Product (메뉴) | Recipe → Ingredient | ✅ (신규) | Ingredient FIFO |
+| Brand General | BrandProduct | ProductRecipe → ProductIngredient | ✅ (신규) | ProductIngredient |
+| Foodcourt General | FoodcourtProduct (신규) | 없음 | ✅ (신규) | 재고 추적 |
+| System Admin | SystemProduct | 없음 | ✅ (신규) | 재고 추적 |
+
+### 메뉴(Product) 원가 연결 방식 (3가지 선택)
+
+```
+메뉴 수정 화면:
+  [라디오] 레시피 연결       → recipe_id (기존, 변경 없음)
+  [라디오] 재료 직접 연결    → ingredient_id + ingredient_quantity (신규)
+  [라디오] 원가 직접 입력    → unit_cost (기존 필드 활용)
+```
+
+규칙: recipe_id와 ingredient_id는 상호 배타 (하나만 설정)
+
+원가 우선순위:
+1. Recipe.total_ingredient_cost (레시피 연결 시)
+2. Ingredient.unit_cost × ingredient_quantity (재료 직접 연결 시)
+3. Product.unit_cost (직접 입력)
+
+### DB 변경
+
+```sql
+-- Product: 재료 직접 연결
+ALTER TABLE products ADD COLUMN ingredient_id INT NULL REFERENCES ingredients(id);
+ALTER TABLE products ADD COLUMN ingredient_quantity DECIMAL(10,2) DEFAULT 1;
+
+-- BrandProduct: 재료 직접 연결
+ALTER TABLE brand_products ADD COLUMN product_ingredient_id INT NULL REFERENCES product_ingredients(id);
+ALTER TABLE brand_products ADD COLUMN ingredient_quantity DECIMAL(10,2) DEFAULT 1;
+
+-- SystemProduct: 재고 관련
+ALTER TABLE system_products ADD COLUMN track_stock BOOLEAN DEFAULT FALSE;
+ALTER TABLE system_products ADD COLUMN current_stock DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE system_products ADD COLUMN min_stock DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE system_products ADD COLUMN unit_cost DECIMAL(10,4) DEFAULT 0;
+ALTER TABLE system_products ADD COLUMN stock_unit VARCHAR(20) DEFAULT 'piece';
+
+-- FoodcourtProduct: 신규 테이블
+CREATE TABLE foodcourt_products (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  foodcourt_id INT NOT NULL REFERENCES foodcourts(id),
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  sku VARCHAR(100),
+  category_id INT NULL,
+  image_url TEXT,
+  emoji VARCHAR(10),
+  unit_price DECIMAL(10,2) DEFAULT 0,
+  unit_cost DECIMAL(10,4) DEFAULT 0,
+  track_stock BOOLEAN DEFAULT FALSE,
+  current_stock DECIMAL(10,2) DEFAULT 0,
+  min_stock DECIMAL(10,2) DEFAULT 0,
+  stock_unit VARCHAR(20) DEFAULT 'piece',
+  is_active BOOLEAN DEFAULT TRUE,
+  sort_order INT DEFAULT 0,
+  created_at DATETIME,
+  updated_at DATETIME
+);
+
+CREATE TABLE foodcourt_product_categories (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  foodcourt_id INT NOT NULL REFERENCES foodcourts(id),
+  name VARCHAR(100) NOT NULL,
+  emoji VARCHAR(10),
+  sort_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at DATETIME,
+  updated_at DATETIME
+);
+```
+
+### 사이드바 메뉴 재구성
+
+```
+Restaurant Admin:
+  Products
+  ├── Menu                              ← 그대로
+  ├── Categories                        ← 그대로
+  ├── Options                           ← 그대로
+  ├── Recipes (2탭: Recipes, Recipe Categories)     ← 기존 4탭에서 분리
+  └── Ingredients (2탭: Ingredients, Ingredient Categories) ← 별도 메뉴로 분리
+
+Brand General:
+  Products
+  ├── Products                          ← 그대로
+  ├── Categories                        ← 그대로
+  ├── Product Recipes (2탭)             ← 기존 4탭에서 분리
+  └── Ingredients (2탭)                 ← 별도 메뉴로 분리
+
+Foodcourt General:
+  Products (신규 섹션)
+  ├── Products                          ← FoodcourtProduct CRUD
+  └── Categories                        ← FoodcourtProductCategory
+
+System Admin:
+  System Products                       ← 기존 + 재고 필드 추가
+```
+
+### 재고 차감 로직 확장
+
+```javascript
+// inventoryDeductionService.js
+async function deductInventoryForOrder(order) {
+  for (const item of order.items) {
+    const product = await Product.findByPk(item.product_id);
+    
+    if (product.recipe_id) {
+      // 경로 A: 기존 — Recipe → Ingredient별 FIFO 차감
+      await deductByRecipe(product.recipe_id, item.quantity);
+    } else if (product.ingredient_id) {
+      // 경로 B: 신규 — Ingredient 직접 FIFO 차감
+      await deductIngredient(product.ingredient_id, product.ingredient_quantity * item.quantity);
+    }
+    // 경로 C: 둘 다 없으면 skip
+  }
+}
+```
+
+### 기존 데이터 안전성
+
+| 변경 | 기존 데이터 영향 |
+|------|:---:|
+| Product.ingredient_id 추가 | ❌ nullable, 기존 51개 영향 없음 |
+| BrandProduct.product_ingredient_id 추가 | ❌ nullable, 기존 3개 영향 없음 |
+| SystemProduct 재고 필드 추가 | ❌ default false/0, 기존 28개 영향 없음 |
+| FoodcourtProduct 신규 테이블 | ❌ 새 테이블 |
+| RecipeManagementPage 탭 분리 | ⚠️ URL 리다이렉트 필요 |
+| inventoryDeductionService 확장 | ❌ 기존 recipe 경로 변경 없음 |
+
+### 구현 순서
+
+Phase 1: Restaurant Admin → Phase 2: Brand General → Phase 3: System Admin → Phase 4: Foodcourt General
 
 ---
 

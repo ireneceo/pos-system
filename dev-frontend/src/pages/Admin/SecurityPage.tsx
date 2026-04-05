@@ -319,7 +319,7 @@ const PolicyToggle = styled.div`
 `;
 
 const SecurityPage: React.FC = () => {
-  const [activeTab, handleTabChange] = useTabParam('events');
+  const [activeTab, handleTabChange] = useTabParam<'events' | 'policies' | 'access'>('events');
   const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [policies, setPolicies] = useState<SecurityPolicy[]>([]);
   const [showConfigureModal, setShowConfigureModal] = useState(false);

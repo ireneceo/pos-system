@@ -45,7 +45,7 @@ interface Invoice {
   issueDate: string;
   dueDate: string;
   paidDate?: string;
-  status: 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
+  status: 'draft' | 'sent' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
   currency?: string;
   amount: number;
   tax: number;
@@ -300,7 +300,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [showPaymentSubmitModal, setShowPaymentSubmitModal] = useState(false);
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
-  const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<number | null>(null);
+  const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<string | null>(null);
   const [paymentData, setPaymentData] = useState({
     paymentMethod: '',
     transactionId: '',
@@ -534,7 +534,7 @@ const RestaurantInvoicesPage: React.FC = () => {
 
       if (response.ok) {
         setShowPaymentSubmitModal(false);
-        setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
+        setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
         await fetchAllInvoices();
         await fetchInvoicesToPay();
         window.dispatchEvent(new Event('refreshBadgeCounts'));
@@ -657,7 +657,7 @@ const RestaurantInvoicesPage: React.FC = () => {
         })
       });
       if (response.ok) {
-        await fetchInvoices();
+        await fetchAllInvoices();
         setShowViewModal(false);
       }
     } catch (error) {
@@ -670,7 +670,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   const handlePayInvoice = async (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setPaymentSubmitError('');
-    setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
+    setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
     await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
     setShowPaymentSubmitModal(true);
   };
@@ -1494,7 +1494,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                         invoiceId={selectedInvoice.id}
                         onSuccess={() => {
                           setShowPaymentSubmitModal(false);
-                          setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '' });
+                          setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
                           fetchAllInvoices();
                           fetchInvoicesToPay();
                           window.dispatchEvent(new Event('refreshBadgeCounts'));

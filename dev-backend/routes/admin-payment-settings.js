@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const SystemSettings = require('../models/SystemSettings');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 
@@ -23,8 +24,8 @@ const defaultPaymentSettings = {
   additionalCharges: {}  // { "MYR": [{enabled, name, rate}, ...], "KRW": [...] }
 };
 
-// GET - 결제 설정 조회
-router.get('/', async (req, res) => {
+// GET - 결제 설정 조회 (Admin only)
+router.get('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const settings = await SystemSettings.findOne({
       where: { setting_key: PAYMENT_SETTINGS_KEY }
@@ -67,8 +68,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST - 결제 설정 저장
-router.post('/', async (req, res) => {
+// POST - 결제 설정 저장 (Admin only)
+router.post('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     console.log('📝 [PAYMENT SETTINGS] Saving payment settings...');
     console.log('📝 [PAYMENT SETTINGS] Request body:', JSON.stringify(req.body, null, 2));

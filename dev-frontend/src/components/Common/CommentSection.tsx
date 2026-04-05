@@ -27,7 +27,7 @@ interface Comment {
 interface CommentSectionProps {
   entityType: 'support_ticket' | 'operation_ticket' | 'notice' | 'hardware_quote';
   entityId: string;
-  currentUserId?: number;
+  currentUserId?: number | string;
   onMarkRead?: () => void;
 }
 
@@ -464,7 +464,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
                     <InternalBadge>Internal</InternalBadge>
                   )}
                   <CommentDate>{formatDate(comment.createdAt)}</CommentDate>
-                  {currentUserId && comment.author_id === currentUserId && (
+                  {currentUserId && comment.author_id === Number(currentUserId) && (
                     <DeleteButton onClick={() => handleDelete(comment.id)}>Delete</DeleteButton>
                   )}
                 </CommentHeader>

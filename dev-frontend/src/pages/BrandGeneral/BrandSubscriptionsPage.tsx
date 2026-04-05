@@ -532,7 +532,7 @@ const BrandSubscriptionsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Subscriptions</Title>
+          <Title>Brand Subscriptions</Title>
           <ActionSection>
             <ThemedButton variant="outline" onClick={handleExportData}>Export</ThemedButton>
           </ActionSection>

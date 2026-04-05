@@ -7,6 +7,9 @@ const { authenticateToken } = require('../middleware/auth');
 const { sendNotification } = require('../utils/notificationService');
 const { inquiryReceivedEmail, ticketStatusChangedEmail } = require('../utils/notificationTemplates');
 
+// All routes require authentication
+router.use(authenticateToken);
+
 // Get operation tickets for manager or staff/admin
 router.get('/', async (req, res) => {
   try {

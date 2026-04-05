@@ -325,7 +325,7 @@ interface SupportRequest {
 }
 
 const TenantSupport: React.FC = () => {
-  const [activeTab, setActiveTab] = useTabParam('requests');
+  const [activeTab, setActiveTab] = useTabParam<'requests' | 'communication' | 'announcements'>('requests');
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [requests, setRequests] = useState<SupportRequest[]>([]);

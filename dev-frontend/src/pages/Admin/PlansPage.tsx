@@ -51,7 +51,7 @@ interface AddonModule {
   module_code: string;
   name: string;
   description: string;
-  category: 'basic' | 'advanced';
+  category: 'basic' | 'advanced' | 'revenue' | 'operation' | 'analytics' | string;
   base_price_monthly: number;
   base_price_annual: number;
   features: string[];

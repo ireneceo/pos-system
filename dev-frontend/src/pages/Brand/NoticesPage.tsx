@@ -594,7 +594,8 @@ const NoticesPage: React.FC = () => {
       target_type: '',
       brand_id: '',
       restaurant_ids: [],
-      priority: 'normal'
+      priority: 'normal',
+      category: ''
     });
     setNewAttachments([]);
     setShowCreateModal(true);

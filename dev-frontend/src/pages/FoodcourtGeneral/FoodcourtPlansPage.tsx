@@ -1009,7 +1009,7 @@ const FoodcourtPlansPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Subscription Plans</Title>
+          <Title>Foodcourt Plans</Title>
           <ActionSection>
             <Button variant="primary" onClick={handleCreatePlan}>Create Plan</Button>
           </ActionSection>

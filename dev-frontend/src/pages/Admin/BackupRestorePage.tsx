@@ -390,7 +390,7 @@ const BackupListSize = styled.div`
 `;
 
 const BackupRestorePage: React.FC = () => {
-  const [activeTab, handleTabChange] = useTabParam('backups');
+  const [activeTab, handleTabChange] = useTabParam<'backups' | 'restore' | 'schedule'>('backups');
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [restoreOperations, setRestoreOperations] = useState<RestoreOperation[]>([]);
   const [showCreateBackupModal, setShowCreateBackupModal] = useState(false);

@@ -589,7 +589,7 @@ const FeaturesPage: React.FC = () => {
   }, [imageErrors]);
 
   const handleImageError = useCallback((src: string) => {
-    setImageErrors(prev => new Set([...prev, src]));
+    setImageErrors(prev => new Set([...Array.from(prev), src]));
   }, []);
 
   useEffect(() => {

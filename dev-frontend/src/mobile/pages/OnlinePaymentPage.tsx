@@ -332,7 +332,7 @@ const OnlinePaymentPage: React.FC = () => {
                   <div style={{ minHeight: '150px' }}>
                     <PayPalButtons
                       style={{ layout: 'vertical', color: 'blue', shape: 'rect', label: 'pay' }}
-                      createOrder={() => paypalOrderId}
+                      createOrder={async () => paypalOrderId}
                       onApprove={async (data) => {
                         try {
                           const captureResponse = await fetch(`/api/orders/${orderId}/capture-paypal-order`, {

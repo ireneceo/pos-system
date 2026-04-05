@@ -45,7 +45,7 @@ interface Restaurant {
   }>;
   location: string;
   cuisine: string;
-  status: 'active' | 'inactive' | 'trial' | 'expired' | 'suspended' | 'cancelled';
+  status: 'active' | 'inactive' | 'trial' | 'expired' | 'suspended' | 'cancelled' | 'overdue';
   todaySales: number;
   todayOrders: number;
   staffCount: number;
@@ -75,6 +75,7 @@ interface Restaurant {
   discount_value?: number;
   discount_reason?: string;
   is_demo?: boolean;
+  is_test?: boolean;
 }
 
 // Common components now imported from ../../components/UI

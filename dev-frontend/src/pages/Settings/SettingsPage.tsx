@@ -617,7 +617,7 @@ const SettingsPage: React.FC = () => {
       printPerItem: false,
       address: ''
     },
-    kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean }>
+    kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean; address?: string }>
   });
 
   // Printer mode state (rawbt, browser, or qztray)
@@ -4486,7 +4486,7 @@ QZ Tray (installed on this device)
                   const validCatIds = new Set(allCategories.map((c: any) => Number(c.id)));
                   const uncategorizedProds = allProducts.filter((p: any) => !p.category || !validCatIds.has(Number(p.category)));
 
-                  const warnings: JSX.Element[] = [];
+                  const warnings: React.ReactElement[] = [];
 
                   if (kitchenAssignmentMode === 'category' && unassignedCats.length > 0) {
                     warnings.push(

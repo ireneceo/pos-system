@@ -473,25 +473,25 @@ const ManagerInvoicesPage: React.FC = () => {
   const [confirmType, setConfirmType] = useState<string>('');
   const [inlineWarning, setInlineWarning] = useState<string>('');
 
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        // 실제 API 호출 - 현재 로그인한 매니저 ID 사용
-        const managerId = user?.managerId || user?.id || '2';
-        const response = await fetch(`${API_BASE_URL}/api/invoices/manager/${managerId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setInvoices(data);
-        } else {
-          console.error('Failed to fetch invoices from API');
-          setInvoices([]);
-        }
-      } catch (error) {
-        console.error('Failed to fetch invoices:', error);
+  const fetchInvoices = async () => {
+    try {
+      // 실제 API 호출 - 현재 로그인한 매니저 ID 사용
+      const managerId = user?.managerId || user?.id || '2';
+      const response = await fetch(`${API_BASE_URL}/api/invoices/manager/${managerId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setInvoices(data);
+      } else {
+        console.error('Failed to fetch invoices from API');
         setInvoices([]);
       }
-    };
-    
+    } catch (error) {
+      console.error('Failed to fetch invoices:', error);
+      setInvoices([]);
+    }
+  };
+
+  useEffect(() => {
     if (user) {
       fetchInvoices();
     }

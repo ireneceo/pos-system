@@ -627,7 +627,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
   const handlePrint = () => {
     const htmlContent = generateSettlementHTML();
     if (!htmlContent) return;
-    printSettlementReport(htmlContent);
+    printSettlementReport(htmlContent, null);
   };
 
   const handleDownloadPDF = async () => {

@@ -654,18 +654,18 @@ const QtyValue = styled.span`
 
 // ─── Sticky Quote Bar ───────────────────────────────────────────────
 
-const StickyBar = styled.div<{ visible: boolean }>`
+const StickyBar = styled.div<{ visible: boolean; cookieBarVisible: boolean }>`
   position: fixed;
-  bottom: 0;
+  bottom: ${props => props.cookieBarVisible ? '60px' : '0'};
   left: 0;
   right: 0;
   background: white;
   border-top: 1px solid #E6EBF1;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   padding: 16px 24px;
-  z-index: 100;
+  z-index: 10000;
   transform: translateY(${props => props.visible ? '0' : '100%'});
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, bottom 0.3s ease;
 `;
 
 const StickyContent = styled.div`
@@ -961,6 +961,17 @@ const PackagesPage: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<SetGroup | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [addonQuantities, setAddonQuantities] = useState<Record<number, number>>({});
+
+  // Cookie consent banner visibility
+  const [cookieBarVisible, setCookieBarVisible] = useState(() => !localStorage.getItem('cookie_consent_accepted'));
+
+  // Listen for cookie consent changes
+  useEffect(() => {
+    const checkCookie = () => setCookieBarVisible(!localStorage.getItem('cookie_consent_accepted'));
+    window.addEventListener('storage', checkCookie);
+    const interval = setInterval(checkCookie, 1000);
+    return () => { window.removeEventListener('storage', checkCookie); clearInterval(interval); };
+  }, []);
 
   // Currency
   const [selectedCurrency, setSelectedCurrency] = useState('MYR');
@@ -1584,7 +1595,7 @@ const PackagesPage: React.FC = () => {
         </ContentSection>
 
         {/* Sticky Quote Summary Bar */}
-        <StickyBar visible={selectedPackage !== null}>
+        <StickyBar visible={selectedPackage !== null} cookieBarVisible={cookieBarVisible}>
           <StickyContent>
             <StickyLeft>
               <StickyPackageName>

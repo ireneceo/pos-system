@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const CompanySettings = require('../models/CompanySettings');
 const { deleteOldImages, saveImageToFile } = require('../utils/imageProcessor');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 // GET - 회사 설정 조회
 router.get('/', async (req, res) => {
@@ -61,8 +62,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST - 회사 설정 저장/업데이트
-router.post('/', async (req, res) => {
+// POST - 회사 설정 저장/업데이트 (Admin only)
+router.post('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const {
       companyName,

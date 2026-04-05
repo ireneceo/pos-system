@@ -769,6 +769,9 @@ const MenuManagementPage: React.FC = () => {
     recipe_id: null
   });
 
+  const [directIngredients, setDirectIngredients] = useState<{ingredient_id: number; name: string; quantity: number; unit: string; unit_cost: number}[]>([]);
+  const [ingredients, setIngredients] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
+
   // Fetch recipes on mount (both restaurant and brand recipes)
   React.useEffect(() => {
     const fetchRecipes = async () => {
@@ -816,6 +819,17 @@ const MenuManagementPage: React.FC = () => {
         }
 
         setRecipes(allRecipes);
+
+        // Fetch ingredients for direct linking
+        if (restaurantId) {
+          const ingResponse = await fetch(`/api/restaurants/${restaurantId}/ingredients`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (ingResponse.ok) {
+            const ingData = await ingResponse.json();
+            setIngredients((ingData.success ? ingData.data : ingData) || []);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch recipes:', error);
       }
@@ -950,6 +964,24 @@ const MenuManagementPage: React.FC = () => {
     });
     setSelectedOptionGroups(item.optionGroups || []);
     setSetMenuItems(item.set_items || []);
+
+    // Load direct ingredients if recipe is auto-generated
+    if (item.recipe_id) {
+      const linkedRecipe = recipes.find(r => r.id === item.recipe_id);
+      if (linkedRecipe && linkedRecipe.name?.endsWith('(auto)') && linkedRecipe.recipeIngredients) {
+        setDirectIngredients(linkedRecipe.recipeIngredients.map((ri: any) => ({
+          ingredient_id: ri.ingredient_id,
+          name: ri.ingredient?.name || '',
+          quantity: parseFloat(ri.quantity),
+          unit: ri.unit,
+          unit_cost: parseFloat(ri.ingredient?.unit_cost || 0)
+        })));
+      } else {
+        setDirectIngredients([]);
+      }
+    } else {
+      setDirectIngredients([]);
+    }
 
     // Open appropriate modal based on item type
     if (item.is_set_menu) {
@@ -1093,10 +1125,12 @@ const MenuManagementPage: React.FC = () => {
       is_featured: formData.is_featured || false,
       set_items: [],
       set_display_order: 0,
-      recipe_id: formData.recipe_id || null
-    };
+      recipe_id: formData.recipe_id || null,
+      directIngredients: directIngredients.length > 0 && !formData.recipe_id ? directIngredients : undefined
+    } as any;
 
     addMenuItem(newItem);
+    setDirectIngredients([]);
     setShowAddModal(false);
   };
 
@@ -1137,11 +1171,13 @@ const MenuManagementPage: React.FC = () => {
   const handleSaveEdit = () => {
     if (editingItem) {
       const updatedItem = {
-        ...editingItem,  // ← Keep id and other fields from editingItem
-        ...formData,     // ← Override with formData (name, price, category, emoji, etc.)
-        optionGroups: selectedOptionGroups
-      } as MenuItemType;
+        ...editingItem,
+        ...formData,
+        optionGroups: selectedOptionGroups,
+        directIngredients: directIngredients.length > 0 && !formData.recipe_id ? directIngredients : (formData.recipe_id ? undefined : [])
+      } as any;
       updateMenuItem(updatedItem);
+      setDirectIngredients([]);
       setShowEditModal(false);
       setEditingItem(null);
     }
@@ -1501,6 +1537,39 @@ const MenuManagementPage: React.FC = () => {
             />
           </UIFormGroup>
 
+          {!formData.recipe_id && (
+            <UIFormGroup>
+              <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
+              {directIngredients.map((di, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', fontSize: '13px', background: '#F9FAFB', padding: '8px 12px', borderRadius: '6px' }}>
+                  <span style={{ flex: 1 }}>{di.name}</span>
+                  <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #E6EBF1', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
+                    onChange={(e) => setDirectIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: parseFloat(e.target.value) || 0 } : item))} />
+                  <span style={{ fontSize: '12px', color: '#6B7280', width: '30px' }}>{di.unit}</span>
+                  <span style={{ width: '70px', textAlign: 'right', color: '#6B7280', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
+                  <button type="button" onClick={() => setDirectIngredients(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>x</button>
+                </div>
+              ))}
+              <SearchableSelect
+                options={ingredients.filter(ing => !directIngredients.some(di => di.ingredient_id === ing.id)).map(ing => ({
+                  value: ing.id,
+                  label: ing.name,
+                  subLabel: `${ing.unit} / RM ${Number(ing.unit_cost || 0).toFixed(2)}`
+                }))}
+                value={null}
+                onChange={(value) => {
+                  if (value) {
+                    const ing = ingredients.find(i => i.id === value);
+                    if (ing) setDirectIngredients(prev => [...prev, { ingredient_id: ing.id, name: ing.name, quantity: 1, unit: ing.unit, unit_cost: Number(ing.unit_cost || 0) }]);
+                  }
+                }}
+                placeholder="+ Add ingredient..."
+                allowClear={false}
+                noOptionsMessage="No ingredients available"
+              />
+            </UIFormGroup>
+          )}
+
           <OptionGroupSectionTitle>
             <UIFormGroup>
               <FormLabel>Option Groups {selectedOptionGroups.length > 0 && `(${selectedOptionGroups.length} selected)`}</FormLabel>
@@ -1673,6 +1742,39 @@ const MenuManagementPage: React.FC = () => {
               noOptionsMessage="No recipes found"
             />
           </UIFormGroup>
+
+          {!formData.recipe_id && (
+            <UIFormGroup>
+              <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
+              {directIngredients.map((di, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', fontSize: '13px', background: '#F9FAFB', padding: '8px 12px', borderRadius: '6px' }}>
+                  <span style={{ flex: 1 }}>{di.name}</span>
+                  <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #E6EBF1', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
+                    onChange={(e) => setDirectIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: parseFloat(e.target.value) || 0 } : item))} />
+                  <span style={{ fontSize: '12px', color: '#6B7280', width: '30px' }}>{di.unit}</span>
+                  <span style={{ width: '70px', textAlign: 'right', color: '#6B7280', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
+                  <button type="button" onClick={() => setDirectIngredients(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>x</button>
+                </div>
+              ))}
+              <SearchableSelect
+                options={ingredients.filter(ing => !directIngredients.some(di => di.ingredient_id === ing.id)).map(ing => ({
+                  value: ing.id,
+                  label: ing.name,
+                  subLabel: `${ing.unit} / RM ${Number(ing.unit_cost || 0).toFixed(2)}`
+                }))}
+                value={null}
+                onChange={(value) => {
+                  if (value) {
+                    const ing = ingredients.find(i => i.id === value);
+                    if (ing) setDirectIngredients(prev => [...prev, { ingredient_id: ing.id, name: ing.name, quantity: 1, unit: ing.unit, unit_cost: Number(ing.unit_cost || 0) }]);
+                  }
+                }}
+                placeholder="+ Add ingredient..."
+                allowClear={false}
+                noOptionsMessage="No ingredients available"
+              />
+            </UIFormGroup>
+          )}
 
           <OptionGroupSectionTitle>
             <UIFormGroup>

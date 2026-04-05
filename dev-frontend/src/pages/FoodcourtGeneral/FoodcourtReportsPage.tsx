@@ -313,6 +313,8 @@ type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'rank
 interface Restaurant {
   id: string;
   name: string;
+  brand_id?: number;
+  brand_name?: string;
 }
 
 // Chart colors
@@ -340,6 +342,7 @@ const FoodcourtReportsPage: React.FC = () => {
 
   // Restaurant filter state
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [brands] = useState<{id: number; name: string}[]>([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>('all');
   const [restaurantSearchQuery, setRestaurantSearchQuery] = useState('');
   const [showRestaurantDropdown, setShowRestaurantDropdown] = useState(false);

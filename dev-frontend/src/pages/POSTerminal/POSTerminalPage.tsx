@@ -1793,6 +1793,7 @@ const POSTerminalPage: React.FC = () => {
           },
           quantity: item.quantity,
           options: item.options,
+          selectedOptions: item.selectedOptions || [],
           is_set_menu: item.menuItem.is_set_menu || false,
           set_items: item.menuItem.set_items || []
         };
@@ -1851,7 +1852,7 @@ const POSTerminalPage: React.FC = () => {
       if (checkoutSocketRef.current) {
         checkoutSocketRef.current.emit('checkout-complete', {
           restaurantId: user?.restaurantId,
-          orderNumber: completedOrderData?.orderNumber || orderData.orderNumber || '',
+          orderNumber: completedOrderData?.orderNumber || '',
           total: savedOrder?.total || orderData.total || total,
           currency: operationSettings.currency || 'MYR'
         });
@@ -1956,6 +1957,7 @@ const POSTerminalPage: React.FC = () => {
           },
           quantity: item.quantity,
           options: item.options,
+          selectedOptions: item.selectedOptions || [],
           is_set_menu: item.menuItem.is_set_menu || false,
           set_items: item.menuItem.set_items || []
         };
@@ -2035,7 +2037,7 @@ const POSTerminalPage: React.FC = () => {
       if (checkoutSocketRef.current) {
         checkoutSocketRef.current.emit('checkout-complete', {
           restaurantId: user?.restaurantId,
-          orderNumber: completedOrderData?.orderNumber || orderData.orderNumber || '',
+          orderNumber: completedOrderData?.orderNumber || '',
           total: savedOrder?.total || orderData.total || total,
           currency: operationSettings.currency || 'MYR'
         });

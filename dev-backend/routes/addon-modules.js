@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const AddonModule = require('../models/AddonModule');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 // Get all addon modules
 router.get('/', async (req, res) => {
@@ -59,7 +60,7 @@ router.get('/code/:code', async (req, res) => {
 });
 
 // Create new addon module (Admin only)
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const module = await AddonModule.create(req.body);
     res.status(201).json(module);
@@ -77,7 +78,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update addon module (Admin only)
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const module = await AddonModule.findByPk(req.params.id);
 
@@ -94,7 +95,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete addon module (Admin only)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req, res) => {
   try {
     const module = await AddonModule.findByPk(req.params.id);
 

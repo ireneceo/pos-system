@@ -47,7 +47,7 @@ interface HardwareQuote {
   status: 'new' | 'contacted' | 'confirmed' | 'invoiced' | 'cancelled';
   admin_notes?: string;
   package_product_id?: number;
-  package_snapshot?: { name: string; set_items?: { name: string; quantity: number }[] } | null;
+  package_snapshot?: { name: string; set_items?: { name: string; quantity: number }[]; set_setup_items?: string[] } | null;
   package_price: number;
   addon_items: AddonItem[];
   addon_total: number;
@@ -1368,6 +1368,20 @@ const HardwareQuotesPage: React.FC = () => {
                 <div>Total</div>
                 <div>{formatCurrency(selectedQuote.total_amount, quoteCurrency)}</div>
               </TotalRow>
+
+              {/* Included Setup Services */}
+              {(selectedQuote.package_snapshot?.set_setup_items || selectedQuote.packageProduct?.set_setup_items) && (
+                <>
+                  <div style={{ fontSize: 12, color: '#6B7280', marginTop: 16, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' as const }}>
+                    Included Setup
+                  </div>
+                  {(selectedQuote.package_snapshot?.set_setup_items || (selectedQuote.packageProduct as any)?.set_setup_items || []).map((item: string, idx: number) => (
+                    <div key={idx} style={{ fontSize: 13, color: '#374151', padding: '3px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: '#10B981' }}>✓</span> {item}
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
 
             {/* Subscription Plan Info */}

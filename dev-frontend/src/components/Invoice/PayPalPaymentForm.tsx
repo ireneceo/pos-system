@@ -60,7 +60,7 @@ const PayPalPaymentForm: React.FC<PayPalPaymentFormProps> = ({ invoiceId, onSucc
       <PayPalButtonWrapper>
         <PayPalButtons
           style={{ layout: 'vertical', color: 'blue', shape: 'rect', label: 'pay' }}
-          createOrder={() => orderId}
+          createOrder={async () => orderId}
           onApprove={async (data) => {
             try {
               const token = localStorage.getItem('auth_token');

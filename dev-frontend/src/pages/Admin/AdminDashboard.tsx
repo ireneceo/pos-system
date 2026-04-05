@@ -548,7 +548,7 @@ const Badge = styled.span<{ variant: string }>`
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { operationSettings, siteTimezone } = useStore();
-  const [activeTab, handleTabChange] = useTabParam('overview');
+  const [activeTab, handleTabChange] = useTabParam<'overview' | 'performance' | 'health' | 'system'>('overview');
   const [managers, setManagers] = useState<Manager[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [invoicesData, setInvoicesData] = useState<any[]>([]);
@@ -642,7 +642,7 @@ const AdminDashboard: React.FC = () => {
         }
         if (supportedCurs.length === 0) supportedCurs = ['RM'];
         // Deduplicate (MYR and RM both normalize to RM)
-        supportedCurs = [...new Set(supportedCurs)];
+        supportedCurs = Array.from(new Set(supportedCurs));
         setSupportedCurrencies(supportedCurs);
 
         // Fetch system log alerts summary (24h critical/error)

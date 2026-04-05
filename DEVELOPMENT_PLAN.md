@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-04
+> **최종 업데이트:** 2026-04-05
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,24 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: 코드 안정화 + 메뉴/재료/재고 구조 재정리 Phase 1 (2026-04-05)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 코드 안정화 | Express 라우트 순서, 인증 미들웨어 9개 파일, Invoice payer_type 정리, TS 에러 수정 | ✅ |
+| 2 | 메뉴-재료 직접 연결 | 메뉴에서 재료 여러 개 선택 시 자동 레시피 생성, 기존 재고 차감 로직 활용 | ✅ |
+| 3 | 옵션-재료 연결 | option_ingredients 테이블, 옵션에 재료 연결 UI, 주문 시 옵션 재료 재고 차감 | ✅ |
+| 4 | Ingredients 페이지 분리 | Recipe 탭에서 분리, 별도 사이드바 메뉴 + 라우트 + 페이지 | ✅ |
+| 5 | 재료 상세 팝업 | 카드 클릭 시 팝업 (수정/삭제 + 연결된 레시피/메뉴 표시), Usage API | ✅ |
+| 6 | 뷰모드 (Compact/Image) | Kitchen Display 스타일 토글, Compact=사진 숨김 | ✅ |
+| 7 | 네이밍 통일 | Brand Plans/Subscriptions, Foodcourt Plans/Subscriptions 구분 | ✅ |
+| 8 | UI 수정 | Create Invoice 모달 가로 스크롤, PackagesPage StickyBar 쿠키 배너 위 표시 | ✅ |
+| 9 | 패키지 setup items | 패키지별 다른 Included Setup, Options 탭 등록 | ✅ |
+| 10 | /검증 명령어 | 9단계 파트별 전문가 검증 스크립트 생성 | ✅ |
 
 ---
 

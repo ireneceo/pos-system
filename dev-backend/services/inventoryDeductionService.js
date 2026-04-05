@@ -12,7 +12,9 @@ const {
   Ingredient,
   InventoryBatch,
   InventoryTransaction,
-  StockAlert
+  StockAlert,
+  Option,
+  OptionIngredient
 } = require('../models');
 
 /**
@@ -248,6 +250,57 @@ async function deductInventoryForOrder(restaurantId, orderItems, orderId) {
             new_stock: newStock,
             batches_affected: fifoResult.batches.length
           });
+        }
+      }
+      // Deduct option ingredients (if selectedOptions with option_id exist)
+      const selectedOptions = item.selectedOptions || [];
+      for (const selOpt of selectedOptions) {
+        if (!selOpt.id) continue;
+        const optionId = parseInt(selOpt.id);
+        if (isNaN(optionId)) continue;
+
+        const optIngredients = await OptionIngredient.findAll({
+          where: { option_id: optionId },
+          include: [{ model: Ingredient, as: 'ingredient' }]
+        });
+
+        for (const oi of optIngredients) {
+          if (!oi.ingredient) continue;
+          const oiDeductQty = parseFloat(oi.quantity) * orderQty;
+          const oiCurrentStock = parseFloat(oi.ingredient.current_stock) || 0;
+          const oiActualDeduct = Math.min(oiDeductQty, oiCurrentStock);
+
+          if (oiActualDeduct > 0) {
+            const oiFifo = await deductStockFIFO(oi.ingredient.id, oiActualDeduct, transaction);
+            const oiNewStock = oiCurrentStock - oiFifo.deducted_quantity;
+
+            await Ingredient.update(
+              { current_stock: oiNewStock },
+              { where: { id: oi.ingredient.id }, transaction }
+            );
+
+            await InventoryTransaction.create({
+              restaurant_id: restaurantId,
+              ingredient_id: oi.ingredient.id,
+              transaction_type: 'order_deduct',
+              quantity_change: -oiFifo.deducted_quantity,
+              unit: oi.ingredient.unit,
+              stock_after: oiNewStock,
+              notes: `Order #${orderId} - Option "${selOpt.name}" x${orderQty}`,
+              created_by: null
+            }, { transaction });
+
+            await checkAndCreateAlert(restaurantId, oi.ingredient.id, oiNewStock, parseFloat(oi.ingredient.min_stock) || 0, transaction);
+
+            results.deductions.push({
+              ingredient_id: oi.ingredient.id,
+              ingredient_name: oi.ingredient.name,
+              quantity_deducted: oiFifo.deducted_quantity,
+              unit: oi.ingredient.unit,
+              new_stock: oiNewStock,
+              source: `option: ${selOpt.name}`
+            });
+          }
         }
       }
     }

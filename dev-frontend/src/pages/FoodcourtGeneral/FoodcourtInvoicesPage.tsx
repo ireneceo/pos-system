@@ -46,7 +46,7 @@ interface Invoice {
   issueDate: string;
   dueDate: string;
   paidDate?: string;
-  status: 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
+  status: 'draft' | 'sent' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
   currency?: string;
   amount: number;
   tax: number;
@@ -392,6 +392,7 @@ const FormTextarea = styled.textarea`
   transition: all 0.2s;
   resize: vertical;
   font-family: inherit;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -1733,7 +1734,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
         setEmailRecipient('');
       } else {
         const data = await response.json();
-        setSuccessMessage(data.error || 'Failed to send invoice email.');
+        setSuccessMessage(data.message || data.error || 'Failed to send invoice email.');
       }
       setShowSuccessModal(true);
     } catch (error) {

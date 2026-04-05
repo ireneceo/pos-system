@@ -661,7 +661,9 @@ router.get('/:id/company-info', async (req, res) => {
 });
 
 // Get restaurant details
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
+  // Guard: skip non-numeric IDs so concrete routes below (e.g. /subscriptions/manager/:id, /available/:id) can match
+  if (isNaN(req.params.id)) return next('route');
   try {
     const restaurant = await Restaurant.findByPk(req.params.id, {
       include: [
@@ -1609,7 +1611,7 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
 });
 
 // Update restaurant status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status } = req.body;
     const restaurant = await Restaurant.findByPk(req.params.id);
@@ -1626,7 +1628,7 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 // Get subscription data for manager
-router.get('/subscriptions/manager/:managerId', async (req, res) => {
+router.get('/subscriptions/manager/:managerId', authenticateToken, async (req, res) => {
   try {
     const { managerId } = req.params;
 
@@ -1814,7 +1816,7 @@ router.post('/:id/generate-invoice', authenticateToken, async (req, res) => {
 });
 
 // Add new subscription for restaurant
-router.post('/subscriptions', async (req, res) => {
+router.post('/subscriptions', authenticateToken, async (req, res) => {
   try {
     const { restaurantId, managerId, planType, billingCycle, paymentModel } = req.body;
     
@@ -1930,7 +1932,7 @@ router.post('/subscriptions', async (req, res) => {
 });
 
 // Get available restaurants for manager (restaurants without active subscriptions)
-router.get('/available/:managerId', async (req, res) => {
+router.get('/available/:managerId', authenticateToken, async (req, res) => {
   try {
     const { managerId } = req.params;
     
@@ -2098,6 +2100,37 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
   } catch (error) {
     console.error('Get restaurant ingredients error:', error);
     res.status(500).json({ error: '재료 목록 조회 실패' });
+  }
+});
+
+// Get linked recipes/products for an ingredient
+router.get('/:restaurantId/ingredients/:ingredientId/usage', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { ingredientId } = req.params;
+    const { RecipeIngredient, Recipe, Product } = require('../models');
+
+    // Recipes using this ingredient
+    const recipeLinks = await RecipeIngredient.findAll({
+      where: { ingredient_id: ingredientId },
+      include: [{ model: Recipe, as: 'recipe', attributes: ['id', 'name', 'owner_type'] }]
+    });
+    const recipes = recipeLinks.filter(rl => rl.recipe).map(rl => ({ id: rl.recipe.id, name: rl.recipe.name, owner_type: rl.recipe.owner_type }));
+
+    // Products (menus) linked via recipe_id
+    const recipeIds = recipes.map(r => r.id);
+    let products = [];
+    if (recipeIds.length > 0) {
+      products = await Product.findAll({
+        where: { recipe_id: recipeIds },
+        attributes: ['id', 'name', 'price', 'recipe_id']
+      });
+      products = products.map(p => p.get({ plain: true }));
+    }
+
+    res.json({ success: true, data: { recipes, products } });
+  } catch (error) {
+    console.error('Get ingredient usage error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get ingredient usage' });
   }
 });
 

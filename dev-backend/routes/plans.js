@@ -59,7 +59,9 @@ router.get('/', async (req, res) => {
 });
 
 // Get plan by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
+  // Guard: skip non-numeric IDs so concrete routes below (e.g. /stats/subscriptions, /export/csv) can match
+  if (isNaN(req.params.id)) return next('route');
   try {
     const plan = await PlanTemplate.findByPk(req.params.id);
     if (!plan) {

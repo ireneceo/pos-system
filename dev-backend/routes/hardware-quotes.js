@@ -439,6 +439,23 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
       }
     }
 
+    // Setup services line item (from package_snapshot.set_setup_items)
+    const snapshot = quote.package_snapshot
+      ? (typeof quote.package_snapshot === 'string' ? JSON.parse(quote.package_snapshot) : quote.package_snapshot)
+      : null;
+    if (snapshot?.set_setup_items && Array.isArray(snapshot.set_setup_items) && snapshot.set_setup_items.length > 0) {
+      await InvoiceItem.create({
+        invoice_id: hwInvoice.id,
+        item_type: 'setup_service',
+        description: `Included Setup: ${snapshot.set_setup_items.join(', ')}`,
+        calculation_method: 'fixed',
+        fixed_amount: 0,
+        calculated_amount: 0,
+        tax_rate: 0, tax_amount: 0,
+        total_amount: 0
+      });
+    }
+
     results.hardware_invoice = { id: hwInvoice.id, invoice_number: hwInvoiceNumber, total_amount: hwTotal };
 
     // === 2. Subscription Invoice (if plan selected) ===

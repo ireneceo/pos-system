@@ -106,7 +106,9 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get single order
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res, next) => {
+  // Guard: skip non-numeric IDs so concrete routes below (e.g. /restaurant/:id, /kitchen/active) can match
+  if (isNaN(req.params.id)) return next('route');
   try {
     // 쿼리 래퍼 사용 (자동 재시도)
     const order = await executeQuery(async () => {

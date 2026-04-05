@@ -52,7 +52,7 @@ interface Invoice {
   issueDate: string;
   dueDate: string;
   paidDate?: string;
-  status: 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
+  status: 'draft' | 'sent' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
   currency?: string;
   amount: number;
   tax: number;
@@ -510,6 +510,7 @@ const FormTextarea = styled.textarea`
   font-size: 14px;
   transition: all 0.2s;
   resize: vertical;
+  box-sizing: border-box;
   font-family: inherit;
   box-sizing: border-box;
 
@@ -1701,7 +1702,7 @@ const InvoicesPage: React.FC = () => {
         setEmailRecipient('');
       } else {
         const data = await response.json();
-        setSuccessMessage(data.error || 'Failed to send invoice email.');
+        setSuccessMessage(data.message || data.error || 'Failed to send invoice email.');
       }
       setShowSuccessModal(true);
     } catch (error) {

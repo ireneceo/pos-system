@@ -3,6 +3,10 @@ const router = express.Router();
 const ActivityLog = require('../models/ActivityLog');
 const sequelize = require('../config/database');
 const { Op } = require('sequelize');
+const { authenticateToken } = require('../middleware/auth');
+
+// All routes require authentication
+router.use(authenticateToken);
 
 // Get activity logs for a restaurant
 router.get('/restaurant/:restaurantId', async (req, res) => {

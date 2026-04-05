@@ -47,7 +47,7 @@ interface Notice {
     user_id: number | null;
     read_at: string | null;
     restaurant?: { id: number; name: string };
-    user?: { id: number; name: string; role: string };
+    user?: { id: number; name: string; full_name?: string; role: string };
   }>;
   category?: 'general' | 'guide';
   commentCount: number;

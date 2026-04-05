@@ -10,6 +10,10 @@ const {
   GeneralStockCategory,
   Supplier
 } = require('../models');
+const { authenticateToken } = require('../middleware/auth');
+
+// All routes require authentication
+router.use(authenticateToken);
 
 // Get brand's restaurants
 router.get('/brands/:brandId/restaurants', async (req, res) => {
