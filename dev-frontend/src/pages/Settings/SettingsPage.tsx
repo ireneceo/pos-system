@@ -1861,7 +1861,7 @@ const SettingsPage: React.FC = () => {
           </TabContainer>
 
           {activeTab !== 'managers' && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 0 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-20px 0 16px' }}>
               <SaveButton
                 onClick={async () => {
                   if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
