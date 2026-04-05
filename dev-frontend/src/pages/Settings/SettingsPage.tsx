@@ -588,8 +588,15 @@ const SettingsPage: React.FC = () => {
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [changeCounter, setChangeCounter] = useState(0);
-  const markChanged = useCallback(() => { setHasChanges(true); setChangeCounter(c => c + 1); }, []);
+  const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
+  const markChanged = () => {
+    setHasChanges(true);
+    setAutoSaveStatus('saving');
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (saveCallbackRef.current) saveCallbackRef.current();
+    }, 2000);
+  };
   
   // Payment settings state - start with null, will be loaded from DB
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
@@ -1788,26 +1795,20 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  // Auto-save: debounce 2s after any change
-  useEffect(() => {
-    if (changeCounter === 0) return;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    setAutoSaveStatus('saving');
-    autoSaveTimerRef.current = setTimeout(async () => {
-      try {
-        if (activeTab === 'membership') {
-          await handleSaveMembership();
-        } else {
-          await handleSave();
-        }
-        setAutoSaveStatus('saved');
-        setTimeout(() => setAutoSaveStatus('idle'), 3000);
-      } catch (e) {
-        setAutoSaveStatus('idle');
+  // Keep saveCallbackRef updated with latest save function
+  saveCallbackRef.current = async () => {
+    try {
+      if (activeTab === 'membership') {
+        await handleSaveMembership();
+      } else {
+        await handleSave();
       }
-    }, 2000);
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-  }, [changeCounter]);
+      setAutoSaveStatus('saved');
+      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+    } catch (e) {
+      setAutoSaveStatus('idle');
+    }
+  };
 
   return (
     <>
