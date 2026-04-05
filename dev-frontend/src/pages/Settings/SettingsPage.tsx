@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
@@ -578,6 +578,10 @@ const SettingsPage: React.FC = () => {
 
   const [hasChanges, setHasChanges] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [changeCounter, setChangeCounter] = useState(0);
+  const markChanged = useCallback(() => { markChanged(); setChangeCounter(c => c + 1); }, []);
   
   // Payment settings state - start with null, will be loaded from DB
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
@@ -1335,7 +1339,7 @@ const SettingsPage: React.FC = () => {
       });
     }
     setTables(newTables);
-    setHasChanges(true);
+    markChanged();
   };
   
   const handleDownloadQR = (table: Table) => {
@@ -1544,7 +1548,7 @@ const SettingsPage: React.FC = () => {
         }
       };
     });
-    setHasChanges(true);
+    markChanged();
   };
 
   const handlePaymentSettingChange = (methodKey: string, field: string, value: any) => {
@@ -1552,7 +1556,7 @@ const SettingsPage: React.FC = () => {
       ...prev,
       [methodKey]: { ...prev[methodKey], [field]: value }
     }));
-    setHasChanges(true);
+    markChanged();
   };
 
   const handlePaymentConfigChange = (methodKey: string, configField: string, value: any) => {
@@ -1563,7 +1567,7 @@ const SettingsPage: React.FC = () => {
         config: { ...prev[methodKey].config, [configField]: value }
       }
     }));
-    setHasChanges(true);
+    markChanged();
   };
 
   // Payment method ordering functions
@@ -1579,7 +1583,7 @@ const SettingsPage: React.FC = () => {
       [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
       return newOrder;
     });
-    setHasChanges(true);
+    markChanged();
   };
 
   const handleSave = async () => {
@@ -1640,7 +1644,8 @@ const SettingsPage: React.FC = () => {
           mobile_settings: mobileSettings,
           currency: currencySettings.currency,
           cash_rounding: currencySettings.cashRounding,
-          rounding_apply_to: currencySettings.roundingApplyTo
+          rounding_apply_to: currencySettings.roundingApplyTo,
+          kitchen_item_merge: { time_limit: itemMergeTimeLimit, max_count: itemMergeMaxCount }
         };
 
         console.log('📦 Request body (first 500 chars):', JSON.stringify(requestBody).substring(0, 500));
@@ -1775,6 +1780,27 @@ const SettingsPage: React.FC = () => {
     }
   };
 
+  // Auto-save: debounce 2s after any change
+  useEffect(() => {
+    if (changeCounter === 0) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    setAutoSaveStatus('saving');
+    autoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        if (activeTab === 'membership') {
+          await handleSaveMembership();
+        } else {
+          await handleSave();
+        }
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus('idle'), 3000);
+      } catch (e) {
+        setAutoSaveStatus('idle');
+      }
+    }, 2000);
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [changeCounter]);
+
   return (
     <>
       <SettingsContainer>
@@ -1824,6 +1850,14 @@ const SettingsPage: React.FC = () => {
               </>
             )}
           </TabContainer>
+
+          {autoSaveStatus !== 'idle' && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 0' }}>
+              <span style={{ fontSize: '13px', color: autoSaveStatus === 'saving' ? '#6B7280' : '#059669', transition: 'opacity 0.3s' }}>
+                {autoSaveStatus === 'saving' ? 'Saving...' : '✓ Saved'}
+              </span>
+            </div>
+          )}
 
           {activeTab === 'payment' && (
             <SettingsCard>
@@ -2038,16 +2072,7 @@ const SettingsPage: React.FC = () => {
               })}
 
               {paymentMethods && (
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
+              {/* Auto-saved */}
               )}
             </SettingsCard>
           )}
@@ -2064,7 +2089,7 @@ const SettingsPage: React.FC = () => {
                     value={companySettings.name}
                     onChange={(e) => {
                       setCompanySettings(prev => ({ ...prev, name: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="Food Court Management Corp"
                   />
@@ -2076,7 +2101,7 @@ const SettingsPage: React.FC = () => {
                     value={companySettings.businessRegistration}
                     onChange={(e) => {
                       setCompanySettings(prev => ({ ...prev, businessRegistration: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="202301234567"
                   />
@@ -2088,7 +2113,7 @@ const SettingsPage: React.FC = () => {
                     value={companySettings.taxId}
                     onChange={(e) => {
                       setCompanySettings(prev => ({ ...prev, taxId: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="90-1234567"
                   />
@@ -2100,7 +2125,7 @@ const SettingsPage: React.FC = () => {
                     value={companySettings.industry}
                     onChange={(e) => {
                       setCompanySettings(prev => ({ ...prev, industry: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="Food Service Management"
                   />
@@ -2110,7 +2135,7 @@ const SettingsPage: React.FC = () => {
                   value={companySettings.logo}
                   onChange={(base64) => {
                     setCompanySettings(prev => ({ ...prev, logo: base64 }));
-                    setHasChanges(true);
+                    markChanged();
                   }}
                   label="Company Logo"
                   helpText="Upload your company logo for branding and official documents"
@@ -2128,7 +2153,7 @@ const SettingsPage: React.FC = () => {
                     value={companySettings.phone}
                     onChange={(e) => {
                       setCompanySettings(prev => ({ ...prev, phone: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="+60 3-2123-4567"
                   />
@@ -2140,7 +2165,7 @@ const SettingsPage: React.FC = () => {
                     value={companySettings.email}
                     onChange={(e) => {
                       setCompanySettings(prev => ({ ...prev, email: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="admin@foodcourtmanagement.com"
                   />
@@ -2152,7 +2177,7 @@ const SettingsPage: React.FC = () => {
                     value={companySettings.website}
                     onChange={(e) => {
                       setCompanySettings(prev => ({ ...prev, website: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="www.foodcourtmanagement.com"
                   />
@@ -2164,7 +2189,7 @@ const SettingsPage: React.FC = () => {
                     value={companySettings.address}
                     onChange={(e) => {
                       setCompanySettings(prev => ({ ...prev, address: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="123 Business District"
                   />
@@ -2172,16 +2197,7 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
               </SettingsGrid>
 
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
+              {/* Auto-saved */}
             </>
           )}
           {activeTab === 'brands' && (
@@ -2295,7 +2311,7 @@ const SettingsPage: React.FC = () => {
                               b.id === brand.id ? { ...b, primaryColor: e.target.value } : b
                             );
                             setBrandSettings({ brands: newBrands });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                         <Input value={brand.primaryColor} style={{ width: '100px' }} readOnly />
@@ -2313,7 +2329,7 @@ const SettingsPage: React.FC = () => {
                               b.id === brand.id ? { ...b, secondaryColor: e.target.value } : b
                             );
                             setBrandSettings({ brands: newBrands });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                         <Input value={brand.secondaryColor} style={{ width: '100px' }} readOnly />
@@ -2331,7 +2347,7 @@ const SettingsPage: React.FC = () => {
                               b.id === brand.id ? { ...b, accentColor: e.target.value } : b
                             );
                             setBrandSettings({ brands: newBrands });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                         <Input value={brand.accentColor} style={{ width: '100px' }} readOnly />
@@ -2346,7 +2362,7 @@ const SettingsPage: React.FC = () => {
                         b.id === brand.id ? { ...b, logo: base64 } : b
                       );
                       setBrandSettings({ brands: newBrands });
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     label="Brand Logo"
                     helpText={`Upload logo for ${brand.name} brand`}
@@ -2395,16 +2411,7 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
               ))}
 
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
+              {/* Auto-saved */}
             </div>
           )}
           {activeTab === 'billing' && (
@@ -2462,16 +2469,7 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
               </SettingsGrid>
 
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
+              {/* Auto-saved */}
             </>
           )}
           {activeTab === 'store' && (
@@ -2486,7 +2484,7 @@ const SettingsPage: React.FC = () => {
                     value={storeSettings.name}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, name: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="FOODCOURT CENTRAL" 
                   />
@@ -2498,7 +2496,7 @@ const SettingsPage: React.FC = () => {
                     value={storeSettings.businessRegistration}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, businessRegistration: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="123456789" 
                   />
@@ -2510,7 +2508,7 @@ const SettingsPage: React.FC = () => {
                     value={storeSettings.gstRegNo}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, gstRegNo: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="Enter tax registration number (optional)"
                   />
@@ -2521,7 +2519,7 @@ const SettingsPage: React.FC = () => {
                     value={storeSettings.phone}
                     onChange={(value) => {
                       setStoreSettings(prev => ({ ...prev, phone: value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     defaultCountry={storeSettings.country}
                   />
@@ -2533,7 +2531,7 @@ const SettingsPage: React.FC = () => {
                     value={storeSettings.email}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, email: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="contact@foodcourt.com"
                   />
@@ -2543,7 +2541,7 @@ const SettingsPage: React.FC = () => {
                   value={storeSettings.logo}
                   onChange={(base64) => {
                     setStoreSettings(prev => ({ ...prev, logo: base64 }));
-                    setHasChanges(true);
+                    markChanged();
                   }}
                   label="Brand Logo"
                   helpText="Upload your restaurant's brand logo for use in mobile orders and customer displays"
@@ -2562,7 +2560,7 @@ const SettingsPage: React.FC = () => {
                     value={storeSettings.address}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, address: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="123 Main Street, City Center" 
                   />
@@ -2574,7 +2572,7 @@ const SettingsPage: React.FC = () => {
                     value={storeSettings.city}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, city: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="Kuala Lumpur" 
                   />
@@ -2586,7 +2584,7 @@ const SettingsPage: React.FC = () => {
                     value={storeSettings.state}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, state: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="Wilayah Persekutuan" 
                   />
@@ -2598,7 +2596,7 @@ const SettingsPage: React.FC = () => {
                     value={storeSettings.postalCode}
                     onChange={(e) => {
                       setStoreSettings(prev => ({ ...prev, postalCode: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     placeholder="50000"
                   />
@@ -2615,7 +2613,7 @@ const SettingsPage: React.FC = () => {
                       if (countryInfo) {
                         setOperationSettings(prev => ({ ...prev, timeZone: countryInfo.timezone }));
                       }
-                      setHasChanges(true);
+                      markChanged();
                     }}
                   >
                     {COUNTRIES.map(country => (
@@ -2647,16 +2645,7 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
               )}
 
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
+              {/* Auto-saved */}
             </>
           )}
 
@@ -2672,7 +2661,7 @@ const SettingsPage: React.FC = () => {
                     value={operationSettings.openingTime}
                     onChange={(e) => {
                       setOperationSettings(prev => ({ ...prev, openingTime: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                   />
                 </FormGroup>
@@ -2683,7 +2672,7 @@ const SettingsPage: React.FC = () => {
                     value={operationSettings.closingTime}
                     onChange={(e) => {
                       setOperationSettings(prev => ({ ...prev, closingTime: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                   />
                 </FormGroup>
@@ -2693,7 +2682,7 @@ const SettingsPage: React.FC = () => {
                     value={operationSettings.timeZone}
                     onChange={(e) => {
                       setOperationSettings(prev => ({ ...prev, timeZone: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                   >
                     <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (GMT+8)</option>
@@ -2725,7 +2714,7 @@ const SettingsPage: React.FC = () => {
                         const newBreakTimes = [...operationSettings.breakTimes];
                         newBreakTimes[index] = { ...newBreakTimes[index], start: e.target.value };
                         setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
-                        setHasChanges(true);
+                        markChanged();
                       }}
                       style={{ flex: 1 }}
                     />
@@ -2737,7 +2726,7 @@ const SettingsPage: React.FC = () => {
                         const newBreakTimes = [...operationSettings.breakTimes];
                         newBreakTimes[index] = { ...newBreakTimes[index], end: e.target.value };
                         setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
-                        setHasChanges(true);
+                        markChanged();
                       }}
                       style={{ flex: 1 }}
                     />
@@ -2745,7 +2734,7 @@ const SettingsPage: React.FC = () => {
                       onClick={() => {
                         const newBreakTimes = operationSettings.breakTimes.filter((_, i) => i !== index);
                         setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
-                        setHasChanges(true);
+                        markChanged();
                       }}
                       style={{
                         padding: '8px 12px',
@@ -2772,7 +2761,7 @@ const SettingsPage: React.FC = () => {
                       ...prev,
                       breakTimes: [...(prev.breakTimes || []), newBreakTime]
                     }));
-                    setHasChanges(true);
+                    markChanged();
                   }}
                   style={{
                     display: 'flex',
@@ -2801,7 +2790,7 @@ const SettingsPage: React.FC = () => {
                     value={operationSettings.orderNumberReset}
                     onChange={(e) => {
                       setOperationSettings(prev => ({ ...prev, orderNumberReset: e.target.value as any }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                   >
                     <option value="daily">Daily</option>
@@ -2817,7 +2806,7 @@ const SettingsPage: React.FC = () => {
                     value={operationSettings.defaultPreparationTime}
                     onChange={(e) => {
                       setOperationSettings(prev => ({ ...prev, defaultPreparationTime: Number(e.target.value) }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                   />
                   <span style={{ color: '#6B7C93', fontSize: '14px' }}>minutes</span>
@@ -2840,7 +2829,7 @@ const SettingsPage: React.FC = () => {
                           ...prev,
                           taxEnabled: e.target.checked
                         }));
-                        setHasChanges(true);
+                        markChanged();
                       }}
                     />
                     <ToggleSlider />
@@ -2858,7 +2847,7 @@ const SettingsPage: React.FC = () => {
                       value={operationSettings.taxRate}
                       onChange={(e) => {
                         setOperationSettings(prev => ({ ...prev, taxRate: Number(e.target.value) }));
-                        setHasChanges(true);
+                        markChanged();
                       }}
                     />
                     <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
@@ -2878,7 +2867,7 @@ const SettingsPage: React.FC = () => {
                           ...prev,
                           serviceChargeEnabled: e.target.checked
                         }));
-                        setHasChanges(true);
+                        markChanged();
                       }}
                     />
                     <ToggleSlider />
@@ -2896,7 +2885,7 @@ const SettingsPage: React.FC = () => {
                       value={operationSettings.serviceChargeRate}
                       onChange={(e) => {
                         setOperationSettings(prev => ({ ...prev, serviceChargeRate: Number(e.target.value) }));
-                        setHasChanges(true);
+                        markChanged();
                       }}
                     />
                     <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
@@ -2916,7 +2905,7 @@ const SettingsPage: React.FC = () => {
                     value={currencySettings.currency}
                     onChange={(e) => {
                       setCurrencySettings(prev => ({ ...prev, currency: e.target.value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                   >
                     {(() => {
@@ -2964,7 +2953,7 @@ const SettingsPage: React.FC = () => {
                     onChange={(e) => {
                       const value = e.target.value ? parseFloat(e.target.value) : null;
                       setCurrencySettings(prev => ({ ...prev, cashRounding: value }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                   >
                     <option value="">Disabled (No Rounding)</option>
@@ -2982,7 +2971,7 @@ const SettingsPage: React.FC = () => {
                     value={currencySettings.roundingApplyTo}
                     onChange={(e) => {
                       setCurrencySettings(prev => ({ ...prev, roundingApplyTo: e.target.value as 'cash_only' | 'all' }));
-                      setHasChanges(true);
+                      markChanged();
                     }}
                     disabled={!currencySettings.cashRounding}
                   >
@@ -3006,7 +2995,7 @@ const SettingsPage: React.FC = () => {
                           ...prev,
                           takeawayPricing: { ...prev.takeawayPricing, enabled: e.target.checked }
                         }));
-                        setHasChanges(true);
+                        markChanged();
                       }}
                     />
                     <ToggleSlider />
@@ -3025,7 +3014,7 @@ const SettingsPage: React.FC = () => {
                             ...prev,
                             takeawayPricing: { ...prev.takeawayPricing, pricingType: e.target.value as any }
                           }));
-                          setHasChanges(true);
+                          markChanged();
                         }}
                       >
                         <option value="per-item">Per Item (Fixed charge per item)</option>
@@ -3045,7 +3034,7 @@ const SettingsPage: React.FC = () => {
                               ...prev,
                               takeawayPricing: { ...prev.takeawayPricing, perItemCharge: Number(e.target.value) }
                             }));
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                         <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
@@ -3073,7 +3062,7 @@ const SettingsPage: React.FC = () => {
                                       }
                                     }
                                   }));
-                                  setHasChanges(true);
+                                  markChanged();
                                 }}
                               />
                               <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
@@ -3103,7 +3092,7 @@ const SettingsPage: React.FC = () => {
                             totalPagers: prev?.pagerSystem?.totalPagers || 50
                           }
                         }));
-                        setHasChanges(true);
+                        markChanged();
                       }}
                     />
                     <ToggleSlider />
@@ -3128,7 +3117,7 @@ const SettingsPage: React.FC = () => {
                               totalPagers: Number(e.target.value)
                             }
                           }));
-                          setHasChanges(true);
+                          markChanged();
                         }}
                       />
                     </FormGroup>
@@ -3152,7 +3141,7 @@ const SettingsPage: React.FC = () => {
                         <ToggleLabel>Enable Table Numbers</ToggleLabel>
                         <ToggleSwitch>
                           <ToggleInput type="checkbox" checked={tableSettings.enableTableNumbers}
-                            onChange={(e) => { setTableSettings({...tableSettings, enableTableNumbers: e.target.checked}); setHasChanges(true); }} />
+                            onChange={(e) => { setTableSettings({...tableSettings, enableTableNumbers: e.target.checked}); markChanged(); }} />
                           <ToggleSlider />
                         </ToggleSwitch>
                       </Toggle>
@@ -3163,7 +3152,7 @@ const SettingsPage: React.FC = () => {
                         <ToggleLabel>Table Number Required</ToggleLabel>
                         <ToggleSwitch>
                           <ToggleInput type="checkbox" checked={tableSettings.tableNumberRequired}
-                            onChange={(e) => { setTableSettings({...tableSettings, tableNumberRequired: e.target.checked}); setHasChanges(true); }}
+                            onChange={(e) => { setTableSettings({...tableSettings, tableNumberRequired: e.target.checked}); markChanged(); }}
                             disabled={!tableSettings.enableTableNumbers} />
                           <ToggleSlider />
                         </ToggleSwitch>
@@ -3175,14 +3164,14 @@ const SettingsPage: React.FC = () => {
                     <FormGroup>
                       <Label>Table Prefix</Label>
                       <Input type="text" value={tableSettings.tablePrefix}
-                        onChange={(e) => { setTableSettings({...tableSettings, tablePrefix: e.target.value}); setHasChanges(true); }}
+                        onChange={(e) => { setTableSettings({...tableSettings, tablePrefix: e.target.value}); markChanged(); }}
                         placeholder="e.g., T, TABLE" />
                       <HelpText>Prefix for table numbers (e.g., T001, TABLE001)</HelpText>
                     </FormGroup>
                     <FormGroup>
                       <Label>Number of Tables</Label>
                       <Input type="number" value={tableSettings.totalTables}
-                        onChange={(e) => { setTableSettings({...tableSettings, totalTables: parseInt(e.target.value) || 1}); setHasChanges(true); }}
+                        onChange={(e) => { setTableSettings({...tableSettings, totalTables: parseInt(e.target.value) || 1}); markChanged(); }}
                         min="1" max="999" />
                     </FormGroup>
                   </div>
@@ -3190,7 +3179,7 @@ const SettingsPage: React.FC = () => {
                 <FormGroup>
                   <Label>QR Code Base URL</Label>
                   <Input type="text" value={tableSettings.qrCodeBaseUrl}
-                    onChange={(e) => { setTableSettings({...tableSettings, qrCodeBaseUrl: e.target.value}); setHasChanges(true); }}
+                    onChange={(e) => { setTableSettings({...tableSettings, qrCodeBaseUrl: e.target.value}); markChanged(); }}
                     placeholder="https://yourdomain.com" />
                   <HelpText>Base URL for QR codes (usually your domain)</HelpText>
                 </FormGroup>
@@ -3200,14 +3189,14 @@ const SettingsPage: React.FC = () => {
                   <Label>QR Code Mode</Label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'static' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'static' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="qrMode" value="static" checked={tableSettings.qrMode === 'static'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'static'}); setHasChanges(true); }} />
+                      <input type="radio" name="qrMode" value="static" checked={tableSettings.qrMode === 'static'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'static'}); markChanged(); }} />
                       <div>
                         <div style={{ fontWeight: 500 }}>Static</div>
                         <div style={{ fontSize: '12px', color: '#6B7280' }}>Permanent QR, no expiration</div>
                       </div>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'session' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'session' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="qrMode" value="session" checked={tableSettings.qrMode === 'session'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'session'}); setHasChanges(true); }} />
+                      <input type="radio" name="qrMode" value="session" checked={tableSettings.qrMode === 'session'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'session'}); markChanged(); }} />
                       <div>
                         <div style={{ fontWeight: 500 }}>Session</div>
                         <div style={{ fontSize: '12px', color: '#6B7280' }}>Expiring QR, generated per visit</div>
@@ -3224,7 +3213,7 @@ const SettingsPage: React.FC = () => {
                       min="1"
                       max="24"
                       value={Math.round(tableSettings.qrExpirationMinutes / 60)}
-                      onChange={(e) => { setTableSettings({...tableSettings, qrExpirationMinutes: parseInt(e.target.value) * 60 || 180}); setHasChanges(true); }}
+                      onChange={(e) => { setTableSettings({...tableSettings, qrExpirationMinutes: parseInt(e.target.value) * 60 || 180}); markChanged(); }}
                     />
                     <HelpText>QR codes expire automatically after this time</HelpText>
                   </FormGroup>
@@ -3271,16 +3260,7 @@ const SettingsPage: React.FC = () => {
 
               </SettingsGrid>
 
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
+              {/* Auto-saved */}
             </>
           )}
 
@@ -3296,7 +3276,7 @@ const SettingsPage: React.FC = () => {
                     <ToggleLabel>Dine In</ToggleLabel>
                     <ToggleSwitch>
                       <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.dineIn ?? true}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, dineIn: e.target.checked } })); setHasChanges(true); }} />
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, dineIn: e.target.checked } })); markChanged(); }} />
                       <ToggleSlider />
                     </ToggleSwitch>
                   </Toggle>
@@ -3304,7 +3284,7 @@ const SettingsPage: React.FC = () => {
                     <ToggleLabel>Takeaway</ToggleLabel>
                     <ToggleSwitch>
                       <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.takeaway ?? true}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, takeaway: e.target.checked } })); setHasChanges(true); }} />
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, takeaway: e.target.checked } })); markChanged(); }} />
                       <ToggleSlider />
                     </ToggleSwitch>
                   </Toggle>
@@ -3312,7 +3292,7 @@ const SettingsPage: React.FC = () => {
                     <ToggleLabel>Pre-order Pickup</ToggleLabel>
                     <ToggleSwitch>
                       <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.pickup ?? false}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, pickup: e.target.checked } })); setHasChanges(true); }} />
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, pickup: e.target.checked } })); markChanged(); }} />
                       <ToggleSlider />
                     </ToggleSwitch>
                   </Toggle>
@@ -3320,7 +3300,7 @@ const SettingsPage: React.FC = () => {
                     <ToggleLabel>Delivery</ToggleLabel>
                     <ToggleSwitch>
                       <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.delivery ?? false}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, delivery: e.target.checked } })); setHasChanges(true); }} />
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, delivery: e.target.checked } })); markChanged(); }} />
                       <ToggleSlider />
                     </ToggleSwitch>
                   </Toggle>
@@ -3338,7 +3318,7 @@ const SettingsPage: React.FC = () => {
                     </ToggleLabel>
                     <ToggleSwitch>
                       <ToggleInput type="checkbox" checked={operationSettings.allowQuickOrder !== false}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, allowQuickOrder: e.target.checked })); setHasChanges(true); }} />
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, allowQuickOrder: e.target.checked })); markChanged(); }} />
                       <ToggleSlider />
                     </ToggleSwitch>
                   </Toggle>
@@ -3358,7 +3338,7 @@ const SettingsPage: React.FC = () => {
                     <ToggleLabel>Show Featured Menu</ToggleLabel>
                     <ToggleSwitch>
                       <ToggleInput type="checkbox" checked={mobileSettings.show_featured}
-                        onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_featured: e.target.checked })); setHasChanges(true); }} />
+                        onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_featured: e.target.checked })); markChanged(); }} />
                       <ToggleSlider />
                     </ToggleSwitch>
                   </Toggle>
@@ -3369,7 +3349,7 @@ const SettingsPage: React.FC = () => {
                     <ToggleLabel>Show Popular Menu</ToggleLabel>
                     <ToggleSwitch>
                       <ToggleInput type="checkbox" checked={mobileSettings.show_popular}
-                        onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_popular: e.target.checked })); setHasChanges(true); }} />
+                        onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_popular: e.target.checked })); markChanged(); }} />
                       <ToggleSlider />
                     </ToggleSwitch>
                   </Toggle>
@@ -3397,7 +3377,7 @@ const SettingsPage: React.FC = () => {
                                   if (!e.target.checked) ids.push(cat.id);
                                   return { ...prev, popular_excluded_category_ids: ids };
                                 });
-                                setHasChanges(true);
+                                markChanged();
                               }} />
                             <ToggleSlider />
                           </ToggleSwitch>
@@ -3420,7 +3400,7 @@ const SettingsPage: React.FC = () => {
                           <Label style={{ margin: 0 }}>{cat ? `${cat.emoji || '🍽️'} ${cat.name}` : `Category #${sched.category_id}`}</Label>
                           <button onClick={() => {
                             setMobileSettings(prev => ({ ...prev, category_schedules: prev.category_schedules.filter((_, i) => i !== index) }));
-                            setHasChanges(true);
+                            markChanged();
                           }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
                         </div>
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -3433,7 +3413,7 @@ const SettingsPage: React.FC = () => {
                                   arr[index] = { ...arr[index], start_time: e.target.value };
                                   return { ...prev, category_schedules: arr };
                                 });
-                                setHasChanges(true);
+                                markChanged();
                               }} />
                           </FormGroup>
                           <FormGroup style={{ flex: 1, marginBottom: 0 }}>
@@ -3445,7 +3425,7 @@ const SettingsPage: React.FC = () => {
                                   arr[index] = { ...arr[index], end_time: e.target.value };
                                   return { ...prev, category_schedules: arr };
                                 });
-                                setHasChanges(true);
+                                markChanged();
                               }} />
                           </FormGroup>
                         </div>
@@ -3476,7 +3456,7 @@ const SettingsPage: React.FC = () => {
                             ...prev,
                             category_schedules: [...prev.category_schedules, { category_id: catId, start_time: '09:00', end_time: '22:00' }]
                           }));
-                          setHasChanges(true);
+                          markChanged();
                         }} style={{ padding: '10px 16px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           Add Schedule
                         </button>
@@ -3491,7 +3471,7 @@ const SettingsPage: React.FC = () => {
                     <ToggleLabel>Enable Delivery Service</ToggleLabel>
                     <ToggleSwitch>
                       <ToggleInput type="checkbox" checked={operationSettings.deliveryPricing?.enabled || false}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, enabled: e.target.checked } })); setHasChanges(true); }} />
+                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, enabled: e.target.checked } })); markChanged(); }} />
                       <ToggleSlider />
                     </ToggleSwitch>
                   </Toggle>
@@ -3502,14 +3482,14 @@ const SettingsPage: React.FC = () => {
                       <FormGroup>
                         <Label>Minimum Order Amount</Label>
                         <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.minimumOrder}
-                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, minimumOrder: Number(e.target.value) } })); setHasChanges(true); }} />
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, minimumOrder: Number(e.target.value) } })); markChanged(); }} />
                         <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>Minimum subtotal required for delivery orders (0 = no minimum)</HelpText>
                       </FormGroup>
                       <FormGroup>
                         <Label>Free Delivery Above</Label>
                         <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.freeAbove}
-                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, freeAbove: Number(e.target.value) } })); setHasChanges(true); }} />
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, freeAbove: Number(e.target.value) } })); markChanged(); }} />
                         <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>Waive delivery fee if order subtotal exceeds this amount (999999 = never free)</HelpText>
                       </FormGroup>
@@ -3522,24 +3502,24 @@ const SettingsPage: React.FC = () => {
                             <Label style={{ margin: 0 }}>Zone {index + 1}</Label>
                             <button onClick={() => {
                               const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.splice(index, 1);
-                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true);
+                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged();
                             }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
                           </div>
                           <FormGroup><Label>Zone Name</Label><Input type="text" placeholder="e.g., Zone A (City Center)" value={zone.name}
                             onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], name: e.target.value };
-                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true); }} /></FormGroup>
+                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged(); }} /></FormGroup>
                           <FormGroup><Label>Description</Label><Input type="text" placeholder="e.g., 3km radius" value={zone.description}
                             onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], description: e.target.value };
-                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true); }} /></FormGroup>
+                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged(); }} /></FormGroup>
                           <FormGroup><Label>Delivery Fee</Label><FeeInput type="number" step="0.50" value={zone.fee}
                             onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], fee: Number(e.target.value) };
-                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true); }} />
+                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged(); }} />
                             <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span></FormGroup>
                         </div>
                       ))}
                       <button onClick={() => {
                         const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.push({ id: `zone-${Date.now()}`, name: '', description: '', fee: 0 });
-                        setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); setHasChanges(true);
+                        setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged();
                       }} style={{ width: '100%', padding: '12px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }}>
                         Add Delivery Zone
                       </button>
@@ -3549,16 +3529,7 @@ const SettingsPage: React.FC = () => {
 
               </SettingsGrid>
 
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
+              {/* Auto-saved */}
             </>
           )}
 
@@ -4257,42 +4228,19 @@ QZ Tray (installed on this device)
                 <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 16px' }}>
                   Control how same-name items are grouped in Kitchen Display Item View. Leave empty or 0 for unlimited merging (default).
                 </p>
-                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                  <div style={{ flex: '1', minWidth: '180px' }}>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', maxWidth: '400px' }}>
+                  <div style={{ flex: '1', minWidth: '160px' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Time Limit (minutes)</label>
-                    <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '0 0 6px' }}>Only merge items ordered within this time window</p>
                     <input type="number" min="0" value={itemMergeTimeLimit || ''} placeholder="0 = unlimited"
-                      onChange={(e) => setItemMergeTimeLimit(parseInt(e.target.value) || 0)}
+                      onChange={(e) => { setItemMergeTimeLimit(parseInt(e.target.value) || 0); markChanged(); }}
                       style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px' }} />
                   </div>
-                  <div style={{ flex: '1', minWidth: '180px' }}>
+                  <div style={{ flex: '1', minWidth: '160px' }}>
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Max Count per Group</label>
-                    <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '0 0 6px' }}>Split into separate rows when quantity exceeds this</p>
                     <input type="number" min="0" value={itemMergeMaxCount || ''} placeholder="0 = unlimited"
-                      onChange={(e) => setItemMergeMaxCount(parseInt(e.target.value) || 0)}
+                      onChange={(e) => { setItemMergeMaxCount(parseInt(e.target.value) || 0); markChanged(); }}
                       style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px' }} />
                   </div>
-                  <button
-                    disabled={itemMergeSaving}
-                    onClick={async () => {
-                      setItemMergeSaving(true);
-                      try {
-                        const token = localStorage.getItem('auth_token');
-                        await fetch(`/api/restaurants/${user?.restaurantId}`, {
-                          method: 'PUT',
-                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ kitchen_item_merge: { time_limit: itemMergeTimeLimit, max_count: itemMergeMaxCount } })
-                        });
-                      } catch (e) {
-                        console.error('Failed to save merge settings:', e);
-                      } finally {
-                        setItemMergeSaving(false);
-                      }
-                    }}
-                    style={{ padding: '8px 20px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', height: '38px', whiteSpace: 'nowrap' }}
-                  >
-                    {itemMergeSaving ? 'Saving...' : 'Save'}
-                  </button>
                 </div>
               </SettingsCard>
 
@@ -4783,16 +4731,7 @@ QZ Tray (installed on this device)
                 </SettingsGrid>
               )}
 
-              <SaveButtonContainer>
-                <SaveButton onClick={handleSave} disabled={!hasChanges}>
-                  {hasChanges ? 'Save Changes' : 'Saved'}
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
+              {/* Auto-saved */}
             </div>
           )}
 
@@ -4824,7 +4763,7 @@ QZ Tray (installed on this device)
                               checked={membershipSettings.is_active}
                               onChange={(e) => {
                                 setMembershipSettings({ ...membershipSettings, is_active: e.target.checked });
-                                setHasChanges(true);
+                                markChanged();
                               }}
                             />
                             <ToggleSlider />
@@ -4858,7 +4797,7 @@ QZ Tray (installed on this device)
                               ...membershipSettings,
                               points_per_currency: pointsPerCurrency
                             });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                         <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#6B7C93' }}>
@@ -4879,7 +4818,7 @@ QZ Tray (installed on this device)
                           value={membershipSettings.points_to_currency}
                           onChange={(e) => {
                             setMembershipSettings({ ...membershipSettings, points_to_currency: parseFloat(e.target.value) || 100 });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                         <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#6B7C93' }}>
@@ -4899,7 +4838,7 @@ QZ Tray (installed on this device)
                           value={membershipSettings.min_points_to_use}
                           onChange={(e) => {
                             setMembershipSettings({ ...membershipSettings, min_points_to_use: parseInt(e.target.value) || 0 });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                       </FormGroup>
@@ -4917,7 +4856,7 @@ QZ Tray (installed on this device)
                           value={membershipSettings.max_points_per_order_percent}
                           onChange={(e) => {
                             setMembershipSettings({ ...membershipSettings, max_points_per_order_percent: parseFloat(e.target.value) || 0 });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                       </FormGroup>
@@ -4934,7 +4873,7 @@ QZ Tray (installed on this device)
                           value={membershipSettings.points_expiry_days}
                           onChange={(e) => {
                             setMembershipSettings({ ...membershipSettings, points_expiry_days: parseInt(e.target.value) || 0 });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                       </FormGroup>
@@ -4951,7 +4890,7 @@ QZ Tray (installed on this device)
                           value={membershipSettings.welcome_points}
                           onChange={(e) => {
                             setMembershipSettings({ ...membershipSettings, welcome_points: parseInt(e.target.value) || 0 });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                       </FormGroup>
@@ -4973,7 +4912,7 @@ QZ Tray (installed on this device)
                           value={membershipSettings.silver_threshold}
                           onChange={(e) => {
                             setMembershipSettings({ ...membershipSettings, silver_threshold: parseFloat(e.target.value) || 0 });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                       </FormGroup>
@@ -4987,7 +4926,7 @@ QZ Tray (installed on this device)
                           value={membershipSettings.gold_threshold}
                           onChange={(e) => {
                             setMembershipSettings({ ...membershipSettings, gold_threshold: parseFloat(e.target.value) || 0 });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                       </FormGroup>
@@ -5001,7 +4940,7 @@ QZ Tray (installed on this device)
                           value={membershipSettings.vip_threshold}
                           onChange={(e) => {
                             setMembershipSettings({ ...membershipSettings, vip_threshold: parseFloat(e.target.value) || 0 });
-                            setHasChanges(true);
+                            markChanged();
                           }}
                         />
                       </FormGroup>
@@ -5021,7 +4960,7 @@ QZ Tray (installed on this device)
                             value={membershipSettings.bronze_bonus_rate}
                             onChange={(e) => {
                               setMembershipSettings({ ...membershipSettings, bronze_bonus_rate: parseFloat(e.target.value) || 1 });
-                              setHasChanges(true);
+                              markChanged();
                             }}
                           />
                         </FormGroup>
@@ -5035,7 +4974,7 @@ QZ Tray (installed on this device)
                             value={membershipSettings.silver_bonus_rate}
                             onChange={(e) => {
                               setMembershipSettings({ ...membershipSettings, silver_bonus_rate: parseFloat(e.target.value) || 1 });
-                              setHasChanges(true);
+                              markChanged();
                             }}
                           />
                         </FormGroup>
@@ -5049,7 +4988,7 @@ QZ Tray (installed on this device)
                             value={membershipSettings.gold_bonus_rate}
                             onChange={(e) => {
                               setMembershipSettings({ ...membershipSettings, gold_bonus_rate: parseFloat(e.target.value) || 1 });
-                              setHasChanges(true);
+                              markChanged();
                             }}
                           />
                         </FormGroup>
@@ -5063,7 +5002,7 @@ QZ Tray (installed on this device)
                             value={membershipSettings.vip_bonus_rate}
                             onChange={(e) => {
                               setMembershipSettings({ ...membershipSettings, vip_bonus_rate: parseFloat(e.target.value) || 1 });
-                              setHasChanges(true);
+                              markChanged();
                             }}
                           />
                         </FormGroup>
@@ -5085,7 +5024,7 @@ QZ Tray (installed on this device)
                             value={membershipSettings.bronze_discount_percent}
                             onChange={(e) => {
                               setMembershipSettings({ ...membershipSettings, bronze_discount_percent: parseFloat(e.target.value) || 0 });
-                              setHasChanges(true);
+                              markChanged();
                             }}
                           />
                         </FormGroup>
@@ -5100,7 +5039,7 @@ QZ Tray (installed on this device)
                             value={membershipSettings.silver_discount_percent}
                             onChange={(e) => {
                               setMembershipSettings({ ...membershipSettings, silver_discount_percent: parseFloat(e.target.value) || 0 });
-                              setHasChanges(true);
+                              markChanged();
                             }}
                           />
                         </FormGroup>
@@ -5115,7 +5054,7 @@ QZ Tray (installed on this device)
                             value={membershipSettings.gold_discount_percent}
                             onChange={(e) => {
                               setMembershipSettings({ ...membershipSettings, gold_discount_percent: parseFloat(e.target.value) || 0 });
-                              setHasChanges(true);
+                              markChanged();
                             }}
                           />
                         </FormGroup>
@@ -5130,7 +5069,7 @@ QZ Tray (installed on this device)
                             value={membershipSettings.vip_discount_percent}
                             onChange={(e) => {
                               setMembershipSettings({ ...membershipSettings, vip_discount_percent: parseFloat(e.target.value) || 0 });
-                              setHasChanges(true);
+                              markChanged();
                             }}
                           />
                         </FormGroup>
@@ -5161,16 +5100,7 @@ QZ Tray (installed on this device)
                     </div>
                   </SettingsCard>
 
-                  <SaveButtonContainer>
-                    <SaveButton onClick={handleSaveMembership} disabled={!hasChanges}>
-                      {hasChanges ? 'Save Changes' : 'Saved'}
-                    </SaveButton>
-                    {saveStatus && (
-                      <StatusMessage type={saveStatus.type}>
-                        {saveStatus.message}
-                      </StatusMessage>
-                    )}
-                  </SaveButtonContainer>
+                  {/* Auto-saved */}
                 </>
               )}
             </div>
