@@ -29,11 +29,13 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 # Flags
 AUTO_MODE=false
 SKIP_BUILD=false
+SYNC_CONTENT=false
 
 for arg in "$@"; do
     case $arg in
         --auto) AUTO_MODE=true ;;
         --skip-build) SKIP_BUILD=true ;;
+        --sync-content) SYNC_CONTENT=true ;;
     esac
 done
 
@@ -503,6 +505,75 @@ if [ $SMOKE_FAIL -eq 0 ]; then
     success "Smoke tests: ${SMOKE_PASS}/${SMOKE_TOTAL} passed — all OK"
 else
     warn "Smoke tests: ${SMOKE_PASS}/${SMOKE_TOTAL} passed, ${SMOKE_FAIL} FAILED"
+fi
+
+# ──────────────────────────────────────────
+# Content sync (FAQ, Blog → production DB)
+# ──────────────────────────────────────────
+if [ "$SYNC_CONTENT" = true ]; then
+    log "Syncing landing page content (FAQ, Blog) to production DB..."
+
+    # Export from dev DB
+    cd $LOCAL_DEV_BACKEND
+    node -e "
+    const { sequelize } = require('./config/database');
+    (async () => {
+      const [cats] = await sequelize.query('SELECT * FROM content_categories');
+      const [contents] = await sequelize.query('SELECT * FROM contents WHERE type IN (\"faq\", \"blog\") AND status = \"published\"');
+      const fs = require('fs');
+      fs.writeFileSync('/tmp/content_sync.json', JSON.stringify({ categories: cats, contents: contents }));
+      console.log('Exported: ' + cats.length + ' categories, ' + contents.length + ' contents');
+      process.exit(0);
+    })();
+    " 2>/dev/null || warn "Failed to export content from dev DB"
+
+    if [ -f /tmp/content_sync.json ]; then
+        # Copy to production server
+        scp /tmp/content_sync.json ${PROD_SERVER}:/tmp/content_sync.json
+
+        # Import to production DB
+        ssh $PROD_SERVER "cd /var/www/production-backend && node -e \"
+        require('dotenv').config();
+        const { sequelize } = require('./config/database');
+        const fs = require('fs');
+        (async () => {
+          const data = JSON.parse(fs.readFileSync('/tmp/content_sync.json', 'utf8'));
+
+          // Sync categories
+          for (const cat of data.categories) {
+            const [existing] = await sequelize.query('SELECT id FROM content_categories WHERE id = ?', { replacements: [cat.id] });
+            if (existing.length > 0) {
+              await sequelize.query('UPDATE content_categories SET name=?, slug=?, type=?, icon=?, is_active=?, sort_order=?, updated_at=NOW() WHERE id=?',
+                { replacements: [cat.name, cat.slug, cat.type, cat.icon, cat.is_active, cat.sort_order, cat.id] });
+            } else {
+              await sequelize.query('INSERT INTO content_categories (id,name,slug,type,icon,is_active,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,NOW(),NOW())',
+                { replacements: [cat.id, cat.name, cat.slug, cat.type, cat.icon, cat.is_active, cat.sort_order] });
+            }
+          }
+          console.log('Categories synced: ' + data.categories.length);
+
+          // Sync contents
+          for (const c of data.contents) {
+            const [existing] = await sequelize.query('SELECT id FROM contents WHERE slug = ? AND type = ?', { replacements: [c.slug, c.type] });
+            if (existing.length > 0) {
+              await sequelize.query('UPDATE contents SET category_id=?, title=?, content=?, excerpt=?, status=?, sort_order=?, updated_at=NOW() WHERE slug=? AND type=?',
+                { replacements: [c.category_id, c.title, c.content, c.excerpt, c.status, c.sort_order, c.slug, c.type] });
+            } else {
+              await sequelize.query('INSERT INTO contents (category_id,type,status,title,content,excerpt,slug,sort_order,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),NOW())',
+                { replacements: [c.category_id, c.type, c.status, c.title, c.content, c.excerpt, c.slug, c.sort_order] });
+            }
+          }
+          console.log('Contents synced: ' + data.contents.length);
+
+          fs.unlinkSync('/tmp/content_sync.json');
+          process.exit(0);
+        })();
+        \" 2>/dev/null" && success "Content synced to production" || warn "Content sync failed"
+
+        rm -f /tmp/content_sync.json
+    fi
+else
+    log "Skipping content sync (use --sync-content to sync FAQ/Blog)"
 fi
 
 # ──────────────────────────────────────────
