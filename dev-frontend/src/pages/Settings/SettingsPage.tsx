@@ -1804,7 +1804,6 @@ const SettingsPage: React.FC = () => {
         await handleSave();
       }
       setAutoSaveStatus('saved');
-      setTimeout(() => setAutoSaveStatus('idle'), 3000);
     } catch (e) {
       setAutoSaveStatus('idle');
     }
@@ -1861,7 +1860,7 @@ const SettingsPage: React.FC = () => {
           </TabContainer>
 
           {activeTab !== 'managers' && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-20px 0 16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-24px 0 8px' }}>
               <SaveButton
                 onClick={async () => {
                   if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
