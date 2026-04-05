@@ -20,6 +20,10 @@ const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FAFBFC;
   min-height: 100vh;
+
+  input::placeholder, textarea::placeholder, select::placeholder {
+    color: #C7D2E0;
+  }
 `;
 
 
@@ -142,6 +146,10 @@ const Input = styled.input`
 
   &:hover {
     border-color: #C7D2FE;
+  }
+
+  &::placeholder {
+    color: #C7D2E0;
   }
 
   &:disabled {
@@ -581,7 +589,7 @@ const SettingsPage: React.FC = () => {
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [changeCounter, setChangeCounter] = useState(0);
-  const markChanged = useCallback(() => { markChanged(); setChangeCounter(c => c + 1); }, []);
+  const markChanged = useCallback(() => { setHasChanges(true); setChangeCounter(c => c + 1); }, []);
   
   // Payment settings state - start with null, will be loaded from DB
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
