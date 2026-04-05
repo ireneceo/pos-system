@@ -968,6 +968,7 @@ const LiveOrdersPage: React.FC = () => {
   const [serverStats, setServerStats] = useState<{
     totalSales: number; avgAmount: number; maxAmount: number; orderCount: number;
   }>({ totalSales: 0, avgAmount: 0, maxAmount: 0, orderCount: 0 });
+  const [salesThreshold, setSalesThreshold] = useState(20);
   const [, setSocket] = useState<Socket | null>(null);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<DbOrder | null>(null);
@@ -1494,6 +1495,14 @@ const LiveOrdersPage: React.FC = () => {
           if (data.payment_settings) {
             setPaymentMethods(data.payment_settings);
           }
+
+          // Load sales threshold from operation settings
+          const opSettings = typeof data.operation_settings === 'string'
+            ? JSON.parse(data.operation_settings)
+            : data.operation_settings;
+          if (opSettings?.salesThreshold) {
+            setSalesThreshold(opSettings.salesThreshold);
+          }
         }
       } catch (error) {
         console.error('Failed to load company info:', error);
@@ -1574,8 +1583,8 @@ const LiveOrdersPage: React.FC = () => {
     const avgOrderAmount = totalSales / orders.length;
     const maxOrderAmount = Math.max(...orders.map(o => parseFloat(o.total_amount.toString())));
 
-    // Calculate percentage of orders >= RM 20
-    const ordersAbove20 = orders.filter(o => parseFloat(o.total_amount.toString()) >= 20).length;
+    // Calculate percentage of orders >= threshold
+    const ordersAbove20 = orders.filter(o => parseFloat(o.total_amount.toString()) >= salesThreshold).length;
     const ordersAbove20Percent = (ordersAbove20 / orders.length) * 100;
 
     // Calculate serve times (only for orders that have been served)
@@ -2878,7 +2887,22 @@ const LiveOrdersPage: React.FC = () => {
                   <StatItem>Total Sales <strong>RM{serverStats.totalSales.toFixed(2)}</strong></StatItem>
                   <StatItem>Avg <strong>RM{serverStats.avgAmount.toFixed(2)}</strong></StatItem>
                   <StatItem>Max <strong>RM{serverStats.maxAmount.toFixed(2)}</strong></StatItem>
-                  <StatItem>≥RM20 <strong>{localStats.ordersAbove20Percent.toFixed(1)}%</strong></StatItem>
+                  <StatItem>≥RM<input type="number" value={salesThreshold} onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setSalesThreshold(val);
+                    // Save to server
+                    const token = localStorage.getItem('auth_token');
+                    fetch(`/api/restaurants/${user?.restaurantId}`, { headers: { Authorization: `Bearer ${token}` } })
+                      .then(r => r.json()).then(data => {
+                        const rest = data.data || data;
+                        const ops = typeof rest.operation_settings === 'string' ? JSON.parse(rest.operation_settings) : (rest.operation_settings || {});
+                        ops.salesThreshold = val;
+                        fetch(`/api/restaurants/${user?.restaurantId}`, {
+                          method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ operation_settings: ops })
+                        });
+                      });
+                  }} min="0" style={{ width: '32px', border: 'none', borderBottom: '1px dashed #635BFF', background: 'transparent', fontSize: '13px', fontWeight: 700, color: '#0A2540', textAlign: 'center', padding: 0, outline: 'none' }} /> <strong>{localStats.ordersAbove20Percent.toFixed(1)}%</strong></StatItem>
                   <StatItem>Avg Serve <strong>{localStats.avgServeTime.toFixed(1)}m</strong></StatItem>
                   <StatItem>Max Serve <strong>{localStats.maxServeTime.toFixed(1)}m</strong></StatItem>
                   <StatItem>Min Serve <strong>{localStats.minServeTime.toFixed(1)}m</strong></StatItem>

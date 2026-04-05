@@ -712,6 +712,7 @@ const FloorPlanPage: React.FC = () => {
         tables={floorPlan.tables}
         tableStatuses={tableStatuses}
         currency={currency}
+        restaurantId={Number(restaurantId)}
       />
 
       {/* Payment Modal — same as LiveOrders */}
