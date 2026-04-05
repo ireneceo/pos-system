@@ -1861,24 +1861,14 @@ const SettingsPage: React.FC = () => {
           </TabContainer>
 
           {activeTab !== 'managers' && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', padding: '4px 0 0' }}>
-              {autoSaveStatus !== 'idle' && (
-                <span style={{ fontSize: '12px', color: autoSaveStatus === 'saving' ? '#6B7280' : '#059669' }}>
-                  {autoSaveStatus === 'saving' ? '● Saving...' : '✓ Saved'}
-                </span>
-              )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 0 0' }}>
               <SaveButton
                 onClick={async () => {
                   if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                   setAutoSaveStatus('saving');
-                  try {
-                    if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                    setAutoSaveStatus('saved');
-                    setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                  } catch (e) { setAutoSaveStatus('idle'); }
+                  if (saveCallbackRef.current) await saveCallbackRef.current();
                 }}
-                disabled={autoSaveStatus === 'saving'}
-                style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
               >
                 {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
               </SaveButton>
@@ -2105,10 +2095,9 @@ const SettingsPage: React.FC = () => {
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving'}
-                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
               </SaveButtonContainer>
               )}
@@ -2242,10 +2231,9 @@ const SettingsPage: React.FC = () => {
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving'}
-                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
               </SaveButtonContainer>
             </>
@@ -2468,10 +2456,9 @@ const SettingsPage: React.FC = () => {
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving'}
-                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
               </SaveButtonContainer>
             </div>
@@ -2538,10 +2525,9 @@ const SettingsPage: React.FC = () => {
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving'}
-                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
               </SaveButtonContainer>
             </>
@@ -2726,10 +2712,9 @@ const SettingsPage: React.FC = () => {
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving'}
-                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
               </SaveButtonContainer>
             </>
@@ -3353,10 +3338,9 @@ const SettingsPage: React.FC = () => {
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving'}
-                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
               </SaveButtonContainer>
             </>
@@ -3634,10 +3618,9 @@ const SettingsPage: React.FC = () => {
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving'}
-                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
               </SaveButtonContainer>
             </>
@@ -4848,10 +4831,9 @@ QZ Tray (installed on this device)
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving'}
-                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
               </SaveButtonContainer>
             </div>
@@ -5229,10 +5211,9 @@ QZ Tray (installed on this device)
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving'}
-                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
               </SaveButtonContainer>
                 </>
