@@ -1861,7 +1861,7 @@ const SettingsPage: React.FC = () => {
           </TabContainer>
 
           {activeTab !== 'managers' && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', padding: '8px 0', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', padding: '4px 0 0' }}>
               {autoSaveStatus !== 'idle' && (
                 <span style={{ fontSize: '12px', color: autoSaveStatus === 'saving' ? '#6B7280' : '#059669' }}>
                   {autoSaveStatus === 'saving' ? '● Saving...' : '✓ Saved'}
@@ -2103,11 +2103,7 @@ const SettingsPage: React.FC = () => {
                   onClick={async () => {
                     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                     setAutoSaveStatus('saving');
-                    try {
-                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                      setAutoSaveStatus('saved');
-                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                    } catch (e) { setAutoSaveStatus('idle'); }
+                    if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
                   disabled={autoSaveStatus === 'saving'}
                   style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
@@ -2244,11 +2240,7 @@ const SettingsPage: React.FC = () => {
                   onClick={async () => {
                     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                     setAutoSaveStatus('saving');
-                    try {
-                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                      setAutoSaveStatus('saved');
-                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                    } catch (e) { setAutoSaveStatus('idle'); }
+                    if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
                   disabled={autoSaveStatus === 'saving'}
                   style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
@@ -2474,11 +2466,7 @@ const SettingsPage: React.FC = () => {
                   onClick={async () => {
                     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                     setAutoSaveStatus('saving');
-                    try {
-                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                      setAutoSaveStatus('saved');
-                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                    } catch (e) { setAutoSaveStatus('idle'); }
+                    if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
                   disabled={autoSaveStatus === 'saving'}
                   style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
@@ -2548,11 +2536,7 @@ const SettingsPage: React.FC = () => {
                   onClick={async () => {
                     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                     setAutoSaveStatus('saving');
-                    try {
-                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                      setAutoSaveStatus('saved');
-                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                    } catch (e) { setAutoSaveStatus('idle'); }
+                    if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
                   disabled={autoSaveStatus === 'saving'}
                   style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
@@ -2740,11 +2724,7 @@ const SettingsPage: React.FC = () => {
                   onClick={async () => {
                     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                     setAutoSaveStatus('saving');
-                    try {
-                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                      setAutoSaveStatus('saved');
-                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                    } catch (e) { setAutoSaveStatus('idle'); }
+                    if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
                   disabled={autoSaveStatus === 'saving'}
                   style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
@@ -3371,11 +3351,7 @@ const SettingsPage: React.FC = () => {
                   onClick={async () => {
                     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                     setAutoSaveStatus('saving');
-                    try {
-                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                      setAutoSaveStatus('saved');
-                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                    } catch (e) { setAutoSaveStatus('idle'); }
+                    if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
                   disabled={autoSaveStatus === 'saving'}
                   style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
@@ -3656,11 +3632,7 @@ const SettingsPage: React.FC = () => {
                   onClick={async () => {
                     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                     setAutoSaveStatus('saving');
-                    try {
-                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                      setAutoSaveStatus('saved');
-                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                    } catch (e) { setAutoSaveStatus('idle'); }
+                    if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
                   disabled={autoSaveStatus === 'saving'}
                   style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
@@ -4874,11 +4846,7 @@ QZ Tray (installed on this device)
                   onClick={async () => {
                     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                     setAutoSaveStatus('saving');
-                    try {
-                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                      setAutoSaveStatus('saved');
-                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                    } catch (e) { setAutoSaveStatus('idle'); }
+                    if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
                   disabled={autoSaveStatus === 'saving'}
                   style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
@@ -5259,11 +5227,7 @@ QZ Tray (installed on this device)
                   onClick={async () => {
                     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
                     setAutoSaveStatus('saving');
-                    try {
-                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
-                      setAutoSaveStatus('saved');
-                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
-                    } catch (e) { setAutoSaveStatus('idle'); }
+                    if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
                   disabled={autoSaveStatus === 'saving'}
                   style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
