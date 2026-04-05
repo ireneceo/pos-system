@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
@@ -240,6 +240,9 @@ const CompanyInformationPage: React.FC = () => {
 
   const [originalInfo, setOriginalInfo] = useState<CompanyInfo>(companyInfo);
   const [hasChanges, setHasChanges] = useState(false);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
 
   const requiredFields: (keyof CompanyInfo)[] = [
     'companyName', 'registrationNo', 'address', 'city', 'state', 'postcode', 'country', 'phone', 'email'
@@ -298,11 +301,20 @@ const CompanyInformationPage: React.FC = () => {
     }
   };
 
+  const markChanged = () => {
+    setAutoSaveStatus('saving');
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (saveCallbackRef.current) saveCallbackRef.current();
+    }, 2000);
+  };
+
   const handleInputChange = (field: keyof CompanyInfo, value: string) => {
     setCompanyInfo(prev => ({
       ...prev,
       [field]: value
     }));
+    markChanged();
   };
 
   const handleSave = async () => {
@@ -348,17 +360,26 @@ const CompanyInformationPage: React.FC = () => {
     }
   };
 
+  saveCallbackRef.current = async () => {
+    try {
+      await handleSave();
+      setAutoSaveStatus('saved');
+    } catch (e) {
+      setAutoSaveStatus('idle');
+    }
+  };
+
   return (
     <>
       <Container>
         <Header>
           <Title>Company Information</Title>
           <SaveButton
-            hasChanges={hasChanges && isRequiredFilled}
+            hasChanges={hasChanges && isRequiredFilled && autoSaveStatus !== 'saved'}
             onClick={handleSave}
-            disabled={!hasChanges || !isRequiredFilled}
+            disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved' || !hasChanges || !isRequiredFilled}
           >
-            Save Changes
+            {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '\u2713 Saved' : 'Save Changes'}
           </SaveButton>
         </Header>
 
@@ -572,6 +593,7 @@ const CompanyInformationPage: React.FC = () => {
                   ...prev,
                   logoUrl: base64
                 }));
+                markChanged();
               }}
               label=""
               helpText="Upload your company logo for use in invoices and official documents"

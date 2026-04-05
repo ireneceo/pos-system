@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -391,17 +391,29 @@ const InvoiceSettingsPage: React.FC = () => {
   const [originalSettings, setOriginalSettings] = useState<InvoiceSettings>(settings);
   const [hasChanges, setHasChanges] = useState(false);
   const [exampleRevenue, setExampleRevenue] = useState(50000);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     const changed = JSON.stringify(settings) !== JSON.stringify(originalSettings);
     setHasChanges(changed);
   }, [settings, originalSettings]);
 
+  const markChanged = () => {
+    setAutoSaveStatus('saving');
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (saveCallbackRef.current) saveCallbackRef.current();
+    }, 2000);
+  };
+
   const handleInputChange = (field: keyof InvoiceSettings, value: any) => {
     setSettings(prev => ({
       ...prev,
       [field]: value
     }));
+    markChanged();
   };
 
   const handleFeeChange = (id: string, field: 'name' | 'amount' | 'enabled', value: any) => {
@@ -411,6 +423,7 @@ const InvoiceSettingsPage: React.FC = () => {
         fee.id === id ? { ...fee, [field]: value } : fee
       )
     }));
+    markChanged();
   };
 
   const addManagementFee = () => {
@@ -425,6 +438,7 @@ const InvoiceSettingsPage: React.FC = () => {
       ...prev,
       managementFees: [...(prev.managementFees || []), newFee]
     }));
+    markChanged();
   };
 
   const deleteManagementFee = (id: string) => {
@@ -432,6 +446,7 @@ const InvoiceSettingsPage: React.FC = () => {
       ...prev,
       managementFees: prev.managementFees?.filter(fee => fee.id !== id)
     }));
+    markChanged();
   };
 
   const calculateRental = () => {
@@ -460,6 +475,15 @@ const InvoiceSettingsPage: React.FC = () => {
     setOriginalSettings(settings);
     setHasChanges(false);
     alert('Invoice settings saved successfully!');
+  };
+
+  saveCallbackRef.current = async () => {
+    try {
+      await handleSave();
+      setAutoSaveStatus('saved');
+    } catch (e) {
+      setAutoSaveStatus('idle');
+    }
   };
 
   const renderAdminSettings = () => (
@@ -679,11 +703,11 @@ const InvoiceSettingsPage: React.FC = () => {
         <Header>
           <Title>Invoice Settings</Title>
           <SaveButton
-            hasChanges={hasChanges}
+            hasChanges={hasChanges && autoSaveStatus !== 'saved'}
             onClick={handleSave}
-            disabled={!hasChanges}
+            disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved' || !hasChanges}
           >
-            Save Changes
+            {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '\u2713 Saved' : 'Save Changes'}
           </SaveButton>
         </Header>
 

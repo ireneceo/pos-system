@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import PhoneInput from '../../components/Common/PhoneInput';
@@ -312,6 +312,9 @@ const CompanyProfilePage: React.FC = () => {
 
   const [originalProfile, setOriginalProfile] = useState<CompanyProfile>(profile);
   const [hasChanges, setHasChanges] = useState(false);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     // Load existing profile data
@@ -357,11 +360,20 @@ const CompanyProfilePage: React.FC = () => {
     setOriginalProfile(emptyData);
   };
 
+  const markChanged = () => {
+    setAutoSaveStatus('saving');
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (saveCallbackRef.current) saveCallbackRef.current();
+    }, 2000);
+  };
+
   const handleInputChange = (field: keyof CompanyProfile, value: string) => {
     setProfile(prev => ({
       ...prev,
       [field]: value
     }));
+    markChanged();
   };
 
   const handleSave = () => {
@@ -370,6 +382,15 @@ const CompanyProfilePage: React.FC = () => {
     setOriginalProfile(profile);
     setHasChanges(false);
     alert('Company profile saved successfully!');
+  };
+
+  saveCallbackRef.current = async () => {
+    try {
+      await handleSave();
+      setAutoSaveStatus('saved');
+    } catch (e) {
+      setAutoSaveStatus('idle');
+    }
   };
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -382,6 +403,7 @@ const CompanyProfilePage: React.FC = () => {
           ...prev,
           logoUrl: e.target?.result as string
         }));
+        markChanged();
       };
       reader.readAsDataURL(file);
     }
@@ -453,12 +475,12 @@ const CompanyProfilePage: React.FC = () => {
       <Container>
         <Header>
           <Title>Company Profile</Title>
-          <SaveButton 
-            hasChanges={hasChanges}
+          <SaveButton
+            hasChanges={hasChanges && autoSaveStatus !== 'saved'}
             onClick={handleSave}
-            disabled={!hasChanges}
+            disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved' || !hasChanges}
           >
-            Save Changes
+            {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '\u2713 Saved' : 'Save Changes'}
           </SaveButton>
         </Header>
 

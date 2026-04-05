@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import styled from 'styled-components';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -325,6 +325,14 @@ const ProfilePage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const markChanged = () => {
+    setAutoSaveStatus('saving');
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      if (saveCallbackRef.current) saveCallbackRef.current();
+    }, 2000);
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 
@@ -333,8 +341,12 @@ const ProfilePage: React.FC = () => {
       setHasChanges(true);
       setSavedSuccessfully(false); // Clear saved message when making changes
     }
+    markChanged();
   };
   const [hasChanges, setHasChanges] = useState(false);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<any>(null);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
@@ -571,6 +583,19 @@ const ProfilePage: React.FC = () => {
       });
       setHasChanges(false);
       setSavedSuccessfully(false);
+      setAutoSaveStatus('idle');
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    }
+  };
+
+  saveCallbackRef.current = async () => {
+    try {
+      // Create a synthetic event for handleSubmit
+      const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
+      await handleSubmit(syntheticEvent);
+      setAutoSaveStatus('saved');
+    } catch (e) {
+      setAutoSaveStatus('idle');
     }
   };
 
@@ -894,8 +919,8 @@ const ProfilePage: React.FC = () => {
                   <Button type="button" onClick={handleReset} disabled={!hasChanges || saving}>
                     Reset
                   </Button>
-                  <Button type="button" variant="primary" disabled={!hasChanges || saving} onClick={handleSubmit}>
-                    {saving ? 'Saving...' : 'Save Changes'}
+                  <Button type="button" variant="primary" disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved' || !hasChanges || saving} onClick={handleSubmit}>
+                    {saving || autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '\u2713 Saved' : 'Save Changes'}
                   </Button>
                 </ButtonContainer>
 
