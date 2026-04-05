@@ -1860,11 +1860,28 @@ const SettingsPage: React.FC = () => {
             )}
           </TabContainer>
 
-          {autoSaveStatus !== 'idle' && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 0' }}>
-              <span style={{ fontSize: '13px', color: autoSaveStatus === 'saving' ? '#6B7280' : '#059669', transition: 'opacity 0.3s' }}>
-                {autoSaveStatus === 'saving' ? 'Saving...' : '✓ Saved'}
-              </span>
+          {activeTab !== 'managers' && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px', padding: '8px 0', marginBottom: '4px' }}>
+              {autoSaveStatus !== 'idle' && (
+                <span style={{ fontSize: '12px', color: autoSaveStatus === 'saving' ? '#6B7280' : '#059669' }}>
+                  {autoSaveStatus === 'saving' ? '● Saving...' : '✓ Saved'}
+                </span>
+              )}
+              <SaveButton
+                onClick={async () => {
+                  if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                  setAutoSaveStatus('saving');
+                  try {
+                    if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                    setAutoSaveStatus('saved');
+                    setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                  } catch (e) { setAutoSaveStatus('idle'); }
+                }}
+                disabled={autoSaveStatus === 'saving'}
+                style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+              >
+                {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
+              </SaveButton>
             </div>
           )}
 
@@ -2081,7 +2098,23 @@ const SettingsPage: React.FC = () => {
               })}
 
               {paymentMethods && (
-              {/* Auto-saved */}
+              <SaveButtonContainer>
+                <SaveButton
+                  onClick={async () => {
+                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                    setAutoSaveStatus('saving');
+                    try {
+                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                      setAutoSaveStatus('saved');
+                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                    } catch (e) { setAutoSaveStatus('idle'); }
+                  }}
+                  disabled={autoSaveStatus === 'saving'}
+                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                >
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                </SaveButton>
+              </SaveButtonContainer>
               )}
             </SettingsCard>
           )}
@@ -2206,7 +2239,23 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
               </SettingsGrid>
 
-              {/* Auto-saved */}
+              <SaveButtonContainer>
+                <SaveButton
+                  onClick={async () => {
+                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                    setAutoSaveStatus('saving');
+                    try {
+                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                      setAutoSaveStatus('saved');
+                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                    } catch (e) { setAutoSaveStatus('idle'); }
+                  }}
+                  disabled={autoSaveStatus === 'saving'}
+                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                >
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                </SaveButton>
+              </SaveButtonContainer>
             </>
           )}
           {activeTab === 'brands' && (
@@ -2420,7 +2469,23 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
               ))}
 
-              {/* Auto-saved */}
+              <SaveButtonContainer>
+                <SaveButton
+                  onClick={async () => {
+                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                    setAutoSaveStatus('saving');
+                    try {
+                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                      setAutoSaveStatus('saved');
+                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                    } catch (e) { setAutoSaveStatus('idle'); }
+                  }}
+                  disabled={autoSaveStatus === 'saving'}
+                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                >
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                </SaveButton>
+              </SaveButtonContainer>
             </div>
           )}
           {activeTab === 'billing' && (
@@ -2478,7 +2543,23 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
               </SettingsGrid>
 
-              {/* Auto-saved */}
+              <SaveButtonContainer>
+                <SaveButton
+                  onClick={async () => {
+                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                    setAutoSaveStatus('saving');
+                    try {
+                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                      setAutoSaveStatus('saved');
+                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                    } catch (e) { setAutoSaveStatus('idle'); }
+                  }}
+                  disabled={autoSaveStatus === 'saving'}
+                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                >
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                </SaveButton>
+              </SaveButtonContainer>
             </>
           )}
           {activeTab === 'store' && (
@@ -2654,7 +2735,23 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
               )}
 
-              {/* Auto-saved */}
+              <SaveButtonContainer>
+                <SaveButton
+                  onClick={async () => {
+                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                    setAutoSaveStatus('saving');
+                    try {
+                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                      setAutoSaveStatus('saved');
+                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                    } catch (e) { setAutoSaveStatus('idle'); }
+                  }}
+                  disabled={autoSaveStatus === 'saving'}
+                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                >
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                </SaveButton>
+              </SaveButtonContainer>
             </>
           )}
 
@@ -3269,7 +3366,23 @@ const SettingsPage: React.FC = () => {
 
               </SettingsGrid>
 
-              {/* Auto-saved */}
+              <SaveButtonContainer>
+                <SaveButton
+                  onClick={async () => {
+                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                    setAutoSaveStatus('saving');
+                    try {
+                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                      setAutoSaveStatus('saved');
+                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                    } catch (e) { setAutoSaveStatus('idle'); }
+                  }}
+                  disabled={autoSaveStatus === 'saving'}
+                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                >
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                </SaveButton>
+              </SaveButtonContainer>
             </>
           )}
 
@@ -3538,7 +3651,23 @@ const SettingsPage: React.FC = () => {
 
               </SettingsGrid>
 
-              {/* Auto-saved */}
+              <SaveButtonContainer>
+                <SaveButton
+                  onClick={async () => {
+                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                    setAutoSaveStatus('saving');
+                    try {
+                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                      setAutoSaveStatus('saved');
+                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                    } catch (e) { setAutoSaveStatus('idle'); }
+                  }}
+                  disabled={autoSaveStatus === 'saving'}
+                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                >
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                </SaveButton>
+              </SaveButtonContainer>
             </>
           )}
 
@@ -4740,7 +4869,23 @@ QZ Tray (installed on this device)
                 </SettingsGrid>
               )}
 
-              {/* Auto-saved */}
+              <SaveButtonContainer>
+                <SaveButton
+                  onClick={async () => {
+                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                    setAutoSaveStatus('saving');
+                    try {
+                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                      setAutoSaveStatus('saved');
+                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                    } catch (e) { setAutoSaveStatus('idle'); }
+                  }}
+                  disabled={autoSaveStatus === 'saving'}
+                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                >
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                </SaveButton>
+              </SaveButtonContainer>
             </div>
           )}
 
@@ -5109,7 +5254,23 @@ QZ Tray (installed on this device)
                     </div>
                   </SettingsCard>
 
-                  {/* Auto-saved */}
+                  <SaveButtonContainer>
+                <SaveButton
+                  onClick={async () => {
+                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+                    setAutoSaveStatus('saving');
+                    try {
+                      if (activeTab === 'membership') { await handleSaveMembership(); } else { await handleSave(); }
+                      setAutoSaveStatus('saved');
+                      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+                    } catch (e) { setAutoSaveStatus('idle'); }
+                  }}
+                  disabled={autoSaveStatus === 'saving'}
+                  style={autoSaveStatus === 'saved' ? { background: '#059669' } : undefined}
+                >
+                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : hasChanges ? 'Save Changes' : 'Save Changes'}
+                </SaveButton>
+              </SaveButtonContainer>
                 </>
               )}
             </div>
