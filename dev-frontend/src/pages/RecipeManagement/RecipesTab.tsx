@@ -92,7 +92,6 @@ const RecipesGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
   margin-top: 24px;
-  align-items: start;
 `;
 
 const RecipeCard = styled.div<{ isActive?: boolean }>`
@@ -783,6 +782,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   };
   const [searchTerm, setSearchTerm] = useState(getInitialSearchTerm);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
+    const saved = localStorage.getItem('recipesViewMode');
+    return saved === 'image' ? 'image' : 'compact';
+  });
+  const [linkedMenus, setLinkedMenus] = useState<Record<number, string[]>>({});
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -814,7 +818,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     recipeName: ''
   });
   const [formError, setFormError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [recipeModalData, setRecipeModalData] = useState<Recipe | null>(null);
 
@@ -905,6 +909,27 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             ].filter((c: RecipeCategory) => c.is_active);
             setRecipeCategories(allCategories);
           }
+        }
+
+        // Fetch linked menus (Restaurant Admin only)
+        if (isRestaurantAdmin && effectiveRestaurantId) {
+          try {
+            const menuRes = await fetch(`/api/menu?restaurant_id=${effectiveRestaurantId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (menuRes.ok) {
+              const menuData = await menuRes.json();
+              const items = menuData.data || menuData || [];
+              const map: Record<number, string[]> = {};
+              (Array.isArray(items) ? items : []).forEach((m: any) => {
+                if (m.recipe_id) {
+                  if (!map[m.recipe_id]) map[m.recipe_id] = [];
+                  map[m.recipe_id].push(m.name);
+                }
+              });
+              setLinkedMenus(map);
+            }
+          } catch (e) { /* ignore */ }
         }
 
       } catch (error) {
@@ -1068,7 +1093,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
   const handleOpenModal = (recipe: Recipe | null, isViewMode: boolean = false) => {
     setFormError(null);
-    setViewMode(isViewMode);
+    setIsViewMode(isViewMode);
     if (recipe) {
       // Edit or View mode
       setSelectedRecipe(recipe);
@@ -1121,7 +1146,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedRecipe(null);
-    setViewMode(false);
+    setIsViewMode(false);
     setFormError(null);
     setFormData({
       name: '',
@@ -1325,9 +1350,19 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             ))}
           </FilterSelect>
         </FilterBar>
-        <ThemedButton variant="primary" onClick={() => handleOpenModal(null)} style={{ flexShrink: 0 }}>
-          New Recipe
-        </ThemedButton>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
+            <button onClick={() => { setViewMode('compact'); localStorage.setItem('recipesViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+              Compact
+            </button>
+            <button onClick={() => { setViewMode('image'); localStorage.setItem('recipesViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+              Image
+            </button>
+          </div>
+          <ThemedButton variant="primary" onClick={() => handleOpenModal(null)}>
+            New Recipe
+          </ThemedButton>
+        </div>
       </div>
 
       {loading ? (
@@ -1359,13 +1394,12 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               isActive={recipe.is_active}
               onClick={() => handleOpenModal(recipe, true)}
             >
-              {recipe.image && (
+              {viewMode === 'image' && recipe.image && (
                 <div style={{
                   width: '100%',
-                  height: '180px',
+                  aspectRatio: '16 / 9',
                   borderRadius: '8px 8px 0 0',
-                  overflow: 'hidden',
-                  marginBottom: '16px'
+                  overflow: 'hidden'
                 }}>
                   <img
                     src={recipe.image}
@@ -1477,6 +1511,16 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 )}
               </RecipeIngredients>
 
+              {linkedMenus[recipe.id] && linkedMenus[recipe.id].length > 0 && (
+                <div style={{ marginTop: '8px', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {linkedMenus[recipe.id].map((name, i) => (
+                    <span key={i} style={{ fontSize: '11px', background: '#ECFDF5', color: '#059669', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 }}>
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <RecipeActions onClick={(e) => e.stopPropagation()}>
                 <ActionButton
                   variant="secondary"
@@ -1510,10 +1554,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       <CommonModal
         isOpen={showModal}
         onClose={handleCloseModal}
-        title={viewMode ? 'Recipe Details' : (selectedRecipe ? 'Edit Recipe' : 'New Recipe')}
-        size={viewMode ? 'large' : 'medium'}
+        title={isViewMode ? 'Recipe Details' : (selectedRecipe ? 'Edit Recipe' : 'New Recipe')}
+        size={isViewMode ? 'large' : 'medium'}
       >
-        {viewMode && selectedRecipe ? (
+        {isViewMode && selectedRecipe ? (
           /* View Mode - Clean readable layout */
           <ViewContainer>
             {/* Header with image and title */}
@@ -1653,6 +1697,20 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               </ViewSection>
             )}
 
+            {/* Connected Menus */}
+            {selectedRecipe && linkedMenus[selectedRecipe.id] && linkedMenus[selectedRecipe.id].length > 0 && (
+              <ViewSection>
+                <ViewSectionTitle>Connected Menus ({linkedMenus[selectedRecipe.id].length})</ViewSectionTitle>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {linkedMenus[selectedRecipe.id].map((name, i) => (
+                    <span key={i} style={{ fontSize: '13px', background: '#ECFDF5', color: '#059669', padding: '4px 12px', borderRadius: '6px', fontWeight: 500 }}>
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </ViewSection>
+            )}
+
             {/* Action Buttons */}
             <ButtonGroup>
               <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
@@ -1662,7 +1720,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 <ModalButton
                   type="button"
                   variant="primary"
-                  onClick={() => setViewMode(false)}
+                  onClick={() => setIsViewMode(false)}
                 >
                   Edit
                 </ModalButton>
@@ -1999,6 +2057,20 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             <RecipeDetailText>
               {recipeModalData.instructions_detail}
             </RecipeDetailText>
+          </RecipeSection>
+        )}
+
+        {/* Connected Menus */}
+        {recipeModalData && linkedMenus[recipeModalData.id] && linkedMenus[recipeModalData.id].length > 0 && (
+          <RecipeSection>
+            <RecipeSectionTitle>Connected Menus</RecipeSectionTitle>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {linkedMenus[recipeModalData.id].map((name, i) => (
+                <span key={i} style={{ fontSize: '13px', background: '#ECFDF5', color: '#059669', padding: '4px 12px', borderRadius: '6px', fontWeight: 500 }}>
+                  {name}
+                </span>
+              ))}
+            </div>
           </RecipeSection>
         )}
       </CommonModal>

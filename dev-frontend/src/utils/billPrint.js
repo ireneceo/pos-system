@@ -529,7 +529,24 @@ export function generateBillContent(orderData, storeInfo) {
 /**
  * Generate HTML Bill for PC browser print
  */
-function generateHTMLBill(orderData, storeInfo) {
+function getReceiptSettings() {
+  try {
+    const saved = localStorage.getItem('receiptSettings');
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return { receiptLogo: '', footerMessage: 'Thank you for your purchase!', showMembership: false, customQrImage: '', customQrText: '', customQrPosition: 'back' };
+}
+
+export function generateHTMLBill(orderData, storeInfo) {
+  const receiptCfg = getReceiptSettings();
+  // Migrate legacy fields
+  const showMembership = receiptCfg.showMembership !== undefined ? receiptCfg.showMembership : (receiptCfg.showQrCode !== false || receiptCfg.showPointsInfo !== false);
+  // Merge receipt settings: storeInfo overrides take precedence over localStorage
+  const receiptLogo = storeInfo.receiptLogo || receiptCfg.receiptLogo || '';
+  const footerMsg = storeInfo.footerMessage || receiptCfg.footerMessage || 'Thank you for your purchase!';
+  const customQrImage = receiptCfg.customQrImage || '';
+  const customQrText = receiptCfg.customQrText || '';
+  const customQrPosition = receiptCfg.customQrPosition || 'back';
   const currencySymbol = getCurrencySymbol(orderData.currency);
   const dateStr = orderData.date.toLocaleDateString('en-MY');
   const timeStr = orderData.date.toLocaleTimeString('en-MY', {
@@ -602,6 +619,9 @@ function generateHTMLBill(orderData, storeInfo) {
     <html>
     <head>
       <meta charset="UTF-8">
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <title>Bill - ${orderData.orderNumber}</title>
       <style>
         @page { size: 80mm auto; margin: 0; }
@@ -611,7 +631,7 @@ function generateHTMLBill(orderData, storeInfo) {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         body {
-          font-family: 'Lucida Console', 'Courier New', monospace;
+          font-family: 'Inter', Arial, Helvetica, sans-serif;
           font-size: 14px;
           font-weight: 600;
           color: #000;
@@ -621,7 +641,7 @@ function generateHTMLBill(orderData, storeInfo) {
           padding: 5mm;
           box-sizing: border-box;
           -webkit-font-smoothing: none;
-          letter-spacing: 0.5px;
+          letter-spacing: -0.01em;
         }
         .header { text-align: center; margin-bottom: 10px; }
         .store-name { font-size: 20px; font-weight: 900; }
@@ -635,11 +655,11 @@ function generateHTMLBill(orderData, storeInfo) {
     <body>
       ${orderTypeHTML}
       <div class="header">
+        ${receiptLogo ? `<img src="${receiptLogo}" style="max-width: 320px; max-height: 100px; margin-bottom: 6px; filter: grayscale(100%);" />` : ''}
         <div class="store-name">${storeInfo.name || ''}</div>
-        ${storeInfo.address ? `<div style="font-weight: 600;">${storeInfo.address}</div>` : ''}
-        ${storeInfo.phone ? `<div style="font-weight: 600;">Tel: ${storeInfo.phone}</div>` : ''}
-        ${storeInfo.businessRegistration ? `<div style="font-weight: 600;">Reg No: ${storeInfo.businessRegistration}</div>` : ''}
-        ${storeInfo.gstRegNo ? `<div style="font-weight: 600;">Tax No: ${storeInfo.gstRegNo}</div>` : ''}
+        ${storeInfo.address ? `<div style="font-size: 12px; font-weight: 500;">${storeInfo.address}</div>` : ''}
+        ${storeInfo.phone ? `<div style="font-size: 12px; font-weight: 500;">Tel: ${storeInfo.phone}</div>` : ''}
+        ${(storeInfo.businessRegistration || storeInfo.gstRegNo) ? `<div style="font-size: 12px; font-weight: 500;">${[storeInfo.businessRegistration ? 'Reg No: ' + storeInfo.businessRegistration : '', storeInfo.gstRegNo ? 'Tax No: ' + storeInfo.gstRegNo : ''].filter(Boolean).join(' | ')}</div>` : ''}
       </div>
 
       <div class="divider"></div>
@@ -675,8 +695,24 @@ function generateHTMLBill(orderData, storeInfo) {
         </tr>
       </table>
 
+      ${showMembership ? `
+      <div style="text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #000;">
+        <div style="font-size: 13px; font-weight: 700; margin-bottom: 6px;">Order online & earn points!</div>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent('https://purplehere.com/m/' + (storeInfo.restaurantId || ''))}" style="width: 80px; height: 80px;" />
+        <div style="font-size: 9px; color: #666; margin-top: 4px;">purplehere.com/m/${storeInfo.restaurantId || ''}</div>
+      </div>
+      ` : ''}
+
+      ${customQrImage ? `
+      <div style="text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #000;">
+        ${customQrText && customQrPosition === 'front' ? `<div style="font-size: 13px; font-weight: 700; margin-bottom: 6px;">${customQrText}</div>` : ''}
+        <img src="${customQrImage.startsWith('/uploads/') ? (window.location.origin + customQrImage) : customQrImage}" style="width: 80px; height: 80px;" />
+        ${customQrText && customQrPosition === 'back' ? `<div style="font-size: 13px; font-weight: 700; margin-top: 6px;">${customQrText}</div>` : ''}
+      </div>
+      ` : ''}
+
       <div class="footer">
-        Thank you for your purchase!
+        ${footerMsg}
       </div>
     </body>
     </html>
@@ -761,7 +797,7 @@ function generateHTMLKitchenTicket(orderData, storeInfo) {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         body {
-          font-family: 'Lucida Console', 'Courier New', monospace;
+          font-family: 'Inter', Arial, Helvetica, sans-serif;
           font-size: 14px;
           font-weight: 600;
           color: #000;
@@ -771,7 +807,7 @@ function generateHTMLKitchenTicket(orderData, storeInfo) {
           padding: 5mm;
           box-sizing: border-box;
           -webkit-font-smoothing: none;
-          letter-spacing: 0.5px;
+          letter-spacing: -0.01em;
         }
         .divider { border-top: 2px dashed #000; margin: 8px 0; }
         table { width: 100%; border-collapse: collapse; }
@@ -853,7 +889,7 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         body {
-          font-family: 'Lucida Console', 'Courier New', monospace;
+          font-family: 'Inter', Arial, Helvetica, sans-serif;
           font-size: 14px;
           font-weight: 600;
           color: #000;
@@ -863,7 +899,7 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
           padding: 5mm;
           box-sizing: border-box;
           -webkit-font-smoothing: none;
-          letter-spacing: 0.5px;
+          letter-spacing: -0.01em;
         }
         .divider { border-top: 2px dashed #000; margin: 8px 0; }
         table { width: 100%; border-collapse: collapse; }
@@ -1453,7 +1489,7 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         body {
-          font-family: 'Lucida Console', 'Courier New', monospace;
+          font-family: 'Inter', Arial, Helvetica, sans-serif;
           font-size: 14px;
           font-weight: 600;
           color: #000;
@@ -1463,7 +1499,7 @@ function generateHTMLMultiPageKitchenTickets(orderData, storeInfo) {
           padding: 0;
           box-sizing: border-box;
           -webkit-font-smoothing: none;
-          letter-spacing: 0.5px;
+          letter-spacing: -0.01em;
         }
         .ticket-page {
           padding: 5mm;

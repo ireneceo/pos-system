@@ -301,6 +301,7 @@ const ToggleSlider = styled.span`
 
 const IngredientInfo = styled.div`
   margin: 12px 0;
+  flex: 1;
 `;
 
 const InfoRow = styled.div`
@@ -394,10 +395,9 @@ const ButtonGroup = styled.div`
 
 const IngredientImageContainer = styled.div`
   width: 100%;
-  height: 120px;
-  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px 8px 0 0;
   overflow: hidden;
-  margin-bottom: 12px;
   background: #F6F9FC;
   display: flex;
   align-items: center;
@@ -484,7 +484,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [viewMode, setViewMode] = useState<'compact' | 'image'>('compact');
+  const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
+    const saved = localStorage.getItem('ingredientsViewMode');
+    return saved === 'image' ? 'image' : 'compact';
+  });
   const [detailIngredient, setDetailIngredient] = useState<Ingredient | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [linkedItems, setLinkedItems] = useState<{recipes: any[]; products: any[]}>({ recipes: [], products: [] });
@@ -1010,10 +1013,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         </FilterBar>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
           <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
-            <button onClick={() => setViewMode('compact')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => { setViewMode('compact'); localStorage.setItem('ingredientsViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
             </button>
-            <button onClick={() => setViewMode('image')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => { setViewMode('image'); localStorage.setItem('ingredientsViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Image
             </button>
           </div>
@@ -1067,13 +1070,15 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 <div>
                   <IngredientName>
                     {ingredient.name}
+                  </IngredientName>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     {isRestaurantAdmin && ingredient.owner_type === 'brand' && (
                       <BrandBadge>Brand</BrandBadge>
                     )}
-                  </IngredientName>
-                  <IngredientCategoryBadge>
-                    {ingredient.ingredientCategory?.emoji} {ingredient.ingredientCategory?.name || 'Uncategorized'}
-                  </IngredientCategoryBadge>
+                    <IngredientCategoryBadge>
+                      {ingredient.ingredientCategory?.emoji} {ingredient.ingredientCategory?.name || 'Uncategorized'}
+                    </IngredientCategoryBadge>
+                  </div>
                 </div>
               </IngredientHeader>
 
@@ -1390,42 +1395,73 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       {/* Detail Modal */}
       {showDetailModal && detailIngredient && (
         <Modal isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} title={detailIngredient.name} size="medium">
+          {/* Image - full width, same aspect ratio as list card (300:180) */}
           {detailIngredient.image_url && (
-            <div style={{ marginBottom: '16px', borderRadius: '8px', overflow: 'hidden' }}>
-              <img src={detailIngredient.image_url} alt={detailIngredient.name} style={{ width: '100%', maxHeight: '200px', objectFit: 'cover' }} />
+            <div style={{ width: '100%', aspectRatio: '300/180', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px', background: '#F6F9FC' }}>
+              <img src={detailIngredient.image_url} alt={detailIngredient.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Category</div>
-              <div style={{ fontSize: '14px', fontWeight: 500 }}>{detailIngredient.ingredientCategory?.emoji} {detailIngredient.ingredientCategory?.name || 'Uncategorized'}</div>
+          {/* Badges */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            {isRestaurantAdmin && detailIngredient.owner_type === 'brand' && (
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#92400E', background: '#FEF3C7', padding: '3px 8px', borderRadius: '4px' }}>Brand</span>
+            )}
+            <span style={{ fontSize: '11px', fontWeight: 600, color: '#635BFF', background: '#F0F4FF', padding: '3px 8px', borderRadius: '4px' }}>
+              {detailIngredient.ingredientCategory?.emoji} {detailIngredient.ingredientCategory?.name || 'Uncategorized'}
+            </span>
+            {detailIngredient.track_stock && (
+              <span style={{ fontSize: '11px', fontWeight: 500, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: '4px' }}>Tracking</span>
+            )}
+            {detailIngredient.code && (
+              <span style={{ fontSize: '11px', fontWeight: 500, color: '#6B7280', background: '#F3F4F6', padding: '3px 8px', borderRadius: '4px' }}>{detailIngredient.code}</span>
+            )}
+          </div>
+
+          {/* Cost */}
+          <div style={{ marginBottom: '16px' }}>
+            {isRestaurantAdmin && detailIngredient.owner_type === 'brand' ? (
+              detailIngredient.restaurant_cost != null ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontSize: '13px', color: '#9CA3AF' }}>Brand Cost: <span style={{ textDecoration: 'line-through' }}>{formatCurrency(Number(detailIngredient.unit_cost), selectedCurrency)}/{detailIngredient.unit}</span></div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: '#2563EB' }}>
+                    My Cost: {formatCurrency(Number(detailIngredient.restaurant_cost), selectedCurrency)}/{detailIngredient.unit}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540' }}>
+                  Unit Cost: {formatCurrency(Number(detailIngredient.unit_cost), selectedCurrency)} / {detailIngredient.unit}
+                </div>
+              )
+            ) : (
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540' }}>
+                Unit Cost: {formatCurrency(Number(detailIngredient.unit_cost), selectedCurrency)} / {detailIngredient.unit}
+              </div>
+            )}
+          </div>
+
+          {/* Base Qty / Stock / Min Stock - 3 columns */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+            <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Base Qty</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{Number(detailIngredient.base_quantity || 1)} {detailIngredient.unit}</div>
             </div>
-            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Unit Cost</div>
-              <div style={{ fontSize: '14px', fontWeight: 600 }}>{formatCurrency(Number(detailIngredient.effective_cost ?? detailIngredient.unit_cost), selectedCurrency)} / {detailIngredient.unit}</div>
+            <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Current Stock</div>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: detailIngredient.track_stock && Number(detailIngredient.current_stock || 0) <= Number(detailIngredient.min_stock || 0) ? '#EF4444' : '#0A2540' }}>
+                {detailIngredient.track_stock ? `${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}` : '-'}
+              </div>
             </div>
-            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Base Quantity</div>
-              <div style={{ fontSize: '14px', fontWeight: 500 }}>{Number(detailIngredient.base_quantity || 1)} {detailIngredient.unit}</div>
-            </div>
-            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Stock</div>
-              <div style={{ fontSize: '14px', fontWeight: 500 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}` : 'Not tracked'}</div>
+            <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Min Stock</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.min_stock || 0)} ${detailIngredient.unit}` : '-'}</div>
             </div>
           </div>
 
+          {/* Supplier */}
           {(detailIngredient.supplier?.name || detailIngredient.supplier_name) && (
-            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', marginBottom: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Supplier</div>
-              <div style={{ fontSize: '14px', fontWeight: 500 }}>{detailIngredient.supplier?.name || detailIngredient.supplier_name}</div>
-            </div>
-          )}
-
-          {detailIngredient.code && (
-            <div style={{ padding: '12px', background: '#F9FAFB', borderRadius: '8px', marginBottom: '12px' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '4px' }}>Code</div>
-              <div style={{ fontSize: '14px', fontWeight: 500 }}>{detailIngredient.code}</div>
+            <div style={{ marginBottom: '16px', fontSize: '13px', color: '#6B7280' }}>
+              Supplier: <span style={{ color: '#0A2540', fontWeight: 500 }}>{detailIngredient.supplier?.name || detailIngredient.supplier_name}</span>
             </div>
           )}
 
@@ -1452,14 +1488,9 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             )}
           </div>
 
-          {!isItemReadOnly(detailIngredient) && (
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <ModalButton variant="secondary" onClick={() => { setShowDetailModal(false); handleOpenModal(detailIngredient); }}>
-                Edit
-              </ModalButton>
-              <ModalButton variant="danger" onClick={() => { setShowDetailModal(false); handleDeleteClick(detailIngredient); }}>
-                Delete
-              </ModalButton>
+          {isItemReadOnly(detailIngredient) && (
+            <div style={{ padding: '10px 12px', background: '#FEF3C7', borderRadius: '6px', fontSize: '12px', color: '#92400E', textAlign: 'center' }}>
+              Managed by Brand. You can set My Cost from the ingredient list.
             </div>
           )}
         </Modal>

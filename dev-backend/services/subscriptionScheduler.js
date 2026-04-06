@@ -97,6 +97,7 @@ class SubscriptionScheduler {
         where: {
           status: 'trial',
           is_demo: { [Op.ne]: true },
+          is_test: { [Op.ne]: true },
           trial_end_date: {
             [Op.lt]: today  // Trial end date is before today
           }
@@ -162,6 +163,7 @@ class SubscriptionScheduler {
         where: {
           status: 'overdue',
           is_demo: { [Op.ne]: true },
+          is_test: { [Op.ne]: true },
           grace_period_start: {
             [Op.lte]: gracePeriodCutoff  // Grace period started 7+ days ago
           }
@@ -229,6 +231,7 @@ class SubscriptionScheduler {
         where: {
           status: 'active',
           is_demo: { [Op.ne]: true },
+          is_test: { [Op.ne]: true },
           subscription_start: { [Op.ne]: null }
         }
       });

@@ -68,6 +68,7 @@ class InvoiceScheduler {
         where: {
           status: 'active',
           is_demo: { [Op.ne]: true },
+          is_test: { [Op.ne]: true },
           subscription_start: { [Op.ne]: null },
           plan_type: { [Op.ne]: null }
         }
@@ -580,6 +581,7 @@ class InvoiceScheduler {
           role: { [Op.in]: ['Brand General', 'Foodcourt General', 'Restaurant Owner'] },
           subscription_status: { [Op.in]: ['active', 'trial'] },
           is_demo: { [Op.ne]: true },
+          is_test: { [Op.ne]: true },
           subscription_start: { [Op.ne]: null },
           plan_type: { [Op.ne]: null }
         }
@@ -1252,6 +1254,7 @@ class InvoiceScheduler {
           pending_plan_type: { [Op.ne]: null },
           plan_change_date: { [Op.lte]: today },
           is_demo: { [Op.ne]: true },
+          is_test: { [Op.ne]: true },
           role: { [Op.in]: ['Brand General', 'Foodcourt General', 'Restaurant Owner'] }
         }
       });

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { COUNTRIES } from '../../constants/countries';
+import AutoSaveField from '../../components/Common/AutoSaveField';
 
 interface CompanyInfo {
   id: string;
@@ -61,29 +62,6 @@ const Title = styled.h1`
 
   @media (max-width: 768px) {
     font-size: 20px;
-  }
-`;
-
-const SaveButton = styled.button<{ hasChanges: boolean }>`
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: none;
-  background: ${props => props.hasChanges ? '#635BFF' : '#E6EBF1'};
-  color: ${props => props.hasChanges ? 'white' : '#8898AA'};
-
-  &:hover {
-    background: ${props => props.hasChanges ? '#5A51E6' : '#E6EBF1'};
-    transform: ${props => props.hasChanges ? 'translateY(-2px)' : 'none'};
-    box-shadow: ${props => props.hasChanges ? '0 4px 12px rgba(99, 91, 255, 0.3)' : 'none'};
-  }
-
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
   }
 `;
 
@@ -238,26 +216,10 @@ const CompanyInformationPage: React.FC = () => {
     updatedBy: ''
   });
 
-  const [originalInfo, setOriginalInfo] = useState<CompanyInfo>(companyInfo);
-  const [hasChanges, setHasChanges] = useState(false);
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
-
-  const requiredFields: (keyof CompanyInfo)[] = [
-    'companyName', 'registrationNo', 'address', 'city', 'state', 'postcode', 'country', 'phone', 'email'
-  ];
-  const isRequiredFilled = requiredFields.every(f => companyInfo[f]?.trim());
-
   useEffect(() => {
     loadCompanyInfo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const changed = JSON.stringify(companyInfo) !== JSON.stringify(originalInfo);
-    setHasChanges(changed);
-  }, [companyInfo, originalInfo]);
 
   const loadCompanyInfo = async () => {
     try {
@@ -293,7 +255,6 @@ const CompanyInformationPage: React.FC = () => {
           };
 
           setCompanyInfo(info);
-          setOriginalInfo(info);
         }
       }
     } catch (error) {
@@ -301,71 +262,46 @@ const CompanyInformationPage: React.FC = () => {
     }
   };
 
-  const markChanged = () => {
-    setAutoSaveStatus('saving');
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      if (saveCallbackRef.current) saveCallbackRef.current();
-    }, 2000);
-  };
-
   const handleInputChange = (field: keyof CompanyInfo, value: string) => {
     setCompanyInfo(prev => ({
       ...prev,
       [field]: value
     }));
-    markChanged();
   };
 
   const handleSave = async () => {
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (user?.restaurantId) {
-        const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          },
-          body: JSON.stringify({
-            name: companyInfo.companyName,
-            business_registration: companyInfo.registrationNo,
-            trade_name: companyInfo.tradeName,
-            address: companyInfo.address,
-            city: companyInfo.city,
-            state: companyInfo.state,
-            postal_code: companyInfo.postcode,
-            country: companyInfo.country,
-            phone: companyInfo.phone,
-            email: companyInfo.email,
-            website: companyInfo.website,
-            tax_id: companyInfo.taxNo,
-            bank_name: companyInfo.bankName,
-            bank_account: companyInfo.bankAccount,
-            bank_account_name: companyInfo.bankAccountName,
-            logo_url: companyInfo.logoUrl
-          })
-        });
+    const token = localStorage.getItem('auth_token');
+    if (!user?.restaurantId) return;
 
-        if (response.ok) {
-          setOriginalInfo(companyInfo);
-          setHasChanges(false);
-        } else {
-          const errorData = await response.json().catch(() => null);
-          console.error('Save failed:', errorData?.message || response.statusText);
-        }
-      }
-    } catch (error) {
-      console.error('Save error:', error);
-    }
-  };
+    const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        name: companyInfo.companyName,
+        business_registration: companyInfo.registrationNo,
+        trade_name: companyInfo.tradeName,
+        address: companyInfo.address,
+        city: companyInfo.city,
+        state: companyInfo.state,
+        postal_code: companyInfo.postcode,
+        country: companyInfo.country,
+        phone: companyInfo.phone,
+        email: companyInfo.email,
+        website: companyInfo.website,
+        tax_id: companyInfo.taxNo,
+        bank_name: companyInfo.bankName,
+        bank_account: companyInfo.bankAccount,
+        bank_account_name: companyInfo.bankAccountName,
+        logo_url: companyInfo.logoUrl
+      })
+    });
 
-  saveCallbackRef.current = async () => {
-    try {
-      await handleSave();
-      setAutoSaveStatus('saved');
-    } catch (e) {
-      setAutoSaveStatus('idle');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || response.statusText);
     }
   };
 
@@ -374,13 +310,6 @@ const CompanyInformationPage: React.FC = () => {
       <Container>
         <Header>
           <Title>Company Information</Title>
-          <SaveButton
-            hasChanges={hasChanges && isRequiredFilled && autoSaveStatus !== 'saved'}
-            onClick={handleSave}
-            disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved' || !hasChanges || !isRequiredFilled}
-          >
-            {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '\u2713 Saved' : 'Save Changes'}
-          </SaveButton>
         </Header>
 
         <Content>
@@ -395,52 +324,62 @@ const CompanyInformationPage: React.FC = () => {
             <FormGrid>
               <FormGroup>
                 <Label>Company Name <span>*</span></Label>
-                <Input
-                  type="text"
-                  value={companyInfo.companyName}
-                  onChange={(e) => handleInputChange('companyName', e.target.value)}
-                  placeholder="Legal entity name"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.companyName}
+                    onChange={(e) => handleInputChange('companyName', e.target.value)}
+                    placeholder="Legal entity name"
+                  />
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>Registration Number <span>*</span></Label>
-                <Input
-                  type="text"
-                  value={companyInfo.registrationNo}
-                  onChange={(e) => handleInputChange('registrationNo', e.target.value)}
-                  placeholder="e.g., 202401234567"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.registrationNo}
+                    onChange={(e) => handleInputChange('registrationNo', e.target.value)}
+                    placeholder="e.g., 202401234567"
+                  />
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>Trade Name / Brand Name</Label>
-                <Input
-                  type="text"
-                  value={companyInfo.tradeName || ''}
-                  onChange={(e) => handleInputChange('tradeName', e.target.value)}
-                  placeholder="e.g., ABC Kitchen & Grill"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.tradeName || ''}
+                    onChange={(e) => handleInputChange('tradeName', e.target.value)}
+                    placeholder="e.g., ABC Kitchen & Grill"
+                  />
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>Tax Number (SST/GST)</Label>
-                <Input
-                  type="text"
-                  value={companyInfo.taxNo || ''}
-                  onChange={(e) => handleInputChange('taxNo', e.target.value)}
-                  placeholder="e.g., W10-1234-56789012"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.taxNo || ''}
+                    onChange={(e) => handleInputChange('taxNo', e.target.value)}
+                    placeholder="e.g., W10-1234-56789012"
+                  />
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>Website</Label>
-                <Input
-                  type="url"
-                  value={companyInfo.website || ''}
-                  onChange={(e) => handleInputChange('website', e.target.value)}
-                  placeholder="www.example.com"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="url"
+                    value={companyInfo.website || ''}
+                    onChange={(e) => handleInputChange('website', e.target.value)}
+                    placeholder="www.example.com"
+                  />
+                </AutoSaveField>
               </FormGroup>
             </FormGrid>
           </Section>
@@ -450,89 +389,103 @@ const CompanyInformationPage: React.FC = () => {
             <FormGrid>
               <FormGroup fullWidth>
                 <Label>Address <span>*</span></Label>
-                <Input
-                  type="text"
-                  value={companyInfo.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  placeholder="Street address"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    placeholder="Street address"
+                  />
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>City <span>*</span></Label>
-                <Input
-                  type="text"
-                  value={companyInfo.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="e.g., Kuala Lumpur"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    placeholder="e.g., Kuala Lumpur"
+                  />
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>State <span>*</span></Label>
-                <Select
-                  value={companyInfo.state}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
-                >
-                  <option value="">Select State</option>
-                  <option value="Wilayah Persekutuan">Wilayah Persekutuan</option>
-                  <option value="Selangor">Selangor</option>
-                  <option value="Penang">Penang</option>
-                  <option value="Johor">Johor</option>
-                  <option value="Perak">Perak</option>
-                  <option value="Kedah">Kedah</option>
-                  <option value="Kelantan">Kelantan</option>
-                  <option value="Melaka">Melaka</option>
-                  <option value="Negeri Sembilan">Negeri Sembilan</option>
-                  <option value="Pahang">Pahang</option>
-                  <option value="Perlis">Perlis</option>
-                  <option value="Sabah">Sabah</option>
-                  <option value="Sarawak">Sarawak</option>
-                  <option value="Terengganu">Terengganu</option>
-                </Select>
+                <AutoSaveField onSave={handleSave} type="select">
+                  <Select
+                    value={companyInfo.state}
+                    onChange={(e) => handleInputChange('state', e.target.value)}
+                  >
+                    <option value="">Select State</option>
+                    <option value="Wilayah Persekutuan">Wilayah Persekutuan</option>
+                    <option value="Selangor">Selangor</option>
+                    <option value="Penang">Penang</option>
+                    <option value="Johor">Johor</option>
+                    <option value="Perak">Perak</option>
+                    <option value="Kedah">Kedah</option>
+                    <option value="Kelantan">Kelantan</option>
+                    <option value="Melaka">Melaka</option>
+                    <option value="Negeri Sembilan">Negeri Sembilan</option>
+                    <option value="Pahang">Pahang</option>
+                    <option value="Perlis">Perlis</option>
+                    <option value="Sabah">Sabah</option>
+                    <option value="Sarawak">Sarawak</option>
+                    <option value="Terengganu">Terengganu</option>
+                  </Select>
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>Postcode <span>*</span></Label>
-                <Input
-                  type="text"
-                  value={companyInfo.postcode}
-                  onChange={(e) => handleInputChange('postcode', e.target.value)}
-                  placeholder="e.g., 50250"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.postcode}
+                    onChange={(e) => handleInputChange('postcode', e.target.value)}
+                    placeholder="e.g., 50250"
+                  />
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>Country <span>*</span></Label>
-                <Select
-                  value={companyInfo.country}
-                  onChange={(e) => handleInputChange('country', e.target.value)}
-                >
-                  {COUNTRIES.map(country => (
-                    <option key={country.code} value={country.code}>
-                      {country.name}
-                    </option>
-                  ))}
-                </Select>
+                <AutoSaveField onSave={handleSave} type="select">
+                  <Select
+                    value={companyInfo.country}
+                    onChange={(e) => handleInputChange('country', e.target.value)}
+                  >
+                    {COUNTRIES.map(country => (
+                      <option key={country.code} value={country.code}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </Select>
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>Phone <span>*</span></Label>
-                <PhoneInput
-                  value={companyInfo.phone}
-                  onChange={(value) => handleInputChange('phone', value)}
-                  defaultCountry={companyInfo.country}
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <PhoneInput
+                    value={companyInfo.phone}
+                    onChange={(value) => handleInputChange('phone', value)}
+                    defaultCountry={companyInfo.country}
+                  />
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>Email <span>*</span></Label>
-                <Input
-                  type="email"
-                  value={companyInfo.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="contact@example.com"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="email"
+                    value={companyInfo.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    placeholder="contact@example.com"
+                  />
+                </AutoSaveField>
               </FormGroup>
             </FormGrid>
           </Section>
@@ -542,62 +495,69 @@ const CompanyInformationPage: React.FC = () => {
             <FormGrid>
               <FormGroup>
                 <Label>Bank Name</Label>
-                <Select
-                  value={companyInfo.bankName || ''}
-                  onChange={(e) => handleInputChange('bankName', e.target.value)}
-                >
-                  <option value="">Select Bank</option>
-                  <option value="Maybank">Maybank</option>
-                  <option value="CIMB Bank">CIMB Bank</option>
-                  <option value="Public Bank">Public Bank</option>
-                  <option value="RHB Bank">RHB Bank</option>
-                  <option value="Hong Leong Bank">Hong Leong Bank</option>
-                  <option value="AmBank">AmBank</option>
-                  <option value="UOB">UOB</option>
-                  <option value="OCBC Bank">OCBC Bank</option>
-                  <option value="HSBC">HSBC</option>
-                  <option value="Standard Chartered">Standard Chartered</option>
-                  <option value="Bank Islam">Bank Islam</option>
-                  <option value="Bank Rakyat">Bank Rakyat</option>
-                </Select>
+                <AutoSaveField onSave={handleSave} type="select">
+                  <Select
+                    value={companyInfo.bankName || ''}
+                    onChange={(e) => handleInputChange('bankName', e.target.value)}
+                  >
+                    <option value="">Select Bank</option>
+                    <option value="Maybank">Maybank</option>
+                    <option value="CIMB Bank">CIMB Bank</option>
+                    <option value="Public Bank">Public Bank</option>
+                    <option value="RHB Bank">RHB Bank</option>
+                    <option value="Hong Leong Bank">Hong Leong Bank</option>
+                    <option value="AmBank">AmBank</option>
+                    <option value="UOB">UOB</option>
+                    <option value="OCBC Bank">OCBC Bank</option>
+                    <option value="HSBC">HSBC</option>
+                    <option value="Standard Chartered">Standard Chartered</option>
+                    <option value="Bank Islam">Bank Islam</option>
+                    <option value="Bank Rakyat">Bank Rakyat</option>
+                  </Select>
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>Account Number</Label>
-                <Input
-                  type="text"
-                  value={companyInfo.bankAccount || ''}
-                  onChange={(e) => handleInputChange('bankAccount', e.target.value)}
-                  placeholder="e.g., 514123456789"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.bankAccount || ''}
+                    onChange={(e) => handleInputChange('bankAccount', e.target.value)}
+                    placeholder="e.g., 514123456789"
+                  />
+                </AutoSaveField>
               </FormGroup>
 
               <FormGroup fullWidth>
                 <Label>Account Name</Label>
-                <Input
-                  type="text"
-                  value={companyInfo.bankAccountName || ''}
-                  onChange={(e) => handleInputChange('bankAccountName', e.target.value)}
-                  placeholder="Account holder name (must match company name)"
-                />
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.bankAccountName || ''}
+                    onChange={(e) => handleInputChange('bankAccountName', e.target.value)}
+                    placeholder="Account holder name (must match company name)"
+                  />
+                </AutoSaveField>
               </FormGroup>
             </FormGrid>
           </Section>
 
           <Section>
             <SectionTitle>Company Logo</SectionTitle>
-            <ImageUploadDropzone
-              value={companyInfo.logoUrl || ''}
-              onChange={(base64) => {
-                setCompanyInfo(prev => ({
-                  ...prev,
-                  logoUrl: base64
-                }));
-                markChanged();
-              }}
-              label=""
-              helpText="Upload your company logo for use in invoices and official documents"
-            />
+            <AutoSaveField onSave={handleSave} type="image">
+              <ImageUploadDropzone
+                value={companyInfo.logoUrl || ''}
+                onChange={(base64) => {
+                  setCompanyInfo(prev => ({
+                    ...prev,
+                    logoUrl: base64
+                  }));
+                }}
+                label=""
+                helpText="Upload your company logo for use in invoices and official documents"
+              />
+            </AutoSaveField>
           </Section>
         </Content>
       </Container>

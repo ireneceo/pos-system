@@ -529,14 +529,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     (window as any).__originalFetch = originalFetch;
 
     window.fetch = async (...args: Parameters<typeof fetch>) => {
+      // Auto-inject Authorization header for /api/ requests
+      const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
+      const publicPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/signup', '/api/public/'];
+      if (url.includes('/api/') && !publicPaths.some(p => url.includes(p))) {
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          const init = args[1] || {};
+          const headers = new Headers(init.headers || {});
+          if (!headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${token}`);
+          }
+          args[1] = { ...init, headers };
+        }
+      }
+
       const response = await originalFetch(...args);
 
       if (response.status === 401) {
-        const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
-        // Skip auto-logout for auth endpoints (login, register, signup)
         const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/register') || url.includes('/api/auth/signup');
         if (!isAuthEndpoint && localStorage.getItem('auth_token')) {
-          console.log('[Auth] Token expired - auto logout');
+          console.log('[Auth] 401 auto-logout. URL:', url);
           localStorage.removeItem('auth_token');
           localStorage.removeItem('user');
           if (logoutRef.current) logoutRef.current();

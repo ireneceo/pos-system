@@ -11,6 +11,8 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
+import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
+import ConfirmModal from '../../components/ConfirmModal';
 import { useTabParam } from '../../hooks/useTabParam';
 import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint } from '../../utils/billPrint';
 import { getCurrencySymbol } from '../../utils/currency';
@@ -107,6 +109,24 @@ const CardTitle = styled.h3`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const AutoSaveStatus = styled.span<{ $status: 'idle' | 'saving' | 'saved' | 'error' }>`
+  font-size: 12px;
+  font-weight: 500;
+  transition: opacity 0.3s;
+  opacity: ${props => props.$status === 'idle' ? 0 : 1};
+  color: ${props => {
+    switch (props.$status) {
+      case 'saving': return '#8898AA';
+      case 'saved': return '#30B858';
+      case 'error': return '#DC2626';
+      default: return 'transparent';
+    }
+  }};
 `;
 
 const FormGroup = styled.div`
@@ -587,17 +607,57 @@ const SettingsPage: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
+  const autoSaveStatusText = autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : autoSaveStatus === 'error' ? 'Save failed' : '';
+
   const markChanged = () => {
     setHasChanges(true);
-    setAutoSaveStatus('saving');
+    setAutoSaveStatus('idle');
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
+      setAutoSaveStatus('saving');
       if (saveCallbackRef.current) saveCallbackRef.current();
     }, 2000);
   };
-  
+
+  // Operations tab AutoSave refs (toggles & list)
+  const breakTimesRef = useRef<AutoSaveHandle>(null);
+  const taxToggleRef = useRef<AutoSaveHandle>(null);
+  const serviceChargeToggleRef = useRef<AutoSaveHandle>(null);
+  const takeawayChargesToggleRef = useRef<AutoSaveHandle>(null);
+  const pagerSystemToggleRef = useRef<AutoSaveHandle>(null);
+  const enableTableNumbersToggleRef = useRef<AutoSaveHandle>(null);
+  const tableNumberRequiredToggleRef = useRef<AutoSaveHandle>(null);
+
+  // Mobile Order tab AutoSave refs (toggles & lists)
+  const mobileOrderDineInRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderTakeawayRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderPickupRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderDeliveryRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderQuickOrderRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderShowFeaturedRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderShowPopularRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderCategorySchedulesRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderDeliveryEnabledRef = useRef<AutoSaveHandle>(null);
+  const mobileOrderDeliveryZonesRef = useRef<AutoSaveHandle>(null);
+
+  // Payment / Printer / KitchenStations / Membership / Company tab AutoSave refs
+  // Payment tab: dynamic refs for each payment method's toggles/fields
+  const paymentRefsMap = useRef<Map<string, AutoSaveHandle>>(new Map());
+  // Printer tab: printer mode radio refs (per option)
+  const printerModeRefs = useRef<Map<string, AutoSaveHandle>>(new Map());
+  const billPrinterToggleRef = useRef<AutoSaveHandle>(null);
+  const billPrinterAutoPrintRef = useRef<AutoSaveHandle>(null);
+  const kitchenPrinterAutoPrintRef = useRef<AutoSaveHandle>(null);
+  const kitchenPrinterToggleRef = useRef<AutoSaveHandle>(null);
+  const printPerItemToggleRef = useRef<AutoSaveHandle>(null);
+  const receiptMembershipToggleRef = useRef<AutoSaveHandle>(null);
+  const membershipActiveToggleRef = useRef<AutoSaveHandle>(null);
+  const qrPositionRef = useRef<AutoSaveHandle>(null);
+  const kitchenAssignmentRefs = useRef<Map<string, AutoSaveHandle>>(new Map());
+  const [deleteStationConfirm, setDeleteStationConfirm] = useState<{ isOpen: boolean; stationId: number | null; stationName: string }>({ isOpen: false, stationId: null, stationName: '' });
+
   // Payment settings state - start with null, will be loaded from DB
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [paymentOrder, setPaymentOrder] = useState<string[]>([]);
@@ -618,6 +678,16 @@ const SettingsPage: React.FC = () => {
       address: ''
     },
     kitchenStationPrinters: {} as Record<string, { name: string; autoPrint: boolean; address?: string }>
+  });
+
+  // Receipt customization state
+  const [receiptSettings, setReceiptSettings] = useState({
+    receiptLogo: '' as string,
+    footerMessage: 'Thank you for dining with us!',
+    showMembership: false,
+    customQrImage: '' as string,
+    customQrText: '' as string,
+    customQrPosition: 'back' as 'front' | 'back'
   });
 
   // Printer mode state (rawbt, browser, or qztray)
@@ -1173,6 +1243,17 @@ const SettingsPage: React.FC = () => {
               },
               kitchenStationPrinters: dbSettings.kitchenStationPrinters || {}
             });
+            // Load receipt customization settings (migrate legacy showQrCode/showPointsInfo → showMembership)
+            if (dbSettings.receiptSettings) {
+              const rs = dbSettings.receiptSettings;
+              const migrated = { ...rs } as any;
+              if ('showQrCode' in rs || 'showPointsInfo' in rs) {
+                migrated.showMembership = rs.showQrCode !== false || rs.showPointsInfo !== false;
+                delete migrated.showQrCode;
+                delete migrated.showPointsInfo;
+              }
+              setReceiptSettings(prev => ({ ...prev, ...migrated }));
+            }
             // Also sync to localStorage for billPrint.js
             localStorage.setItem('printerMode', mode);
             localStorage.setItem('printerSettings', JSON.stringify({
@@ -1206,6 +1287,11 @@ const SettingsPage: React.FC = () => {
 
     loadPrinterSettings();
   }, [user?.restaurantId]);
+
+  // Track printer/receipt settings changes for auto-save (after initial load)
+  const printerInitializedRef = useRef(false);
+  // Printer settings changes are now handled by AutoSaveField refs (billPrinterToggleRef etc.)
+  // No useEffect-based markChanged needed for printer tab
 
   // Load kitchen stations
   const loadKitchenStations = async () => {
@@ -1354,7 +1440,6 @@ const SettingsPage: React.FC = () => {
       });
     }
     setTables(newTables);
-    markChanged();
   };
   
   const handleDownloadQR = (table: Table) => {
@@ -1539,18 +1624,16 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  const handlePaymentToggle = (methodKey: string, platform: 'pos' | 'mobile', enabled: boolean) => {
+  const handlePaymentToggle = (methodKey: string, platform: 'pos' | 'mobile', enabled: boolean, refKey?: string) => {
     setPaymentMethods((prev: any) => {
       const currentMethod = prev[methodKey];
       let newAvailableIn = [...(currentMethod.availableIn || [])];
 
       if (enabled) {
-        // Add platform if not already present
         if (!newAvailableIn.includes(platform)) {
           newAvailableIn.push(platform);
         }
       } else {
-        // Remove platform
         newAvailableIn = newAvailableIn.filter((p: string) => p !== platform);
       }
 
@@ -1559,11 +1642,11 @@ const SettingsPage: React.FC = () => {
         [methodKey]: {
           ...currentMethod,
           availableIn: newAvailableIn,
-          enabled: newAvailableIn.length > 0 // Enabled if at least one platform is selected
+          enabled: newAvailableIn.length > 0
         }
       };
     });
-    markChanged();
+    if (refKey) paymentRefsMap.current.get(refKey)?.triggerSave();
   };
 
   const handlePaymentSettingChange = (methodKey: string, field: string, value: any) => {
@@ -1571,7 +1654,6 @@ const SettingsPage: React.FC = () => {
       ...prev,
       [methodKey]: { ...prev[methodKey], [field]: value }
     }));
-    markChanged();
   };
 
   const handlePaymentConfigChange = (methodKey: string, configField: string, value: any) => {
@@ -1582,7 +1664,6 @@ const SettingsPage: React.FC = () => {
         config: { ...prev[methodKey].config, [configField]: value }
       }
     }));
-    markChanged();
   };
 
   // Payment method ordering functions
@@ -1598,7 +1679,6 @@ const SettingsPage: React.FC = () => {
       [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
       return newOrder;
     });
-    markChanged();
   };
 
   const handleSave = async () => {
@@ -1660,7 +1740,14 @@ const SettingsPage: React.FC = () => {
           currency: currencySettings.currency,
           cash_rounding: currencySettings.cashRounding,
           rounding_apply_to: currencySettings.roundingApplyTo,
-          kitchen_item_merge: { time_limit: itemMergeTimeLimit, max_count: itemMergeMaxCount }
+          kitchen_item_merge: { time_limit: itemMergeTimeLimit, max_count: itemMergeMaxCount },
+          printer_settings: {
+            printerMode: printerMode,
+            billPrinter: printerSettings.billPrinter,
+            kitchenPrinter: printerSettings.kitchenPrinter,
+            kitchenStationPrinters: printerSettings.kitchenStationPrinters,
+            receiptSettings: receiptSettings
+          }
         };
 
         console.log('📦 Request body (first 500 chars):', JSON.stringify(requestBody).substring(0, 500));
@@ -1749,6 +1836,11 @@ const SettingsPage: React.FC = () => {
         console.log('⚠️  No restaurantId found, skipping database save');
       }
 
+      // Sync printer settings to localStorage for billPrint.js
+      localStorage.setItem('printerMode', printerMode);
+      localStorage.setItem('printerSettings', JSON.stringify(printerSettings));
+      localStorage.setItem('receiptSettings', JSON.stringify(receiptSettings));
+
       // 성공 시 알림 없이 처리 (UI 디자인 가이드 준수)
       setHasChanges(false);
       setSaveStatus(null);
@@ -1804,8 +1896,10 @@ const SettingsPage: React.FC = () => {
         await handleSave();
       }
       setAutoSaveStatus('saved');
+      setTimeout(() => setAutoSaveStatus('idle'), 3000);
     } catch (e) {
-      setAutoSaveStatus('idle');
+      setAutoSaveStatus('error');
+      setTimeout(() => setAutoSaveStatus('idle'), 5000);
     }
   };
 
@@ -1859,7 +1953,7 @@ const SettingsPage: React.FC = () => {
             )}
           </TabContainer>
 
-          {activeTab !== 'managers' && (
+          {(activeTab === 'brands' || activeTab === 'billing') && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-24px 0 8px' }}>
               <SaveButton
                 onClick={async () => {
@@ -1867,7 +1961,7 @@ const SettingsPage: React.FC = () => {
                   setAutoSaveStatus('saving');
                   if (saveCallbackRef.current) await saveCallbackRef.current();
                 }}
-                disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
+                disabled={!hasChanges || autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
               >
                 {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
               </SaveButton>
@@ -1875,6 +1969,7 @@ const SettingsPage: React.FC = () => {
           )}
 
           {activeTab === 'payment' && (
+            <>
             <SettingsCard>
               <CardTitle>Payment Methods</CardTitle>
               <p style={{ color: '#6B7C93', marginBottom: '24px', fontSize: '14px' }}>
@@ -1901,17 +1996,19 @@ const SettingsPage: React.FC = () => {
                       gap: '8px'
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <OrderControls
-                          onMoveUp={() => movePaymentMethod(key, 'up')}
-                          onMoveDown={() => movePaymentMethod(key, 'down')}
-                          disableUp={index === 0}
-                          disableDown={index === paymentOrder.length - 1}
-                        />
+                        <AutoSaveField ref={(h: AutoSaveHandle | null) => { if (h) paymentRefsMap.current.set(`${key}-order`, h); }} onSave={handleSave} type="list">
+                          <OrderControls
+                            onMoveUp={() => { movePaymentMethod(key, 'up'); paymentRefsMap.current.get(`${key}-order`)?.triggerSave(); }}
+                            onMoveDown={() => { movePaymentMethod(key, 'down'); paymentRefsMap.current.get(`${key}-order`)?.triggerSave(); }}
+                            disableUp={index === 0}
+                            disableDown={index === paymentOrder.length - 1}
+                          />
+                        </AutoSaveField>
                         <ToggleLabel>{method.label}</ToggleLabel>
                       </div>
 
                       <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                        {/* POS Terminal Toggle - only for methods that can be used in POS */}
+                        {/* POS Terminal Toggle */}
                         {!['counter', 'online'].includes(key) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{
@@ -1922,18 +2019,20 @@ const SettingsPage: React.FC = () => {
                           }}>
                             POS
                           </span>
+                          <AutoSaveField ref={(h: AutoSaveHandle | null) => { if (h) paymentRefsMap.current.set(`${key}-pos`, h); }} onSave={handleSave} type="toggle">
                           <ToggleSwitch>
                             <ToggleInput
                               type="checkbox"
                               checked={method.availableIn?.includes('pos') || false}
-                              onChange={(e) => handlePaymentToggle(key, 'pos', e.target.checked)}
+                              onChange={(e) => handlePaymentToggle(key, 'pos', e.target.checked, `${key}-pos`)}
                             />
                             <ToggleSlider />
                           </ToggleSwitch>
+                          </AutoSaveField>
                         </div>
                         )}
 
-                        {/* Mobile Orders Toggle - only for methods that can be used in Mobile */}
+                        {/* Mobile Orders Toggle */}
                         {!['cash', 'card', 'staffMeal'].includes(key) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span style={{
@@ -1944,14 +2043,16 @@ const SettingsPage: React.FC = () => {
                           }}>
                             Mobile
                           </span>
+                          <AutoSaveField ref={(h: AutoSaveHandle | null) => { if (h) paymentRefsMap.current.set(`${key}-mobile`, h); }} onSave={handleSave} type="toggle">
                           <ToggleSwitch>
                             <ToggleInput
                               type="checkbox"
                               checked={method.availableIn?.includes('mobile') || false}
-                              onChange={(e) => handlePaymentToggle(key, 'mobile', e.target.checked)}
+                              onChange={(e) => handlePaymentToggle(key, 'mobile', e.target.checked, `${key}-mobile`)}
                             />
                             <ToggleSlider />
                           </ToggleSwitch>
+                          </AutoSaveField>
                         </div>
                         )}
                       </div>
@@ -1963,15 +2064,17 @@ const SettingsPage: React.FC = () => {
                   {/* E-Wallet Settings - QR Code Image */}
                   {key === 'ewallet' && method.enabled && (
                     <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
-                      <ImageUploadDropzone
-                        value={method.qrImage || ''}
-                        onChange={(base64) => handlePaymentSettingChange(key, 'qrImage', base64)}
-                        label="E-Wallet QR Code"
-                        helpText="Upload your e-wallet QR code image for customers to scan and make payment (TNG, GrabPay, Boost, etc.)"
-                        changeButtonText="Change QR Code"
-                        removeButtonText="Remove QR Code"
-                        imageAltText="E-Wallet QR Code"
-                      />
+                      <AutoSaveField onSave={handleSave} type="image">
+                        <ImageUploadDropzone
+                          value={method.qrImage || ''}
+                          onChange={(base64) => handlePaymentSettingChange(key, 'qrImage', base64)}
+                          label="E-Wallet QR Code"
+                          helpText="Upload your e-wallet QR code image for customers to scan and make payment (TNG, GrabPay, Boost, etc.)"
+                          changeButtonText="Change QR Code"
+                          removeButtonText="Remove QR Code"
+                          imageAltText="E-Wallet QR Code"
+                        />
+                      </AutoSaveField>
                     </div>
                   )}
 
@@ -1980,30 +2083,27 @@ const SettingsPage: React.FC = () => {
                     <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
                       <FormGroup>
                         <Label>Bank Name</Label>
-                        <Input
-                          type="text"
-                          placeholder="e.g., Maybank, CIMB, Public Bank"
-                          value={method.bankName || ''}
-                          onChange={(e) => handlePaymentSettingChange(key, 'bankName', e.target.value)}
-                        />
+                        <AutoSaveField onSave={handleSave}>
+                          <Input type="text" placeholder="e.g., Maybank, CIMB, Public Bank"
+                            value={method.bankName || ''}
+                            onChange={(e) => handlePaymentSettingChange(key, 'bankName', e.target.value)} />
+                        </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
                         <Label>Account Number</Label>
-                        <Input
-                          type="text"
-                          placeholder="Enter Bank Account Number"
-                          value={method.accountNumber || ''}
-                          onChange={(e) => handlePaymentSettingChange(key, 'accountNumber', e.target.value)}
-                        />
+                        <AutoSaveField onSave={handleSave}>
+                          <Input type="text" placeholder="Enter Bank Account Number"
+                            value={method.accountNumber || ''}
+                            onChange={(e) => handlePaymentSettingChange(key, 'accountNumber', e.target.value)} />
+                        </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
                         <Label>Account Name</Label>
-                        <Input
-                          type="text"
-                          placeholder="Enter Account Holder Name"
-                          value={method.accountName || ''}
-                          onChange={(e) => handlePaymentSettingChange(key, 'accountName', e.target.value)}
-                        />
+                        <AutoSaveField onSave={handleSave}>
+                          <Input type="text" placeholder="Enter Account Holder Name"
+                            value={method.accountName || ''}
+                            onChange={(e) => handlePaymentSettingChange(key, 'accountName', e.target.value)} />
+                        </AutoSaveField>
                       </FormGroup>
                     </div>
                   )}
@@ -2023,35 +2123,33 @@ const SettingsPage: React.FC = () => {
                     <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
                       <FormGroup>
                         <Label>Payment Provider</Label>
-                        <Select
-                          value={method.provider || 'stripe'}
-                          onChange={(e) => handlePaymentSettingChange(key, 'provider', e.target.value)}
-                        >
-                          <option value="stripe">Stripe</option>
-                          <option value="paypal">PayPal</option>
-                          <option value="both">Both Stripe & PayPal</option>
-                        </Select>
+                        <AutoSaveField onSave={handleSave} type="select">
+                          <Select value={method.provider || 'stripe'}
+                            onChange={(e) => handlePaymentSettingChange(key, 'provider', e.target.value)}>
+                            <option value="stripe">Stripe</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="both">Both Stripe & PayPal</option>
+                          </Select>
+                        </AutoSaveField>
                       </FormGroup>
 
                       {(method.provider === 'stripe' || method.provider === 'both') && (
                         <>
                           <FormGroup>
                             <Label>Stripe Public Key</Label>
-                            <Input
-                              type="text"
-                              placeholder="pk_live_..."
-                              value={method.config?.stripePublicKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'stripePublicKey', e.target.value)}
-                            />
+                            <AutoSaveField onSave={handleSave}>
+                              <Input type="text" placeholder="pk_live_..."
+                                value={method.config?.stripePublicKey || ''}
+                                onChange={(e) => handlePaymentConfigChange(key, 'stripePublicKey', e.target.value)} />
+                            </AutoSaveField>
                           </FormGroup>
                           <FormGroup>
                             <Label>Stripe Secret Key</Label>
-                            <Input
-                              type="password"
-                              placeholder="sk_live_..."
-                              value={method.config?.stripeSecretKey || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'stripeSecretKey', e.target.value)}
-                            />
+                            <AutoSaveField onSave={handleSave}>
+                              <Input type="password" placeholder="sk_live_..."
+                                value={method.config?.stripeSecretKey || ''}
+                                onChange={(e) => handlePaymentConfigChange(key, 'stripeSecretKey', e.target.value)} />
+                            </AutoSaveField>
                           </FormGroup>
                         </>
                       )}
@@ -2060,21 +2158,19 @@ const SettingsPage: React.FC = () => {
                         <>
                           <FormGroup>
                             <Label>PayPal Client ID</Label>
-                            <Input
-                              type="text"
-                              placeholder="Enter PayPal Client ID"
-                              value={method.config?.paypalClientId || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'paypalClientId', e.target.value)}
-                            />
+                            <AutoSaveField onSave={handleSave}>
+                              <Input type="text" placeholder="Enter PayPal Client ID"
+                                value={method.config?.paypalClientId || ''}
+                                onChange={(e) => handlePaymentConfigChange(key, 'paypalClientId', e.target.value)} />
+                            </AutoSaveField>
                           </FormGroup>
                           <FormGroup>
                             <Label>PayPal Client Secret</Label>
-                            <Input
-                              type="password"
-                              placeholder="Enter PayPal Client Secret"
-                              value={method.config?.paypalClientSecret || ''}
-                              onChange={(e) => handlePaymentConfigChange(key, 'paypalClientSecret', e.target.value)}
-                            />
+                            <AutoSaveField onSave={handleSave}>
+                              <Input type="password" placeholder="Enter PayPal Client Secret"
+                                value={method.config?.paypalClientSecret || ''}
+                                onChange={(e) => handlePaymentConfigChange(key, 'paypalClientSecret', e.target.value)} />
+                            </AutoSaveField>
                           </FormGroup>
                         </>
                       )}
@@ -2086,21 +2182,8 @@ const SettingsPage: React.FC = () => {
                 );
               })}
 
-              {paymentMethods && (
-              <SaveButtonContainer>
-                <SaveButton
-                  onClick={async () => {
-                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                    setAutoSaveStatus('saving');
-                    if (saveCallbackRef.current) await saveCallbackRef.current();
-                  }}
-                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-                >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-                </SaveButton>
-              </SaveButtonContainer>
-              )}
             </SettingsCard>
+            </>
           )}
 
           {activeTab === 'company' && (
@@ -2110,131 +2193,109 @@ const SettingsPage: React.FC = () => {
                 <CardTitle>Company Information</CardTitle>
                 <FormGroup>
                   <Label>Company Name</Label>
+                  <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
                     value={companySettings.name}
-                    onChange={(e) => {
-                      setCompanySettings(prev => ({ ...prev, name: e.target.value }));
-                      markChanged();
-                    }}
+                    onChange={(e) => setCompanySettings(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Food Court Management Corp"
                   />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Business Registration</Label>
+                  <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
                     value={companySettings.businessRegistration}
-                    onChange={(e) => {
-                      setCompanySettings(prev => ({ ...prev, businessRegistration: e.target.value }));
-                      markChanged();
-                    }}
+                    onChange={(e) => setCompanySettings(prev => ({ ...prev, businessRegistration: e.target.value }))}
                     placeholder="202301234567"
                   />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Tax ID</Label>
+                  <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
                     value={companySettings.taxId}
-                    onChange={(e) => {
-                      setCompanySettings(prev => ({ ...prev, taxId: e.target.value }));
-                      markChanged();
-                    }}
+                    onChange={(e) => setCompanySettings(prev => ({ ...prev, taxId: e.target.value }))}
                     placeholder="90-1234567"
                   />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Industry</Label>
+                  <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
                     value={companySettings.industry}
-                    onChange={(e) => {
-                      setCompanySettings(prev => ({ ...prev, industry: e.target.value }));
-                      markChanged();
-                    }}
+                    onChange={(e) => setCompanySettings(prev => ({ ...prev, industry: e.target.value }))}
                     placeholder="Food Service Management"
                   />
+                  </AutoSaveField>
                 </FormGroup>
 
+                <AutoSaveField onSave={handleSave} type="image">
                 <ImageUploadDropzone
                   value={companySettings.logo}
-                  onChange={(base64) => {
-                    setCompanySettings(prev => ({ ...prev, logo: base64 }));
-                    markChanged();
-                  }}
+                  onChange={(base64) => setCompanySettings(prev => ({ ...prev, logo: base64 }))}
                   label="Company Logo"
                   helpText="Upload your company logo for branding and official documents"
                   changeButtonText="Change Logo"
                   removeButtonText="Remove Logo"
                   imageAltText="Company Logo"
                 />
+                </AutoSaveField>
               </SettingsCard>
               <SettingsCard>
                 <CardTitle>Contact Information</CardTitle>
                 <FormGroup>
                   <Label>Phone Number</Label>
+                  <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
                     value={companySettings.phone}
-                    onChange={(e) => {
-                      setCompanySettings(prev => ({ ...prev, phone: e.target.value }));
-                      markChanged();
-                    }}
+                    onChange={(e) => setCompanySettings(prev => ({ ...prev, phone: e.target.value }))}
                     placeholder="+60 3-2123-4567"
                   />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Email Address</Label>
+                  <AutoSaveField onSave={handleSave}>
                   <Input
                     type="email"
                     value={companySettings.email}
-                    onChange={(e) => {
-                      setCompanySettings(prev => ({ ...prev, email: e.target.value }));
-                      markChanged();
-                    }}
+                    onChange={(e) => setCompanySettings(prev => ({ ...prev, email: e.target.value }))}
                     placeholder="admin@foodcourtmanagement.com"
                   />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Website</Label>
+                  <AutoSaveField onSave={handleSave}>
                   <Input
                     type="url"
                     value={companySettings.website}
-                    onChange={(e) => {
-                      setCompanySettings(prev => ({ ...prev, website: e.target.value }));
-                      markChanged();
-                    }}
+                    onChange={(e) => setCompanySettings(prev => ({ ...prev, website: e.target.value }))}
                     placeholder="www.foodcourtmanagement.com"
                   />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Address</Label>
+                  <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
                     value={companySettings.address}
-                    onChange={(e) => {
-                      setCompanySettings(prev => ({ ...prev, address: e.target.value }));
-                      markChanged();
-                    }}
+                    onChange={(e) => setCompanySettings(prev => ({ ...prev, address: e.target.value }))}
                     placeholder="123 Business District"
                   />
+                  </AutoSaveField>
                 </FormGroup>
               </SettingsCard>
               </SettingsGrid>
-
-              <SaveButtonContainer>
-                <SaveButton
-                  onClick={async () => {
-                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                    setAutoSaveStatus('saving');
-                    if (saveCallbackRef.current) await saveCallbackRef.current();
-                  }}
-                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-                >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-                </SaveButton>
-              </SaveButtonContainer>
             </>
           )}
           {activeTab === 'brands' && (
@@ -2455,7 +2516,7 @@ const SettingsPage: React.FC = () => {
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
+                  disabled={!hasChanges || autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
                   {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
@@ -2524,7 +2585,7 @@ const SettingsPage: React.FC = () => {
                     setAutoSaveStatus('saving');
                     if (saveCallbackRef.current) await saveCallbackRef.current();
                   }}
-                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
+                  disabled={!hasChanges || autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
                 >
                   {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
                 </SaveButton>
@@ -2538,149 +2599,103 @@ const SettingsPage: React.FC = () => {
                   <CardTitle>Basic Information</CardTitle>
                 <FormGroup>
                   <Label>Store Name</Label>
-                  <Input 
-                    type="text" 
-                    value={storeSettings.name}
-                    onChange={(e) => {
-                      setStoreSettings(prev => ({ ...prev, name: e.target.value }));
-                      markChanged();
-                    }}
-                    placeholder="FOODCOURT CENTRAL" 
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input type="text" value={storeSettings.name}
+                      onChange={(e) => setStoreSettings(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="FOODCOURT CENTRAL" />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Business Registration</Label>
-                  <Input 
-                    type="text" 
-                    value={storeSettings.businessRegistration}
-                    onChange={(e) => {
-                      setStoreSettings(prev => ({ ...prev, businessRegistration: e.target.value }));
-                      markChanged();
-                    }}
-                    placeholder="123456789" 
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input type="text" value={storeSettings.businessRegistration}
+                      onChange={(e) => setStoreSettings(prev => ({ ...prev, businessRegistration: e.target.value }))}
+                      placeholder="123456789" />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Tax No</Label>
-                  <Input
-                    type="text"
-                    value={storeSettings.gstRegNo}
-                    onChange={(e) => {
-                      setStoreSettings(prev => ({ ...prev, gstRegNo: e.target.value }));
-                      markChanged();
-                    }}
-                    placeholder="Enter tax registration number (optional)"
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input type="text" value={storeSettings.gstRegNo}
+                      onChange={(e) => setStoreSettings(prev => ({ ...prev, gstRegNo: e.target.value }))}
+                      placeholder="Enter tax registration number (optional)" />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Phone Number</Label>
-                  <PhoneInput
-                    value={storeSettings.phone}
-                    onChange={(value) => {
-                      setStoreSettings(prev => ({ ...prev, phone: value }));
-                      markChanged();
-                    }}
-                    defaultCountry={storeSettings.country}
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <PhoneInput value={storeSettings.phone}
+                      onChange={(value) => setStoreSettings(prev => ({ ...prev, phone: value }))}
+                      defaultCountry={storeSettings.country} />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={storeSettings.email}
-                    onChange={(e) => {
-                      setStoreSettings(prev => ({ ...prev, email: e.target.value }));
-                      markChanged();
-                    }}
-                    placeholder="contact@foodcourt.com"
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input type="email" value={storeSettings.email}
+                      onChange={(e) => setStoreSettings(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="contact@foodcourt.com" />
+                  </AutoSaveField>
                 </FormGroup>
 
-                <ImageUploadDropzone
-                  value={storeSettings.logo}
-                  onChange={(base64) => {
-                    setStoreSettings(prev => ({ ...prev, logo: base64 }));
-                    markChanged();
-                  }}
-                  label="Brand Logo"
-                  helpText="Upload your restaurant's brand logo for use in mobile orders and customer displays"
-                  changeButtonText="Change Logo"
-                  removeButtonText="Remove Logo"
-                  imageAltText="Brand Logo"
-                />
+                <AutoSaveField onSave={handleSave} type="image">
+                  <ImageUploadDropzone value={storeSettings.logo}
+                    onChange={(base64) => setStoreSettings(prev => ({ ...prev, logo: base64 }))}
+                    label="Brand Logo"
+                    helpText="Upload your restaurant's brand logo for use in mobile orders and customer displays"
+                    changeButtonText="Change Logo" removeButtonText="Remove Logo" imageAltText="Brand Logo" />
+                </AutoSaveField>
               </SettingsCard>
 
               <SettingsCard>
                 <CardTitle>Location</CardTitle>
                 <FormGroup>
                   <Label>Address</Label>
-                  <Input 
-                    type="text" 
-                    value={storeSettings.address}
-                    onChange={(e) => {
-                      setStoreSettings(prev => ({ ...prev, address: e.target.value }));
-                      markChanged();
-                    }}
-                    placeholder="123 Main Street, City Center" 
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input type="text" value={storeSettings.address}
+                      onChange={(e) => setStoreSettings(prev => ({ ...prev, address: e.target.value }))}
+                      placeholder="123 Main Street, City Center" />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>City</Label>
-                  <Input 
-                    type="text" 
-                    value={storeSettings.city}
-                    onChange={(e) => {
-                      setStoreSettings(prev => ({ ...prev, city: e.target.value }));
-                      markChanged();
-                    }}
-                    placeholder="Kuala Lumpur" 
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input type="text" value={storeSettings.city}
+                      onChange={(e) => setStoreSettings(prev => ({ ...prev, city: e.target.value }))}
+                      placeholder="Kuala Lumpur" />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>State</Label>
-                  <Input 
-                    type="text" 
-                    value={storeSettings.state}
-                    onChange={(e) => {
-                      setStoreSettings(prev => ({ ...prev, state: e.target.value }));
-                      markChanged();
-                    }}
-                    placeholder="Wilayah Persekutuan" 
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input type="text" value={storeSettings.state}
+                      onChange={(e) => setStoreSettings(prev => ({ ...prev, state: e.target.value }))}
+                      placeholder="Wilayah Persekutuan" />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Postal Code</Label>
-                  <Input
-                    type="text"
-                    value={storeSettings.postalCode}
-                    onChange={(e) => {
-                      setStoreSettings(prev => ({ ...prev, postalCode: e.target.value }));
-                      markChanged();
-                    }}
-                    placeholder="50000"
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input type="text" value={storeSettings.postalCode}
+                      onChange={(e) => setStoreSettings(prev => ({ ...prev, postalCode: e.target.value }))}
+                      placeholder="50000" />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Country</Label>
-                  <Select
-                    value={storeSettings.country}
-                    onChange={(e) => {
-                      const newCountry = e.target.value;
-                      setStoreSettings(prev => ({ ...prev, country: newCountry }));
-                      // 국가 변경 시 타임존도 자동 업데이트
-                      const countryInfo = COUNTRIES.find(c => c.code === newCountry);
-                      if (countryInfo) {
-                        setOperationSettings(prev => ({ ...prev, timeZone: countryInfo.timezone }));
-                      }
-                      markChanged();
-                    }}
-                  >
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <AutoSaveField onSave={handleSave} type="select">
+                    <Select value={storeSettings.country}
+                      onChange={(e) => {
+                        const newCountry = e.target.value;
+                        setStoreSettings(prev => ({ ...prev, country: newCountry }));
+                        const countryInfo = COUNTRIES.find(c => c.code === newCountry);
+                        if (countryInfo) setOperationSettings(prev => ({ ...prev, timeZone: countryInfo.timezone }));
+                      }}>
+                      {COUNTRIES.map(country => (
+                        <option key={country.code} value={country.code}>{country.name}</option>
+                      ))}
+                    </Select>
+                  </AutoSaveField>
                 </FormGroup>
               </SettingsCard>
               </SettingsGrid>
@@ -2704,18 +2719,6 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
               )}
 
-              <SaveButtonContainer>
-                <SaveButton
-                  onClick={async () => {
-                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                    setAutoSaveStatus('saving');
-                    if (saveCallbackRef.current) await saveCallbackRef.current();
-                  }}
-                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-                >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-                </SaveButton>
-              </SaveButtonContainer>
             </>
           )}
 
@@ -2726,39 +2729,42 @@ const SettingsPage: React.FC = () => {
                 <CardTitle>Operating Hours</CardTitle>
                 <FormGroup>
                   <Label>Opening Time</Label>
-                  <Input 
-                    type="time" 
-                    value={operationSettings.openingTime}
-                    onChange={(e) => {
-                      setOperationSettings(prev => ({ ...prev, openingTime: e.target.value }));
-                      markChanged();
-                    }}
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input
+                      type="time"
+                      value={operationSettings.openingTime}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({ ...prev, openingTime: e.target.value }));
+                      }}
+                    />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Closing Time</Label>
-                  <Input 
-                    type="time" 
-                    value={operationSettings.closingTime}
-                    onChange={(e) => {
-                      setOperationSettings(prev => ({ ...prev, closingTime: e.target.value }));
-                      markChanged();
-                    }}
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input
+                      type="time"
+                      value={operationSettings.closingTime}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({ ...prev, closingTime: e.target.value }));
+                      }}
+                    />
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Time Zone</Label>
-                  <Select 
-                    value={operationSettings.timeZone}
-                    onChange={(e) => {
-                      setOperationSettings(prev => ({ ...prev, timeZone: e.target.value }));
-                      markChanged();
-                    }}
-                  >
-                    <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (GMT+8)</option>
-                    <option value="Asia/Singapore">Asia/Singapore (GMT+8)</option>
-                    <option value="Asia/Jakarta">Asia/Jakarta (GMT+7)</option>
-                  </Select>
+                  <AutoSaveField onSave={handleSave} type="select">
+                    <Select
+                      value={operationSettings.timeZone}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({ ...prev, timeZone: e.target.value }));
+                      }}
+                    >
+                      <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur (GMT+8)</option>
+                      <option value="Asia/Singapore">Asia/Singapore (GMT+8)</option>
+                      <option value="Asia/Jakarta">Asia/Jakarta (GMT+7)</option>
+                    </Select>
+                  </AutoSaveField>
                 </FormGroup>
               </SettingsCard>
 
@@ -2767,118 +2773,122 @@ const SettingsPage: React.FC = () => {
                 <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                   Set break times when orders cannot be picked up
                 </p>
-                {(operationSettings.breakTimes || []).map((breakTime, index) => (
-                  <div key={breakTime.id} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    marginBottom: '12px',
-                    padding: '12px',
-                    background: '#F8FAFC',
-                    borderRadius: '8px'
-                  }}>
-                    <Input
-                      type="time"
-                      value={breakTime.start}
-                      onChange={(e) => {
-                        const newBreakTimes = [...operationSettings.breakTimes];
-                        newBreakTimes[index] = { ...newBreakTimes[index], start: e.target.value };
-                        setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
-                        markChanged();
-                      }}
-                      style={{ flex: 1 }}
-                    />
-                    <span style={{ color: '#6B7C93' }}>to</span>
-                    <Input
-                      type="time"
-                      value={breakTime.end}
-                      onChange={(e) => {
-                        const newBreakTimes = [...operationSettings.breakTimes];
-                        newBreakTimes[index] = { ...newBreakTimes[index], end: e.target.value };
-                        setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
-                        markChanged();
-                      }}
-                      style={{ flex: 1 }}
-                    />
-                    <button
-                      onClick={() => {
-                        const newBreakTimes = operationSettings.breakTimes.filter((_, i) => i !== index);
-                        setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
-                        markChanged();
-                      }}
-                      style={{
-                        padding: '8px 12px',
-                        background: '#FEE2E2',
-                        color: '#DC2626',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() => {
-                    const newBreakTime: BreakTime = {
-                      id: Date.now().toString(),
-                      start: '14:00',
-                      end: '15:00'
-                    };
-                    setOperationSettings(prev => ({
-                      ...prev,
-                      breakTimes: [...(prev.breakTimes || []), newBreakTime]
-                    }));
-                    markChanged();
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 16px',
-                    background: 'white',
-                    color: '#635BFF',
-                    border: '1px dashed #635BFF',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    width: '100%',
-                    justifyContent: 'center'
-                  }}
-                >
-                  Add Break Time
-                </button>
+                <AutoSaveField ref={breakTimesRef} onSave={handleSave} type="list">
+                  {(operationSettings.breakTimes || []).map((breakTime, index) => (
+                    <div key={breakTime.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '12px',
+                      padding: '12px',
+                      background: '#F8FAFC',
+                      borderRadius: '8px'
+                    }}>
+                      <Input
+                        type="time"
+                        value={breakTime.start}
+                        onChange={(e) => {
+                          const newBreakTimes = [...operationSettings.breakTimes];
+                          newBreakTimes[index] = { ...newBreakTimes[index], start: e.target.value };
+                          setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
+                          breakTimesRef.current?.triggerSave();
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{ color: '#6B7C93' }}>to</span>
+                      <Input
+                        type="time"
+                        value={breakTime.end}
+                        onChange={(e) => {
+                          const newBreakTimes = [...operationSettings.breakTimes];
+                          newBreakTimes[index] = { ...newBreakTimes[index], end: e.target.value };
+                          setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
+                          breakTimesRef.current?.triggerSave();
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        onClick={() => {
+                          const newBreakTimes = operationSettings.breakTimes.filter((_, i) => i !== index);
+                          setOperationSettings(prev => ({ ...prev, breakTimes: newBreakTimes }));
+                          breakTimesRef.current?.triggerSave();
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          background: '#FEE2E2',
+                          color: '#DC2626',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => {
+                      const newBreakTime: BreakTime = {
+                        id: Date.now().toString(),
+                        start: '14:00',
+                        end: '15:00'
+                      };
+                      setOperationSettings(prev => ({
+                        ...prev,
+                        breakTimes: [...(prev.breakTimes || []), newBreakTime]
+                      }));
+                      breakTimesRef.current?.triggerSave();
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 16px',
+                      background: 'white',
+                      color: '#635BFF',
+                      border: '1px dashed #635BFF',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      width: '100%',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    Add Break Time
+                  </button>
+                </AutoSaveField>
               </SettingsCard>
 
               <SettingsCard>
                 <CardTitle>Order Settings</CardTitle>
                 <FormGroup>
                   <Label>Order Number Reset</Label>
-                  <Select 
-                    value={operationSettings.orderNumberReset}
-                    onChange={(e) => {
-                      setOperationSettings(prev => ({ ...prev, orderNumberReset: e.target.value as any }));
-                      markChanged();
-                    }}
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="never">Never</option>
-                  </Select>
+                  <AutoSaveField onSave={handleSave} type="select">
+                    <Select
+                      value={operationSettings.orderNumberReset}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({ ...prev, orderNumberReset: e.target.value as any }));
+                      }}
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="never">Never</option>
+                    </Select>
+                  </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
                   <Label>Default Preparation Time</Label>
-                  <FeeInput 
-                    type="number" 
-                    value={operationSettings.defaultPreparationTime}
-                    onChange={(e) => {
-                      setOperationSettings(prev => ({ ...prev, defaultPreparationTime: Number(e.target.value) }));
-                      markChanged();
-                    }}
-                  />
+                  <AutoSaveField onSave={handleSave}>
+                    <FeeInput
+                      type="number"
+                      value={operationSettings.defaultPreparationTime}
+                      onChange={(e) => {
+                        setOperationSettings(prev => ({ ...prev, defaultPreparationTime: Number(e.target.value) }));
+                      }}
+                    />
+                  </AutoSaveField>
                   <span style={{ color: '#6B7C93', fontSize: '14px' }}>minutes</span>
                 </FormGroup>
               </SettingsCard>
@@ -2889,37 +2899,40 @@ const SettingsPage: React.FC = () => {
                   Configure tax and service charge applied to orders
                 </p>
                 <Toggle>
-                  <ToggleLabel>Tax</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings.taxEnabled}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          taxEnabled: e.target.checked
-                        }));
-                        markChanged();
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
+                    <ToggleLabel>Tax</ToggleLabel>
+                    <AutoSaveField ref={taxToggleRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={operationSettings.taxEnabled}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({
+                            ...prev,
+                            taxEnabled: e.target.checked
+                          }));
+                          taxToggleRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
 
                 {operationSettings.taxEnabled && (
                   <FormGroup style={{ marginLeft: '16px', marginTop: '8px' }}>
                     <Label>Tax Rate (%)</Label>
-                    <FeeInput
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={operationSettings.taxRate}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({ ...prev, taxRate: Number(e.target.value) }));
-                        markChanged();
-                      }}
-                    />
+                    <AutoSaveField onSave={handleSave}>
+                      <FeeInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={operationSettings.taxRate}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({ ...prev, taxRate: Number(e.target.value) }));
+                        }}
+                      />
+                    </AutoSaveField>
                     <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
                   </FormGroup>
                 )}
@@ -2927,37 +2940,40 @@ const SettingsPage: React.FC = () => {
                 <Divider />
 
                 <Toggle>
-                  <ToggleLabel>Service Charge</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings.serviceChargeEnabled}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          serviceChargeEnabled: e.target.checked
-                        }));
-                        markChanged();
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
+                    <ToggleLabel>Service Charge</ToggleLabel>
+                    <AutoSaveField ref={serviceChargeToggleRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={operationSettings.serviceChargeEnabled}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({
+                            ...prev,
+                            serviceChargeEnabled: e.target.checked
+                          }));
+                          serviceChargeToggleRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
 
                 {operationSettings.serviceChargeEnabled && (
                   <FormGroup style={{ marginLeft: '16px', marginTop: '8px' }}>
                     <Label>Service Charge Rate (%)</Label>
-                    <FeeInput
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={operationSettings.serviceChargeRate}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({ ...prev, serviceChargeRate: Number(e.target.value) }));
-                        markChanged();
-                      }}
-                    />
+                    <AutoSaveField onSave={handleSave}>
+                      <FeeInput
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={operationSettings.serviceChargeRate}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({ ...prev, serviceChargeRate: Number(e.target.value) }));
+                        }}
+                      />
+                    </AutoSaveField>
                     <span style={{ color: '#6B7C93', fontSize: '14px' }}>%</span>
                   </FormGroup>
                 )}
@@ -2971,13 +2987,13 @@ const SettingsPage: React.FC = () => {
 
                 <FormGroup>
                   <Label>Currency</Label>
-                  <Select
-                    value={currencySettings.currency}
-                    onChange={(e) => {
-                      setCurrencySettings(prev => ({ ...prev, currency: e.target.value }));
-                      markChanged();
-                    }}
-                  >
+                  <AutoSaveField onSave={handleSave} type="select">
+                    <Select
+                      value={currencySettings.currency}
+                      onChange={(e) => {
+                        setCurrencySettings(prev => ({ ...prev, currency: e.target.value }));
+                      }}
+                    >
                     {(() => {
                       const allCurrencies: Record<string, string> = {
                         'MYR': 'Malaysian Ringgit (RM)',
@@ -3013,41 +3029,44 @@ const SettingsPage: React.FC = () => {
                         );
                       });
                     })()}
-                  </Select>
+                    </Select>
+                  </AutoSaveField>
                 </FormGroup>
 
                 <FormGroup>
                   <Label>Cash Rounding</Label>
-                  <Select
-                    value={currencySettings.cashRounding !== null ? currencySettings.cashRounding.toFixed(2) : ''}
-                    onChange={(e) => {
-                      const value = e.target.value ? parseFloat(e.target.value) : null;
-                      setCurrencySettings(prev => ({ ...prev, cashRounding: value }));
-                      markChanged();
-                    }}
-                  >
-                    <option value="">Disabled (No Rounding)</option>
-                    <option value="0.05">0.05 (5 sen/cent)</option>
-                    <option value="0.10">0.10 (10 sen/cent)</option>
-                    <option value="0.50">0.50 (50 sen/cent)</option>
-                    <option value="1.00">1.00 (1 dollar/ringgit)</option>
-                  </Select>
+                  <AutoSaveField onSave={handleSave} type="select">
+                    <Select
+                      value={currencySettings.cashRounding !== null ? currencySettings.cashRounding.toFixed(2) : ''}
+                      onChange={(e) => {
+                        const value = e.target.value ? parseFloat(e.target.value) : null;
+                        setCurrencySettings(prev => ({ ...prev, cashRounding: value }));
+                      }}
+                    >
+                      <option value="">Disabled (No Rounding)</option>
+                      <option value="0.05">0.05 (5 sen/cent)</option>
+                      <option value="0.10">0.10 (10 sen/cent)</option>
+                      <option value="0.50">0.50 (50 sen/cent)</option>
+                      <option value="1.00">1.00 (1 dollar/ringgit)</option>
+                    </Select>
+                  </AutoSaveField>
                   <HelpText>Round total amount to nearest value (e.g., RM 12.52 → RM 12.50 with 0.05 rounding)</HelpText>
                 </FormGroup>
 
                 <FormGroup>
                   <Label>Apply Rounding To</Label>
-                  <Select
-                    value={currencySettings.roundingApplyTo}
-                    onChange={(e) => {
-                      setCurrencySettings(prev => ({ ...prev, roundingApplyTo: e.target.value as 'cash_only' | 'all' }));
-                      markChanged();
-                    }}
-                    disabled={!currencySettings.cashRounding}
-                  >
-                    <option value="cash_only">Cash Payments Only</option>
-                    <option value="all">All Payments</option>
-                  </Select>
+                  <AutoSaveField onSave={handleSave} type="select">
+                    <Select
+                      value={currencySettings.roundingApplyTo}
+                      onChange={(e) => {
+                        setCurrencySettings(prev => ({ ...prev, roundingApplyTo: e.target.value as 'cash_only' | 'all' }));
+                      }}
+                      disabled={!currencySettings.cashRounding}
+                    >
+                      <option value="cash_only">Cash Payments Only</option>
+                      <option value="all">All Payments</option>
+                    </Select>
+                  </AutoSaveField>
                   <HelpText>Choose whether to apply rounding to cash only or all payment methods</HelpText>
                 </FormGroup>
               </SettingsCard>
@@ -3055,58 +3074,62 @@ const SettingsPage: React.FC = () => {
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>Takeaway Pricing Settings</CardTitle>
                 <Toggle>
-                  <ToggleLabel>Enable Takeaway Charges</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput 
-                      type="checkbox" 
-                      checked={operationSettings.takeawayPricing.enabled}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          takeawayPricing: { ...prev.takeawayPricing, enabled: e.target.checked }
-                        }));
-                        markChanged();
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
+                    <ToggleLabel>Enable Takeaway Charges</ToggleLabel>
+                    <AutoSaveField ref={takeawayChargesToggleRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={operationSettings.takeawayPricing.enabled}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({
+                            ...prev,
+                            takeawayPricing: { ...prev.takeawayPricing, enabled: e.target.checked }
+                          }));
+                          takeawayChargesToggleRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
                 
                 {operationSettings.takeawayPricing.enabled && (
                   <>
                     <Divider />
                     <FormGroup>
                       <Label>Pricing Type</Label>
-                      <Select 
-                        value={operationSettings.takeawayPricing.pricingType}
-                        onChange={(e) => {
-                          setOperationSettings(prev => ({
-                            ...prev,
-                            takeawayPricing: { ...prev.takeawayPricing, pricingType: e.target.value as any }
-                          }));
-                          markChanged();
-                        }}
-                      >
-                        <option value="per-item">Per Item (Fixed charge per item)</option>
-                        <option value="per-category">Per Category (Different charges by category)</option>
-                      </Select>
+                      <AutoSaveField onSave={handleSave} type="select">
+                        <Select
+                          value={operationSettings.takeawayPricing.pricingType}
+                          onChange={(e) => {
+                            setOperationSettings(prev => ({
+                              ...prev,
+                              takeawayPricing: { ...prev.takeawayPricing, pricingType: e.target.value as any }
+                            }));
+                          }}
+                        >
+                          <option value="per-item">Per Item (Fixed charge per item)</option>
+                          <option value="per-category">Per Category (Different charges by category)</option>
+                        </Select>
+                      </AutoSaveField>
                     </FormGroup>
                     
                     {operationSettings.takeawayPricing.pricingType === 'per-item' ? (
                       <FormGroup>
                         <Label>Charge Per Item</Label>
-                        <FeeInput 
-                          type="number" 
-                          step="0.10"
-                          value={operationSettings.takeawayPricing.perItemCharge}
-                          onChange={(e) => {
-                            setOperationSettings(prev => ({
-                              ...prev,
-                              takeawayPricing: { ...prev.takeawayPricing, perItemCharge: Number(e.target.value) }
-                            }));
-                            markChanged();
-                          }}
-                        />
+                        <AutoSaveField onSave={handleSave}>
+                          <FeeInput
+                            type="number"
+                            step="0.10"
+                            value={operationSettings.takeawayPricing.perItemCharge}
+                            onChange={(e) => {
+                              setOperationSettings(prev => ({
+                                ...prev,
+                                takeawayPricing: { ...prev.takeawayPricing, perItemCharge: Number(e.target.value) }
+                              }));
+                            }}
+                          />
+                        </AutoSaveField>
                         <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>This amount will be added to each item for takeaway orders</HelpText>
                       </FormGroup>
@@ -3117,24 +3140,25 @@ const SettingsPage: React.FC = () => {
                           {categories.map(category => (
                             <FormGroup key={category.id}>
                               <Label>{category.emoji} {category.name}</Label>
-                              <FeeInput
-                                type="number"
-                                step="0.10"
-                                value={operationSettings.takeawayPricing.categoryCharges[category.id.toLowerCase()] || 0}
-                                onChange={(e) => {
-                                  setOperationSettings(prev => ({
-                                    ...prev,
-                                    takeawayPricing: {
-                                      ...prev.takeawayPricing,
-                                      categoryCharges: {
-                                        ...prev.takeawayPricing.categoryCharges,
-                                        [category.id.toLowerCase()]: Number(e.target.value)
+                              <AutoSaveField onSave={handleSave}>
+                                <FeeInput
+                                  type="number"
+                                  step="0.10"
+                                  value={operationSettings.takeawayPricing.categoryCharges[category.id.toLowerCase()] || 0}
+                                  onChange={(e) => {
+                                    setOperationSettings(prev => ({
+                                      ...prev,
+                                      takeawayPricing: {
+                                        ...prev.takeawayPricing,
+                                        categoryCharges: {
+                                          ...prev.takeawayPricing.categoryCharges,
+                                          [category.id.toLowerCase()]: Number(e.target.value)
+                                        }
                                       }
-                                    }
-                                  }));
-                                  markChanged();
-                                }}
-                              />
+                                    }));
+                                  }}
+                                />
+                              </AutoSaveField>
                               <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                             </FormGroup>
                           ))}
@@ -3149,47 +3173,50 @@ const SettingsPage: React.FC = () => {
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>Pager System Settings</CardTitle>
                 <Toggle>
-                  <ToggleLabel>Enable Pager System</ToggleLabel>
-                  <ToggleSwitch>
-                    <ToggleInput
-                      type="checkbox"
-                      checked={operationSettings?.pagerSystem?.enabled || false}
-                      onChange={(e) => {
-                        setOperationSettings(prev => ({
-                          ...prev,
-                          pagerSystem: {
-                            enabled: e.target.checked,
-                            totalPagers: prev?.pagerSystem?.totalPagers || 50
-                          }
-                        }));
-                        markChanged();
-                      }}
-                    />
-                    <ToggleSlider />
-                  </ToggleSwitch>
-                </Toggle>
+                    <ToggleLabel>Enable Pager System</ToggleLabel>
+                    <AutoSaveField ref={pagerSystemToggleRef} onSave={handleSave} type="toggle">
+                    <ToggleSwitch>
+                      <ToggleInput
+                        type="checkbox"
+                        checked={operationSettings?.pagerSystem?.enabled || false}
+                        onChange={(e) => {
+                          setOperationSettings(prev => ({
+                            ...prev,
+                            pagerSystem: {
+                              enabled: e.target.checked,
+                              totalPagers: prev?.pagerSystem?.totalPagers || 50
+                            }
+                          }));
+                          pagerSystemToggleRef.current?.triggerSave();
+                        }}
+                      />
+                      <ToggleSlider />
+                    </ToggleSwitch>
+                    </AutoSaveField>
+                  </Toggle>
 
                 {operationSettings?.pagerSystem?.enabled && (
                   <>
                     <Divider />
                     <FormGroup>
                       <Label>Total Number of Pagers</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="999"
-                        value={operationSettings?.pagerSystem?.totalPagers || 50}
-                        onChange={(e) => {
-                          setOperationSettings(prev => ({
-                            ...prev,
-                            pagerSystem: {
-                              enabled: prev?.pagerSystem?.enabled || false,
-                              totalPagers: Number(e.target.value)
-                            }
-                          }));
-                          markChanged();
-                        }}
-                      />
+                      <AutoSaveField onSave={handleSave}>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="999"
+                          value={operationSettings?.pagerSystem?.totalPagers || 50}
+                          onChange={(e) => {
+                            setOperationSettings(prev => ({
+                              ...prev,
+                              pagerSystem: {
+                                enabled: prev?.pagerSystem?.enabled || false,
+                                totalPagers: Number(e.target.value)
+                              }
+                            }));
+                          }}
+                        />
+                      </AutoSaveField>
                     </FormGroup>
                     <HelpText>
                       Set the total number of pager devices available in your restaurant.
@@ -3207,50 +3234,60 @@ const SettingsPage: React.FC = () => {
                 <SettingsGrid>
                   <div>
                     <FormGroup>
-                      <Toggle>
-                        <ToggleLabel>Enable Table Numbers</ToggleLabel>
-                        <ToggleSwitch>
-                          <ToggleInput type="checkbox" checked={tableSettings.enableTableNumbers}
-                            onChange={(e) => { setTableSettings({...tableSettings, enableTableNumbers: e.target.checked}); markChanged(); }} />
-                          <ToggleSlider />
-                        </ToggleSwitch>
-                      </Toggle>
+                        <Toggle>
+                          <ToggleLabel>Enable Table Numbers</ToggleLabel>
+                          <AutoSaveField ref={enableTableNumbersToggleRef} onSave={handleSave} type="toggle">
+                          <ToggleSwitch>
+                            <ToggleInput type="checkbox" checked={tableSettings.enableTableNumbers}
+                              onChange={(e) => { setTableSettings({...tableSettings, enableTableNumbers: e.target.checked}); enableTableNumbersToggleRef.current?.triggerSave(); }} />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                          </AutoSaveField>
+                        </Toggle>
                       <HelpText>Allow customers to select table numbers when ordering</HelpText>
                     </FormGroup>
                     <FormGroup>
-                      <Toggle>
-                        <ToggleLabel>Table Number Required</ToggleLabel>
-                        <ToggleSwitch>
-                          <ToggleInput type="checkbox" checked={tableSettings.tableNumberRequired}
-                            onChange={(e) => { setTableSettings({...tableSettings, tableNumberRequired: e.target.checked}); markChanged(); }}
-                            disabled={!tableSettings.enableTableNumbers} />
-                          <ToggleSlider />
-                        </ToggleSwitch>
-                      </Toggle>
+                        <Toggle>
+                          <ToggleLabel>Table Number Required</ToggleLabel>
+                          <AutoSaveField ref={tableNumberRequiredToggleRef} onSave={handleSave} type="toggle">
+                          <ToggleSwitch>
+                            <ToggleInput type="checkbox" checked={tableSettings.tableNumberRequired}
+                              onChange={(e) => { setTableSettings({...tableSettings, tableNumberRequired: e.target.checked}); tableNumberRequiredToggleRef.current?.triggerSave(); }}
+                              disabled={!tableSettings.enableTableNumbers} />
+                            <ToggleSlider />
+                          </ToggleSwitch>
+                          </AutoSaveField>
+                        </Toggle>
                       <HelpText>Make table number selection mandatory for dine-in orders</HelpText>
                     </FormGroup>
                   </div>
                   <div>
                     <FormGroup>
                       <Label>Table Prefix</Label>
-                      <Input type="text" value={tableSettings.tablePrefix}
-                        onChange={(e) => { setTableSettings({...tableSettings, tablePrefix: e.target.value}); markChanged(); }}
-                        placeholder="e.g., T, TABLE" />
+                      <AutoSaveField onSave={handleSave}>
+                        <Input type="text" value={tableSettings.tablePrefix}
+                          onChange={(e) => { setTableSettings({...tableSettings, tablePrefix: e.target.value}); }}
+                          placeholder="e.g., T, TABLE" />
+                      </AutoSaveField>
                       <HelpText>Prefix for table numbers (e.g., T001, TABLE001)</HelpText>
                     </FormGroup>
                     <FormGroup>
                       <Label>Number of Tables</Label>
-                      <Input type="number" value={tableSettings.totalTables}
-                        onChange={(e) => { setTableSettings({...tableSettings, totalTables: parseInt(e.target.value) || 1}); markChanged(); }}
-                        min="1" max="999" />
+                      <AutoSaveField onSave={handleSave}>
+                        <Input type="number" value={tableSettings.totalTables}
+                          onChange={(e) => { setTableSettings({...tableSettings, totalTables: parseInt(e.target.value) || 1}); }}
+                          min="1" max="999" />
+                      </AutoSaveField>
                     </FormGroup>
                   </div>
                 </SettingsGrid>
                 <FormGroup>
                   <Label>QR Code Base URL</Label>
-                  <Input type="text" value={tableSettings.qrCodeBaseUrl}
-                    onChange={(e) => { setTableSettings({...tableSettings, qrCodeBaseUrl: e.target.value}); markChanged(); }}
-                    placeholder="https://yourdomain.com" />
+                  <AutoSaveField onSave={handleSave}>
+                    <Input type="text" value={tableSettings.qrCodeBaseUrl}
+                      onChange={(e) => { setTableSettings({...tableSettings, qrCodeBaseUrl: e.target.value}); }}
+                      placeholder="https://yourdomain.com" />
+                  </AutoSaveField>
                   <HelpText>Base URL for QR codes (usually your domain)</HelpText>
                 </FormGroup>
 
@@ -3259,14 +3296,14 @@ const SettingsPage: React.FC = () => {
                   <Label>QR Code Mode</Label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'static' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'static' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="qrMode" value="static" checked={tableSettings.qrMode === 'static'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'static'}); markChanged(); }} />
+                      <input type="radio" name="qrMode" value="static" checked={tableSettings.qrMode === 'static'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'static'}); handleSave(); }} />
                       <div>
                         <div style={{ fontWeight: 500 }}>Static</div>
                         <div style={{ fontSize: '12px', color: '#6B7280' }}>Permanent QR, no expiration</div>
                       </div>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'session' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'session' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="qrMode" value="session" checked={tableSettings.qrMode === 'session'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'session'}); markChanged(); }} />
+                      <input type="radio" name="qrMode" value="session" checked={tableSettings.qrMode === 'session'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'session'}); handleSave(); }} />
                       <div>
                         <div style={{ fontWeight: 500 }}>Session</div>
                         <div style={{ fontSize: '12px', color: '#6B7280' }}>Expiring QR, generated per visit</div>
@@ -3278,13 +3315,15 @@ const SettingsPage: React.FC = () => {
                 {tableSettings.qrMode === 'session' && (
                   <FormGroup>
                     <Label>QR Expiration Time (hours)</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="24"
-                      value={Math.round(tableSettings.qrExpirationMinutes / 60)}
-                      onChange={(e) => { setTableSettings({...tableSettings, qrExpirationMinutes: parseInt(e.target.value) * 60 || 180}); markChanged(); }}
-                    />
+                    <AutoSaveField onSave={handleSave}>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="24"
+                        value={Math.round(tableSettings.qrExpirationMinutes / 60)}
+                        onChange={(e) => { setTableSettings({...tableSettings, qrExpirationMinutes: parseInt(e.target.value) * 60 || 180}); }}
+                      />
+                    </AutoSaveField>
                     <HelpText>QR codes expire automatically after this time</HelpText>
                   </FormGroup>
                 )}
@@ -3329,19 +3368,6 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               </SettingsGrid>
-
-              <SaveButtonContainer>
-                <SaveButton
-                  onClick={async () => {
-                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                    setAutoSaveStatus('saving');
-                    if (saveCallbackRef.current) await saveCallbackRef.current();
-                  }}
-                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-                >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-                </SaveButton>
-              </SaveButtonContainer>
             </>
           )}
 
@@ -3354,37 +3380,45 @@ const SettingsPage: React.FC = () => {
                     Enable or disable order types for mobile ordering
                   </p>
                   <Toggle>
-                    <ToggleLabel>Dine In</ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.dineIn ?? true}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, dineIn: e.target.checked } })); markChanged(); }} />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
+                      <ToggleLabel>Dine In</ToggleLabel>
+                      <AutoSaveField ref={mobileOrderDineInRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.dineIn ?? true}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, dineIn: e.target.checked } })); mobileOrderDineInRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
                   <Toggle>
-                    <ToggleLabel>Takeaway</ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.takeaway ?? true}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, takeaway: e.target.checked } })); markChanged(); }} />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
+                      <ToggleLabel>Takeaway</ToggleLabel>
+                      <AutoSaveField ref={mobileOrderTakeawayRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.takeaway ?? true}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, takeaway: e.target.checked } })); mobileOrderTakeawayRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
                   <Toggle>
-                    <ToggleLabel>Pre-order Pickup</ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.pickup ?? false}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, pickup: e.target.checked } })); markChanged(); }} />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
+                      <ToggleLabel>Pre-order Pickup</ToggleLabel>
+                      <AutoSaveField ref={mobileOrderPickupRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.pickup ?? false}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, pickup: e.target.checked } })); mobileOrderPickupRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
                   <Toggle>
-                    <ToggleLabel>Delivery</ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.delivery ?? false}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, delivery: e.target.checked } })); markChanged(); }} />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
+                      <ToggleLabel>Delivery</ToggleLabel>
+                      <AutoSaveField ref={mobileOrderDeliveryRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.delivery ?? false}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, orderTypes: { ...prev.orderTypes, delivery: e.target.checked } })); mobileOrderDeliveryRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
                 </SettingsCard>
 
                 <SettingsCard>
@@ -3393,16 +3427,18 @@ const SettingsPage: React.FC = () => {
                     Allow customers to order without providing contact information
                   </p>
                   <Toggle>
-                    <ToggleLabel>
-                      <span>Allow Quick Order</span>
-                      <span style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, marginLeft: '8px' }}>(No customer info required)</span>
-                    </ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput type="checkbox" checked={operationSettings.allowQuickOrder !== false}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, allowQuickOrder: e.target.checked })); markChanged(); }} />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
+                      <ToggleLabel>
+                        <span>Allow Quick Order</span>
+                        <span style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, marginLeft: '8px' }}>(No customer info required)</span>
+                      </ToggleLabel>
+                      <AutoSaveField ref={mobileOrderQuickOrderRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={operationSettings.allowQuickOrder !== false}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, allowQuickOrder: e.target.checked })); mobileOrderQuickOrderRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
                   <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '8px' }}>
                     {operationSettings.allowQuickOrder !== false
                       ? 'Customers can place orders without entering their name or phone number'
@@ -3416,24 +3452,28 @@ const SettingsPage: React.FC = () => {
                     Control which sections appear on the mobile menu
                   </p>
                   <Toggle>
-                    <ToggleLabel>Show Featured Menu</ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput type="checkbox" checked={mobileSettings.show_featured}
-                        onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_featured: e.target.checked })); markChanged(); }} />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
+                      <ToggleLabel>Show Featured Menu</ToggleLabel>
+                      <AutoSaveField ref={mobileOrderShowFeaturedRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={mobileSettings.show_featured}
+                          onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_featured: e.target.checked })); mobileOrderShowFeaturedRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
                   <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '4px', marginBottom: '12px' }}>
                     Display recommended items in a dedicated tab (set in Menu Management)
                   </p>
                   <Toggle>
-                    <ToggleLabel>Show Popular Menu</ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput type="checkbox" checked={mobileSettings.show_popular}
-                        onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_popular: e.target.checked })); markChanged(); }} />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
+                      <ToggleLabel>Show Popular Menu</ToggleLabel>
+                      <AutoSaveField ref={mobileOrderShowPopularRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={mobileSettings.show_popular}
+                          onChange={(e) => { setMobileSettings(prev => ({ ...prev, show_popular: e.target.checked })); mobileOrderShowPopularRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
                   <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '4px' }}>
                     Show best-selling items based on recent order history
                   </p>
@@ -3449,20 +3489,22 @@ const SettingsPage: React.FC = () => {
                       const isExcluded = mobileSettings.popular_excluded_category_ids.includes(cat.id);
                       return (
                         <Toggle key={cat.id}>
-                          <ToggleLabel style={{ fontSize: '13px' }}>{cat.emoji || '🍽️'} {cat.name}</ToggleLabel>
-                          <ToggleSwitch>
-                            <ToggleInput type="checkbox" checked={!isExcluded}
-                              onChange={(e) => {
-                                setMobileSettings(prev => {
-                                  const ids = prev.popular_excluded_category_ids.filter(id => id !== cat.id);
-                                  if (!e.target.checked) ids.push(cat.id);
-                                  return { ...prev, popular_excluded_category_ids: ids };
-                                });
-                                markChanged();
-                              }} />
-                            <ToggleSlider />
-                          </ToggleSwitch>
-                        </Toggle>
+                            <ToggleLabel style={{ fontSize: '13px' }}>{cat.emoji || '🍽️'} {cat.name}</ToggleLabel>
+                            <AutoSaveField ref={(h: AutoSaveHandle | null) => { if (h) paymentRefsMap.current.set(`popular-${cat.id}`, h); }} onSave={handleSave} type="toggle">
+                            <ToggleSwitch>
+                              <ToggleInput type="checkbox" checked={!isExcluded}
+                                onChange={(e) => {
+                                  setMobileSettings(prev => {
+                                    const ids = prev.popular_excluded_category_ids.filter(id => id !== cat.id);
+                                    if (!e.target.checked) ids.push(cat.id);
+                                    return { ...prev, popular_excluded_category_ids: ids };
+                                  });
+                                  paymentRefsMap.current.get(`popular-${cat.id}`)?.triggerSave();
+                                }} />
+                              <ToggleSlider />
+                            </ToggleSwitch>
+                            </AutoSaveField>
+                          </Toggle>
                       );
                     })}
                   </SettingsCard>
@@ -3473,155 +3515,154 @@ const SettingsPage: React.FC = () => {
                   <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                     Restrict specific categories to certain hours on mobile order only. Categories without a schedule are always visible.
                   </p>
-                  {(mobileSettings.category_schedules || []).map((sched, index) => {
-                    const cat = categories.find((c: any) => c.id === sched.category_id || c.id?.toString() === sched.category_id?.toString());
-                    return (
-                      <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                          <Label style={{ margin: 0 }}>{cat ? `${cat.emoji || '🍽️'} ${cat.name}` : `Category #${sched.category_id}`}</Label>
-                          <button onClick={() => {
-                            setMobileSettings(prev => ({ ...prev, category_schedules: prev.category_schedules.filter((_, i) => i !== index) }));
-                            markChanged();
-                          }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
-                        </div>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                          <FormGroup style={{ flex: 1, marginBottom: 0 }}>
-                            <Label>Available From</Label>
-                            <Input type="time" value={sched.start_time}
-                              onChange={(e) => {
-                                setMobileSettings(prev => {
-                                  const arr = [...prev.category_schedules];
-                                  arr[index] = { ...arr[index], start_time: e.target.value };
-                                  return { ...prev, category_schedules: arr };
-                                });
-                                markChanged();
-                              }} />
-                          </FormGroup>
-                          <FormGroup style={{ flex: 1, marginBottom: 0 }}>
-                            <Label>Available Until</Label>
-                            <Input type="time" value={sched.end_time}
-                              onChange={(e) => {
-                                setMobileSettings(prev => {
-                                  const arr = [...prev.category_schedules];
-                                  arr[index] = { ...arr[index], end_time: e.target.value };
-                                  return { ...prev, category_schedules: arr };
-                                });
-                                markChanged();
-                              }} />
-                          </FormGroup>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {(() => {
-                    const scheduledIds = new Set((mobileSettings.category_schedules || []).map(s => s.category_id?.toString()));
-                    const availableCats = categories.filter((c: any) => !scheduledIds.has(c.id?.toString()));
-                    if (availableCats.length === 0) return (
-                      <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', padding: '12px' }}>All categories have schedules assigned</p>
-                    );
-                    return (
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <select
-                          id="add-schedule-cat"
-                          style={{ flex: 1, padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '8px', fontSize: '14px', background: 'white' }}
-                        >
-                          {availableCats.map((cat: any) => (
-                            <option key={cat.id} value={cat.id}>{cat.emoji || '🍽️'} {cat.name}</option>
-                          ))}
-                        </select>
-                        <button onClick={() => {
-                          const sel = document.getElementById('add-schedule-cat') as HTMLSelectElement;
-                          if (!sel?.value) return;
-                          const catId = parseInt(sel.value);
-                          setMobileSettings(prev => ({
-                            ...prev,
-                            category_schedules: [...prev.category_schedules, { category_id: catId, start_time: '09:00', end_time: '22:00' }]
-                          }));
-                          markChanged();
-                        }} style={{ padding: '10px 16px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          Add Schedule
-                        </button>
-                      </div>
-                    );
-                  })()}
+                  <AutoSaveField ref={mobileOrderCategorySchedulesRef} onSave={handleSave} type="list">
+                    <>
+                      {(mobileSettings.category_schedules || []).map((sched, index) => {
+                        const cat = categories.find((c: any) => c.id === sched.category_id || c.id?.toString() === sched.category_id?.toString());
+                        return (
+                          <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                              <Label style={{ margin: 0 }}>{cat ? `${cat.emoji || '🍽️'} ${cat.name}` : `Category #${sched.category_id}`}</Label>
+                              <button onClick={() => {
+                                setMobileSettings(prev => ({ ...prev, category_schedules: prev.category_schedules.filter((_, i) => i !== index) }));
+                                mobileOrderCategorySchedulesRef.current?.triggerSave();
+                              }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                                <Label>Available From</Label>
+                                <Input type="time" value={sched.start_time}
+                                  onChange={(e) => {
+                                    setMobileSettings(prev => {
+                                      const arr = [...prev.category_schedules];
+                                      arr[index] = { ...arr[index], start_time: e.target.value };
+                                      return { ...prev, category_schedules: arr };
+                                    });
+                                    mobileOrderCategorySchedulesRef.current?.triggerSave();
+                                  }} />
+                              </FormGroup>
+                              <FormGroup style={{ flex: 1, marginBottom: 0 }}>
+                                <Label>Available Until</Label>
+                                <Input type="time" value={sched.end_time}
+                                  onChange={(e) => {
+                                    setMobileSettings(prev => {
+                                      const arr = [...prev.category_schedules];
+                                      arr[index] = { ...arr[index], end_time: e.target.value };
+                                      return { ...prev, category_schedules: arr };
+                                    });
+                                    mobileOrderCategorySchedulesRef.current?.triggerSave();
+                                  }} />
+                              </FormGroup>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {(() => {
+                        const scheduledIds = new Set((mobileSettings.category_schedules || []).map(s => s.category_id?.toString()));
+                        const availableCats = categories.filter((c: any) => !scheduledIds.has(c.id?.toString()));
+                        if (availableCats.length === 0) return (
+                          <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', padding: '12px' }}>All categories have schedules assigned</p>
+                        );
+                        return (
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <select
+                              id="add-schedule-cat"
+                              style={{ flex: 1, padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '8px', fontSize: '14px', background: 'white' }}
+                            >
+                              {availableCats.map((cat: any) => (
+                                <option key={cat.id} value={cat.id}>{cat.emoji || '🍽️'} {cat.name}</option>
+                              ))}
+                            </select>
+                            <button onClick={() => {
+                              const sel = document.getElementById('add-schedule-cat') as HTMLSelectElement;
+                              if (!sel?.value) return;
+                              const catId = parseInt(sel.value);
+                              setMobileSettings(prev => ({
+                                ...prev,
+                                category_schedules: [...prev.category_schedules, { category_id: catId, start_time: '09:00', end_time: '22:00' }]
+                              }));
+                              mobileOrderCategorySchedulesRef.current?.triggerSave();
+                            }} style={{ padding: '10px 16px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              Add Schedule
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </>
+                  </AutoSaveField>
                 </SettingsCard>
 
                 <SettingsCard>
                   <CardTitle>Delivery Pricing Settings</CardTitle>
                   <Toggle>
-                    <ToggleLabel>Enable Delivery Service</ToggleLabel>
-                    <ToggleSwitch>
-                      <ToggleInput type="checkbox" checked={operationSettings.deliveryPricing?.enabled || false}
-                        onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, enabled: e.target.checked } })); markChanged(); }} />
-                      <ToggleSlider />
-                    </ToggleSwitch>
-                  </Toggle>
+                      <ToggleLabel>Enable Delivery Service</ToggleLabel>
+                      <AutoSaveField ref={mobileOrderDeliveryEnabledRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={operationSettings.deliveryPricing?.enabled || false}
+                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, enabled: e.target.checked } })); mobileOrderDeliveryEnabledRef.current?.triggerSave(); }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
 
                   {operationSettings.deliveryPricing?.enabled && (
                     <>
                       <Divider />
                       <FormGroup>
                         <Label>Minimum Order Amount</Label>
-                        <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.minimumOrder}
-                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, minimumOrder: Number(e.target.value) } })); markChanged(); }} />
+                        <AutoSaveField onSave={handleSave}>
+                          <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.minimumOrder}
+                            onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, minimumOrder: Number(e.target.value) } })); }} />
+                        </AutoSaveField>
                         <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>Minimum subtotal required for delivery orders (0 = no minimum)</HelpText>
                       </FormGroup>
                       <FormGroup>
                         <Label>Free Delivery Above</Label>
-                        <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.freeAbove}
-                          onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, freeAbove: Number(e.target.value) } })); markChanged(); }} />
+                        <AutoSaveField onSave={handleSave}>
+                          <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.freeAbove}
+                            onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, freeAbove: Number(e.target.value) } })); }} />
+                        </AutoSaveField>
                         <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
                         <HelpText>Waive delivery fee if order subtotal exceeds this amount (999999 = never free)</HelpText>
                       </FormGroup>
                       <Divider />
                       <Label style={{ marginBottom: '16px' }}>Delivery Zones</Label>
                       <HelpText style={{ marginBottom: '16px' }}>Configure delivery zones and their corresponding fees</HelpText>
-                      {(operationSettings.deliveryPricing.zones || []).map((zone: any, index: number) => (
-                        <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <Label style={{ margin: 0 }}>Zone {index + 1}</Label>
-                            <button onClick={() => {
-                              const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.splice(index, 1);
-                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged();
-                            }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
-                          </div>
-                          <FormGroup><Label>Zone Name</Label><Input type="text" placeholder="e.g., Zone A (City Center)" value={zone.name}
-                            onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], name: e.target.value };
-                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged(); }} /></FormGroup>
-                          <FormGroup><Label>Description</Label><Input type="text" placeholder="e.g., 3km radius" value={zone.description}
-                            onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], description: e.target.value };
-                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged(); }} /></FormGroup>
-                          <FormGroup><Label>Delivery Fee</Label><FeeInput type="number" step="0.50" value={zone.fee}
-                            onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], fee: Number(e.target.value) };
-                              setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged(); }} />
-                            <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span></FormGroup>
-                        </div>
-                      ))}
-                      <button onClick={() => {
-                        const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.push({ id: `zone-${Date.now()}`, name: '', description: '', fee: 0 });
-                        setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); markChanged();
-                      }} style={{ width: '100%', padding: '12px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }}>
-                        Add Delivery Zone
-                      </button>
+                          {(operationSettings.deliveryPricing.zones || []).map((zone: any, index: number) => (
+                            <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <Label style={{ margin: 0 }}>Zone {index + 1}</Label>
+                                <button onClick={() => {
+                                  const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.splice(index, 1);
+                                  setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } }));
+                                  setTimeout(() => handleSave(), 300);
+                                }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
+                              </div>
+                              <FormGroup><Label>Zone Name</Label><AutoSaveField onSave={handleSave}><Input type="text" placeholder="e.g., Zone A (City Center)" value={zone.name}
+                                onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], name: e.target.value };
+                                  setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); }} /></AutoSaveField></FormGroup>
+                              <FormGroup><Label>Description</Label><AutoSaveField onSave={handleSave}><Input type="text" placeholder="e.g., 3km radius" value={zone.description}
+                                onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], description: e.target.value };
+                                  setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); }} /></AutoSaveField></FormGroup>
+                              <FormGroup><Label>Delivery Fee</Label><AutoSaveField onSave={handleSave}><FeeInput type="number" step="0.50" value={zone.fee}
+                                onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], fee: Number(e.target.value) };
+                                  setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); }} /></AutoSaveField>
+                                <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span></FormGroup>
+                            </div>
+                          ))}
+                          <button onClick={() => {
+                            const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.push({ id: `zone-${Date.now()}`, name: '', description: '', fee: 0 });
+                            setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } }));
+                            setTimeout(() => handleSave(), 300);
+                          }} style={{ width: '100%', padding: '12px', background: '#F0F4FF', border: '1px dashed #635BFF', borderRadius: '8px', color: '#635BFF', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.2s' }}>
+                            Add Delivery Zone
+                          </button>
                     </>
                   )}
                 </SettingsCard>
 
               </SettingsGrid>
-
-              <SaveButtonContainer>
-                <SaveButton
-                  onClick={async () => {
-                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                    setAutoSaveStatus('saving');
-                    if (saveCallbackRef.current) await saveCallbackRef.current();
-                  }}
-                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-                >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-                </SaveButton>
-              </SaveButtonContainer>
             </>
           )}
 
@@ -3640,103 +3681,55 @@ const SettingsPage: React.FC = () => {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '12px 16px',
-                    border: printerMode === 'rawbt' ? '2px solid #635BFF' : '1px solid #E2E8F0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: printerMode === 'rawbt' ? '#F5F3FF' : '#fff',
-                    flex: '1',
-                    minWidth: '150px'
-                  }}>
-                    <input
-                      type="radio"
-                      name="printerMode"
-                      value="rawbt"
-                      checked={printerMode === 'rawbt'}
-                      onChange={() => {
-                        setPrinterModeState('rawbt');
-                        setPrinterMode('rawbt');
-                      }}
-                      style={{ accentColor: '#635BFF' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 500, color: '#1F2937' }}>RawBT (Android)</div>
-                      <div style={{ fontSize: '12px', color: '#6B7C93' }}>For Android tablets with RawBT app</div>
-                    </div>
-                  </label>
-
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '12px 16px',
-                    border: printerMode === 'browser' ? '2px solid #635BFF' : '1px solid #E2E8F0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: printerMode === 'browser' ? '#F5F3FF' : '#fff',
-                    flex: '1',
-                    minWidth: '150px'
-                  }}>
-                    <input
-                      type="radio"
-                      name="printerMode"
-                      value="browser"
-                      checked={printerMode === 'browser'}
-                      onChange={() => {
-                        setPrinterModeState('browser');
-                        setPrinterMode('browser');
-                      }}
-                      style={{ accentColor: '#635BFF' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 500, color: '#1F2937' }}>Browser Print (PC)</div>
-                      <div style={{ fontSize: '12px', color: '#6B7C93' }}>For Windows/Mac computers</div>
-                    </div>
-                  </label>
-
-                  <label style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '12px 16px',
-                    border: printerMode === 'qztray' ? '2px solid #635BFF' : '1px solid #E2E8F0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: printerMode === 'qztray' ? '#F5F3FF' : '#fff',
-                    flex: '1',
-                    minWidth: '150px'
-                  }}>
-                    <input
-                      type="radio"
-                      name="printerMode"
-                      value="qztray"
-                      checked={printerMode === 'qztray'}
-                      onChange={async () => {
-                        setPrinterModeState('qztray');
-                        setPrinterMode('qztray');
-                        setQzTrayStatus('connecting');
-                        try {
-                          const ok = await connectQZTray();
-                          setQzTrayStatus(ok ? 'connected' : 'disconnected');
-                          if (ok) {
-                            const printers = await getQZTrayPrinters();
-                            setQzTrayPrinters(printers);
+                  {([
+                    { key: 'rawbt', label: 'RawBT (Android)', desc: 'For Android tablets with RawBT app' },
+                    { key: 'browser', label: 'Browser Print (PC)', desc: 'For Windows/Mac computers' },
+                    { key: 'qztray', label: 'QZ Tray (Network)', desc: 'For LAN network printers' },
+                  ] as const).map(opt => (
+                    <AutoSaveField key={opt.key} ref={(h: AutoSaveHandle | null) => { if (h) printerModeRefs.current.set(opt.key, h); }} onSave={handleSave} type="toggle" style={{ flex: 1, minWidth: 150 }}>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '12px 16px',
+                      border: printerMode === opt.key ? '2px solid #635BFF' : '1px solid #E2E8F0',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      background: printerMode === opt.key ? '#F5F3FF' : '#fff',
+                      minWidth: '150px'
+                    }}>
+                      <input
+                        type="radio"
+                        name="printerMode"
+                        value={opt.key}
+                        checked={printerMode === opt.key}
+                        onChange={async () => {
+                          setPrinterModeState(opt.key as any);
+                          setPrinterMode(opt.key);
+                          printerModeRefs.current.get(opt.key)?.triggerSave();
+                          if (opt.key === 'qztray') {
+                            setQzTrayStatus('connecting');
+                            try {
+                              const ok = await connectQZTray();
+                              setQzTrayStatus(ok ? 'connected' : 'disconnected');
+                              if (ok) {
+                                const printers = await getQZTrayPrinters();
+                                setQzTrayPrinters(printers);
+                              }
+                            } catch {
+                              setQzTrayStatus('disconnected');
+                            }
                           }
-                        } catch {
-                          setQzTrayStatus('disconnected');
-                        }
-                      }}
-                      style={{ accentColor: '#635BFF' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 500, color: '#1F2937' }}>QZ Tray (Network)</div>
-                      <div style={{ fontSize: '12px', color: '#6B7C93' }}>For LAN network printers</div>
-                    </div>
-                  </label>
+                        }}
+                        style={{ accentColor: '#635BFF' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 500, color: '#1F2937' }}>{opt.label}</div>
+                        <div style={{ fontSize: '12px', color: '#6B7C93' }}>{opt.desc}</div>
+                      </div>
+                    </label>
+                    </AutoSaveField>
+                  ))}
                   </div>
                 )}
 
@@ -3925,17 +3918,22 @@ QZ Tray (installed on this device)
 
                   <Toggle>
                     <ToggleLabel>Enable Bill Printer</ToggleLabel>
+                    <AutoSaveField ref={billPrinterToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
                         type="checkbox"
                         checked={printerSettings.billPrinter.enabled}
-                        onChange={(e) => setPrinterSettings(prev => ({
-                          ...prev,
-                          billPrinter: { ...prev.billPrinter, enabled: e.target.checked }
-                        }))}
+                        onChange={(e) => {
+                          setPrinterSettings(prev => ({
+                            ...prev,
+                            billPrinter: { ...prev.billPrinter, enabled: e.target.checked }
+                          }));
+                          billPrinterToggleRef.current?.triggerSave();
+                        }}
                       />
                       <ToggleSlider />
                     </ToggleSwitch>
+                    </AutoSaveField>
                   </Toggle>
 
                   {printerSettings.billPrinter.enabled && (
@@ -3956,6 +3954,7 @@ QZ Tray (installed on this device)
                             Printer Address
                           </label>
                           <div style={{ display: 'flex', gap: '8px' }}>
+                            <AutoSaveField onSave={handleSave}>
                             <input
                               type="text"
                               value={printerSettings.billPrinter.address || ''}
@@ -3969,6 +3968,7 @@ QZ Tray (installed on this device)
                                 fontSize: '14px', fontFamily: 'monospace'
                               }}
                             />
+                            </AutoSaveField>
                             <button
                               onClick={async () => {
                                 const addr = printerSettings.billPrinter.address;
@@ -3995,6 +3995,7 @@ QZ Tray (installed on this device)
                           {qzTrayPrinters.length > 0 && (
                             <div style={{ marginTop: '8px' }}>
                               <label style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '4px', display: 'block' }}>Or select detected printer:</label>
+                              <AutoSaveField onSave={handleSave} type="select">
                               <select
                                 value={printerSettings.billPrinter.address || ''}
                                 onChange={(e) => setPrinterSettings(prev => ({
@@ -4008,23 +4009,29 @@ QZ Tray (installed on this device)
                                   <option key={p} value={p}>{p}</option>
                                 ))}
                               </select>
+                              </AutoSaveField>
                             </div>
                           )}
                         </div>
                       )}
 
+                      <AutoSaveField ref={billPrinterAutoPrintRef} onSave={handleSave} type="toggle">
                       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
                         <input
                           type="checkbox"
                           checked={printerSettings.billPrinter.autoPrint}
-                          onChange={(e) => setPrinterSettings(prev => ({
-                            ...prev,
-                            billPrinter: { ...prev.billPrinter, autoPrint: e.target.checked }
-                          }))}
+                          onChange={(e) => {
+                            setPrinterSettings(prev => ({
+                              ...prev,
+                              billPrinter: { ...prev.billPrinter, autoPrint: e.target.checked }
+                            }));
+                            billPrinterAutoPrintRef.current?.triggerSave();
+                          }}
                           style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
                         />
                         <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print after payment</span>
                       </label>
+                      </AutoSaveField>
                     </>
                   )}
                 </SettingsCard>
@@ -4038,17 +4045,22 @@ QZ Tray (installed on this device)
 
                   <Toggle>
                     <ToggleLabel>Enable Kitchen Printer</ToggleLabel>
+                    <AutoSaveField ref={kitchenPrinterToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
                         type="checkbox"
                         checked={printerSettings.kitchenPrinter.enabled}
-                        onChange={(e) => setPrinterSettings(prev => ({
-                          ...prev,
-                          kitchenPrinter: { ...prev.kitchenPrinter, enabled: e.target.checked }
-                        }))}
+                        onChange={(e) => {
+                          setPrinterSettings(prev => ({
+                            ...prev,
+                            kitchenPrinter: { ...prev.kitchenPrinter, enabled: e.target.checked }
+                          }));
+                          kitchenPrinterToggleRef.current?.triggerSave();
+                        }}
                       />
                       <ToggleSlider />
                     </ToggleSwitch>
+                    </AutoSaveField>
                   </Toggle>
 
                   {printerSettings.kitchenPrinter.enabled && (
@@ -4089,6 +4101,7 @@ QZ Tray (installed on this device)
                                       {station.name}
                                     </div>
                                     <div style={{ display: 'flex', gap: '8px' }}>
+                                      <AutoSaveField onSave={handleSave}>
                                       <input
                                         type="text"
                                         value={printerSettings.kitchenStationPrinters?.[station.id]?.address || ''}
@@ -4109,6 +4122,7 @@ QZ Tray (installed on this device)
                                           fontSize: '13px', fontFamily: 'monospace'
                                         }}
                                       />
+                                      </AutoSaveField>
                                       <button
                                         onClick={async () => {
                                           const addr = printerSettings.kitchenStationPrinters?.[station.id]?.address;
@@ -4143,6 +4157,7 @@ QZ Tray (installed on this device)
                                 Printer Address
                               </label>
                               <div style={{ display: 'flex', gap: '8px' }}>
+                                <AutoSaveField onSave={handleSave}>
                                 <input
                                   type="text"
                                   value={printerSettings.kitchenPrinter.address || ''}
@@ -4156,6 +4171,7 @@ QZ Tray (installed on this device)
                                     fontSize: '14px', fontFamily: 'monospace'
                                   }}
                                 />
+                                </AutoSaveField>
                                 <button
                                   onClick={async () => {
                                     const addr = printerSettings.kitchenPrinter.address;
@@ -4184,6 +4200,7 @@ QZ Tray (installed on this device)
                           {qzTrayPrinters.length > 0 && kitchenStations.length === 0 && (
                             <div style={{ marginTop: '8px' }}>
                               <label style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '4px', display: 'block' }}>Or select detected printer:</label>
+                              <AutoSaveField onSave={handleSave} type="select">
                               <select
                                 value={printerSettings.kitchenPrinter.address || ''}
                                 onChange={(e) => setPrinterSettings(prev => ({
@@ -4197,23 +4214,29 @@ QZ Tray (installed on this device)
                                   <option key={p} value={p}>{p}</option>
                                 ))}
                               </select>
+                              </AutoSaveField>
                             </div>
                           )}
                         </div>
                       )}
 
+                      <AutoSaveField ref={kitchenPrinterAutoPrintRef} onSave={handleSave} type="toggle">
                       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
                         <input
                           type="checkbox"
                           checked={printerSettings.kitchenPrinter.autoPrint}
-                          onChange={(e) => setPrinterSettings(prev => ({
-                            ...prev,
-                            kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }
-                          }))}
+                          onChange={(e) => {
+                            setPrinterSettings(prev => ({
+                              ...prev,
+                              kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: e.target.checked }
+                            }));
+                            kitchenPrinterAutoPrintRef.current?.triggerSave();
+                          }}
                           style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
                         />
                         <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print on new order</span>
                       </label>
+                      </AutoSaveField>
                     </>
                   )}
                 </SettingsCard>
@@ -4235,72 +4258,121 @@ QZ Tray (installed on this device)
                         When enabled, each menu item will print on a separate ticket instead of one combined ticket per order
                       </p>
                     </div>
+                    <AutoSaveField ref={printPerItemToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
                         type="checkbox"
                         checked={printerSettings.kitchenPrinter.printPerItem || false}
-                        onChange={(e) => setPrinterSettings(prev => ({
-                          ...prev,
-                          kitchenPrinter: { ...prev.kitchenPrinter, printPerItem: e.target.checked }
-                        }))}
+                        onChange={(e) => {
+                          setPrinterSettings(prev => ({
+                            ...prev,
+                            kitchenPrinter: { ...prev.kitchenPrinter, printPerItem: e.target.checked }
+                          }));
+                          printPerItemToggleRef.current?.triggerSave();
+                        }}
                       />
                       <ToggleSlider />
                     </ToggleSwitch>
+                    </AutoSaveField>
                   </Toggle>
                 </SettingsCard>
               )}
 
-              <SaveButtonContainer style={{ marginTop: '24px' }}>
-                <SaveButton
-                  onClick={async () => {
-                    if (!user?.restaurantId) {
-                      setSaveStatus({ type: 'error', message: 'No restaurant ID found' });
-                      setTimeout(() => setSaveStatus(null), 3000);
-                      return;
-                    }
+              {/* Receipt Customization */}
+              <SettingsCard style={{ marginTop: '24px' }}>
+                <CardTitle>Receipt Customization</CardTitle>
+                <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
+                  Customize the customer receipt with your logo, message, and promotions
+                </p>
 
-                    try {
-                      const token = localStorage.getItem('auth_token');
-                      const settingsToSave: any = {
-                        printerMode: printerMode,
-                        billPrinter: printerSettings.billPrinter,
-                        kitchenPrinter: printerSettings.kitchenPrinter
-                      };
+                <div className="receipt-grid" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0' }}>
+                  {/* Left column: Logo + Footer + Membership */}
+                  <div className="receipt-col-left" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingRight: '24px' }}>
+                    {/* Receipt Logo */}
+                    <AutoSaveField onSave={handleSave} type="image">
+                    <ImageUploadDropzone
+                      value={receiptSettings.receiptLogo}
+                      onChange={(value) => setReceiptSettings(prev => ({ ...prev, receiptLogo: value }))}
+                      label="Receipt Logo (B&W)"
+                      helpText="Printed at the top of receipt"
+                    />
+                    </AutoSaveField>
 
-                      const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
-                        method: 'PUT',
-                        headers: {
-                          'Authorization': `Bearer ${token}`,
-                          'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                          printer_settings: settingsToSave
-                        })
-                      });
+                    {/* Membership Info */}
+                    <Toggle>
+                      <div style={{ flex: 1 }}>
+                        <ToggleLabel style={{ marginBottom: '4px' }}>Membership Info on Receipt</ToggleLabel>
+                        <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
+                          QR code linking to mobile order page with points earning message
+                        </p>
+                      </div>
+                      <AutoSaveField ref={receiptMembershipToggleRef} onSave={handleSave} type="toggle">
+                      <ToggleSwitch>
+                        <ToggleInput type="checkbox" checked={receiptSettings.showMembership} onChange={(e) => {
+                          setReceiptSettings(prev => ({ ...prev, showMembership: e.target.checked }));
+                          receiptMembershipToggleRef.current?.triggerSave();
+                        }} />
+                        <ToggleSlider />
+                      </ToggleSwitch>
+                      </AutoSaveField>
+                    </Toggle>
 
-                      if (response.ok) {
-                        // Also sync to localStorage for billPrint.js
-                        localStorage.setItem('printerMode', printerMode);
-                        localStorage.setItem('printerSettings', JSON.stringify(printerSettings));
-                        setSaveStatus({ type: 'success', message: 'Printer settings saved!' });
-                      } else {
-                        setSaveStatus({ type: 'error', message: 'Failed to save settings' });
-                      }
-                    } catch (error) {
-                      console.error('Failed to save printer settings:', error);
-                      setSaveStatus({ type: 'error', message: 'Failed to save settings' });
-                    }
-                    setTimeout(() => setSaveStatus(null), 3000);
-                  }}
-                >
-                  Save Printer Settings
-                </SaveButton>
-                {saveStatus && (
-                  <StatusMessage type={saveStatus.type}>
-                    {saveStatus.message}
-                  </StatusMessage>
-                )}
-              </SaveButtonContainer>
+                    {/* Footer Message */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Footer Message</label>
+                      <AutoSaveField onSave={handleSave}>
+                      <input type="text" value={receiptSettings.footerMessage} onChange={(e) => setReceiptSettings(prev => ({ ...prev, footerMessage: e.target.value }))} placeholder="Thank you for dining with us!" maxLength={100} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                      </AutoSaveField>
+                    </div>
+                  </div>
+
+                  {/* Vertical divider — hidden on mobile */}
+                  <div className="receipt-divider" style={{ width: '1px', background: '#E6EBF1', margin: '0' }} />
+
+                  {/* Right column: Custom QR / Promotion */}
+                  <div className="receipt-col-right" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingLeft: '24px' }}>
+                    <AutoSaveField onSave={handleSave} type="image">
+                    <ImageUploadDropzone
+                      value={receiptSettings.customQrImage}
+                      onChange={(value) => setReceiptSettings(prev => ({ ...prev, customQrImage: value }))}
+                      label="Custom QR / Promotion"
+                      helpText="Print your own QR or promo image on receipt"
+                    />
+                    </AutoSaveField>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Guide Text</label>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <AutoSaveField onSave={handleSave}>
+                        <input type="text" value={receiptSettings.customQrText} onChange={(e) => setReceiptSettings(prev => ({ ...prev, customQrText: e.target.value }))} placeholder="e.g. Follow us on Instagram!" maxLength={100} style={{ flex: 1, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                        </AutoSaveField>
+                        <AutoSaveField ref={qrPositionRef} onSave={handleSave} type="toggle">
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${receiptSettings.customQrPosition === 'front' ? '#635BFF' : '#E6EBF1'}`, background: receiptSettings.customQrPosition === 'front' ? '#F8F7FF' : 'white', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                          <input type="radio" name="customQrPosition" checked={receiptSettings.customQrPosition === 'front'} onChange={() => { setReceiptSettings(prev => ({ ...prev, customQrPosition: 'front' })); qrPositionRef.current?.triggerSave(); }} style={{ margin: 0 }} />
+                          <span style={{ fontWeight: 500, color: '#0A2540' }}>Before QR</span>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${receiptSettings.customQrPosition === 'back' ? '#635BFF' : '#E6EBF1'}`, background: receiptSettings.customQrPosition === 'back' ? '#F8F7FF' : 'white', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                          <input type="radio" name="customQrPosition" checked={receiptSettings.customQrPosition === 'back'} onChange={() => { setReceiptSettings(prev => ({ ...prev, customQrPosition: 'back' })); qrPositionRef.current?.triggerSave(); }} style={{ margin: 0 }} />
+                          <span style={{ fontWeight: 500, color: '#0A2540' }}>After QR</span>
+                        </label>
+                        </div>
+                        </AutoSaveField>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Responsive: stack columns + hide divider on small screens */}
+                <style>{`
+                  @media (max-width: 768px) {
+                    .receipt-grid { grid-template-columns: 1fr !important; }
+                    .receipt-divider { display: none !important; }
+                    .receipt-col-left { padding-right: 0 !important; padding-bottom: 20px !important; border-bottom: 1px solid #E6EBF1 !important; }
+                    .receipt-col-right { padding-left: 0 !important; padding-top: 20px !important; }
+                  }
+                `}</style>
+              </SettingsCard>
+
             </>
           )}
 
@@ -4320,18 +4392,22 @@ QZ Tray (installed on this device)
                 <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 16px' }}>
                   Control how same-name items are grouped in Kitchen Display Item View. Leave empty or 0 for unlimited merging (default).
                 </p>
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', maxWidth: '400px' }}>
-                  <div style={{ flex: '1', minWidth: '160px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Time Limit (minutes)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '400px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Time Limit (minutes)</label>
+                    <AutoSaveField onSave={handleSave}>
                     <input type="number" min="0" value={itemMergeTimeLimit || ''} placeholder="0 = unlimited"
-                      onChange={(e) => { setItemMergeTimeLimit(parseInt(e.target.value) || 0); markChanged(); }}
-                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px' }} />
+                      onChange={(e) => setItemMergeTimeLimit(parseInt(e.target.value) || 0)}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                    </AutoSaveField>
                   </div>
-                  <div style={{ flex: '1', minWidth: '160px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>Max Count per Group</label>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Max Count per Group</label>
+                    <AutoSaveField onSave={handleSave}>
                     <input type="number" min="0" value={itemMergeMaxCount || ''} placeholder="0 = unlimited"
-                      onChange={(e) => { setItemMergeMaxCount(parseInt(e.target.value) || 0); markChanged(); }}
-                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px' }} />
+                      onChange={(e) => setItemMergeMaxCount(parseInt(e.target.value) || 0)}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+                    </AutoSaveField>
                   </div>
                 </div>
               </SettingsCard>
@@ -4340,48 +4416,30 @@ QZ Tray (installed on this device)
               <SettingsCard style={{ marginBottom: '24px' }}>
                 <CardTitle>Assignment Mode</CardTitle>
                 <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', flex: 1, minWidth: '200px', padding: '12px', borderRadius: '8px', border: `1px solid ${kitchenAssignmentMode === 'category' ? '#635BFF' : '#E6EBF1'}`, background: kitchenAssignmentMode === 'category' ? '#F8F7FF' : 'white' }}>
-                    <input
-                      type="radio"
-                      name="assignmentMode"
-                      checked={kitchenAssignmentMode === 'category'}
-                      onChange={async () => {
-                        setKitchenAssignmentMode('category');
-                        const token = localStorage.getItem('auth_token');
-                        await fetch(`/api/restaurants/${user?.restaurantId}`, {
-                          method: 'PUT',
-                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ kitchen_assignment_mode: 'category' })
-                        });
-                      }}
-                      style={{ marginTop: '2px' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '14px' }}>By Category (Recommended)</div>
-                      <div style={{ color: '#6B7C93', fontSize: '13px', marginTop: '4px' }}>Assign categories to stations. New menu items automatically follow their category.</div>
-                    </div>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', flex: 1, minWidth: '200px', padding: '12px', borderRadius: '8px', border: `1px solid ${kitchenAssignmentMode === 'menu_item' ? '#635BFF' : '#E6EBF1'}`, background: kitchenAssignmentMode === 'menu_item' ? '#F8F7FF' : 'white' }}>
-                    <input
-                      type="radio"
-                      name="assignmentMode"
-                      checked={kitchenAssignmentMode === 'menu_item'}
-                      onChange={async () => {
-                        setKitchenAssignmentMode('menu_item');
-                        const token = localStorage.getItem('auth_token');
-                        await fetch(`/api/restaurants/${user?.restaurantId}`, {
-                          method: 'PUT',
-                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ kitchen_assignment_mode: 'menu_item' })
-                        });
-                      }}
-                      style={{ marginTop: '2px' }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '14px' }}>By Menu Item</div>
-                      <div style={{ color: '#6B7C93', fontSize: '13px', marginTop: '4px' }}>Assign each menu item individually. More precise but requires manual assignment for new items.</div>
-                    </div>
-                  </label>
+                  {([
+                    { key: 'category', label: 'By Category (Recommended)', desc: 'Assign categories to stations. New menu items automatically follow their category.' },
+                    { key: 'menu_item', label: 'By Menu Item', desc: 'Assign each menu item individually. More precise but requires manual assignment for new items.' },
+                  ] as const).map(opt => (
+                    <AutoSaveField key={opt.key} ref={(h: AutoSaveHandle | null) => { if (h) kitchenAssignmentRefs.current.set(opt.key, h); }} onSave={async () => {
+                      const token = localStorage.getItem('auth_token');
+                      const res = await fetch(`/api/restaurants/${user?.restaurantId}`, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ kitchen_assignment_mode: opt.key })
+                      });
+                      if (!res.ok) throw new Error('Save failed');
+                    }} type="toggle" style={{ flex: 1, minWidth: 200 }}>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer', padding: '12px', borderRadius: '8px', border: `1px solid ${kitchenAssignmentMode === opt.key ? '#635BFF' : '#E6EBF1'}`, background: kitchenAssignmentMode === opt.key ? '#F8F7FF' : 'white' }}>
+                      <input type="radio" name="assignmentMode" checked={kitchenAssignmentMode === opt.key}
+                        onChange={() => { setKitchenAssignmentMode(opt.key); kitchenAssignmentRefs.current.get(opt.key)?.triggerSave(); }}
+                        style={{ marginTop: '2px' }} />
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#0A2540', fontSize: '14px' }}>{opt.label}</div>
+                        <div style={{ color: '#6B7C93', fontSize: '13px', marginTop: '4px' }}>{opt.desc}</div>
+                      </div>
+                    </label>
+                    </AutoSaveField>
+                  ))}
                 </div>
               </SettingsCard>
 
@@ -4442,15 +4500,7 @@ QZ Tray (installed on this device)
                                 Edit
                               </button>
                               <button
-                                onClick={async () => {
-                                  if (!window.confirm(`Delete "${station.name}"? Assigned categories and menu items will be unassigned.`)) return;
-                                  const token = localStorage.getItem('auth_token');
-                                  await fetch(`/api/kitchen-stations/${station.id}`, {
-                                    method: 'DELETE',
-                                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-                                  });
-                                  loadKitchenStations();
-                                }}
+                                onClick={() => setDeleteStationConfirm({ isOpen: true, stationId: station.id, stationName: station.name })}
                                 style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', cursor: 'pointer', fontSize: '13px', color: '#EF4444' }}
                               >
                                 Delete
@@ -4496,7 +4546,7 @@ QZ Tray (installed on this device)
                           <strong>{unassignedCats.length} unassigned {unassignedCats.length === 1 ? 'category' : 'categories'}</strong>
                         </div>
                         <div>{unassignedCats.map((c: any) => `${c.emoji || ''} ${c.name}`.trim()).join(', ')}</div>
-                        <div style={{ marginTop: '6px', color: '#B45309', fontSize: '12px' }}>These items will show in all stations on Kitchen Display. Assign them to a station to filter properly.</div>
+                        <div style={{ marginTop: '6px', color: '#B45309', fontSize: '12px' }}>These categories will show in all stations on Kitchen Display. Edit a station above to assign them.</div>
                       </div>
                     );
                   }
@@ -4508,11 +4558,11 @@ QZ Tray (installed on this device)
                           <strong>{unassignedProds.length} unassigned menu {unassignedProds.length === 1 ? 'item' : 'items'}</strong>
                         </div>
                         <div>{unassignedProds.slice(0, 10).map((p: any) => p.name).join(', ')}{unassignedProds.length > 10 ? ` +${unassignedProds.length - 10} more` : ''}</div>
-                        <div style={{ marginTop: '6px', color: '#B45309', fontSize: '12px' }}>These items will show in all stations on Kitchen Display. Assign them to a station to filter properly.</div>
+                        <div style={{ marginTop: '6px', color: '#B45309', fontSize: '12px' }}>These items will show in all stations on Kitchen Display. Edit a station above to assign them.</div>
                       </div>
                     );
                   }
-                  if (uncategorizedProds.length > 0) {
+                  if (kitchenAssignmentMode === 'category' && uncategorizedProds.length > 0) {
                     warnings.push(
                       <div key="uncategorized" style={{ padding: '12px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', fontSize: '13px', color: '#991B1B' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
@@ -4520,7 +4570,7 @@ QZ Tray (installed on this device)
                           <strong>{uncategorizedProds.length} uncategorized menu {uncategorizedProds.length === 1 ? 'item' : 'items'}</strong>
                         </div>
                         <div>{uncategorizedProds.map((p: any) => p.name).join(', ')}</div>
-                        <div style={{ marginTop: '6px', color: '#B91C1C', fontSize: '12px' }}>These items have no category and cannot be assigned to a station. Assign a category first in Menu Management.</div>
+                        <div style={{ marginTop: '6px', color: '#B91C1C', fontSize: '12px' }}>These items have no category and cannot be assigned to a station. <a href={`/restaurant/${user?.restaurantId}/menu`} style={{ color: '#B91C1C', textDecoration: 'underline' }}>Assign a category in Menu Management</a>.</div>
                       </div>
                     );
                   }
@@ -4529,6 +4579,27 @@ QZ Tray (installed on this device)
                   return <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>{warnings}</div>;
                 })()}
               </SettingsCard>
+
+              <ConfirmModal
+                isOpen={deleteStationConfirm.isOpen}
+                title="Delete Station"
+                message={`Are you sure you want to delete "${deleteStationConfirm.stationName}"?\nAssigned categories and menu items will be unassigned.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                type="danger"
+                onConfirm={async () => {
+                  const id = deleteStationConfirm.stationId;
+                  setDeleteStationConfirm({ isOpen: false, stationId: null, stationName: '' });
+                  if (!id) return;
+                  const token = localStorage.getItem('auth_token');
+                  await fetch(`/api/kitchen-stations/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                  });
+                  loadKitchenStations();
+                }}
+                onCancel={() => setDeleteStationConfirm({ isOpen: false, stationId: null, stationName: '' })}
+              />
 
               {/* Station Add/Edit Modal */}
               {showStationModal && (
@@ -4823,18 +4894,6 @@ QZ Tray (installed on this device)
                 </SettingsGrid>
               )}
 
-              <SaveButtonContainer>
-                <SaveButton
-                  onClick={async () => {
-                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                    setAutoSaveStatus('saving');
-                    if (saveCallbackRef.current) await saveCallbackRef.current();
-                  }}
-                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-                >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-                </SaveButton>
-              </SaveButtonContainer>
             </div>
           )}
 
@@ -4860,17 +4919,19 @@ QZ Tray (installed on this device)
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <CardTitle style={{ marginBottom: 0 }}>Points Settings</CardTitle>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <AutoSaveField ref={membershipActiveToggleRef} onSave={handleSaveMembership} type="toggle">
                           <ToggleSwitch>
                             <ToggleInput
                               type="checkbox"
                               checked={membershipSettings.is_active}
                               onChange={(e) => {
                                 setMembershipSettings({ ...membershipSettings, is_active: e.target.checked });
-                                markChanged();
+                                membershipActiveToggleRef.current?.triggerSave();
                               }}
                             />
                             <ToggleSlider />
                           </ToggleSwitch>
+                          </AutoSaveField>
                           <span style={{ fontSize: '14px', fontWeight: '500', color: membershipSettings.is_active ? '#635BFF' : '#6B7C93' }}>
                             {membershipSettings.is_active ? 'Active' : 'Inactive'}
                           </span>
@@ -4882,6 +4943,7 @@ QZ Tray (installed on this device)
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           Percentage of order value earned as points value
                         </p>
+                        <AutoSaveField onSave={handleSaveMembership}>
                         <Input
                           type="number"
                           step="0.1"
@@ -4892,17 +4954,14 @@ QZ Tray (installed on this device)
                             : 1}
                           onChange={(e) => {
                             const earnRatePercent = parseFloat(e.target.value) || 0;
-                            // Keep points_to_currency at 100, adjust points_per_currency
-                            // earnRate% = (points_per_currency / points_to_currency) * 100
-                            // points_per_currency = earnRate% * points_to_currency / 100
                             const pointsPerCurrency = (earnRatePercent * membershipSettings.points_to_currency) / 100;
                             setMembershipSettings({
                               ...membershipSettings,
                               points_per_currency: pointsPerCurrency
                             });
-                            markChanged();
                           }}
                         />
+                        </AutoSaveField>
                         <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#6B7C93' }}>
                           e.g., {((membershipSettings.points_per_currency / membershipSettings.points_to_currency) * 100).toFixed(1)}% earn rate:
                           {getCurrencySymbol(currencySettings.currency)} 100 spent = {Math.round(100 * membershipSettings.points_per_currency)} points = {getCurrencySymbol(currencySettings.currency)} {(100 * membershipSettings.points_per_currency / membershipSettings.points_to_currency).toFixed(2)} value
@@ -4914,16 +4973,15 @@ QZ Tray (installed on this device)
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           How many points equal {getCurrencySymbol(currencySettings.currency)} 1 when redeeming
                         </p>
+                        <AutoSaveField onSave={handleSaveMembership}>
                         <Input
                           type="number"
                           step="1"
                           min="1"
                           value={membershipSettings.points_to_currency}
-                          onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, points_to_currency: parseFloat(e.target.value) || 100 });
-                            markChanged();
-                          }}
+                          onChange={(e) => setMembershipSettings({ ...membershipSettings, points_to_currency: parseFloat(e.target.value) || 100 })}
                         />
+                        </AutoSaveField>
                         <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#6B7C93' }}>
                           {membershipSettings.points_to_currency} points = {getCurrencySymbol(currencySettings.currency)} 1
                         </p>
@@ -4934,16 +4992,15 @@ QZ Tray (installed on this device)
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           Minimum points required before customer can redeem
                         </p>
+                        <AutoSaveField onSave={handleSaveMembership}>
                         <Input
                           type="number"
                           step="1"
                           min="0"
                           value={membershipSettings.min_points_to_use}
-                          onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, min_points_to_use: parseInt(e.target.value) || 0 });
-                            markChanged();
-                          }}
+                          onChange={(e) => setMembershipSettings({ ...membershipSettings, min_points_to_use: parseInt(e.target.value) || 0 })}
                         />
+                        </AutoSaveField>
                       </FormGroup>
 
                       <FormGroup>
@@ -4951,17 +5008,16 @@ QZ Tray (installed on this device)
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           Maximum percentage of order that can be paid with points
                         </p>
+                        <AutoSaveField onSave={handleSaveMembership}>
                         <Input
                           type="number"
                           step="1"
                           min="0"
                           max="100"
                           value={membershipSettings.max_points_per_order_percent}
-                          onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, max_points_per_order_percent: parseFloat(e.target.value) || 0 });
-                            markChanged();
-                          }}
+                          onChange={(e) => setMembershipSettings({ ...membershipSettings, max_points_per_order_percent: parseFloat(e.target.value) || 0 })}
                         />
+                        </AutoSaveField>
                       </FormGroup>
 
                       <FormGroup>
@@ -4969,16 +5025,15 @@ QZ Tray (installed on this device)
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           Number of days until points expire (0 = never)
                         </p>
+                        <AutoSaveField onSave={handleSaveMembership}>
                         <Input
                           type="number"
                           step="1"
                           min="0"
                           value={membershipSettings.points_expiry_days}
-                          onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, points_expiry_days: parseInt(e.target.value) || 0 });
-                            markChanged();
-                          }}
+                          onChange={(e) => setMembershipSettings({ ...membershipSettings, points_expiry_days: parseInt(e.target.value) || 0 })}
                         />
+                        </AutoSaveField>
                       </FormGroup>
 
                       <FormGroup>
@@ -4986,16 +5041,15 @@ QZ Tray (installed on this device)
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           Points given to new members on registration
                         </p>
+                        <AutoSaveField onSave={handleSaveMembership}>
                         <Input
                           type="number"
                           step="1"
                           min="0"
                           value={membershipSettings.welcome_points}
-                          onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, welcome_points: parseInt(e.target.value) || 0 });
-                            markChanged();
-                          }}
+                          onChange={(e) => setMembershipSettings({ ...membershipSettings, welcome_points: parseInt(e.target.value) || 0 })}
                         />
+                        </AutoSaveField>
                       </FormGroup>
                     </SettingsCard>
 
@@ -5008,44 +5062,41 @@ QZ Tray (installed on this device)
 
                       <FormGroup>
                         <Label>Silver Threshold ({getCurrencySymbol(currencySettings.currency)})</Label>
+                        <AutoSaveField onSave={handleSaveMembership}>
                         <Input
                           type="number"
                           step="100"
                           min="0"
                           value={membershipSettings.silver_threshold}
-                          onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, silver_threshold: parseFloat(e.target.value) || 0 });
-                            markChanged();
-                          }}
+                          onChange={(e) => setMembershipSettings({ ...membershipSettings, silver_threshold: parseFloat(e.target.value) || 0 })}
                         />
+                        </AutoSaveField>
                       </FormGroup>
 
                       <FormGroup>
                         <Label>Gold Threshold ({getCurrencySymbol(currencySettings.currency)})</Label>
+                        <AutoSaveField onSave={handleSaveMembership}>
                         <Input
                           type="number"
                           step="100"
                           min="0"
                           value={membershipSettings.gold_threshold}
-                          onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, gold_threshold: parseFloat(e.target.value) || 0 });
-                            markChanged();
-                          }}
+                          onChange={(e) => setMembershipSettings({ ...membershipSettings, gold_threshold: parseFloat(e.target.value) || 0 })}
                         />
+                        </AutoSaveField>
                       </FormGroup>
 
                       <FormGroup>
                         <Label>VIP Threshold ({getCurrencySymbol(currencySettings.currency)})</Label>
+                        <AutoSaveField onSave={handleSaveMembership}>
                         <Input
                           type="number"
                           step="100"
                           min="0"
                           value={membershipSettings.vip_threshold}
-                          onChange={(e) => {
-                            setMembershipSettings({ ...membershipSettings, vip_threshold: parseFloat(e.target.value) || 0 });
-                            markChanged();
-                          }}
+                          onChange={(e) => setMembershipSettings({ ...membershipSettings, vip_threshold: parseFloat(e.target.value) || 0 })}
                         />
+                        </AutoSaveField>
                       </FormGroup>
 
                       <CardTitle style={{ marginTop: '24px' }}>Bonus Rates</CardTitle>
@@ -5056,58 +5107,54 @@ QZ Tray (installed on this device)
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <FormGroup>
                           <Label>Bronze (x)</Label>
+                          <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
                             step="0.1"
                             min="1"
                             value={membershipSettings.bronze_bonus_rate}
-                            onChange={(e) => {
-                              setMembershipSettings({ ...membershipSettings, bronze_bonus_rate: parseFloat(e.target.value) || 1 });
-                              markChanged();
-                            }}
+                            onChange={(e) => setMembershipSettings({ ...membershipSettings, bronze_bonus_rate: parseFloat(e.target.value) || 1 })}
                           />
+                          </AutoSaveField>
                         </FormGroup>
 
                         <FormGroup>
                           <Label>Silver (x)</Label>
+                          <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
                             step="0.1"
                             min="1"
                             value={membershipSettings.silver_bonus_rate}
-                            onChange={(e) => {
-                              setMembershipSettings({ ...membershipSettings, silver_bonus_rate: parseFloat(e.target.value) || 1 });
-                              markChanged();
-                            }}
+                            onChange={(e) => setMembershipSettings({ ...membershipSettings, silver_bonus_rate: parseFloat(e.target.value) || 1 })}
                           />
+                          </AutoSaveField>
                         </FormGroup>
 
                         <FormGroup>
                           <Label>Gold (x)</Label>
+                          <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
                             step="0.1"
                             min="1"
                             value={membershipSettings.gold_bonus_rate}
-                            onChange={(e) => {
-                              setMembershipSettings({ ...membershipSettings, gold_bonus_rate: parseFloat(e.target.value) || 1 });
-                              markChanged();
-                            }}
+                            onChange={(e) => setMembershipSettings({ ...membershipSettings, gold_bonus_rate: parseFloat(e.target.value) || 1 })}
                           />
+                          </AutoSaveField>
                         </FormGroup>
 
                         <FormGroup>
                           <Label>VIP (x)</Label>
+                          <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
                             step="0.1"
                             min="1"
                             value={membershipSettings.vip_bonus_rate}
-                            onChange={(e) => {
-                              setMembershipSettings({ ...membershipSettings, vip_bonus_rate: parseFloat(e.target.value) || 1 });
-                              markChanged();
-                            }}
+                            onChange={(e) => setMembershipSettings({ ...membershipSettings, vip_bonus_rate: parseFloat(e.target.value) || 1 })}
                           />
+                          </AutoSaveField>
                         </FormGroup>
                       </div>
 
@@ -5119,68 +5166,64 @@ QZ Tray (installed on this device)
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <FormGroup>
                           <Label>Bronze (%)</Label>
+                          <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
                             step="1"
                             min="0"
                             max="100"
                             value={membershipSettings.bronze_discount_percent}
-                            onChange={(e) => {
-                              setMembershipSettings({ ...membershipSettings, bronze_discount_percent: parseFloat(e.target.value) || 0 });
-                              markChanged();
-                            }}
+                            onChange={(e) => setMembershipSettings({ ...membershipSettings, bronze_discount_percent: parseFloat(e.target.value) || 0 })}
                           />
+                          </AutoSaveField>
                         </FormGroup>
 
                         <FormGroup>
                           <Label>Silver (%)</Label>
+                          <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
                             step="1"
                             min="0"
                             max="100"
                             value={membershipSettings.silver_discount_percent}
-                            onChange={(e) => {
-                              setMembershipSettings({ ...membershipSettings, silver_discount_percent: parseFloat(e.target.value) || 0 });
-                              markChanged();
-                            }}
+                            onChange={(e) => setMembershipSettings({ ...membershipSettings, silver_discount_percent: parseFloat(e.target.value) || 0 })}
                           />
+                          </AutoSaveField>
                         </FormGroup>
 
                         <FormGroup>
                           <Label>Gold (%)</Label>
+                          <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
                             step="1"
                             min="0"
                             max="100"
                             value={membershipSettings.gold_discount_percent}
-                            onChange={(e) => {
-                              setMembershipSettings({ ...membershipSettings, gold_discount_percent: parseFloat(e.target.value) || 0 });
-                              markChanged();
-                            }}
+                            onChange={(e) => setMembershipSettings({ ...membershipSettings, gold_discount_percent: parseFloat(e.target.value) || 0 })}
                           />
+                          </AutoSaveField>
                         </FormGroup>
 
                         <FormGroup>
                           <Label>VIP (%)</Label>
+                          <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
                             step="1"
                             min="0"
                             max="100"
                             value={membershipSettings.vip_discount_percent}
-                            onChange={(e) => {
-                              setMembershipSettings({ ...membershipSettings, vip_discount_percent: parseFloat(e.target.value) || 0 });
-                              markChanged();
-                            }}
+                            onChange={(e) => setMembershipSettings({ ...membershipSettings, vip_discount_percent: parseFloat(e.target.value) || 0 })}
                           />
+                          </AutoSaveField>
                         </FormGroup>
                       </div>
                     </SettingsCard>
                   </SettingsGrid>
 
-                  {/* Point Policy Reference */}
+                  {/* Point Policy Reference — info only, below save button */}
                   <SettingsCard style={{ marginTop: '24px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
                     <CardTitle style={{ fontSize: '14px', color: '#64748B' }}>Point System Policy Reference</CardTitle>
                     <div style={{ fontSize: '13px', color: '#64748B', lineHeight: '1.8' }}>
@@ -5202,19 +5245,6 @@ QZ Tray (installed on this device)
                       </p>
                     </div>
                   </SettingsCard>
-
-                  <SaveButtonContainer>
-                <SaveButton
-                  onClick={async () => {
-                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                    setAutoSaveStatus('saving');
-                    if (saveCallbackRef.current) await saveCallbackRef.current();
-                  }}
-                  disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-                >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-                </SaveButton>
-              </SaveButtonContainer>
                 </>
               )}
             </div>

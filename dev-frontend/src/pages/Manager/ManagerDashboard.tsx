@@ -323,7 +323,7 @@ const ManagerDashboard: React.FC = () => {
 
   const handleRestaurantClick = (restaurantId: string) => {
     // Navigate to restaurant reports
-    navigate(`/manager/reports?restaurant=${restaurantId}`);
+    navigate(`/pos/manager/reports?restaurant=${restaurantId}`);
   };
 
   return (

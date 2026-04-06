@@ -112,6 +112,74 @@ const AlertsPanel = styled.div`
   }
 `;
 
+const AlertsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+`;
+
+const Alert = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: ${props => {
+    switch(props.type) {
+      case 'error': return '#FEF2F2';
+      case 'warning': return '#FFFBEB';
+      case 'success': return '#ECFDF5';
+      case 'info': return '#EFF6FF';
+      default: return '#F8FAFC';
+    }
+  }};
+  border: 1px solid ${props => {
+    switch(props.type) {
+      case 'error': return '#FECACA';
+      case 'warning': return '#FDE68A';
+      case 'success': return '#A7F3D0';
+      case 'info': return '#BFDBFE';
+      default: return '#E6EBF1';
+    }
+  }};
+  flex-shrink: 0;
+
+  &:hover { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); }
+`;
+
+const AlertContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const AlertTitle = styled.div<{ type: 'warning' | 'error' | 'info' | 'success' }>`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => {
+    switch(props.type) {
+      case 'error': return '#DC2626';
+      case 'warning': return '#D97706';
+      case 'success': return '#059669';
+      case 'info': return '#2563EB';
+      default: return '#374151';
+    }
+  }};
+`;
+
+const AlertDescription = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-top: 2px;
+`;
+
 const SummaryItem = styled.div`
   display: flex;
   justify-content: space-between;
@@ -294,10 +362,56 @@ const BrandManagerDashboard: React.FC = () => {
   const [brandName, setBrandName] = useState('');
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
+  const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'error' | 'info' | 'success'; title: string; message: string; link?: string }>>([]);
+  const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
+  const [invoiceCounts, setInvoiceCounts] = useState({ overdue: 0, pending: 0 });
+  const [noOrdersTodayCount, setNoOrdersTodayCount] = useState(0);
 
   useEffect(() => {
     if (defaultCurrency) setSelectedCurrency(defaultCurrency);
   }, [defaultCurrency]);
+
+  const fetchBadgeCounts = async () => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setBadgeCounts(data.data);
+      }
+    } catch { /* silent */ }
+  };
+
+  useEffect(() => {
+    if (user) fetchBadgeCounts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Rebuild alerts whenever underlying data changes (badge counts may arrive after main fetch)
+  useEffect(() => {
+    const alertList: Array<{ type: 'warning' | 'error' | 'info' | 'success'; title: string; message: string; link?: string }> = [];
+    if (invoiceCounts.overdue > 0) {
+      alertList.push({ type: 'warning', title: 'Overdue Invoices', message: `${invoiceCounts.overdue} invoice(s) need attention`, link: '/pos/brand/invoices' });
+    }
+    if (invoiceCounts.pending > 0) {
+      alertList.push({ type: 'info', title: 'Pending Invoices', message: `${invoiceCounts.pending} invoice(s) pending payment`, link: '/pos/brand/invoices' });
+    }
+    if (noOrdersTodayCount > 0) {
+      alertList.push({ type: 'info', title: 'No Orders Today', message: `${noOrdersTodayCount} restaurant(s) with no orders today`, link: '/pos/manager/restaurants' });
+    }
+    if (badgeCounts.notices > 0) {
+      alertList.push({ type: 'info', title: 'Unread Notices', message: `${badgeCounts.notices} unread notice(s)`, link: '/pos/brand/notices' });
+    }
+    if (badgeCounts.systemInquiry > 0) {
+      alertList.push({ type: 'info', title: 'System Inquiry', message: `${badgeCounts.systemInquiry} inquiry(s) with new replies`, link: '/pos/brand/system-inquiry' });
+    }
+    if (alertList.length === 0 && !loading) {
+      alertList.push({ type: 'success', title: 'All Clear', message: 'All systems running smoothly. No issues detected.' });
+    }
+    if (alertList.length > 0) setAlerts(alertList);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [badgeCounts, invoiceCounts, noOrdersTodayCount, loading]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -313,7 +427,16 @@ const BrandManagerDashboard: React.FC = () => {
           }
         }
 
-        const restRes = await fetch('/api/restaurants', { headers });
+        const [restRes, invoicesRes] = await Promise.all([
+          fetch('/api/restaurants', { headers }),
+          fetch('/api/invoices', { headers }),
+        ]);
+
+        const invoicesData = invoicesRes.ok ? await invoicesRes.json() : { data: [] };
+        const invoices = invoicesData.data || invoicesData || [];
+        const overdueInvoices = invoices.filter((inv: any) => inv.status === 'overdue').length;
+        const pendingInvoices = invoices.filter((inv: any) => inv.status === 'pending_payment' || inv.status === 'sent').length;
+
         if (restRes.ok) {
           const restData = await restRes.json();
 
@@ -357,6 +480,8 @@ const BrandManagerDashboard: React.FC = () => {
           });
 
           setRestaurants(transformed);
+          setInvoiceCounts({ overdue: overdueInvoices, pending: pendingInvoices });
+          setNoOrdersTodayCount(transformed.filter(r => r.todayOrders === 0).length);
         }
       } catch (error) {
         console.error('Error fetching brand manager data:', error);
@@ -450,9 +575,16 @@ const BrandManagerDashboard: React.FC = () => {
 
           <AlertsPanel>
             <h3>Notifications</h3>
-            <div style={{ padding: '16px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px', fontStyle: 'italic' }}>
-              No new notifications
-            </div>
+            <AlertsList>
+              {alerts.map((alert, idx) => (
+                <Alert key={idx} type={alert.type} onClick={() => alert.link && navigate(alert.link)}>
+                  <AlertContent>
+                    <AlertTitle type={alert.type}>{alert.title}</AlertTitle>
+                    <AlertDescription>{alert.message}</AlertDescription>
+                  </AlertContent>
+                </Alert>
+              ))}
+            </AlertsList>
           </AlertsPanel>
         </MainGrid>
 

@@ -76,7 +76,23 @@ const RecipesGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
   margin-top: 24px;
-  align-items: start;
+`;
+
+const RecipeImageFull = styled.div`
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+  background: #F6F9FC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const RecipeCard = styled.div<{ isActive?: boolean }>`
@@ -626,6 +642,169 @@ const RecipeDetailText = styled.div`
   white-space: pre-wrap;
 `;
 
+// View Mode Styled Components (same design as RecipesTab)
+const ViewContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+const ViewHeader = styled.div`
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+`;
+
+const ViewImage = styled.div`
+  width: 200px;
+  height: 200px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ViewEmoji = styled.div`
+  font-size: 80px;
+  line-height: 1;
+`;
+
+const ViewTitleSection = styled.div`
+  flex: 1;
+`;
+
+const ViewTitle = styled.h2`
+  font-size: 28px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0 0 8px 0;
+`;
+
+const ViewCategoryBadge = styled.span`
+  display: inline-block;
+  padding: 6px 12px;
+  background: #F0F4FF;
+  color: #635BFF;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+`;
+
+const ViewDescription = styled.p`
+  font-size: 15px;
+  color: #6B7280;
+  margin: 16px 0 0 0;
+  line-height: 1.6;
+`;
+
+const ViewSection = styled.div`
+  padding: 0;
+  margin-bottom: 8px;
+`;
+
+const ViewSectionTitle = styled.h3`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #E5E7EB;
+`;
+
+const ViewGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+`;
+
+const ViewGridItem = styled.div`
+  text-align: center;
+  padding: 16px;
+  background: #F8FAFC;
+  border-radius: 12px;
+`;
+
+const ViewGridLabel = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 4px;
+`;
+
+const ViewGridValue = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const ViewInstructions = styled.div`
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.8;
+  white-space: pre-wrap;
+`;
+
+const ViewIngredientTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #E6EBF1;
+  }
+
+  th {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+  }
+
+  td {
+    font-size: 14px;
+    color: #374151;
+  }
+
+  th:last-child, td:last-child {
+    text-align: right;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+`;
+
+const ViewTotalRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  margin-top: 12px;
+  border-top: 1px solid #E5E7EB;
+  font-weight: 600;
+
+  span:first-child {
+    color: #6B7280;
+  }
+
+  span:last-child {
+    color: #635BFF;
+    font-size: 16px;
+  }
+`;
+
 const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
@@ -636,6 +815,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [linkedProducts, setLinkedProducts] = useState<Record<number, string[]>>({});
+  const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
+    const saved = localStorage.getItem('brandProductRecipesViewMode');
+    return saved === 'image' ? 'image' : 'compact';
+  });
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -674,7 +858,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
   }>>([]);
 
   // View mode for modal
-  const [viewMode, setViewMode] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingRecipe, setDeletingRecipe] = useState<ProductRecipe | null>(null);
 
@@ -726,6 +910,20 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
       if (categoriesRes.success) {
         setCategories(categoriesRes.data || []);
       }
+
+      // Fetch brand products to show linked products on recipe cards
+      try {
+        const bpRes = await fetchAPI('/api/brand-products');
+        const bpList = bpRes.data || bpRes || [];
+        const map: Record<number, string[]> = {};
+        (Array.isArray(bpList) ? bpList : []).forEach((bp: any) => {
+          if (bp.product_recipe_id) {
+            if (!map[bp.product_recipe_id]) map[bp.product_recipe_id] = [];
+            map[bp.product_recipe_id].push(bp.name);
+          }
+        });
+        setLinkedProducts(map);
+      } catch (e) { /* ignore */ }
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -756,7 +954,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
   };
 
   const handleOpenModal = (recipe?: ProductRecipe, isViewMode: boolean = false) => {
-    setViewMode(isViewMode);
+    setIsViewMode(isViewMode);
     setFormError(null);
     if (recipe) {
       setEditingRecipe(recipe);
@@ -990,9 +1188,19 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             ))}
           </FilterSelect>
         </FilterBar>
-        <ThemedButton variant="primary" onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
-          Add Recipe
-        </ThemedButton>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
+            <button onClick={() => { setViewMode('compact'); localStorage.setItem('brandProductRecipesViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+              Compact
+            </button>
+            <button onClick={() => { setViewMode('image'); localStorage.setItem('brandProductRecipesViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+              Image
+            </button>
+          </div>
+          <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+            Add Recipe
+          </ThemedButton>
+        </div>
       </div>
 
       {filteredRecipes.length === 0 ? (
@@ -1009,12 +1217,12 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         <RecipesGrid>
           {filteredRecipes.map(recipe => (
             <RecipeCard key={recipe.id} isActive={recipe.is_active} onClick={() => handleOpenModal(recipe, true)}>
+              {viewMode === 'image' && recipe.image && (
+                <RecipeImageFull>
+                  <img src={recipe.image} alt={recipe.name} />
+                </RecipeImageFull>
+              )}
               <RecipeHeader>
-                {recipe.image_url ? (
-                  <RecipeImage src={recipe.image_url} alt={recipe.name} />
-                ) : (
-                  <RecipeEmoji>{recipe.emoji || recipe.category?.emoji || '📋'}</RecipeEmoji>
-                )}
                 <RecipeInfo>
                   <RecipeName>{recipe.name}</RecipeName>
                   <RecipeCategoryBadge>
@@ -1092,6 +1300,16 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                 </RecipeIngredients>
               )}
 
+              {linkedProducts[recipe.id] && linkedProducts[recipe.id].length > 0 && (
+                <div style={{ marginTop: '8px', display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {linkedProducts[recipe.id].map((name, i) => (
+                    <span key={i} style={{ fontSize: '11px', background: '#ECFDF5', color: '#059669', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 }}>
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               <RecipeActions onClick={(e) => e.stopPropagation()}>
                 <ActionButton onClick={() => handleOpenRecipeModal(recipe)}>
                   Recipe
@@ -1112,16 +1330,167 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={viewMode ? 'Recipe Details' : (editingRecipe ? 'Edit Recipe' : 'Add Recipe')}
+        title={isViewMode ? 'Recipe Details' : (editingRecipe ? 'Edit Recipe' : 'Add Recipe')}
         size="large"
       >
+        {isViewMode && editingRecipe ? (
+          /* View Mode - Clean readable layout (same as RecipesTab) */
+          <ViewContainer>
+            {/* Header with image and title */}
+            <ViewHeader>
+              {formData.image && (
+              <ViewImage>
+                <img src={formData.image} alt={formData.name} />
+              </ViewImage>
+              )}
+              <ViewTitleSection>
+                <ViewTitle>{formData.name}</ViewTitle>
+                <ViewCategoryBadge>
+                  {editingRecipe.category?.emoji} {editingRecipe.category?.name || 'Uncategorized'}
+                </ViewCategoryBadge>
+                {formData.description && (
+                  <ViewDescription>{formData.description}</ViewDescription>
+                )}
+              </ViewTitleSection>
+            </ViewHeader>
+
+            {/* Cost & Time Info */}
+            <ViewSection>
+              <ViewSectionTitle>Cost & Time</ViewSectionTitle>
+              <ViewGrid>
+                <ViewGridItem>
+                  <ViewGridLabel>Ingredient Cost</ViewGridLabel>
+                  <ViewGridValue>{formatCurrency(Number(editingRecipe.total_ingredient_cost || 0), selectedCurrency)}</ViewGridValue>
+                </ViewGridItem>
+                <ViewGridItem>
+                  <ViewGridLabel>Suggested Price</ViewGridLabel>
+                  <ViewGridValue>{formatCurrency(Number(formData.suggested_price || 0), selectedCurrency)}</ViewGridValue>
+                </ViewGridItem>
+                {formData.prep_time && (
+                  <ViewGridItem>
+                    <ViewGridLabel>Prep Time</ViewGridLabel>
+                    <ViewGridValue>{formData.prep_time} min</ViewGridValue>
+                  </ViewGridItem>
+                )}
+                {formData.cook_time && (
+                  <ViewGridItem>
+                    <ViewGridLabel>Cook Time</ViewGridLabel>
+                    <ViewGridValue>{formData.cook_time} min</ViewGridValue>
+                  </ViewGridItem>
+                )}
+              </ViewGrid>
+            </ViewSection>
+
+            {/* Yield */}
+            {(formData.yield_amount && formData.yield_amount !== '1') && (
+              <ViewSection>
+                <ViewSectionTitle>Yield</ViewSectionTitle>
+                <div style={{ fontSize: '15px', color: '#374151' }}>
+                  {formData.yield_amount} {STANDARD_UNITS.find(u => u.value === formData.yield_unit)?.label || formData.yield_unit}
+                  <span style={{ marginLeft: '16px', color: '#6B7280', fontSize: '13px' }}>
+                    (Cost per {formData.yield_unit}: {formatCurrency(
+                      calculateCostPerUnit(
+                        calculateTotalCost(),
+                        parseFloat(formData.yield_amount) || 1,
+                        formData.yield_unit
+                      ).cost,
+                      selectedCurrency
+                    )})
+                  </span>
+                </div>
+              </ViewSection>
+            )}
+
+            {/* Ingredients */}
+            {formIngredients.length > 0 && (
+              <ViewSection>
+                <ViewSectionTitle>Ingredients ({formIngredients.length})</ViewSectionTitle>
+                <ViewIngredientTable>
+                  <thead>
+                    <tr>
+                      <th>Ingredient</th>
+                      <th>Quantity</th>
+                      <th>Unit Cost</th>
+                      <th>Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formIngredients.map((fi, idx) => {
+                      const ingredient = ingredients.find(ing => ing.id === fi.ingredient_id);
+                      const baseQty = ingredient?.base_quantity || 1;
+                      const costPerUnit = (ingredient?.unit_cost || 0) / baseQty;
+                      const subtotal = parseFloat(fi.quantity) * costPerUnit;
+                      return (
+                        <tr key={idx}>
+                          <td><strong>{ingredient?.name || `Ingredient #${fi.ingredient_id}`}</strong></td>
+                          <td>{Number(fi.quantity).toFixed(2)} {fi.unit}</td>
+                          <td>{getCurrencySymbol(selectedCurrency)} {costPerUnit.toFixed(2)}/{ingredient?.unit}</td>
+                          <td>{formatCurrency(subtotal, selectedCurrency)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </ViewIngredientTable>
+                <ViewTotalRow>
+                  <span>Total Ingredient Cost</span>
+                  <span>{formatCurrency(calculateTotalCost(), selectedCurrency)}</span>
+                </ViewTotalRow>
+              </ViewSection>
+            )}
+
+            {/* Recipe Summary */}
+            {(formData.instructions_summary) && (
+              <ViewSection>
+                <ViewSectionTitle>Recipe Summary</ViewSectionTitle>
+                <ViewInstructions>{formData.instructions_summary}</ViewInstructions>
+              </ViewSection>
+            )}
+
+            {/* Detailed Instructions */}
+            {formData.instructions_detail && (
+              <ViewSection>
+                <ViewSectionTitle>Detailed Instructions</ViewSectionTitle>
+                <ViewInstructions>{formData.instructions_detail}</ViewInstructions>
+              </ViewSection>
+            )}
+
+            {/* Connected Products */}
+            {linkedProducts[editingRecipe.id] && linkedProducts[editingRecipe.id].length > 0 && (
+              <ViewSection>
+                <ViewSectionTitle>Connected Products ({linkedProducts[editingRecipe.id].length})</ViewSectionTitle>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {linkedProducts[editingRecipe.id].map((name, i) => (
+                    <span key={i} style={{ fontSize: '13px', background: '#ECFDF5', color: '#059669', padding: '4px 12px', borderRadius: '6px', fontWeight: 500 }}>
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </ViewSection>
+            )}
+
+            {/* Action Buttons */}
+            <ButtonGroup>
+              <ModalButton type="button" variant="secondary" onClick={() => setShowModal(false)}>
+                Close
+              </ModalButton>
+              <ModalButton
+                type="button"
+                variant="primary"
+                onClick={() => setIsViewMode(false)}
+              >
+                Edit
+              </ModalButton>
+            </ButtonGroup>
+          </ViewContainer>
+        ) : (
+          /* Edit/Create Mode - Form layout */
+          <>
         <UIFormGroup>
-          <FormLabel>Recipe Name {!viewMode && '*'}</FormLabel>
+          <FormLabel>Recipe Name *</FormLabel>
           <FormInput
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="e.g., Grilled Chicken"
-            disabled={viewMode}
           />
         </UIFormGroup>
 
@@ -1130,7 +1499,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
           <FormSelect
             value={formData.category_id}
             onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-            disabled={viewMode}
           >
             <option value="">Select Category</option>
             {categories.map(cat => (
@@ -1139,34 +1507,30 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
           </FormSelect>
         </UIFormGroup>
 
-        {!viewMode && (
-          <UIFormGroup>
-            <FormLabel>Emoji Icon</FormLabel>
-            <EmojiPicker>
-              {emojiOptions.map((emoji) => (
-                <EmojiOption
-                  key={emoji}
-                  type="button"
-                  selected={formData.emoji === emoji}
-                  onClick={() => setFormData({ ...formData, emoji })}
-                >
-                  {emoji}
-                </EmojiOption>
-              ))}
-            </EmojiPicker>
-          </UIFormGroup>
-        )}
+        <UIFormGroup>
+          <FormLabel>Emoji Icon</FormLabel>
+          <EmojiPicker>
+            {emojiOptions.map((emoji) => (
+              <EmojiOption
+                key={emoji}
+                type="button"
+                selected={formData.emoji === emoji}
+                onClick={() => setFormData({ ...formData, emoji })}
+              >
+                {emoji}
+              </EmojiOption>
+            ))}
+          </EmojiPicker>
+        </UIFormGroup>
 
-        {!viewMode && (
-          <UIFormGroup>
-            <FormLabel>Recipe Image</FormLabel>
-            <ImageUploadDropzone
-              value={formData.image}
-              onChange={(value) => setFormData({ ...formData, image: value })}
-              label="Drop recipe image here or click to upload"
-            />
-          </UIFormGroup>
-        )}
+        <UIFormGroup>
+          <FormLabel>Recipe Image</FormLabel>
+          <ImageUploadDropzone
+            value={formData.image}
+            onChange={(value) => setFormData({ ...formData, image: value })}
+            label="Drop recipe image here or click to upload"
+          />
+        </UIFormGroup>
 
         <UIFormGroup>
           <FormLabel>Description</FormLabel>
@@ -1175,7 +1539,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Brief description of the recipe"
             rows={2}
-            disabled={viewMode}
           />
         </UIFormGroup>
 
@@ -1187,7 +1550,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               min="0"
               value={formData.prep_time}
               onChange={(e) => setFormData({ ...formData, prep_time: e.target.value })}
-              disabled={viewMode}
             />
           </UIFormGroup>
           <UIFormGroup>
@@ -1197,7 +1559,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               min="0"
               value={formData.cook_time}
               onChange={(e) => setFormData({ ...formData, cook_time: e.target.value })}
-              disabled={viewMode}
             />
           </UIFormGroup>
           <UIFormGroup>
@@ -1208,7 +1569,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               min="0"
               value={formData.suggested_price}
               onChange={(e) => setFormData({ ...formData, suggested_price: e.target.value })}
-              disabled={viewMode}
             />
           </UIFormGroup>
         </div>
@@ -1220,7 +1580,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             onChange={(e) => setFormData({ ...formData, instructions_summary: e.target.value })}
             placeholder="Brief summary for list display (e.g., Pan-fried chicken with garlic sauce)"
             rows={2}
-            disabled={viewMode}
           />
         </UIFormGroup>
 
@@ -1234,7 +1593,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 2. Heat the pan...
 3. ..."
             rows={6}
-            disabled={viewMode}
           />
         </UIFormGroup>
 
@@ -1250,7 +1608,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               value={formData.yield_amount}
               onChange={(e) => setFormData({ ...formData, yield_amount: e.target.value })}
               placeholder="e.g., 10"
-              disabled={viewMode}
             />
           </UIFormGroup>
           <UIFormGroup>
@@ -1258,7 +1615,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             <FormSelect
               value={formData.yield_unit}
               onChange={(e) => setFormData({ ...formData, yield_unit: e.target.value })}
-              disabled={viewMode}
             >
               {STANDARD_UNITS.map(u => (
                 <option key={u.value} value={u.value}>{u.label}</option>
@@ -1270,11 +1626,9 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         {/* Ingredients Section */}
         <SectionTitle>Ingredients</SectionTitle>
 
-        {!viewMode && (
-          <AddButton onClick={addIngredientRow}>
-            Add Ingredient
-          </AddButton>
-        )}
+        <AddButton onClick={addIngredientRow}>
+          Add Ingredient
+        </AddButton>
 
         {formIngredients.length > 0 && (
           <IngredientsList>
@@ -1283,31 +1637,25 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               <span>Quantity</span>
               <span>Unit</span>
               <span>Notes</span>
-              {!viewMode && <span></span>}
+              <span></span>
             </IngredientHeaderRow>
 
             {formIngredients.map((fi, index) => {
-              const selectedIngredient = ingredients.find(ing => ing.id === fi.ingredient_id);
               return (
-                <IngredientRow key={index} style={viewMode ? { gridTemplateColumns: '3fr 1fr 0.7fr 2fr' } : undefined}>
-                  {viewMode ? (
-                    <FormInput value={selectedIngredient?.name || ''} disabled />
-                  ) : (
-                    <SearchableSelect
-                      options={ingredients.map(ing => {
-                        const costPerUnit = ing.unit_cost / (ing.base_quantity || 1);
-                        return {
-                          value: ing.id,
-                          label: ing.name,
-                          subLabel: `${getCurrencySymbol(selectedCurrency)} ${costPerUnit.toFixed(2)}/${ing.unit}`
-                        };
-                      })}
-                      value={fi.ingredient_id || null}
-                      onChange={(value) => updateIngredientRow(index, 'ingredient_id', value as number)}
-                      placeholder="Search ingredient..."
-                      disabled={viewMode}
-                    />
-                  )}
+                <IngredientRow key={index}>
+                  <SearchableSelect
+                    options={ingredients.map(ing => {
+                      const costPerUnit = ing.unit_cost / (ing.base_quantity || 1);
+                      return {
+                        value: ing.id,
+                        label: ing.name,
+                        subLabel: `${getCurrencySymbol(selectedCurrency)} ${costPerUnit.toFixed(2)}/${ing.unit}`
+                      };
+                    })}
+                    value={fi.ingredient_id || null}
+                    onChange={(value) => updateIngredientRow(index, 'ingredient_id', value as number)}
+                    placeholder="Search ingredient..."
+                  />
                   <FormInput
                     type="number"
                     step="0.01"
@@ -1315,7 +1663,6 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                     placeholder="Qty"
                     value={fi.quantity}
                     onChange={(e) => updateIngredientRow(index, 'quantity', e.target.value)}
-                    disabled={viewMode}
                   />
                   <FormInput
                     value={fi.unit}
@@ -1326,9 +1673,8 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                     value={fi.notes}
                     onChange={(e) => updateIngredientRow(index, 'notes', e.target.value)}
                     placeholder="Notes"
-                    disabled={viewMode}
                   />
-                  {!viewMode && <RemoveButton onClick={() => removeIngredientRow(index)}>×</RemoveButton>}
+                  <RemoveButton onClick={() => removeIngredientRow(index)}>×</RemoveButton>
                 </IngredientRow>
               );
             })}
@@ -1357,14 +1703,14 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
         <ButtonGroup>
           <ModalButton variant="secondary" onClick={() => setShowModal(false)}>
-            {viewMode ? 'Close' : 'Cancel'}
+            Cancel
           </ModalButton>
-          {!viewMode && (
-            <ModalButton variant="primary" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Recipe'}
-            </ModalButton>
-          )}
+          <ModalButton variant="primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Recipe'}
+          </ModalButton>
         </ButtonGroup>
+          </>
+        )}
       </Modal>
 
       {/* Recipe Modal (Cooking-focused popup) */}
@@ -1428,6 +1774,20 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                   <RecipeDetailText>
                     {recipeModalData.instructions_detail}
                   </RecipeDetailText>
+                </RecipeSection>
+              )}
+
+              {/* Connected Products */}
+              {linkedProducts[recipeModalData.id] && linkedProducts[recipeModalData.id].length > 0 && (
+                <RecipeSection>
+                  <RecipeSectionTitle>Connected Products</RecipeSectionTitle>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {linkedProducts[recipeModalData.id].map((name, i) => (
+                      <span key={i} style={{ fontSize: '13px', background: '#ECFDF5', color: '#059669', padding: '4px 12px', borderRadius: '6px', fontWeight: 500 }}>
+                        {name}
+                      </span>
+                    ))}
+                  </div>
                 </RecipeSection>
               )}
             </RecipeModalBody>

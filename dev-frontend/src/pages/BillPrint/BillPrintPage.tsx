@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import styled from 'styled-components';
+import QRCode from 'qrcode';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
@@ -97,6 +99,9 @@ const BillContainer = styled.div`
   padding: 32px;
   margin-bottom: 24px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
 
   @media print {
     border: none !important;
@@ -121,12 +126,13 @@ const StoreName = styled.h2`
   font-weight: 700;
   color: #0A2540;
   margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
 `;
 
 const StoreInfo = styled.div`
   color: #6B7280;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
 `;
 
 const BillSection = styled.div`
@@ -234,13 +240,67 @@ const Footer = styled.div`
   color: #6B7280;
 `;
 
+const ReceiptQrSection = styled.div`
+  text-align: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #E6EBF1;
+`;
+
+const ReceiptPointsSection = styled.div`
+  text-align: center;
+  margin-top: 12px;
+  padding: 12px;
+  background: #F9FAFB;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+`;
+
 const BillPrintPage: React.FC = () => {
   const { orders } = useOrders();
   const storeContext = useStore();
   const companyInfo = (storeContext as any).companyInfo;
   const { operationSettings, paymentSettings } = useStore();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [receiptSettings, setReceiptSettings] = useState({ receiptLogo: '', footerMessage: 'Thank you for dining with us!', showMembership: true } as any);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+
+  // Load receipt settings
+  useEffect(() => {
+    const loadReceiptSettings = async () => {
+      if (!user?.restaurantId) return;
+      try {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch(`/api/restaurants/${user.restaurantId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          const ps = data.printer_settings || data.data?.printer_settings;
+          if (ps?.receiptSettings) {
+            const rs = { ...ps.receiptSettings };
+            if ('showQrCode' in rs || 'showPointsInfo' in rs) {
+              rs.showMembership = rs.showQrCode !== false || rs.showPointsInfo !== false;
+              delete rs.showQrCode;
+              delete rs.showPointsInfo;
+            }
+            setReceiptSettings((prev: any) => ({ ...prev, ...rs }));
+          }
+        }
+      } catch {}
+    };
+    loadReceiptSettings();
+  }, [user?.restaurantId]);
+
+  // Generate QR code
+  useEffect(() => {
+    if (!receiptSettings.showMembership || !user?.restaurantId) return;
+    const mobileUrl = `https://purplehere.com/m/${user.restaurantId}`;
+    QRCode.toDataURL(mobileUrl, { width: 120, margin: 1, color: { dark: '#000', light: '#FFF' } })
+      .then((url: string) => setQrDataUrl(url))
+      .catch(() => {});
+  }, [receiptSettings.showMembership, user?.restaurantId]);
 
   const handleSearch = () => {
     const order = orders.find(o =>
@@ -282,6 +342,9 @@ const BillPrintPage: React.FC = () => {
         {selectedOrder && ReactDOM.createPortal(
           <BillContainer data-print-bill>
             <BillHeader>
+              {receiptSettings.receiptLogo && (
+                <img src={receiptSettings.receiptLogo} alt="Logo" style={{ maxWidth: '160px', maxHeight: '50px', marginBottom: '8px', filter: 'grayscale(100%)' }} />
+              )}
               <StoreName>{storeContext.storeSettings.name}</StoreName>
               <StoreInfo>
                 {storeContext.storeSettings.address && <>{storeContext.storeSettings.address}<br /></>}
@@ -410,9 +473,19 @@ const BillPrintPage: React.FC = () => {
               )}
             </BillSection>
 
+            {/* Membership QR — all customers see the same */}
+            {receiptSettings.showMembership && qrDataUrl && (
+              <ReceiptQrSection>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0A2540', marginBottom: '6px' }}>Order online & earn points!</div>
+                <img src={qrDataUrl} alt="QR Code" style={{ width: '100px', height: '100px' }} />
+                <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '4px' }}>
+                  purplehere.com/m/{user?.restaurantId}
+                </div>
+              </ReceiptQrSection>
+            )}
+
             <Footer>
-              <div>Thank you for your order!</div>
-              <div>Please keep this receipt for your records</div>
+              <div>{receiptSettings.footerMessage}</div>
             </Footer>
 
             <PrintButton onClick={handlePrint}>

@@ -378,6 +378,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   const [setMenuSearchQuery, setSetMenuSearchQuery] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [directIngredients, setDirectIngredients] = useState<{ingredient_id: number; name: string; quantity: number; unit: string; unit_cost: number}[]>([]);
+  const [productIngredientsList, setProductIngredientsList] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
 
   const unitOptions = [
     { value: 'kg', label: 'kg' },
@@ -461,6 +463,15 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     const loadData = async () => {
       setLoading(true);
       await Promise.all([fetchProducts(), fetchCategories(), fetchOptionGroups(), fetchProductRecipes()]);
+      // Fetch product ingredients for direct linking
+      try {
+        const token = localStorage.getItem('auth_token');
+        const piRes = await fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (piRes.ok) {
+          const piData = await piRes.json();
+          setProductIngredientsList((piData.data || piData || []).map((pi: any) => ({ id: pi.id, name: pi.name, unit: pi.unit, unit_cost: Number(pi.unit_cost || 0) })));
+        }
+      } catch (e) { console.error('Failed to fetch product ingredients:', e); }
       setLoading(false);
     };
     loadData();
@@ -496,10 +507,30 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         is_set_menu: product.is_set_menu || false,
         set_items: product.set_items || [],
         set_display_order: (product.set_display_order || 0).toString(),
-        product_recipe_id: product.product_recipe_id || null,
+        product_recipe_id: (product.product_recipe_id && product.productRecipe?.name?.endsWith('(auto)')) ? null : (product.product_recipe_id || null),
         brand_ids: product.brands?.map(b => b.id) || [],
         option_group_ids: product.optionGroups?.map(og => og.id) || []
       });
+      // Load directIngredients from auto recipe
+      if (product.product_recipe_id && product.productRecipe?.name?.endsWith('(auto)')) {
+        const token = localStorage.getItem('auth_token');
+        fetch(`/api/product-recipes/${product.product_recipe_id}`, { headers: { 'Authorization': `Bearer ${token}` } })
+          .then(r => r.json())
+          .then(data => {
+            const recipe = data.data || data;
+            const ris = recipe?.recipeIngredients || recipe?.ProductRecipeIngredients || [];
+            setDirectIngredients(ris.map((ri: any) => ({
+              ingredient_id: ri.ingredient_id,
+              name: ri.ingredient?.name || '',
+              quantity: parseFloat(ri.quantity),
+              unit: ri.unit || ri.ingredient?.unit || '',
+              unit_cost: parseFloat(ri.ingredient?.unit_cost || 0)
+            })));
+          })
+          .catch(() => setDirectIngredients([]));
+      } else {
+        setDirectIngredients([]);
+      }
     } else {
       setEditingProduct(null);
       setFormData({
@@ -521,6 +552,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         brand_ids: [],
         option_group_ids: []
       });
+      setDirectIngredients([]);
     }
     setSetMenuSearchQuery('');
     setShowModal(true);
@@ -579,7 +611,8 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           set_display_order: parseInt(formData.set_display_order) || 0,
           product_recipe_id: formData.product_recipe_id,
           brand_ids: formData.brand_ids,
-          option_group_ids: formData.option_group_ids
+          option_group_ids: formData.option_group_ids,
+          directIngredients: !formData.product_recipe_id ? directIngredients : undefined
         })
       });
 
@@ -1093,21 +1126,56 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               )}
             </UIFormGroup>
 
-            <UIFormGroup>
-              <FormLabel>Linked Product Recipe</FormLabel>
-              <SearchableSelect
-                options={productRecipes.map(recipe => ({
-                  value: recipe.id,
-                  label: recipe.name,
-                  subLabel: `Cost: RM ${Number(recipe.total_ingredient_cost || 0).toFixed(2)}`
-                }))}
-                value={formData.product_recipe_id}
-                onChange={(value) => setFormData({ ...formData, product_recipe_id: value as number | null })}
-                placeholder="Search or select recipe..."
-                allowClear={true}
-                noOptionsMessage="No product recipes found"
-              />
-            </UIFormGroup>
+            {directIngredients.length === 0 && (
+              <UIFormGroup>
+                <FormLabel>Linked Product Recipe</FormLabel>
+                <SearchableSelect
+                  options={productRecipes.filter(r => !r.name?.endsWith('(auto)')).map(recipe => ({
+                    value: recipe.id,
+                    label: recipe.name,
+                    subLabel: `Cost: RM ${Number(recipe.total_ingredient_cost || 0).toFixed(2)}`
+                  }))}
+                  value={formData.product_recipe_id}
+                  onChange={(value) => setFormData({ ...formData, product_recipe_id: value as number | null })}
+                  placeholder="Search or select recipe..."
+                  allowClear={true}
+                  noOptionsMessage="No product recipes found"
+                />
+              </UIFormGroup>
+            )}
+
+            {!formData.product_recipe_id && (
+              <UIFormGroup>
+                <FormLabel>Ingredients (direct) {directIngredients.length > 0 && <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 400 }}>Cost: RM {directIngredients.reduce((sum, di) => sum + (di.unit_cost * di.quantity), 0).toFixed(2)}</span>}</FormLabel>
+                {directIngredients.map((di, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px', fontSize: '13px', background: '#F9FAFB', padding: '8px 12px', borderRadius: '6px' }}>
+                    <span style={{ flex: 1 }}>{di.name}</span>
+                    <input type="number" value={di.quantity} min="0.01" step="0.01" style={{ width: '60px', textAlign: 'center', border: '1px solid #E6EBF1', borderRadius: '4px', padding: '2px 4px', fontSize: '13px' }}
+                      onChange={(e) => setDirectIngredients(prev => prev.map((item, i) => i === idx ? { ...item, quantity: parseFloat(e.target.value) || 0 } : item))} />
+                    <span style={{ fontSize: '12px', color: '#6B7280', width: '30px' }}>{di.unit}</span>
+                    <span style={{ width: '70px', textAlign: 'right', color: '#6B7280', fontSize: '12px' }}>RM {(di.unit_cost * di.quantity).toFixed(2)}</span>
+                    <button type="button" onClick={() => setDirectIngredients(prev => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>x</button>
+                  </div>
+                ))}
+                <SearchableSelect
+                  options={productIngredientsList.filter(ing => !directIngredients.some(di => di.ingredient_id === ing.id)).map(ing => ({
+                    value: ing.id,
+                    label: ing.name,
+                    subLabel: `${ing.unit} / RM ${Number(ing.unit_cost || 0).toFixed(2)}`
+                  }))}
+                  value={null}
+                  onChange={(value) => {
+                    if (value) {
+                      const ing = productIngredientsList.find(i => i.id === value);
+                      if (ing) setDirectIngredients(prev => [...prev, { ingredient_id: ing.id, name: ing.name, quantity: 1, unit: ing.unit, unit_cost: Number(ing.unit_cost || 0) }]);
+                    }
+                  }}
+                  placeholder="+ Add ingredient..."
+                  allowClear={false}
+                  noOptionsMessage="No ingredients available"
+                />
+              </UIFormGroup>
+            )}
 
             <UIFormGroup style={{ marginBottom: 0 }}>
               <CheckboxLabel>

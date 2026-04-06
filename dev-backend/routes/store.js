@@ -169,7 +169,8 @@ router.put('/settings', authenticateToken, async (req, res) => {
       'postal_code', 'country', 'website', 'logo_url',
       'business_registration', 'tax_id',
       'payment_settings', 'operation_settings', 'table_settings', 'mobile_settings',
-      'currency', 'cash_rounding', 'rounding_apply_to'
+      'currency', 'cash_rounding', 'rounding_apply_to',
+      'kitchen_item_merge'
     ];
 
     console.log('🔄 Updating fields...');

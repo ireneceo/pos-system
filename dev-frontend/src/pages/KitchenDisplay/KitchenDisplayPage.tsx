@@ -581,7 +581,10 @@ const KitchenDisplayPage: React.FC = () => {
   const [, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [operationSettings, setOperationSettings] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'order' | 'item'>('order');
+  const [viewMode, setViewMode] = useState<'order' | 'item'>(() => {
+    const saved = localStorage.getItem('kitchenDisplayViewMode');
+    return saved === 'item' ? 'item' : 'order';
+  });
 
   const [preparingBatches, setPreparingBatches] = useState<PreparingBatch[]>([]);
 
@@ -686,7 +689,10 @@ const KitchenDisplayPage: React.FC = () => {
   const fetchOrders = useCallback(async () => {
     if (!user?.restaurantId) return;
     try {
-      const response = await fetch(`/api/orders/restaurant/${user.restaurantId}`, {
+      // Only fetch today's orders based on restaurant timezone
+      const tz = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
+      const response = await fetch(`/api/orders/restaurant/${user.restaurantId}?startDate=${today}&endDate=${today}`, {
         credentials: 'include',
         headers: apiHeaders()
       });
@@ -708,7 +714,7 @@ const KitchenDisplayPage: React.FC = () => {
       console.error('Failed to fetch orders:', error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.restaurantId]);
+  }, [user?.restaurantId, operationSettings?.timeZone]);
 
   // Operation settings — StoreContext에서 가져오기 (별도 API 호출 제거)
   useEffect(() => {
@@ -766,17 +772,20 @@ const KitchenDisplayPage: React.FC = () => {
   useEffect(() => {
     if (!menuItems.length && !categories.length) return;
 
-    const catStationMap = new Map<string, number>();
+    const catStationMap = new Map<number, number>();
     categories.forEach((cat: any) => {
-      if (cat.kitchen_station_id) catStationMap.set(cat.id, cat.kitchen_station_id);
+      if (cat.kitchen_station_id) catStationMap.set(Number(cat.id), cat.kitchen_station_id);
     });
 
     const map = new Map<string, number>();
     menuItems.forEach((item: any) => {
-      if (item.kitchen_station_id) {
-        map.set(item.name, item.kitchen_station_id);
-      } else if (catStationMap.has(item.category)) {
-        map.set(item.name, catStationMap.get(item.category)!);
+      const stationId = item.kitchen_station_id || catStationMap.get(Number(item.category));
+      if (stationId) {
+        // Map both plain name and "code name" format (POS saves orders as "A01 555")
+        map.set(item.name, stationId);
+        if (item.code) {
+          map.set(`${item.code} ${item.name}`, stationId);
+        }
       }
     });
     setMenuStationMap(map);
@@ -1269,11 +1278,22 @@ const KitchenDisplayPage: React.FC = () => {
     }
   };
 
-  // Helper: update items then order status in sequence
-  const updateItemsThenOrderStatus = async (orderId: string, updatedItems: any[], newOrderStatus: KitchenOrder['status']) => {
-    // 즉시 UI 반영
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o));
+  const markAllItemsCompletedAndReady = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const statusOrder: Record<string, number> = { pending: 0, preparing: 1, ready: 2, served: 3, completed: 4 };
+    const updatedItems = order.items.map(item => {
+      const itemLevel = statusOrder[item.status || 'pending'] || 0;
+      return {
+        ...item, status: itemLevel < 2 ? 'ready' as const : (item.status || 'pending') as ItemStatus,
+        set_items: item.set_items?.map(si => {
+          const siLevel = statusOrder[si.status || 'pending'] || 0;
+          return { ...si, status: siLevel < 2 ? 'ready' as const : (si.status || 'pending') as ItemStatus };
+        })
+      };
+    });
 
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o));
     try {
       const res = await fetch(`/api/orders/${orderId}/items`, {
         method: 'PATCH', credentials: 'include', headers: apiHeaders(),
@@ -1281,40 +1301,83 @@ const KitchenDisplayPage: React.FC = () => {
       });
       const result = await res.json();
       if (!result.success) { fetchOrders(); return; }
-      await updateOrderStatus(orderId, newOrderStatus);
+      if (areAllItemsDoneForColumn(updatedItems, order.status)) {
+        const next = ({ pending: 'preparing', preparing: 'ready', ready: 'served' } as any)[order.status];
+        if (next) await updateOrderStatus(orderId, next);
+      }
     } catch {
       fetchOrders();
     }
   };
 
-  const markAllItemsCompletedAndReady = (orderId: string) => {
+  const markAllItemsAndMove = async (orderId: string, targetStatus: KitchenOrder['status']) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
-    const updatedItems = order.items.map(item => ({
-      ...item, status: 'ready' as const,
-      set_items: item.set_items?.map(si => ({ ...si, status: 'ready' as const }))
-    }));
-    return updateItemsThenOrderStatus(orderId, updatedItems, 'ready');
+    // Only update items that haven't already reached or passed the target status
+    const statusOrder: Record<string, number> = { pending: 0, preparing: 1, ready: 2, served: 3, completed: 4 };
+    const targetLevel = statusOrder[targetStatus] || 0;
+    const updatedItems = order.items.map(item => {
+      const itemLevel = statusOrder[item.status || 'pending'] || 0;
+      const newItemStatus = itemLevel < targetLevel ? targetStatus as ItemStatus : (item.status || 'pending') as ItemStatus;
+      return {
+        ...item,
+        status: newItemStatus,
+        set_items: item.set_items?.map(si => {
+          const siLevel = statusOrder[si.status || 'pending'] || 0;
+          return { ...si, status: siLevel < targetLevel ? targetStatus as ItemStatus : (si.status || 'pending') as ItemStatus };
+        })
+      };
+    });
+
+    // Update items first
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o));
+    try {
+      const res = await fetch(`/api/orders/${orderId}/items`, {
+        method: 'PATCH', credentials: 'include', headers: apiHeaders(),
+        body: JSON.stringify({ order_items: updatedItems })
+      });
+      const result = await res.json();
+      if (!result.success) { fetchOrders(); return; }
+      // Only advance order status if ALL items are done for the current column
+      if (areAllItemsDoneForColumn(updatedItems, order.status)) {
+        const next = ({ pending: 'preparing', preparing: 'ready', ready: 'served' } as any)[order.status];
+        if (next) await updateOrderStatus(orderId, next);
+      }
+    } catch {
+      fetchOrders();
+    }
   };
 
-  const markAllItemsAndMove = (orderId: string, targetStatus: KitchenOrder['status']) => {
+  const markAllServed = async (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
-    const updatedItems = order.items.map(item => ({
-      ...item, status: targetStatus as ItemStatus,
-      set_items: item.set_items?.map(si => ({ ...si, status: targetStatus as ItemStatus }))
-    }));
-    return updateItemsThenOrderStatus(orderId, updatedItems, targetStatus);
-  };
+    const statusOrder: Record<string, number> = { pending: 0, preparing: 1, ready: 2, served: 3, completed: 4 };
+    const updatedItems = order.items.map(item => {
+      const itemLevel = statusOrder[item.status || 'pending'] || 0;
+      return {
+        ...item, status: itemLevel < 3 ? 'served' as const : (item.status || 'pending') as ItemStatus,
+        set_items: item.set_items?.map(si => {
+          const siLevel = statusOrder[si.status || 'pending'] || 0;
+          return { ...si, status: siLevel < 3 ? 'served' as const : (si.status || 'pending') as ItemStatus };
+        })
+      };
+    });
 
-  const markAllServed = (orderId: string) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
-    const updatedItems = order.items.map(item => ({
-      ...item, status: 'served' as const,
-      set_items: item.set_items?.map(si => ({ ...si, status: 'served' as const }))
-    }));
-    return updateItemsThenOrderStatus(orderId, updatedItems, 'served');
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, items: updatedItems as any } : o));
+    try {
+      const res = await fetch(`/api/orders/${orderId}/items`, {
+        method: 'PATCH', credentials: 'include', headers: apiHeaders(),
+        body: JSON.stringify({ order_items: updatedItems })
+      });
+      const result = await res.json();
+      if (!result.success) { fetchOrders(); return; }
+      if (areAllItemsDoneForColumn(updatedItems, order.status)) {
+        const next = ({ pending: 'preparing', preparing: 'ready', ready: 'served' } as any)[order.status];
+        if (next) await updateOrderStatus(orderId, next);
+      }
+    } catch {
+      fetchOrders();
+    }
   };
 
   // Memoized order lists by status (recalculates when orders or station filter changes)
@@ -1673,34 +1736,37 @@ const KitchenDisplayPage: React.FC = () => {
   };
 
   // Apply item merge limits (time_limit, max_count) as post-processing
+  // All sources (plain + option) count toward limits
   const applyMergeLimits = (groups: MenuGroup[]): MenuGroup[] => {
     const { time_limit, max_count } = itemMergeSettings;
-    if (!time_limit && !max_count) return groups; // No limits = unchanged
+    if (!time_limit && !max_count) return groups;
 
     const result: MenuGroup[] = [];
 
     for (const group of groups) {
-      // Time limit: split plainSources into time-based sub-groups
-      let subGroups: { plainQty: number; plainSources: typeof group.plainSources; earliestTime: Date }[] = [];
+      // Combine all sources with order time for unified time/count splitting
+      const allSources = [
+        ...group.plainSources.map(s => ({ ...s, isOption: false })),
+        ...group.optionSources.map(s => ({ ...s, isOption: true }))
+      ].map(s => {
+        const order = orders.find(o => o.id === s.orderId);
+        return { ...s, orderTime: order?.orderTime || group.earliestTime };
+      }).sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime());
 
-      if (time_limit > 0 && group.plainSources.length > 0) {
-        // Find order times for each source
-        const sourcesWithTime = group.plainSources.map(s => {
-          const order = orders.find(o => o.id === s.orderId);
-          return { ...s, orderTime: order?.orderTime || group.earliestTime };
-        }).sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime());
+      if (allSources.length === 0) continue;
 
-        let currentBucket: typeof sourcesWithTime = [];
-        let bucketStart = sourcesWithTime[0]?.orderTime;
+      // Step 1: Time limit — split into time-based buckets
+      type SourceWithTime = typeof allSources[number];
+      let timeBuckets: { sources: SourceWithTime[]; earliestTime: Date }[] = [];
 
-        for (const s of sourcesWithTime) {
+      if (time_limit > 0) {
+        let currentBucket: SourceWithTime[] = [];
+        let bucketStart = allSources[0].orderTime;
+
+        for (const s of allSources) {
           const diffMin = (s.orderTime.getTime() - bucketStart.getTime()) / 60000;
           if (diffMin > time_limit && currentBucket.length > 0) {
-            subGroups.push({
-              plainQty: currentBucket.reduce((sum, x) => sum + x.quantity, 0),
-              plainSources: currentBucket,
-              earliestTime: bucketStart
-            });
+            timeBuckets.push({ sources: currentBucket, earliestTime: bucketStart });
             currentBucket = [s];
             bucketStart = s.orderTime;
           } else {
@@ -1708,61 +1774,60 @@ const KitchenDisplayPage: React.FC = () => {
           }
         }
         if (currentBucket.length > 0) {
-          subGroups.push({
-            plainQty: currentBucket.reduce((sum, x) => sum + x.quantity, 0),
-            plainSources: currentBucket,
-            earliestTime: bucketStart
-          });
+          timeBuckets.push({ sources: currentBucket, earliestTime: bucketStart });
         }
       } else {
-        subGroups = [{ plainQty: group.plainQty, plainSources: [...group.plainSources], earliestTime: group.earliestTime }];
+        timeBuckets = [{ sources: allSources, earliestTime: group.earliestTime }];
       }
 
-      // Max count: split each sub-group if quantity exceeds limit
-      const finalBuckets: typeof subGroups = [];
-      for (const sub of subGroups) {
-        if (max_count > 0 && sub.plainQty > max_count) {
-          let remaining = [...sub.plainSources];
+      // Step 2: Max count — split each time bucket if total qty exceeds limit
+      for (const bucket of timeBuckets) {
+        const totalQty = bucket.sources.reduce((sum, s) => sum + s.quantity, 0);
+
+        if (max_count > 0 && totalQty > max_count) {
+          let remaining = [...bucket.sources];
           while (remaining.length > 0) {
-            let bucketQty = 0;
-            const bucketSources: typeof remaining = [];
-            const leftover: typeof remaining = [];
+            let qty = 0;
+            const taken: SourceWithTime[] = [];
+            const leftover: SourceWithTime[] = [];
             for (const s of remaining) {
-              if (bucketQty + s.quantity <= max_count) {
-                bucketSources.push(s);
-                bucketQty += s.quantity;
-              } else if (bucketQty < max_count) {
-                const take = max_count - bucketQty;
-                bucketSources.push({ ...s, quantity: take });
+              if (qty + s.quantity <= max_count) {
+                taken.push(s);
+                qty += s.quantity;
+              } else if (qty < max_count) {
+                const take = max_count - qty;
+                taken.push({ ...s, quantity: take });
                 leftover.push({ ...s, quantity: s.quantity - take });
-                bucketQty = max_count;
+                qty = max_count;
               } else {
                 leftover.push(s);
               }
             }
-            finalBuckets.push({
-              plainQty: bucketQty,
-              plainSources: bucketSources,
-              earliestTime: sub.earliestTime
+            const plain = taken.filter(s => !s.isOption);
+            const option = taken.filter(s => s.isOption);
+            result.push({
+              menuName: group.menuName,
+              formattedName: group.formattedName,
+              plainQty: plain.reduce((sum, s) => sum + s.quantity, 0),
+              plainSources: plain,
+              optionSources: option,
+              earliestTime: bucket.earliestTime
             });
             remaining = leftover;
           }
         } else {
-          finalBuckets.push(sub);
+          const plain = bucket.sources.filter(s => !s.isOption);
+          const option = bucket.sources.filter(s => s.isOption);
+          result.push({
+            menuName: group.menuName,
+            formattedName: group.formattedName,
+            plainQty: plain.reduce((sum, s) => sum + s.quantity, 0),
+            plainSources: plain,
+            optionSources: option,
+            earliestTime: bucket.earliestTime
+          });
         }
       }
-
-      // Create MenuGroup for each bucket (first one gets optionSources, rest get empty)
-      finalBuckets.forEach((bucket, i) => {
-        result.push({
-          menuName: group.menuName,
-          formattedName: group.formattedName,
-          plainQty: bucket.plainQty,
-          plainSources: bucket.plainSources,
-          optionSources: i === 0 ? group.optionSources : [],
-          earliestTime: bucket.earliestTime
-        });
-      });
     }
 
     return result.sort((a, b) => a.earliestTime.getTime() - b.earliestTime.getTime());
@@ -2343,11 +2408,11 @@ const KitchenDisplayPage: React.FC = () => {
       <PageHeader title="Kitchen Display">
         <HeaderInfo>
           {viewMode === 'item' && (
-            <a href="/pos/settings?tab=kitchenStations" target="_blank" rel="noopener noreferrer" style={{
+            <a href={`/restaurant/${user?.restaurantId}/settings?tab=kitchenStations`} target="_blank" rel="noopener noreferrer" style={{
               display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px',
-              background: (itemMergeSettings.time_limit > 0 || itemMergeSettings.max_count > 0) ? '#635BFF' : '#E8E5FF',
-              color: (itemMergeSettings.time_limit > 0 || itemMergeSettings.max_count > 0) ? 'white' : '#635BFF',
-              borderRadius: '8px', fontSize: '12px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap',
+              background: '#F0F0FF',
+              color: '#635BFF',
+              borderRadius: '8px', fontSize: '12px', fontWeight: 500, textDecoration: 'none', whiteSpace: 'nowrap',
               border: 'none'
             }}>
               {(itemMergeSettings.time_limit > 0 || itemMergeSettings.max_count > 0)

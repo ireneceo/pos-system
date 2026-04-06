@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
+import AutoSaveField from '../../components/Common/AutoSaveField';
 
 interface CompanySettings {
   companyName: string;
@@ -28,7 +28,7 @@ interface CompanySettings {
 
 const Container = styled.div`
   min-height: 100vh;
-  
+
   @media (max-width: 768px) {
     padding: 0;
   }
@@ -185,12 +185,7 @@ const LogoPreview = styled.img`
 `;
 
 const AdminSettingsPage: React.FC = () => {
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState('');
-  const [, ] = useState(false);
   const [uploadError, setUploadError] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
-  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
   const [initialSettings, setInitialSettings] = useState<CompanySettings | null>(null);
 
   const [settings, setSettings] = useState<CompanySettings>({
@@ -214,6 +209,10 @@ const AdminSettingsPage: React.FC = () => {
     }
   });
 
+  // Keep a ref to always have the latest settings for saveSettings
+  const settingsRef = React.useRef(settings);
+  settingsRef.current = settings;
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -234,49 +233,24 @@ const AdminSettingsPage: React.FC = () => {
   };
 
   const saveSettings = async () => {
-    if (!hasChanges) return;
-
-    setIsSaving(true);
     setUploadError('');
-    setSaveMessage('');
 
-    try {
-      const response = await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(settings)
-      });
+    const response = await fetch('/api/admin/settings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(settingsRef.current)
+    });
 
-      if (!response.ok) {
-        throw new Error('Failed to save settings');
-      }
-
-      // Dispatch custom event to notify MainLayout to reload from API
-      window.dispatchEvent(new Event('brandLogoUpdated'));
-
-      // Settings saved successfully
-      setInitialSettings(settings);
-      setHasChanges(false);
-      setSavedSuccessfully(true);
-      setSaveMessage('Settings saved successfully!');
-    } catch (error) {
-      console.error('Error saving settings to API:', error);
-      setUploadError('Failed to save settings. Please try again.');
-    } finally {
-      setIsSaving(false);
+    if (!response.ok) {
+      throw new Error('Failed to save settings');
     }
-  };
 
-  const handleReset = () => {
-    if (initialSettings) {
-      setSettings(initialSettings);
-      setHasChanges(false);
-      setSavedSuccessfully(false);
-      setUploadError('');
-      setSaveMessage('');
-    }
+    // Dispatch custom event to notify MainLayout to reload from API
+    window.dispatchEvent(new Event('brandLogoUpdated'));
+
+    setInitialSettings(settingsRef.current);
   };
 
   const handleInputChange = (field: keyof CompanySettings, value: string) => {
@@ -284,31 +258,14 @@ const AdminSettingsPage: React.FC = () => {
       ...prev,
       [field]: value
     }));
-
-    if (!hasChanges) {
-      setHasChanges(true);
-      setSavedSuccessfully(false);
-    }
   };
 
-  // Detect changes
-  useEffect(() => {
-    if (initialSettings) {
-      const hasChanged = JSON.stringify(settings) !== JSON.stringify(initialSettings);
-      setHasChanges(hasChanged);
-
-      if (hasChanged && savedSuccessfully) {
-        setSavedSuccessfully(false);
-      }
-    }
-  }, [settings, initialSettings, savedSuccessfully]);
-
-  // const handleBrandLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-  //   const file = event.target.files?.[0];
-  //   if (file) {
-  //     validateAndUploadFile(file, 'brand');
-  //   }
-  // };
+  const handleBusinessHoursChange = (subField: 'weekdays' | 'weekend', value: string) => {
+    setSettings(prev => ({
+      ...prev,
+      businessHours: { ...prev.businessHours!, [subField]: value }
+    }));
+  };
 
   const handleCompanyLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -341,34 +298,9 @@ const AdminSettingsPage: React.FC = () => {
         [logoType === 'brand' ? 'brandLogo' : 'companyLogo']: logoData
       }));
       setUploadError('');
-
-      if (!hasChanges) {
-        setHasChanges(true);
-        setSavedSuccessfully(false);
-      }
     };
     reader.readAsDataURL(file);
   };
-
-  // const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-  //   e.preventDefault();
-  //   setIsDragging(true);
-  // };
-
-  // const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-  //   e.preventDefault();
-  //   setIsDragging(false);
-  // };
-
-  // const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-  //   e.preventDefault();
-  //   setIsDragging(false);
-
-  //   const file = e.dataTransfer.files?.[0];
-  //   if (file) {
-  //     validateAndUploadFile(file, 'brand'); // Drag & drop only for brand logo
-  //   }
-  // };
 
   return (
     <>
@@ -384,22 +316,25 @@ const AdminSettingsPage: React.FC = () => {
                 <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px', lineHeight: '1.5' }}>
                   Used on invoices and documents
                 </div>
-                <LogoUpload
-                  onClick={() => document.getElementById('company-logo-input')?.click()}
-                >
-                  {settings.companyLogo ? (
-                    <LogoPreview src={settings.companyLogo} alt="Company Logo" />
-                  ) : (
-                    <div>
-                      <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
-                        Click to upload
+                <AutoSaveField onSave={saveSettings} type="image">
+                  <LogoUpload
+                    onClick={() => document.getElementById('company-logo-input')?.click()}
+                    onChange={handleCompanyLogoUpload as any}
+                  >
+                    {settings.companyLogo ? (
+                      <LogoPreview src={settings.companyLogo} alt="Company Logo" />
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
+                          Click to upload
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                          PNG or JPG (Max 2MB)
+                        </div>
                       </div>
-                      <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                        PNG or JPG (Max 2MB)
-                      </div>
-                    </div>
-                  )}
-                </LogoUpload>
+                    )}
+                  </LogoUpload>
+                </AutoSaveField>
                 <input
                   id="company-logo-input"
                   type="file"
@@ -407,108 +342,129 @@ const AdminSettingsPage: React.FC = () => {
                   style={{ display: 'none' }}
                   onChange={handleCompanyLogoUpload}
                 />
+                {uploadError && (
+                  <div style={{ fontSize: '13px', color: '#EF4444', marginTop: '8px' }}>{uploadError}</div>
+                )}
               </FormGroup>
             </FormRow>
 
             <FormRow>
               <FormGroup>
                 <FormLabel>Company Name *</FormLabel>
-                <FormInput
-                  type="text"
-                  value={settings.companyName}
-                  onChange={(e) => handleInputChange('companyName', e.target.value)}
-                  placeholder="Enter company name"
-                  required
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="text"
+                    value={settings.companyName}
+                    onChange={(e) => handleInputChange('companyName', e.target.value)}
+                    placeholder="Enter company name"
+                    required
+                  />
+                </AutoSaveField>
               </FormGroup>
               <FormGroup>
                 <FormLabel>Registration Number</FormLabel>
-                <FormInput
-                  type="text"
-                  value={settings.registrationNumber}
-                  onChange={(e) => handleInputChange('registrationNumber', e.target.value)}
-                  placeholder="ROC/SSM Number"
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="text"
+                    value={settings.registrationNumber}
+                    onChange={(e) => handleInputChange('registrationNumber', e.target.value)}
+                    placeholder="ROC/SSM Number"
+                  />
+                </AutoSaveField>
               </FormGroup>
             </FormRow>
 
             <FormGroup>
               <FormLabel>Address *</FormLabel>
-              <FormTextArea
-                value={settings.address}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder="Enter complete address"
-                rows={3}
-                required
-              />
+              <AutoSaveField onSave={saveSettings}>
+                <FormTextArea
+                  value={settings.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  placeholder="Enter complete address"
+                  rows={3}
+                  required
+                />
+              </AutoSaveField>
             </FormGroup>
 
             <FormRow>
               <FormGroup>
                 <FormLabel>City *</FormLabel>
-                <FormInput
-                  type="text"
-                  value={settings.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="Enter city"
-                  required
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="text"
+                    value={settings.city}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    placeholder="Enter city"
+                    required
+                  />
+                </AutoSaveField>
               </FormGroup>
               <FormGroup>
                 <FormLabel>State *</FormLabel>
-                <FormInput
-                  type="text"
-                  value={settings.state}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
-                  placeholder="Enter state"
-                  required
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="text"
+                    value={settings.state}
+                    onChange={(e) => handleInputChange('state', e.target.value)}
+                    placeholder="Enter state"
+                    required
+                  />
+                </AutoSaveField>
               </FormGroup>
             </FormRow>
 
             <FormRow>
               <FormGroup>
                 <FormLabel>Postal Code *</FormLabel>
-                <FormInput
-                  type="text"
-                  value={settings.postalCode}
-                  onChange={(e) => handleInputChange('postalCode', e.target.value)}
-                  placeholder="Enter postal code"
-                  required
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="text"
+                    value={settings.postalCode}
+                    onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                    placeholder="Enter postal code"
+                    required
+                  />
+                </AutoSaveField>
               </FormGroup>
               <FormGroup>
                 <FormLabel>Country *</FormLabel>
-                <FormSelect
-                  value={settings.country}
-                  onChange={(e) => handleInputChange('country', e.target.value)}
-                  required
-                >
-                  {COUNTRIES.map(country => (
-                    <option key={country.code} value={country.code}>
-                      {country.name}
-                    </option>
-                  ))}
-                </FormSelect>
+                <AutoSaveField onSave={saveSettings} type="select">
+                  <FormSelect
+                    value={settings.country}
+                    onChange={(e) => handleInputChange('country', e.target.value)}
+                    required
+                  >
+                    {COUNTRIES.map(country => (
+                      <option key={country.code} value={country.code}>
+                        {country.name}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </AutoSaveField>
               </FormGroup>
             </FormRow>
 
             <FormRow>
               <FormGroup>
                 <FormLabel>Phone Number *</FormLabel>
-                <PhoneInput
-                  value={settings.phone}
-                  onChange={(value) => handleInputChange('phone', value)}
-                  defaultCountry={settings.country}
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <PhoneInput
+                    value={settings.phone}
+                    onChange={(value) => handleInputChange('phone', value)}
+                    defaultCountry={settings.country}
+                  />
+                </AutoSaveField>
               </FormGroup>
               <FormGroup>
                 <FormLabel>WhatsApp</FormLabel>
-                <PhoneInput
-                  value={settings.whatsapp}
-                  onChange={(value) => handleInputChange('whatsapp', value)}
-                  defaultCountry={settings.country}
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <PhoneInput
+                    value={settings.whatsapp}
+                    onChange={(value) => handleInputChange('whatsapp', value)}
+                    defaultCountry={settings.country}
+                  />
+                </AutoSaveField>
                 <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
                   For Contact page and customer communication
                 </div>
@@ -518,90 +474,68 @@ const AdminSettingsPage: React.FC = () => {
             <FormRow>
               <FormGroup>
                 <FormLabel>Email Address *</FormLabel>
-                <FormInput
-                  type="email"
-                  value={settings.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="admin@company.com"
-                  required
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="email"
+                    value={settings.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    placeholder="admin@company.com"
+                    required
+                  />
+                </AutoSaveField>
               </FormGroup>
               <FormGroup>
                 <FormLabel>Website</FormLabel>
-                <FormInput
-                  type="url"
-                  value={settings.website}
-                  onChange={(e) => handleInputChange('website', e.target.value)}
-                  placeholder="www.company.com"
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="url"
+                    value={settings.website}
+                    onChange={(e) => handleInputChange('website', e.target.value)}
+                    placeholder="www.company.com"
+                  />
+                </AutoSaveField>
               </FormGroup>
             </FormRow>
 
             <FormRow>
               <FormGroup>
                 <FormLabel>Tax Number</FormLabel>
-                <FormInput
-                  type="text"
-                  value={settings.taxNumber}
-                  onChange={(e) => handleInputChange('taxNumber', e.target.value)}
-                  placeholder="GST/SST Registration Number"
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="text"
+                    value={settings.taxNumber}
+                    onChange={(e) => handleInputChange('taxNumber', e.target.value)}
+                    placeholder="GST/SST Registration Number"
+                  />
+                </AutoSaveField>
               </FormGroup>
             </FormRow>
 
             <FormRow>
               <FormGroup>
                 <FormLabel>Business Hours (Weekdays)</FormLabel>
-                <FormInput
-                  type="text"
-                  value={settings.businessHours?.weekdays || ''}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    businessHours: { ...prev.businessHours!, weekdays: e.target.value }
-                  }))}
-                  placeholder="e.g., 9:00 AM - 6:00 PM (GMT+8)"
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="text"
+                    value={settings.businessHours?.weekdays || ''}
+                    onChange={(e) => handleBusinessHoursChange('weekdays', e.target.value)}
+                    placeholder="e.g., 9:00 AM - 6:00 PM (GMT+8)"
+                  />
+                </AutoSaveField>
               </FormGroup>
               <FormGroup>
                 <FormLabel>Business Hours (Weekend)</FormLabel>
-                <FormInput
-                  type="text"
-                  value={settings.businessHours?.weekend || ''}
-                  onChange={(e) => setSettings(prev => ({
-                    ...prev,
-                    businessHours: { ...prev.businessHours!, weekend: e.target.value }
-                  }))}
-                  placeholder="e.g., Closed or 10:00 AM - 2:00 PM"
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <FormInput
+                    type="text"
+                    value={settings.businessHours?.weekend || ''}
+                    onChange={(e) => handleBusinessHoursChange('weekend', e.target.value)}
+                    placeholder="e.g., Closed or 10:00 AM - 2:00 PM"
+                  />
+                </AutoSaveField>
               </FormGroup>
             </FormRow>
 
-            <SaveButtonContainer>
-              <SaveButtonGroup>
-                <SaveButton type="button" variant="secondary" onClick={handleReset} disabled={!hasChanges}>
-                  Reset Changes
-                </SaveButton>
-                <SaveButton
-                  type="button"
-                  onClick={saveSettings}
-                  disabled={!hasChanges || isSaving}
-                >
-                  {hasChanges ? (isSaving ? 'Saving...' : 'Save Changes') : 'Saved'}
-                </SaveButton>
-              </SaveButtonGroup>
-
-              {(savedSuccessfully && !hasChanges) && (
-                <StatusMessage type="success">
-                  {saveMessage || 'Your settings have been successfully updated.'}
-                </StatusMessage>
-              )}
-
-              {uploadError && (
-                <StatusMessage type="error">
-                  {uploadError}
-                </StatusMessage>
-              )}
-            </SaveButtonContainer>
         </Content>
       </Container>
     </>

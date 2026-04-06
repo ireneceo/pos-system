@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-05
+> **최종 업데이트:** 2026-04-06
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,87 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## ✅ 완료: 자동저장 시스템 + 대시보드/세팅 가이드 개선 + 인증 안정화 (2026-04-06)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | AutoSaveField 공통 컴포넌트 | 자동저장 + 인라인 상태 표시 (Input/Select/Toggle/Image/List 5타입) | ✅ |
+| 2 | Settings 전체 탭 AutoSaveField 적용 | Store, Operations, Payment, Printer, Kitchen Stations, Mobile Order, Membership, Company Info | ✅ |
+| 3 | 독립 페이지 11개 AutoSaveField 적용 | CompanyInfo, BrandCompanyInfo, FoodcourtCompanyInfo, Profile, NotificationSettings, AdminSettings, SiteSettings, PaymentSettings x3 | ✅ |
+| 4 | AuthContext fetch 인터셉터 | /api/ 요청에 자동 Authorization 헤더 주입 (401 로그아웃 방지) | ✅ |
+| 5 | 대시보드 Quick Actions | Restaurant Admin 구독 기반 동적 생성, System Access 연동 | ✅ |
+| 6 | 대시보드 알림 구현 | BrandManager, FoodcourtManager 대시보드에 실시간 알림 추가 | ✅ |
+| 7 | 세팅 가이드 확장 | Restaurant Admin 5→10개, Brand General 1→4개, Foodcourt General 1→2개 | ✅ |
+| 8 | Kitchen Station 삭제 | window.confirm → ConfirmModal 교체 | ✅ |
+| 9 | Kitchen Assignment Mode 경고 | 모드별 분기 + Menu Management 링크 | ✅ |
+| 10 | LoginPage 리다이렉트 보안 | 전체화면 페이지 리다이렉트 방지 + XSS 방어 | ✅ |
+| 11 | deploy-dev.sh 개선 | 배포 전 이전 빌드 파일 자동 정리 | ✅ |
+| 12 | 대시보드 링크 전체 점검 | Foodcourt stats→reports, Manager 경로, SA Quick Actions | ✅ |
+| 13 | 데모 데이터 설정 | 개발+운영: Kitchen Stations, Brand Products, 운영설정 | ✅ |
+| 14 | POS Terminal 401 해결 | membership API Authorization 헤더 추가 | ✅ |
+
+### 수정된 파일 (주요)
+**신규:**
+- `dev-frontend/src/components/Common/AutoSaveField.tsx`
+
+**프론트엔드 (수정):**
+- `AuthContext.tsx` (fetch 인터셉터 자동 토큰 주입)
+- `SettingsPage.tsx` (전체 탭 AutoSaveField + ConfirmModal)
+- `RestaurantDashboard.tsx` (동적 Quick Actions)
+- `LoginPage.tsx` (리다이렉트 보안)
+- `POSTerminalPage.tsx` (membership API 인증)
+- `BrandManagerDashboard.tsx`, `FoodcourtManagerDashboard.tsx` (알림 구현)
+- `useSetupStatus.ts` (세팅 가이드 확장)
+- CompanyInfo 3개, Profile, NotificationSettings, AdminSettings, SiteSettings, PaymentSettings 3개 (AutoSaveField)
+- `deploy-dev.sh` (빌드 정리)
+
+---
+
+## ✅ 완료: 메뉴/재료/재고 구조 재정리 Phase 2 — Brand General 적용 + UI 통일 (2026-04-05)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Brand Ingredients 페이지 | 사이드바 메뉴 + 라우트 + BrandIngredientsPage (Ingredients/Categories 탭) | ✅ |
+| 2 | Brand 재료 뷰모드 | ProductIngredientsTab에 Compact/Image 토글 + 카드 높이 통일 | ✅ |
+| 3 | Brand 재료 상세 팝업 | 카드 클릭 시 상세 팝업 (수정/삭제 + Usage API 연동) | ✅ |
+| 4 | Brand Product directIngredients | POST/PUT에 directIngredients 처리, auto recipe 생성/삭제 | ✅ |
+| 5 | Restaurant Menu directIngredients 수정 | save 조건 수정 (`!recipe_id ? directIngredients : undefined`), auto recipe 편집 시 recipe_id null 처리 | ✅ |
+| 6 | 레시피 상세 팝업 디자인 통일 | ProductRecipesTab 상세 팝업을 RecipesTab과 동일한 ViewContainer 디자인으로 변경 (disabled 폼 → 깔끔한 뷰) | ✅ |
+| 7 | 레시피 연결 메뉴/프로덕트 표시 | RecipesTab: linkedMenus, ProductRecipesTab: linkedProducts — 카드 리스트 + 상세 팝업 + 레시피 팝업 모두 표시 | ✅ |
+| 8 | 이미지 비율 통일 | 전 페이지 카드 이미지 `aspect-ratio: 16/9` 통일 (RecipesTab, ProductRecipesTab, IngredientsTab, ProductIngredientsTab, MenuManagementPage) | ✅ |
+| 9 | 이모지 제거 (Brand) | ProductRecipesTab 상세 팝업에서 이모지 제거, 이미지 없으면 타이틀만 좌측 정렬 | ✅ |
+| 10 | ProtectedRoute 업데이트 | `/pos/brand-ingredients` brandLevelRoutes 등록 | ✅ |
+| 11 | addon_modules ui_routes | recipe_management에 ingredients 경로, brand_product_recipes에 brand-ingredients 경로 추가 | ✅ |
+
+### 수정된 파일
+**프론트엔드:**
+- `MainLayout.tsx` — Brand Recipes 네이밍, Ingredients 사이드바 메뉴 추가
+- `App.tsx` — Ingredients 라우트 추가
+- `ProtectedRoute.tsx` — brandLevelRoutes 추가
+- `BrandIngredientsPage.tsx` — NEW
+- `IngredientsPage.tsx` — NEW
+- `ProductIngredientsTab.tsx` — 뷰모드, 상세 팝업, 이미지 비율
+- `IngredientsTab.tsx` — 뷰모드, 상세 팝업, 이미지 비율
+- `ProductRecipesTab.tsx` — 뷰모드, 상세 ViewContainer, linkedProducts, 이미지 비율, image 필드 수정
+- `RecipesTab.tsx` — 뷰모드, linkedMenus, 상세 Connected Menus, 이미지 비율
+- `BrandProductsTab.tsx` — directIngredients 처리
+- `MenuManagementPage.tsx` — directIngredients save 조건 수정, auto recipe 편집, 이미지 비율
+
+**백엔드:**
+- `routes/brand-products.js` — directIngredients POST/PUT, auto recipe 생성/삭제, TS 문법 수정
+- `routes/menu.js` — directIngredients 처리
+- `routes/product-ingredients.js` — Usage API
+- `routes/restaurants.js` — Ingredient Usage API (restaurant_id 스코프)
+- `routes/optionGroups.js` — option ingredient 지원
+- `models/OptionIngredient.js` — NEW
+- `models/BrandProductOptionIngredient.js` — NEW
+- `models/index.js` — associations 추가
+- `services/inventoryDeductionService.js` — 옵션 재료 재고 차감
 
 ---
 
@@ -2312,6 +2393,37 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 |:-:|------|------|:----:|
 | 1 | Reports 페이지 | CSV 다운로드 - `csvDownload.ts` 유틸로 Safari 호환 + 메모리 누수 방지 | ✅ 완료 |
 | 2 | Invoice 페이지 | PDF 다운로드 - `jsPDF` + `html2canvas`로 안정적 렌더링 | ✅ 완료 |
+
+---
+
+## 📋 메뉴/재료/재고 구조 재정리 — Phase 3~4 (System Admin / Foodcourt General 확장)
+
+> Phase 1~2에서 Restaurant Admin + Brand General 완료. 동일 기능을 나머지 역할에 확장.
+
+### Phase 3: System Admin 확장
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 레시피/재료 조회 | System Admin 대시보드에서 전체 레스토랑/브랜드의 레시피·재료 조회 (읽기 전용) | ⬜ |
+| 2 | 통계 연동 | 재료 원가, 레시피 비용 통계를 System Admin 리포트에 추가 | ⬜ |
+| 3 | 재고 현황 모니터링 | 전체 레스토랑 재고 현황 대시보드 (재고 부족 알림 등) | ⬜ |
+
+### Phase 4: Foodcourt General 확장
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Foodcourt 레시피/재료 시스템 | Brand General과 동일한 구조 적용 (Foodcourt용 ProductRecipe/ProductIngredient) | ⬜ |
+| 2 | Foodcourt Ingredients 페이지 | 사이드바 메뉴 + 라우트 + 페이지 (Brand와 동일 패턴) | ⬜ |
+| 3 | Foodcourt Product directIngredients | 상품-재료 직접 연결 + auto recipe | ⬜ |
+| 4 | 뷰모드/상세 팝업/이미지 비율 | Phase 2에서 통일한 UI 패턴 그대로 적용 | ⬜ |
+
+### 참고: Phase 1~2에서 확립된 패턴 (그대로 재사용)
+- **자동 레시피**: `directIngredients[]` → backend가 `(auto)` 레시피 생성 → `recipe_id` 연결
+- **뷰모드**: Compact/Image 토글, `localStorage` 저장
+- **상세 팝업**: ViewContainer 디자인 (이미지+헤더, Cost&Time 그리드, Ingredient 테이블, Instructions, Connected Items)
+- **이미지 비율**: `aspect-ratio: 16/9`, `border-radius: 8px 8px 0 0`
+- **Usage API**: 재료 → 연결된 레시피/메뉴 조회
+- **addon_modules.ui_routes**: 모듈별 라우트 권한 관리
 
 ---
 

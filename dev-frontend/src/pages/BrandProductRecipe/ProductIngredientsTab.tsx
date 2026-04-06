@@ -43,7 +43,6 @@ const IngredientsGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
   margin-top: 24px;
-  align-items: start;
 `;
 
 const IngredientCard = styled.div<{ isActive?: boolean }>`
@@ -66,10 +65,9 @@ const IngredientCard = styled.div<{ isActive?: boolean }>`
 
 const IngredientImageContainer = styled.div`
   width: 100%;
-  height: 120px;
-  border-radius: 8px;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px 8px 0 0;
   overflow: hidden;
-  margin-bottom: 12px;
   background: #F6F9FC;
   display: flex;
   align-items: center;
@@ -171,6 +169,7 @@ const ToggleSlider = styled.span`
 
 const IngredientInfo = styled.div`
   margin: 12px 0;
+  flex: 1;
 `;
 
 const InfoRow = styled.div`
@@ -348,6 +347,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
   const [showModal, setShowModal] = useState(false);
   const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
   const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
+    const saved = localStorage.getItem('brandIngredientsViewMode');
+    return saved === 'image' ? 'image' : 'compact';
+  });
+  const [detailIngredient, setDetailIngredient] = useState<Ingredient | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [linkedItems, setLinkedItems] = useState<{recipes: any[]; products: any[]}>({ recipes: [], products: [] });
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; ingredientId: number | null; ingredientName: string }>({
     isOpen: false,
     ingredientId: null,
@@ -624,9 +630,19 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
             ))}
           </FilterSelect>
         </FilterBar>
-        <ThemedButton variant="primary" onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
-          New Ingredient
-        </ThemedButton>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', background: '#F3F4F6', borderRadius: '6px', padding: '2px' }}>
+            <button onClick={() => { setViewMode('compact'); localStorage.setItem('brandIngredientsViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+              Compact
+            </button>
+            <button onClick={() => { setViewMode('image'); localStorage.setItem('brandIngredientsViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#6B7C93', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+              Image
+            </button>
+          </div>
+          <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
+            New Ingredient
+          </ThemedButton>
+        </div>
       </div>
 
       {filteredIngredients.length === 0 ? (
@@ -649,8 +665,18 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       ) : (
         <IngredientsGrid>
           {filteredIngredients.map(ingredient => (
-            <IngredientCard key={ingredient.id} isActive={ingredient.is_active}>
-              {ingredient.image_url && (
+            <IngredientCard key={ingredient.id} isActive={ingredient.is_active} onClick={() => {
+              setDetailIngredient(ingredient);
+              setShowDetailModal(true);
+              setLinkedItems({ recipes: [], products: [] });
+              const token = localStorage.getItem('auth_token');
+              fetch(`/api/product-ingredients/${ingredient.id}/usage`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              }).then(r => r.json()).then(data => {
+                if (data.success) setLinkedItems(data.data);
+              }).catch(() => {});
+            }}>
+              {viewMode === 'image' && ingredient.image_url && (
                 <IngredientImageContainer>
                   <IngredientImage src={ingredient.image_url} alt={ingredient.name} />
                 </IngredientImageContainer>
@@ -716,13 +742,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
               <IngredientActions>
                 <ActionButton
                   variant="secondary"
-                  onClick={() => handleOpenModal(ingredient)}
+                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleOpenModal(ingredient); }}
                 >
                   Edit
                 </ActionButton>
                 <ActionButton
                   variant="danger"
-                  onClick={() => handleDeleteClick(ingredient)}
+                  onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteClick(ingredient); }}
                 >
                   Delete
                 </ActionButton>
@@ -864,6 +890,74 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
         cancelText="Cancel"
         type="danger"
       />
+
+      {/* Detail Modal */}
+      {showDetailModal && detailIngredient && (
+        <Modal isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} title={detailIngredient.name} size="medium">
+          {detailIngredient.image_url && (
+            <div style={{ width: '100%', aspectRatio: '300/180', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px', background: '#F6F9FC' }}>
+              <img src={detailIngredient.image_url} alt={detailIngredient.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: '#635BFF', background: '#F0F4FF', padding: '3px 8px', borderRadius: '4px' }}>
+              {detailIngredient.category_name || 'Uncategorized'}
+            </span>
+            {detailIngredient.track_stock && (
+              <span style={{ fontSize: '11px', fontWeight: 500, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: '4px' }}>Tracking</span>
+            )}
+          </div>
+
+          <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '16px' }}>
+            Unit Cost: {Number(detailIngredient.unit_cost).toFixed(2)} / {detailIngredient.unit}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+            <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Base Qty</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{Number(detailIngredient.base_quantity || 1)} {detailIngredient.unit}</div>
+            </div>
+            <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Current Stock</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}` : '-'}</div>
+            </div>
+            <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Min Stock</div>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.min_stock || 0)} ${detailIngredient.unit}` : '-'}</div>
+            </div>
+          </div>
+
+          {detailIngredient.supplier_name && (
+            <div style={{ marginBottom: '16px', fontSize: '13px', color: '#6B7280' }}>
+              Supplier: <span style={{ color: '#0A2540', fontWeight: 500 }}>{detailIngredient.supplier_name}</span>
+            </div>
+          )}
+
+          {/* Connected recipes/products */}
+          <div style={{ padding: '12px', background: '#F0F4FF', borderRadius: '8px', border: '1px solid #DBEAFE', marginBottom: '16px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1E40AF', marginBottom: '8px' }}>Used In</div>
+            {linkedItems.recipes.length === 0 && linkedItems.products.length === 0 ? (
+              <div style={{ fontSize: '13px', color: '#6B7280' }}>Not linked to any recipe or product yet.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {linkedItems.recipes.map((r: any) => (
+                  <div key={'r' + r.id} style={{ fontSize: '13px', color: '#1E40AF' }}>
+                    <span style={{ fontSize: '11px', background: '#EFF6FF', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>Recipe</span>
+                    {r.name}
+                  </div>
+                ))}
+                {linkedItems.products.map((p: any) => (
+                  <div key={'p' + p.id} style={{ fontSize: '13px', color: '#059669' }}>
+                    <span style={{ fontSize: '11px', background: '#ECFDF5', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>Product</span>
+                    {p.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
     </>
   );
 };

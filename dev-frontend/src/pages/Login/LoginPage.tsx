@@ -448,7 +448,10 @@ const LoginPage: React.FC = () => {
       // Check if there's a redirect path from location state
       const from = (location.state as any)?.from?.pathname;
 
-      if (from && from !== '/pos') {
+      const fullScreenPages = ['/pos-terminal', '/kitchen', '/display', '/checkout-display'];
+      const isFullScreen = from && fullScreenPages.some(p => from.includes(p));
+      const isValidPath = from && from.startsWith('/') && !from.startsWith('//') && !from.includes('javascript:');
+      if (isValidPath && from !== '/pos' && !isFullScreen) {
         // Redirect to the originally requested page
         navigate(from, { replace: true });
       } else {

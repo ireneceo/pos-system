@@ -5,13 +5,15 @@ const {
   BrandProductCategory,
   BrandProductOptionGroup,
   BrandProductOption,
+  BrandProductOptionIngredient,
   BrandProductBrand,
   BrandProductOptionGroupProduct,
   Brand,
   Ingredient,
   Recipe,
   RecipeIngredient,
-  ProductRecipe
+  ProductRecipe,
+  ProductIngredient
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
@@ -296,13 +298,31 @@ router.get('/brand-product-option-groups', authenticateToken, isBrandManager, as
         {
           model: BrandProductOption,
           as: 'options',
+          include: [{
+            model: BrandProductOptionIngredient,
+            as: 'optionIngredients',
+            include: [{ model: ProductIngredient, as: 'ingredient', attributes: ['id', 'name', 'unit', 'unit_cost'] }]
+          }],
           order: [['sort_order', 'ASC']]
         }
       ],
       order: [['sort_order', 'ASC'], ['name', 'ASC']]
     });
 
-    res.json({ success: true, data: optionGroups });
+    // Transform to include ingredient info on options
+    const transformed = optionGroups.map(g => {
+      const gj = g.toJSON();
+      gj.options = (gj.options || []).map((opt) => ({
+        ...opt,
+        ingredient_id: opt.optionIngredients?.[0]?.ingredient_id || null,
+        ingredient_name: opt.optionIngredients?.[0]?.ingredient?.name || null,
+        ingredient_quantity: opt.optionIngredients?.[0]?.quantity ? parseFloat(opt.optionIngredients[0].quantity) : null,
+        ingredient_unit: opt.optionIngredients?.[0]?.ingredient?.unit || null
+      }));
+      return gj;
+    });
+
+    res.json({ success: true, data: transformed });
   } catch (error) {
     console.error('Get option groups error:', error);
     res.status(500).json({ error: 'Failed to fetch option groups' });
@@ -340,13 +360,21 @@ router.post('/brand-product-option-groups', authenticateToken, isBrandManager, a
     if (options && options.length > 0) {
       for (let j = 0; j < options.length; j++) {
         const opt = options[j];
-        await BrandProductOption.create({
+        const createdOpt = await BrandProductOption.create({
           option_group_id: optionGroup.id,
           name: opt.name,
           price_adjustment: opt.price_adjustment || 0,
           sort_order: opt.sort_order !== undefined ? opt.sort_order : j,
           is_active: opt.is_active !== false
         });
+        // Save ingredient link
+        if (opt.ingredient_id) {
+          await BrandProductOptionIngredient.create({
+            option_id: createdOpt.id,
+            ingredient_id: opt.ingredient_id,
+            quantity: opt.ingredient_quantity || 1
+          });
+        }
       }
     }
 
@@ -387,20 +415,30 @@ router.put('/brand-product-option-groups/:groupId', authenticateToken, isBrandMa
 
     // 옵션 업데이트 (전체 교체)
     if (options !== undefined) {
-      await BrandProductOption.destroy({
-        where: { option_group_id: groupId }
-      });
+      // Delete existing option ingredients first
+      const existingOpts = await BrandProductOption.findAll({ where: { option_group_id: groupId } });
+      for (const eo of existingOpts) {
+        await BrandProductOptionIngredient.destroy({ where: { option_id: eo.id } });
+      }
+      await BrandProductOption.destroy({ where: { option_group_id: groupId } });
 
       if (options && options.length > 0) {
         for (let j = 0; j < options.length; j++) {
           const opt = options[j];
-          await BrandProductOption.create({
+          const createdOpt = await BrandProductOption.create({
             option_group_id: groupId,
             name: opt.name,
             price_adjustment: opt.price_adjustment || 0,
             sort_order: opt.sort_order !== undefined ? opt.sort_order : j,
             is_active: opt.is_active !== false
           });
+          if (opt.ingredient_id) {
+            await BrandProductOptionIngredient.create({
+              option_id: createdOpt.id,
+              ingredient_id: opt.ingredient_id,
+              quantity: opt.ingredient_quantity || 1
+            });
+          }
         }
       }
     }
@@ -643,6 +681,38 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
     // Sync to ingredients table
     await syncProductToIngredients(product.id);
 
+    // Auto-create ProductRecipe if directIngredients provided
+    const directIngredients = req.body.directIngredients;
+    if (directIngredients && Array.isArray(directIngredients) && directIngredients.length > 0 && !product.product_recipe_id) {
+      try {
+        const { ProductRecipe, ProductRecipeIngredient, ProductIngredient } = require('../models');
+        const recipe = await ProductRecipe.create({
+          name: `${product.name} (auto)`,
+          is_active: true,
+          total_ingredient_cost: 0
+        });
+        let totalCost = 0;
+        for (const di of directIngredients) {
+          if (!di.ingredient_id || !di.quantity) continue;
+          const ingredient = await ProductIngredient.findByPk(di.ingredient_id);
+          if (!ingredient) continue;
+          const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
+          await ProductRecipeIngredient.create({
+            recipe_id: recipe.id,
+            ingredient_id: di.ingredient_id,
+            quantity: di.quantity,
+            unit: di.unit || ingredient.unit,
+            cost: cost
+          });
+          totalCost += cost;
+        }
+        await recipe.update({ total_ingredient_cost: totalCost });
+        await product.update({ product_recipe_id: recipe.id });
+      } catch (recipeError) {
+        console.error('Auto ProductRecipe creation error:', recipeError.message);
+      }
+    }
+
     // Fetch created product with associations
     const createdProduct = await BrandProduct.findByPk(product.id, {
       include: [
@@ -759,6 +829,45 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
     // Sync to ingredients table
     await syncProductToIngredients(productId);
 
+    // Handle directIngredients for auto ProductRecipe
+    const directIngredients = req.body.directIngredients;
+    if (directIngredients && Array.isArray(directIngredients)) {
+      try {
+        const { ProductRecipe: PR, ProductRecipeIngredient: PRI, ProductIngredient: PI } = require('../models');
+        const product = await BrandProduct.findByPk(productId);
+        if (directIngredients.length > 0) {
+          let recipe;
+          if (product.product_recipe_id) {
+            recipe = await PR.findByPk(product.product_recipe_id);
+            if (recipe) await PRI.destroy({ where: { recipe_id: recipe.id } });
+          }
+          if (!recipe) {
+            recipe = await PR.create({ name: `${product.name} (auto)`, is_active: true, total_ingredient_cost: 0 });
+            await product.update({ product_recipe_id: recipe.id });
+          }
+          let totalCost = 0;
+          for (const di of directIngredients) {
+            if (!di.ingredient_id || !di.quantity) continue;
+            const ingredient = await PI.findByPk(di.ingredient_id);
+            if (!ingredient) continue;
+            const cost = parseFloat(ingredient.unit_cost || 0) * parseFloat(di.quantity);
+            await PRI.create({ recipe_id: recipe.id, ingredient_id: di.ingredient_id, quantity: di.quantity, unit: di.unit || ingredient.unit, cost });
+            totalCost += cost;
+          }
+          await recipe.update({ total_ingredient_cost: totalCost, name: `${product.name} (auto)` });
+        } else if (product.product_recipe_id) {
+          const recipe = await PR.findByPk(product.product_recipe_id);
+          if (recipe && recipe.name.endsWith('(auto)')) {
+            await PRI.destroy({ where: { recipe_id: recipe.id } });
+            await recipe.destroy();
+            await product.update({ product_recipe_id: null });
+          }
+        }
+      } catch (recipeError) {
+        console.error('Auto ProductRecipe update error:', recipeError.message);
+      }
+    }
+
     // Fetch updated product with associations
     const updatedProduct = await BrandProduct.findByPk(productId, {
       include: [
@@ -797,6 +906,16 @@ router.delete('/brand-products/:productId', authenticateToken, isBrandManager, a
 
     if (!product) {
       return res.status(404).json({ error: '제품을 찾을 수 없습니다' });
+    }
+
+    // Delete auto recipe if exists
+    if (product.product_recipe_id) {
+      const { ProductRecipe: PR, ProductRecipeIngredient: PRI } = require('../models');
+      const recipe = await PR.findByPk(product.product_recipe_id);
+      if (recipe && recipe.name && recipe.name.endsWith('(auto)')) {
+        await PRI.destroy({ where: { recipe_id: recipe.id } });
+        await recipe.destroy();
+      }
     }
 
     // Delete linked ingredients first

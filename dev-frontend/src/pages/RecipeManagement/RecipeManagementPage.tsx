@@ -113,7 +113,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
       <>
         <Container>
           <Header>
-            <Title>Recipes</Title>
+            <Title>{user?.role === 'Brand General' || user?.role === 'Brand Manager' ? 'Brand Recipes' : 'Recipes'}</Title>
           </Header>
           <Content>
             <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
@@ -130,7 +130,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
       <>
         <Container>
           <Header>
-            <Title>Recipes</Title>
+            <Title>{user?.role === 'Brand General' || user?.role === 'Brand Manager' ? 'Brand Recipes' : 'Recipes'}</Title>
           </Header>
           <Content>
             <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>

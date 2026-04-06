@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useStaff } from '../../contexts/StaffContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,6 +8,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import SubscriptionTab from './SubscriptionTab';
+import AutoSaveField from '../../components/Common/AutoSaveField';
 
 // 스타일 컴포넌트
 const ProfileContainer = styled.div`
@@ -267,37 +268,6 @@ const DayTime = styled.div`
   color: #6B7280;
 `;
 
-const SaveStatusMessage = styled.div<{ show: boolean }>`
-  min-height: 40px;
-  margin-top: 16px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  opacity: ${props => props.show ? 1 : 0};
-  visibility: ${props => props.show ? 'visible' : 'hidden'};
-  transition: opacity 0.3s, visibility 0.3s;
-  background: linear-gradient(135deg, #E0F2FE 0%, #DBEAFE 100%);
-  color: #0369A1;
-  border: 1px solid #BAE6FD;
-
-  &::before {
-    content: '✓';
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #0369A1;
-    color: white;
-    font-size: 12px;
-    flex-shrink: 0;
-  }
-`;
 
 const ProfilePage: React.FC = () => {
   // const navigate = useNavigate();
@@ -325,14 +295,6 @@ const ProfilePage: React.FC = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const markChanged = () => {
-    setAutoSaveStatus('saving');
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      if (saveCallbackRef.current) saveCallbackRef.current();
-    }, 2000);
-  };
-
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 
@@ -341,12 +303,8 @@ const ProfilePage: React.FC = () => {
       setHasChanges(true);
       setSavedSuccessfully(false); // Clear saved message when making changes
     }
-    markChanged();
   };
   const [hasChanges, setHasChanges] = useState(false);
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<any>(null);
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
@@ -583,20 +541,12 @@ const ProfilePage: React.FC = () => {
       });
       setHasChanges(false);
       setSavedSuccessfully(false);
-      setAutoSaveStatus('idle');
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     }
   };
 
-  saveCallbackRef.current = async () => {
-    try {
-      // Create a synthetic event for handleSubmit
-      const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
-      await handleSubmit(syntheticEvent);
-      setAutoSaveStatus('saved');
-    } catch (e) {
-      setAutoSaveStatus('idle');
-    }
+  const handleSave = async () => {
+    const syntheticEvent = { preventDefault: () => {} } as React.FormEvent;
+    await handleSubmit(syntheticEvent);
   };
 
   // Warn user before leaving page with unsaved changes
@@ -848,15 +798,16 @@ const ProfilePage: React.FC = () => {
                 <FormGrid>
                   <FormGroup>
                     <Label>Full Name</Label>
-                    <Input
-                      type="text"
-                      value={formData.name || ''}
-                      onChange={(e) => {
-                        console.log('🔥 Name input onChange:', e.target.value);
-                        handleInputChange('name', e.target.value);
-                      }}
-                      placeholder="Enter full name"
-                    />
+                    <AutoSaveField onSave={handleSave}>
+                      <Input
+                        type="text"
+                        value={formData.name || ''}
+                        onChange={(e) => {
+                          handleInputChange('name', e.target.value);
+                        }}
+                        placeholder="Enter full name"
+                      />
+                    </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
                     <Label>Role</Label>
@@ -868,12 +819,14 @@ const ProfilePage: React.FC = () => {
                   </FormGroup>
                   <FormGroup>
                     <Label>Email Address</Label>
-                    <Input
-                      type="email"
-                      value={formData.email || ''}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      placeholder="Enter email address"
-                    />
+                    <AutoSaveField onSave={handleSave}>
+                      <Input
+                        type="email"
+                        value={formData.email || ''}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        placeholder="Enter email address"
+                      />
+                    </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
                     <Label>Username</Label>
@@ -885,48 +838,41 @@ const ProfilePage: React.FC = () => {
                   </FormGroup>
                   <FormGroup>
                     <Label>Phone Number</Label>
-                    <PhoneInput
-                      value={formData.phone || ''}
-                      onChange={(value) => handleInputChange('phone', value)}
-                    />
+                    <AutoSaveField onSave={handleSave}>
+                      <PhoneInput
+                        value={formData.phone || ''}
+                        onChange={(value) => handleInputChange('phone', value)}
+                      />
+                    </AutoSaveField>
                   </FormGroup>
 
                   {/* System Admin Role - Company Name */}
                   {currentUser.role === 'System Admin' && (
                     <FormGroup>
                       <Label>Company Name</Label>
-                      <Input
-                        type="text"
-                        value={formData.company_name || ''}
-                        onChange={(e) => handleInputChange('company_name', e.target.value)}
-                        placeholder="Enter company name"
-                      />
+                      <AutoSaveField onSave={handleSave}>
+                        <Input
+                          type="text"
+                          value={formData.company_name || ''}
+                          onChange={(e) => handleInputChange('company_name', e.target.value)}
+                          placeholder="Enter company name"
+                        />
+                      </AutoSaveField>
                     </FormGroup>
                   )}
 
                   <FormGroup>
                     <Label>Department</Label>
-                    <Input
-                      type="text"
-                      value={formData.department || ''}
-                      onChange={(e) => handleInputChange('department', e.target.value)}
-                      placeholder="Enter department"
-                    />
+                    <AutoSaveField onSave={handleSave}>
+                      <Input
+                        type="text"
+                        value={formData.department || ''}
+                        onChange={(e) => handleInputChange('department', e.target.value)}
+                        placeholder="Enter department"
+                      />
+                    </AutoSaveField>
                   </FormGroup>
                 </FormGrid>
-
-                <ButtonContainer>
-                  <Button type="button" onClick={handleReset} disabled={!hasChanges || saving}>
-                    Reset
-                  </Button>
-                  <Button type="button" variant="primary" disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved' || !hasChanges || saving} onClick={handleSubmit}>
-                    {saving || autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '\u2713 Saved' : 'Save Changes'}
-                  </Button>
-                </ButtonContainer>
-
-                <SaveStatusMessage show={savedSuccessfully}>
-                  Profile updated successfully.
-                </SaveStatusMessage>
               </div>
             </ContentCard>
           )}

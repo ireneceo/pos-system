@@ -64,6 +64,37 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Usage: linked recipes and products
+router.get('/:id/usage', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ProductRecipe, BrandProduct } = require('../models');
+
+    // Recipes using this ingredient
+    const recipeLinks = await ProductRecipeIngredient.findAll({
+      where: { ingredient_id: id },
+      include: [{ model: ProductRecipe, as: 'recipe', attributes: ['id', 'name'] }]
+    });
+    const recipes = recipeLinks.filter(rl => rl.recipe).map(rl => ({ id: rl.recipe.id, name: rl.recipe.name }));
+
+    // Products linked via product_recipe_id
+    const recipeIds = recipes.map(r => r.id);
+    let products = [];
+    if (recipeIds.length > 0) {
+      products = await BrandProduct.findAll({
+        where: { product_recipe_id: { [Op.in]: recipeIds } },
+        attributes: ['id', 'name', 'unit_price']
+      });
+      products = products.map(p => p.get({ plain: true }));
+    }
+
+    res.json({ success: true, data: { recipes, products } });
+  } catch (error) {
+    console.error('Get product ingredient usage error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get usage' });
+  }
+});
+
 // 단일 조회
 router.get('/:id', async (req, res) => {
   try {

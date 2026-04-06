@@ -1327,7 +1327,10 @@ const POSTerminalPage: React.FC = () => {
     const loadMembershipSettings = async () => {
       if (user?.restaurantId) {
         try {
-          const response = await fetch(`/api/membership/settings/${user.restaurantId}`);
+          const token = localStorage.getItem('auth_token');
+          const response = await fetch(`/api/membership/settings/${user.restaurantId}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.data) {
@@ -1349,7 +1352,10 @@ const POSTerminalPage: React.FC = () => {
     const loadCustomerPoints = async () => {
       if (user?.restaurantId && selectedCustomerForOrder?.id) {
         try {
-          const response = await fetch(`/api/membership/customer/${user.restaurantId}/${selectedCustomerForOrder.id}`);
+          const token = localStorage.getItem('auth_token');
+          const response = await fetch(`/api/membership/customer/${user.restaurantId}/${selectedCustomerForOrder.id}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.data) {

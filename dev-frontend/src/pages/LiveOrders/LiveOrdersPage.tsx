@@ -21,7 +21,7 @@ import {
   Modal as CommonModal
 } from '../../components/UI';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
-import { printBillViaRawBT, generateBillContent, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
+import { printBillViaRawBT, generateBillContent, generateHTMLBill, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -3518,84 +3518,69 @@ const LiveOrdersPage: React.FC = () => {
                   </div>
                 ) : showReceiptView ? (
                   <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
-                    <div style={{
-                      width: '302px',
-                      padding: '20px',
-                      fontFamily: 'monospace',
-                      fontSize: '11px',
-                      lineHeight: '1.3',
-                      whiteSpace: 'pre',
-                      backgroundColor: '#ffffff',
-                      border: '2px solid #333',
-                      borderRadius: '4px',
-                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                      maxHeight: '600px',
-                      overflowY: 'auto',
-                      overflowX: 'hidden'
-                    }}>
-                      {(() => {
-                        const storeInfo = getStoreInfo();
-                        const orderItems = Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
+                    {(() => {
+                      const storeInfo = { ...getStoreInfo(), restaurantId: user?.restaurantId || '' };
+                      const orderItems = Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
 
-                        const orderData = {
-                          orderNumber: selectedOrder.order_number,
-                          pickupNumber: selectedOrder.order_number.split('-')[1],
-                          pagerNumber: selectedOrder.pager_number || null,
-                          date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
-                          orderType: selectedOrder.order_type,
-                          scheduledPickupTime: selectedOrder.scheduled_pickup_time || null,
-                          currency: operationSettings.currency || 'MYR',
-                          items: orderItems.map((item: any) => ({
-                            menuItem: {
-                              name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
-                              price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0')
-                            },
-                            quantity: item.quantity || 1,
-                            options: item.options || []
-                          })),
-                          subtotal: parseFloat((selectedOrder as any).subtotal || '0'),
-                          discount: parseFloat((selectedOrder as any).discount || '0'),
-                          discountPolicy: (selectedOrder as any).discount_policy_name ? {
-                            name: (selectedOrder as any).discount_policy_name,
-                            amount: parseFloat((selectedOrder as any).discount_policy_amount || '0')
-                          } : undefined,
-                          coupon: (selectedOrder as any).coupon_code ? {
-                            code: (selectedOrder as any).coupon_code,
-                            discount: parseFloat((selectedOrder as any).coupon_discount || '0')
-                          } : null,
-                          takeawayCharge: parseFloat((selectedOrder as any).takeaway_charge || '0'),
-                          serviceCharge: parseFloat((selectedOrder as any).service_charge || '0'),
-                          serviceChargeRate: parseFloat((selectedOrder as any).service_charge_rate || '10'),
-                          tax: parseFloat((selectedOrder as any).tax || '0'),
-                          taxRate: parseFloat((selectedOrder as any).tax_rate || '6'),
-                          total: parseFloat((selectedOrder as any).final_price || selectedOrder.total_amount || '0'),
-                          paymentMethod: selectedOrder.payment_method || 'cash',
-                          amountReceived: parseFloat((selectedOrder as any).amount_received || '0'),
-                          change: parseFloat((selectedOrder as any).change || '0'),
-                          deliveryInfo: (selectedOrder as any).delivery_info || null,
-                          deliveryFee: parseFloat((selectedOrder as any).delivery_fee || '0')
-                        };
+                      const orderData = {
+                        orderNumber: selectedOrder.order_number,
+                        pickupNumber: selectedOrder.order_number.split('-')[1],
+                        pagerNumber: selectedOrder.pager_number || null,
+                        date: new Date(selectedOrder.order_date || selectedOrder.createdAt),
+                        orderType: selectedOrder.order_type,
+                        scheduledPickupTime: selectedOrder.scheduled_pickup_time || null,
+                        currency: operationSettings.currency || 'MYR',
+                        tableNumber: selectedOrder.table_number || null,
+                        cashierName: (selectedOrder as any).cashier_name || null,
+                        customerName: selectedOrder.customer_name || 'Guest',
+                        items: orderItems.map((item: any) => ({
+                          menuItem: {
+                            name: item.menu_item_name || item.name || (item.menuItem && item.menuItem.name) || 'Unknown Item',
+                            price: parseFloat(item.price || (item.menuItem && item.menuItem.price) || '0')
+                          },
+                          quantity: item.quantity || 1,
+                          options: item.options || []
+                        })),
+                        subtotal: parseFloat((selectedOrder as any).subtotal || '0'),
+                        discount: parseFloat((selectedOrder as any).discount || '0'),
+                        discountPolicy: (selectedOrder as any).discount_policy_name ? {
+                          name: (selectedOrder as any).discount_policy_name,
+                          amount: parseFloat((selectedOrder as any).discount_policy_amount || '0')
+                        } : undefined,
+                        coupon: (selectedOrder as any).coupon_code ? {
+                          code: (selectedOrder as any).coupon_code,
+                          discount: parseFloat((selectedOrder as any).coupon_discount || '0')
+                        } : null,
+                        takeawayCharge: parseFloat((selectedOrder as any).takeaway_charge || '0'),
+                        serviceCharge: parseFloat((selectedOrder as any).service_charge || '0'),
+                        serviceChargeRate: parseFloat((selectedOrder as any).service_charge_rate || '10'),
+                        tax: parseFloat((selectedOrder as any).tax || '0'),
+                        taxRate: parseFloat((selectedOrder as any).tax_rate || '6'),
+                        total: parseFloat((selectedOrder as any).final_price || selectedOrder.total_amount || '0'),
+                        paymentMethod: selectedOrder.payment_method || 'cash',
+                        amountReceived: parseFloat((selectedOrder as any).amount_received || '0'),
+                        change: parseFloat((selectedOrder as any).change || '0'),
+                        deliveryInfo: (selectedOrder as any).delivery_info || null,
+                        deliveryFee: parseFloat((selectedOrder as any).delivery_fee || '0')
+                      };
 
-                        // Generate bill content and remove ESC/POS control characters for display
-                        const billContent = generateBillContent(orderData, storeInfo);
-                        // Remove all ESC/POS control sequences
-                        // ESC sequences: \x1B followed by 1-3 characters
-                        // GS sequences: \x1D followed by 1-3 characters
-                        return billContent
-                          // eslint-disable-next-line no-control-regex
-                          .replace(/\x1B[@E][\x00\x01]/g, '')  // INIT, BOLD ON/OFF
-                          // eslint-disable-next-line no-control-regex
-                          .replace(/\x1Ba[\x00-\x02]/g, '')    // ALIGN LEFT/CENTER/RIGHT
-                          // eslint-disable-next-line no-control-regex
-                          .replace(/\x1D![\x00-\x11]/g, '')    // TEXT SIZE
-                          // eslint-disable-next-line no-control-regex
-                          .replace(/\x1DB[\x00\x01]/g, '')     // REVERSE ON/OFF
-                          // eslint-disable-next-line no-control-regex
-                          .replace(/\x1DV\x41\x00/g, '')       // PAPER CUT
-                          // eslint-disable-next-line no-control-regex
-                          .replace(/[\x1B\x1D]./g, '');        // Any remaining ESC/GS sequences
-                      })()}
-                    </div>
+                      const htmlContent = generateHTMLBill(orderData, storeInfo);
+                      return (
+                        <iframe
+                          srcDoc={htmlContent}
+                          title="Receipt Preview"
+                          style={{
+                            width: '320px',
+                            minHeight: '500px',
+                            height: '600px',
+                            border: '2px solid #333',
+                            borderRadius: '4px',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                            background: 'white'
+                          }}
+                        />
+                      );
+                    })()}
                   </div>
                 ) : (
                 <div style={{ padding: '24px' }}>

@@ -1257,8 +1257,12 @@ router.get('/popular/:slug', async (req, res) => {
     const mobileSettings = restaurant.mobile_settings || {};
     const excludedIds = mobileSettings.popular_excluded_category_ids || [];
     if (excludedIds.length > 0) {
+      // product.category stores category ID as string (e.g. "14") or category name (legacy)
+      // Match both formats: ID as string + category names for legacy data
       const excludedStrIds = excludedIds.map(id => id.toString());
-      productWhere.category = { [Op.notIn]: excludedStrIds };
+      const excludedCats = await Category.findAll({ where: { id: excludedIds }, attributes: ['id', 'name'] });
+      const excludedNames = excludedCats.map(c => c.name);
+      productWhere.category = { [Op.notIn]: [...excludedStrIds, ...excludedNames] };
     }
 
     const products = await Product.findAll({ where: productWhere });

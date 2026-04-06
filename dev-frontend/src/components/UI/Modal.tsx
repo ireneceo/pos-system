@@ -76,6 +76,7 @@ export const ModalBody = styled.div`
   padding: 24px;
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 `;
 
 // 모달 푸터

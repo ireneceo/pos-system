@@ -2106,28 +2106,35 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
 // Get linked recipes/products for an ingredient
 router.get('/:restaurantId/ingredients/:ingredientId/usage', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
-    const { ingredientId } = req.params;
+    const { restaurantId, ingredientId } = req.params;
     const { RecipeIngredient, Recipe, Product } = require('../models');
+    const { Op } = require('sequelize');
 
-    // Recipes using this ingredient
+    // Recipes using this ingredient (scoped to this restaurant or brand recipes)
     const recipeLinks = await RecipeIngredient.findAll({
       where: { ingredient_id: ingredientId },
-      include: [{ model: Recipe, as: 'recipe', attributes: ['id', 'name', 'owner_type'] }]
+      include: [{ model: Recipe, as: 'recipe', attributes: ['id', 'name', 'owner_type', 'restaurant_id', 'brand_id'] }]
     });
-    const recipes = recipeLinks.filter(rl => rl.recipe).map(rl => ({ id: rl.recipe.id, name: rl.recipe.name, owner_type: rl.recipe.owner_type }));
+    const recipes = recipeLinks
+      .filter(rl => rl.recipe)
+      .filter(rl => rl.recipe.restaurant_id == restaurantId || rl.recipe.owner_type === 'brand')
+      .map(rl => ({ id: rl.recipe.id, name: rl.recipe.name, owner_type: rl.recipe.owner_type }));
 
-    // Products (menus) linked via recipe_id
-    const recipeIds = recipes.map(r => r.id);
+    // Deduplicate recipes by id
+    const uniqueRecipes = [...new Map(recipes.map(r => [r.id, r])).values()];
+
+    // Products (menus) in THIS restaurant linked via recipe_id
+    const recipeIds = uniqueRecipes.map(r => r.id);
     let products = [];
     if (recipeIds.length > 0) {
       products = await Product.findAll({
-        where: { recipe_id: recipeIds },
+        where: { recipe_id: { [Op.in]: recipeIds }, restaurant_id: restaurantId },
         attributes: ['id', 'name', 'price', 'recipe_id']
       });
       products = products.map(p => p.get({ plain: true }));
     }
 
-    res.json({ success: true, data: { recipes, products } });
+    res.json({ success: true, data: { recipes: uniqueRecipes, products } });
   } catch (error) {
     console.error('Get ingredient usage error:', error);
     res.status(500).json({ success: false, message: 'Failed to get ingredient usage' });

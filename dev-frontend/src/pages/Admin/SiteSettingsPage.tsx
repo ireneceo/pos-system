@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
-import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
+import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
 
 interface CurrencyConfig {
   [code: string]: {
@@ -188,13 +188,8 @@ const SiteSettingsPage: React.FC = () => {
     og_image_url: '',
     timezone: 'Asia/Kuala_Lumpur'
   });
-  const [initialSettings, setInitialSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
-  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
   const [isDraggingFavicon, setIsDraggingFavicon] = useState(false);
   const [isDraggingLogo, setIsDraggingLogo] = useState(false);
   const [isDraggingOG, setIsDraggingOG] = useState(false);
@@ -204,22 +199,19 @@ const SiteSettingsPage: React.FC = () => {
   const [, setSupportedCurrencies] = useState<string[]>([]);
   const [, setDefaultCurrency] = useState<string>('RM');
 
+  // Refs for image AutoSaveField (triggered manually after FileReader completes)
+  const faviconAutoSaveRef = useRef<AutoSaveHandle>(null);
+  const brandLogoAutoSaveRef = useRef<AutoSaveHandle>(null);
+  const ogImageAutoSaveRef = useRef<AutoSaveHandle>(null);
+
+  // Keep a ref to always have the latest settings for saveSettings
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
   useEffect(() => {
     fetchSettings();
     fetchCurrencySettings();
   }, []);
-
-  // Detect changes
-  useEffect(() => {
-    if (initialSettings) {
-      const hasChanged = JSON.stringify(settings) !== JSON.stringify(initialSettings);
-      setHasChanges(hasChanged);
-
-      if (hasChanged && savedSuccessfully) {
-        setSavedSuccessfully(false);
-      }
-    }
-  }, [settings, initialSettings, savedSuccessfully]);
 
   const fetchCurrencySettings = async () => {
     try {
@@ -248,8 +240,6 @@ const SiteSettingsPage: React.FC = () => {
     }
   };
 
-
-
   const fetchSettings = async () => {
     try {
       const response = await fetch('/api/site-settings?include=images');
@@ -266,15 +256,44 @@ const SiteSettingsPage: React.FC = () => {
           timezone: data.timezone || 'Asia/Kuala_Lumpur'
         };
         setSettings(loadedSettings);
-        setInitialSettings(loadedSettings);
-        setHasChanges(false);
-        setSavedSuccessfully(false);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
       setErrorMessage('Failed to load settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    setErrorMessage('');
+
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch('/api/site-settings', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(settingsRef.current)
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save settings');
+    }
+
+    // Trigger brand logo update event if logo changed
+    if (settingsRef.current.brand_logo) {
+      window.dispatchEvent(new Event('brandLogoUpdated'));
+    }
+
+    // Update document title and meta tags immediately
+    if (settingsRef.current.seo_title) {
+      document.title = settingsRef.current.seo_title;
+    }
+    if (settingsRef.current.favicon_url) {
+      updateFavicon(settingsRef.current.favicon_url);
     }
   };
 
@@ -286,7 +305,7 @@ const SiteSettingsPage: React.FC = () => {
     }));
   };
 
-  const validateAndUploadFile = (file: File, field: string) => {
+  const validateAndUploadFile = (file: File, field: string, autoSaveRef: React.RefObject<AutoSaveHandle>) => {
     // Check file type
     if (!file.type.startsWith('image/')) {
       setErrorMessage('Please upload an image file (PNG, JPG, etc.)');
@@ -308,14 +327,16 @@ const SiteSettingsPage: React.FC = () => {
         [field]: base64
       }));
       setErrorMessage('');
+      // Trigger save after state update settles
+      setTimeout(() => autoSaveRef.current?.triggerSave(), 0);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string, autoSaveRef: React.RefObject<AutoSaveHandle>) => {
     const file = e.target.files?.[0];
     if (file) {
-      validateAndUploadFile(file, field);
+      validateAndUploadFile(file, field, autoSaveRef);
     }
   };
 
@@ -329,60 +350,13 @@ const SiteSettingsPage: React.FC = () => {
     setDragging(false);
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, field: string, setDragging: (val: boolean) => void) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, field: string, setDragging: (val: boolean) => void, autoSaveRef: React.RefObject<AutoSaveHandle>) => {
     e.preventDefault();
     setDragging(false);
 
     const file = e.dataTransfer.files?.[0];
     if (file) {
-      validateAndUploadFile(file, field);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setSuccessMessage('');
-    setErrorMessage('');
-
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/site-settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(settings)
-      });
-
-      if (response.ok) {
-        setSuccessMessage('Site settings saved successfully! SEO tags will be updated on next page load.');
-        setInitialSettings(settings);
-        setHasChanges(false);
-        setSavedSuccessfully(true);
-
-        // Trigger brand logo update event if logo changed
-        if (settings.brand_logo) {
-          window.dispatchEvent(new Event('brandLogoUpdated'));
-        }
-
-        // Update document title and meta tags immediately
-        if (settings.seo_title) {
-          document.title = settings.seo_title;
-        }
-        if (settings.favicon_url) {
-          updateFavicon(settings.favicon_url);
-        }
-      } else {
-        const data = await response.json();
-        setErrorMessage(data.error || 'Failed to save settings');
-      }
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      setErrorMessage('An error occurred while saving settings');
-    } finally {
-      setSaving(false);
+      validateAndUploadFile(file, field, autoSaveRef);
     }
   };
 
@@ -418,7 +392,7 @@ const SiteSettingsPage: React.FC = () => {
           <Title>Site Settings</Title>
         </Header>
         <Content>
-          <Form onSubmit={handleSubmit}>
+          <Form onSubmit={(e) => e.preventDefault()}>
             {/* Basic Settings */}
             <Section>
               <SectionTitle>Basic Settings</SectionTitle>
@@ -426,14 +400,16 @@ const SiteSettingsPage: React.FC = () => {
               <FormRow>
                 <FormGroup>
                   <Label htmlFor="site_name">Site Name</Label>
-                  <Input
-                    type="text"
-                    id="site_name"
-                    name="site_name"
-                    value={settings.site_name}
-                    onChange={handleInputChange}
-                    placeholder="Purple Here POS"
-                  />
+                  <AutoSaveField onSave={saveSettings}>
+                    <Input
+                      type="text"
+                      id="site_name"
+                      name="site_name"
+                      value={settings.site_name}
+                      onChange={handleInputChange}
+                      placeholder="Purple Here POS"
+                    />
+                  </AutoSaveField>
                   <HelpText>The name of your site/solution</HelpText>
                 </FormGroup>
               </FormRow>
@@ -441,64 +417,68 @@ const SiteSettingsPage: React.FC = () => {
               <FormRow>
                 <FormGroup>
                   <Label>Favicon</Label>
-                  <LogoUpload
-                    isDragging={isDraggingFavicon}
-                    onClick={() => document.getElementById('favicon-input')?.click()}
-                    onDragOver={(e) => handleDragOver(e, setIsDraggingFavicon)}
-                    onDragLeave={(e) => handleDragLeave(e, setIsDraggingFavicon)}
-                    onDrop={(e) => handleDrop(e, 'favicon_url', setIsDraggingFavicon)}
-                  >
-                    {settings.favicon_url ? (
-                      <LogoPreview src={settings.favicon_url} alt="Favicon" />
-                    ) : (
-                      <div>
-                        <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
-                          Click to upload or drag and drop
+                  <AutoSaveField ref={faviconAutoSaveRef} onSave={saveSettings} type="image">
+                    <LogoUpload
+                      isDragging={isDraggingFavicon}
+                      onClick={() => document.getElementById('favicon-input')?.click()}
+                      onDragOver={(e) => handleDragOver(e, setIsDraggingFavicon)}
+                      onDragLeave={(e) => handleDragLeave(e, setIsDraggingFavicon)}
+                      onDrop={(e) => handleDrop(e, 'favicon_url', setIsDraggingFavicon, faviconAutoSaveRef)}
+                    >
+                      {settings.favicon_url ? (
+                        <LogoPreview src={settings.favicon_url} alt="Favicon" />
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
+                            Click to upload or drag and drop
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                            PNG, JPG, or SVG (Max 2MB)
+                          </div>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                          PNG, JPG, or SVG (Max 2MB)
-                        </div>
-                      </div>
-                    )}
-                  </LogoUpload>
+                      )}
+                    </LogoUpload>
+                  </AutoSaveField>
                   <input
                     id="favicon-input"
                     type="file"
                     accept="image/*"
                     style={{ display: 'none' }}
-                    onChange={(e) => handleImageUpload(e, 'favicon_url')}
+                    onChange={(e) => handleImageUpload(e, 'favicon_url', faviconAutoSaveRef)}
                   />
                   <HelpText>16x16 or 32x32 px recommended</HelpText>
                 </FormGroup>
 
                 <FormGroup>
                   <Label>Brand Logo</Label>
-                  <LogoUpload
-                    isDragging={isDraggingLogo}
-                    onClick={() => document.getElementById('brand-logo-input')?.click()}
-                    onDragOver={(e) => handleDragOver(e, setIsDraggingLogo)}
-                    onDragLeave={(e) => handleDragLeave(e, setIsDraggingLogo)}
-                    onDrop={(e) => handleDrop(e, 'brand_logo', setIsDraggingLogo)}
-                  >
-                    {settings.brand_logo ? (
-                      <LogoPreview src={settings.brand_logo} alt="Brand Logo" />
-                    ) : (
-                      <div>
-                        <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
-                          Click to upload or drag and drop
+                  <AutoSaveField ref={brandLogoAutoSaveRef} onSave={saveSettings} type="image">
+                    <LogoUpload
+                      isDragging={isDraggingLogo}
+                      onClick={() => document.getElementById('brand-logo-input')?.click()}
+                      onDragOver={(e) => handleDragOver(e, setIsDraggingLogo)}
+                      onDragLeave={(e) => handleDragLeave(e, setIsDraggingLogo)}
+                      onDrop={(e) => handleDrop(e, 'brand_logo', setIsDraggingLogo, brandLogoAutoSaveRef)}
+                    >
+                      {settings.brand_logo ? (
+                        <LogoPreview src={settings.brand_logo} alt="Brand Logo" />
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
+                            Click to upload or drag and drop
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                            PNG or JPG (Max 2MB)
+                          </div>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                          PNG or JPG (Max 2MB)
-                        </div>
-                      </div>
-                    )}
-                  </LogoUpload>
+                      )}
+                    </LogoUpload>
+                  </AutoSaveField>
                   <input
                     id="brand-logo-input"
                     type="file"
                     accept="image/*"
                     style={{ display: 'none' }}
-                    onChange={(e) => handleImageUpload(e, 'brand_logo')}
+                    onChange={(e) => handleImageUpload(e, 'brand_logo', brandLogoAutoSaveRef)}
                   />
                   <HelpText>Will appear in sidebar and login page</HelpText>
                 </FormGroup>
@@ -512,25 +492,27 @@ const SiteSettingsPage: React.FC = () => {
               <FormRow>
                 <FormGroup>
                   <Label htmlFor="timezone">Timezone</Label>
-                  <select
-                    id="timezone"
-                    value={settings.timezone}
-                    onChange={(e) => setSettings(prev => ({ ...prev, timezone: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '1px solid #E6EBF1',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      background: 'white',
-                      cursor: 'pointer',
-                      boxSizing: 'border-box' as const
-                    }}
-                  >
-                    {TIMEZONE_OPTIONS.map(tz => (
-                      <option key={tz.value} value={tz.value}>{tz.label}</option>
-                    ))}
-                  </select>
+                  <AutoSaveField onSave={saveSettings} type="select">
+                    <select
+                      id="timezone"
+                      value={settings.timezone}
+                      onChange={(e) => setSettings(prev => ({ ...prev, timezone: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #E6EBF1',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        background: 'white',
+                        cursor: 'pointer',
+                        boxSizing: 'border-box' as const
+                      }}
+                    >
+                      {TIMEZONE_OPTIONS.map(tz => (
+                        <option key={tz.value} value={tz.value}>{tz.label}</option>
+                      ))}
+                    </select>
+                  </AutoSaveField>
                   <HelpText>
                     All system dates/times (dashboards, reports, invoices) will use this timezone.
                     Current time: {new Date().toLocaleString('en-US', { timeZone: settings.timezone, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, year: 'numeric', month: 'short', day: 'numeric' })}
@@ -545,100 +527,88 @@ const SiteSettingsPage: React.FC = () => {
 
               <FormGroup>
                 <Label htmlFor="seo_title">SEO Title</Label>
-                <Input
-                  type="text"
-                  id="seo_title"
-                  name="seo_title"
-                  value={settings.seo_title}
-                  onChange={handleInputChange}
-                  placeholder="Purple Here - Restaurant POS System"
-                  maxLength={60}
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <Input
+                    type="text"
+                    id="seo_title"
+                    name="seo_title"
+                    value={settings.seo_title}
+                    onChange={handleInputChange}
+                    placeholder="Purple Here - Restaurant POS System"
+                    maxLength={60}
+                  />
+                </AutoSaveField>
                 <HelpText>Page title for search engines (50-60 characters recommended)</HelpText>
               </FormGroup>
 
               <FormGroup>
                 <Label htmlFor="seo_description">SEO Description</Label>
-                <TextArea
-                  id="seo_description"
-                  name="seo_description"
-                  value={settings.seo_description}
-                  onChange={handleInputChange}
-                  placeholder="Complete restaurant management solution with POS, ordering, and analytics"
-                  maxLength={160}
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <TextArea
+                    id="seo_description"
+                    name="seo_description"
+                    value={settings.seo_description}
+                    onChange={handleInputChange}
+                    placeholder="Complete restaurant management solution with POS, ordering, and analytics"
+                    maxLength={160}
+                  />
+                </AutoSaveField>
                 <HelpText>Meta description for search engines (150-160 characters recommended)</HelpText>
               </FormGroup>
 
               <FormGroup>
                 <Label htmlFor="seo_keywords">SEO Keywords</Label>
-                <Input
-                  type="text"
-                  id="seo_keywords"
-                  name="seo_keywords"
-                  value={settings.seo_keywords}
-                  onChange={handleInputChange}
-                  placeholder="restaurant pos, food ordering, restaurant management, pos system"
-                />
+                <AutoSaveField onSave={saveSettings}>
+                  <Input
+                    type="text"
+                    id="seo_keywords"
+                    name="seo_keywords"
+                    value={settings.seo_keywords}
+                    onChange={handleInputChange}
+                    placeholder="restaurant pos, food ordering, restaurant management, pos system"
+                  />
+                </AutoSaveField>
                 <HelpText>Comma-separated keywords for search engines</HelpText>
               </FormGroup>
 
               <FormGroup>
                 <Label>Open Graph Image</Label>
-                <LogoUpload
-                  isDragging={isDraggingOG}
-                  onClick={() => document.getElementById('og-image-input')?.click()}
-                  onDragOver={(e) => handleDragOver(e, setIsDraggingOG)}
-                  onDragLeave={(e) => handleDragLeave(e, setIsDraggingOG)}
-                  onDrop={(e) => handleDrop(e, 'og_image_url', setIsDraggingOG)}
-                >
-                  {settings.og_image_url ? (
-                    <LogoPreview src={settings.og_image_url} alt="OG Image" />
-                  ) : (
-                    <div>
-                      <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
-                        Click to upload or drag and drop
+                <AutoSaveField ref={ogImageAutoSaveRef} onSave={saveSettings} type="image">
+                  <LogoUpload
+                    isDragging={isDraggingOG}
+                    onClick={() => document.getElementById('og-image-input')?.click()}
+                    onDragOver={(e) => handleDragOver(e, setIsDraggingOG)}
+                    onDragLeave={(e) => handleDragLeave(e, setIsDraggingOG)}
+                    onDrop={(e) => handleDrop(e, 'og_image_url', setIsDraggingOG, ogImageAutoSaveRef)}
+                  >
+                    {settings.og_image_url ? (
+                      <LogoPreview src={settings.og_image_url} alt="OG Image" />
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: '14px', color: '#6B7280', fontWeight: 500, marginBottom: '8px' }}>
+                          Click to upload or drag and drop
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                          PNG or JPG (Max 2MB)
+                        </div>
                       </div>
-                      <div style={{ fontSize: '12px', color: '#9CA3AF' }}>
-                        PNG or JPG (Max 2MB)
-                      </div>
-                    </div>
-                  )}
-                </LogoUpload>
+                    )}
+                  </LogoUpload>
+                </AutoSaveField>
                 <input
                   id="og-image-input"
                   type="file"
                   accept="image/*"
                   style={{ display: 'none' }}
-                  onChange={(e) => handleImageUpload(e, 'og_image_url')}
+                  onChange={(e) => handleImageUpload(e, 'og_image_url', ogImageAutoSaveRef)}
                 />
                 <HelpText>Image for social media sharing (1200x630 px recommended)</HelpText>
               </FormGroup>
             </Section>
 
-
-            <SaveButtonContainer>
-              <SaveButtonGroup>
-                <SaveButton type="button" variant="secondary" onClick={fetchSettings} disabled={!hasChanges}>
-                  Reset Changes
-                </SaveButton>
-                <SaveButton type="submit" disabled={!hasChanges || saving}>
-                  {hasChanges ? (saving ? 'Saving...' : 'Save Changes') : 'Saved'}
-                </SaveButton>
-              </SaveButtonGroup>
-
-              {(savedSuccessfully && !hasChanges) && (
-                <StatusMessage type="success">
-                  {successMessage || 'Your settings have been successfully updated.'}
-                </StatusMessage>
-              )}
-
-              {errorMessage && (
-                <StatusMessage type="error">
-                  {errorMessage}
-                </StatusMessage>
-              )}
-            </SaveButtonContainer>
+            {errorMessage && (
+              <div style={{ fontSize: '13px', color: '#EF4444', marginTop: '16px' }}>{errorMessage}</div>
+            )}
           </Form>
         </Content>
       </Container>

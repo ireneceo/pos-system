@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import PageHeader from '../../components/Common/PageHeader';
-import { SaveButtonContainer, SaveButtonGroup, SaveButton, StatusMessage } from '../../components/UI';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useAuth } from '../../contexts/AuthContext';
+import AutoSaveField from '../../components/Common/AutoSaveField';
 
 interface CurrencyConfig {
   [code: string]: {
@@ -321,13 +321,11 @@ const BrandPaymentSettingsPage: React.FC = () => {
 
   // Payment settings
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(defaultPaymentSettings);
+  const paymentSettingsRef = useRef<PaymentSettings>(defaultPaymentSettings);
   const [selectedCurrency, setSelectedCurrency] = useState<string>('');
 
   // UI state
   const [loading, setLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     loadAllSettings();
@@ -406,13 +404,15 @@ const BrandPaymentSettingsPage: React.FC = () => {
         if (data.payment_settings && Object.keys(data.payment_settings).length > 0) {
           let charges = data.payment_settings.additionalCharges || {};
           if (Array.isArray(charges)) charges = {};
-          setPaymentSettings({
+          const loaded = {
             ...defaultPaymentSettings,
             ...data.payment_settings,
             bankTransfer: data.payment_settings.bankTransfer || {},
             qrPayment: data.payment_settings.qrPayment || {},
             additionalCharges: charges
-          });
+          };
+          paymentSettingsRef.current = loaded;
+          setPaymentSettings(loaded);
         }
       }
     } catch (error) {
@@ -425,8 +425,6 @@ const BrandPaymentSettingsPage: React.FC = () => {
   // Currency functions - using brand-specific API
   const updateDefaultCurrency = (currency: string) => {
     setDefaultCurrency(currency);
-    // Default currency will be saved with payment settings
-    setHasChanges(true);
   };
 
   const updateSupportedCurrencies = async () => {
@@ -446,8 +444,6 @@ const BrandPaymentSettingsPage: React.FC = () => {
       if (response.ok) {
         setSupportedCurrencies(tempSelectedCurrencies);
         setShowCurrencyModal(false);
-        setSaveStatus({ type: 'success', message: 'Supported currencies updated' });
-        setTimeout(() => setSaveStatus(null), 3000);
 
         if (!tempSelectedCurrencies.includes(defaultCurrency) && tempSelectedCurrencies.length > 0) {
           setDefaultCurrency(tempSelectedCurrencies[0]);
@@ -460,7 +456,6 @@ const BrandPaymentSettingsPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error updating supported currencies:', error);
-      setSaveStatus({ type: 'error', message: 'Failed to update currencies' });
     }
   };
 
@@ -470,25 +465,31 @@ const BrandPaymentSettingsPage: React.FC = () => {
     );
   };
 
+  const updatePaymentSettings = (updater: (prev: PaymentSettings) => PaymentSettings) => {
+    setPaymentSettings(prev => {
+      const next = updater(prev);
+      paymentSettingsRef.current = next;
+      return next;
+    });
+  };
+
   // Payment settings functions
   const handleStripeChange = (field: keyof StripeConfig, value: string | boolean) => {
-    setPaymentSettings(prev => ({
+    updatePaymentSettings(prev => ({
       ...prev,
       stripe: { ...prev.stripe, [field]: value }
     }));
-    setHasChanges(true);
   };
 
   const handlePayPalChange = (field: keyof PayPalConfig, value: string | boolean) => {
-    setPaymentSettings(prev => ({
+    updatePaymentSettings(prev => ({
       ...prev,
       paypal: { ...prev.paypal, [field]: value }
     }));
-    setHasChanges(true);
   };
 
   const handleBankTransferChange = (currency: string, field: keyof BankTransferConfig, value: string | boolean) => {
-    setPaymentSettings(prev => ({
+    updatePaymentSettings(prev => ({
       ...prev,
       bankTransfer: {
         ...prev.bankTransfer,
@@ -502,11 +503,10 @@ const BrandPaymentSettingsPage: React.FC = () => {
         }
       }
     }));
-    setHasChanges(true);
   };
 
   const handleQRPaymentChange = (currency: string, field: keyof QRPaymentConfig, value: string | boolean) => {
-    setPaymentSettings(prev => ({
+    updatePaymentSettings(prev => ({
       ...prev,
       qrPayment: {
         ...prev.qrPayment,
@@ -519,7 +519,6 @@ const BrandPaymentSettingsPage: React.FC = () => {
         }
       }
     }));
-    setHasChanges(true);
   };
 
   const getBankConfig = (currency: string): BankTransferConfig => {
@@ -541,54 +540,40 @@ const BrandPaymentSettingsPage: React.FC = () => {
   };
 
   const handleChargeChange = (currency: string, index: number, field: keyof AdditionalChargeConfig, value: boolean | string | number) => {
-    const currentCharges = [...getChargesForCurrency(currency)];
-    currentCharges[index] = { ...currentCharges[index], [field]: value };
-    setPaymentSettings(prev => ({
-      ...prev,
-      additionalCharges: {
-        ...prev.additionalCharges,
-        [currency]: currentCharges
-      }
-    }));
-    setHasChanges(true);
+    updatePaymentSettings(prev => {
+      const currentCharges = [...(prev.additionalCharges[currency] || defaultCharges)];
+      currentCharges[index] = { ...currentCharges[index], [field]: value };
+      return {
+        ...prev,
+        additionalCharges: { ...prev.additionalCharges, [currency]: currentCharges }
+      };
+    });
   };
 
   const savePaymentSettings = async () => {
-    if (!hasChanges || !brandId) {
-      console.log('No changes to save or no brand ID');
-      return;
-    }
-
-    setIsSaving(true);
-    setSaveStatus(null);
+    if (!brandId) return;
 
     try {
       const token = localStorage.getItem('auth_token');
-      console.log('Saving brand payment settings:', JSON.stringify(paymentSettings, null, 2));
-
       const response = await fetch(`/api/brands/${brandId}/payment-settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ payment_settings: paymentSettings })
+        body: JSON.stringify({
+          payment_settings: { ...paymentSettingsRef.current, defaultCurrency }
+        })
       });
 
       const responseData = await response.json();
-      console.log('Server response:', response.status, responseData);
 
       if (!response.ok) {
         throw new Error(responseData.error || responseData.details || 'Failed to save');
       }
-
-      setSaveStatus({ type: 'success', message: 'Payment settings saved successfully!' });
-      setHasChanges(false);
     } catch (error) {
-      console.error('Error saving:', error);
-      setSaveStatus({ type: 'error', message: `Failed to save payment settings: ${error instanceof Error ? error.message : 'Unknown error'}` });
-    } finally {
-      setIsSaving(false);
+      console.error('Error saving brand payment settings:', error);
+      throw error;
     }
   };
 
@@ -620,16 +605,18 @@ const BrandPaymentSettingsPage: React.FC = () => {
             <FormRow>
               <FormGroup>
                 <Label>Default Currency</Label>
-                <Select
-                  value={defaultCurrency}
-                  onChange={(e) => updateDefaultCurrency(e.target.value)}
-                >
-                  {supportedCurrencies.map(code => (
-                    <option key={code} value={code}>
-                      {currencyConfig[code]?.symbol} {code} - {currencyConfig[code]?.name}
-                    </option>
-                  ))}
-                </Select>
+                <AutoSaveField type="select" onSave={savePaymentSettings}>
+                  <Select
+                    value={defaultCurrency}
+                    onChange={(e) => updateDefaultCurrency(e.target.value)}
+                  >
+                    {supportedCurrencies.map(code => (
+                      <option key={code} value={code}>
+                        {currencyConfig[code]?.symbol} {code} - {currencyConfig[code]?.name}
+                      </option>
+                    ))}
+                  </Select>
+                </AutoSaveField>
                 <HelpText>Used as default for new subscriptions and invoices</HelpText>
               </FormGroup>
 
@@ -674,7 +661,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
                   <ToggleInput
                     type="checkbox"
                     checked={paymentSettings.stripe.enabled}
-                    onChange={(e) => handleStripeChange('enabled', e.target.checked)}
+                    onChange={(e) => { handleStripeChange('enabled', e.target.checked); setTimeout(savePaymentSettings, 0); }}
                   />
                   <ToggleSlider />
                 </ToggleSwitch>
@@ -683,37 +670,43 @@ const BrandPaymentSettingsPage: React.FC = () => {
                 <MethodContent>
                   <FormGroup>
                     <Label>Publishable Key</Label>
-                    <Input
-                      type="text"
-                      placeholder="pk_live_..."
-                      value={paymentSettings.stripe.publishableKey}
-                      onChange={(e) => handleStripeChange('publishableKey', e.target.value)}
-                    />
+                    <AutoSaveField onSave={savePaymentSettings}>
+                      <Input
+                        type="text"
+                        placeholder="pk_live_..."
+                        value={paymentSettings.stripe.publishableKey}
+                        onChange={(e) => handleStripeChange('publishableKey', e.target.value)}
+                      />
+                    </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
                     <Label>Secret Key</Label>
-                    <Input
-                      type="password"
-                      placeholder="sk_live_..."
-                      value={paymentSettings.stripe.secretKey}
-                      onChange={(e) => handleStripeChange('secretKey', e.target.value)}
-                    />
+                    <AutoSaveField onSave={savePaymentSettings}>
+                      <Input
+                        type="password"
+                        placeholder="sk_live_..."
+                        value={paymentSettings.stripe.secretKey}
+                        onChange={(e) => handleStripeChange('secretKey', e.target.value)}
+                      />
+                    </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
                     <Label>Webhook Secret</Label>
-                    <Input
-                      type="password"
-                      placeholder="whsec_..."
-                      value={paymentSettings.stripe.webhookSecret}
-                      onChange={(e) => handleStripeChange('webhookSecret', e.target.value)}
-                    />
+                    <AutoSaveField onSave={savePaymentSettings}>
+                      <Input
+                        type="password"
+                        placeholder="whsec_..."
+                        value={paymentSettings.stripe.webhookSecret}
+                        onChange={(e) => handleStripeChange('webhookSecret', e.target.value)}
+                      />
+                    </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
                     <CheckboxLabel>
                       <Checkbox
                         type="checkbox"
                         checked={paymentSettings.stripe.autoCharge}
-                        onChange={(e) => handleStripeChange('autoCharge', e.target.checked)}
+                        onChange={(e) => { handleStripeChange('autoCharge', e.target.checked); setTimeout(savePaymentSettings, 0); }}
                       />
                       Enable auto-charge for subscription renewals
                     </CheckboxLabel>
@@ -733,7 +726,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
                   <ToggleInput
                     type="checkbox"
                     checked={paymentSettings.paypal.enabled}
-                    onChange={(e) => handlePayPalChange('enabled', e.target.checked)}
+                    onChange={(e) => { handlePayPalChange('enabled', e.target.checked); setTimeout(savePaymentSettings, 0); }}
                   />
                   <ToggleSlider />
                 </ToggleSwitch>
@@ -742,21 +735,25 @@ const BrandPaymentSettingsPage: React.FC = () => {
                 <MethodContent>
                   <FormGroup>
                     <Label>Client ID</Label>
-                    <Input
-                      type="text"
-                      placeholder="Enter PayPal Client ID"
-                      value={paymentSettings.paypal.clientId}
-                      onChange={(e) => handlePayPalChange('clientId', e.target.value)}
-                    />
+                    <AutoSaveField onSave={savePaymentSettings}>
+                      <Input
+                        type="text"
+                        placeholder="Enter PayPal Client ID"
+                        value={paymentSettings.paypal.clientId}
+                        onChange={(e) => handlePayPalChange('clientId', e.target.value)}
+                      />
+                    </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
                     <Label>Client Secret</Label>
-                    <Input
-                      type="password"
-                      placeholder="Enter PayPal Client Secret"
-                      value={paymentSettings.paypal.clientSecret}
-                      onChange={(e) => handlePayPalChange('clientSecret', e.target.value)}
-                    />
+                    <AutoSaveField onSave={savePaymentSettings}>
+                      <Input
+                        type="password"
+                        placeholder="Enter PayPal Client Secret"
+                        value={paymentSettings.paypal.clientSecret}
+                        onChange={(e) => handlePayPalChange('clientSecret', e.target.value)}
+                      />
+                    </AutoSaveField>
                   </FormGroup>
                 </MethodContent>
               )}
@@ -799,7 +796,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
                       <ToggleInput
                         type="checkbox"
                         checked={getBankConfig(selectedCurrency).enabled}
-                        onChange={(e) => handleBankTransferChange(selectedCurrency, 'enabled', e.target.checked)}
+                        onChange={(e) => { handleBankTransferChange(selectedCurrency, 'enabled', e.target.checked); setTimeout(savePaymentSettings, 0); }}
                       />
                       <ToggleSlider />
                     </ToggleSwitch>
@@ -808,30 +805,36 @@ const BrandPaymentSettingsPage: React.FC = () => {
                     <MethodContent>
                       <FormGroup>
                         <Label>Bank Name</Label>
-                        <Input
-                          type="text"
-                          placeholder="e.g., Maybank, CIMB, Shinhan Bank"
-                          value={getBankConfig(selectedCurrency).bankName}
-                          onChange={(e) => handleBankTransferChange(selectedCurrency, 'bankName', e.target.value)}
-                        />
+                        <AutoSaveField onSave={savePaymentSettings}>
+                          <Input
+                            type="text"
+                            placeholder="e.g., Maybank, CIMB, Shinhan Bank"
+                            value={getBankConfig(selectedCurrency).bankName}
+                            onChange={(e) => handleBankTransferChange(selectedCurrency, 'bankName', e.target.value)}
+                          />
+                        </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
                         <Label>Account Number</Label>
-                        <Input
-                          type="text"
-                          placeholder="Enter bank account number"
-                          value={getBankConfig(selectedCurrency).accountNumber}
-                          onChange={(e) => handleBankTransferChange(selectedCurrency, 'accountNumber', e.target.value)}
-                        />
+                        <AutoSaveField onSave={savePaymentSettings}>
+                          <Input
+                            type="text"
+                            placeholder="Enter bank account number"
+                            value={getBankConfig(selectedCurrency).accountNumber}
+                            onChange={(e) => handleBankTransferChange(selectedCurrency, 'accountNumber', e.target.value)}
+                          />
+                        </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
                         <Label>Account Name</Label>
-                        <Input
-                          type="text"
-                          placeholder="Enter account holder name"
-                          value={getBankConfig(selectedCurrency).accountName}
-                          onChange={(e) => handleBankTransferChange(selectedCurrency, 'accountName', e.target.value)}
-                        />
+                        <AutoSaveField onSave={savePaymentSettings}>
+                          <Input
+                            type="text"
+                            placeholder="Enter account holder name"
+                            value={getBankConfig(selectedCurrency).accountName}
+                            onChange={(e) => handleBankTransferChange(selectedCurrency, 'accountName', e.target.value)}
+                          />
+                        </AutoSaveField>
                       </FormGroup>
                     </MethodContent>
                   )}
@@ -848,7 +851,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
                       <ToggleInput
                         type="checkbox"
                         checked={getQRConfig(selectedCurrency).enabled}
-                        onChange={(e) => handleQRPaymentChange(selectedCurrency, 'enabled', e.target.checked)}
+                        onChange={(e) => { handleQRPaymentChange(selectedCurrency, 'enabled', e.target.checked); setTimeout(savePaymentSettings, 0); }}
                       />
                       <ToggleSlider />
                     </ToggleSwitch>
@@ -866,12 +869,14 @@ const BrandPaymentSettingsPage: React.FC = () => {
                       />
                       <FormGroup style={{ marginTop: '16px' }}>
                         <Label>Description</Label>
-                        <Input
-                          type="text"
-                          placeholder="e.g., Scan to pay via DuitNow"
-                          value={getQRConfig(selectedCurrency).qrDescription}
-                          onChange={(e) => handleQRPaymentChange(selectedCurrency, 'qrDescription', e.target.value)}
-                        />
+                        <AutoSaveField onSave={savePaymentSettings}>
+                          <Input
+                            type="text"
+                            placeholder="e.g., Scan to pay via DuitNow"
+                            value={getQRConfig(selectedCurrency).qrDescription}
+                            onChange={(e) => handleQRPaymentChange(selectedCurrency, 'qrDescription', e.target.value)}
+                          />
+                        </AutoSaveField>
                         <HelpText>Short description shown below the QR code</HelpText>
                       </FormGroup>
                     </MethodContent>
@@ -899,7 +904,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
                           <ToggleInput
                             type="checkbox"
                             checked={charge.enabled}
-                            onChange={(e) => handleChargeChange(selectedCurrency, index, 'enabled', e.target.checked)}
+                            onChange={(e) => { handleChargeChange(selectedCurrency, index, 'enabled', e.target.checked); setTimeout(savePaymentSettings, 0); }}
                           />
                           <ToggleSlider />
                         </ToggleSwitch>
@@ -909,25 +914,29 @@ const BrandPaymentSettingsPage: React.FC = () => {
                           <FormRow>
                             <FormGroup>
                               <Label>Item Name</Label>
-                              <Input
-                                type="text"
-                                value={charge.name}
-                                onChange={(e) => handleChargeChange(selectedCurrency, index, 'name', e.target.value)}
-                                placeholder="e.g., SST, VAT, Service Charge"
-                              />
+                              <AutoSaveField onSave={savePaymentSettings}>
+                                <Input
+                                  type="text"
+                                  value={charge.name}
+                                  onChange={(e) => handleChargeChange(selectedCurrency, index, 'name', e.target.value)}
+                                  placeholder="e.g., SST, VAT, Service Charge"
+                                />
+                              </AutoSaveField>
                               <HelpText>Name displayed on invoices</HelpText>
                             </FormGroup>
                             <FormGroup>
                               <Label>Rate (%)</Label>
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                value={charge.rate}
-                                onChange={(e) => handleChargeChange(selectedCurrency, index, 'rate', parseFloat(e.target.value) || 0)}
-                                placeholder="0"
-                              />
+                              <AutoSaveField onSave={savePaymentSettings}>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                  value={charge.rate}
+                                  onChange={(e) => handleChargeChange(selectedCurrency, index, 'rate', parseFloat(e.target.value) || 0)}
+                                  placeholder="0"
+                                />
+                              </AutoSaveField>
                               <HelpText>Percentage to add to subtotal</HelpText>
                             </FormGroup>
                           </FormRow>
@@ -939,19 +948,6 @@ const BrandPaymentSettingsPage: React.FC = () => {
               </>
             )}
           </Section>
-
-          <SaveButtonContainer>
-            <SaveButtonGroup>
-              {saveStatus && (
-                <StatusMessage type={saveStatus.type}>
-                  {saveStatus.message}
-                </StatusMessage>
-              )}
-              <SaveButton onClick={savePaymentSettings} disabled={isSaving || !hasChanges}>
-                {isSaving ? 'Saving...' : hasChanges ? 'Save Changes' : 'Saved'}
-              </SaveButton>
-            </SaveButtonGroup>
-          </SaveButtonContainer>
         </Content>
       </Container>
 

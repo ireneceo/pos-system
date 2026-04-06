@@ -171,6 +171,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       '/pos/ingredients',
       '/pos/brand-products',
       '/pos/brand-product-recipes',
+      '/pos/brand-ingredients',
       '/pos/brand-inventory',
       '/pos/suppliers',
       '/pos/brand/company-info',

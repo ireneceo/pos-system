@@ -236,7 +236,7 @@ const MenuCard = styled.div<{ soldOut?: boolean; inactive?: boolean }>`
 
 const MenuImage = styled.div`
   width: 100%;
-  height: 180px;
+  aspect-ratio: 16 / 9;
   background: #F6F9FC;
   display: flex;
   align-items: center;
@@ -969,6 +969,8 @@ const MenuManagementPage: React.FC = () => {
     if (item.recipe_id) {
       const linkedRecipe = recipes.find(r => r.id === item.recipe_id);
       if (linkedRecipe && linkedRecipe.name?.endsWith('(auto)') && linkedRecipe.recipeIngredients) {
+        // Auto recipe: load ingredients and clear recipe_id so UI shows ingredient section
+        setFormData(prev => ({ ...prev, recipe_id: null }));
         setDirectIngredients(linkedRecipe.recipeIngredients.map((ri: any) => ({
           ingredient_id: ri.ingredient_id,
           name: ri.ingredient?.name || '',
@@ -1126,7 +1128,7 @@ const MenuManagementPage: React.FC = () => {
       set_items: [],
       set_display_order: 0,
       recipe_id: formData.recipe_id || null,
-      directIngredients: directIngredients.length > 0 && !formData.recipe_id ? directIngredients : undefined
+      directIngredients: !formData.recipe_id ? directIngredients : undefined
     } as any;
 
     addMenuItem(newItem);
@@ -1174,7 +1176,7 @@ const MenuManagementPage: React.FC = () => {
         ...editingItem,
         ...formData,
         optionGroups: selectedOptionGroups,
-        directIngredients: directIngredients.length > 0 && !formData.recipe_id ? directIngredients : (formData.recipe_id ? undefined : [])
+        directIngredients: !formData.recipe_id ? directIngredients : undefined
       } as any;
       updateMenuItem(updatedItem);
       setDirectIngredients([]);

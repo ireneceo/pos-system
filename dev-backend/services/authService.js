@@ -33,8 +33,8 @@ async function login(emailOrUsername, password) {
     throw new Error('Invalid email/username or password');
   }
 
-  // Block login for suspended accounts (all roles except System Admin and demo accounts)
-  if (user.role !== 'System Admin' && !user.is_demo) {
+  // Block login for suspended accounts (all roles except System Admin, demo and test accounts)
+  if (user.role !== 'System Admin' && !user.is_demo && !user.is_test) {
     // Brand General, Foodcourt General, Restaurant Owner: check users.subscription_status
     if (['Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(user.role) && user.subscription_status === 'suspended') {
       const err = new Error('Your account has been suspended due to unpaid invoices. Please contact your administrator.');
@@ -45,7 +45,7 @@ async function login(emailOrUsername, password) {
     if (['Restaurant Admin', 'Staff'].includes(user.role) && user.restaurant_id) {
       const Restaurant = require('../models/Restaurant');
       const restaurant = await Restaurant.findByPk(user.restaurant_id);
-      if (restaurant && restaurant.status === 'suspended' && !restaurant.is_demo) {
+      if (restaurant && restaurant.status === 'suspended' && !restaurant.is_demo && !user.is_test) {
         const err = new Error('Your restaurant account has been suspended due to unpaid invoices. Please contact your administrator.');
         err.code = 'ACCOUNT_SUSPENDED';
         throw err;

@@ -270,7 +270,8 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
     is_required: false,
     options: [] as Option[]
   });
-  const [newOption, setNewOption] = useState({ name: '', price_adjustment: 0 });
+  const [newOption, setNewOption] = useState<{ name: string; price_adjustment: number; ingredient_id?: number | null; ingredient_quantity?: number }>({ name: '', price_adjustment: 0, ingredient_id: null, ingredient_quantity: 1 });
+  const [productIngredients, setProductIngredients] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
 
   const fetchOptionGroups = useCallback(async () => {
     try {
@@ -295,6 +296,12 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
 
   useEffect(() => {
     fetchOptionGroups();
+    // Fetch product ingredients
+    const token = localStorage.getItem('auth_token');
+    fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => setProductIngredients((data.data || data || []).map((pi: any) => ({ id: pi.id, name: pi.name, unit: pi.unit, unit_cost: Number(pi.unit_cost || 0) }))))
+      .catch(() => {});
   }, [fetchOptionGroups]);
 
   const handleOpenModal = (group?: OptionGroup) => {
@@ -326,11 +333,19 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
   const handleAddOption = () => {
     if (!newOption.name.trim()) return;
     const priceAdj = isNaN(newOption.price_adjustment) ? 0 : newOption.price_adjustment;
+    const ing = newOption.ingredient_id ? productIngredients.find(i => i.id === newOption.ingredient_id) : null;
     setFormData(prev => ({
       ...prev,
-      options: [...prev.options, { name: newOption.name.trim(), price_adjustment: priceAdj }]
+      options: [...prev.options, {
+        name: newOption.name.trim(),
+        price_adjustment: priceAdj,
+        ingredient_id: newOption.ingredient_id || null,
+        ingredient_quantity: newOption.ingredient_quantity || 1,
+        ingredient_name: ing?.name || null,
+        ingredient_unit: ing?.unit || null
+      }]
     }));
-    setNewOption({ name: '', price_adjustment: 0 });
+    setNewOption({ name: '', price_adjustment: 0, ingredient_id: null, ingredient_quantity: 1 });
   };
 
   const handleRemoveOption = (index: number) => {
@@ -533,6 +548,29 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
               Add
             </Button>
           </div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <select
+              value={newOption.ingredient_id || ''}
+              onChange={(e) => setNewOption({ ...newOption, ingredient_id: e.target.value ? Number(e.target.value) : null })}
+              style={{ flex: 2, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: newOption.ingredient_id ? '#0A2540' : '#9CA3AF' }}
+            >
+              <option value="">Linked ingredient (optional)</option>
+              {productIngredients.map(ing => (
+                <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>
+              ))}
+            </select>
+            {newOption.ingredient_id && (
+              <Input
+                type="number"
+                value={newOption.ingredient_quantity || 1}
+                onChange={(e) => setNewOption({ ...newOption, ingredient_quantity: parseFloat(e.target.value) || 1 })}
+                placeholder="Qty"
+                step="0.01"
+                min="0.01"
+                style={{ flex: 1 }}
+              />
+            )}
+          </div>
 
           {formData.options.map((option, idx) => (
             <OptionItemRow key={idx}>
@@ -543,6 +581,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
                     ({Number(option.price_adjustment) > 0 ? '+' : ''}RM {(Number(option.price_adjustment) || 0).toFixed(2)})
                   </span>
                 )}
+                {(option as any).ingredient_name && <span style={{ fontSize: '11px', color: '#6B7280', marginLeft: '8px' }}>→ {(option as any).ingredient_name} {(option as any).ingredient_quantity}{(option as any).ingredient_unit}</span>}
               </div>
               <RemoveButton onClick={() => handleRemoveOption(idx)}>x</RemoveButton>
             </OptionItemRow>

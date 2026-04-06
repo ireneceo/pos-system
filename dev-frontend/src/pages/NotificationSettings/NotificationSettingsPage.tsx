@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { Modal as CommonModal } from '../../components/UI';
 import { useParams } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import ImportDataTab from '../../components/Settings/ImportDataTab';
+import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
 
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -334,11 +335,6 @@ const EmailInfoBox = styled.div`
   line-height: 1.5;
 `;
 
-const EmailInfoIcon = styled.span`
-  font-size: 18px;
-  flex-shrink: 0;
-`;
-
 const EmailInfoContent = styled.div`
   flex: 1;
 `;
@@ -398,12 +394,15 @@ const NotificationSettingsPage: React.FC = () => {
   const [preferences, setPreferences] = useState<Record<string, boolean>>({});
   const [categories, setCategories] = useState<NotificationCategory[]>([]);
   const [prefsLoading, setPrefsLoading] = useState(false);
-  const [prefsSaving, setPrefsSaving] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-  const [prefsMessage, setPrefsMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // Refs for per-toggle AutoSaveField instances (keyed by category key)
+  const toggleRefs = useRef<Map<string, AutoSaveHandle>>(new Map());
+  // Ref for email_enabled checkbox AutoSaveField
+  const emailEnabledRef = useRef<AutoSaveHandle>(null);
+  // Latest preferences ref so save callbacks always see up-to-date state
+  const preferencesRef = useRef<Record<string, boolean>>({});
   const [showTestEmailModal, setShowTestEmailModal] = useState(false);
   const [testEmailAddress, setTestEmailAddress] = useState('');
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
@@ -497,63 +496,46 @@ const NotificationSettingsPage: React.FC = () => {
 
   if (!user) return null;
 
+  // Keep preferencesRef in sync so save callbacks always see the latest state
+  const syncPrefsRef = (updated: Record<string, boolean>) => {
+    preferencesRef.current = updated;
+    setPreferences(updated);
+  };
+
   const handleSmtpSave = async () => {
-    setSaving(true);
-    setMessage(null);
-    try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        setMessage({ type: 'error', text: 'No authentication token found. Please log in again.' });
-        setSaving(false);
-        return;
-      }
-      const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(smtpSettings)
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Email settings saved successfully' });
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to save settings' });
-      }
-    } catch (error) {
-      console.error('Save error:', error);
-      setMessage({ type: 'error', text: 'An error occurred while saving settings' });
-    } finally {
-      setSaving(false);
+    const token = localStorage.getItem('auth_token');
+    if (!token) throw new Error('No authentication token found. Please log in again.');
+    const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify(smtpSettings)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to save settings');
     }
   };
 
   const handlePrefsSave = async () => {
-    setPrefsSaving(true);
-    setPrefsMessage(null);
-    try {
-      const response = await fetch('/api/notification-settings/preferences', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({ preferences })
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setPrefsMessage({ type: 'success', text: 'Notification preferences saved' });
-      } else {
-        setPrefsMessage({ type: 'error', text: data.message || 'Failed to save preferences' });
-      }
-    } catch (error) {
-      console.error('Prefs save error:', error);
-      setPrefsMessage({ type: 'error', text: 'An error occurred while saving preferences' });
-    } finally {
-      setPrefsSaving(false);
+    const response = await fetch('/api/notification-settings/preferences', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+      },
+      body: JSON.stringify({ preferences: preferencesRef.current })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to save preferences');
     }
   };
 
   const togglePreference = (key: string) => {
-    setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+    const updated = { ...preferencesRef.current, [key]: !preferencesRef.current[key] };
+    syncPrefsRef(updated);
+    // Trigger the AutoSaveField for this toggle
+    toggleRefs.current.get(key)?.triggerSave();
   };
 
   const handleTestEmail = () => {
@@ -651,28 +633,27 @@ const NotificationSettingsPage: React.FC = () => {
                             <PreferenceLabel>{cat.label}</PreferenceLabel>
                             <PreferenceDesc>{cat.description}</PreferenceDesc>
                           </PreferenceInfo>
-                          <ToggleSwitch>
-                            <ToggleInput
-                              type="checkbox"
-                              checked={preferences[cat.key] !== false}
-                              onChange={() => togglePreference(cat.key)}
-                            />
-                            <ToggleSlider checked={preferences[cat.key] !== false} />
-                          </ToggleSwitch>
+                          <AutoSaveField
+                            ref={(el) => {
+                              if (el) toggleRefs.current.set(cat.key, el);
+                              else toggleRefs.current.delete(cat.key);
+                            }}
+                            onSave={handlePrefsSave}
+                            type="toggle"
+                          >
+                            <ToggleSwitch>
+                              <ToggleInput
+                                type="checkbox"
+                                checked={preferences[cat.key] !== false}
+                                onChange={() => togglePreference(cat.key)}
+                              />
+                              <ToggleSlider checked={preferences[cat.key] !== false} />
+                            </ToggleSwitch>
+                          </AutoSaveField>
                         </PreferenceRow>
                       ))}
                     </React.Fragment>
                   ))}
-
-                  <ButtonContainer>
-                    <SaveButton onClick={handlePrefsSave} disabled={prefsSaving}>
-                      {prefsSaving ? 'Saving...' : 'Save Preferences'}
-                    </SaveButton>
-                  </ButtonContainer>
-
-                  {prefsMessage && (
-                    <Alert type={prefsMessage.type}>{prefsMessage.text}</Alert>
-                  )}
                 </>
               )}
             </SettingsCard>
@@ -685,113 +666,125 @@ const NotificationSettingsPage: React.FC = () => {
               </DescriptionText>
 
               <CheckboxLabel>
-                <Checkbox
-                  type="checkbox"
-                  checked={smtpSettings.email_enabled}
-                  onChange={(e) => setSmtpSettings({ ...smtpSettings, email_enabled: e.target.checked })}
-                />
+                <AutoSaveField ref={emailEnabledRef} onSave={handleSmtpSave} type="toggle">
+                  <Checkbox
+                    type="checkbox"
+                    checked={smtpSettings.email_enabled}
+                    onChange={(e) => {
+                      setSmtpSettings({ ...smtpSettings, email_enabled: e.target.checked });
+                      emailEnabledRef.current?.triggerSave();
+                    }}
+                  />
+                </AutoSaveField>
                 Enable Custom Email (SMTP)
               </CheckboxLabel>
 
               <FormGrid>
                 <FormGroup>
                   <Label>SMTP Server<RequiredMark>*</RequiredMark></Label>
-                  <Input
-                    type="text"
-                    placeholder="smtp.gmail.com"
-                    value={smtpSettings.smtp_host}
-                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_host: e.target.value })}
-                    disabled={!smtpSettings.email_enabled}
-                  />
+                  <AutoSaveField onSave={handleSmtpSave}>
+                    <Input
+                      type="text"
+                      placeholder="smtp.gmail.com"
+                      value={smtpSettings.smtp_host}
+                      onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_host: e.target.value })}
+                      disabled={!smtpSettings.email_enabled}
+                    />
+                  </AutoSaveField>
                   <HelpText>Gmail: smtp.gmail.com, Outlook: smtp-mail.outlook.com</HelpText>
                 </FormGroup>
 
                 <FormGroup>
                   <Label>SMTP Port<RequiredMark>*</RequiredMark></Label>
-                  <Input
-                    type="number"
-                    placeholder="587"
-                    value={smtpSettings.smtp_port}
-                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_port: parseInt(e.target.value) })}
-                    disabled={!smtpSettings.email_enabled}
-                  />
+                  <AutoSaveField onSave={handleSmtpSave}>
+                    <Input
+                      type="number"
+                      placeholder="587"
+                      value={smtpSettings.smtp_port}
+                      onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_port: parseInt(e.target.value) })}
+                      disabled={!smtpSettings.email_enabled}
+                    />
+                  </AutoSaveField>
                   <HelpText>Typically 587 (TLS) or 465 (SSL)</HelpText>
                 </FormGroup>
 
                 <FormGroup>
                   <Label>SMTP Username<RequiredMark>*</RequiredMark></Label>
-                  <Input
-                    type="email"
-                    placeholder="your-email@gmail.com"
-                    value={smtpSettings.smtp_user}
-                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_user: e.target.value })}
-                    disabled={!smtpSettings.email_enabled}
-                  />
+                  <AutoSaveField onSave={handleSmtpSave}>
+                    <Input
+                      type="email"
+                      placeholder="your-email@gmail.com"
+                      value={smtpSettings.smtp_user}
+                      onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_user: e.target.value })}
+                      disabled={!smtpSettings.email_enabled}
+                    />
+                  </AutoSaveField>
                   <HelpText>Your full email address</HelpText>
                 </FormGroup>
 
                 <FormGroup>
                   <Label>SMTP Password<RequiredMark>*</RequiredMark></Label>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={smtpSettings.smtp_password}
-                    onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_password: e.target.value })}
-                    disabled={!smtpSettings.email_enabled}
-                  />
+                  <AutoSaveField onSave={handleSmtpSave}>
+                    <Input
+                      type="password"
+                      placeholder="••••••••"
+                      value={smtpSettings.smtp_password}
+                      onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_password: e.target.value })}
+                      disabled={!smtpSettings.email_enabled}
+                    />
+                  </AutoSaveField>
                   <HelpText>Gmail: app password, Outlook: account password or app password</HelpText>
                 </FormGroup>
 
                 <FormGroup>
                   <Label>From Email<RequiredMark>*</RequiredMark></Label>
-                  <Input
-                    type="email"
-                    placeholder="noreply@yourstore.com"
-                    value={smtpSettings.from_email}
-                    onChange={(e) => setSmtpSettings({ ...smtpSettings, from_email: e.target.value })}
-                    disabled={!smtpSettings.email_enabled}
-                  />
+                  <AutoSaveField onSave={handleSmtpSave}>
+                    <Input
+                      type="email"
+                      placeholder="noreply@yourstore.com"
+                      value={smtpSettings.from_email}
+                      onChange={(e) => setSmtpSettings({ ...smtpSettings, from_email: e.target.value })}
+                      disabled={!smtpSettings.email_enabled}
+                    />
+                  </AutoSaveField>
                   <HelpText>Email address shown to recipients</HelpText>
                 </FormGroup>
 
                 <FormGroup>
                   <Label>From Name<RequiredMark>*</RequiredMark></Label>
-                  <Input
-                    type="text"
-                    placeholder="Your Store Name"
-                    value={smtpSettings.from_name}
-                    onChange={(e) => setSmtpSettings({ ...smtpSettings, from_name: e.target.value })}
-                    disabled={!smtpSettings.email_enabled}
-                  />
+                  <AutoSaveField onSave={handleSmtpSave}>
+                    <Input
+                      type="text"
+                      placeholder="Your Store Name"
+                      value={smtpSettings.from_name}
+                      onChange={(e) => setSmtpSettings({ ...smtpSettings, from_name: e.target.value })}
+                      disabled={!smtpSettings.email_enabled}
+                    />
+                  </AutoSaveField>
                   <HelpText>Display name shown to recipients</HelpText>
                 </FormGroup>
               </FormGrid>
 
               <FormGroup>
                 <Label>Reply-To Email (Optional)</Label>
-                <Input
-                  type="email"
-                  placeholder="support@yourstore.com"
-                  value={smtpSettings.reply_to_email}
-                  onChange={(e) => setSmtpSettings({ ...smtpSettings, reply_to_email: e.target.value })}
-                  disabled={!smtpSettings.email_enabled}
-                />
+                <AutoSaveField onSave={handleSmtpSave}>
+                  <Input
+                    type="email"
+                    placeholder="support@yourstore.com"
+                    value={smtpSettings.reply_to_email}
+                    onChange={(e) => setSmtpSettings({ ...smtpSettings, reply_to_email: e.target.value })}
+                    disabled={!smtpSettings.email_enabled}
+                  />
+                </AutoSaveField>
                 <HelpText>Where replies should be sent</HelpText>
               </FormGroup>
 
-              <ButtonContainer>
-                <SaveButton onClick={handleSmtpSave} disabled={saving}>
-                  {saving ? 'Saving...' : 'Save Settings'}
-                </SaveButton>
-                {smtpSettings.email_enabled && (
+              {smtpSettings.email_enabled && (
+                <ButtonContainer>
                   <SecondaryButton onClick={handleTestEmail}>
                     Send Test Email
                   </SecondaryButton>
-                )}
-              </ButtonContainer>
-
-              {message && (
-                <Alert type={message.type}>{message.text}</Alert>
+                </ButtonContainer>
               )}
             </SettingsCard>
           )}

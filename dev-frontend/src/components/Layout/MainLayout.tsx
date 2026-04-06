@@ -1062,6 +1062,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   isRouteAllowed('/pos/brand-products') ||
                   isRouteAllowed('/pos/recipes') ||
                   isRouteAllowed('/pos/brand-product-recipes') ||
+                  isRouteAllowed('/pos/brand-ingredients') ||
                   isRouteAllowed('/pos/brand-inventory')
                 ) && (
                   <>
@@ -1075,13 +1076,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     {isRouteAllowed('/pos/recipes') && (
                       <NavItem to="/pos/recipes" active={isActive('/pos/recipes')} onClick={closeSidebar}>
                         <NavIcon>◈</NavIcon>
-                        Recipes
+                        Brand Recipes
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/brand-product-recipes') && (
                       <NavItem to="/pos/brand-product-recipes" active={isActive('/pos/brand-product-recipes')} onClick={closeSidebar}>
                         <NavIcon>⊕</NavIcon>
                         Product Recipes
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/brand-ingredients') && (
+                      <NavItem to="/pos/brand-ingredients" active={isActive('/pos/brand-ingredients')} onClick={closeSidebar}>
+                        <NavIcon>▤</NavIcon>
+                        Ingredients
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/suppliers') && (
@@ -1092,7 +1099,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     )}
                     {isRouteAllowed('/pos/brand-inventory') && (
                       <NavItem to="/pos/brand-inventory" active={isActive('/pos/brand-inventory')} onClick={closeSidebar}>
-                        <NavIcon>▤</NavIcon>
+                        <NavIcon>▦</NavIcon>
                         Inventory
                       </NavItem>
                     )}

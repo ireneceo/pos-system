@@ -450,10 +450,76 @@ Recipe: 토마토 수프 (Restaurant My Cost 적용)
 | 2025-12-10 | 3.0 | 구현 완료 반영 - owner_type 기반 권한, UI 기능 추가 | Claude |
 | 2026-02-24 | 4.0 | 레스토랑별 코스트 오버라이드 시스템 추가 - restaurant_ingredient_costs 테이블, effective_cost 로직, My Cost UI | Claude |
 | 2026-04-05 | 5.0 | 상품-재료 직접 연결 + 사이드바 재구성 + 역할별 확장 설계 | Claude |
+| 2026-04-05 | 5.1 | Phase 1~2 구현 완료 반영 — auto recipe 패턴, UI 통일, Brand General 적용 | Claude |
 
 ---
 
-## 구조 재정리 (v5.0, 2026-04-05)
+## 구현 완료 (v5.1, 2026-04-05) — Phase 1: Restaurant Admin + Phase 2: Brand General
+
+### 실제 구현 방식: Auto Recipe 패턴
+
+설계 시 `ingredient_id` FK를 직접 추가하는 방식을 검토했으나, **기존 재고 차감 로직(inventoryDeductionService)을 변경 없이 활용**하기 위해 **auto recipe 패턴** 채택:
+
+```
+프론트엔드: directIngredients[] 전송
+  → 백엔드: Recipe/ProductRecipe 자동 생성 (이름 = "{상품명} (auto)")
+  → RecipeIngredient/ProductRecipeIngredient 연결
+  → 상품.recipe_id / product_recipe_id 설정
+  → 기존 inventoryDeductionService가 recipe 경로로 자동 차감
+```
+
+장점:
+- `inventoryDeductionService.js` 변경 불필요 (기존 recipe 경로 그대로 사용)
+- DB 스키마 변경 최소화 (새 FK 컬럼 불필요)
+- 프론트엔드에서 recipe 선택과 재료 직접 연결이 상호 배타적으로 동작
+
+### 실제 DB 변경 (Phase 1~2)
+
+```sql
+-- 옵션-재료 연결 (Restaurant)
+CREATE TABLE option_ingredients (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  option_id INT NOT NULL REFERENCES options(id) ON DELETE CASCADE,
+  ingredient_id INT NOT NULL REFERENCES ingredients(id),
+  quantity DECIMAL(10,4) DEFAULT 1,
+  created_at DATETIME,
+  updated_at DATETIME
+);
+
+-- 옵션-재료 연결 (Brand)
+CREATE TABLE brand_product_option_ingredients (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  option_id INT NOT NULL REFERENCES brand_product_options(id) ON DELETE CASCADE,
+  ingredient_id INT NOT NULL REFERENCES product_ingredients(id),
+  quantity DECIMAL(10,4) DEFAULT 1,
+  created_at DATETIME,
+  updated_at DATETIME
+);
+```
+
+### UI 통일 패턴 (Phase 2에서 확립)
+
+| 항목 | 규격 |
+|------|------|
+| 카드 이미지 비율 | `aspect-ratio: 16/9` |
+| 카드 이미지 border-radius | `8px 8px 0 0` (상단만) |
+| 뷰모드 | Compact / Image 토글, localStorage 저장 |
+| 상세 팝업 | ViewContainer (이미지+헤더, Cost&Time 그리드, Ingredient 테이블, Instructions, Connected Items) |
+| 레시피 카드 배지 | 연결된 메뉴/프로덕트를 녹색 배지로 표시 |
+| Brand 이모지 | 사용 안 함 (이미지만, 없으면 타이틀만 좌측 정렬) |
+
+### 구현 순서 현황
+
+| Phase | 역할 | 상태 |
+|-------|------|:----:|
+| Phase 1 | Restaurant Admin | ✅ 완료 |
+| Phase 2 | Brand General | ✅ 완료 |
+| Phase 3 | System Admin | ⬜ 예정 |
+| Phase 4 | Foodcourt General | ⬜ 예정 |
+
+---
+
+## 초기 설계 (v5.0, 2026-04-05)
 
 ### 배경
 

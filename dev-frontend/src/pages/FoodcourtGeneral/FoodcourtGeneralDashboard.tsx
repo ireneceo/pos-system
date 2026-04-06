@@ -727,7 +727,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
               <div className="title">Subscription Plans</div>
               <div className="description">Plan configuration</div>
             </QuickActionCard>
-            <QuickActionCard onClick={() => navigate('/pos/foodcourt/general/stats')}>
+            <QuickActionCard onClick={() => navigate('/pos/foodcourt/general/reports')}>
               <div className="icon">▲</div>
               <div className="title">Statistics</div>
               <div className="description">Performance analytics</div>

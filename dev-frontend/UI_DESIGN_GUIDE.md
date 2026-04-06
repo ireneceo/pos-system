@@ -390,11 +390,62 @@ import { Select } from '../../components/UI';
 - [ ] 에러 메시지는 버튼 근처에 인라인으로 표시
 - [ ] 성공 시 모달 닫기 + 데이터 리프레시만
 - [ ] 공통 UI 컴포넌트 import해서 사용
-- [ ] 삭제 확인만 window.confirm 사용
+- [ ] 삭제 확인은 ConfirmModal 사용 (window.confirm 금지)
 
 ---
 
-## 12. 관련 문서
+## 12. 자동저장 (AutoSaveField)
+
+설정 페이지에서는 Save 버튼 대신 AutoSaveField 컴포넌트를 사용합니다.
+
+### 12.1 사용법
+```tsx
+import AutoSaveField from '../../components/Common/AutoSaveField';
+
+// Input — 자동 onChange 감지, ref 불필요
+<AutoSaveField onSave={handleSave}>
+  <Input value={...} onChange={(e) => setState(e.target.value)} />
+</AutoSaveField>
+
+// Select
+<AutoSaveField onSave={handleSave} type="select">
+  <Select value={...} onChange={(e) => setState(e.target.value)}>...</Select>
+</AutoSaveField>
+
+// Toggle — ToggleSwitch만 감싸기 (Toggle 전체 X)
+<Toggle>
+  <ToggleLabel>Label</ToggleLabel>
+  <AutoSaveField ref={toggleRef} onSave={handleSave} type="toggle">
+    <ToggleSwitch>
+      <ToggleInput onChange={(e) => { setState(...); toggleRef.current?.triggerSave(); }} />
+      <ToggleSlider />
+    </ToggleSwitch>
+  </AutoSaveField>
+</Toggle>
+
+// Image
+<AutoSaveField onSave={handleSave} type="image">
+  <ImageUploadDropzone value={...} onChange={...} />
+</AutoSaveField>
+```
+
+### 12.2 타입별 배지 위치
+| type | 위치 | debounce |
+|------|------|----------|
+| input (기본) | 입력란 우측 안 | 2초 |
+| select | 우측 상단 코너 | 300ms |
+| toggle | ToggleSwitch 위 오버레이 | 300ms |
+| image | 드롭존 우측 하단 | 300ms |
+| list | 그룹 우측 상단 | 300ms |
+
+### 12.3 배지 스타일
+- Saved: 파스텔 녹색 (#D1FAE5) + 진한 녹색 체크 (#065F46) — LiveOrders Served 스타일
+- Saving: 스피너 (#E6EBF1 + #8898AA)
+- Error: 빨간색 (#EF4444)
+
+---
+
+## 13. 관련 문서
 
 | 문서 | 경로 | 내용 |
 |------|------|------|

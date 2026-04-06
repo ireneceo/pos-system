@@ -32,6 +32,7 @@ const BrandProduct = require('./BrandProduct');
 const BrandProductCategory = require('./BrandProductCategory');
 const BrandProductOptionGroup = require('./BrandProductOptionGroup');
 const BrandProductOption = require('./BrandProductOption');
+const BrandProductOptionIngredient = require('./BrandProductOptionIngredient');
 const BrandProductBrand = require('./BrandProductBrand');
 const BrandProductOptionGroupProduct = require('./BrandProductOptionGroupProduct');
 const Supplier = require('./Supplier');
@@ -280,6 +281,10 @@ BrandProductOptionGroupProduct.belongsTo(BrandProductOptionGroup, { foreignKey: 
 // BrandProductOption associations
 BrandProductOption.belongsTo(BrandProductOptionGroup, { foreignKey: 'option_group_id', as: 'optionGroup' });
 BrandProductOptionGroup.hasMany(BrandProductOption, { foreignKey: 'option_group_id', as: 'options' });
+BrandProductOption.hasMany(BrandProductOptionIngredient, { foreignKey: 'option_id', as: 'optionIngredients' });
+BrandProductOptionIngredient.belongsTo(BrandProductOption, { foreignKey: 'option_id', as: 'option' });
+BrandProductOptionIngredient.belongsTo(ProductIngredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+ProductIngredient.hasMany(BrandProductOptionIngredient, { foreignKey: 'ingredient_id', as: 'brandOptionIngredients' });
 
 // Supplier associations (legacy - keep for backward compatibility)
 Supplier.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
@@ -526,6 +531,7 @@ module.exports = {
   BrandProductCategory,
   BrandProductOptionGroup,
   BrandProductOption,
+  BrandProductOptionIngredient,
   BrandProductBrand,
   BrandProductOptionGroupProduct,
   Supplier,

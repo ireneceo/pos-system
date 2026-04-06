@@ -704,42 +704,28 @@ const DashboardContent: React.FC = () => {
         <QuickActionsSection>
           <h3>Quick Actions</h3>
           <QuickActionsGrid>
-            <QuickActionCard onClick={() => window.open('/pos/pos-terminal', '_blank')}>
-              <div className="icon">▦</div>
-              <div className="title">POS Terminal</div>
-              <div className="description">Order processing</div>
-            </QuickActionCard>
-
-            <QuickActionCard onClick={() => window.open('/pos/kitchen', '_blank')}>
+            <QuickActionCard onClick={() => navigate('/pos/admin/restaurants')}>
               <div className="icon">◐</div>
-              <div className="title">Kitchen Display</div>
-              <div className="description">Cooking status</div>
+              <div className="title">Restaurants</div>
+              <div className="description">Manage all restaurants</div>
             </QuickActionCard>
 
-            <QuickActionCard onClick={() => window.open('/pos/display', '_blank')}>
-              <div className="icon">□</div>
-              <div className="title">Customer Display</div>
-              <div className="description">Pickup number</div>
+            <QuickActionCard onClick={() => navigate('/pos/admin/invoices')}>
+              <div className="icon">▦</div>
+              <div className="title">Invoices</div>
+              <div className="description">Invoice management</div>
             </QuickActionCard>
 
-            <QuickActionCard onClick={async () => {
-              const restaurantId = user?.restaurantId || '1';
-              try {
-                const response = await fetch(`/api/restaurants/${restaurantId}`);
-                if (response.ok) {
-                  const data = await response.json();
-                  const slug = data.slug || `restaurant-${restaurantId}`;
-                  window.open(`/mobile/${slug}`, '_blank');
-                } else {
-                  window.open(`/mobile/restaurant-${restaurantId}`, '_blank');
-                }
-              } catch {
-                window.open(`/mobile/restaurant-${restaurantId}`, '_blank');
-              }
-            }}>
-              <div className="icon">◯</div>
-              <div className="title">Mobile Order</div>
-              <div className="description">Customer ordering</div>
+            <QuickActionCard onClick={() => navigate('/pos/admin/notices')}>
+              <div className="icon">◈</div>
+              <div className="title">Notices</div>
+              <div className="description">Communication hub</div>
+            </QuickActionCard>
+
+            <QuickActionCard onClick={() => navigate('/pos/admin/report')}>
+              <div className="icon">☰</div>
+              <div className="title">Report</div>
+              <div className="description">Platform analytics</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>

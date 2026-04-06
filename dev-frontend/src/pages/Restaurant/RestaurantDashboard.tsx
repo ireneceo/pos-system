@@ -5,6 +5,7 @@ import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardSta
 import { SetupGuide } from '../../components/Common';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
+import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
@@ -479,6 +480,9 @@ const RestaurantDashboard: React.FC = () => {
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
   const { items: setupItems } = useSetupStatus({ role: user?.role || '', restaurantId });
+  const { isRouteAllowed } = useAllowedRoutes(
+    user?.role ? { role: user.role, restaurantId: Number(restaurantId) || null, brandId: null, foodcourtId: null } : null
+  );
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -902,29 +906,48 @@ const RestaurantDashboard: React.FC = () => {
           <QuickActionsSection>
             <h3>Quick Actions</h3>
             <QuickActionsGrid>
-              <QuickActionCard onClick={() => window.open(`/restaurant/${restaurantId}/pos-terminal`, '_blank')}>
-                <div className="icon">▦</div>
-                <div className="title">POS Terminal</div>
-                <div className="description">Process orders</div>
-              </QuickActionCard>
+              {(() => {
+                // System Access 항목 (새 창) — 사이드바와 동일 아이콘
+                const systemItems: { icon: string; title: string; desc: string; onClick: () => void }[] = [];
+                if (isRouteAllowed(`/restaurant/${restaurantId}/pos-terminal`))
+                  systemItems.push({ icon: '▦', title: 'POS Terminal', desc: 'Process orders', onClick: () => window.open(`/restaurant/${restaurantId}/pos-terminal`, '_blank') });
+                if (isRouteAllowed(`/restaurant/${restaurantId}/floor-plan`))
+                  systemItems.push({ icon: '\u25A6', title: 'Floor Plan', desc: 'Table layout', onClick: () => window.open(`/restaurant/${restaurantId}/floor-plan`, '_blank') });
+                if (isRouteAllowed(`/restaurant/${restaurantId}/kitchen`))
+                  systemItems.push({ icon: '◐', title: 'Kitchen Display', desc: 'View kitchen orders', onClick: () => window.open(`/restaurant/${restaurantId}/kitchen`, '_blank') });
+                if (isRouteAllowed(`/restaurant/${restaurantId}/display`))
+                  systemItems.push({ icon: '□', title: 'Customer Display', desc: 'Pickup number', onClick: () => window.open(`/restaurant/${restaurantId}/display`, '_blank') });
+                if (isRouteAllowed(`/mobile/:slug/menu`))
+                  systemItems.push({ icon: '◯', title: 'Mobile Order', desc: 'Customer ordering', onClick: async () => {
+                    try {
+                      const token = localStorage.getItem('auth_token');
+                      const res = await fetch(`/api/restaurants/${restaurantId}`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
+                      if (res.ok) { const d = await res.json(); window.open(`/mobile/${(d.data || d).slug || `restaurant-${restaurantId}`}`, '_blank'); }
+                      else window.open(`/mobile/restaurant-${restaurantId}`, '_blank');
+                    } catch { window.open(`/mobile/restaurant-${restaurantId}`, '_blank'); }
+                  }});
 
-              <QuickActionCard onClick={() => window.open(`/restaurant/${restaurantId}/kitchen`, '_blank')}>
-                <div className="icon">◐</div>
-                <div className="title">Kitchen Display</div>
-                <div className="description">View kitchen orders</div>
-              </QuickActionCard>
+                // 5개 이상이면 Customer Display 제외하여 4개로
+                let items = systemItems.length >= 5
+                  ? systemItems.filter(i => i.title !== 'Customer Display').slice(0, 4)
+                  : [...systemItems];
 
-              <QuickActionCard onClick={() => navigate(`/restaurant/${restaurantId}/live-orders`)}>
-                <div className="icon">◉</div>
-                <div className="title">Live Orders</div>
-                <div className="description">Monitor all orders</div>
-              </QuickActionCard>
+                // 4개 미만이면 일반 메뉴로 채움 (같은 탭)
+                if (items.length < 4) {
+                  items.push({ icon: '◉', title: 'Live Orders', desc: 'Monitor all orders', onClick: () => navigate(`/restaurant/${restaurantId}/live-orders`) });
+                }
+                if (items.length < 4) {
+                  items.push({ icon: '≡', title: 'Menu', desc: 'Edit menu items', onClick: () => navigate(`/restaurant/${restaurantId}/menu`) });
+                }
 
-              <QuickActionCard onClick={() => navigate(`/restaurant/${restaurantId}/menu`)}>
-                <div className="icon">≡</div>
-                <div className="title">Menu</div>
-                <div className="description">Edit menu items</div>
-              </QuickActionCard>
+                return items.slice(0, 4).map((item, idx) => (
+                  <QuickActionCard key={idx} onClick={item.onClick}>
+                    <div className="icon">{item.icon}</div>
+                    <div className="title">{item.title}</div>
+                    <div className="description">{item.desc}</div>
+                  </QuickActionCard>
+                ));
+              })()}
             </QuickActionsGrid>
           </QuickActionsSection>
 
