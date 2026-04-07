@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-06
+> **최종 업데이트:** 2026-04-07
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -55,6 +55,187 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - 각 역할이 자기 notification_settings에 SMTP 설정
 - 자기가 발행한 인보이스는 자기 SMTP로 발송
 - System Admin SMTP를 다른 역할이 대신 쓰지 않음
+
+---
+
+## 🚀 다음 1: Franchise & Tenancy Management (계약 관리)
+
+> **설계 문서:** `docs/CONTRACT_MANAGEMENT_SYSTEM.md`
+> **규모:** 대 (신규 시스템, DB 변경 포함)
+
+### 개요
+- Brand General: Franchise Management — 가맹점 계약 라이프사이클 관리
+- Foodcourt General: Tenancy Management — 입점 계약 라이프사이클 관리
+- 4단계 파이프라인: Proposal → Contracting → Setup → Active
+- 기존 시스템 변경 없음 (순수 추가)
+
+### Phase 1: Core
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 1 | DB 모델 7개 + associations + sync-database | |
+| 2 | routes/contracts.js (CRUD + 단계 전환 + 검증) | |
+| 3 | routes/foodcourt-units.js | |
+| 4 | FranchiseManagementPage (Pipeline + List + Detail) | |
+| 5 | TenancyManagementPage (동일 구조, 입점 필드) | |
+| 6 | ContractPipeline, ContractDetail, ContractStageBar 공통 컴포넌트 | |
+| 7 | Sidebar 메뉴 + App.tsx 라우트 + ProtectedRoute + AuthContext | |
+
+### Phase 2: Features
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 8 | Document 업로드/다운로드 | |
+| 9 | Setup Checklist (CRUD) | |
+| 10 | Notes + History Timeline | |
+| 11 | Plan 연결 (ContractPlan + EntityPlanRestaurant API) | |
+| 12 | Restaurants 페이지 보완 (계약 뱃지 + 연결 플랜) | |
+| 13 | Foodcourt Unit Management UI | |
+
+### Phase 3: Operations
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 14 | 갱신/종료 프로세스 | |
+| 15 | 갱신 알림 (이메일 + 페이지 배너) | |
+| 16 | Dashboard 알림 연동 | |
+| 17 | Checklist 템플릿 설정 | |
+
+---
+
+## 🚀 다음 2: Brand Franchise Map & Foodcourt Floor Plan
+
+> **설계 문서:** `docs/ENTITY_FLOOR_PLAN_SYSTEM.md`
+> **규모:** 중대 (신규 페이지, 모델 필드 추가)
+> **의존성:** Contract Management System 완료 후 구현
+
+### 개요
+- Foodcourt General: Floor Plan — 캔버스 배치도 (유닛 위치 시각화)
+- Brand General: Franchise Map — Area 그룹 카드 뷰 (가맹점 현황)
+- 클릭 시 레스토랑 실적 + 계약 정보 Detail Panel
+- 기존 FloorPlan(Restaurant) 수정 없음, 신규 컴포넌트
+
+### Phase 1: Core
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 1 | Brand.franchise_map + Foodcourt.floor_plan 필드 추가 | |
+| 2 | 전용 API (brand-franchise-map.js, foodcourt-floor-plan.js) | |
+| 3 | FoodcourtFloorPlanPage (캔버스 + 유닛 노드 + Editor) | |
+| 4 | FranchiseMapPage (Area 카드 그리드 + Area CRUD) | |
+| 5 | RestaurantDetailPanel + ContractStatsBar 공통 컴포넌트 | |
+| 6 | 사이드바 메뉴 + 라우트 + ProtectedRoute + AuthContext | |
+
+### Phase 2: Stats & Polish
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 7 | Vacant "Create Proposal" CTA + 이전 입점자 이력 | |
+| 8 | Expiring Soon 하이라이트 | |
+| 9 | 모바일 폴백 (Foodcourt 리스트뷰) + Editor 데스크톱 전용 | |
+
+---
+
+## 🚀 다음 3: 리퍼럴 시스템 (Refer & Earn)
+
+> **설계 문서:** `docs/REFERRAL_SYSTEM.md`
+> **규모:** 대 (신규 시스템, DB 변경 포함)
+
+### 개요
+- 추천인: 피추천인 POS 구독 결제의 15% 영구 커미션
+- 피추천인: 첫 달 20% 할인
+- 구독 없이 리퍼럴 파트너로 가입 가능 (/referral/signup)
+- 기존 POS와 완전 분리된 독립 앱 (/referral/*)
+
+### Phase 1: 핵심 시스템
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 1 | DB 모델 6개 + User 변경 + sync-database | |
+| 2 | referralService.js (코드 생성, 커미션 계산, 크레딧 적용) | |
+| 3 | routes/referrals.js (공개 + 대시보드 + 월렛 + 지급 + 프로필 API) | |
+| 4 | auth.js 확장 (referral-signup + signup referral_code) | |
+| 5 | authService.js 수정 (referred_by, login RP 스킵) | |
+| 6 | invoiceScheduler.js 수정 (리퍼럴 할인, discountOptions) | |
+| 7 | invoices.js 수정 (handleInvoicePaid + processCommission) | |
+| 8 | ReferralLayout + ReferralAuthLayout | |
+| 9 | ReferralSignupPage (수익 시뮬레이터) | |
+| 10 | ReferralLoginPage | |
+| 11 | ReferralDashboardPage | |
+| 12 | ReferralWalletPage + 지급 요청 모달 | |
+| 13 | ReferralProfilePage (AutoSaveField) | |
+| 14 | SignupPage 수정 (코드 필드 + ?ref= + 배너) | |
+| 15 | App.tsx 라우트 + PosRootRedirect RP 분기 | |
+| 16 | AuthContext + ProtectedRoute에 RP 추가 | |
+
+### Phase 2: 관리 + 크레딧
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 17 | SA ReferralManagementPage (Overview/Partners/Payouts/Settings) | |
+| 18 | SA 사이드바 Referrals 메뉴 | |
+| 19 | 크레딧 적용 (인보이스 페이지 버튼 + 모달) | |
+| 20 | 지급 거절 잔액 원복 | |
+
+### Phase 3: 마케팅 + 알림
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 21 | Landing ReferralLandingPage | |
+| 22 | GNB Referral 메뉴 | |
+| 23 | POS 사이드바 리퍼럴 링크 (전 역할) | |
+| 24 | 이메일 알림 7종 | |
+| 25 | 클릭 추적 + 전환율 통계 | |
+
+---
+
+## 🚀 다음 4~7: Supply Chain System (공급망 관리)
+
+> **총괄 문서:** `docs/SUPPLY_CHAIN_SYSTEM_OVERVIEW.md`
+> **규모:** 초대 (4개 순차 설계, 전체 B2B 조달 시스템)
+
+### 다음 4: Seller Product & Inventory System
+> **설계 문서:** 작성 예정
+- Supplier Admin 대시보드 구축 (Products, Inventory, Company Info, Profile)
+- Foodcourt General Products + Inventory 추가
+- System Admin 식자재/소모품 판매 확장
+- 의존성: 없음
+
+### 다음 5: Supplier Contract System
+> **설계 문서:** 작성 예정
+- Supplier Directory (구매자가 공급업체 검색)
+- 계약 신청 → 검토 → 승인 흐름
+- 고객별 결제 조건 설정 (Immediate / Monthly SOA)
+- 의존성: 다음 4
+
+### 다음 6: Purchase Order & Receiving
+> **설계 문서:** 작성 예정
+- Ingredient ↔ Seller Product 연결
+- PO 생성/라이프사이클 (Draft → Received)
+- 입고 → InventoryBatch → 재고 반영
+- 기존 PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md PO 부분 흡수
+- 의존성: 다음 5
+
+### 다음 7: Seller Order Management & Trade Invoice
+> **설계 문서:** 작성 예정
+- 각 판매자 LiveOrders 스타일 주문 관리 (역할별 구체화)
+- Trade Invoice 자동 발행 (건별)
+- SOA (월간 통합 안내서) + [Pay All] 결제
+- Invoice.issuer_type에 'supplier' 추가
+- 의존성: 다음 6
+
+---
+
+## ✅ 완료: 기획설계 8개 문서 완성 (2026-04-07)
+
+### 완료된 설계 문서
+| # | 문서 | 내용 | 상태 |
+|---|------|------|:----:|
+| 1 | docs/REFERRAL_SYSTEM.md | 리퍼럴 시스템 (Refer & Earn 15% 커미션) | ✅ 확정+검증 |
+| 2 | docs/CONTRACT_MANAGEMENT_SYSTEM.md | 가맹/입점 계약 관리 (Franchise/Tenancy) | ✅ 확정+검증 |
+| 3 | docs/ENTITY_FLOOR_PLAN_SYSTEM.md | Brand Franchise Map + Foodcourt Floor Plan | ✅ 확정+검증 |
+| 4 | docs/SUPPLY_CHAIN_SYSTEM_OVERVIEW.md | Supply Chain 총괄 범위/구조 | ✅ 확정 |
+| 5 | docs/SELLER_PRODUCT_INVENTORY_SYSTEM.md | 판매자 상품/재고 + Supplier Admin 역할 신설 | ✅ 확정+검증 |
+| 6 | docs/SUPPLIER_CONTRACT_SYSTEM.md | 공급업체 계약 (Directory + 계약 신청/승인) | ✅ 확정+검증 |
+| 7 | docs/PURCHASE_ORDER_SYSTEM.md | 발주/입고 (PO + Ingredient-Product 연결) | ✅ 확정+검증 |
+| 8 | docs/SELLER_ORDER_MANAGEMENT_SYSTEM.md | 판매자 주문관리 + 거래 인보이스 + SOA | ✅ 확정+검증 |
+
+### 추가 성과
+- 기존 코드 전체 중복 감사 완료 (ProductIngredient≈Ingredient 등 6건 발견, 신규 반복 금지)
+- 모든 설계에서 기존 코드 충돌 검증 완료
+- 기존 컴포넌트 재사용 기회 발굴 (InventoryManager, EntityCompanyInfoPage 등)
 
 ---
 
