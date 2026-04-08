@@ -18,8 +18,8 @@ interface AutoSaveFieldProps {
 
 /* ── animations ── */
 const fadeIn = keyframes`
-  from { opacity: 0; transform: scale(0.85); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 `;
 const fadeOut = keyframes`
   from { opacity: 1; }
@@ -149,10 +149,10 @@ const AutoSaveField = forwardRef<AutoSaveHandle, AutoSaveFieldProps>(({
   const triggerSave = useCallback(() => {
     clearTimers();
     setFading(false);
+    setStatus('saving');
 
     debounceRef.current = setTimeout(async () => {
       if (!mountedRef.current) return;
-      setStatus('saving');
       try {
         await saveRef.current();
         if (!mountedRef.current) return;

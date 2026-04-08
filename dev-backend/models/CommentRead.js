@@ -18,7 +18,7 @@ CommentRead.init({
     }
   },
   entity_type: {
-    type: DataTypes.ENUM('notice', 'operation_ticket', 'support_ticket', 'hardware_quote'),
+    type: DataTypes.ENUM('notice', 'operation_ticket', 'support_ticket', 'hardware_quote', 'contract'),
     allowNull: false
   },
   entity_id: {

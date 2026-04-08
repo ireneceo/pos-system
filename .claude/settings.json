@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pm2 logs:*)",
+      "Bash(wc -l /var/www/dev-frontend/public/locales/*/contract.json)"
+    ]
+  }
+}

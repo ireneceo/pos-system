@@ -73,6 +73,13 @@ const SystemProductOption = require('./SystemProductOption');
 const SystemProductOptionGroupProduct = require('./SystemProductOptionGroupProduct');
 const HardwareQuote = require('./HardwareQuote');
 const TableQRSession = require('./TableQRSession');
+const Contract = require('./Contract');
+const ContractDocument = require('./ContractDocument');
+const ContractTask = require('./ContractTask');
+const ContractNote = require('./ContractNote');
+const ContractHistory = require('./ContractHistory');
+const ContractPlan = require('./ContractPlan');
+const FoodcourtUnit = require('./FoodcourtUnit');
 
 // Define associations
 // Brand - Restaurant associations
@@ -496,6 +503,55 @@ HardwareQuote.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaura
 HardwareQuote.belongsTo(SystemProduct, { foreignKey: 'package_product_id', as: 'packageProduct' });
 HardwareQuote.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
 
+// ============================================
+// Contract Management associations
+// ============================================
+
+// Contract → Entity (Brand / Foodcourt)
+Contract.belongsTo(Brand, { foreignKey: 'entity_id', constraints: false, as: 'brand' });
+Contract.belongsTo(Foodcourt, { foreignKey: 'entity_id', constraints: false, as: 'foodcourt' });
+Contract.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Contract.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+Contract.belongsTo(User, { foreignKey: 'updated_by', as: 'updater' });
+Contract.belongsTo(User, { foreignKey: 'terminated_by', as: 'terminator' });
+Contract.belongsTo(Contract, { foreignKey: 'renewed_from_id', as: 'renewedFrom' });
+Contract.belongsTo(Contract, { foreignKey: 'renewed_to_id', as: 'renewedTo' });
+Contract.belongsTo(FoodcourtUnit, { foreignKey: 'unit_id', as: 'unit' });
+
+Brand.hasMany(Contract, { foreignKey: 'entity_id', constraints: false, scope: { entity_type: 'brand' }, as: 'contracts' });
+Foodcourt.hasMany(Contract, { foreignKey: 'entity_id', constraints: false, scope: { entity_type: 'foodcourt' }, as: 'contracts' });
+Restaurant.hasMany(Contract, { foreignKey: 'restaurant_id', as: 'contracts' });
+
+// ContractDocument
+ContractDocument.belongsTo(Contract, { foreignKey: 'contract_id', as: 'contract' });
+Contract.hasMany(ContractDocument, { foreignKey: 'contract_id', as: 'documents' });
+ContractDocument.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
+
+// ContractTask
+ContractTask.belongsTo(Contract, { foreignKey: 'contract_id', as: 'contract' });
+Contract.hasMany(ContractTask, { foreignKey: 'contract_id', as: 'tasks' });
+ContractTask.belongsTo(User, { foreignKey: 'completed_by', as: 'completedByUser' });
+
+// ContractNote
+ContractNote.belongsTo(Contract, { foreignKey: 'contract_id', as: 'contract' });
+Contract.hasMany(ContractNote, { foreignKey: 'contract_id', as: 'contractNotes' });
+ContractNote.belongsTo(User, { foreignKey: 'created_by', as: 'author' });
+
+// ContractHistory
+ContractHistory.belongsTo(Contract, { foreignKey: 'contract_id', as: 'contract' });
+Contract.hasMany(ContractHistory, { foreignKey: 'contract_id', as: 'history' });
+ContractHistory.belongsTo(User, { foreignKey: 'changed_by', as: 'changedByUser' });
+
+// ContractPlan
+ContractPlan.belongsTo(Contract, { foreignKey: 'contract_id', as: 'contract' });
+Contract.hasMany(ContractPlan, { foreignKey: 'contract_id', as: 'plans' });
+ContractPlan.belongsTo(EntityPlan, { foreignKey: 'entity_plan_id', as: 'entityPlan' });
+
+// FoodcourtUnit
+FoodcourtUnit.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
+Foodcourt.hasMany(FoodcourtUnit, { foreignKey: 'foodcourt_id', as: 'units' });
+FoodcourtUnit.belongsTo(Contract, { foreignKey: 'current_contract_id', as: 'currentContract' });
+
 module.exports = {
   User,
   Restaurant,
@@ -571,5 +627,12 @@ module.exports = {
   SystemProductOption,
   SystemProductOptionGroupProduct,
   HardwareQuote,
-  TableQRSession
+  TableQRSession,
+  Contract,
+  ContractDocument,
+  ContractTask,
+  ContractNote,
+  ContractHistory,
+  ContractPlan,
+  FoodcourtUnit
 };

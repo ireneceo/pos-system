@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
+import AutoSaveField from '../../components/Common/AutoSaveField';
 
 interface CompanyProfile {
   id: string;
@@ -312,22 +313,18 @@ const CompanyProfilePage: React.FC = () => {
     updatedBy: ''
   });
 
-  const [originalProfile, setOriginalProfile] = useState<CompanyProfile>(profile);
-  const [hasChanges, setHasChanges] = useState(false);
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
+  const profileRef = useRef(profile);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
+
+  const handleSaveProfile = useCallback(async () => {
+    // TODO: API call to save company profile
+    console.log('Auto-saving company profile:', profileRef.current);
+  }, []);
 
   useEffect(() => {
     // Load existing profile data
     loadProfile();
   }, []);
-
-  useEffect(() => {
-    // Check if there are changes
-    const changed = JSON.stringify(profile) !== JSON.stringify(originalProfile);
-    setHasChanges(changed);
-  }, [profile, originalProfile]);
 
   const loadProfile = () => {
     // TODO: Implement API call to fetch company profile
@@ -362,50 +359,22 @@ const CompanyProfilePage: React.FC = () => {
     setOriginalProfile(emptyData);
   };
 
-  const markChanged = () => {
-    setAutoSaveStatus('saving');
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      if (saveCallbackRef.current) saveCallbackRef.current();
-    }, 2000);
-  };
-
   const handleInputChange = (field: keyof CompanyProfile, value: string) => {
     setProfile(prev => ({
       ...prev,
       [field]: value
     }));
-    markChanged();
-  };
-
-  const handleSave = () => {
-    // In a real app, this would save to API
-    console.log('Saving profile:', profile);
-    setOriginalProfile(profile);
-    setHasChanges(false);
-    alert('Company profile saved successfully!');
-  };
-
-  saveCallbackRef.current = async () => {
-    try {
-      await handleSave();
-      setAutoSaveStatus('saved');
-    } catch (e) {
-      setAutoSaveStatus('idle');
-    }
   };
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // In a real app, this would upload to server
       const reader = new FileReader();
       reader.onload = (e) => {
         setProfile(prev => ({
           ...prev,
           logoUrl: e.target?.result as string
         }));
-        markChanged();
       };
       reader.readAsDataURL(file);
     }
@@ -477,13 +446,6 @@ const CompanyProfilePage: React.FC = () => {
       <Container>
         <Header>
           <Title>{t('settings:companyProfilePage.companyProfile')}</Title>
-          <SaveButton
-            hasChanges={hasChanges && autoSaveStatus !== 'saved'}
-            onClick={handleSave}
-            disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved' || !hasChanges}
-          >
-            {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '\u2713 Saved' : 'Save Changes'}
-          </SaveButton>
         </Header>
 
         <Content>
@@ -495,44 +457,24 @@ const CompanyProfilePage: React.FC = () => {
             <FormGrid>
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.companyName')}<span>*</span></Label>
-                <Input
-                  type="text"
-                  value={profile.companyName}
-                  onChange={(e) => handleInputChange('companyName', e.target.value)}
-                  placeholder="Legal entity name"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="text" value={profile.companyName} onChange={(e) => handleInputChange('companyName', e.target.value)} placeholder="Legal entity name" /></AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.registrationNumber')}<span>*</span></Label>
-                <Input
-                  type="text"
-                  value={profile.registrationNo}
-                  onChange={(e) => handleInputChange('registrationNo', e.target.value)}
-                  placeholder="e.g., 202401234567"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="text" value={profile.registrationNo} onChange={(e) => handleInputChange('registrationNo', e.target.value)} placeholder="e.g., 202401234567" /></AutoSaveField>
               </FormGroup>
 
               {user?.role === 'Restaurant Admin' && renderRestaurantFields()}
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.taxNumberSstgst')}</Label>
-                <Input
-                  type="text"
-                  value={profile.taxNo || ''}
-                  onChange={(e) => handleInputChange('taxNo', e.target.value)}
-                  placeholder="e.g., W10-1234-56789012"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="text" value={profile.taxNo || ''} onChange={(e) => handleInputChange('taxNo', e.target.value)} placeholder="e.g., W10-1234-56789012" /></AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.website')}</Label>
-                <Input
-                  type="url"
-                  value={profile.website || ''}
-                  onChange={(e) => handleInputChange('website', e.target.value)}
-                  placeholder="www.example.com"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="url" value={profile.website || ''} onChange={(e) => handleInputChange('website', e.target.value)} placeholder="www.example.com" /></AutoSaveField>
               </FormGroup>
             </FormGrid>
           </Section>
@@ -542,27 +484,17 @@ const CompanyProfilePage: React.FC = () => {
             <FormGrid>
               <FormGroup fullWidth>
                 <Label>{t('settings:companyProfilePage.address')}<span>*</span></Label>
-                <Input
-                  type="text"
-                  value={profile.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  placeholder="Street address"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="text" value={profile.address} onChange={(e) => handleInputChange('address', e.target.value)} placeholder="Street address" /></AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.city')}<span>*</span></Label>
-                <Input
-                  type="text"
-                  value={profile.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="e.g., Kuala Lumpur"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="text" value={profile.city} onChange={(e) => handleInputChange('city', e.target.value)} placeholder="e.g., Kuala Lumpur" /></AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.state')}<span>*</span></Label>
-                <Select
+                <AutoSaveField onSave={handleSaveProfile} type="select" debounceMs={300}><Select
                   value={profile.state}
                   onChange={(e) => handleInputChange('state', e.target.value)}
                 >
@@ -581,49 +513,32 @@ const CompanyProfilePage: React.FC = () => {
                   <option value="Sabah">{t('settings:companyProfilePage.sabah')}</option>
                   <option value="Sarawak">{t('settings:companyProfilePage.sarawak')}</option>
                   <option value="Terengganu">{t('settings:companyProfilePage.terengganu')}</option>
-                </Select>
+                </Select></AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.postcode')}<span>*</span></Label>
-                <Input
-                  type="text"
-                  value={profile.postcode}
-                  onChange={(e) => handleInputChange('postcode', e.target.value)}
-                  placeholder="e.g., 50250"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="text" value={profile.postcode} onChange={(e) => handleInputChange('postcode', e.target.value)} placeholder="e.g., 50250" /></AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.country')}<span>*</span></Label>
-                <Select
-                  value={profile.country}
-                  onChange={(e) => handleInputChange('country', e.target.value)}
-                >
+                <AutoSaveField onSave={handleSaveProfile} type="select" debounceMs={300}><Select value={profile.country} onChange={(e) => handleInputChange('country', e.target.value)}>
                   <option value="Malaysia">{t('settings:companyProfilePage.malaysia')}</option>
                   <option value="Singapore">{t('settings:companyProfilePage.singapore')}</option>
                   <option value="Thailand">{t('settings:companyProfilePage.thailand')}</option>
                   <option value="Indonesia">{t('settings:companyProfilePage.indonesia')}</option>
-                </Select>
+                </Select></AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.phone')}<span>*</span></Label>
-                <PhoneInput
-                  value={profile.phone}
-                  onChange={(value) => handleInputChange('phone', value)}
-                  defaultCountry={profile.country === 'Malaysia' ? 'MY' : profile.country === 'Singapore' ? 'SG' : 'MY'}
-                />
+                <AutoSaveField onSave={handleSaveProfile}><PhoneInput value={profile.phone} onChange={(value) => handleInputChange('phone', value)} defaultCountry={profile.country === 'Malaysia' ? 'MY' : profile.country === 'Singapore' ? 'SG' : 'MY'} /></AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.email')}<span>*</span></Label>
-                <Input
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="contact@example.com"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="email" value={profile.email} onChange={(e) => handleInputChange('email', e.target.value)} placeholder="contact@example.com" /></AutoSaveField>
               </FormGroup>
             </FormGrid>
           </Section>
@@ -633,7 +548,7 @@ const CompanyProfilePage: React.FC = () => {
             <FormGrid>
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.bankName')}</Label>
-                <Select
+                <AutoSaveField onSave={handleSaveProfile} type="select" debounceMs={300}><Select
                   value={profile.bankName || ''}
                   onChange={(e) => handleInputChange('bankName', e.target.value)}
                 >
@@ -650,27 +565,17 @@ const CompanyProfilePage: React.FC = () => {
                   <option value="Standard Chartered">{t('settings:companyProfilePage.standardChartered')}</option>
                   <option value="Bank Islam">{t('settings:companyProfilePage.bankIslam')}</option>
                   <option value="Bank Rakyat">{t('settings:companyProfilePage.bankRakyat')}</option>
-                </Select>
+                </Select></AutoSaveField>
               </FormGroup>
 
               <FormGroup>
                 <Label>{t('settings:companyProfilePage.accountNumber')}</Label>
-                <Input
-                  type="text"
-                  value={profile.bankAccount || ''}
-                  onChange={(e) => handleInputChange('bankAccount', e.target.value)}
-                  placeholder="e.g., 514123456789"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="text" value={profile.bankAccount || ''} onChange={(e) => handleInputChange('bankAccount', e.target.value)} placeholder="e.g., 514123456789" /></AutoSaveField>
               </FormGroup>
 
               <FormGroup fullWidth>
                 <Label>{t('settings:companyProfilePage.accountName')}</Label>
-                <Input
-                  type="text"
-                  value={profile.bankAccountName || ''}
-                  onChange={(e) => handleInputChange('bankAccountName', e.target.value)}
-                  placeholder="Account holder name (must match company name)"
-                />
+                <AutoSaveField onSave={handleSaveProfile}><Input type="text" value={profile.bankAccountName || ''} onChange={(e) => handleInputChange('bankAccountName', e.target.value)} placeholder="Account holder name (must match company name)" /></AutoSaveField>
               </FormGroup>
             </FormGrid>
           </Section>

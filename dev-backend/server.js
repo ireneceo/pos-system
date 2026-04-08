@@ -554,6 +554,11 @@ app.use('/api/restaurants', tableQRRouter);  // Table QR session management
 const importRouter = require('./routes/import');
 app.use('/api/import', importRouter);  // CSV data import (migration)
 
+const contractsRouter = require('./routes/contracts');
+app.use('/api/contracts', contractsRouter);  // Franchise & Tenancy contract management
+const foodcourtUnitsRouter = require('./routes/foodcourt-units');
+app.use('/api/foodcourts', foodcourtUnitsRouter);  // Foodcourt unit management
+
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');
 const { authenticateToken, requireRole } = require('./middleware/auth');

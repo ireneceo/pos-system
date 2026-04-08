@@ -184,6 +184,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   ],
   'Foodcourt General': [
     '/pos/foodcourt/general/*',
+    '/pos/foodcourt/tenancy',
     '/pos/foodcourt/invoices',
     '/pos/foodcourt/plans',
     '/pos/foodcourt/subscriptions',
@@ -211,6 +212,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   ],
   'Brand General': [
     '/pos/brand/general/*',
+    '/pos/brand/franchise',
     '/pos/brand/invoices',
     '/pos/brand/plans',
     '/pos/brand/subscriptions',

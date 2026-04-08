@@ -7,9 +7,24 @@
       "Bash(git push:*)",
       "Bash(npm run build:dev:*)",
       "Bash(node:*)",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "Bash(pm2 restart:*)",
+      "Bash(python3 -c \"import sys,json; print\\(json.load\\(sys.stdin\\).get\\('status'\\)\\)\")"
     ],
     "deny": [],
     "ask": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/var/www/.claude/hooks/safety-guard.sh"
+          }
+        ]
+      }
+    ]
   }
 }

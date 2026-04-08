@@ -249,7 +249,11 @@
       "analytics": "数据分析",
       "teamMarketing": "团队与营销",
       "systemAccess": "系统访问"
-    }
+    },
+    "franchiseManagement": "加盟管理",
+    "tenancyManagement": "入驻管理",
+    "franchise": "加盟",
+    "tenancy": "入驻"
   },
   "language": {
     "en": "English",

@@ -249,7 +249,11 @@
       "analytics": "Analitik",
       "teamMarketing": "Pasukan & Pemasaran",
       "systemAccess": "Akses Sistem"
-    }
+    },
+    "franchiseManagement": "Pengurusan Francais",
+    "tenancyManagement": "Pengurusan Penyewaan",
+    "franchise": "Francais",
+    "tenancy": "Penyewaan"
   },
   "language": {
     "en": "English",

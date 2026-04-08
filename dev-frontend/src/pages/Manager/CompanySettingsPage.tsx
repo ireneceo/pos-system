@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import AutoSaveField from '../../components/Common/AutoSaveField';
 
 interface CompanyInfo {
   id: string;
@@ -379,6 +380,14 @@ const ManagerCompanySettingsPage: React.FC = () => {
     }
   };
 
+  const companyInfoRef = useRef(companyInfo);
+  useEffect(() => { companyInfoRef.current = companyInfo; }, [companyInfo]);
+
+  const handleSaveSettings = useCallback(async () => {
+    // TODO: API call to save company settings
+    console.log('Auto-saving company settings:', companyInfoRef.current);
+  }, []);
+
   const handleBusinessHoursChange = (day: string, field: string, value: any) => {
     setCompanyInfo(prev => ({
       ...prev,
@@ -392,11 +401,6 @@ const ManagerCompanySettingsPage: React.FC = () => {
     }));
   };
 
-  const handleSave = () => {
-    console.log('Saving company info:', companyInfo);
-    alert('Company settings saved successfully!');
-  };
-
   const renderCompanyTab = () => (
     <FormGrid>
       <Section>
@@ -404,71 +408,85 @@ const ManagerCompanySettingsPage: React.FC = () => {
         <FormRow>
           <FormGroup>
             <Label>Company Name *</Label>
-            <Input
-              value={companyInfo.companyName}
-              onChange={(e) => handleInputChange('companyName', e.target.value)}
-              placeholder="Enter company name"
-            />
+            <AutoSaveField onSave={handleSaveSettings}>
+              <Input
+                value={companyInfo.companyName}
+                onChange={(e) => handleInputChange('companyName', e.target.value)}
+                placeholder="Enter company name"
+              />
+            </AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>Brand Name *</Label>
-            <Input
-              value={companyInfo.brandName}
-              onChange={(e) => handleInputChange('brandName', e.target.value)}
-              placeholder="Enter brand name"
-            />
+            <AutoSaveField onSave={handleSaveSettings}>
+              <Input
+                value={companyInfo.brandName}
+                onChange={(e) => handleInputChange('brandName', e.target.value)}
+                placeholder="Enter brand name"
+              />
+            </AutoSaveField>
           </FormGroup>
         </FormRow>
         <FormRow>
           <FormGroup>
             <Label>Registration Number *</Label>
-            <Input
-              value={companyInfo.registrationNo}
-              onChange={(e) => handleInputChange('registrationNo', e.target.value)}
-              placeholder="Company registration number"
-            />
+            <AutoSaveField onSave={handleSaveSettings}>
+              <Input
+                value={companyInfo.registrationNo}
+                onChange={(e) => handleInputChange('registrationNo', e.target.value)}
+                placeholder="Company registration number"
+              />
+            </AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>Tax Number (GST/SST) *</Label>
-            <Input
-              value={companyInfo.taxNo}
-              onChange={(e) => handleInputChange('taxNo', e.target.value)}
-              placeholder="Tax identification number"
-            />
+            <AutoSaveField onSave={handleSaveSettings}>
+              <Input
+                value={companyInfo.taxNo}
+                onChange={(e) => handleInputChange('taxNo', e.target.value)}
+                placeholder="Tax identification number"
+              />
+            </AutoSaveField>
           </FormGroup>
         </FormRow>
         <FormRow>
           <FormGroup>
             <Label>{t('admin:companySettingsPage.industry')}</Label>
-            <Select
-              value={companyInfo.industry}
-              onChange={(e) => handleInputChange('industry', e.target.value)}
-            >
-              <option value="Food & Beverage Management">{t('admin:companySettingsPage.foodBeverageManagement')}</option>
-              <option value="Restaurant Chain">{t('admin:companySettingsPage.restaurantChain')}</option>
-              <option value="Franchise Management">{t('admin:companySettingsPage.franchiseManagement')}</option>
-              <option value="Hospitality">{t('admin:companySettingsPage.hospitality')}</option>
-              <option value="Other">{t('admin:companySettingsPage.other')}</option>
-            </Select>
+            <AutoSaveField onSave={handleSaveSettings} type="select" debounceMs={300}>
+              <Select
+                value={companyInfo.industry}
+                onChange={(e) => handleInputChange('industry', e.target.value)}
+              >
+                <option value="Food & Beverage Management">{t('admin:companySettingsPage.foodBeverageManagement')}</option>
+                <option value="Restaurant Chain">{t('admin:companySettingsPage.restaurantChain')}</option>
+                <option value="Franchise Management">{t('admin:companySettingsPage.franchiseManagement')}</option>
+                <option value="Hospitality">{t('admin:companySettingsPage.hospitality')}</option>
+                <option value="Other">{t('admin:companySettingsPage.other')}</option>
+              </Select>
+            </AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>{t('admin:companySettingsPage.foundedYear')}</Label>
-            <Input
-              type="number"
-              value={companyInfo.foundedYear}
-              onChange={(e) => handleInputChange('foundedYear', parseInt(e.target.value))}
-              min="1900"
-              max={new Date().getFullYear()}
-            />
+            <AutoSaveField onSave={handleSaveSettings}>
+              <Input
+                type="number"
+                value={companyInfo.foundedYear}
+                onChange={(e) => handleInputChange('foundedYear', parseInt(e.target.value))}
+                min="1900"
+                max={new Date().getFullYear()}
+              />
+            </AutoSaveField>
           </FormGroup>
         </FormRow>
         <FormGroup>
           <Label>{t('admin:companySettingsPage.companyDescription')}</Label>
-          <TextArea
-            value={companyInfo.description}
-            onChange={(e) => handleInputChange('description', e.target.value)}
-            placeholder="Brief description of your company..."
-          />
+          <AutoSaveField onSave={handleSaveSettings}>
+            <TextArea
+              value={companyInfo.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              placeholder="Brief description of your company..."
+            />
+          </AutoSaveField>
         </FormGroup>
       </Section>
 
@@ -477,65 +495,36 @@ const ManagerCompanySettingsPage: React.FC = () => {
         <FormRow>
           <FormGroup>
             <Label>Address *</Label>
-            <Input
-              value={companyInfo.address}
-              onChange={(e) => handleInputChange('address', e.target.value)}
-              placeholder="Street address"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.address} onChange={(e) => handleInputChange('address', e.target.value)} placeholder="Street address" /></AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>City *</Label>
-            <Input
-              value={companyInfo.city}
-              onChange={(e) => handleInputChange('city', e.target.value)}
-              placeholder="City"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.city} onChange={(e) => handleInputChange('city', e.target.value)} placeholder="City" /></AutoSaveField>
           </FormGroup>
         </FormRow>
         <FormRow>
           <FormGroup>
             <Label>State/Province *</Label>
-            <Input
-              value={companyInfo.state}
-              onChange={(e) => handleInputChange('state', e.target.value)}
-              placeholder="State or province"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.state} onChange={(e) => handleInputChange('state', e.target.value)} placeholder="State or province" /></AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>Postal Code *</Label>
-            <Input
-              value={companyInfo.postalCode}
-              onChange={(e) => handleInputChange('postalCode', e.target.value)}
-              placeholder="Postal code"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.postalCode} onChange={(e) => handleInputChange('postalCode', e.target.value)} placeholder="Postal code" /></AutoSaveField>
           </FormGroup>
         </FormRow>
         <FormRow>
           <FormGroup>
             <Label>Phone Number *</Label>
-            <Input
-              value={companyInfo.phone}
-              onChange={(e) => handleInputChange('phone', e.target.value)}
-              placeholder="+60 3-1234 5678"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.phone} onChange={(e) => handleInputChange('phone', e.target.value)} placeholder="+60 3-1234 5678" /></AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>Email Address *</Label>
-            <Input
-              type="email"
-              value={companyInfo.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              placeholder="info@company.com"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input type="email" value={companyInfo.email} onChange={(e) => handleInputChange('email', e.target.value)} placeholder="info@company.com" /></AutoSaveField>
           </FormGroup>
         </FormRow>
         <FormGroup>
           <Label>{t('admin:companySettingsPage.website')}</Label>
-          <Input
-            value={companyInfo.website}
-            onChange={(e) => handleInputChange('website', e.target.value)}
-            placeholder="www.company.com"
-          />
+          <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.website} onChange={(e) => handleInputChange('website', e.target.value)} placeholder="www.company.com" /></AutoSaveField>
         </FormGroup>
       </Section>
 
@@ -624,37 +613,21 @@ const ManagerCompanySettingsPage: React.FC = () => {
         <FormRow>
           <FormGroup>
             <Label>{t('admin:companySettingsPage.facebook')}</Label>
-            <Input
-              value={companyInfo.socialMedia.facebook}
-              onChange={(e) => handleInputChange('facebook', e.target.value, 'socialMedia')}
-              placeholder="https://facebook.com/yourcompany"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.socialMedia.facebook} onChange={(e) => handleInputChange('facebook', e.target.value, 'socialMedia')} placeholder="https://facebook.com/yourcompany" /></AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>{t('admin:companySettingsPage.instagram')}</Label>
-            <Input
-              value={companyInfo.socialMedia.instagram}
-              onChange={(e) => handleInputChange('instagram', e.target.value, 'socialMedia')}
-              placeholder="https://instagram.com/yourcompany"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.socialMedia.instagram} onChange={(e) => handleInputChange('instagram', e.target.value, 'socialMedia')} placeholder="https://instagram.com/yourcompany" /></AutoSaveField>
           </FormGroup>
         </FormRow>
         <FormRow>
           <FormGroup>
             <Label>{t('admin:companySettingsPage.twitter')}</Label>
-            <Input
-              value={companyInfo.socialMedia.twitter}
-              onChange={(e) => handleInputChange('twitter', e.target.value, 'socialMedia')}
-              placeholder="https://twitter.com/yourcompany"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.socialMedia.twitter} onChange={(e) => handleInputChange('twitter', e.target.value, 'socialMedia')} placeholder="https://twitter.com/yourcompany" /></AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>{t('admin:companySettingsPage.linkedin')}</Label>
-            <Input
-              value={companyInfo.socialMedia.linkedin}
-              onChange={(e) => handleInputChange('linkedin', e.target.value, 'socialMedia')}
-              placeholder="https://linkedin.com/company/yourcompany"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.socialMedia.linkedin} onChange={(e) => handleInputChange('linkedin', e.target.value, 'socialMedia')} placeholder="https://linkedin.com/company/yourcompany" /></AutoSaveField>
           </FormGroup>
         </FormRow>
       </Section>
@@ -664,37 +637,21 @@ const ManagerCompanySettingsPage: React.FC = () => {
         <FormRow>
           <FormGroup>
             <Label>Bank Name *</Label>
-            <Input
-              value={companyInfo.bankDetails.bankName}
-              onChange={(e) => handleInputChange('bankName', e.target.value, 'bankDetails')}
-              placeholder="Bank name"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.bankDetails.bankName} onChange={(e) => handleInputChange('bankName', e.target.value, 'bankDetails')} placeholder="Bank name" /></AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>Account Number *</Label>
-            <Input
-              value={companyInfo.bankDetails.accountNumber}
-              onChange={(e) => handleInputChange('accountNumber', e.target.value, 'bankDetails')}
-              placeholder="Account number"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.bankDetails.accountNumber} onChange={(e) => handleInputChange('accountNumber', e.target.value, 'bankDetails')} placeholder="Account number" /></AutoSaveField>
           </FormGroup>
         </FormRow>
         <FormRow>
           <FormGroup>
             <Label>Account Name *</Label>
-            <Input
-              value={companyInfo.bankDetails.accountName}
-              onChange={(e) => handleInputChange('accountName', e.target.value, 'bankDetails')}
-              placeholder="Account holder name"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.bankDetails.accountName} onChange={(e) => handleInputChange('accountName', e.target.value, 'bankDetails')} placeholder="Account holder name" /></AutoSaveField>
           </FormGroup>
           <FormGroup>
             <Label>{t('admin:companySettingsPage.swiftCode')}</Label>
-            <Input
-              value={companyInfo.bankDetails.swiftCode}
-              onChange={(e) => handleInputChange('swiftCode', e.target.value, 'bankDetails')}
-              placeholder="SWIFT/BIC code"
-            />
+            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.bankDetails.swiftCode} onChange={(e) => handleInputChange('swiftCode', e.target.value, 'bankDetails')} placeholder="SWIFT/BIC code" /></AutoSaveField>
           </FormGroup>
         </FormRow>
       </Section>
@@ -722,12 +679,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
           {activeTab === 'company' && renderCompanyTab()}
           {activeTab === 'operations' && renderOperationsTab()}
 
-          <ButtonGroup>
-            <Button variant="secondary">{t('admin:companySettingsPage.cancel')}</Button>
-            <Button variant="primary" onClick={handleSave}>
-              Save Changes
-            </Button>
-          </ButtonGroup>
+          {/* AutoSaveField handles saving per field */}
         </Content>
       </Container>
     </>

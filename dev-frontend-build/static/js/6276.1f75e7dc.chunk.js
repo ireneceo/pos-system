@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[6276],{6276:(e,n,t)=>{t.r(n),t.d(n,{default:()=>o});t(9950);var a=t(5030),c=t(8248),r=t(4414);const o=()=>{const{t:e}=(0,a.Bd)("contract");return(0,r.jsx)(c.A,{entityType:"foodcourt",pageTitle:e("tenancyManagement","Tenancy Management")})}}}]);

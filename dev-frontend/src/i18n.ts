@@ -16,7 +16,7 @@ i18n
       'invoices', 'staff', 'customers', 'pos', 'kitchen', 'settings',
       'reports', 'brand', 'foodcourt', 'owner', 'admin', 'landing',
       'plans', 'notifications', 'floorplan', 'recipes', 'suppliers',
-      'validation'
+      'validation', 'contract'
     ],
     defaultNS: 'common',
 

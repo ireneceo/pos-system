@@ -451,9 +451,9 @@ const ManagersPage: React.FC = () => {
       const response = await fetch('/api/plans', { headers: getAuthHeaders() });
       if (response.ok) {
         const plans = await response.json();
-        // Filter brand and foodcourt plans
+        // Filter brand, foodcourt, and owner plans
         const managerPlans = plans.filter((p: any) =>
-          (p.plan_target === 'brand' || p.plan_target === 'foodcourt') && p.is_active
+          (p.plan_target === 'brand' || p.plan_target === 'foodcourt' || p.plan_target === 'owner') && p.is_active
         );
         setAvailablePlans(managerPlans);
       }

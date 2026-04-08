@@ -179,6 +179,8 @@ const BrandSubscriptionsPage = React.lazy(() => import('./pages/BrandGeneral/Bra
 const BrandInvoicesPage = React.lazy(() => import('./pages/BrandGeneral/BrandInvoicesPage'));
 const BrandPlansPage = React.lazy(() => import('./pages/BrandGeneral/BrandPlansPage'));
 const BrandPaymentSettingsPage = React.lazy(() => import('./pages/BrandGeneral/BrandPaymentSettingsPage'));
+const FranchiseManagementPage = React.lazy(() => import('./pages/BrandGeneral/FranchiseManagementPage'));
+const TenancyManagementPage = React.lazy(() => import('./pages/FoodcourtGeneral/TenancyManagementPage'));
 const RentManagement = React.lazy(() => import('./pages/Foodcourt/RentManagement'));
 const TenantSupport = React.lazy(() => import('./pages/Foodcourt/TenantSupport'));
 // BrandReports, FranchiseSupport 삭제됨 (미사용 placeholder)
@@ -582,6 +584,11 @@ function App() {
                           <FoodcourtGeneralDashboard />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/foodcourt/tenancy" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <TenancyManagementPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/foodcourt/general/management" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtManagement />
@@ -647,6 +654,11 @@ function App() {
                       <Route path="/pos/brand/general/management" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandManagement />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/franchise" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <FranchiseManagementPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/performance" element={

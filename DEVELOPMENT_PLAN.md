@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-08
+> **최종 업데이트:** 2026-04-08 (세션 2)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -109,20 +109,20 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 ### Phase 1: Core
 | # | 작업 | 상태 |
 |---|------|:----:|
-| 1 | DB 모델 7개 + associations + sync-database | |
-| 2 | routes/contracts.js (CRUD + 단계 전환 + 검증) | |
-| 3 | routes/foodcourt-units.js | |
-| 4 | FranchiseManagementPage (Pipeline + List + Detail) | |
-| 5 | TenancyManagementPage (동일 구조, 입점 필드) | |
-| 6 | ContractPipeline, ContractDetail, ContractStageBar 공통 컴포넌트 | |
-| 7 | Sidebar 메뉴 + App.tsx 라우트 + ProtectedRoute + AuthContext | |
+| 1 | DB 모델 7개 + associations + sync-database | ✅ |
+| 2 | routes/contracts.js (CRUD + 단계 전환 + 검증) | ✅ |
+| 3 | routes/foodcourt-units.js | ✅ |
+| 4 | FranchiseManagementPage (Pipeline + List + Detail) | ✅ |
+| 5 | TenancyManagementPage (동일 구조, 입점 필드) | ✅ |
+| 6 | ContractPipeline, ContractDetail, ContractStageBar 공통 컴포넌트 | ✅ |
+| 7 | Sidebar 메뉴 + App.tsx 라우트 + ProtectedRoute + AuthContext | ✅ |
 
 ### Phase 2: Features
 | # | 작업 | 상태 |
 |---|------|:----:|
-| 8 | Document 업로드/다운로드 | |
-| 9 | Setup Checklist (CRUD) | |
-| 10 | Notes + History Timeline | |
+| 8 | Document 업로드/다운로드 | ✅ |
+| 9 | Setup Checklist (CRUD) | ✅ |
+| 10 | Notes → CommentSection + History Timeline | ✅ |
 | 11 | Plan 연결 (ContractPlan + EntityPlanRestaurant API) | |
 | 12 | Restaurants 페이지 보완 (계약 뱃지 + 연결 플랜) | |
 | 13 | Foodcourt Unit Management UI | |
@@ -2576,6 +2576,35 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - **프린터**: RawBT 경유 (Wi-Fi/LAN IP 프린터 지원), 네트워크 직접 TCP 안 함
 - **프린터 설정 위치**: 기존 Printer 탭에 유지 (Station별 프린터 카드로 자동 전환)
 - **하위 호환**: Station 0개면 현재와 100% 동일 동작
+
+---
+
+## ✅ 완료: 계약관리 Phase 1+2 + UI 개선 + AutoSaveField 통일 (2026-04-08)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Contract Phase 1 Core | DB 모델 7개, API 20개, Pipeline/List/Detail UI | ✅ 완료 |
+| Contract Phase 2 Features | Document 업로드, CommentSection, Setup Checklist, History | ✅ 완료 |
+| UI 개선 | StatCard 색상, ViewToggle, DatePeriodFilter 통합, Pipeline 카드 보강 | ✅ 완료 |
+| AutoSaveField 통일 | InvoiceSettings, CompanySettings, CompanyProfile 3개 페이지 적용 | ✅ 완료 |
+| AutoSaveField 버그 수정 | 아이콘 위치 점프 + 즉시 spinner 반응 | ✅ 완료 |
+| Owner Plan 버그 수정 | 매니저 설정에서 Owner Plan 표시 안 되는 필터 버그 | ✅ 완료 |
+| 서버사이드 검색 | 계약 검색을 서버사이드로 전환, 코멘트 내용 포함 | ✅ 완료 |
+| URL 상태 유지 | view/id를 URL 파라미터로 관리 (새로고침 유지) | ✅ 완료 |
+| CHANGELOG 시스템 | 개발 내역 추적 + 배포 시 릴리즈 노트 연동 | ✅ 완료 |
+
+### 수정된 파일 (주요)
+- `dev-frontend/src/components/Contract/` (4개 컴포넌트)
+- `dev-frontend/src/components/Common/AutoSaveField.tsx`
+- `dev-frontend/src/pages/InvoiceSettings/InvoiceSettingsPage.tsx`
+- `dev-frontend/src/pages/Manager/CompanySettingsPage.tsx`
+- `dev-frontend/src/pages/CompanyProfile/CompanyProfilePage.tsx`
+- `dev-frontend/src/pages/Admin/ManagersPage.tsx`
+- `dev-backend/routes/contracts.js`, `foodcourt-units.js`
+- `dev-backend/models/Comment.js`, `CommentRead.js` (ENUM 확장)
+- `dev-backend/routes/comments.js` (validTypes)
 
 ---
 

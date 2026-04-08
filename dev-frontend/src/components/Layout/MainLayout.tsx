@@ -1054,6 +1054,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </NavItem>
                 )}
 
+                <NavItem to="/pos/brand/franchise" active={isActive('/pos/brand/franchise')} onClick={closeSidebar}>
+                  <NavIcon>◇</NavIcon>
+                  {t("nav.franchise")}
+                </NavItem>
+
                 {hasManagerPermission('management') && (
                   isRouteAllowed('/pos/brand/general/management') ||
                   isRouteAllowed('/pos/manager/restaurants') ||
@@ -1239,6 +1244,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     {t("nav.dashboard")}
                   </NavItem>
                 )}
+
+                <NavItem to="/pos/foodcourt/tenancy" active={isActive('/pos/foodcourt/tenancy')} onClick={closeSidebar}>
+                  <NavIcon>◇</NavIcon>
+                  {t("nav.tenancy")}
+                </NavItem>
 
                 {hasManagerPermission('management') && (
                   isRouteAllowed('/pos/foodcourt/general/management') ||

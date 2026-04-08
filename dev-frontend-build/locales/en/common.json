@@ -249,7 +249,11 @@
       "analytics": "Analytics",
       "teamMarketing": "Team & Marketing",
       "systemAccess": "System Access"
-    }
+    },
+    "franchiseManagement": "Franchise Management",
+    "tenancyManagement": "Tenancy Management",
+    "franchise": "Franchise",
+    "tenancy": "Tenancy"
   },
   "language": {
     "en": "English",

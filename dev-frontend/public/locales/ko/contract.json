@@ -1,0 +1,80 @@
+{
+  "franchiseManagement": "가맹점",
+  "tenancyManagement": "입점",
+  "stages": {
+    "proposal": "제안",
+    "contracting": "계약",
+    "setup": "준비",
+    "active": "운영중",
+    "terminated": "해지됨",
+    "renewed": "갱신됨",
+    "expired": "만료됨"
+  },
+  "pipeline": {
+    "viewAll": "전체 보기"
+  },
+  "views": {
+    "pipeline": "파이프라인",
+    "list": "목록"
+  },
+  "newProposal": {
+    "button": "새 제안",
+    "defaultName": "새 제안"
+  },
+  "list": {
+    "search": "이름 또는 계약번호로 검색...",
+    "allStages": "전체 단계",
+    "name": "이름",
+    "stage": "단계",
+    "period": "기간",
+    "restaurant": "레스토랑",
+    "empty": "계약이 없습니다"
+  },
+  "detail": {
+    "backToList": "목록으로",
+    "applicantInfo": "신청자 정보",
+    "name": "이름",
+    "email": "이메일",
+    "phone": "연락처",
+    "businessType": "업종",
+    "location": "위치",
+    "preferredUnit": "희망 유닛",
+    "contractInfo": "계약 정보",
+    "contractNumber": "계약 번호",
+    "contractType": "계약 유형",
+    "select": "선택...",
+    "startDate": "시작일",
+    "endDate": "종료일",
+    "durationMonths": "기간 (개월)",
+    "signingDate": "서명일",
+    "franchiseTerms": "가맹 조건",
+    "tenancyTerms": "입점 조건",
+    "franchiseFee": "가맹비",
+    "royaltyPercent": "로얄티 (%)",
+    "marketingFundPercent": "마케팅 분담금 (%)",
+    "securityDeposit": "보증금",
+    "territory": "영업 구역",
+    "baseRent": "기본 임대료 (월)",
+    "revenueSharePercent": "매출 분배 (%)",
+    "minGuarantee": "최소 보장 매출",
+    "maintenanceFee": "관리비 (월)",
+    "operatingHours": "영업 시간",
+    "setupChecklist": "준비 체크리스트",
+    "addTask": "작업 추가...",
+    "documents": "문서",
+    "notes": "메모",
+    "addNote": "메모 추가...",
+    "add": "추가",
+    "saveDraft": "저장",
+    "saving": "저장 중...",
+    "proceedToContracting": "계약 단계로",
+    "proceedToSetup": "준비 단계로",
+    "startOperations": "운영 시작",
+    "renewContract": "계약 갱신",
+    "terminateContract": "계약 해지",
+    "terminationReasonPrompt": "해지 사유를 입력하세요:"
+  },
+  "common": {
+    "loading": "로딩 중..."
+  }
+}

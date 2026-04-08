@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import AutoSaveField from '../../components/Common/AutoSaveField';
 
 interface InvoiceSettings {
   id: string;
@@ -390,32 +391,21 @@ const InvoiceSettingsPage: React.FC = () => {
     updatedBy: 'System Admin'
   });
 
-  const [originalSettings, setOriginalSettings] = useState<InvoiceSettings>(settings);
-  const [hasChanges, setHasChanges] = useState(false);
   const [exampleRevenue, setExampleRevenue] = useState(50000);
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
+  const settingsRef = useRef(settings);
 
-  useEffect(() => {
-    const changed = JSON.stringify(settings) !== JSON.stringify(originalSettings);
-    setHasChanges(changed);
-  }, [settings, originalSettings]);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
-  const markChanged = () => {
-    setAutoSaveStatus('saving');
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      if (saveCallbackRef.current) saveCallbackRef.current();
-    }, 2000);
-  };
+  const handleSaveSettings = useCallback(async () => {
+    // TODO: API call to save invoice settings
+    console.log('Auto-saving invoice settings:', settingsRef.current);
+  }, []);
 
   const handleInputChange = (field: keyof InvoiceSettings, value: any) => {
     setSettings(prev => ({
       ...prev,
       [field]: value
     }));
-    markChanged();
   };
 
   const handleFeeChange = (id: string, field: 'name' | 'amount' | 'enabled', value: any) => {
@@ -425,7 +415,6 @@ const InvoiceSettingsPage: React.FC = () => {
         fee.id === id ? { ...fee, [field]: value } : fee
       )
     }));
-    markChanged();
   };
 
   const addManagementFee = () => {
@@ -435,12 +424,11 @@ const InvoiceSettingsPage: React.FC = () => {
       amount: 0,
       enabled: true
     };
-    
+
     setSettings(prev => ({
       ...prev,
       managementFees: [...(prev.managementFees || []), newFee]
     }));
-    markChanged();
   };
 
   const deleteManagementFee = (id: string) => {
@@ -448,7 +436,6 @@ const InvoiceSettingsPage: React.FC = () => {
       ...prev,
       managementFees: prev.managementFees?.filter(fee => fee.id !== id)
     }));
-    markChanged();
   };
 
   const calculateRental = () => {
@@ -472,54 +459,44 @@ const InvoiceSettingsPage: React.FC = () => {
     return rental + management;
   };
 
-  const handleSave = () => {
-    console.log('Saving settings:', settings);
-    setOriginalSettings(settings);
-    setHasChanges(false);
-    alert('Invoice settings saved successfully!');
-  };
-
-  saveCallbackRef.current = async () => {
-    try {
-      await handleSave();
-      setAutoSaveStatus('saved');
-    } catch (e) {
-      setAutoSaveStatus('idle');
-    }
-  };
-
   const renderAdminSettings = () => (
     <Section>
       <SectionTitle>Platform Fee Settings (Admin → Manager)</SectionTitle>
-      <CheckboxLabel>
-        <input
-          type="checkbox"
-          checked={settings.platformFeeEnabled}
-          onChange={(e) => handleInputChange('platformFeeEnabled', e.target.checked)}
-        />
-        Enable platform fee billing
-      </CheckboxLabel>
+      <AutoSaveField onSave={handleSaveSettings} type="toggle">
+        <CheckboxLabel>
+          <input
+            type="checkbox"
+            checked={settings.platformFeeEnabled}
+            onChange={(e) => handleInputChange('platformFeeEnabled', e.target.checked)}
+          />
+          Enable platform fee billing
+        </CheckboxLabel>
+      </AutoSaveField>
       
       {settings.platformFeeEnabled && (
         <FormGrid>
           <FormGroup>
             <Label>{t('invoices:invoiceSettingsPage.monthlyFeeRm')}</Label>
-            <Input
-              type="number"
-              value={settings.platformMonthlyFee}
-              onChange={(e) => handleInputChange('platformMonthlyFee', parseFloat(e.target.value))}
-              placeholder="0.00"
-            />
+            <AutoSaveField onSave={handleSaveSettings}>
+              <Input
+                type="number"
+                value={settings.platformMonthlyFee}
+                onChange={(e) => handleInputChange('platformMonthlyFee', parseFloat(e.target.value))}
+                placeholder="0.00"
+              />
+            </AutoSaveField>
           </FormGroup>
-          
+
           <FormGroup>
             <Label>{t('invoices:invoiceSettingsPage.annualFeeRm')}</Label>
-            <Input
-              type="number"
-              value={settings.platformAnnualFee}
-              onChange={(e) => handleInputChange('platformAnnualFee', parseFloat(e.target.value))}
-              placeholder="0.00"
-            />
+            <AutoSaveField onSave={handleSaveSettings}>
+              <Input
+                type="number"
+                value={settings.platformAnnualFee}
+                onChange={(e) => handleInputChange('platformAnnualFee', parseFloat(e.target.value))}
+                placeholder="0.00"
+              />
+            </AutoSaveField>
           </FormGroup>
         </FormGrid>
       )}
@@ -530,14 +507,16 @@ const InvoiceSettingsPage: React.FC = () => {
     <>
       <Section>
         <SectionTitle>Rental Fee Settings (Manager → Restaurant)</SectionTitle>
-        <CheckboxLabel>
-          <input
-            type="checkbox"
-            checked={settings.rentalEnabled}
-            onChange={(e) => handleInputChange('rentalEnabled', e.target.checked)}
-          />
-          Enable rental fee billing
-        </CheckboxLabel>
+        <AutoSaveField onSave={handleSaveSettings} type="toggle">
+          <CheckboxLabel>
+            <input
+              type="checkbox"
+              checked={settings.rentalEnabled}
+              onChange={(e) => handleInputChange('rentalEnabled', e.target.checked)}
+            />
+            Enable rental fee billing
+          </CheckboxLabel>
+        </AutoSaveField>
         
         {settings.rentalEnabled && (
           <>
@@ -601,31 +580,35 @@ const InvoiceSettingsPage: React.FC = () => {
               {(settings.rentType === 'fixed' || settings.rentType === 'hybrid') && (
                 <FormGroup>
                   <Label>{t('invoices:invoiceSettingsPage.fixedAmountRm')}</Label>
-                  <Input
-                    type="number"
-                    value={settings.rentType === 'fixed' ? settings.fixedRentAmount : settings.hybridFixedAmount}
-                    onChange={(e) => handleInputChange(
-                      settings.rentType === 'fixed' ? 'fixedRentAmount' : 'hybridFixedAmount',
-                      parseFloat(e.target.value)
-                    )}
-                    placeholder="0.00"
-                  />
+                  <AutoSaveField onSave={handleSaveSettings}>
+                    <Input
+                      type="number"
+                      value={settings.rentType === 'fixed' ? settings.fixedRentAmount : settings.hybridFixedAmount}
+                      onChange={(e) => handleInputChange(
+                        settings.rentType === 'fixed' ? 'fixedRentAmount' : 'hybridFixedAmount',
+                        parseFloat(e.target.value)
+                      )}
+                      placeholder="0.00"
+                    />
+                  </AutoSaveField>
                 </FormGroup>
               )}
-              
+
               {(settings.rentType === 'revenue' || settings.rentType === 'hybrid') && (
                 <FormGroup>
                   <Label>Revenue Percentage (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={settings.rentType === 'revenue' ? settings.revenuePercentage : settings.hybridPercentage}
-                    onChange={(e) => handleInputChange(
-                      settings.rentType === 'revenue' ? 'revenuePercentage' : 'hybridPercentage',
-                      parseFloat(e.target.value)
-                    )}
-                    placeholder="0.0"
-                  />
+                  <AutoSaveField onSave={handleSaveSettings}>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={settings.rentType === 'revenue' ? settings.revenuePercentage : settings.hybridPercentage}
+                      onChange={(e) => handleInputChange(
+                        settings.rentType === 'revenue' ? 'revenuePercentage' : 'hybridPercentage',
+                        parseFloat(e.target.value)
+                      )}
+                      placeholder="0.0"
+                    />
+                  </AutoSaveField>
                 </FormGroup>
               )}
             </FormGrid>
@@ -704,13 +687,6 @@ const InvoiceSettingsPage: React.FC = () => {
       <Container>
         <Header>
           <Title>{t('invoices:invoiceSettingsPage.invoiceSettings')}</Title>
-          <SaveButton
-            hasChanges={hasChanges && autoSaveStatus !== 'saved'}
-            onClick={handleSave}
-            disabled={autoSaveStatus === 'saving' || autoSaveStatus === 'saved' || !hasChanges}
-          >
-            {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '\u2713 Saved' : 'Save Changes'}
-          </SaveButton>
         </Header>
 
         <Content>
@@ -722,75 +698,89 @@ const InvoiceSettingsPage: React.FC = () => {
             <FormGrid>
               <FormGroup>
                 <Label>{t('invoices:invoiceSettingsPage.invoicePrefix')}</Label>
-                <Input
-                  type="text"
-                  value={settings.invoicePrefix}
-                  onChange={(e) => handleInputChange('invoicePrefix', e.target.value)}
-                  placeholder="INV"
-                />
+                <AutoSaveField onSave={handleSaveSettings}>
+                  <Input
+                    type="text"
+                    value={settings.invoicePrefix}
+                    onChange={(e) => handleInputChange('invoicePrefix', e.target.value)}
+                    placeholder="INV"
+                  />
+                </AutoSaveField>
               </FormGroup>
-              
+
               <FormGroup>
                 <Label>{t('invoices:invoiceSettingsPage.startingNumber')}</Label>
-                <Input
-                  type="number"
-                  value={settings.invoiceStartNumber}
-                  onChange={(e) => handleInputChange('invoiceStartNumber', parseInt(e.target.value))}
-                  placeholder="1001"
-                />
+                <AutoSaveField onSave={handleSaveSettings}>
+                  <Input
+                    type="number"
+                    value={settings.invoiceStartNumber}
+                    onChange={(e) => handleInputChange('invoiceStartNumber', parseInt(e.target.value))}
+                    placeholder="1001"
+                  />
+                </AutoSaveField>
               </FormGroup>
-              
+
               <FormGroup>
                 <Label>{t('invoices:invoiceSettingsPage.paymentTermsDays')}</Label>
-                <Input
-                  type="number"
-                  value={settings.paymentTerms}
-                  onChange={(e) => handleInputChange('paymentTerms', parseInt(e.target.value))}
-                  placeholder="30"
-                />
+                <AutoSaveField onSave={handleSaveSettings}>
+                  <Input
+                    type="number"
+                    value={settings.paymentTerms}
+                    onChange={(e) => handleInputChange('paymentTerms', parseInt(e.target.value))}
+                    placeholder="30"
+                  />
+                </AutoSaveField>
               </FormGroup>
-              
+
               <FormGroup>
                 <Label>Late Fee (%)</Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  value={settings.lateFeePercentage}
-                  onChange={(e) => handleInputChange('lateFeePercentage', parseFloat(e.target.value))}
-                  placeholder="2.0"
-                />
+                <AutoSaveField onSave={handleSaveSettings}>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    value={settings.lateFeePercentage}
+                    onChange={(e) => handleInputChange('lateFeePercentage', parseFloat(e.target.value))}
+                    placeholder="2.0"
+                  />
+                </AutoSaveField>
               </FormGroup>
             </FormGrid>
           </Section>
 
           <Section>
             <SectionTitle>{t('invoices:invoiceSettingsPage.automationSettings')}</SectionTitle>
-            <CheckboxLabel>
-              <input
-                type="checkbox"
-                checked={settings.autoGenerateMonthly}
-                onChange={(e) => handleInputChange('autoGenerateMonthly', e.target.checked)}
-              />
-              Automatically generate monthly invoices
-            </CheckboxLabel>
-            
-            <CheckboxLabel>
-              <input
-                type="checkbox"
-                checked={settings.autoSendEmail}
-                onChange={(e) => handleInputChange('autoSendEmail', e.target.checked)}
-              />
-              Automatically send invoices via email
-            </CheckboxLabel>
-            
-            <CheckboxLabel>
-              <input
-                type="checkbox"
-                checked={settings.emailReminders}
-                onChange={(e) => handleInputChange('emailReminders', e.target.checked)}
-              />
-              Send payment reminders
-            </CheckboxLabel>
+            <AutoSaveField onSave={handleSaveSettings} type="toggle">
+              <CheckboxLabel>
+                <input
+                  type="checkbox"
+                  checked={settings.autoGenerateMonthly}
+                  onChange={(e) => handleInputChange('autoGenerateMonthly', e.target.checked)}
+                />
+                Automatically generate monthly invoices
+              </CheckboxLabel>
+            </AutoSaveField>
+
+            <AutoSaveField onSave={handleSaveSettings} type="toggle">
+              <CheckboxLabel>
+                <input
+                  type="checkbox"
+                  checked={settings.autoSendEmail}
+                  onChange={(e) => handleInputChange('autoSendEmail', e.target.checked)}
+                />
+                Automatically send invoices via email
+              </CheckboxLabel>
+            </AutoSaveField>
+
+            <AutoSaveField onSave={handleSaveSettings} type="toggle">
+              <CheckboxLabel>
+                <input
+                  type="checkbox"
+                  checked={settings.emailReminders}
+                  onChange={(e) => handleInputChange('emailReminders', e.target.checked)}
+                />
+                Send payment reminders
+              </CheckboxLabel>
+            </AutoSaveField>
             
             {settings.emailReminders && (
               <InfoBox style={{ marginTop: '16px' }}>
