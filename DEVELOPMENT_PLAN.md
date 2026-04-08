@@ -78,20 +78,20 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 ### 작업 목록
 | # | 작업 | 상태 |
 |---|------|:----:|
-| 1 | i18n 인프라 세팅 (react-i18next, i18n.ts, App.tsx) | |
-| 2 | 용어집 + 검증 스크립트 + ESLint 설정 | |
-| 3 | User 모델 preferred_language + 언어 변경 API | |
-| 4 | 영어 번역 파일 원본 (전체 UI 텍스트 추출 → en/*.json) | |
-| 5 | 한국어 번역 파일 (ko/*.json) | |
-| 6 | 중국어 번역 파일 (zh/*.json) | |
-| 7 | 말레이어 번역 파일 (ms/*.json) | |
-| 8 | 공통 컴포넌트 t() 래핑 (ConfirmDialog, Layout 등) | |
-| 9 | 전체 페이지 컴포넌트 t() 래핑 (46개 디렉토리) | |
-| 10 | 언어 선택 UI (Login, Profile, POS Terminal, Landing GNB) | |
-| 11 | AuthContext 언어 동기화 (로그인 시 i18n.changeLanguage) | |
-| 12 | 이메일 템플릿 다국어 (백엔드 locales + 템플릿 함수) | |
-| 13 | 날짜/통화 로컬라이즈 (date-fns locale, Intl.NumberFormat) | |
-| 14 | 검증 + 빌드 + 테스트 | |
+| 1 | i18n 인프라 세팅 (react-i18next, i18n.ts, App.tsx) | ✅ |
+| 2 | 용어집 + 검증 스크립트 + ESLint 설정 | ✅ |
+| 3 | User 모델 preferred_language + 언어 변경 API | ✅ |
+| 4 | 영어 번역 파일 원본 (전체 UI 텍스트 추출 → en/*.json) | ✅ |
+| 5 | 한국어 번역 파일 (ko/*.json) | ✅ |
+| 6 | 중국어 번역 파일 (zh/*.json) | ✅ |
+| 7 | 말레이어 번역 파일 (ms/*.json) | ✅ |
+| 8 | 공통 컴포넌트 t() 래핑 (ConfirmDialog, Layout 등) | ✅ |
+| 9 | 전체 페이지 컴포넌트 t() 래핑 (46개 디렉토리) | ✅ |
+| 10 | 언어 선택 UI (Login, Profile, POS Terminal, Landing GNB) | ✅ |
+| 11 | AuthContext 언어 동기화 (로그인 시 i18n.changeLanguage) | ✅ |
+| 12 | 이메일 템플릿 다국어 (백엔드 locales + 템플릿 함수) | ✅ |
+| 13 | 날짜/통화 로컬라이즈 (date-fns locale, Intl.NumberFormat) | ✅ |
+| 14 | 검증 + 빌드 + 테스트 | ✅ |
 
 ---
 
@@ -252,6 +252,24 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - SOA (월간 통합 안내서) + [Pay All] 결제
 - Invoice.issuer_type에 'supplier' 추가
 - 의존성: 다음 7
+
+---
+
+## ✅ 완료: v3.10 다국어 시스템 구현 + 배포 (2026-04-08)
+
+### 완료된 작업
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | i18n 인프라 | react-i18next, i18n.ts, App.tsx 연동 | ✅ |
+| 2 | 용어집 + 검증 | glossary.json (62용어) + verify-translations.js (5단계) | ✅ |
+| 3 | 백엔드 | User.preferred_language + PUT /api/users/language + 이메일 다국어 | ✅ |
+| 4 | 번역 파일 | 4,698키 × 4개 언어 (ko 97%, zh 92%, ms 90%) | ✅ |
+| 5 | t() 래핑 | 160개 페이지 TSX 파일 | ✅ |
+| 6 | 언어 선택 UI | Landing globe, POS sidebar, Mobile header, Login | ✅ |
+| 7 | Landing 번역 | 헤더, 푸터, Hero, 쿠키 배너, About, FAQ 등 | ✅ |
+| 8 | UI/UX 개선 | 로고→대시보드, 모바일 프로필 navigate, 반응형 1024px | ✅ |
+| 9 | Setup Guide | "Add Categories" 단계 추가 | ✅ |
+| 10 | 운영 배포 | DB 마이그레이션 + 배포 완료 | ✅ |
 
 ---
 

@@ -200,6 +200,14 @@ res.status(500).json({ success: false, message: 'Internal server error' });
 - [ ] Landing 페이지(Features, Pricing 등) 업데이트 필요 여부 확인
 - [ ] 운영 DB에도 콘텐츠 동기화 필요 시 배포 스크립트에 포함
 
+### 다국어 (i18n) 연동
+- [ ] 새 페이지/컴포넌트에 하드코딩 텍스트가 없는지 확인 → `t('ns:key')` 사용
+- [ ] 새 도메인 용어 → `public/locales/glossary.json`에 먼저 추가
+- [ ] 해당 namespace의 4개 언어 파일 모두에 키 추가 (en → ko → zh → ms)
+- [ ] `npm run i18n:verify` 통과 확인
+- [ ] 새 이메일 템플릿 → 백엔드 `locales/` 4개 언어 모두 추가
+- [ ] 모듈 스코프(컴포넌트 함수 밖)에서 `t()` 호출 금지 — React hook은 컴포넌트 안에서만 사용
+
 ---
 
 ## 보안 가이드라인
