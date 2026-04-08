@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 interface Staff {
   id: number;
@@ -368,6 +369,7 @@ const ErrorMessage = styled.div`
 `;
 
 const ManagerAdminManagementPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [restaurants, setRestaurants] = useState<any[]>([]);
@@ -615,9 +617,9 @@ const ManagerAdminManagementPage: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <Header><Title>Restaurant Admin</Title></Header>
+        <Header><Title>{t('admin:adminManagementPage.restaurantAdmin')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('admin:adminManagementPage.loading')}</div>
         </Content>
       </Container>
     );
@@ -626,9 +628,9 @@ const ManagerAdminManagementPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Restaurant Admin</Title>
+        <Title>{t('admin:adminManagementPage.restaurantAdmin')}</Title>
         <ActionSection>
-          <Button variant="primary" onClick={handleOpenCreate}>Add Admin</Button>
+          <Button variant="primary" onClick={handleOpenCreate}>{t('admin:adminManagementPage.addAdmin')}</Button>
         </ActionSection>
       </Header>
 
@@ -636,12 +638,12 @@ const ManagerAdminManagementPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{stats.total}</StatValue>
-            <StatLabel>Total Admins</StatLabel>
+            <StatLabel>{t('admin:adminManagementPage.totalAdmins')}</StatLabel>
             <StatSubtext>Across {uniqueRestaurants.length} restaurants</StatSubtext>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{stats.active}</StatValue>
-            <StatLabel>Active</StatLabel>
+            <StatLabel>{t('admin:adminManagementPage.active')}</StatLabel>
             <StatSubtext>{stats.total > 0 ? Math.round((stats.active/stats.total)*100) : 0}% of total</StatSubtext>
           </StatCard>
         </StatsGrid>
@@ -654,12 +656,12 @@ const ManagerAdminManagementPage: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <FilterSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="all">{t('admin:adminManagementPage.allStatus')}</option>
+            <option value="active">{t('admin:adminManagementPage.active')}</option>
+            <option value="inactive">{t('admin:adminManagementPage.inactive')}</option>
           </FilterSelect>
           <FilterSelect value={restaurantFilter} onChange={(e) => setRestaurantFilter(e.target.value)}>
-            <option value="all">All Restaurants</option>
+            <option value="all">{t('admin:adminManagementPage.allRestaurants')}</option>
             {uniqueRestaurants.map(r => (
               <option key={r.id} value={r.id}>{r.name}</option>
             ))}
@@ -680,11 +682,11 @@ const ManagerAdminManagementPage: React.FC = () => {
             <StaffTable>
               <StaffTableHead>
                 <tr>
-                  <th>Name</th>
-                  <th>Restaurant</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>{t('admin:adminManagementPage.name')}</th>
+                  <th>{t('admin:adminManagementPage.restaurant')}</th>
+                  <th>{t('admin:adminManagementPage.role')}</th>
+                  <th>{t('admin:adminManagementPage.status')}</th>
+                  <th>{t('admin:adminManagementPage.actions')}</th>
                 </tr>
               </StaffTableHead>
               <tbody>
@@ -717,8 +719,8 @@ const ManagerAdminManagementPage: React.FC = () => {
 
                     <StaffTableCell data-label="">
                       <ActionButtons>
-                        <ActionButton onClick={() => handleView(staff)}>View</ActionButton>
-                        <ActionButton onClick={() => handleOpenEdit(staff)}>Edit</ActionButton>
+                        <ActionButton onClick={() => handleView(staff)}>{t('admin:adminManagementPage.view')}</ActionButton>
+                        <ActionButton onClick={() => handleOpenEdit(staff)}>{t('admin:adminManagementPage.edit')}</ActionButton>
                         <ActionButton
                           variant="danger"
                           onClick={() => setDeactivateConfirm({ isOpen: true, staff })}
@@ -743,8 +745,8 @@ const ManagerAdminManagementPage: React.FC = () => {
         size="medium"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</ModalButton>
-            <ModalButton variant="primary" onClick={handleSubmitCreate}>Create</ModalButton>
+            <ModalButton variant="secondary" onClick={() => setShowCreateModal(false)}>{t('admin:adminManagementPage.cancel')}</ModalButton>
+            <ModalButton variant="primary" onClick={handleSubmitCreate}>{t('admin:adminManagementPage.create')}</ModalButton>
           </>
         }
       >
@@ -811,7 +813,7 @@ const ManagerAdminManagementPage: React.FC = () => {
             />
           </UIFormGroup>
           <UIFormGroup>
-            <FormLabel>Phone</FormLabel>
+            <FormLabel>{t('admin:adminManagementPage.phone')}</FormLabel>
             <PhoneInput
               value={createForm.phone}
               onChange={(value: string) => setCreateForm({ ...createForm, phone: value })}
@@ -831,18 +833,18 @@ const ManagerAdminManagementPage: React.FC = () => {
         title="Admin Details"
         size="medium"
         footer={
-          <ModalButton variant="secondary" onClick={() => { setShowViewModal(false); setViewStaff(null); }}>Close</ModalButton>
+          <ModalButton variant="secondary" onClick={() => { setShowViewModal(false); setViewStaff(null); }}>{t('admin:adminManagementPage.close')}</ModalButton>
         }
       >
         {viewStaff && (
           <ViewSection>
             <ViewRow>
               <ViewField>
-                <ViewLabel>Full Name</ViewLabel>
+                <ViewLabel>{t('admin:adminManagementPage.fullName')}</ViewLabel>
                 <ViewValue>{viewStaff.full_name}</ViewValue>
               </ViewField>
               <ViewField>
-                <ViewLabel>Username</ViewLabel>
+                <ViewLabel>{t('admin:adminManagementPage.username')}</ViewLabel>
                 <ViewValue>{viewStaff.username}</ViewValue>
               </ViewField>
             </ViewRow>
@@ -851,11 +853,11 @@ const ManagerAdminManagementPage: React.FC = () => {
 
             <ViewRow>
               <ViewField>
-                <ViewLabel>Email</ViewLabel>
+                <ViewLabel>{t('admin:adminManagementPage.email')}</ViewLabel>
                 <ViewValue>{viewStaff.email}</ViewValue>
               </ViewField>
               <ViewField>
-                <ViewLabel>Phone</ViewLabel>
+                <ViewLabel>{t('admin:adminManagementPage.phone')}</ViewLabel>
                 <ViewValue>{viewStaff.phone || '-'}</ViewValue>
               </ViewField>
             </ViewRow>
@@ -864,11 +866,11 @@ const ManagerAdminManagementPage: React.FC = () => {
 
             <ViewRow>
               <ViewField>
-                <ViewLabel>Role</ViewLabel>
+                <ViewLabel>{t('admin:adminManagementPage.role')}</ViewLabel>
                 <ViewValue><RoleBadge role={viewStaff.role}>{viewStaff.role}</RoleBadge></ViewValue>
               </ViewField>
               <ViewField>
-                <ViewLabel>Status</ViewLabel>
+                <ViewLabel>{t('admin:adminManagementPage.status')}</ViewLabel>
                 <ViewValue>
                   <StatusBadge active={viewStaff.is_active}>
                     {viewStaff.is_active ? 'Active' : 'Inactive'}
@@ -881,14 +883,14 @@ const ManagerAdminManagementPage: React.FC = () => {
 
             <ViewRow>
               <ViewField>
-                <ViewLabel>Restaurant</ViewLabel>
+                <ViewLabel>{t('admin:adminManagementPage.restaurant')}</ViewLabel>
                 <ViewValue>{viewStaff.restaurantName || '-'}</ViewValue>
               </ViewField>
             </ViewRow>
 
             <ViewRow>
               <ViewField>
-                <ViewLabel>Joined</ViewLabel>
+                <ViewLabel>{t('admin:adminManagementPage.joined')}</ViewLabel>
                 <ViewValue>{viewStaff.createdAt ? new Date(viewStaff.createdAt).toLocaleDateString() : '-'}</ViewValue>
               </ViewField>
             </ViewRow>
@@ -904,8 +906,8 @@ const ManagerAdminManagementPage: React.FC = () => {
         size="medium"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={() => { setShowEditModal(false); setEditingStaff(null); }}>Cancel</ModalButton>
-            <ModalButton variant="primary" onClick={handleSubmitEdit}>Update</ModalButton>
+            <ModalButton variant="secondary" onClick={() => { setShowEditModal(false); setEditingStaff(null); }}>{t('admin:adminManagementPage.cancel')}</ModalButton>
+            <ModalButton variant="primary" onClick={handleSubmitEdit}>{t('admin:adminManagementPage.update')}</ModalButton>
           </>
         }
       >
@@ -931,7 +933,7 @@ const ManagerAdminManagementPage: React.FC = () => {
         </UIFormRow>
 
         <UIFormGroup>
-          <FormLabel>Phone</FormLabel>
+          <FormLabel>{t('admin:adminManagementPage.phone')}</FormLabel>
           <PhoneInput
             value={editForm.phone}
             onChange={(value: string) => setEditForm({ ...editForm, phone: value })}
@@ -968,7 +970,7 @@ const ManagerAdminManagementPage: React.FC = () => {
         size="small"
         footer={<>
           {successPassword && <ModalButton variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</ModalButton>}
-          <ModalButton variant="primary" onClick={() => setShowSuccessModal(false)}>Done</ModalButton>
+          <ModalButton variant="primary" onClick={() => setShowSuccessModal(false)}>{t('admin:adminManagementPage.done')}</ModalButton>
         </>}
       >
         <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
@@ -976,11 +978,11 @@ const ManagerAdminManagementPage: React.FC = () => {
         </div>
         {successPassword && (
           <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>Temporary Password</div>
+            <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:adminManagementPage.temporaryPassword')}</div>
             <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
           </div>
         )}
-        <div style={{ fontSize: '12px', color: '#DC2626' }}>This password will not be shown again. Please copy it now.</div>
+        <div style={{ fontSize: '12px', color: '#DC2626' }}>{t('admin:adminManagementPage.thisPasswordWillNotBeShownAgainPleaseCopyItNow')}</div>
       </Modal>
     </Container>
   );

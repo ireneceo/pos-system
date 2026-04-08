@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { Helmet } from 'react-helmet-async';
 import { LandingLayout } from '../../components/Landing';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface Plan {
@@ -187,9 +188,9 @@ const clearDraft = () => { sessionStorage.removeItem(STORAGE_KEY); };
 
 // ─── Component ───────────────────────────────────────────────────
 const SignupPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const location = useLocation();
-
   // Restore draft on mount
   const draft = loadDraft();
   const [step, setStep] = useState(draft?.step || 1);
@@ -211,7 +212,7 @@ const SignupPage: React.FC = () => {
       if (!res.ok) throw new Error('IP API failed');
       const data = await res.json();
       const cc = data.country_code?.toUpperCase();
-      return (cc && countryToCurrency[cc]) || 'USD';
+  return (cc && countryToCurrency[cc]) || 'USD';
     } catch {
       try {
         const locale = navigator.language || 'en-US';
@@ -490,8 +491,8 @@ const SignupPage: React.FC = () => {
   // ─── Render Steps ────────────────────────────────────────────
   const renderStep1 = () => (
     <StepContent>
-      <StepTitle>Choose your account type</StepTitle>
-      <StepDescription>Select the type that best describes your business</StepDescription>
+      <StepTitle>{t('landing:signupPage.chooseYourAccountType')}</StepTitle>
+      <StepDescription>{t('landing:signupPage.selectTheTypeThatBestDescribesYourBusiness')}</StepDescription>
       <RoleGrid>
         {(Object.entries(ROLE_CONFIG) as [AccountRole, typeof ROLE_CONFIG[AccountRole]][]).map(([role, config]) => (
           <RoleCard
@@ -511,8 +512,8 @@ const SignupPage: React.FC = () => {
 
   const renderStep2 = () => (
     <StepContent>
-      <StepTitle>Account information</StepTitle>
-      <StepDescription>Create your login credentials</StepDescription>
+      <StepTitle>{t('landing:signupPage.accountInformation')}</StepTitle>
+      <StepDescription>{t('landing:signupPage.createYourLoginCredentials')}</StepDescription>
       <FormGrid>
         <FormGroup>
           <FormLabel>Full Name *</FormLabel>
@@ -551,7 +552,7 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel>Phone</FormLabel>
+          <FormLabel>{t('landing:signupPage.phone')}</FormLabel>
           <PhoneInput
             value={form.phone}
             onChange={(value) => updateField('phone', value)}
@@ -594,7 +595,7 @@ const SignupPage: React.FC = () => {
     const role = form.role as AccountRole;
     return (
       <StepContent>
-        <StepTitle>Business details</StepTitle>
+        <StepTitle>{t('landing:signupPage.businessDetails')}</StepTitle>
         <StepDescription>Set up your {ROLE_CONFIG[role]?.title.toLowerCase() || 'business'}</StepDescription>
 
         {/* Role-specific fields */}
@@ -612,7 +613,7 @@ const SignupPage: React.FC = () => {
               {fieldErrors.restaurant_name && <FieldError>{fieldErrors.restaurant_name}</FieldError>}
             </FormGroup>
             <FormGroup fullWidth>
-              <FormLabel>Address</FormLabel>
+              <FormLabel>{t('landing:signupPage.address')}</FormLabel>
               <FormInput
                 type="text"
                 value={form.restaurant_address}
@@ -621,7 +622,7 @@ const SignupPage: React.FC = () => {
               />
             </FormGroup>
             <FormGroup>
-              <FormLabel>Restaurant Phone</FormLabel>
+              <FormLabel>{t('landing:signupPage.restaurantPhone')}</FormLabel>
               <FormInput
                 type="tel"
                 value={form.restaurant_phone}
@@ -630,7 +631,7 @@ const SignupPage: React.FC = () => {
               />
             </FormGroup>
             <FormGroup>
-              <FormLabel>Restaurant Email</FormLabel>
+              <FormLabel>{t('landing:signupPage.restaurantEmail')}</FormLabel>
               <FormInput
                 type="email"
                 value={form.restaurant_email}
@@ -671,7 +672,7 @@ const SignupPage: React.FC = () => {
               {fieldErrors.foodcourt_name && <FieldError>{fieldErrors.foodcourt_name}</FieldError>}
             </FormGroup>
             <FormGroup fullWidth>
-              <FormLabel>Address</FormLabel>
+              <FormLabel>{t('landing:signupPage.address')}</FormLabel>
               <FormInput
                 type="text"
                 value={form.foodcourt_address}
@@ -685,7 +686,7 @@ const SignupPage: React.FC = () => {
         {role === 'Restaurant Owner' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel>Company Name</FormLabel>
+              <FormLabel>{t('landing:signupPage.companyName')}</FormLabel>
               <FormInput
                 type="text"
                 value={form.company_name}
@@ -707,23 +708,23 @@ const SignupPage: React.FC = () => {
 
         {role === 'Restaurant Admin' && (
           <InfoNotice>
-            Your restaurant can be linked to a brand or food court later from the admin dashboard.
+            {t('landing:signupPage.yourRestaurantCanBeLinkedToABrandOrFoodC')}
           </InfoNotice>
         )}
 
         {/* Plan Selection */}
         <PlanSectionTitle>Select a plan *</PlanSectionTitle>
-        <PlanTrialHint>All plans include a 7-day free trial. No payment required.</PlanTrialHint>
+        <PlanTrialHint>{t('landing:signupPage.allPlansIncludeA7dayFreeTrialNoPaymentRequired')}</PlanTrialHint>
         {fieldErrors.plan_id && <FieldError style={{ marginBottom: 12 }}>{fieldErrors.plan_id}</FieldError>}
 
         {/* Currency + Billing toggle row */}
         <PlanControlsRow>
           <BillingToggle>
             <BillingOption active={form.billing_cycle === 'monthly'} onClick={() => updateField('billing_cycle', 'monthly')}>
-              Monthly
+              {t('landing:signupPage.monthly')}
             </BillingOption>
             <BillingOption active={form.billing_cycle === 'annual'} onClick={() => updateField('billing_cycle', 'annual')}>
-              Annual
+              {t('landing:signupPage.annual')}
             </BillingOption>
           </BillingToggle>
 
@@ -782,7 +783,7 @@ const SignupPage: React.FC = () => {
                     <PlanFeature>Restaurants: {formatLimit(plan.restaurant_limit)}</PlanFeature>
                   )}
                 </PlanFeatures>
-                {form.plan_id === plan.id && <PlanSelected>Selected</PlanSelected>}
+                {form.plan_id === plan.id && <PlanSelected>{t('landing:signupPage.selected')}</PlanSelected>}
               </PlanCard>
             );
           })}
@@ -799,27 +800,27 @@ const SignupPage: React.FC = () => {
 
     return (
       <StepContent>
-        <StepTitle>Review & confirm</StepTitle>
-        <StepDescription>Check your details before creating your account</StepDescription>
+        <StepTitle>{t('landing:signupPage.reviewConfirm')}</StepTitle>
+        <StepDescription>{t('landing:signupPage.checkYourDetailsBeforeCreatingYourAccount')}</StepDescription>
 
         <ReviewSection>
           <ReviewGroup>
-            <ReviewLabel>Account Type</ReviewLabel>
+            <ReviewLabel>{t('landing:signupPage.accountType')}</ReviewLabel>
             <ReviewValue>{ROLE_CONFIG[role]?.title}</ReviewValue>
           </ReviewGroup>
 
           <ReviewDivider />
 
           <ReviewGroup>
-            <ReviewLabel>Full Name</ReviewLabel>
+            <ReviewLabel>{t('landing:signupPage.fullName')}</ReviewLabel>
             <ReviewValue>{form.full_name}</ReviewValue>
           </ReviewGroup>
           <ReviewGroup>
-            <ReviewLabel>Email</ReviewLabel>
+            <ReviewLabel>{t('landing:signupPage.email')}</ReviewLabel>
             <ReviewValue>{form.email}</ReviewValue>
           </ReviewGroup>
           <ReviewGroup>
-            <ReviewLabel>Username</ReviewLabel>
+            <ReviewLabel>{t('landing:signupPage.username')}</ReviewLabel>
             <ReviewValue>{form.username}</ReviewValue>
           </ReviewGroup>
 
@@ -827,25 +828,25 @@ const SignupPage: React.FC = () => {
 
           {role === 'Restaurant Admin' && (
             <ReviewGroup>
-              <ReviewLabel>Restaurant</ReviewLabel>
+              <ReviewLabel>{t('landing:signupPage.restaurant')}</ReviewLabel>
               <ReviewValue>{form.restaurant_name}</ReviewValue>
             </ReviewGroup>
           )}
           {role === 'Brand General' && (
             <ReviewGroup>
-              <ReviewLabel>Brand</ReviewLabel>
+              <ReviewLabel>{t('landing:signupPage.brand')}</ReviewLabel>
               <ReviewValue>{form.brand_name}</ReviewValue>
             </ReviewGroup>
           )}
           {role === 'Foodcourt General' && (
             <ReviewGroup>
-              <ReviewLabel>Food Court</ReviewLabel>
+              <ReviewLabel>{t('landing:signupPage.foodCourt')}</ReviewLabel>
               <ReviewValue>{form.foodcourt_name}</ReviewValue>
             </ReviewGroup>
           )}
           {role === 'Restaurant Owner' && form.company_name && (
             <ReviewGroup>
-              <ReviewLabel>Company</ReviewLabel>
+              <ReviewLabel>{t('landing:signupPage.company')}</ReviewLabel>
               <ReviewValue>{form.company_name}</ReviewValue>
             </ReviewGroup>
           )}
@@ -853,15 +854,15 @@ const SignupPage: React.FC = () => {
           <ReviewDivider />
 
           <ReviewGroup>
-            <ReviewLabel>Plan</ReviewLabel>
+            <ReviewLabel>{t('landing:signupPage.plan')}</ReviewLabel>
             <ReviewValue>{selectedPlan?.display_name || selectedPlan?.name}</ReviewValue>
           </ReviewGroup>
           <ReviewGroup>
-            <ReviewLabel>Billing</ReviewLabel>
+            <ReviewLabel>{t('landing:signupPage.billing')}</ReviewLabel>
             <ReviewValue>{form.billing_cycle === 'annual' ? 'Annual' : 'Monthly'}</ReviewValue>
           </ReviewGroup>
           <ReviewGroup>
-            <ReviewLabel>Price</ReviewLabel>
+            <ReviewLabel>{t('landing:signupPage.price')}</ReviewLabel>
             <ReviewValue highlight>{formatPrice(price)}/{form.billing_cycle === 'annual' ? 'year' : 'month'}</ReviewValue>
           </ReviewGroup>
         </ReviewSection>
@@ -880,14 +881,14 @@ const SignupPage: React.FC = () => {
       <LandingLayout>
         <div style={{ maxWidth: '500px', margin: '80px auto', padding: '48px 32px', textAlign: 'center', background: '#fff', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>✉</div>
-          <h2 style={{ color: '#1F2937', margin: '0 0 12px', fontSize: '24px' }}>Check your email</h2>
+          <h2 style={{ color: '#1F2937', margin: '0 0 12px', fontSize: '24px' }}>{t('landing:signupPage.checkYourEmail')}</h2>
           <p style={{ color: '#6B7280', fontSize: '15px', lineHeight: '1.6', margin: '0 0 24px' }}>
-            We've sent a verification link to<br />
+            {t('landing:signupPage.weveSentAVerificationLinkTo')}<br />
             <strong style={{ color: '#374151' }}>{verificationEmail}</strong>
           </p>
           <p style={{ color: '#9CA3AF', fontSize: '13px', lineHeight: '1.6', margin: '0 0 32px' }}>
-            Please click the link in the email to verify your account.<br />
-            The link expires in 24 hours.
+            {t('landing:signupPage.pleaseClickTheLinkInTheEmailToVerifyYour')}<br />
+            {t('landing:signupPage.theLinkExpiresIn24Hours')}
           </p>
           <button
             onClick={() => navigate('/pos')}
@@ -896,10 +897,10 @@ const SignupPage: React.FC = () => {
               border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff', cursor: 'pointer'
             }}
           >
-            Go to Login
+            {t('landing:signupPage.goToLogin')}
           </button>
           <p style={{ color: '#9CA3AF', fontSize: '12px', marginTop: '16px' }}>
-            Didn't receive the email? Check your spam folder.
+            {t('landing:signupPage.didntReceiveTheEmailCheckYourSpamFolder')}
           </p>
         </div>
       </LandingLayout>
@@ -909,13 +910,13 @@ const SignupPage: React.FC = () => {
   return (
     <LandingLayout>
       <Helmet>
-        <title>Sign Up - PurpleHere</title>
+        <title>{t('landing:signupPage.signUpPurplehere')}</title>
         <meta name="description" content="Create your PurpleHere POS account. Start with a 7-day free trial." />
       </Helmet>
 
       <HeroSection>
-        <HeroTitle>Create Your Account</HeroTitle>
-        <HeroSubtitle>Start your 7-day free trial today</HeroSubtitle>
+        <HeroTitle>{t('landing:signupPage.createYourAccount')}</HeroTitle>
+        <HeroSubtitle>{t('landing:signupPage.startYour7dayFreeTrialToday')}</HeroSubtitle>
       </HeroSection>
 
       <ContentSection>
@@ -947,11 +948,11 @@ const SignupPage: React.FC = () => {
           {/* Navigation */}
           <ButtonRow>
             {step > 1 && (
-              <BackButton onClick={handleBack} disabled={isSubmitting}>Back</BackButton>
+              <BackButton onClick={handleBack} disabled={isSubmitting}>{t('landing:signupPage.back')}</BackButton>
             )}
             <ButtonSpacer />
             {step < 4 ? (
-              <NextButton onClick={handleNext} disabled={!isStepComplete()}>Continue</NextButton>
+              <NextButton onClick={handleNext} disabled={!isStepComplete()}>{t('landing:signupPage.continue')}</NextButton>
             ) : (
               <SubmitButton onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? 'Creating Account...' : 'Create Account & Start Free Trial'}
@@ -960,7 +961,7 @@ const SignupPage: React.FC = () => {
           </ButtonRow>
 
           <LoginLink>
-            Already have an account? <Link to="/pos">Sign in</Link>
+            {t('landing:signupPage.alreadyHaveAnAccount')}<Link to="/pos">{t('landing:signupPage.signIn')}</Link>
           </LoginLink>
         </SignupCard>
       </ContentSection>

@@ -21,6 +21,7 @@ import CustomerModal from '../../components/Customer/CustomerModal';
 import { normalizeCustomerName } from '../../utils/orderUtils';
 import { getCurrencySymbol } from '../../utils/currency';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
+import { useTranslation } from 'react-i18next';
 
 const POSContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1097,6 +1098,7 @@ interface OrderItemType {
 }
 
 const POSTerminalPage: React.FC = () => {
+  const { t } = useTranslation('pos');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fromParam = searchParams.get('from') || '';
@@ -2323,10 +2325,10 @@ const POSTerminalPage: React.FC = () => {
             {brandLogo ? (
               <>
                 <LogoImage src={brandLogo} alt="Brand Logo" />
-                <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>POS Terminal</span>
+                <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
               </>
             ) : (
-              <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>POS Terminal</span>
+              <span style={{ color: '#6B7C93', fontSize: '14px', fontWeight: 500 }}>{'POS Terminal'}</span>
             )}
           </Logo>
           <button
@@ -2433,7 +2435,7 @@ const POSTerminalPage: React.FC = () => {
                       soldOut={item.soldOut}
                       onClick={() => handleAddItemDirectly(item)}
                     >
-                      {item.is_set_menu && <SetBadge>SET</SetBadge>}
+                      {item.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
                       <MenuImage hasImage={!!item.image}>
                         {item.image ? (
                           <img src={item.image} alt={item.name} loading="lazy" />
@@ -2469,7 +2471,7 @@ const POSTerminalPage: React.FC = () => {
             ) : isLoadingMenu ? (
               <NoResultsMessage>
                 <div className="icon">⏳</div>
-                <div className="title">Loading...</div>
+                <div className="title">{'Loading...'}</div>
               </NoResultsMessage>
             ) : (
               <NoResultsMessage>
@@ -2565,7 +2567,7 @@ const POSTerminalPage: React.FC = () => {
                 value={tableNumber}
                 onChange={(e) => setTableNumber(e.target.value)}
               >
-                <option value="">Free Seating</option>
+                <option value="">{'Free Seating'}</option>
                 {availableTables.map(table => (
                   <option key={table} value={table}>{table}</option>
                 ))}
@@ -2590,7 +2592,7 @@ const POSTerminalPage: React.FC = () => {
 
           {orderItems.length === 0 ? (
             <EmptyOrder>
-              <EmptyText>No items in order</EmptyText>
+              <EmptyText>{'No items in order'}</EmptyText>
               <EmptyText style={{ marginTop: '8px', fontSize: '12px' }}>
                 Select menu items to start
               </EmptyText>
@@ -2663,18 +2665,18 @@ const POSTerminalPage: React.FC = () => {
 
               <OrderSummary>
                 <SummaryRow>
-                  <SummaryLabel>Subtotal</SummaryLabel>
+                  <SummaryLabel>{'Subtotal'}</SummaryLabel>
                   <SummaryValue>{currency} {subtotal.toFixed(2)}</SummaryValue>
                 </SummaryRow>
                 {takeawayCharge > 0 && (
                   <SummaryRow>
-                    <SummaryLabel>Takeaway Charge</SummaryLabel>
+                    <SummaryLabel>{'Takeaway Charge'}</SummaryLabel>
                     <SummaryValue>{currency} {takeawayCharge.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
                 {discountAmount > 0 && (
                   <SummaryRow>
-                    <SummaryLabel>Discount</SummaryLabel>
+                    <SummaryLabel>{'Discount'}</SummaryLabel>
                     <SummaryValue style={{ color: '#10B981' }}>-{currency} {discountAmount.toFixed(2)}</SummaryValue>
                   </SummaryRow>
                 )}
@@ -2703,7 +2705,7 @@ const POSTerminalPage: React.FC = () => {
                   </SummaryRow>
                 )}
                 <TotalRow>
-                  <SummaryLabel>Total</SummaryLabel>
+                  <SummaryLabel>{'Total'}</SummaryLabel>
                   <SummaryValue>{currency} {total.toFixed(2)}</SummaryValue>
                 </TotalRow>
               </OrderSummary>

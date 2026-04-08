@@ -6,6 +6,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import CommentSection from '../../components/Common/CommentSection';
 import AttachmentList from '../../components/Common/AttachmentList';
+import { useTranslation } from 'react-i18next';
 
 interface OperationTicket {
   id: string;
@@ -445,6 +446,7 @@ const DetailDescription = styled.div`
 `;
 
 const OperationInquiryPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { user } = useAuth();
   const [tickets, setTickets] = useState<OperationTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -573,25 +575,25 @@ const OperationInquiryPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Operation Inquiry</Title>
+          <Title>{t('common:operationInquiryPage.operationInquiry')}</Title>
         </Header>
         <Content>
           <StatsGrid>
             <StatCard borderColor="#635BFF">
               <StatValue>{totalTickets}</StatValue>
-              <StatLabel>Total Inquiries</StatLabel>
+              <StatLabel>{t('common:operationInquiryPage.totalInquiries')}</StatLabel>
             </StatCard>
             <StatCard borderColor="#F59E0B">
               <StatValue>{openTickets}</StatValue>
-              <StatLabel>Open</StatLabel>
+              <StatLabel>{t('common:operationInquiryPage.open')}</StatLabel>
             </StatCard>
             <StatCard borderColor="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
-              <StatLabel>In Progress</StatLabel>
+              <StatLabel>{t('common:operationInquiryPage.inProgress')}</StatLabel>
             </StatCard>
             <StatCard borderColor="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
-              <StatLabel>Resolved</StatLabel>
+              <StatLabel>{t('common:operationInquiryPage.resolved')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -611,11 +613,11 @@ const OperationInquiryPage: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-              <option value="all">All Priority</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all">{t('common:operationInquiryPage.allPriority')}</option>
+              <option value="urgent">{t('common:operationInquiryPage.urgent')}</option>
+              <option value="high">{t('common:operationInquiryPage.high')}</option>
+              <option value="medium">{t('common:operationInquiryPage.medium')}</option>
+              <option value="low">{t('common:operationInquiryPage.low')}</option>
             </Select>
           </FiltersContainer>
 
@@ -690,15 +692,15 @@ const OperationInquiryPage: React.FC = () => {
                 color: '#6B7280',
                 gridColumn: '1 / -1'
               }}>
-                <h3 style={{ color: '#374151', marginBottom: '8px' }}>No inquiries yet</h3>
-                <p>Restaurant inquiries will appear here when submitted.</p>
+                <h3 style={{ color: '#374151', marginBottom: '8px' }}>{t('common:operationInquiryPage.noInquiriesYet')}</h3>
+                <p>{t('common:operationInquiryPage.restaurantInquiriesWillAppearHereWhenSubmitted')}</p>
               </div>
             )}
           </TicketsGrid>
 
           {/* Detail Modal */}
           {selectedTicket && (
-            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={<><Button variant="secondary" onClick={() => setSelectedTicket(null)}>Close</Button></>}>
+            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={<><Button variant="secondary" onClick={() => setSelectedTicket(null)}>{t('common:operationInquiryPage.close')}</Button></>}>
                   <InfoBox>
                     <InfoRow>
                       <InfoLabel>Subject:</InfoLabel>
@@ -726,7 +728,7 @@ const OperationInquiryPage: React.FC = () => {
                     </InfoRow>
                   </InfoBox>
 
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('common:operationInquiryPage.description')}</FormLabel>
                   <DetailDescription>{selectedTicket.description}</DetailDescription>
 
                   {selectedTicket?.attachments && selectedTicket.attachments.length > 0 && (
@@ -734,17 +736,17 @@ const OperationInquiryPage: React.FC = () => {
                   )}
 
                   <FormGroup>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel>{t('common:operationInquiryPage.status')}</FormLabel>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <FormSelect
                         value={detailStatus}
                         onChange={(e) => setDetailStatus(e.target.value as OperationTicket['status'])}
                         style={{ flex: 1 }}
                       >
-                        <option value="open">Open</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="closed">Closed</option>
+                        <option value="open">{t('common:operationInquiryPage.open')}</option>
+                        <option value="in-progress">{t('common:operationInquiryPage.inProgress')}</option>
+                        <option value="resolved">{t('common:operationInquiryPage.resolved')}</option>
+                        <option value="closed">{t('common:operationInquiryPage.closed')}</option>
                       </FormSelect>
                       {detailStatus !== selectedTicket.status && (
                         <Button variant="primary" onClick={handleStatusChange} style={{ padding: '10px 16px', fontSize: '13px' }}>

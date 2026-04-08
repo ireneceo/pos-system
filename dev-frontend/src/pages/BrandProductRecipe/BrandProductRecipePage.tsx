@@ -5,10 +5,12 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import ProductRecipesTab from './ProductRecipesTab';
 import ProductRecipeCategoriesTab from './ProductRecipeCategoriesTab';
+import { useTranslation } from 'react-i18next';
 
 type TabType = 'recipes' | 'recipe-categories';
 
 const BrandProductRecipePage: React.FC = () => {
+  const { t } = useTranslation('brand');
   const { user } = useAuth();
   const [activeTab, handleTabChange] = useTabParam<TabType>('recipes');
   const [recipesCount, setRecipesCount] = useState(0);
@@ -20,7 +22,7 @@ const BrandProductRecipePage: React.FC = () => {
   if (!brandId) {
     return (
       <Container>
-        <Header><Title>Product Recipes</Title></Header>
+        <Header><Title>{t('brand:brandProductRecipePage.productRecipes')}</Title></Header>
         <Content>
           <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
             Brand not found. Please log in with a brand account.
@@ -32,7 +34,7 @@ const BrandProductRecipePage: React.FC = () => {
 
   return (
     <Container>
-      <Header><Title>Product Recipes</Title></Header>
+      <Header><Title>{t('brand:brandProductRecipePage.productRecipes')}</Title></Header>
       <Content>
         <Tabs>
           <Tab active={activeTab === 'recipes'} onClick={() => handleTabChange('recipes')}>

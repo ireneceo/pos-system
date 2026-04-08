@@ -7,6 +7,7 @@ import { FilterBar, SearchInput } from '../../components/Common/FilterComponents
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface Brand {
   id: number;
@@ -304,6 +305,7 @@ const ViewDivider = styled.hr`
 `;
 
 const SuppliersPage: React.FC = () => {
+  const { t } = useTranslation('suppliers');
   const { user } = useAuth();
   const effectiveRestaurantId = user?.restaurant_id || (user as any)?.restaurantId;
 
@@ -665,7 +667,7 @@ const SuppliersPage: React.FC = () => {
       </SupplierInfo>
 
       <CardActions onClick={e => e.stopPropagation()}>
-        <ActionButton onClick={() => handleViewSupplier(supplier)}>View</ActionButton>
+        <ActionButton onClick={() => handleViewSupplier(supplier)}>{t('suppliers:suppliersPage.view')}</ActionButton>
         {!readOnly && (
           <>
             <ActionButton
@@ -680,7 +682,7 @@ const SuppliersPage: React.FC = () => {
                 }
               </svg>
             </ActionButton>
-            <ActionButton onClick={() => handleOpenModal(supplier)}>Edit</ActionButton>
+            <ActionButton onClick={() => handleOpenModal(supplier)}>{t('suppliers:suppliersPage.edit')}</ActionButton>
             <ActionButton
               variant="danger"
               onClick={() => setDeleteConfirm({ isOpen: true, supplierId: supplier.id, supplierName: supplier.name })}
@@ -698,7 +700,7 @@ const SuppliersPage: React.FC = () => {
       <>
         <Container>
           <Header>
-            <Title>Suppliers</Title>
+            <Title>{t('suppliers:suppliersPage.suppliers')}</Title>
           </Header>
           <Content>
             <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
@@ -714,7 +716,7 @@ const SuppliersPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Suppliers</Title>
+          <Title>{t('suppliers:suppliersPage.suppliers')}</Title>
           <HeaderActions>
             <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
               Add Supplier
@@ -736,7 +738,7 @@ const SuppliersPage: React.FC = () => {
 
           {isRestaurantAdmin && filteredBrandSuppliers.length > 0 && (
             <BrandSuppliersSection>
-              <SectionTitle>Brand Suppliers (Read Only)</SectionTitle>
+              <SectionTitle>{t('suppliers:suppliersPage.brandSuppliersReadOnly')}</SectionTitle>
               <SuppliersGrid>
                 {filteredBrandSuppliers.map(supplier => renderSupplierCard(supplier, true))}
               </SuppliersGrid>
@@ -745,7 +747,7 @@ const SuppliersPage: React.FC = () => {
 
           {suppliers.length === 0 && brandSuppliers.length === 0 ? (
             <EmptyState>
-              <EmptyTitle>No suppliers yet</EmptyTitle>
+              <EmptyTitle>{t('suppliers:suppliersPage.noSuppliersYet')}</EmptyTitle>
               <EmptyDescription>
                 Add suppliers to manage your ingredient sources.
                 {isBrandUser && ' You can connect suppliers to multiple brands.'}
@@ -756,7 +758,7 @@ const SuppliersPage: React.FC = () => {
             </EmptyState>
           ) : filteredSuppliers.length === 0 && !isRestaurantAdmin ? (
             <EmptyState>
-              <EmptyTitle>No suppliers found</EmptyTitle>
+              <EmptyTitle>{t('suppliers:suppliersPage.noSuppliersFound')}</EmptyTitle>
               <EmptyDescription>
                 {searchTerm ? 'Try adjusting your search' : 'Add your first supplier'}
               </EmptyDescription>
@@ -764,7 +766,7 @@ const SuppliersPage: React.FC = () => {
           ) : (
             <>
               {isRestaurantAdmin && filteredSuppliers.length > 0 && (
-                <SectionTitle>My Suppliers</SectionTitle>
+                <SectionTitle>{t('suppliers:suppliersPage.mySuppliers')}</SectionTitle>
               )}
               <SuppliersGrid>
                 {filteredSuppliers.map(supplier => renderSupplierCard(supplier, isItemReadOnly(supplier)))}
@@ -780,7 +782,7 @@ const SuppliersPage: React.FC = () => {
           size="large"
           footer={
             <>
-              <ModalButton variant="secondary" onClick={handleCloseModal}>Cancel</ModalButton>
+              <ModalButton variant="secondary" onClick={handleCloseModal}>{t('suppliers:suppliersPage.cancel')}</ModalButton>
               <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim()}>
                 {selectedSupplier ? 'Update' : 'Create'}
               </ModalButton>
@@ -800,7 +802,7 @@ const SuppliersPage: React.FC = () => {
                 />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>Code</FormLabel>
+                <FormLabel>{t('suppliers:suppliersPage.code')}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.code}
@@ -814,7 +816,7 @@ const SuppliersPage: React.FC = () => {
 
             <UIFormRow>
               <UIFormGroup>
-                <FormLabel>Contact Person</FormLabel>
+                <FormLabel>{t('suppliers:suppliersPage.contactPerson')}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.contact_name}
@@ -823,7 +825,7 @@ const SuppliersPage: React.FC = () => {
                 />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>Phone</FormLabel>
+                <FormLabel>{t('suppliers:suppliersPage.phone')}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.phone}
@@ -835,7 +837,7 @@ const SuppliersPage: React.FC = () => {
 
             <UIFormRow>
               <UIFormGroup>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>{t('suppliers:suppliersPage.email')}</FormLabel>
                 <FormInput
                   type="email"
                   value={formData.email}
@@ -844,7 +846,7 @@ const SuppliersPage: React.FC = () => {
                 />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>Business Number</FormLabel>
+                <FormLabel>{t('suppliers:suppliersPage.businessNumber')}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.business_number}
@@ -855,7 +857,7 @@ const SuppliersPage: React.FC = () => {
             </UIFormRow>
 
             <UIFormGroup>
-              <FormLabel>Address</FormLabel>
+              <FormLabel>{t('suppliers:suppliersPage.address')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.address}
@@ -866,7 +868,7 @@ const SuppliersPage: React.FC = () => {
 
             <UIFormRow>
               <UIFormGroup>
-                <FormLabel>Payment Terms</FormLabel>
+                <FormLabel>{t('suppliers:suppliersPage.paymentTerms')}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.payment_terms}
@@ -878,7 +880,7 @@ const SuppliersPage: React.FC = () => {
 
             <UIFormRow>
               <UIFormGroup>
-                <FormLabel>Bank Name</FormLabel>
+                <FormLabel>{t('suppliers:suppliersPage.bankName')}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.bank_name}
@@ -887,7 +889,7 @@ const SuppliersPage: React.FC = () => {
                 />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>Bank Account</FormLabel>
+                <FormLabel>{t('suppliers:suppliersPage.bankAccount')}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.bank_account}
@@ -898,7 +900,7 @@ const SuppliersPage: React.FC = () => {
             </UIFormRow>
 
             <UIFormGroup>
-              <FormLabel>Notes</FormLabel>
+              <FormLabel>{t('suppliers:suppliersPage.notes')}</FormLabel>
               <FormTextArea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -915,18 +917,18 @@ const SuppliersPage: React.FC = () => {
           title="Supplier Details"
           size="large"
           footer={
-            <ModalButton variant="secondary" onClick={() => { setShowViewModal(false); setViewSupplier(null); }}>Close</ModalButton>
+            <ModalButton variant="secondary" onClick={() => { setShowViewModal(false); setViewSupplier(null); }}>{t('suppliers:suppliersPage.close')}</ModalButton>
           }
         >
           {viewSupplier && (
             <ViewSection>
               <ViewRow>
                 <ViewField>
-                  <ViewLabel>Supplier Name</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.supplierName')}</ViewLabel>
                   <ViewValue>{viewSupplier.name}</ViewValue>
                 </ViewField>
                 <ViewField>
-                  <ViewLabel>Code</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.code')}</ViewLabel>
                   <ViewValue>{viewSupplier.code || '-'}</ViewValue>
                 </ViewField>
               </ViewRow>
@@ -935,22 +937,22 @@ const SuppliersPage: React.FC = () => {
 
               <ViewRow>
                 <ViewField>
-                  <ViewLabel>Contact Person</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.contactPerson')}</ViewLabel>
                   <ViewValue>{viewSupplier.contact_name || '-'}</ViewValue>
                 </ViewField>
                 <ViewField>
-                  <ViewLabel>Phone</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.phone')}</ViewLabel>
                   <ViewValue>{viewSupplier.phone || '-'}</ViewValue>
                 </ViewField>
               </ViewRow>
 
               <ViewRow>
                 <ViewField>
-                  <ViewLabel>Email</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.email')}</ViewLabel>
                   <ViewValue>{viewSupplier.email || '-'}</ViewValue>
                 </ViewField>
                 <ViewField>
-                  <ViewLabel>Business Number</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.businessNumber')}</ViewLabel>
                   <ViewValue>{viewSupplier.business_number || '-'}</ViewValue>
                 </ViewField>
               </ViewRow>
@@ -958,17 +960,17 @@ const SuppliersPage: React.FC = () => {
               <ViewDivider />
 
               <ViewField>
-                <ViewLabel>Address</ViewLabel>
+                <ViewLabel>{t('suppliers:suppliersPage.address')}</ViewLabel>
                 <ViewValue>{viewSupplier.address || '-'}</ViewValue>
               </ViewField>
 
               <ViewRow>
                 <ViewField>
-                  <ViewLabel>Payment Terms</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.paymentTerms')}</ViewLabel>
                   <ViewValue>{viewSupplier.payment_terms || '-'}</ViewValue>
                 </ViewField>
                 <ViewField>
-                  <ViewLabel>Status</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.status')}</ViewLabel>
                   <ViewValue>
                     <StatusBadge active={viewSupplier.is_active} style={{ marginLeft: 0 }}>
                       {viewSupplier.is_active ? 'Active' : 'Inactive'}
@@ -981,11 +983,11 @@ const SuppliersPage: React.FC = () => {
 
               <ViewRow>
                 <ViewField>
-                  <ViewLabel>Bank Name</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.bankName')}</ViewLabel>
                   <ViewValue>{viewSupplier.bank_name || '-'}</ViewValue>
                 </ViewField>
                 <ViewField>
-                  <ViewLabel>Bank Account</ViewLabel>
+                  <ViewLabel>{t('suppliers:suppliersPage.bankAccount')}</ViewLabel>
                   <ViewValue>{viewSupplier.bank_account || '-'}</ViewValue>
                 </ViewField>
               </ViewRow>
@@ -994,7 +996,7 @@ const SuppliersPage: React.FC = () => {
                 <>
                   <ViewDivider />
                   <ViewField>
-                    <ViewLabel>Notes</ViewLabel>
+                    <ViewLabel>{t('suppliers:suppliersPage.notes')}</ViewLabel>
                     <ViewValue style={{ whiteSpace: 'pre-wrap' }}>{viewSupplier.notes}</ViewValue>
                   </ViewField>
                 </>

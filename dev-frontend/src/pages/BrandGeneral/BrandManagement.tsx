@@ -25,6 +25,7 @@ import {
 } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 // Page-specific styled components
 const StatusBadge = styled.span<{ status: string }>`
@@ -152,6 +153,7 @@ const CURRENCY_OPTIONS = [
 ];
 
 const BrandManagement: React.FC = () => {
+  const { t } = useTranslation('brand');
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalBrands: 0,
@@ -330,15 +332,14 @@ const BrandManagement: React.FC = () => {
   const handleNavigateToRestaurants = (brand: Brand) => {
     navigate(`/pos/manager/restaurants?brandId=${brand.id}&brandName=${encodeURIComponent(brand.name)}`);
   };
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Brands</Title>
+          <Title>{t('brand:brandManagement.brands')}</Title>
           <ActionSection>
-            <Button variant="secondary">Export</Button>
-            <Button variant="primary" onClick={handleAddBrand}>Add Brand</Button>
+            <Button variant="secondary">{t('brand:brandManagement.export')}</Button>
+            <Button variant="primary" onClick={handleAddBrand}>{t('brand:brandManagement.addBrand')}</Button>
           </ActionSection>
         </Header>
 
@@ -346,45 +347,45 @@ const BrandManagement: React.FC = () => {
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{stats.totalBrands}</StatValue>
-              <StatLabel>Total Brands</StatLabel>
+              <StatLabel>{t('brand:brandManagement.totalBrands')}</StatLabel>
               <StatDescription>{stats.activeBrands} active</StatDescription>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{stats.activeBrands}</StatValue>
-              <StatLabel>Active Brands</StatLabel>
-              <StatDescription>Currently operating</StatDescription>
+              <StatLabel>{t('brand:brandManagement.activeBrands')}</StatLabel>
+              <StatDescription>{t('brand:brandManagement.currentlyOperating')}</StatDescription>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{stats.totalStores}</StatValue>
-              <StatLabel>Total Stores</StatLabel>
-              <StatDescription>Across all brands</StatDescription>
+              <StatLabel>{t('brand:brandManagement.totalStores')}</StatLabel>
+              <StatDescription>{t('brand:brandManagement.acrossAllBrands')}</StatDescription>
             </StatCard>
             <StatCard color="#8B5CF6">
               <StatValue>{stats.activeManagers}</StatValue>
-              <StatLabel>Brand Managers</StatLabel>
-              <StatDescription>Assigned managers</StatDescription>
+              <StatLabel>{t('brand:brandManagement.brandManagers')}</StatLabel>
+              <StatDescription>{t('brand:brandManagement.assignedManagers')}</StatDescription>
             </StatCard>
           </StatsGrid>
 
           {loading ? (
             <EmptyState>
-              <p>Loading brands...</p>
+              <p>{t('brand:brandManagement.loadingBrands')}</p>
             </EmptyState>
           ) : brands.length === 0 ? (
             <EmptyState>
-              <h3>No Brands Found</h3>
-              <p>Create your first brand to get started.</p>
-              <Button variant="primary" onClick={handleAddBrand}>Add Brand</Button>
+              <h3>{t('brand:brandManagement.noBrandsFound')}</h3>
+              <p>{t('brand:brandManagement.createYourFirstBrandToGetStarted')}</p>
+              <Button variant="primary" onClick={handleAddBrand}>{t('brand:brandManagement.addBrand')}</Button>
             </EmptyState>
           ) : (
             <Table>
               <TableHeader columns="2fr 2fr 1fr 1fr 1fr 120px">
-                <span className="col-info">Brand</span>
-                <span>Description</span>
-                <span>Restaurants</span>
-                <span>Status</span>
-                <span>Contact</span>
-                <span className="col-action">Actions</span>
+                <span className="col-info">{t('brand:brandManagement.brand')}</span>
+                <span>{t('brand:brandManagement.description')}</span>
+                <span>{t('brand:brandManagement.restaurants')}</span>
+                <span>{t('brand:brandManagement.status')}</span>
+                <span>{t('brand:brandManagement.contact')}</span>
+                <span className="col-action">{t('brand:brandManagement.actions')}</span>
               </TableHeader>
               {brands.map((brand) => (
                 <TableRow key={brand.id} columns="2fr 2fr 1fr 1fr 1fr 120px">
@@ -457,7 +458,7 @@ const BrandManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Description</FormLabel>
+                <FormLabel>{t('brand:brandManagement.description')}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.description}
@@ -467,7 +468,7 @@ const BrandManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>{t('brand:brandManagement.email')}</FormLabel>
                 <FormInput
                   type="email"
                   value={formData.email}
@@ -477,7 +478,7 @@ const BrandManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Phone</FormLabel>
+                <FormLabel>{t('brand:brandManagement.phone')}</FormLabel>
                 <PhoneInput
                   value={formData.phone}
                   onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
@@ -485,7 +486,7 @@ const BrandManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Address</FormLabel>
+                <FormLabel>{t('brand:brandManagement.address')}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.address}
@@ -495,7 +496,7 @@ const BrandManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Website</FormLabel>
+                <FormLabel>{t('brand:brandManagement.website')}</FormLabel>
                 <FormInput
                   type="url"
                   value={formData.website}

@@ -6,6 +6,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import { getPaymentMethodLabel } from '../../constants';
 import { printSettlementReport } from '../../utils/billPrint';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -414,6 +415,7 @@ const formatDateDisplay = (dateStr: string): string => {
 // ─── Component ───────────────────────────────────────────────────
 
 const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation('reports');
   const { user } = useAuth();
   const { storeSettings, operationSettings, paymentSettings } = useStore();
   const timeZone = operationSettings.timeZone || 'Asia/Kuala_Lumpur';
@@ -518,7 +520,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
     html += `<div style="text-align:center;padding-bottom:12px;margin-bottom:12px;border-bottom:2px solid #000">${storeHeader}</div>`;
 
     // Title
-    html += `<div style="text-align:center;font-size:16px;font-weight:900;letter-spacing:2px;margin:12px 0;padding:8px 0;border-top:1px dashed #666;border-bottom:1px dashed #666">DAILY SETTLEMENT</div>`;
+    html += `<div style="text-align:center;font-size:16px;font-weight:900;letter-spacing:2px;margin:12px 0;padding:8px 0;border-top:1px dashed #666;border-bottom:1px dashed #666">{t('reports:dailySettlementPrint.dailySettlement')}</div>`;
 
     // Date / Printed
     html += row('Date:', formatDateDisplay(selectedDate));
@@ -731,7 +733,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
       <ModalContainer onClick={(e) => e.stopPropagation()}>
         {/* Screen-only header */}
         <ModalHeader className="no-print">
-          <ModalTitle>Daily Settlement Report</ModalTitle>
+          <ModalTitle>{t('reports:dailySettlementPrint.dailySettlementReport')}</ModalTitle>
           <CloseButton onClick={onClose}>&times;</CloseButton>
         </ModalHeader>
 
@@ -760,7 +762,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
 
         {/* Receipt content */}
         {loading ? (
-          <LoadingContainer>Loading settlement data...</LoadingContainer>
+          <LoadingContainer>{t('reports:dailySettlementPrint.loadingSettlementData')}</LoadingContainer>
         ) : !data || totalOrders === 0 ? (
           <NoDataContainer>
             No sales data for {formatDateDisplay(selectedDate)}
@@ -787,7 +789,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
             </ReceiptHeader>
 
             {/* ─── Report Title ─── */}
-            <ReceiptTitle>DAILY SETTLEMENT</ReceiptTitle>
+            <ReceiptTitle>{t('reports:dailySettlementPrint.dailySettlement')}</ReceiptTitle>
 
             <ReceiptSection>
               <ReceiptRow>
@@ -806,10 +808,10 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
                 1. SALES SUMMARY
             ══════════════════════════════════════════════════ */}
             <ReceiptSection>
-              <ReceiptSectionTitle>SALES SUMMARY</ReceiptSectionTitle>
+              <ReceiptSectionTitle>{t('reports:dailySettlementPrint.salesSummary')}</ReceiptSectionTitle>
 
               <ReceiptRow>
-                <ReceiptRowLabel>Gross Sales</ReceiptRowLabel>
+                <ReceiptRowLabel>{t('reports:dailySettlementPrint.grossSales')}</ReceiptRowLabel>
                 <ReceiptRowValue>{formatCurrency(s?.grossSales || 0, currency)}</ReceiptRowValue>
               </ReceiptRow>
 
@@ -863,18 +865,18 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
               )}
 
               <ReceiptRow total>
-                <ReceiptRowLabel>NET SALES</ReceiptRowLabel>
+                <ReceiptRowLabel>{t('reports:dailySettlementPrint.netSales')}</ReceiptRowLabel>
                 <ReceiptRowValue>{formatCurrency(s?.netSales || 0, currency)}</ReceiptRowValue>
               </ReceiptRow>
 
               <ReceiptDivider style_type="dashed" />
 
               <ReceiptRow>
-                <ReceiptRowLabel>Total Orders</ReceiptRowLabel>
+                <ReceiptRowLabel>{t('reports:dailySettlementPrint.totalOrders')}</ReceiptRowLabel>
                 <ReceiptRowValue>{totalOrders}</ReceiptRowValue>
               </ReceiptRow>
               <ReceiptRow>
-                <ReceiptRowLabel>Avg Order Value</ReceiptRowLabel>
+                <ReceiptRowLabel>{t('reports:dailySettlementPrint.avgOrderValue')}</ReceiptRowLabel>
                 <ReceiptRowValue>{formatCurrency(avgOrderValue, currency)}</ReceiptRowValue>
               </ReceiptRow>
 
@@ -882,7 +884,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
                 <>
                   <ReceiptDivider style_type="dashed" />
                   <ReceiptRow negative>
-                    <ReceiptRowLabel>Cancelled Orders</ReceiptRowLabel>
+                    <ReceiptRowLabel>{t('reports:dailySettlementPrint.cancelledOrders')}</ReceiptRowLabel>
                     <ReceiptRowCount>{s!.cancelledOrders}</ReceiptRowCount>
                     <ReceiptRowValue>{formatCurrency(s!.cancelledAmount, currency)}</ReceiptRowValue>
                   </ReceiptRow>
@@ -891,7 +893,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
 
               {(s?.outstandingOrders || 0) > 0 && (
                 <ReceiptRow negative>
-                  <ReceiptRowLabel>Outstanding Orders</ReceiptRowLabel>
+                  <ReceiptRowLabel>{t('reports:dailySettlementPrint.outstandingOrders')}</ReceiptRowLabel>
                   <ReceiptRowCount>{s!.outstandingOrders}</ReceiptRowCount>
                   <ReceiptRowValue>{formatCurrency(s!.outstandingAmount, currency)}</ReceiptRowValue>
                 </ReceiptRow>
@@ -905,7 +907,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
             ══════════════════════════════════════════════════ */}
             {paymentMethods.length > 0 && (
               <ReceiptSection>
-                <ReceiptSectionTitle>PAYMENT SETTLEMENT</ReceiptSectionTitle>
+                <ReceiptSectionTitle>{t('reports:dailySettlementPrint.paymentSettlement')}</ReceiptSectionTitle>
                 {paymentMethods.map((p) => (
                   <React.Fragment key={p.method}>
                     <ReceiptRow>
@@ -924,7 +926,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
                   </React.Fragment>
                 ))}
                 <ReceiptRow total>
-                  <ReceiptRowLabel>TOTAL COLLECTED</ReceiptRowLabel>
+                  <ReceiptRowLabel>{t('reports:dailySettlementPrint.totalCollected')}</ReceiptRowLabel>
                   <ReceiptRowValue>{formatCurrency(paymentTotal, currency)}</ReceiptRowValue>
                 </ReceiptRow>
               </ReceiptSection>
@@ -937,7 +939,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
             ══════════════════════════════════════════════════ */}
             {sourceSales.length > 0 && (
               <ReceiptSection>
-                <ReceiptSectionTitle>ORDER SOURCE</ReceiptSectionTitle>
+                <ReceiptSectionTitle>{t('reports:dailySettlementPrint.orderSource')}</ReceiptSectionTitle>
                 {sourceSales.map((src) => (
                   <ReceiptRow key={src.source}>
                     <ReceiptRowLabel>{SOURCE_LABELS[src.source] || src.source}</ReceiptRowLabel>
@@ -955,7 +957,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
             ══════════════════════════════════════════════════ */}
             {orderTypes.length > 0 && (
               <ReceiptSection>
-                <ReceiptSectionTitle>ORDER TYPE</ReceiptSectionTitle>
+                <ReceiptSectionTitle>{t('reports:dailySettlementPrint.orderType')}</ReceiptSectionTitle>
                 {orderTypes.map((o) => (
                   <ReceiptRow key={o.type}>
                     <ReceiptRowLabel>{ORDER_TYPE_LABELS[o.type] || o.type}</ReceiptRowLabel>
@@ -973,7 +975,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
             ══════════════════════════════════════════════════ */}
             {categories.length > 0 && (
               <ReceiptSection>
-                <ReceiptSectionTitle>SALES BY CATEGORY</ReceiptSectionTitle>
+                <ReceiptSectionTitle>{t('reports:dailySettlementPrint.salesByCategory')}</ReceiptSectionTitle>
                 {categories.map((c) => (
                   <ReceiptRow key={c.category}>
                     <ReceiptRowLabel>{c.category}</ReceiptRowLabel>
@@ -982,7 +984,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
                   </ReceiptRow>
                 ))}
                 <ReceiptRow bold>
-                  <ReceiptRowLabel>Total</ReceiptRowLabel>
+                  <ReceiptRowLabel>{t('reports:dailySettlementPrint.total')}</ReceiptRowLabel>
                   <ReceiptRowCount>{categories.reduce((sum, c) => sum + c.quantity, 0)}qty</ReceiptRowCount>
                   <ReceiptRowValue>{formatCurrency(categories.reduce((sum, c) => sum + c.revenue, 0), currency)}</ReceiptRowValue>
                 </ReceiptRow>
@@ -993,7 +995,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
               <>
                 <ReceiptDivider style_type="dashed" />
                 <ReceiptSection>
-                  <ReceiptSectionTitle>TOP SELLING ITEMS</ReceiptSectionTitle>
+                  <ReceiptSectionTitle>{t('reports:dailySettlementPrint.topSellingItems')}</ReceiptSectionTitle>
                   {topMenuItems.map((m, i) => (
                     <ReceiptRow key={`${m.name}-${i}`}>
                       <ReceiptRowLabel>{m.name}</ReceiptRowLabel>
@@ -1012,13 +1014,13 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
               <>
                 <ReceiptDivider />
                 <ReceiptSection>
-                  <ReceiptSectionTitle>STAFF MEALS (NON-REVENUE)</ReceiptSectionTitle>
+                  <ReceiptSectionTitle>{t('reports:dailySettlementPrint.staffMealsNonrevenue')}</ReceiptSectionTitle>
                   <ReceiptRow>
-                    <ReceiptRowLabel>Staff Meal Orders</ReceiptRowLabel>
+                    <ReceiptRowLabel>{t('reports:dailySettlementPrint.staffMealOrders')}</ReceiptRowLabel>
                     <ReceiptRowValue>{staffMeal.orders}</ReceiptRowValue>
                   </ReceiptRow>
                   <ReceiptRow>
-                    <ReceiptRowLabel>Staff Meal Value</ReceiptRowLabel>
+                    <ReceiptRowLabel>{t('reports:dailySettlementPrint.staffMealValue')}</ReceiptRowLabel>
                     <ReceiptRowValue>{formatCurrency(staffMeal.revenue, currency)}</ReceiptRowValue>
                   </ReceiptRow>
                 </ReceiptSection>
@@ -1038,7 +1040,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
         {/* Action buttons */}
         {!loading && data && totalOrders > 0 && (
           <ActionBar className="no-print">
-            <ActionButton onClick={onClose}>Close</ActionButton>
+            <ActionButton onClick={onClose}>{t('reports:dailySettlementPrint.close')}</ActionButton>
             <ActionButton onClick={handleDownloadPDF}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3"

@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
+import { useTranslation } from 'react-i18next';
 
 interface SupportTicket {
   id: string;
@@ -379,6 +380,7 @@ const FormTextArea = styled.textarea`
 `;
 
 const SupportTicketsPage: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -579,29 +581,29 @@ const SupportTicketsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Support Tickets</Title>
+          <Title>{t('settings:supportTicketsPage.supportTickets')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportReports}>Export</Button>
-            <Button variant="primary" onClick={handleCreateTicket}>Create Ticket</Button>
+            <Button variant="secondary" onClick={handleExportReports}>{t('settings:supportTicketsPage.export')}</Button>
+            <Button variant="primary" onClick={handleCreateTicket}>{t('settings:supportTicketsPage.createTicket')}</Button>
           </ActionSection>
         </Header>
         <Content>
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{totalTickets}</StatValue>
-              <StatLabel>Total Tickets</StatLabel>
+              <StatLabel>{t('settings:supportTicketsPage.totalTickets')}</StatLabel>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{openTickets}</StatValue>
-              <StatLabel>Open Tickets</StatLabel>
+              <StatLabel>{t('settings:supportTicketsPage.openTickets')}</StatLabel>
             </StatCard>
             <StatCard color="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
-              <StatLabel>In Progress</StatLabel>
+              <StatLabel>{t('settings:supportTicketsPage.inProgress')}</StatLabel>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
-              <StatLabel>Resolved</StatLabel>
+              <StatLabel>{t('settings:supportTicketsPage.resolved')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -630,19 +632,19 @@ const SupportTicketsPage: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <FilterSelect value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-              <option value="all">All Priority</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all">{t('settings:supportTicketsPage.allPriority')}</option>
+              <option value="urgent">{t('settings:supportTicketsPage.urgent')}</option>
+              <option value="high">{t('settings:supportTicketsPage.high')}</option>
+              <option value="medium">{t('settings:supportTicketsPage.medium')}</option>
+              <option value="low">{t('settings:supportTicketsPage.low')}</option>
             </FilterSelect>
             <FilterSelect value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="all">All Categories</option>
-              <option value="technical">Technical</option>
-              <option value="billing">Billing</option>
-              <option value="feature-request">Feature Request</option>
-              <option value="bug-report">Bug Report</option>
-              <option value="general">General</option>
+              <option value="all">{t('settings:supportTicketsPage.allCategories')}</option>
+              <option value="technical">{t('settings:supportTicketsPage.technical')}</option>
+              <option value="billing">{t('settings:supportTicketsPage.billing')}</option>
+              <option value="feature-request">{t('settings:supportTicketsPage.featureRequest')}</option>
+              <option value="bug-report">{t('settings:supportTicketsPage.bugReport')}</option>
+              <option value="general">{t('settings:supportTicketsPage.general')}</option>
             </FilterSelect>
           </FilterBar>
 
@@ -708,20 +710,20 @@ const SupportTicketsPage: React.FC = () => {
 
                 <TicketMeta>
                   <MetaItem>
-                    <MetaLabel>Created</MetaLabel>
+                    <MetaLabel>{t('settings:supportTicketsPage.created')}</MetaLabel>
                     <MetaValue>{formatDateTime(ticket.createdAt)}</MetaValue>
                   </MetaItem>
                   <MetaItem>
-                    <MetaLabel>Category</MetaLabel>
+                    <MetaLabel>{t('settings:supportTicketsPage.category')}</MetaLabel>
                     <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category.replace('-', ' ')}</MetaValue>
                   </MetaItem>
                   <MetaItem>
-                    <MetaLabel>Response Time</MetaLabel>
+                    <MetaLabel>{t('settings:supportTicketsPage.responseTime')}</MetaLabel>
                     <MetaValue>{formatDuration(ticket.responseTime)}</MetaValue>
                   </MetaItem>
                   {ticket.assignedTo && (
                     <MetaItem>
-                      <MetaLabel>Assigned To</MetaLabel>
+                      <MetaLabel>{t('settings:supportTicketsPage.assignedTo')}</MetaLabel>
                       <MetaValue>{ticket.assignedTo}</MetaValue>
                     </MetaItem>
                   )}
@@ -749,7 +751,7 @@ const SupportTicketsPage: React.FC = () => {
                 color: '#6B7280',
                 gridColumn: '1 / -1'
               }}>
-                <h3 style={{ color: '#374151', marginBottom: '8px' }}>No tickets yet</h3>
+                <h3 style={{ color: '#374151', marginBottom: '8px' }}>{t('settings:supportTicketsPage.noTicketsYet')}</h3>
                 <p>Click "Create Ticket" to submit your first support ticket.</p>
               </div>
             )}
@@ -797,7 +799,7 @@ const SupportTicketsPage: React.FC = () => {
                     />
                   </FormGroup>
                   <div style={{ marginBottom: '20px' }}>
-                    <FormLabel>Attachments</FormLabel>
+                    <FormLabel>{t('settings:supportTicketsPage.attachments')}</FormLabel>
                     <FileUpload
                       files={newAttachments}
                       onChange={setNewAttachments}
@@ -806,28 +808,28 @@ const SupportTicketsPage: React.FC = () => {
                   </div>
                   <FormRow>
                     <FormGroup>
-                      <FormLabel>Priority</FormLabel>
+                      <FormLabel>{t('settings:supportTicketsPage.priority')}</FormLabel>
                       <FormSelect
                         value={newTicket.priority}
                         onChange={(e) => setNewTicket({...newTicket, priority: e.target.value as SupportTicket['priority']})}
                       >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
+                        <option value="low">{t('settings:supportTicketsPage.low')}</option>
+                        <option value="medium">{t('settings:supportTicketsPage.medium')}</option>
+                        <option value="high">{t('settings:supportTicketsPage.high')}</option>
+                        <option value="urgent">{t('settings:supportTicketsPage.urgent')}</option>
                       </FormSelect>
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Category</FormLabel>
+                      <FormLabel>{t('settings:supportTicketsPage.category')}</FormLabel>
                       <FormSelect
                         value={newTicket.category}
                         onChange={(e) => setNewTicket({...newTicket, category: e.target.value as SupportTicket['category']})}
                       >
-                        <option value="general">General</option>
-                        <option value="technical">Technical</option>
-                        <option value="billing">Billing</option>
-                        <option value="feature-request">Feature Request</option>
-                        <option value="bug-report">Bug Report</option>
+                        <option value="general">{t('settings:supportTicketsPage.general')}</option>
+                        <option value="technical">{t('settings:supportTicketsPage.technical')}</option>
+                        <option value="billing">{t('settings:supportTicketsPage.billing')}</option>
+                        <option value="feature-request">{t('settings:supportTicketsPage.featureRequest')}</option>
+                        <option value="bug-report">{t('settings:supportTicketsPage.bugReport')}</option>
                       </FormSelect>
                     </FormGroup>
                   </FormRow>
@@ -850,13 +852,13 @@ const SupportTicketsPage: React.FC = () => {
                   <div style={{ display: 'grid', gap: '20px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
-                        <FormLabel>Ticket Number</FormLabel>
+                        <FormLabel>{t('settings:supportTicketsPage.ticketNumber')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: '600' }}>
                           {selectedTicket.ticketNumber}
                         </div>
                       </div>
                       <div>
-                        <FormLabel>Status</FormLabel>
+                        <FormLabel>{t('settings:supportTicketsPage.status')}</FormLabel>
                         <div style={{ padding: '8px 0' }}>
                           <StatusBadge status={selectedTicket.status}>
                             {selectedTicket.status}
@@ -867,7 +869,7 @@ const SupportTicketsPage: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
-                        <FormLabel>Priority</FormLabel>
+                        <FormLabel>{t('settings:supportTicketsPage.priority')}</FormLabel>
                         <div style={{ padding: '8px 0' }}>
                           <PriorityBadge priority={selectedTicket.priority}>
                             {selectedTicket.priority}
@@ -875,7 +877,7 @@ const SupportTicketsPage: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                        <FormLabel>Category</FormLabel>
+                        <FormLabel>{t('settings:supportTicketsPage.category')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#374151', textTransform: 'capitalize' }}>
                           {selectedTicket.category.replace('-', ' ')}
                         </div>
@@ -883,7 +885,7 @@ const SupportTicketsPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <FormLabel>Customer Information</FormLabel>
+                      <FormLabel>{t('settings:supportTicketsPage.customerInformation')}</FormLabel>
                       <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
                         <div style={{ marginBottom: '4px', color: '#0A2540', fontWeight: '600' }}>
                           {selectedTicket.customerName}
@@ -898,14 +900,14 @@ const SupportTicketsPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <FormLabel>Subject</FormLabel>
+                      <FormLabel>{t('settings:supportTicketsPage.subject')}</FormLabel>
                       <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: '600' }}>
                         {selectedTicket.subject}
                       </div>
                     </div>
 
                     <div>
-                      <FormLabel>Description</FormLabel>
+                      <FormLabel>{t('settings:supportTicketsPage.description')}</FormLabel>
                       <div style={{
                         padding: '12px',
                         backgroundColor: '#F8FAFC',
@@ -926,13 +928,13 @@ const SupportTicketsPage: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
-                        <FormLabel>Created At</FormLabel>
+                        <FormLabel>{t('settings:supportTicketsPage.createdAt')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#6B7280' }}>
                           {selectedTicket.createdAt}
                         </div>
                       </div>
                       <div>
-                        <FormLabel>Last Updated</FormLabel>
+                        <FormLabel>{t('settings:supportTicketsPage.lastUpdated')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#6B7280' }}>
                           {selectedTicket.updatedAt}
                         </div>
@@ -941,7 +943,7 @@ const SupportTicketsPage: React.FC = () => {
 
                     {selectedTicket.assignedTo && (
                       <div>
-                        <FormLabel>Assigned To</FormLabel>
+                        <FormLabel>{t('settings:supportTicketsPage.assignedTo')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#0A2540' }}>
                           {selectedTicket.assignedTo}
                         </div>

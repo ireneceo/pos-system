@@ -30,6 +30,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import GeneralStockCategoriesTab from '../../pages/RecipeManagement/GeneralStockCategoriesTab';
 import ImageUploadDropzone from '../Common/ImageUploadDropzone';
+import { useTranslation } from 'react-i18next';
 
 // Props interface for shared component
 export interface InventoryManagerProps {
@@ -515,6 +516,7 @@ const EditButton = styled.button`
 `;
 
 const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId: propRestaurantId }) => {
+  const { t } = useTranslation('common');
   useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const { defaultCurrency } = useBrandCurrency();

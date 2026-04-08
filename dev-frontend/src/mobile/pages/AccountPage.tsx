@@ -6,6 +6,7 @@ import MobileAlertModal from '../components/common/MobileAlertModal';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   padding: 0 0 24px;
@@ -319,6 +320,7 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
 `;
 
 const AccountPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const { currentCustomer, logoutCustomer } = useCustomer();

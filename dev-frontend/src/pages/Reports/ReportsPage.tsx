@@ -16,6 +16,7 @@ import {
 import PageHeader from '../../components/Common/PageHeader';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import DailySettlementPrint from './DailySettlementPrint';
+import { useTranslation } from 'react-i18next';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
@@ -194,6 +195,7 @@ type TabType = 'sales' | 'details' | 'menu' | 'customers' | 'operations' | 'paym
 const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const ReportsPage: React.FC = () => {
+  const { t } = useTranslation('reports');
   const { user } = useAuth();
   const { operationSettings, paymentSettings } = useStore();
 
@@ -972,7 +974,7 @@ const ReportsPage: React.FC = () => {
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>
               <FilterComponent />
               {loading || ordersLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+                <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loading')}</div>
               ) : totalOrders === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
                   No order data available for the selected period
@@ -981,22 +983,22 @@ const ReportsPage: React.FC = () => {
                 <div>
                   <StatsRow>
                     <StatCard color="#059669">
-                      <StatLabel>Total Revenue</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.totalRevenue')}</StatLabel>
                       <StatValue>{formatCurrency(totalRevenue, operationSettings.currency)}</StatValue>
                       <StatDescription>{totalOrders} orders in selected period</StatDescription>
                     </StatCard>
                     <StatCard color="#2563EB">
-                      <StatLabel>Total Orders</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.totalOrders')}</StatLabel>
                       <StatValue>{totalOrders.toLocaleString()}</StatValue>
-                      <StatDescription>For selected period</StatDescription>
+                      <StatDescription>{t('reports:reportsPage.forSelectedPeriod')}</StatDescription>
                     </StatCard>
                     <StatCard color="#DC2626">
-                      <StatLabel>Average Order Value</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.averageOrderValue')}</StatLabel>
                       <StatValue>{formatCurrency(totalOrders > 0 ? (totalRevenue / totalOrders) : 0, operationSettings.currency)}</StatValue>
-                      <StatDescription>Per order</StatDescription>
+                      <StatDescription>{t('reports:reportsPage.perOrder')}</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
-                      <StatLabel>Completed Orders</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.completedOrders')}</StatLabel>
                       <StatValue>{totalOrders}</StatValue>
                       <StatDescription>100% completion rate</StatDescription>
                     </StatCard>
@@ -1004,7 +1006,7 @@ const ReportsPage: React.FC = () => {
 
                   <ChartGrid>
                 <ChartCard>
-                  <ChartTitle>Revenue Trend</ChartTitle>
+                  <ChartTitle>{t('reports:reportsPage.revenueTrend')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={salesData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1029,7 +1031,7 @@ const ReportsPage: React.FC = () => {
                 </ChartCard>
 
                 <ChartCard>
-                  <ChartTitle>Sales by Category</ChartTitle>
+                  <ChartTitle>{t('reports:reportsPage.salesByCategory')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
@@ -1053,7 +1055,7 @@ const ReportsPage: React.FC = () => {
               </ChartGrid>
 
               <ChartCard>
-                <ChartTitle>Hourly Orders Distribution</ChartTitle>
+                <ChartTitle>{t('reports:reportsPage.hourlyOrdersDistribution')}</ChartTitle>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1078,7 +1080,7 @@ const ReportsPage: React.FC = () => {
           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
               <FilterComponent />
               {loading || ordersLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+                <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loading')}</div>
               ) : totalOrders === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
                   No order data available for the selected period
@@ -1087,22 +1089,22 @@ const ReportsPage: React.FC = () => {
                 <div>
                   <StatsRow>
                     <StatCard color="#059669">
-                      <StatLabel>Total Revenue</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.totalRevenue')}</StatLabel>
                       <StatValue>{formatCurrency(totalRevenue, operationSettings.currency)}</StatValue>
                       <StatDescription>{totalOrders} orders in selected period</StatDescription>
                     </StatCard>
                     <StatCard color="#2563EB">
-                      <StatLabel>Total Orders</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.totalOrders')}</StatLabel>
                       <StatValue>{totalOrders.toLocaleString()}</StatValue>
                       <StatDescription>{totalOrders} completed</StatDescription>
                     </StatCard>
                     <StatCard color="#DC2626">
-                      <StatLabel>Average Order Value</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.averageOrderValue')}</StatLabel>
                       <StatValue>{formatCurrency(totalOrders > 0 ? (totalRevenue / totalOrders) : 0, operationSettings.currency)}</StatValue>
-                      <StatDescription>Per order average</StatDescription>
+                      <StatDescription>{t('reports:reportsPage.perOrderAverage')}</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
-                      <StatLabel>Period</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.period')}</StatLabel>
                       <StatValue>{isCustomDateRange ? getDateRangeDays() : activePeriod === 'today' ? '1' : activePeriod === 'week' ? '7' : activePeriod === 'month' ? '30' : activePeriod === 'year' ? '365' : getDateRangeDays()}</StatValue>
                       <StatDescription>{isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod === 'today' ? 'Day' : activePeriod === 'week' ? 'Days' : activePeriod === 'month' ? 'Days' : activePeriod === 'year' ? 'Days' : 'Days'}</StatDescription>
                     </StatCard>
@@ -1113,10 +1115,10 @@ const ReportsPage: React.FC = () => {
                     <Table>
                       <thead>
                         <tr>
-                          <TableHeader style={{ width: '40%' }}>Period</TableHeader>
-                          <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
-                          <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
-                          <TableHeader style={{ textAlign: 'right' }}>Avg Order Value</TableHeader>
+                          <TableHeader style={{ width: '40%' }}>{t('reports:reportsPage.period')}</TableHeader>
+                          <TableHeader style={{ textAlign: 'right' }}>{t('reports:reportsPage.revenue')}</TableHeader>
+                          <TableHeader style={{ textAlign: 'right' }}>{t('reports:reportsPage.orders')}</TableHeader>
+                          <TableHeader style={{ textAlign: 'right' }}>{t('reports:reportsPage.avgOrderValue')}</TableHeader>
                         </tr>
                       </thead>
                       <tbody>
@@ -1214,24 +1216,24 @@ const ReportsPage: React.FC = () => {
               <FilterComponent />
               <StatsRow>
                 <StatCard color="#F59E0B">
-                  <StatLabel>Best Seller</StatLabel>
+                  <StatLabel>{t('reports:reportsPage.bestSeller')}</StatLabel>
                   <StatValue>{allMenuData[0]?.name || 'N/A'}</StatValue>
                   <StatDescription>{allMenuData[0]?.orders || 0} sold in selected period</StatDescription>
                 </StatCard>
                 <StatCard color="#10B981">
-                  <StatLabel>Menu Items</StatLabel>
+                  <StatLabel>{t('reports:reportsPage.menuItems')}</StatLabel>
                   <StatValue>{allMenuData.length}</StatValue>
-                  <StatDescription>Items with sales</StatDescription>
+                  <StatDescription>{t('reports:reportsPage.itemsWithSales')}</StatDescription>
                 </StatCard>
                 <StatCard color="#3B82F6">
-                  <StatLabel>Items Sold</StatLabel>
+                  <StatLabel>{t('reports:reportsPage.itemsSold')}</StatLabel>
                   <StatValue>{allMenuData.reduce((sum, item) => sum + item.orders, 0).toLocaleString()}</StatValue>
-                  <StatDescription>Total quantity sold</StatDescription>
+                  <StatDescription>{t('reports:reportsPage.totalQuantitySold')}</StatDescription>
                 </StatCard>
                 <StatCard color="#8B5CF6">
-                  <StatLabel>Total Revenue</StatLabel>
+                  <StatLabel>{t('reports:reportsPage.totalRevenue')}</StatLabel>
                   <StatValue>{formatCurrency(allMenuData.reduce((sum, item) => sum + item.revenue, 0), operationSettings.currency)}</StatValue>
-                  <StatDescription>For selected period</StatDescription>
+                  <StatDescription>{t('reports:reportsPage.forSelectedPeriod')}</StatDescription>
                 </StatCard>
               </StatsRow>
 
@@ -1240,13 +1242,13 @@ const ReportsPage: React.FC = () => {
                 <Table>
                   <thead>
                     <tr>
-                      <TableHeader>Rank</TableHeader>
-                      <TableHeader>Menu Item</TableHeader>
-                      <TableHeader>Category</TableHeader>
-                      <TableHeader>Price</TableHeader>
-                      <TableHeader>Qty Sold</TableHeader>
-                      <TableHeader>Revenue</TableHeader>
-                      <TableHeader>Performance</TableHeader>
+                      <TableHeader>{t('reports:reportsPage.rank')}</TableHeader>
+                      <TableHeader>{t('reports:reportsPage.menuItem')}</TableHeader>
+                      <TableHeader>{t('reports:reportsPage.category')}</TableHeader>
+                      <TableHeader>{t('reports:reportsPage.price')}</TableHeader>
+                      <TableHeader>{t('reports:reportsPage.qtySold')}</TableHeader>
+                      <TableHeader>{t('reports:reportsPage.revenue')}</TableHeader>
+                      <TableHeader>{t('reports:reportsPage.performance')}</TableHeader>
                     </tr>
                   </thead>
                   <tbody>
@@ -1300,7 +1302,7 @@ const ReportsPage: React.FC = () => {
           <div style={{ display: activeTab === 'customers' ? 'block' : 'none' }}>
               <FilterComponent />
               {loading || ordersLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>Loading customer data...</div>
+                <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loadingCustomerData')}</div>
               ) : filteredCustomers.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
                   No customers with orders in the selected period
@@ -1309,22 +1311,22 @@ const ReportsPage: React.FC = () => {
                 <div>
                   <StatsRow>
                     <StatCard color="#635BFF">
-                      <StatLabel>Active Customers</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.activeCustomers')}</StatLabel>
                       <StatValue>{filteredCustomers.length.toLocaleString()}</StatValue>
                       <StatDescription>{filteredCustomers.filter((c: any) => c.customer?.type === 'member').length} members, {filteredCustomers.filter((c: any) => c.customer?.type === 'guest').length} guests</StatDescription>
                     </StatCard>
                     <StatCard color="#6FCF97">
-                      <StatLabel>Repeat Customers</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.repeatCustomers')}</StatLabel>
                       <StatValue>{filteredCustomers.filter((c: any) => c.period_orders > 1).length}</StatValue>
                       <StatDescription>{filteredCustomers.length > 0 ? Math.round((filteredCustomers.filter((c: any) => c.period_orders > 1).length / filteredCustomers.length) * 100) : 0}% ordered multiple times</StatDescription>
                     </StatCard>
                     <StatCard color="#FFB800">
-                      <StatLabel>Average Spent</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.averageSpent')}</StatLabel>
                       <StatValue>{formatCurrency(filteredCustomers.length > 0 ? (filteredCustomers.reduce((sum: number, c: any) => sum + (c.period_spent || 0), 0) / filteredCustomers.length) : 0, operationSettings.currency)}</StatValue>
-                      <StatDescription>Per customer in period</StatDescription>
+                      <StatDescription>{t('reports:reportsPage.perCustomerInPeriod')}</StatDescription>
                     </StatCard>
                     <StatCard color="#8B5CF6">
-                      <StatLabel>Period Revenue</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.periodRevenue')}</StatLabel>
                       <StatValue>{formatCurrency(filteredCustomers.reduce((sum: number, c: any) => sum + (c.period_spent || 0), 0), operationSettings.currency)}</StatValue>
                       <StatDescription>From {filteredCustomers.length} customers</StatDescription>
                     </StatCard>
@@ -1335,14 +1337,14 @@ const ReportsPage: React.FC = () => {
                     <Table>
                       <thead>
                         <tr>
-                          <TableHeader>Rank</TableHeader>
-                          <TableHeader>Name</TableHeader>
-                          <TableHeader>Phone</TableHeader>
-                          <TableHeader>Type</TableHeader>
-                          <TableHeader>Period Orders</TableHeader>
-                          <TableHeader>Period Spent</TableHeader>
-                          <TableHeader>Total Points</TableHeader>
-                          <TableHeader>Tier</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.rank')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.name')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.phone')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.type')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.periodOrders')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.periodSpent')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.totalPoints')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.tier')}</TableHeader>
                         </tr>
                       </thead>
                       <tbody>
@@ -1401,7 +1403,7 @@ const ReportsPage: React.FC = () => {
           <div style={{ display: activeTab === 'operations' ? 'block' : 'none' }}>
               <FilterComponent />
               {loading || ordersLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>Loading operations data...</div>
+                <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loadingOperationsData')}</div>
               ) : totalOrders === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
                   No order data available for the selected period
@@ -1410,27 +1412,27 @@ const ReportsPage: React.FC = () => {
                 <div>
                   <StatsRow>
                     <StatCard color="#10B981">
-                      <StatLabel>Completed Orders</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.completedOrders')}</StatLabel>
                       <StatValue>{totalOrders.toLocaleString()}</StatValue>
                       <StatDescription>{operationsStats.completionRate}% fulfillment rate</StatDescription>
                     </StatCard>
                     <StatCard color="#F59E0B">
-                      <StatLabel>Avg. Prep Time</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.avgPrepTime')}</StatLabel>
                       <StatValue>{operationsStats.avgPrepTime > 0 ? `${operationsStats.avgPrepTime} min` : 'N/A'}</StatValue>
                       <StatDescription>{operationsStats.avgPrepTime > 0 ? 'Order to served' : 'No timing data'}</StatDescription>
                     </StatCard>
                     <StatCard color="#EF4444">
-                      <StatLabel>Peak Hour</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.peakHour')}</StatLabel>
                       <StatValue>{operationsStats.peakHour}</StatValue>
                       <StatDescription>{operationsStats.peakHourOrders} orders in this slot</StatDescription>
                     </StatCard>
                     <StatCard color="#6366F1">
-                      <StatLabel>Orders per Day</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.ordersPerDay')}</StatLabel>
                       <StatValue>{(() => {
                         const days = Math.max(1, Math.ceil((new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()) / (1000 * 60 * 60 * 24)) + 1);
                         return Math.round(totalOrders / days);
                       })()}</StatValue>
-                      <StatDescription>Average daily orders</StatDescription>
+                      <StatDescription>{t('reports:reportsPage.averageDailyOrders')}</StatDescription>
                     </StatCard>
                   </StatsRow>
 
@@ -1439,10 +1441,10 @@ const ReportsPage: React.FC = () => {
                     <Table>
                       <thead>
                         <tr>
-                          <TableHeader>Time Slot</TableHeader>
-                          <TableHeader>Orders</TableHeader>
-                          <TableHeader>Revenue</TableHeader>
-                          <TableHeader>Share</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.timeSlot')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.orders')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.revenue')}</TableHeader>
+                          <TableHeader>{t('reports:reportsPage.share')}</TableHeader>
                         </tr>
                       </thead>
                       <tbody>
@@ -1478,7 +1480,7 @@ const ReportsPage: React.FC = () => {
                   </TableCard>
 
                   <ChartCard style={{ marginTop: '24px' }}>
-                    <ChartTitle>Hourly Order Distribution</ChartTitle>
+                    <ChartTitle>{t('reports:reportsPage.hourlyOrderDistribution')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={250}>
                       <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1503,7 +1505,7 @@ const ReportsPage: React.FC = () => {
           <div style={{ display: activeTab === 'payment' ? 'block' : 'none' }}>
               <FilterComponent />
               {loading || ordersLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>Loading payment data...</div>
+                <div style={{ textAlign: 'center', padding: '40px' }}>{t('reports:reportsPage.loadingPaymentData')}</div>
               ) : totalOrders === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
                   No order data available for the selected period
@@ -1524,13 +1526,13 @@ const ReportsPage: React.FC = () => {
                       <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
                         <div style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '20px', fontWeight: 700, color: '#9A3412' }}>{staffMealData.orders}</div>
-                          <div style={{ fontSize: '11px', color: '#C2410C' }}>Orders</div>
+                          <div style={{ fontSize: '11px', color: '#C2410C' }}>{t('reports:reportsPage.orders')}</div>
                         </div>
                         <div style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '20px', fontWeight: 700, color: '#9A3412' }}>
                             {formatCurrency(staffMealData.revenue, operationSettings.currency)}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#C2410C' }}>Amount</div>
+                          <div style={{ fontSize: '11px', color: '#C2410C' }}>{t('reports:reportsPage.amount')}</div>
                         </div>
                       </div>
                     </StaffMealBanner>
@@ -1539,17 +1541,17 @@ const ReportsPage: React.FC = () => {
                   {/* Payment Method Summary Stats */}
                   <StatsRow>
                     <StatCard color="#059669">
-                      <StatLabel>Total Revenue</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.totalRevenue')}</StatLabel>
                       <StatValue>{formatCurrency(totalPaymentRevenue, operationSettings.currency)}</StatValue>
                       <StatDescription>{paymentMethodData.reduce((s: number, p: any) => s + p.orders, 0)} orders</StatDescription>
                     </StatCard>
                     <StatCard color="#2563EB">
-                      <StatLabel>Payment Methods Used</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.paymentMethodsUsed')}</StatLabel>
                       <StatValue>{paymentMethodData.length}</StatValue>
-                      <StatDescription>Active methods in period</StatDescription>
+                      <StatDescription>{t('reports:reportsPage.activeMethodsInPeriod')}</StatDescription>
                     </StatCard>
                     <StatCard color="#7C3AED">
-                      <StatLabel>Card Payments</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.cardPayments')}</StatLabel>
                       <StatValue>
                         {formatCurrency(
                           paymentMethodData.find((p: any) => p.method === 'card')?.revenue || 0,
@@ -1561,7 +1563,7 @@ const ReportsPage: React.FC = () => {
                       </StatDescription>
                     </StatCard>
                     <StatCard color="#DC2626">
-                      <StatLabel>Cash Payments</StatLabel>
+                      <StatLabel>{t('reports:reportsPage.cashPayments')}</StatLabel>
                       <StatValue>
                         {formatCurrency(
                           paymentMethodData.find((p: any) => p.method === 'cash')?.revenue || 0,
@@ -1577,14 +1579,14 @@ const ReportsPage: React.FC = () => {
                   {/* Payment Methods Table */}
                   <ChartGrid>
                     <TableCard>
-                      <ChartTitle>Payment Methods Breakdown</ChartTitle>
+                      <ChartTitle>{t('reports:reportsPage.paymentMethodsBreakdown')}</ChartTitle>
                       <Table>
                         <thead>
                           <tr>
-                            <TableHeader>Payment Method</TableHeader>
-                            <TableHeader>Orders</TableHeader>
-                            <TableHeader>Revenue</TableHeader>
-                            <TableHeader>Share</TableHeader>
+                            <TableHeader>{t('reports:reportsPage.paymentMethod')}</TableHeader>
+                            <TableHeader>{t('reports:reportsPage.orders')}</TableHeader>
+                            <TableHeader>{t('reports:reportsPage.revenue')}</TableHeader>
+                            <TableHeader>{t('reports:reportsPage.share')}</TableHeader>
                           </tr>
                         </thead>
                         <tbody>
@@ -1626,7 +1628,7 @@ const ReportsPage: React.FC = () => {
 
                     {/* Payment Method Pie Chart */}
                     <ChartCard>
-                      <ChartTitle>Payment Distribution</ChartTitle>
+                      <ChartTitle>{t('reports:reportsPage.paymentDistribution')}</ChartTitle>
                       <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                           <Pie
@@ -1655,7 +1657,7 @@ const ReportsPage: React.FC = () => {
                   {/* Card Type Breakdown */}
                   {reportsSummary?.cardTypeSales && reportsSummary.cardTypeSales.length > 0 && (
                     <TableCard style={{ marginTop: '24px' }}>
-                      <ChartTitle>Card Type Breakdown</ChartTitle>
+                      <ChartTitle>{t('reports:reportsPage.cardTypeBreakdown')}</ChartTitle>
                       <PaymentFilterRow>
                         <PaymentFilterBtn
                           active={cardTypeFilter === 'all'}
@@ -1678,10 +1680,10 @@ const ReportsPage: React.FC = () => {
                       <Table>
                         <thead>
                           <tr>
-                            <TableHeader>Card Type</TableHeader>
-                            <TableHeader>Orders</TableHeader>
-                            <TableHeader>Revenue</TableHeader>
-                            <TableHeader>Share of Card Payments</TableHeader>
+                            <TableHeader>{t('reports:reportsPage.cardType')}</TableHeader>
+                            <TableHeader>{t('reports:reportsPage.orders')}</TableHeader>
+                            <TableHeader>{t('reports:reportsPage.revenue')}</TableHeader>
+                            <TableHeader>{t('reports:reportsPage.shareOfCardPayments')}</TableHeader>
                           </tr>
                         </thead>
                         <tbody>

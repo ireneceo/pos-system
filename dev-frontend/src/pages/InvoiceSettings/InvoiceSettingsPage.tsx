@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface InvoiceSettings {
   id: string;
@@ -352,6 +353,7 @@ const CalculationExample = styled.div`
 `;
 
 const InvoiceSettingsPage: React.FC = () => {
+  const { t } = useTranslation('invoices');
   const { user } = useAuth();
   const [settings, setSettings] = useState<InvoiceSettings>({
     id: 'settings-001',
@@ -501,7 +503,7 @@ const InvoiceSettingsPage: React.FC = () => {
       {settings.platformFeeEnabled && (
         <FormGrid>
           <FormGroup>
-            <Label>Monthly Fee (RM)</Label>
+            <Label>{t('invoices:invoiceSettingsPage.monthlyFeeRm')}</Label>
             <Input
               type="number"
               value={settings.platformMonthlyFee}
@@ -511,7 +513,7 @@ const InvoiceSettingsPage: React.FC = () => {
           </FormGroup>
           
           <FormGroup>
-            <Label>Annual Fee (RM)</Label>
+            <Label>{t('invoices:invoiceSettingsPage.annualFeeRm')}</Label>
             <Input
               type="number"
               value={settings.platformAnnualFee}
@@ -555,7 +557,7 @@ const InvoiceSettingsPage: React.FC = () => {
                   onChange={(e) => handleInputChange('rentType', e.target.value)}
                 />
                 <div style={{ flex: 1 }}>
-                  <strong>Fixed Rental</strong>
+                  <strong>{t('invoices:invoiceSettingsPage.fixedRental')}</strong>
                   <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
                     Charge a fixed amount every month regardless of revenue
                   </div>
@@ -571,7 +573,7 @@ const InvoiceSettingsPage: React.FC = () => {
                   onChange={(e) => handleInputChange('rentType', e.target.value)}
                 />
                 <div style={{ flex: 1 }}>
-                  <strong>Revenue Share</strong>
+                  <strong>{t('invoices:invoiceSettingsPage.revenueShare')}</strong>
                   <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
                     Charge a percentage of monthly revenue
                   </div>
@@ -598,7 +600,7 @@ const InvoiceSettingsPage: React.FC = () => {
             <FormGrid style={{ marginTop: '24px' }}>
               {(settings.rentType === 'fixed' || settings.rentType === 'hybrid') && (
                 <FormGroup>
-                  <Label>Fixed Amount (RM)</Label>
+                  <Label>{t('invoices:invoiceSettingsPage.fixedAmountRm')}</Label>
                   <Input
                     type="number"
                     value={settings.rentType === 'fixed' ? settings.fixedRentAmount : settings.hybridFixedAmount}
@@ -629,9 +631,9 @@ const InvoiceSettingsPage: React.FC = () => {
             </FormGrid>
             
             <CalculationExample>
-              <h4>Calculation Example</h4>
+              <h4>{t('invoices:invoiceSettingsPage.calculationExample')}</h4>
               <FormGroup>
-                <Label>Example Monthly Revenue (RM)</Label>
+                <Label>{t('invoices:invoiceSettingsPage.exampleMonthlyRevenueRm')}</Label>
                 <Input
                   type="number"
                   value={exampleRevenue}
@@ -646,7 +648,7 @@ const InvoiceSettingsPage: React.FC = () => {
       </Section>
 
       <Section>
-        <SectionTitle>Management Fees</SectionTitle>
+        <SectionTitle>{t('invoices:invoiceSettingsPage.managementFees')}</SectionTitle>
         <InfoBox>
           <p>
             Add management fees that will be charged to restaurants. These can be enabled/disabled per restaurant.
@@ -667,7 +669,7 @@ const InvoiceSettingsPage: React.FC = () => {
               placeholder="Fee name"
             />
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ fontSize: '14px', color: '#6B7280' }}>RM</span>
+              <span style={{ fontSize: '14px', color: '#6B7280' }}>{t('invoices:invoiceSettingsPage.rm')}</span>
               <FeeAmount
                 type="number"
                 value={fee.amount}
@@ -686,7 +688,7 @@ const InvoiceSettingsPage: React.FC = () => {
         </AddButton>
         
         <CalculationExample>
-          <h4>Monthly Invoice Total</h4>
+          <h4>{t('invoices:invoiceSettingsPage.monthlyInvoiceTotal')}</h4>
           <p>Rental Fee: RM {(settings.rentalEnabled ? calculateRental() : 0).toFixed(2)}</p>
           {settings.managementFees?.filter(fee => fee.enabled).map(fee => (
             <p key={fee.id}>{fee.name}: RM {fee.amount.toFixed(2)}</p>
@@ -701,7 +703,7 @@ const InvoiceSettingsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Invoice Settings</Title>
+          <Title>{t('invoices:invoiceSettingsPage.invoiceSettings')}</Title>
           <SaveButton
             hasChanges={hasChanges && autoSaveStatus !== 'saved'}
             onClick={handleSave}
@@ -716,10 +718,10 @@ const InvoiceSettingsPage: React.FC = () => {
           {['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '') && renderManagerSettings()}
 
           <Section>
-            <SectionTitle>Invoice Configuration</SectionTitle>
+            <SectionTitle>{t('invoices:invoiceSettingsPage.invoiceConfiguration')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Invoice Prefix</Label>
+                <Label>{t('invoices:invoiceSettingsPage.invoicePrefix')}</Label>
                 <Input
                   type="text"
                   value={settings.invoicePrefix}
@@ -729,7 +731,7 @@ const InvoiceSettingsPage: React.FC = () => {
               </FormGroup>
               
               <FormGroup>
-                <Label>Starting Number</Label>
+                <Label>{t('invoices:invoiceSettingsPage.startingNumber')}</Label>
                 <Input
                   type="number"
                   value={settings.invoiceStartNumber}
@@ -739,7 +741,7 @@ const InvoiceSettingsPage: React.FC = () => {
               </FormGroup>
               
               <FormGroup>
-                <Label>Payment Terms (Days)</Label>
+                <Label>{t('invoices:invoiceSettingsPage.paymentTermsDays')}</Label>
                 <Input
                   type="number"
                   value={settings.paymentTerms}
@@ -762,7 +764,7 @@ const InvoiceSettingsPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Automation Settings</SectionTitle>
+            <SectionTitle>{t('invoices:invoiceSettingsPage.automationSettings')}</SectionTitle>
             <CheckboxLabel>
               <input
                 type="checkbox"

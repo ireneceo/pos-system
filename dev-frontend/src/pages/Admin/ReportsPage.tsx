@@ -10,6 +10,7 @@ import {
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { useTranslation } from 'react-i18next';
 
 // Styled Components (AnalyticsPage 패턴)
 const ReportsContainer = styled.div`
@@ -255,6 +256,7 @@ interface SubscriptionData {
 }
 
 const ReportsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { operationSettings, siteTimezone } = useStore();
   const defaultCurrency = operationSettings?.currency || 'MYR';
   const [activeTab, handleTabChange] = useTabParam<TabType>('revenue');
@@ -456,8 +458,8 @@ const ReportsPage: React.FC = () => {
 
   // Revenue Tab
   const renderRevenue = () => {
-    if (loading) return <LoadingMessage>Loading revenue data...</LoadingMessage>;
-    if (!revenueSummary) return <NoDataMessage>No data available</NoDataMessage>;
+    if (loading) return <LoadingMessage>{t('admin:reportsPage.loadingRevenueData')}</LoadingMessage>;
+    if (!revenueSummary) return <NoDataMessage>{t('admin:reportsPage.noDataAvailable')}</NoDataMessage>;
 
     const totalGrand = revenueByCategory.reduce((s, r) => s + r.total, 0);
 
@@ -466,29 +468,29 @@ const ReportsPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{formatCurrency(revenueSummary.totalRevenue, currency)}</StatValue>
-            <StatLabel>Total Revenue</StatLabel>
-            <StatDescription>Collected payments</StatDescription>
+            <StatLabel>{t('admin:reportsPage.totalRevenue')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.collectedPayments')}</StatDescription>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{formatCurrency(revenueSummary.pendingAmount, currency)}</StatValue>
-            <StatLabel>Pending Amount</StatLabel>
-            <StatDescription>Awaiting payment</StatDescription>
+            <StatLabel>{t('admin:reportsPage.pendingAmount')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.awaitingPayment')}</StatDescription>
           </StatCard>
           <StatCard color="#635BFF">
             <StatValue>{revenueSummary.paidInvoices} / {revenueSummary.totalInvoices}</StatValue>
-            <StatLabel>Paid Invoices</StatLabel>
-            <StatDescription>Completed / Total</StatDescription>
+            <StatLabel>{t('admin:reportsPage.paidInvoices')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.completedTotal')}</StatDescription>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{revenueSummary.collectionRate}%</StatValue>
-            <StatLabel>Collection Rate</StatLabel>
-            <StatDescription>Payment success rate</StatDescription>
+            <StatLabel>{t('admin:reportsPage.collectionRate')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.paymentSuccessRate')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
         <ChartGrid>
           <ChartCard>
-            <ChartTitle>Revenue Trend (Last 12 Months)</ChartTitle>
+            <ChartTitle>{t('admin:reportsPage.revenueTrendLast12Months')}</ChartTitle>
             {revenueTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={revenueTrend}>
@@ -501,11 +503,11 @@ const ReportsPage: React.FC = () => {
                   <Line type="monotone" dataKey="collected" stroke="#059669" strokeWidth={2} name="Collected" dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
-            ) : <NoDataMessage>No trend data</NoDataMessage>}
+            ) : <NoDataMessage>{t('admin:reportsPage.noTrendData')}</NoDataMessage>}
           </ChartCard>
 
           <ChartCard>
-            <ChartTitle>Revenue by Category</ChartTitle>
+            <ChartTitle>{t('admin:reportsPage.revenueByCategory')}</ChartTitle>
             {revenueByCategory.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -522,19 +524,19 @@ const ReportsPage: React.FC = () => {
                   <Tooltip formatter={(value: number) => formatCurrency(value, currency)} />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <NoDataMessage>No category data</NoDataMessage>}
+            ) : <NoDataMessage>{t('admin:reportsPage.noCategoryData')}</NoDataMessage>}
           </ChartCard>
         </ChartGrid>
 
         <TableCard>
-          <ChartTitle>Revenue by Category (Detail)</ChartTitle>
+          <ChartTitle>{t('admin:reportsPage.revenueByCategoryDetail')}</ChartTitle>
           <Table>
             <thead>
               <tr>
-                <Th>Category</Th>
-                <Th style={{ textAlign: 'right' }}>Invoices</Th>
-                <Th style={{ textAlign: 'right' }}>Amount</Th>
-                <Th style={{ textAlign: 'right' }}>Share</Th>
+                <Th>{t('admin:reportsPage.category')}</Th>
+                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.invoices')}</Th>
+                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.amount')}</Th>
+                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.share')}</Th>
               </tr>
             </thead>
             <tbody>
@@ -555,43 +557,43 @@ const ReportsPage: React.FC = () => {
 
   // Payment Tab
   const renderPayment = () => {
-    if (loading) return <LoadingMessage>Loading payment data...</LoadingMessage>;
-    if (!paymentAnalysis) return <NoDataMessage>No data available</NoDataMessage>;
+    if (loading) return <LoadingMessage>{t('admin:reportsPage.loadingPaymentData')}</LoadingMessage>;
+    if (!paymentAnalysis) return <NoDataMessage>{t('admin:reportsPage.noDataAvailable')}</NoDataMessage>;
 
     return (
       <>
         <StatsGrid>
           <StatCard color="#DC2626">
             <StatValue>{paymentAnalysis.overdueCount}</StatValue>
-            <StatLabel>Overdue Invoices</StatLabel>
+            <StatLabel>{t('admin:reportsPage.overdueInvoices')}</StatLabel>
             <StatDescription>{formatCurrency(paymentAnalysis.overdueAmount, currency)}</StatDescription>
           </StatCard>
           <StatCard color="#635BFF">
             <StatValue>{paymentAnalysis.avgPaymentDays} days</StatValue>
-            <StatLabel>Avg Payment Time</StatLabel>
-            <StatDescription>Issue to payment</StatDescription>
+            <StatLabel>{t('admin:reportsPage.avgPaymentTime')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.issueToPayment')}</StatDescription>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{paymentAnalysis.awaitingCount}</StatValue>
-            <StatLabel>Awaiting Confirmation</StatLabel>
-            <StatDescription>Payment submitted</StatDescription>
+            <StatLabel>{t('admin:reportsPage.awaitingConfirmation')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.paymentSubmitted')}</StatDescription>
           </StatCard>
           <StatCard color="#059669">
             <StatValue>{formatCurrency(paymentAnalysis.thisMonthCollected, currency)}</StatValue>
-            <StatLabel>This Month Collected</StatLabel>
-            <StatDescription>Current month</StatDescription>
+            <StatLabel>{t('admin:reportsPage.thisMonthCollected')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.currentMonth')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
         <ChartGrid>
           <TableCard>
-            <ChartTitle>Payment Status Breakdown</ChartTitle>
+            <ChartTitle>{t('admin:reportsPage.paymentStatusBreakdown')}</ChartTitle>
             <Table>
               <thead>
                 <tr>
-                  <Th>Status</Th>
-                  <Th style={{ textAlign: 'right' }}>Count</Th>
-                  <Th style={{ textAlign: 'right' }}>Amount</Th>
+                  <Th>{t('admin:reportsPage.status')}</Th>
+                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.count')}</Th>
+                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.amount')}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -607,7 +609,7 @@ const ReportsPage: React.FC = () => {
           </TableCard>
 
           <ChartCard>
-            <ChartTitle>Payment Methods</ChartTitle>
+            <ChartTitle>{t('admin:reportsPage.paymentMethods')}</ChartTitle>
             {paymentAnalysis.paymentMethods.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -624,7 +626,7 @@ const ReportsPage: React.FC = () => {
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <NoDataMessage>No payment method data</NoDataMessage>}
+            ) : <NoDataMessage>{t('admin:reportsPage.noPaymentMethodData')}</NoDataMessage>}
           </ChartCard>
         </ChartGrid>
 
@@ -635,10 +637,10 @@ const ReportsPage: React.FC = () => {
               <thead>
                 <tr>
                   <Th>Invoice #</Th>
-                  <Th>Restaurant</Th>
-                  <Th style={{ textAlign: 'right' }}>Amount</Th>
-                  <Th>Due Date</Th>
-                  <Th style={{ textAlign: 'right' }}>Days Overdue</Th>
+                  <Th>{t('admin:reportsPage.restaurant')}</Th>
+                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.amount')}</Th>
+                  <Th>{t('admin:reportsPage.dueDate')}</Th>
+                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.daysOverdue')}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -663,37 +665,37 @@ const ReportsPage: React.FC = () => {
 
   // Customer Tab
   const renderCustomer = () => {
-    if (loading) return <LoadingMessage>Loading customer data...</LoadingMessage>;
-    if (!customerData) return <NoDataMessage>No data available</NoDataMessage>;
+    if (loading) return <LoadingMessage>{t('admin:reportsPage.loadingCustomerData')}</LoadingMessage>;
+    if (!customerData) return <NoDataMessage>{t('admin:reportsPage.noDataAvailable')}</NoDataMessage>;
 
     return (
       <>
         <StatsGrid>
           <StatCard color="#6366F1">
             <StatValue>{customerData.totalRestaurants}</StatValue>
-            <StatLabel>Total Restaurants</StatLabel>
-            <StatDescription>All registered</StatDescription>
+            <StatLabel>{t('admin:reportsPage.totalRestaurants')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.allRegistered')}</StatDescription>
           </StatCard>
           <StatCard color="#059669">
             <StatValue>{customerData.activeRestaurants}</StatValue>
-            <StatLabel>Active Restaurants</StatLabel>
-            <StatDescription>With invoices (3 months)</StatDescription>
+            <StatLabel>{t('admin:reportsPage.activeRestaurants')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.withInvoices3Months')}</StatDescription>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{customerData.newThisMonth}</StatValue>
-            <StatLabel>New This Month</StatLabel>
-            <StatDescription>Recently registered</StatDescription>
+            <StatLabel>{t('admin:reportsPage.newThisMonth')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.recentlyRegistered')}</StatDescription>
           </StatCard>
           <StatCard color="#F59E0B">
             <StatValue>{formatCurrency(customerData.arpu, currency)}</StatValue>
-            <StatLabel>ARPU</StatLabel>
-            <StatDescription>Avg revenue per restaurant</StatDescription>
+            <StatLabel>{t('admin:reportsPage.arpu')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.avgRevenuePerRestaurant')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
         <ChartGrid>
           <ChartCard>
-            <ChartTitle>Monthly Registration Trend</ChartTitle>
+            <ChartTitle>{t('admin:reportsPage.monthlyRegistrationTrend')}</ChartTitle>
             {customerData.registrationTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={customerData.registrationTrend}>
@@ -704,11 +706,11 @@ const ReportsPage: React.FC = () => {
                   <Bar dataKey="count" fill="#635BFF" radius={[4, 4, 0, 0]} name="New Restaurants" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <NoDataMessage>No registration data</NoDataMessage>}
+            ) : <NoDataMessage>{t('admin:reportsPage.noRegistrationData')}</NoDataMessage>}
           </ChartCard>
 
           <ChartCard>
-            <ChartTitle>Payer Type Distribution</ChartTitle>
+            <ChartTitle>{t('admin:reportsPage.payerTypeDistribution')}</ChartTitle>
             {customerData.payerDistribution.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -725,20 +727,20 @@ const ReportsPage: React.FC = () => {
                   <Tooltip formatter={(value: number) => formatCurrency(value, currency)} />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <NoDataMessage>No payer data</NoDataMessage>}
+            ) : <NoDataMessage>{t('admin:reportsPage.noPayerData')}</NoDataMessage>}
           </ChartCard>
         </ChartGrid>
 
         <TableCard>
-          <ChartTitle>Top 10 Restaurants by Revenue</ChartTitle>
+          <ChartTitle>{t('admin:reportsPage.top10RestaurantsByRevenue')}</ChartTitle>
           <Table>
             <thead>
               <tr>
                 <Th>#</Th>
-                <Th>Restaurant</Th>
-                <Th style={{ textAlign: 'right' }}>Total Revenue</Th>
-                <Th style={{ textAlign: 'right' }}>Invoices</Th>
-                <Th style={{ textAlign: 'right' }}>Overdue</Th>
+                <Th>{t('admin:reportsPage.restaurant')}</Th>
+                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.totalRevenue')}</Th>
+                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.invoices')}</Th>
+                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.overdue')}</Th>
               </tr>
             </thead>
             <tbody>
@@ -762,8 +764,8 @@ const ReportsPage: React.FC = () => {
 
   // Subscription Tab
   const renderSubscription = () => {
-    if (loading) return <LoadingMessage>Loading subscription data...</LoadingMessage>;
-    if (!subscriptionData) return <NoDataMessage>No data available</NoDataMessage>;
+    if (loading) return <LoadingMessage>{t('admin:reportsPage.loadingSubscriptionData')}</LoadingMessage>;
+    if (!subscriptionData) return <NoDataMessage>{t('admin:reportsPage.noDataAvailable')}</NoDataMessage>;
 
     const totalRevenue = subscriptionData.planDistribution.reduce((s, p) => s + p.monthlyRevenue, 0);
 
@@ -772,36 +774,36 @@ const ReportsPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#7C3AED">
             <StatValue>{subscriptionData.activePlans}</StatValue>
-            <StatLabel>Active Plans</StatLabel>
-            <StatDescription>Currently available</StatDescription>
+            <StatLabel>{t('admin:reportsPage.activePlans')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.currentlyAvailable')}</StatDescription>
           </StatCard>
           <StatCard color="#059669">
             <StatValue>{formatCurrency(subscriptionData.mrr, currency)}</StatValue>
-            <StatLabel>MRR</StatLabel>
-            <StatDescription>Monthly Recurring Revenue</StatDescription>
+            <StatLabel>{t('admin:reportsPage.mrr')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.monthlyRecurringRevenue')}</StatDescription>
           </StatCard>
           <StatCard color="#F59E0B">
             <StatValue>{formatCurrency(subscriptionData.arpu, currency)}</StatValue>
-            <StatLabel>ARPU</StatLabel>
-            <StatDescription>Avg per subscriber</StatDescription>
+            <StatLabel>{t('admin:reportsPage.arpu')}</StatLabel>
+            <StatDescription>{t('admin:reportsPage.avgPerSubscriber')}</StatDescription>
           </StatCard>
           <StatCard color="#635BFF">
             <StatValue style={{ fontSize: '16px' }}>{subscriptionData.mostPopularPlan}</StatValue>
-            <StatLabel>Most Popular</StatLabel>
+            <StatLabel>{t('admin:reportsPage.mostPopular')}</StatLabel>
             <StatDescription>{subscriptionData.activeSubscribers} subscribers</StatDescription>
           </StatCard>
         </StatsGrid>
 
         <ChartGrid>
           <TableCard>
-            <ChartTitle>Plan Revenue Breakdown</ChartTitle>
+            <ChartTitle>{t('admin:reportsPage.planRevenueBreakdown')}</ChartTitle>
             <Table>
               <thead>
                 <tr>
-                  <Th>Plan</Th>
-                  <Th style={{ textAlign: 'right' }}>Subscribers</Th>
-                  <Th style={{ textAlign: 'right' }}>Monthly Revenue</Th>
-                  <Th style={{ textAlign: 'right' }}>Share</Th>
+                  <Th>{t('admin:reportsPage.plan')}</Th>
+                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.subscribers')}</Th>
+                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.monthlyRevenue')}</Th>
+                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.share')}</Th>
                 </tr>
               </thead>
               <tbody>
@@ -816,14 +818,14 @@ const ReportsPage: React.FC = () => {
                   </tr>
                 ))}
                 {subscriptionData.planDistribution.length === 0 && (
-                  <tr><Td colSpan={4} style={{ textAlign: 'center', color: '#9CA3AF' }}>No subscription data yet</Td></tr>
+                  <tr><Td colSpan={4} style={{ textAlign: 'center', color: '#9CA3AF' }}>{t('admin:reportsPage.noSubscriptionDataYet')}</Td></tr>
                 )}
               </tbody>
             </Table>
           </TableCard>
 
           <ChartCard>
-            <ChartTitle>Plan Distribution</ChartTitle>
+            <ChartTitle>{t('admin:reportsPage.planDistribution')}</ChartTitle>
             {subscriptionData.planDistribution.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -840,7 +842,7 @@ const ReportsPage: React.FC = () => {
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <NoDataMessage>No plan data</NoDataMessage>}
+            ) : <NoDataMessage>{t('admin:reportsPage.noPlanData')}</NoDataMessage>}
           </ChartCard>
         </ChartGrid>
       </>
@@ -851,18 +853,18 @@ const ReportsPage: React.FC = () => {
     <>
       <ReportsContainer>
         <Header>
-          <HeaderTitle>Reports</HeaderTitle>
+          <HeaderTitle>{t('admin:reportsPage.reports')}</HeaderTitle>
           <HeaderActions>
-            <ExportButton onClick={handleExport}>Export CSV</ExportButton>
+            <ExportButton onClick={handleExport}>{t('admin:reportsPage.exportCsv')}</ExportButton>
           </HeaderActions>
         </Header>
 
         <Content>
           <Tabs>
-            <Tab active={activeTab === 'revenue'} onClick={() => handleTabChange('revenue')}>Revenue</Tab>
-            <Tab active={activeTab === 'payment'} onClick={() => handleTabChange('payment')}>Payment</Tab>
-            <Tab active={activeTab === 'customer'} onClick={() => handleTabChange('customer')}>Customer</Tab>
-            <Tab active={activeTab === 'subscription'} onClick={() => handleTabChange('subscription')}>Subscription</Tab>
+            <Tab active={activeTab === 'revenue'} onClick={() => handleTabChange('revenue')}>{t('admin:reportsPage.revenue')}</Tab>
+            <Tab active={activeTab === 'payment'} onClick={() => handleTabChange('payment')}>{t('admin:reportsPage.payment')}</Tab>
+            <Tab active={activeTab === 'customer'} onClick={() => handleTabChange('customer')}>{t('admin:reportsPage.customer')}</Tab>
+            <Tab active={activeTab === 'subscription'} onClick={() => handleTabChange('subscription')}>{t('admin:reportsPage.subscription')}</Tab>
           </Tabs>
 
           <DatePeriodFilter

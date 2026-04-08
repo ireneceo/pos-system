@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Invoice, CURRENCY_CONFIG } from './types';
 import InvoiceStatusBadge from './InvoiceStatusBadge';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   isOpen: boolean;
@@ -242,6 +243,7 @@ const PaymentConfirmModal: React.FC<Props> = ({
   onConfirm,
   onReject
 }) => {
+  const { t } = useTranslation('common');
   const [activeTab, setActiveTab] = useState<'confirm' | 'reject'>('confirm');
   const [notes, setNotes] = useState('');
   const [rejectReason, setRejectReason] = useState('');

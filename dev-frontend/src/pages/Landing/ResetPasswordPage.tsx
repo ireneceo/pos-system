@@ -3,8 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Helmet } from 'react-helmet-async';
 import { LandingLayout } from '../../components/Landing';
+import { useTranslation } from 'react-i18next';
 
 const ResetPasswordPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
   const email = searchParams.get('email') || '';
@@ -18,11 +20,13 @@ const ResetPasswordPage: React.FC = () => {
 
   // Invalid link state
   if (!token || !email) {
-    return (
+  // useTranslation moved to component level
+
+  return (
       <LandingLayout>
-        <Helmet><title>Reset Password - PurpleHere</title></Helmet>
+        <Helmet><title>{t('landing:resetPasswordPage.resetPasswordPurplehere')}</title></Helmet>
         <HeroSection>
-          <HeroTitle>Reset Your Password</HeroTitle>
+          <HeroTitle>{t('landing:resetPasswordPage.resetYourPassword')}</HeroTitle>
         </HeroSection>
         <ContentSection>
           <Card>
@@ -33,11 +37,11 @@ const ResetPasswordPage: React.FC = () => {
                 <line x1="9" y1="9" x2="15" y2="15" />
               </svg>
             </ErrorIcon>
-            <CardTitle>Invalid Reset Link</CardTitle>
+            <CardTitle>{t('landing:resetPasswordPage.invalidResetLink')}</CardTitle>
             <CardDescription>
-              This password reset link is invalid or incomplete. Please request a new one.
+              {t('landing:resetPasswordPage.thisPasswordResetLinkIsInvalidOrIncomple')}
             </CardDescription>
-            <CenterLink to="/forgot-password">Request New Reset Link</CenterLink>
+            <CenterLink to="/forgot-password">{t('landing:resetPasswordPage.requestNewResetLink')}</CenterLink>
           </Card>
         </ContentSection>
       </LandingLayout>
@@ -84,11 +88,11 @@ const ResetPasswordPage: React.FC = () => {
 
   return (
     <LandingLayout>
-      <Helmet><title>Reset Password - PurpleHere</title></Helmet>
+      <Helmet><title>{t('landing:resetPasswordPage.resetPasswordPurplehere')}</title></Helmet>
 
       <HeroSection>
-        <HeroTitle>Reset Your Password</HeroTitle>
-        <HeroSubtitle>Create a new password for your account</HeroSubtitle>
+        <HeroTitle>{t('landing:resetPasswordPage.resetYourPassword')}</HeroTitle>
+        <HeroSubtitle>{t('landing:resetPasswordPage.createANewPasswordForYourAccount')}</HeroSubtitle>
       </HeroSection>
 
       <ContentSection>
@@ -101,11 +105,11 @@ const ResetPasswordPage: React.FC = () => {
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
               </SuccessIcon>
-              <SuccessTitle>Password Reset Complete</SuccessTitle>
+              <SuccessTitle>{t('landing:resetPasswordPage.passwordResetComplete')}</SuccessTitle>
               <SuccessDescription>
-                Your password has been updated successfully. You can now sign in with your new password.
+                {t('landing:resetPasswordPage.yourPasswordHasBeenUpdatedSuccessfullyYo')}
               </SuccessDescription>
-              <CenterLink to="/pos">Sign In</CenterLink>
+              <CenterLink to="/pos">{t('landing:resetPasswordPage.signIn')}</CenterLink>
             </SuccessState>
           ) : (
             <>
@@ -115,16 +119,16 @@ const ResetPasswordPage: React.FC = () => {
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
               </CardIcon>
-              <CardTitle>Create new password</CardTitle>
+              <CardTitle>{t('landing:resetPasswordPage.createNewPassword')}</CardTitle>
               <CardDescription>
-                Enter a new password for <strong>{email}</strong>
+                {t('landing:resetPasswordPage.enterANewPasswordFor')}<strong>{email}</strong>
               </CardDescription>
 
               {error && <ErrorMessage>{error}</ErrorMessage>}
 
               <Form onSubmit={handleSubmit}>
                 <FormGroup>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel>{t('landing:resetPasswordPage.newPassword')}</FormLabel>
                   <PasswordWrapper>
                     <FormInput
                       type={showPassword ? 'text' : 'password'}
@@ -140,7 +144,7 @@ const ResetPasswordPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormLabel>{t('landing:resetPasswordPage.confirmNewPassword')}</FormLabel>
                   <FormInput
                     type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
@@ -159,7 +163,7 @@ const ResetPasswordPage: React.FC = () => {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M15 18l-6-6 6-6" />
                   </svg>
-                  Back to Sign In
+                  {t('landing:resetPasswordPage.backToSignIn')}
                 </Link>
               </BackLink>
             </>

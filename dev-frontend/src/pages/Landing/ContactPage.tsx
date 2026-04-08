@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -288,6 +289,7 @@ interface CompanyInfo {
 }
 
 const ContactPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const location = useLocation();
   const navState = location.state as { inquiry_type?: string; interested_plan?: string } | null;
 
@@ -362,7 +364,6 @@ const ContactPage: React.FC = () => {
       setSubmitting(false);
     }
   };
-
   return (
     <LandingLayout>
       <SEOHead
@@ -373,27 +374,27 @@ const ContactPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>Get in Touch</HeroTitle>
+          <HeroTitle>{t('landing:contactPage.getInTouch')}</HeroTitle>
           <HeroSubtitle>
-            Our team is here to help you get started with PurpleHere POS
+            {t('landing:contactPage.ourTeamIsHereToHelpYouGetStartedWithPurp')}
           </HeroSubtitle>
         </HeroSection>
 
         <ContentSection>
           <ContactGrid>
             <FormSection>
-              <FormTitle>Send us a message</FormTitle>
+              <FormTitle>{t('landing:contactPage.sendUsAMessage')}</FormTitle>
 
               {success ? (
                 <SuccessMessage>
-                  Thank you for your message! We'll get back to you within 24 hours.
+                  {t('landing:contactPage.thankYouForYourMessageWellGetBackToYouWi')}
                 </SuccessMessage>
               ) : (
                 <Form onSubmit={handleSubmit}>
                   {error && <ErrorMessage>{error}</ErrorMessage>}
 
                   <FormGroup>
-                    <Label>Name<Required>*</Required></Label>
+                    <Label>{t('landing:contactPage.name')}<Required>*</Required></Label>
                     <Input
                       type="text"
                       name="name"
@@ -405,7 +406,7 @@ const ContactPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Email<Required>*</Required></Label>
+                    <Label>{t('landing:contactPage.email')}<Required>*</Required></Label>
                     <Input
                       type="email"
                       name="email"
@@ -417,7 +418,7 @@ const ContactPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Phone</Label>
+                    <Label>{t('landing:contactPage.phone')}</Label>
                     <PhoneInput
                       value={formData.phone}
                       onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
@@ -425,7 +426,7 @@ const ContactPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Company Name</Label>
+                    <Label>{t('landing:contactPage.companyName')}</Label>
                     <Input
                       type="text"
                       name="company_name"
@@ -436,48 +437,48 @@ const ContactPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Inquiry Type<Required>*</Required></Label>
+                    <Label>{t('landing:contactPage.inquiryType')}<Required>*</Required></Label>
                     <Select
                       name="inquiry_type"
                       value={formData.inquiry_type}
                       onChange={handleChange}
                       required
                     >
-                      <option value="">Select inquiry type...</option>
-                      <option value="free_trial">Start Free Trial (7 days free)</option>
-                      <option value="pricing">Pricing Inquiry</option>
-                      <option value="demo">Request Demo</option>
-                      <option value="support">Technical Support</option>
-                      <option value="partnership">Partnership</option>
-                      <option value="other">Other</option>
+                      <option value="">{t('landing:contactPage.selectInquiryType')}</option>
+                      <option value="free_trial">{t('landing:contactPage.startFreeTrial7DaysFree')}</option>
+                      <option value="pricing">{t('landing:contactPage.pricingInquiry')}</option>
+                      <option value="demo">{t('landing:contactPage.requestDemo')}</option>
+                      <option value="support">{t('landing:contactPage.technicalSupport')}</option>
+                      <option value="partnership">{t('landing:contactPage.partnership')}</option>
+                      <option value="other">{t('landing:contactPage.other')}</option>
                     </Select>
                   </FormGroup>
 
                   {formData.inquiry_type === 'free_trial' && (
                     <>
                       <FormGroup>
-                        <Label>Interested Plan<Required>*</Required></Label>
+                        <Label>{t('landing:contactPage.interestedPlan')}<Required>*</Required></Label>
                         <Select
                           name="interested_plan"
                           value={formData.interested_plan}
                           onChange={handleChange}
                           required
                         >
-                          <option value="">Select a plan...</option>
-                          <option value="restaurant_basic">Restaurant - Basic</option>
-                          <option value="restaurant_professional">Restaurant - Professional</option>
-                          <option value="restaurant_enterprise">Restaurant - Enterprise</option>
-                          <option value="brand_basic">Brand - Basic</option>
-                          <option value="brand_professional">Brand - Professional</option>
-                          <option value="brand_enterprise">Brand - Enterprise</option>
-                          <option value="foodcourt_basic">Foodcourt - Basic</option>
-                          <option value="foodcourt_professional">Foodcourt - Professional</option>
-                          <option value="foodcourt_enterprise">Foodcourt - Enterprise</option>
+                          <option value="">{t('landing:contactPage.selectAPlan')}</option>
+                          <option value="restaurant_basic">{t('landing:contactPage.restaurantBasic')}</option>
+                          <option value="restaurant_professional">{t('landing:contactPage.restaurantProfessional')}</option>
+                          <option value="restaurant_enterprise">{t('landing:contactPage.restaurantEnterprise')}</option>
+                          <option value="brand_basic">{t('landing:contactPage.brandBasic')}</option>
+                          <option value="brand_professional">{t('landing:contactPage.brandProfessional')}</option>
+                          <option value="brand_enterprise">{t('landing:contactPage.brandEnterprise')}</option>
+                          <option value="foodcourt_basic">{t('landing:contactPage.foodcourtBasic')}</option>
+                          <option value="foodcourt_professional">{t('landing:contactPage.foodcourtProfessional')}</option>
+                          <option value="foodcourt_enterprise">{t('landing:contactPage.foodcourtEnterprise')}</option>
                         </Select>
                       </FormGroup>
 
                       <FormGroup>
-                        <Label>Preferred Username<Required>*</Required></Label>
+                        <Label>{t('landing:contactPage.preferredUsername')}<Required>*</Required></Label>
                         <Input
                           type="text"
                           name="preferred_username"
@@ -488,7 +489,7 @@ const ContactPage: React.FC = () => {
                           pattern="^[a-zA-Z0-9_]+$"
                         />
                         <small style={{ color: '#6B7C93', fontSize: '12px' }}>
-                          This will be your login ID. Only letters, numbers, and underscores allowed.
+                          {t('landing:contactPage.thisWillBeYourLoginIdOnlyLettersNumbersA')}
                         </small>
                       </FormGroup>
                     </>
@@ -496,29 +497,29 @@ const ContactPage: React.FC = () => {
 
                   {formData.inquiry_type && formData.inquiry_type !== 'free_trial' && (
                     <FormGroup>
-                      <Label>Interested Plan</Label>
+                      <Label>{t('landing:contactPage.interestedPlan')}</Label>
                       <Select
                         name="interested_plan"
                         value={formData.interested_plan}
                         onChange={handleChange}
                       >
-                        <option value="">Select a plan...</option>
-                        <option value="restaurant_basic">Restaurant - Basic</option>
-                        <option value="restaurant_professional">Restaurant - Professional</option>
-                        <option value="restaurant_enterprise">Restaurant - Enterprise</option>
-                        <option value="brand_basic">Brand - Basic</option>
-                        <option value="brand_professional">Brand - Professional</option>
-                        <option value="brand_enterprise">Brand - Enterprise</option>
-                        <option value="foodcourt_basic">Foodcourt - Basic</option>
-                        <option value="foodcourt_professional">Foodcourt - Professional</option>
-                        <option value="foodcourt_enterprise">Foodcourt - Enterprise</option>
-                        <option value="other">Other / Not sure yet</option>
+                        <option value="">{t('landing:contactPage.selectAPlan')}</option>
+                        <option value="restaurant_basic">{t('landing:contactPage.restaurantBasic')}</option>
+                        <option value="restaurant_professional">{t('landing:contactPage.restaurantProfessional')}</option>
+                        <option value="restaurant_enterprise">{t('landing:contactPage.restaurantEnterprise')}</option>
+                        <option value="brand_basic">{t('landing:contactPage.brandBasic')}</option>
+                        <option value="brand_professional">{t('landing:contactPage.brandProfessional')}</option>
+                        <option value="brand_enterprise">{t('landing:contactPage.brandEnterprise')}</option>
+                        <option value="foodcourt_basic">{t('landing:contactPage.foodcourtBasic')}</option>
+                        <option value="foodcourt_professional">{t('landing:contactPage.foodcourtProfessional')}</option>
+                        <option value="foodcourt_enterprise">{t('landing:contactPage.foodcourtEnterprise')}</option>
+                        <option value="other">{t('landing:contactPage.otherNotSureYet')}</option>
                       </Select>
                     </FormGroup>
                   )}
 
                   <FormGroup>
-                    <Label>Message<Required>*</Required></Label>
+                    <Label>{t('landing:contactPage.message')}<Required>*</Required></Label>
                     <TextArea
                       name="message"
                       value={formData.message}
@@ -537,13 +538,13 @@ const ContactPage: React.FC = () => {
 
             <InfoSection>
               <InfoCard>
-                <InfoTitle>Contact Information</InfoTitle>
+                <InfoTitle>{t('landing:contactPage.contactInformation')}</InfoTitle>
                 {companyInfo ? (
                   <>
                     <ContactItem>
                       <ContactIcon>@</ContactIcon>
                       <ContactDetails>
-                        <ContactLabel>Email</ContactLabel>
+                        <ContactLabel>{t('landing:contactPage.email')}</ContactLabel>
                         <ContactValue>
                           <ClickableLink href={`mailto:${companyInfo.email}`}>
                             {companyInfo.email}
@@ -554,7 +555,7 @@ const ContactPage: React.FC = () => {
                     <ContactItem>
                       <ContactIcon>#</ContactIcon>
                       <ContactDetails>
-                        <ContactLabel>Phone</ContactLabel>
+                        <ContactLabel>{t('landing:contactPage.phone')}</ContactLabel>
                         <ContactValue>
                           <ClickableLink href={`tel:${companyInfo.phone.replace(/[^+\d]/g, '')}`}>
                             {companyInfo.phone}
@@ -565,7 +566,7 @@ const ContactPage: React.FC = () => {
                     <ContactItem>
                       <ContactIcon>W</ContactIcon>
                       <ContactDetails>
-                        <ContactLabel>WhatsApp</ContactLabel>
+                        <ContactLabel>{t('landing:contactPage.whatsapp')}</ContactLabel>
                         <ContactValue>
                           <ClickableLink
                             href={`https://wa.me/${companyInfo.whatsapp.replace(/[^+\d]/g, '')}`}
@@ -579,49 +580,49 @@ const ContactPage: React.FC = () => {
                     </ContactItem>
                   </>
                 ) : (
-                  <ContactValue style={{ color: '#9CA3AF' }}>Loading...</ContactValue>
+                  <ContactValue style={{ color: '#9CA3AF' }}>{t('landing:contactPage.loading')}</ContactValue>
                 )}
               </InfoCard>
 
               <InfoCard>
-                <InfoTitle>Business Hours</InfoTitle>
+                <InfoTitle>{t('landing:contactPage.businessHours')}</InfoTitle>
                 {companyInfo ? (
                   <>
                     <ContactItem>
                       <ContactIcon>~</ContactIcon>
                       <ContactDetails>
-                        <ContactLabel>Monday - Friday</ContactLabel>
+                        <ContactLabel>{t('landing:contactPage.mondayFriday')}</ContactLabel>
                         <ContactValue>{companyInfo.business_hours?.weekdays || 'N/A'}</ContactValue>
                       </ContactDetails>
                     </ContactItem>
                     <ContactItem>
                       <ContactIcon>~</ContactIcon>
                       <ContactDetails>
-                        <ContactLabel>Saturday - Sunday</ContactLabel>
+                        <ContactLabel>{t('landing:contactPage.saturdaySunday')}</ContactLabel>
                         <ContactValue>{companyInfo.business_hours?.weekend || 'N/A'}</ContactValue>
                       </ContactDetails>
                     </ContactItem>
                   </>
                 ) : (
-                  <ContactValue style={{ color: '#9CA3AF' }}>Loading...</ContactValue>
+                  <ContactValue style={{ color: '#9CA3AF' }}>{t('landing:contactPage.loading')}</ContactValue>
                 )}
               </InfoCard>
 
               <InfoCard>
-                <InfoTitle>Free Trial</InfoTitle>
+                <InfoTitle>{t('landing:contactPage.freeTrial')}</InfoTitle>
                 <p style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.6', marginBottom: '12px' }}>
-                  Try PurpleHere POS free for <strong style={{ color: '#635BFF' }}>7 days</strong> with full access to all features.
+                  {t('landing:contactPage.tryPurpleherePosFreeFor')}<strong style={{ color: '#635BFF' }}>7 days</strong> with full access to all features.
                   No credit card required.
                 </p>
                 <ul style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.8', margin: 0, paddingLeft: '20px' }}>
-                  <li>Full feature access</li>
-                  <li>Dedicated onboarding support</li>
-                  <li>No commitment, cancel anytime</li>
+                  <li>{t('landing:contactPage.fullFeatureAccess')}</li>
+                  <li>{t('landing:contactPage.dedicatedOnboardingSupport')}</li>
+                  <li>{t('landing:contactPage.noCommitmentCancelAnytime')}</li>
                 </ul>
               </InfoCard>
 
               <InfoCard>
-                <InfoTitle>Response Time</InfoTitle>
+                <InfoTitle>{t('landing:contactPage.responseTime')}</InfoTitle>
                 <p style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.6' }}>
                   We typically respond to all inquiries within 24 hours during business days.
                   For urgent matters, please call us directly.

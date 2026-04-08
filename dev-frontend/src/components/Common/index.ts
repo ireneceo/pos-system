@@ -18,3 +18,6 @@ export * from './Modal';
 // Setup Guide
 export { default as SetupGuide } from './SetupGuide';
 export type { SetupItem } from './SetupGuide';
+
+// Language
+export { default as LanguageSelector } from './LanguageSelector';

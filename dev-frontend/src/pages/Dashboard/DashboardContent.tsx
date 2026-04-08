@@ -5,6 +5,7 @@ import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardSta
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -369,6 +370,7 @@ interface SystemAlert {
 }
 
 const DashboardContent: React.FC = () => {
+  const { t } = useTranslation('dashboard');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [stats, setStats] = React.useState({
@@ -567,10 +569,10 @@ const DashboardContent: React.FC = () => {
     return (
       <Container>
         <Header>
-          <Title>System Admin Dashboard</Title>
+          <Title>{t('dashboard:dashboardContent.systemAdminDashboard')}</Title>
         </Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px' }}>Loading dashboard...</div>
+          <div style={{ textAlign: 'center', padding: '40px' }}>{t('dashboard:dashboardContent.loadingDashboard')}</div>
         </Content>
       </Container>
     );
@@ -579,10 +581,10 @@ const DashboardContent: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>System Admin Dashboard</Title>
+        <Title>{t('dashboard:dashboardContent.systemAdminDashboard')}</Title>
         <Subtitle>
           <span>{user?.full_name || 'Admin'}</span>
-          <RoleBadge>System Admin</RoleBadge>
+          <RoleBadge>{t('dashboard:dashboardContent.systemAdmin')}</RoleBadge>
         </Subtitle>
       </Header>
 
@@ -590,42 +592,42 @@ const DashboardContent: React.FC = () => {
         {/* Statistics Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#F59E0B">
-            <DashboardStatLabel>Today's Sales</DashboardStatLabel>
+            <DashboardStatLabel>{t('dashboard:dashboardContent.todaysSales')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(stats.todaySales, selectedCurrency)}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard color="#2563EB">
-            <DashboardStatLabel>Today's Orders</DashboardStatLabel>
+            <DashboardStatLabel>{t('dashboard:dashboardContent.todaysOrders')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalOrders}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard color="#DC2626">
-            <DashboardStatLabel>Pending Orders</DashboardStatLabel>
+            <DashboardStatLabel>{t('dashboard:dashboardContent.pendingOrders')}</DashboardStatLabel>
             <DashboardStatValue>{stats.pendingOrders}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard color="#7C3AED">
-            <DashboardStatLabel>Managers / Restaurants</DashboardStatLabel>
+            <DashboardStatLabel>{t('dashboard:dashboardContent.managersRestaurants')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalManagers} / {stats.totalRestaurants}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard color="#10B981">
-            <DashboardStatLabel>Active Subscriptions</DashboardStatLabel>
+            <DashboardStatLabel>{t('dashboard:dashboardContent.activeSubscriptions')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalSubscriptions}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard color="#059669">
-            <DashboardStatLabel>Total Invoices</DashboardStatLabel>
+            <DashboardStatLabel>{t('dashboard:dashboardContent.totalInvoices')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalInvoices}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard color="#6366F1">
-            <DashboardStatLabel>Total Staff</DashboardStatLabel>
+            <DashboardStatLabel>{t('dashboard:dashboardContent.totalStaff')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalStaff}</DashboardStatValue>
           </DashboardStatCard>
 
           <DashboardStatCard color={stats.openTickets > 0 ? "#EF4444" : "#059669"}>
-            <DashboardStatLabel>Open Support Tickets</DashboardStatLabel>
+            <DashboardStatLabel>{t('dashboard:dashboardContent.openSupportTickets')}</DashboardStatLabel>
             <DashboardStatValue>{stats.openTickets}</DashboardStatValue>
           </DashboardStatCard>
         </DashboardStatsGrid>
@@ -633,33 +635,33 @@ const DashboardContent: React.FC = () => {
         {/* Chart + Notifications */}
         <MainGrid>
           <ChartContainer>
-            <h3>Platform Overview</h3>
+            <h3>{t('dashboard:dashboardContent.platformOverview')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Restaurants</div>
+                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.restaurants')}</div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalRestaurants}</div>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Registered restaurants</div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('dashboard:dashboardContent.registeredRestaurants')}</div>
               </div>
               <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Managers</div>
+                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.managers')}</div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalManagers}</div>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Active managers</div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('dashboard:dashboardContent.activeManagers')}</div>
               </div>
               <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Subscriptions</div>
+                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.subscriptions')}</div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalSubscriptions}</div>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Active plans</div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('dashboard:dashboardContent.activePlans')}</div>
               </div>
               <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Staff</div>
+                <div style={{ fontSize: '12px', color: '#6B7C93', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>{t('dashboard:dashboardContent.staff')}</div>
                 <div style={{ fontSize: '28px', fontWeight: 700, color: '#0A2540' }}>{stats.totalStaff}</div>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>Registered staff</div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('dashboard:dashboardContent.registeredStaff')}</div>
               </div>
             </div>
           </ChartContainer>
 
           <AlertsPanel>
-            <h3>Notifications</h3>
+            <h3>{t('dashboard:dashboardContent.notifications')}</h3>
             <AlertsList>
               {systemAlerts.length > 0 ? (
                 systemAlerts.map((alert, index) => (
@@ -673,8 +675,8 @@ const DashboardContent: React.FC = () => {
               ) : (
                 <Alert type="success" onClick={() => {}}>
                   <AlertContent>
-                    <AlertTitle type="success">All Clear</AlertTitle>
-                    <AlertDescription>No new activities. All systems running smoothly.</AlertDescription>
+                    <AlertTitle type="success">{t('dashboard:dashboardContent.allClear')}</AlertTitle>
+                    <AlertDescription>{t('dashboard:dashboardContent.noNewActivitiesAllSystemsRunningSmoothly')}</AlertDescription>
                   </AlertContent>
                 </Alert>
               )}
@@ -682,7 +684,7 @@ const DashboardContent: React.FC = () => {
               {badgeCounts.notices > 0 && (
                 <Alert type="info" onClick={() => navigate('/pos/admin/notices')}>
                   <AlertContent>
-                    <AlertTitle type="info">Unread Notices</AlertTitle>
+                    <AlertTitle type="info">{t('dashboard:dashboardContent.unreadNotices')}</AlertTitle>
                     <AlertDescription>{badgeCounts.notices} unread notice(s)</AlertDescription>
                   </AlertContent>
                 </Alert>
@@ -691,7 +693,7 @@ const DashboardContent: React.FC = () => {
               {badgeCounts.systemInquiry > 0 && (
                 <Alert type="info" onClick={() => navigate('/pos/admin/system-inquiry')}>
                   <AlertContent>
-                    <AlertTitle type="info">System Inquiry Updates</AlertTitle>
+                    <AlertTitle type="info">{t('dashboard:dashboardContent.systemInquiryUpdates')}</AlertTitle>
                     <AlertDescription>{badgeCounts.systemInquiry} inquiry(s) with new replies</AlertDescription>
                   </AlertContent>
                 </Alert>
@@ -702,46 +704,46 @@ const DashboardContent: React.FC = () => {
 
         {/* Quick Actions */}
         <QuickActionsSection>
-          <h3>Quick Actions</h3>
+          <h3>{t('dashboard:dashboardContent.quickActions')}</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/admin/restaurants')}>
               <div className="icon">◐</div>
-              <div className="title">Restaurants</div>
-              <div className="description">Manage all restaurants</div>
+              <div className="title">{t('dashboard:dashboardContent.restaurants')}</div>
+              <div className="description">{t('dashboard:dashboardContent.manageAllRestaurants')}</div>
             </QuickActionCard>
 
             <QuickActionCard onClick={() => navigate('/pos/admin/invoices')}>
               <div className="icon">▦</div>
-              <div className="title">Invoices</div>
-              <div className="description">Invoice management</div>
+              <div className="title">{t('dashboard:dashboardContent.invoices')}</div>
+              <div className="description">{t('dashboard:dashboardContent.invoiceManagement')}</div>
             </QuickActionCard>
 
             <QuickActionCard onClick={() => navigate('/pos/admin/notices')}>
               <div className="icon">◈</div>
-              <div className="title">Notices</div>
-              <div className="description">Communication hub</div>
+              <div className="title">{t('dashboard:dashboardContent.notices')}</div>
+              <div className="description">{t('dashboard:dashboardContent.communicationHub')}</div>
             </QuickActionCard>
 
             <QuickActionCard onClick={() => navigate('/pos/admin/report')}>
               <div className="icon">☰</div>
-              <div className="title">Report</div>
-              <div className="description">Platform analytics</div>
+              <div className="title">{t('dashboard:dashboardContent.report')}</div>
+              <div className="description">{t('dashboard:dashboardContent.platformAnalytics')}</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>
 
         {/* Recent Orders Table */}
         <RecentOrdersSection>
-          <h3>Recent Orders</h3>
+          <h3>{t('dashboard:dashboardContent.recentOrders')}</h3>
         </RecentOrdersSection>
         <TableContainer>
           <Table>
             <Thead>
               <Tr>
-                <Th>Order</Th>
-                <Th>Items</Th>
-                <Th>Status</Th>
-                <Th>Time</Th>
+                <Th>{t('dashboard:dashboardContent.order')}</Th>
+                <Th>{t('dashboard:dashboardContent.items')}</Th>
+                <Th>{t('dashboard:dashboardContent.status')}</Th>
+                <Th>{t('dashboard:dashboardContent.time')}</Th>
               </Tr>
             </Thead>
             <Tbody>

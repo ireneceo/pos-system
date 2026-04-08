@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useMenu } from '../../contexts/MenuContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -364,6 +365,7 @@ interface OptionGroup {
 type OptionItem = { id: string; name: string; price: number; ingredient_id?: number | null; ingredient_quantity?: number; ingredient_name?: string; ingredient_unit?: string };
 
 const OptionManagementPage: React.FC = () => {
+  const { t } = useTranslation('menu');
   const { optionGroups, addOptionGroup, updateOptionGroup, deleteOptionGroup } = useMenu();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -496,7 +498,7 @@ const OptionManagementPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <HeaderTitle>Options</HeaderTitle>
+          <HeaderTitle>{t('menu:optionManagementPage.options')}</HeaderTitle>
           <HeaderActions>
             <Button onClick={() => handleOpenModal()}>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -511,7 +513,7 @@ const OptionManagementPage: React.FC = () => {
           {optionGroups.length === 0 ? (
             <EmptyState>
               <EmptyIcon>⚙️</EmptyIcon>
-              <EmptyTitle>No option groups yet</EmptyTitle>
+              <EmptyTitle>{t('menu:optionManagementPage.noOptionGroupsYet')}</EmptyTitle>
               <EmptyDescription>
                 Create your first option group to add customizable options to your menu items
               </EmptyDescription>
@@ -589,7 +591,7 @@ const OptionManagementPage: React.FC = () => {
           }
         >
           <FormGroup>
-            <Label>Group Name</Label>
+            <Label>{t('menu:optionManagementPage.groupName')}</Label>
             <Input
               type="text"
               value={formData.name}
@@ -600,7 +602,7 @@ const OptionManagementPage: React.FC = () => {
           </FormGroup>
 
           <FormGroup>
-            <Label>Selection Type</Label>
+            <Label>{t('menu:optionManagementPage.selectionType')}</Label>
             <CheckboxGroup>
               <CheckboxLabel>
                 <Checkbox
@@ -622,7 +624,7 @@ const OptionManagementPage: React.FC = () => {
           </FormGroup>
 
           <FormGroup>
-            <Label>Add Option</Label>
+            <Label>{t('menu:optionManagementPage.addOption')}</Label>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
               <Input
                 type="text"
@@ -654,7 +656,7 @@ const OptionManagementPage: React.FC = () => {
                 onChange={(e) => setNewOption({ ...newOption, ingredient_id: e.target.value ? Number(e.target.value) : null })}
                 style={{ flex: 2, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: newOption.ingredient_id ? '#0A2540' : '#9CA3AF' }}
               >
-                <option value="">Linked ingredient (optional)</option>
+                <option value="">{t('menu:optionManagementPage.linkedIngredientOptional')}</option>
                 {ingredients.map(ing => (
                   <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>
                 ))}
@@ -704,7 +706,7 @@ const OptionManagementPage: React.FC = () => {
             </>
           }
         >
-          <p>Are you sure you want to delete this option group? This action cannot be undone.</p>
+          <p>{t('menu:optionManagementPage.areYouSureYouWantToDeleteThisOptionGroupThisActionCannotBeUndone')}</p>
         </Modal>
       </Container>
     </>

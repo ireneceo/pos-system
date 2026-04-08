@@ -65,9 +65,10 @@ export function useSetupStatus(params: UseSetupStatusParams) {
         const headers = getAuthHeaders();
 
         if ((role === 'Restaurant Admin' || role === 'Staff') && restaurantId) {
-          const [companyRes, settingsRes, menuRes, kitchenStationsRes, notificationRes] = await Promise.all([
+          const [companyRes, settingsRes, categoriesRes, menuRes, kitchenStationsRes, notificationRes] = await Promise.all([
             fetch(`/api/restaurants/${restaurantId}/company-info`, { headers }),
             fetch(`/api/restaurants/${restaurantId}`, { headers }),
+            fetch(`/api/categories?restaurantId=${restaurantId}`, { headers }),
             fetch(`/api/menu?restaurant_id=${restaurantId}&excludeImage=true`, { headers }),
             fetch(`/api/kitchen-stations?restaurant_id=${restaurantId}`, { headers }),
             fetch(`/api/notification-settings/preferences`, { headers })
@@ -75,6 +76,7 @@ export function useSetupStatus(params: UseSetupStatusParams) {
 
           let companyData: CompanyData | null = null;
           let settingsData: RestaurantSettingsData | null = null;
+          let categoryCount = 0;
           let menuItemCount = 0;
           let kitchenStationCount = 0;
           let hasNotificationSettings = false;
@@ -86,6 +88,11 @@ export function useSetupStatus(params: UseSetupStatusParams) {
           if (settingsRes.ok) {
             const result = await settingsRes.json();
             settingsData = result.data || result;
+          }
+          if (categoriesRes.ok) {
+            const result = await categoriesRes.json();
+            const cats = result.data || [];
+            categoryCount = Array.isArray(cats) ? cats.length : 0;
           }
           if (menuRes.ok) {
             const result = await menuRes.json();
@@ -114,7 +121,10 @@ export function useSetupStatus(params: UseSetupStatusParams) {
           // 3. Operating Hours: explicitly set (not empty)
           const hasHours = !!(opSettings?.openingTime && opSettings?.closingTime);
 
-          // 4. Menu Items: at least 1
+          // 4. Categories: at least 1
+          const hasCategories = categoryCount > 0;
+
+          // 5. Menu Items: at least 1
           const hasMenu = menuItemCount > 0;
 
           // 5. Payment Methods: at least 1 POS payment method enabled
@@ -170,6 +180,13 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               description: 'Configure opening/closing times for your restaurant',
               path: `/restaurant/${restaurantId}/settings?tab=operations`,
               completed: hasHours
+            },
+            {
+              key: 'categories',
+              label: 'Add Categories',
+              description: 'Create menu categories to organize items and route to kitchen stations',
+              path: `/restaurant/${restaurantId}/categories`,
+              completed: hasCategories
             },
             {
               key: 'menu_items',

@@ -6,6 +6,7 @@ import { FilterBar, SearchInput } from '../../components/Common/FilterComponents
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface SuppliersTabProps {
   brandId: number | null;
@@ -192,6 +193,7 @@ const SectionTitle = styled.h4`
 `;
 
 const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange }) => {
+  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || (user as any)?.restaurantId;
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -450,7 +452,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
           </SupplierName>
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          {readOnly && <BrandBadge>Brand</BrandBadge>}
+          {readOnly && <BrandBadge>{t('recipes:suppliersTab.brand')}</BrandBadge>}
           {!readOnly && <StatusBadge active={supplier.is_active}>{supplier.is_active ? 'Active' : 'Inactive'}</StatusBadge>}
         </div>
       </SupplierHeader>
@@ -495,7 +497,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
 
       {!readOnly && (
         <CardActions onClick={e => e.stopPropagation()}>
-          <ActionButton onClick={() => handleOpenModal(supplier)}>Edit</ActionButton>
+          <ActionButton onClick={() => handleOpenModal(supplier)}>{t('recipes:suppliersTab.edit')}</ActionButton>
           <ActionButton
             variant="danger"
             onClick={() => setDeleteConfirm({ isOpen: true, supplierId: supplier.id, supplierName: supplier.name })}
@@ -533,7 +535,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
 
       {isRestaurantAdmin && filteredBrandSuppliers.length > 0 && (
         <BrandSuppliersSection>
-          <SectionTitle>Brand Suppliers (Read Only)</SectionTitle>
+          <SectionTitle>{t('recipes:suppliersTab.brandSuppliersReadOnly')}</SectionTitle>
           <SuppliersGrid>
             {filteredBrandSuppliers.map(supplier => renderSupplierCard(supplier, true))}
           </SuppliersGrid>
@@ -542,7 +544,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
 
       {suppliers.length === 0 && brandSuppliers.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No suppliers yet</EmptyTitle>
+          <EmptyTitle>{t('recipes:suppliersTab.noSuppliersYet')}</EmptyTitle>
           <EmptyDescription>
             Add suppliers to manage your ingredient sources
           </EmptyDescription>
@@ -552,7 +554,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
         </EmptyState>
       ) : filteredSuppliers.length === 0 && !isRestaurantAdmin ? (
         <EmptyState>
-          <EmptyTitle>No suppliers found</EmptyTitle>
+          <EmptyTitle>{t('recipes:suppliersTab.noSuppliersFound')}</EmptyTitle>
           <EmptyDescription>
             {searchTerm ? 'Try adjusting your search' : 'Add your first supplier'}
           </EmptyDescription>
@@ -560,7 +562,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
       ) : (
         <>
           {isRestaurantAdmin && filteredSuppliers.length > 0 && (
-            <SectionTitle>My Suppliers</SectionTitle>
+            <SectionTitle>{t('recipes:suppliersTab.mySuppliers')}</SectionTitle>
           )}
           <SuppliersGrid>
             {filteredSuppliers.map(supplier => renderSupplierCard(supplier, isItemReadOnly(supplier)))}
@@ -575,7 +577,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
         size="large"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={handleCloseModal}>Cancel</ModalButton>
+            <ModalButton variant="secondary" onClick={handleCloseModal}>{t('recipes:suppliersTab.cancel')}</ModalButton>
             <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim()}>
               {selectedSupplier ? 'Update' : 'Create'}
             </ModalButton>
@@ -595,7 +597,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Code</FormLabel>
+              <FormLabel>{t('recipes:suppliersTab.code')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.code}
@@ -607,7 +609,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Contact Person</FormLabel>
+              <FormLabel>{t('recipes:suppliersTab.contactPerson')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.contact_name}
@@ -616,7 +618,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Phone</FormLabel>
+              <FormLabel>{t('recipes:suppliersTab.phone')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.phone}
@@ -628,7 +630,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('recipes:suppliersTab.email')}</FormLabel>
               <FormInput
                 type="email"
                 value={formData.email}
@@ -637,7 +639,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Business Number</FormLabel>
+              <FormLabel>{t('recipes:suppliersTab.businessNumber')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.business_number}
@@ -648,7 +650,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
           </UIFormRow>
 
           <UIFormGroup>
-            <FormLabel>Address</FormLabel>
+            <FormLabel>{t('recipes:suppliersTab.address')}</FormLabel>
             <FormInput
               type="text"
               value={formData.address}
@@ -659,7 +661,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Payment Terms</FormLabel>
+              <FormLabel>{t('recipes:suppliersTab.paymentTerms')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.payment_terms}
@@ -671,7 +673,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
 
           <UIFormRow>
             <UIFormGroup>
-              <FormLabel>Bank Name</FormLabel>
+              <FormLabel>{t('recipes:suppliersTab.bankName')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.bank_name}
@@ -680,7 +682,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Bank Account</FormLabel>
+              <FormLabel>{t('recipes:suppliersTab.bankAccount')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.bank_account}
@@ -691,7 +693,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
           </UIFormRow>
 
           <UIFormGroup>
-            <FormLabel>Notes</FormLabel>
+            <FormLabel>{t('recipes:suppliersTab.notes')}</FormLabel>
             <FormTextArea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}

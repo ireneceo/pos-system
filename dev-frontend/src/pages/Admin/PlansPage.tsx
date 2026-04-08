@@ -16,6 +16,7 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface CurrencyPrice {
   monthly: number;
@@ -495,6 +496,7 @@ interface PlanPrice {
 }
 
 const PlansPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [plans, setPlans] = useState<Plan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -1228,15 +1230,14 @@ const PlansPage: React.FC = () => {
 
   const basicPlansCount = plans.filter(p => p.category === 'basic').length;
   const customPlansCount = plans.filter(p => p.category === 'custom').length;
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Subscription Plans</Title>
+          <Title>{t('admin:plansPage.subscriptionPlans')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportPlans}>Export</Button>
-            <Button variant="primary" onClick={handleCreatePlan}>Create Plan</Button>
+            <Button variant="secondary" onClick={handleExportPlans}>{t('admin:plansPage.export')}</Button>
+            <Button variant="primary" onClick={handleCreatePlan}>{t('admin:plansPage.createPlan')}</Button>
           </ActionSection>
         </Header>
         <Content>
@@ -1244,23 +1245,23 @@ const PlansPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{plans.length}</StatValue>
-            <StatLabel>Total Plans</StatLabel>
+            <StatLabel>{t('admin:plansPage.totalPlans')}</StatLabel>
             <StatDescription>{basicPlansCount} basic + {customPlansCount} custom</StatDescription>
           </StatCard>
           <StatCard color="#10B981">
             <StatValue>{activePlans}</StatValue>
-            <StatLabel>Active Plans</StatLabel>
+            <StatLabel>{t('admin:plansPage.activePlans')}</StatLabel>
             <StatDescription>{plans.length > 0 ? Math.round((activePlans/plans.length)*100) : 0}% available</StatDescription>
           </StatCard>
           <StatCard color="#F59E0B">
             <StatValue>{totalSubscriptions}</StatValue>
-            <StatLabel>Total Subscriptions</StatLabel>
-            <StatDescription>Across all plans</StatDescription>
+            <StatLabel>{t('admin:plansPage.totalSubscriptions')}</StatLabel>
+            <StatDescription>{t('admin:plansPage.acrossAllPlans')}</StatDescription>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{formatCurrency(monthlyRevenue)}</StatValue>
-            <StatLabel>Monthly Revenue</StatLabel>
-            <StatDescription>From all subscriptions</StatDescription>
+            <StatLabel>{t('admin:plansPage.monthlyRevenue')}</StatLabel>
+            <StatDescription>{t('admin:plansPage.fromAllSubscriptions')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
@@ -1269,27 +1270,27 @@ const PlansPage: React.FC = () => {
             value={planTargetFilter}
             onChange={(e) => setPlanTargetFilter(e.target.value as any)}
           >
-            <option value="all">All Plans</option>
-            <option value="restaurant">Restaurant Plans</option>
-            <option value="brand">Brand Plans</option>
-            <option value="foodcourt">Foodcourt Plans</option>
-            <option value="owner">Restaurant Owner Plans</option>
+            <option value="all">{t('admin:plansPage.allPlans')}</option>
+            <option value="restaurant">{t('admin:plansPage.restaurantPlans')}</option>
+            <option value="brand">{t('admin:plansPage.brandPlans')}</option>
+            <option value="foodcourt">{t('admin:plansPage.foodcourtPlans')}</option>
+            <option value="owner">{t('admin:plansPage.restaurantOwnerPlans')}</option>
           </FilterSelect>
           <FilterSelect
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as any)}
           >
-            <option value="all">All Categories</option>
-            <option value="basic">Basic Plans</option>
-            <option value="custom">Custom Plans</option>
+            <option value="all">{t('admin:plansPage.allCategories')}</option>
+            <option value="basic">{t('admin:plansPage.basicPlans')}</option>
+            <option value="custom">{t('admin:plansPage.customPlans')}</option>
           </FilterSelect>
           <FilterSelect
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
           >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="all">{t('admin:plansPage.allStatus')}</option>
+            <option value="active">{t('admin:plansPage.active')}</option>
+            <option value="inactive">{t('admin:plansPage.inactive')}</option>
           </FilterSelect>
           <FilterSelect
             value={displayCurrency}
@@ -1345,7 +1346,7 @@ const PlansPage: React.FC = () => {
                           )}
                         </AnnualPrice>
                       )}
-                      <PricingNote>Billed monthly or annually</PricingNote>
+                      <PricingNote>{t('admin:plansPage.billedMonthlyOrAnnually')}</PricingNote>
                     </>
                   ) : (
                     <>
@@ -1363,15 +1364,15 @@ const PlansPage: React.FC = () => {
               {plan.category === 'basic' && plan.planTarget === 'restaurant' && (
                 <PlanLimits>
                   <LimitItem>
-                    <LimitLabel>Menu Items</LimitLabel>
+                    <LimitLabel>{t('admin:plansPage.menuItems')}</LimitLabel>
                     <LimitValue>{formatLimit(plan.menuItemLimit)}</LimitValue>
                   </LimitItem>
                   <LimitItem>
-                    <LimitLabel>Orders/month</LimitLabel>
+                    <LimitLabel>{t('admin:plansPage.ordersmonth')}</LimitLabel>
                     <LimitValue>{formatLimit(plan.orderLimit)}</LimitValue>
                   </LimitItem>
                   <LimitItem>
-                    <LimitLabel>Staff</LimitLabel>
+                    <LimitLabel>{t('admin:plansPage.staff')}</LimitLabel>
                     <LimitValue>{formatLimit(plan.staffLimit)}</LimitValue>
                   </LimitItem>
                 </PlanLimits>
@@ -1379,11 +1380,11 @@ const PlansPage: React.FC = () => {
               {plan.category === 'basic' && (plan.planTarget === 'brand' || plan.planTarget === 'foodcourt') && (
                 <PlanLimits>
                   <LimitItem>
-                    <LimitLabel>Restaurants</LimitLabel>
+                    <LimitLabel>{t('admin:plansPage.restaurants')}</LimitLabel>
                     <LimitValue>{formatLimit(plan.restaurantLimit)}</LimitValue>
                   </LimitItem>
                   <LimitItem>
-                    <LimitLabel>Managers</LimitLabel>
+                    <LimitLabel>{t('admin:plansPage.managers')}</LimitLabel>
                     <LimitValue>{formatLimit(plan.managerLimit)}</LimitValue>
                   </LimitItem>
                 </PlanLimits>
@@ -1391,7 +1392,7 @@ const PlansPage: React.FC = () => {
               {plan.category === 'basic' && plan.planTarget === 'owner' && (
                 <PlanLimits>
                   <LimitItem>
-                    <LimitLabel>Restaurants</LimitLabel>
+                    <LimitLabel>{t('admin:plansPage.restaurants')}</LimitLabel>
                     <LimitValue>{formatLimit(plan.restaurantLimit)}</LimitValue>
                   </LimitItem>
                 </PlanLimits>
@@ -1440,11 +1441,11 @@ const PlansPage: React.FC = () => {
               <PlanStats>
                 <StatItem>
                   <StatNumber>{plan.subscriptionCount}</StatNumber>
-                  <StatDesc>Subscriptions</StatDesc>
+                  <StatDesc>{t('admin:plansPage.subscriptions')}</StatDesc>
                 </StatItem>
                 <StatItem>
                   <StatNumber>{formatCurrency(getPlanPrice(plan, 'monthly') * plan.subscriptionCount, displayCurrency)}</StatNumber>
-                  <StatDesc>Monthly Revenue</StatDesc>
+                  <StatDesc>{t('admin:plansPage.monthlyRevenue')}</StatDesc>
                 </StatItem>
               </PlanStats>
 
@@ -1478,7 +1479,7 @@ const PlansPage: React.FC = () => {
         
         {/* Create Plan Modal */}
         {showCreateModal && (
-                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button><Button variant="primary" onClick={createPlan}>Create Plan</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('admin:plansPage.cancel')}</Button><Button variant="primary" onClick={createPlan}>{t('admin:plansPage.createPlan')}</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Target *</FormLabel>
@@ -1486,10 +1487,10 @@ const PlansPage: React.FC = () => {
                     value={createFormData.plan_target}
                     onChange={(e) => setCreateFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'brand' | 'foodcourt' | 'owner'}))}
                   >
-                    <option value="restaurant">Restaurant Plan</option>
-                    <option value="brand">Brand Plan</option>
-                    <option value="foodcourt">Foodcourt Plan</option>
-                    <option value="owner">Restaurant Owner Plan</option>
+                    <option value="restaurant">{t('admin:plansPage.restaurantPlan')}</option>
+                    <option value="brand">{t('admin:plansPage.brandPlan')}</option>
+                    <option value="foodcourt">{t('admin:plansPage.foodcourtPlan')}</option>
+                    <option value="owner">{t('admin:plansPage.restaurantOwnerPlan')}</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
@@ -1498,8 +1499,8 @@ const PlansPage: React.FC = () => {
                     value={createFormData.category}
                     onChange={(e) => setCreateFormData(prev => ({...prev, category: e.target.value as 'basic' | 'custom'}))}
                   >
-                    <option value="basic">Basic Subscription</option>
-                    <option value="custom">Custom Subscription</option>
+                    <option value="basic">{t('admin:plansPage.basicSubscription')}</option>
+                    <option value="custom">{t('admin:plansPage.customSubscription')}</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
@@ -1524,7 +1525,7 @@ const PlansPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('admin:plansPage.description')}</FormLabel>
                   <FormTextArea
                     placeholder="Enter plan description..."
                     rows={3}
@@ -1534,7 +1535,7 @@ const PlansPage: React.FC = () => {
                 </FormGroup>
                 {/* Multi-Currency Pricing */}
                 <FormGroup>
-                  <FormLabel>Pricing by Currency</FormLabel>
+                  <FormLabel>{t('admin:plansPage.pricingByCurrency')}</FormLabel>
                   <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
                     {supportedCurrencies.map(code => {
                       const config = currencyConfig[code];
@@ -1550,7 +1551,7 @@ const PlansPage: React.FC = () => {
                           </div>
                           <PricingRow>
                             <FormGroup style={{ marginBottom: 0 }}>
-                              <FormLabel style={{ fontSize: '12px' }}>Monthly</FormLabel>
+                              <FormLabel style={{ fontSize: '12px' }}>{t('admin:plansPage.monthly')}</FormLabel>
                               <FormInput
                                 type="number"
                                 placeholder="0"
@@ -1565,7 +1566,7 @@ const PlansPage: React.FC = () => {
                               />
                             </FormGroup>
                             <FormGroup style={{ marginBottom: 0 }}>
-                              <FormLabel style={{ fontSize: '12px' }}>Annual</FormLabel>
+                              <FormLabel style={{ fontSize: '12px' }}>{t('admin:plansPage.annual')}</FormLabel>
                               <FormInput
                                 type="number"
                                 placeholder="0"
@@ -1594,7 +1595,7 @@ const PlansPage: React.FC = () => {
                   <>
                     <LimitsRow>
                       <FormGroup>
-                        <FormLabel>Menu Item Limit</FormLabel>
+                        <FormLabel>{t('admin:plansPage.menuItemLimit')}</FormLabel>
                         <FormInput
                           type="number"
                           placeholder="-1 for unlimited"
@@ -1603,7 +1604,7 @@ const PlansPage: React.FC = () => {
                         />
                       </FormGroup>
                       <FormGroup>
-                        <FormLabel>Order Limit (per month)</FormLabel>
+                        <FormLabel>{t('admin:plansPage.orderLimitPerMonth')}</FormLabel>
                         <FormInput
                           type="number"
                           placeholder="-1 for unlimited"
@@ -1613,7 +1614,7 @@ const PlansPage: React.FC = () => {
                       </FormGroup>
                     </LimitsRow>
                     <FormGroup>
-                      <FormLabel>Staff Limit</FormLabel>
+                      <FormLabel>{t('admin:plansPage.staffLimit')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="-1 for unlimited"
@@ -1626,7 +1627,7 @@ const PlansPage: React.FC = () => {
                 {createFormData.category === 'basic' && (createFormData.plan_target === 'brand' || createFormData.plan_target === 'foodcourt') && (
                   <LimitsRow>
                     <FormGroup>
-                      <FormLabel>Restaurant Limit</FormLabel>
+                      <FormLabel>{t('admin:plansPage.restaurantLimit')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="-1 for unlimited"
@@ -1635,7 +1636,7 @@ const PlansPage: React.FC = () => {
                       />
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Manager Limit</FormLabel>
+                      <FormLabel>{t('admin:plansPage.managerLimit')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="-1 for unlimited"
@@ -1647,7 +1648,7 @@ const PlansPage: React.FC = () => {
                 )}
                 {createFormData.category === 'basic' && createFormData.plan_target === 'owner' && (
                   <FormGroup>
-                    <FormLabel>Restaurant Limit</FormLabel>
+                    <FormLabel>{t('admin:plansPage.restaurantLimit')}</FormLabel>
                     <FormInput
                       type="number"
                       placeholder="-1 for unlimited"
@@ -1660,7 +1661,7 @@ const PlansPage: React.FC = () => {
                 {/* Only show module selection for Basic plans */}
                 {createFormData.category === 'basic' && (
                   <FormGroup>
-                    <FormLabel>Included Modules</FormLabel>
+                    <FormLabel>{t('admin:plansPage.includedModules')}</FormLabel>
 
                     {/* Basic Modules */}
                     {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
@@ -1697,7 +1698,7 @@ const PlansPage: React.FC = () => {
                                   }}
                                 />
                                 <label htmlFor={`module-${module.module_code}`}>
-                                  <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>Always Included</span>}
+                                  <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>{t('admin:plansPage.alwaysIncluded')}</span>}
                                   <br />
                                   <small style={{color: '#6B7280'}}>{module.description}</small>
                                 </label>
@@ -1883,7 +1884,7 @@ const PlansPage: React.FC = () => {
                 )}
 
                 <FormGroup>
-                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormLabel>{t('admin:plansPage.featuresOnePerLine')}</FormLabel>
                   <FormTextArea
                     placeholder="Enter features, one per line..."
                     rows={6}
@@ -1900,7 +1901,7 @@ const PlansPage: React.FC = () => {
                       checked={createFormData.is_popular}
                       onChange={(e) => setCreateFormData(prev => ({...prev, is_popular: e.target.checked}))}
                     />
-                    <label htmlFor="popular">Mark as Most Popular</label>
+                    <label htmlFor="popular">{t('admin:plansPage.markAsMostPopular')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input
@@ -1909,7 +1910,7 @@ const PlansPage: React.FC = () => {
                       checked={createFormData.is_active}
                       onChange={(e) => setCreateFormData(prev => ({...prev, is_active: e.target.checked}))}
                     />
-                    <label htmlFor="active">Set as Active</label>
+                    <label htmlFor="active">{t('admin:plansPage.setAsActive')}</label>
                   </CheckboxItem>
                 </CheckboxGroup>
               
@@ -1918,7 +1919,7 @@ const PlansPage: React.FC = () => {
         
         {/* Edit Plan Modal */}
         {showEditModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Plan: ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button><Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>Delete</Button><Button variant="primary" onClick={updatePlan}>Save Changes</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Plan: ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}>{t('admin:plansPage.cancel')}</Button><Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>{t('admin:plansPage.delete')}</Button><Button variant="primary" onClick={updatePlan}>{t('admin:plansPage.saveChanges')}</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Name *</FormLabel>
@@ -1938,10 +1939,10 @@ const PlansPage: React.FC = () => {
                     value={editFormData.plan_target}
                     onChange={(e) => setEditFormData(prev => ({...prev, plan_target: e.target.value as 'restaurant' | 'brand' | 'foodcourt' | 'owner'}))}
                   >
-                    <option value="restaurant">Restaurant Plan</option>
-                    <option value="brand">Brand Plan</option>
-                    <option value="foodcourt">Foodcourt Plan</option>
-                    <option value="owner">Restaurant Owner Plan</option>
+                    <option value="restaurant">{t('admin:plansPage.restaurantPlan')}</option>
+                    <option value="brand">{t('admin:plansPage.brandPlan')}</option>
+                    <option value="foodcourt">{t('admin:plansPage.foodcourtPlan')}</option>
+                    <option value="owner">{t('admin:plansPage.restaurantOwnerPlan')}</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
@@ -1950,13 +1951,13 @@ const PlansPage: React.FC = () => {
                     value={editFormData.category}
                     onChange={(e) => setEditFormData(prev => ({...prev, category: e.target.value as 'basic' | 'custom'}))}
                   >
-                    <option value="basic">Basic Subscription</option>
-                    <option value="custom">Custom Subscription</option>
+                    <option value="basic">{t('admin:plansPage.basicSubscription')}</option>
+                    <option value="custom">{t('admin:plansPage.customSubscription')}</option>
                   </FormSelect>
                 </FormGroup>
                 {/* Multi-Currency Pricing */}
                 <FormGroup>
-                  <FormLabel>Pricing by Currency</FormLabel>
+                  <FormLabel>{t('admin:plansPage.pricingByCurrency')}</FormLabel>
                   <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
                     {supportedCurrencies.map(code => {
                       const config = currencyConfig[code];
@@ -1972,7 +1973,7 @@ const PlansPage: React.FC = () => {
                           </div>
                           <PricingRow>
                             <FormGroup style={{ marginBottom: 0 }}>
-                              <FormLabel style={{ fontSize: '12px' }}>Monthly</FormLabel>
+                              <FormLabel style={{ fontSize: '12px' }}>{t('admin:plansPage.monthly')}</FormLabel>
                               <FormInput
                                 type="number"
                                 placeholder="0"
@@ -1987,7 +1988,7 @@ const PlansPage: React.FC = () => {
                               />
                             </FormGroup>
                             <FormGroup style={{ marginBottom: 0 }}>
-                              <FormLabel style={{ fontSize: '12px' }}>Annual</FormLabel>
+                              <FormLabel style={{ fontSize: '12px' }}>{t('admin:plansPage.annual')}</FormLabel>
                               <FormInput
                                 type="number"
                                 placeholder="0"
@@ -2016,7 +2017,7 @@ const PlansPage: React.FC = () => {
                   <>
                     <LimitsRow>
                       <FormGroup>
-                        <FormLabel>Menu Item Limit</FormLabel>
+                        <FormLabel>{t('admin:plansPage.menuItemLimit')}</FormLabel>
                         <FormInput
                           type="number"
                           placeholder="-1 for unlimited"
@@ -2025,7 +2026,7 @@ const PlansPage: React.FC = () => {
                         />
                       </FormGroup>
                       <FormGroup>
-                        <FormLabel>Order Limit (per month)</FormLabel>
+                        <FormLabel>{t('admin:plansPage.orderLimitPerMonth')}</FormLabel>
                         <FormInput
                           type="number"
                           placeholder="-1 for unlimited"
@@ -2035,7 +2036,7 @@ const PlansPage: React.FC = () => {
                       </FormGroup>
                     </LimitsRow>
                     <FormGroup>
-                      <FormLabel>Staff Limit</FormLabel>
+                      <FormLabel>{t('admin:plansPage.staffLimit')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="-1 for unlimited"
@@ -2048,7 +2049,7 @@ const PlansPage: React.FC = () => {
                 {editFormData.category === 'basic' && (editFormData.plan_target === 'brand' || editFormData.plan_target === 'foodcourt') && (
                   <LimitsRow>
                     <FormGroup>
-                      <FormLabel>Restaurant Limit</FormLabel>
+                      <FormLabel>{t('admin:plansPage.restaurantLimit')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="-1 for unlimited"
@@ -2057,7 +2058,7 @@ const PlansPage: React.FC = () => {
                       />
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Manager Limit</FormLabel>
+                      <FormLabel>{t('admin:plansPage.managerLimit')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="-1 for unlimited"
@@ -2069,7 +2070,7 @@ const PlansPage: React.FC = () => {
                 )}
                 {editFormData.category === 'basic' && editFormData.plan_target === 'owner' && (
                   <FormGroup>
-                    <FormLabel>Restaurant Limit</FormLabel>
+                    <FormLabel>{t('admin:plansPage.restaurantLimit')}</FormLabel>
                     <FormInput
                       type="number"
                       placeholder="-1 for unlimited"
@@ -2082,7 +2083,7 @@ const PlansPage: React.FC = () => {
                 {/* Only show module selection for Basic plans */}
                 {editFormData.category === 'basic' && (
                   <FormGroup>
-                    <FormLabel>Included Modules</FormLabel>
+                    <FormLabel>{t('admin:plansPage.includedModules')}</FormLabel>
 
                     {/* Basic Modules */}
                     {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
@@ -2119,7 +2120,7 @@ const PlansPage: React.FC = () => {
                                     }}
                                   />
                                   <label htmlFor={`edit-module-${module.module_code}`}>
-                                    <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>Always Included</span>}
+                                    <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>{t('admin:plansPage.alwaysIncluded')}</span>}
                                     <br />
                                     <small style={{color: '#6B7280'}}>{module.description}</small>
                                   </label>
@@ -2305,7 +2306,7 @@ const PlansPage: React.FC = () => {
                 )}
 
                 <FormGroup>
-                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormLabel>{t('admin:plansPage.featuresOnePerLine')}</FormLabel>
                   <FormTextArea
                     placeholder="Enter features, one per line..."
                     rows={6}
@@ -2322,7 +2323,7 @@ const PlansPage: React.FC = () => {
                       checked={editFormData.is_popular}
                       onChange={(e) => setEditFormData(prev => ({...prev, is_popular: e.target.checked}))}
                     />
-                    <label htmlFor="edit-popular">Mark as Most Popular</label>
+                    <label htmlFor="edit-popular">{t('admin:plansPage.markAsMostPopular')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input
@@ -2331,7 +2332,7 @@ const PlansPage: React.FC = () => {
                       checked={editFormData.is_active}
                       onChange={(e) => setEditFormData(prev => ({...prev, is_active: e.target.checked}))}
                     />
-                    <label htmlFor="edit-active">Set as Active</label>
+                    <label htmlFor="edit-active">{t('admin:plansPage.setAsActive')}</label>
                   </CheckboxItem>
                 </CheckboxGroup>
               
@@ -2340,45 +2341,45 @@ const PlansPage: React.FC = () => {
         
         {/* View Details Modal */}
         {showDetailsModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title={`Plan Details: ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>Close</Button><Button variant="primary" onClick={() => { setShowDetailsModal(false); handleEditPlan(selectedPlan); }}>Edit Plan</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title={`Plan Details: ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>{t('admin:plansPage.close')}</Button><Button variant="primary" onClick={() => { setShowDetailsModal(false); handleEditPlan(selectedPlan); }}>{t('admin:plansPage.editPlan')}</Button></>}>
 
                 <DetailSection>
                   <DetailRow>
-                    <DetailLabel>Plan ID</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.planId')}</DetailLabel>
                     <DetailValue>{selectedPlan.id}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Internal Name</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.internalName')}</DetailLabel>
                     <DetailValue>{selectedPlan.name}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Display Name</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.displayName')}</DetailLabel>
                     <DetailValue>{selectedPlan.displayName}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Status</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.status')}</DetailLabel>
                     <StatusBadge isActive={selectedPlan.isActive}>
                       {selectedPlan.isActive ? 'Active' : 'Inactive'}
                     </StatusBadge>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Popular Plan</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.popularPlan')}</DetailLabel>
                     <DetailValue>{selectedPlan.isPopular ? 'Yes' : 'No'}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
                 <DetailSection>
-                  <h4>Pricing</h4>
+                  <h4>{t('admin:plansPage.pricing')}</h4>
                   <DetailRow>
-                    <DetailLabel>Monthly Price</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.monthlyPrice')}</DetailLabel>
                     <DetailValue>{formatCurrency(selectedPlan.monthlyPrice)}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Annual Price</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.annualPrice')}</DetailLabel>
                     <DetailValue>{formatCurrency(selectedPlan.annualPrice)}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Annual Discount</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.annualDiscount')}</DetailLabel>
                     <DetailValue>
                       {Math.round(((selectedPlan.monthlyPrice * 12 - selectedPlan.annualPrice) / (selectedPlan.monthlyPrice * 12)) * 100)}%
                     </DetailValue>
@@ -2386,19 +2387,19 @@ const PlansPage: React.FC = () => {
                 </DetailSection>
 
                 <DetailSection>
-                  <h4>Limits</h4>
+                  <h4>{t('admin:plansPage.limits')}</h4>
                   {selectedPlan.planTarget === 'restaurant' && (
                     <>
                       <DetailRow>
-                        <DetailLabel>Menu Item Limit</DetailLabel>
+                        <DetailLabel>{t('admin:plansPage.menuItemLimit')}</DetailLabel>
                         <DetailValue>{formatLimit(selectedPlan.menuItemLimit)}</DetailValue>
                       </DetailRow>
                       <DetailRow>
-                        <DetailLabel>Monthly Order Limit</DetailLabel>
+                        <DetailLabel>{t('admin:plansPage.monthlyOrderLimit')}</DetailLabel>
                         <DetailValue>{formatLimit(selectedPlan.orderLimit)}</DetailValue>
                       </DetailRow>
                       <DetailRow>
-                        <DetailLabel>Staff Limit</DetailLabel>
+                        <DetailLabel>{t('admin:plansPage.staffLimit')}</DetailLabel>
                         <DetailValue>{formatLimit(selectedPlan.staffLimit)}</DetailValue>
                       </DetailRow>
                     </>
@@ -2406,41 +2407,41 @@ const PlansPage: React.FC = () => {
                   {(selectedPlan.planTarget === 'brand' || selectedPlan.planTarget === 'foodcourt') && (
                     <>
                       <DetailRow>
-                        <DetailLabel>Restaurant Limit</DetailLabel>
+                        <DetailLabel>{t('admin:plansPage.restaurantLimit')}</DetailLabel>
                         <DetailValue>{formatLimit(selectedPlan.restaurantLimit)}</DetailValue>
                       </DetailRow>
                       <DetailRow>
-                        <DetailLabel>Manager Limit</DetailLabel>
+                        <DetailLabel>{t('admin:plansPage.managerLimit')}</DetailLabel>
                         <DetailValue>{formatLimit(selectedPlan.managerLimit)}</DetailValue>
                       </DetailRow>
                     </>
                   )}
                   {selectedPlan.planTarget === 'owner' && (
                     <DetailRow>
-                      <DetailLabel>Restaurant Limit</DetailLabel>
+                      <DetailLabel>{t('admin:plansPage.restaurantLimit')}</DetailLabel>
                       <DetailValue>{formatLimit(selectedPlan.restaurantLimit)}</DetailValue>
                     </DetailRow>
                   )}
                 </DetailSection>
 
                 <DetailSection>
-                  <h4>Statistics</h4>
+                  <h4>{t('admin:plansPage.statistics')}</h4>
                   <DetailRow>
-                    <DetailLabel>Current Subscriptions</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.currentSubscriptions')}</DetailLabel>
                     <DetailValue>{selectedPlan.subscriptionCount}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Monthly Revenue</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.monthlyRevenue')}</DetailLabel>
                     <DetailValue>{formatCurrency(selectedPlan.monthlyPrice * selectedPlan.subscriptionCount)}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Created Date</DetailLabel>
+                    <DetailLabel>{t('admin:plansPage.createdDate')}</DetailLabel>
                     <DetailValue>{selectedPlan.createdAt}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
                 <DetailSection>
-                  <h4>Features</h4>
+                  <h4>{t('admin:plansPage.features')}</h4>
                   <FeaturesList>
                     {(Array.isArray(selectedPlan.features) ? selectedPlan.features : []).map((feature, index) => (
                       <FeatureItem key={index}>{feature}</FeatureItem>
@@ -2453,7 +2454,7 @@ const PlansPage: React.FC = () => {
 
         {/* Plan Prices Modal */}
         {showPlanPricesModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowPlanPricesModal(false)} title={`Set Prices for ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowPlanPricesModal(false)}>Cancel</Button><Button variant="primary" onClick={savePlanPrices}>Save Prices</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowPlanPricesModal(false)} title={`Set Prices for ${selectedPlan.displayName}`} footer={<><Button variant="secondary" onClick={() => setShowPlanPricesModal(false)}>{t('admin:plansPage.cancel')}</Button><Button variant="primary" onClick={savePlanPrices}>{t('admin:plansPage.savePrices')}</Button></>}>
 
                 <p style={{ marginBottom: '20px', color: '#6B7280', fontSize: '14px' }}>
                   Configure pricing for each supported currency.

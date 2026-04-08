@@ -1,0 +1,63 @@
+{
+  "footer": {
+    "automated": "This is an automated message from {{company}}.",
+    "managePreferences": "Manage notification preferences",
+    "unsubscribe": "Unsubscribe"
+  },
+  "notice": {
+    "subject": "New Notice: {{title}}",
+    "heading": "New Notice",
+    "body": "A new notice has been posted.",
+    "postedBy": "Posted by",
+    "priority": "Priority",
+    "date": "Date",
+    "viewButton": "View Notice"
+  },
+  "comment": {
+    "subject": "New Comment on: {{title}}",
+    "heading": "New Comment",
+    "commentedOn": "{{name}} commented on {{title}}.",
+    "viewButton": "View & Reply"
+  },
+  "invoice": {
+    "subject": "Invoice {{number}} — {{restaurant}}",
+    "heading": "New Invoice",
+    "restaurant": "Restaurant",
+    "invoiceNumber": "Invoice Number",
+    "period": "Period",
+    "dueDate": "Due Date",
+    "amount": "Amount Due",
+    "viewButton": "View Invoice",
+    "body": "A new invoice has been generated for your restaurant."
+  },
+  "welcome": {
+    "subject": "Welcome to {{platform}}",
+    "heading": "Welcome!",
+    "body": "Your account has been created successfully.",
+    "loginButton": "Login to Dashboard",
+    "credentials": "Your login credentials",
+    "email": "Email",
+    "password": "Temporary Password"
+  },
+  "passwordReset": {
+    "subject": "Password Reset Request",
+    "heading": "Password Reset",
+    "body": "You requested a password reset. Click the button below to set a new password.",
+    "resetButton": "Reset Password",
+    "expiry": "This link will expire in {{hours}} hours.",
+    "ignore": "If you did not request this, please ignore this email."
+  },
+  "emailVerification": {
+    "subject": "Verify Your Email Address",
+    "heading": "Email Verification",
+    "body": "Please verify your email address by clicking the button below.",
+    "verifyButton": "Verify Email",
+    "expiry": "This link will expire in {{hours}} hours."
+  },
+  "ticket": {
+    "subject": "Support Ticket Update: {{title}}",
+    "heading": "Ticket Update",
+    "status": "Status",
+    "viewButton": "View Ticket"
+  }
+}

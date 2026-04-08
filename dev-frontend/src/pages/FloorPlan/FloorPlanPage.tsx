@@ -10,6 +10,7 @@ import PaymentModal from '../../components/POSTerminal/PaymentModal';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import io from 'socket.io-client';
+import { useTranslation } from 'react-i18next';
 
 // ─── Styled Components ───
 
@@ -183,6 +184,7 @@ const POSIframe = styled.iframe`
 // ─── Main Component ───
 
 const FloorPlanPage: React.FC = () => {
+  const { t } = useTranslation('floorplan');
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -597,9 +599,9 @@ const FloorPlanPage: React.FC = () => {
     return (
       <PageContainer>
         <Header>
-          <HeaderLeft><HeaderTitle>Floor Plan</HeaderTitle></HeaderLeft>
+          <HeaderLeft><HeaderTitle>{t('floorplan:floorPlanPage.floorPlan')}</HeaderTitle></HeaderLeft>
         </Header>
-        <LoadingScreen>Loading floor plan...</LoadingScreen>
+        <LoadingScreen>{t('floorplan:floorPlanPage.loadingFloorPlan')}</LoadingScreen>
       </PageContainer>
     );
   }
@@ -618,7 +620,7 @@ const FloorPlanPage: React.FC = () => {
         }}>
           <style>{`@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <div style={{ fontWeight: 700, fontSize: '15px', color: '#92400E' }}>New Items Added</div>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: '#92400E' }}>{t('floorplan:floorPlanPage.newItemsAdded')}</div>
             <button onClick={() => setItemsAddedAlert(null)} style={{
               background: 'none', border: 'none', fontSize: '20px',
               cursor: 'pointer', color: '#92400E', padding: '0', lineHeight: 1
@@ -642,7 +644,7 @@ const FloorPlanPage: React.FC = () => {
             width: '100%', padding: '10px', background: '#F59E0B', color: 'white',
             border: 'none', borderRadius: '8px', fontWeight: 600,
             cursor: 'pointer', fontSize: '14px'
-          }}>View Table</button>
+          }}>{t('floorplan:floorPlanPage.viewTable')}</button>
         </div>
       )}
 
@@ -651,7 +653,7 @@ const FloorPlanPage: React.FC = () => {
           <BackBtn onClick={() => navigate(`/restaurant/${restaurantId}/dashboard`)}>
             &larr; Back
           </BackBtn>
-          <HeaderTitle>Floor Plan</HeaderTitle>
+          <HeaderTitle>{t('floorplan:floorPlanPage.floorPlan')}</HeaderTitle>
           <ConnectionStatus>
             <ConnectionDot $connected={connected} />
             {connected ? 'Live' : 'Offline'}

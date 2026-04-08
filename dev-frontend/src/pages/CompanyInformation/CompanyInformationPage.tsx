@@ -5,6 +5,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { COUNTRIES } from '../../constants/countries';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import { useTranslation } from 'react-i18next';
 
 interface CompanyInfo {
   id: string;
@@ -193,6 +194,7 @@ const InfoBox = styled.div`
 `;
 
 const CompanyInformationPage: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { user } = useAuth();
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     id: '',
@@ -309,7 +311,7 @@ const CompanyInformationPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Company Information</Title>
+          <Title>{t('settings:companyInformationPage.companyInformation')}</Title>
         </Header>
 
         <Content>
@@ -320,10 +322,10 @@ const CompanyInformationPage: React.FC = () => {
           </InfoBox>
 
           <Section>
-            <SectionTitle>Basic Information</SectionTitle>
+            <SectionTitle>{t('settings:companyInformationPage.basicInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Company Name <span>*</span></Label>
+                <Label>{t('settings:companyInformationPage.companyName')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -335,7 +337,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Registration Number <span>*</span></Label>
+                <Label>{t('settings:companyInformationPage.registrationNumber')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -347,7 +349,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Trade Name / Brand Name</Label>
+                <Label>{t('settings:companyInformationPage.tradeNameBrandName')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -359,7 +361,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Tax Number (SST/GST)</Label>
+                <Label>{t('settings:companyInformationPage.taxNumberSstgst')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -371,7 +373,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Website</Label>
+                <Label>{t('settings:companyInformationPage.website')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="url"
@@ -385,10 +387,10 @@ const CompanyInformationPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Contact Information</SectionTitle>
+            <SectionTitle>{t('settings:companyInformationPage.contactInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup fullWidth>
-                <Label>Address <span>*</span></Label>
+                <Label>{t('settings:companyInformationPage.address')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -400,7 +402,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>City <span>*</span></Label>
+                <Label>{t('settings:companyInformationPage.city')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -412,33 +414,33 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>State <span>*</span></Label>
+                <Label>{t('settings:companyInformationPage.state')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave} type="select">
                   <Select
                     value={companyInfo.state}
                     onChange={(e) => handleInputChange('state', e.target.value)}
                   >
-                    <option value="">Select State</option>
-                    <option value="Wilayah Persekutuan">Wilayah Persekutuan</option>
-                    <option value="Selangor">Selangor</option>
-                    <option value="Penang">Penang</option>
-                    <option value="Johor">Johor</option>
-                    <option value="Perak">Perak</option>
-                    <option value="Kedah">Kedah</option>
-                    <option value="Kelantan">Kelantan</option>
-                    <option value="Melaka">Melaka</option>
-                    <option value="Negeri Sembilan">Negeri Sembilan</option>
-                    <option value="Pahang">Pahang</option>
-                    <option value="Perlis">Perlis</option>
-                    <option value="Sabah">Sabah</option>
-                    <option value="Sarawak">Sarawak</option>
-                    <option value="Terengganu">Terengganu</option>
+                    <option value="">{t('settings:companyInformationPage.selectState')}</option>
+                    <option value="Wilayah Persekutuan">{t('settings:companyInformationPage.wilayahPersekutuan')}</option>
+                    <option value="Selangor">{t('settings:companyInformationPage.selangor')}</option>
+                    <option value="Penang">{t('settings:companyInformationPage.penang')}</option>
+                    <option value="Johor">{t('settings:companyInformationPage.johor')}</option>
+                    <option value="Perak">{t('settings:companyInformationPage.perak')}</option>
+                    <option value="Kedah">{t('settings:companyInformationPage.kedah')}</option>
+                    <option value="Kelantan">{t('settings:companyInformationPage.kelantan')}</option>
+                    <option value="Melaka">{t('settings:companyInformationPage.melaka')}</option>
+                    <option value="Negeri Sembilan">{t('settings:companyInformationPage.negeriSembilan')}</option>
+                    <option value="Pahang">{t('settings:companyInformationPage.pahang')}</option>
+                    <option value="Perlis">{t('settings:companyInformationPage.perlis')}</option>
+                    <option value="Sabah">{t('settings:companyInformationPage.sabah')}</option>
+                    <option value="Sarawak">{t('settings:companyInformationPage.sarawak')}</option>
+                    <option value="Terengganu">{t('settings:companyInformationPage.terengganu')}</option>
                   </Select>
                 </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
-                <Label>Postcode <span>*</span></Label>
+                <Label>{t('settings:companyInformationPage.postcode')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -450,7 +452,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Country <span>*</span></Label>
+                <Label>{t('settings:companyInformationPage.country')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave} type="select">
                   <Select
                     value={companyInfo.country}
@@ -466,7 +468,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Phone <span>*</span></Label>
+                <Label>{t('settings:companyInformationPage.phone')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <PhoneInput
                     value={companyInfo.phone}
@@ -477,7 +479,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Email <span>*</span></Label>
+                <Label>{t('settings:companyInformationPage.email')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="email"
@@ -491,34 +493,34 @@ const CompanyInformationPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Banking Information</SectionTitle>
+            <SectionTitle>{t('settings:companyInformationPage.bankingInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Bank Name</Label>
+                <Label>{t('settings:companyInformationPage.bankName')}</Label>
                 <AutoSaveField onSave={handleSave} type="select">
                   <Select
                     value={companyInfo.bankName || ''}
                     onChange={(e) => handleInputChange('bankName', e.target.value)}
                   >
-                    <option value="">Select Bank</option>
-                    <option value="Maybank">Maybank</option>
-                    <option value="CIMB Bank">CIMB Bank</option>
-                    <option value="Public Bank">Public Bank</option>
-                    <option value="RHB Bank">RHB Bank</option>
-                    <option value="Hong Leong Bank">Hong Leong Bank</option>
-                    <option value="AmBank">AmBank</option>
-                    <option value="UOB">UOB</option>
-                    <option value="OCBC Bank">OCBC Bank</option>
-                    <option value="HSBC">HSBC</option>
-                    <option value="Standard Chartered">Standard Chartered</option>
-                    <option value="Bank Islam">Bank Islam</option>
-                    <option value="Bank Rakyat">Bank Rakyat</option>
+                    <option value="">{t('settings:companyInformationPage.selectBank')}</option>
+                    <option value="Maybank">{t('settings:companyInformationPage.maybank')}</option>
+                    <option value="CIMB Bank">{t('settings:companyInformationPage.cimbBank')}</option>
+                    <option value="Public Bank">{t('settings:companyInformationPage.publicBank')}</option>
+                    <option value="RHB Bank">{t('settings:companyInformationPage.rhbBank')}</option>
+                    <option value="Hong Leong Bank">{t('settings:companyInformationPage.hongLeongBank')}</option>
+                    <option value="AmBank">{t('settings:companyInformationPage.ambank')}</option>
+                    <option value="UOB">{t('settings:companyInformationPage.uob')}</option>
+                    <option value="OCBC Bank">{t('settings:companyInformationPage.ocbcBank')}</option>
+                    <option value="HSBC">{t('settings:companyInformationPage.hsbc')}</option>
+                    <option value="Standard Chartered">{t('settings:companyInformationPage.standardChartered')}</option>
+                    <option value="Bank Islam">{t('settings:companyInformationPage.bankIslam')}</option>
+                    <option value="Bank Rakyat">{t('settings:companyInformationPage.bankRakyat')}</option>
                   </Select>
                 </AutoSaveField>
               </FormGroup>
 
               <FormGroup>
-                <Label>Account Number</Label>
+                <Label>{t('settings:companyInformationPage.accountNumber')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -530,7 +532,7 @@ const CompanyInformationPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup fullWidth>
-                <Label>Account Name</Label>
+                <Label>{t('settings:companyInformationPage.accountName')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -544,7 +546,7 @@ const CompanyInformationPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Company Logo</SectionTitle>
+            <SectionTitle>{t('settings:companyInformationPage.companyLogo')}</SectionTitle>
             <AutoSaveField onSave={handleSave} type="image">
               <ImageUploadDropzone
                 value={companyInfo.logoUrl || ''}

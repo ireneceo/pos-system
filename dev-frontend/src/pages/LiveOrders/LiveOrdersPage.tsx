@@ -26,6 +26,7 @@ import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../util
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
+import { useTranslation } from 'react-i18next';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -79,6 +80,7 @@ const getFetchOptions = (options: RequestInit = {}): RequestInit => {
 
 // Time Ago Display Component - 실시간 업데이트용 (글로벌 유틸리티 사용)
 const TimeAgoDisplay: React.FC<{ dateString: string }> = ({ dateString }) => {
+  const { t } = useTranslation('orders');
   const [display, setDisplay] = React.useState('calculating...');
 
   React.useEffect(() => {
@@ -958,6 +960,7 @@ interface CompanyInfo {
 }
 
 const LiveOrdersPage: React.FC = () => {
+  const { t } = useTranslation('orders');
   const { user } = useAuth();
   const { getStoreInfo, operationSettings, paymentSettings } = useStore();
   const [orders, setOrders] = useState<DbOrder[]>([]); // Paginated orders for display
@@ -2801,7 +2804,7 @@ const LiveOrdersPage: React.FC = () => {
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span className="download-label">Download CSV</span>
+              <span className="download-label">{t('orders:liveOrdersPage.downloadCsv')}</span>
             </DownloadButton>
             <button
               onClick={() => setShowSettlement(true)}
@@ -2884,9 +2887,9 @@ const LiveOrdersPage: React.FC = () => {
               const localStats = calculateStatistics();
               return (
                 <>
-                  <StatItem>Total Sales <strong>RM{serverStats.totalSales.toFixed(2)}</strong></StatItem>
-                  <StatItem>Avg <strong>RM{serverStats.avgAmount.toFixed(2)}</strong></StatItem>
-                  <StatItem>Max <strong>RM{serverStats.maxAmount.toFixed(2)}</strong></StatItem>
+                  <StatItem>{t('orders:liveOrdersPage.totalSales')}<strong>RM{serverStats.totalSales.toFixed(2)}</strong></StatItem>
+                  <StatItem>{t('orders:liveOrdersPage.avg')}<strong>RM{serverStats.avgAmount.toFixed(2)}</strong></StatItem>
+                  <StatItem>{t('orders:liveOrdersPage.max')}<strong>RM{serverStats.maxAmount.toFixed(2)}</strong></StatItem>
                   <StatItem>≥RM<input type="number" value={salesThreshold} onChange={(e) => {
                     const val = parseInt(e.target.value) || 0;
                     setSalesThreshold(val);
@@ -2903,9 +2906,9 @@ const LiveOrdersPage: React.FC = () => {
                         });
                       });
                   }} min="0" style={{ width: '32px', border: 'none', borderBottom: '1px dashed #635BFF', background: 'transparent', fontSize: '13px', fontWeight: 700, color: '#0A2540', textAlign: 'center', padding: 0, outline: 'none' }} /> <strong>{localStats.ordersAbove20Percent.toFixed(1)}%</strong></StatItem>
-                  <StatItem>Avg Serve <strong>{localStats.avgServeTime.toFixed(1)}m</strong></StatItem>
-                  <StatItem>Max Serve <strong>{localStats.maxServeTime.toFixed(1)}m</strong></StatItem>
-                  <StatItem>Min Serve <strong>{localStats.minServeTime.toFixed(1)}m</strong></StatItem>
+                  <StatItem>{t('orders:liveOrdersPage.avgServe')}<strong>{localStats.avgServeTime.toFixed(1)}m</strong></StatItem>
+                  <StatItem>{t('orders:liveOrdersPage.maxServe')}<strong>{localStats.maxServeTime.toFixed(1)}m</strong></StatItem>
+                  <StatItem>{t('orders:liveOrdersPage.minServe')}<strong>{localStats.minServeTime.toFixed(1)}m</strong></StatItem>
                 </>
               );
             })()}
@@ -2928,12 +2931,12 @@ const LiveOrdersPage: React.FC = () => {
                       />
                     </DataTableHeaderCell>
                   )}
-                  <DataTableHeaderCell>Order</DataTableHeaderCell>
-                  <DataTableHeaderCell>Items</DataTableHeaderCell>
-                  <DataTableHeaderCell>Status</DataTableHeaderCell>
-                  <DataTableHeaderCell>Time</DataTableHeaderCell>
-                  <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
-                  <DataTableHeaderCell style={{ width: '20%', minWidth: '180px' }}>Action</DataTableHeaderCell>
+                  <DataTableHeaderCell>{t('orders:liveOrdersPage.order')}</DataTableHeaderCell>
+                  <DataTableHeaderCell>{t('orders:liveOrdersPage.items')}</DataTableHeaderCell>
+                  <DataTableHeaderCell>{t('orders:liveOrdersPage.status')}</DataTableHeaderCell>
+                  <DataTableHeaderCell>{t('orders:liveOrdersPage.time')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('orders:liveOrdersPage.amount')}</DataTableHeaderCell>
+                  <DataTableHeaderCell style={{ width: '20%', minWidth: '180px' }}>{t('orders:liveOrdersPage.action')}</DataTableHeaderCell>
                 </tr>
               </DataTableHead>
               <tbody>
@@ -2959,27 +2962,27 @@ const LiveOrdersPage: React.FC = () => {
                       <OrderNumber onClick={() => handleOrderClick(order)}>
                         {order.order_number}
                         {order.order_type === 'takeaway' && (
-                          <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
+                          <OrderTypeBadge>{t('orders:liveOrdersPage.takeaway')}</OrderTypeBadge>
                         )}
                         {order.order_type === 'pickup' && (
-                          <OrderTypeBadge style={{ background: '#EDE9FE', color: '#7C3AED' }}>PICKUP</OrderTypeBadge>
+                          <OrderTypeBadge style={{ background: '#EDE9FE', color: '#7C3AED' }}>{t('orders:liveOrdersPage.pickup')}</OrderTypeBadge>
                         )}
                         {order.order_type === 'delivery' && (
-                          <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>DELIVERY</OrderTypeBadge>
+                          <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>{t('orders:liveOrdersPage.delivery')}</OrderTypeBadge>
                         )}
                         {order.source === 'mobile' && (
-                          <OrderTypeBadge style={{ background: '#DBEAFE', color: '#2563EB' }}>MOBILE</OrderTypeBadge>
+                          <OrderTypeBadge style={{ background: '#DBEAFE', color: '#2563EB' }}>{t('orders:liveOrdersPage.mobile')}</OrderTypeBadge>
                         )}
                         {order.source === 'mobile' && (
                           order.customer_id
-                            ? <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>MEMBER</OrderTypeBadge>
-                            : <OrderTypeBadge style={{ background: '#F3F4F6', color: '#6B7280' }}>GUEST</OrderTypeBadge>
+                            ? <OrderTypeBadge style={{ background: '#D1FAE5', color: '#059669' }}>{t('orders:liveOrdersPage.member')}</OrderTypeBadge>
+                            : <OrderTypeBadge style={{ background: '#F3F4F6', color: '#6B7280' }}>{t('orders:liveOrdersPage.guest')}</OrderTypeBadge>
                         )}
                         {order.source === 'kiosk' && (
-                          <OrderTypeBadge style={{ background: '#FEF3C7', color: '#D97706' }}>KIOSK</OrderTypeBadge>
+                          <OrderTypeBadge style={{ background: '#FEF3C7', color: '#D97706' }}>{t('orders:liveOrdersPage.kiosk')}</OrderTypeBadge>
                         )}
                         {order.payment_method === 'staffMeal' && (
-                          <OrderTypeBadge style={{ background: '#FEE2E2', color: '#DC2626' }}>STAFF MEAL</OrderTypeBadge>
+                          <OrderTypeBadge style={{ background: '#FEE2E2', color: '#DC2626' }}>{t('orders:liveOrdersPage.staffMeal')}</OrderTypeBadge>
                         )}
                       </OrderNumber>
                       <CustomerInfo>
@@ -3249,30 +3252,30 @@ const LiveOrdersPage: React.FC = () => {
           title={showAddItemsView ? 'Add Items to Order' : showReceiptView ? 'Receipt Preview' : showKitchenTicketView ? 'Kitchen Order Ticket Preview' : `Order ${selectedOrder.order_number}`}
           footer={!showAddItemsView ? (
             showReceiptView ? (
-              <ActionButton onClick={() => setShowReceiptView(false)}>Back to Order Details</ActionButton>
+              <ActionButton onClick={() => setShowReceiptView(false)}>{t('orders:liveOrdersPage.backToOrderDetails')}</ActionButton>
             ) : showKitchenTicketView ? (
-              <ActionButton onClick={() => setShowKitchenTicketView(false)}>Back to Order Details</ActionButton>
+              <ActionButton onClick={() => setShowKitchenTicketView(false)}>{t('orders:liveOrdersPage.backToOrderDetails')}</ActionButton>
             ) : (
               <>
-                <ActionButton variant="secondary" onClick={() => handleDeleteOrder(selectedOrder.id)} style={{ background: '#6B7280', borderColor: '#6B7280', color: 'white' }}>Remove</ActionButton>
+                <ActionButton variant="secondary" onClick={() => handleDeleteOrder(selectedOrder.id)} style={{ background: '#6B7280', borderColor: '#6B7280', color: 'white' }}>{t('orders:liveOrdersPage.remove')}</ActionButton>
                 {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'completed' && (
-                  <ActionButton onClick={() => handleCancelOrder(selectedOrder.id)} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>Cancel Order</ActionButton>
+                  <ActionButton onClick={() => handleCancelOrder(selectedOrder.id)} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>{t('orders:liveOrdersPage.cancelOrder')}</ActionButton>
                 )}
                 {isOutstanding(selectedOrder) && selectedOrder.status !== 'pending' && (selectedOrder.payment_status as any) !== 'payment_verification_pending' && (selectedOrder.payment_status as any) !== 'rejected' && (
-                  <ActionButton onClick={() => { handleStatusChange(selectedOrder.id, 'pending'); handleCloseModal(); }} style={{ background: '#F59E0B', borderColor: '#F59E0B', color: 'white' }}>Proceed Without Payment</ActionButton>
+                  <ActionButton onClick={() => { handleStatusChange(selectedOrder.id, 'pending'); handleCloseModal(); }} style={{ background: '#F59E0B', borderColor: '#F59E0B', color: 'white' }}>{t('orders:liveOrdersPage.proceedWithoutPayment')}</ActionButton>
                 )}
                 {selectedOrder.payment_status === 'pending' && (
-                  <ActionButton onClick={() => handlePaymentClick(selectedOrder)} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Payment</ActionButton>
+                  <ActionButton onClick={() => handlePaymentClick(selectedOrder)} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>{t('orders:liveOrdersPage.payment')}</ActionButton>
                 )}
                 {(selectedOrder.payment_status as any) === 'payment_verification_pending' && (
-                  <ActionButton onClick={() => setVerifyOrder(selectedOrder)} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>Confirm Payment</ActionButton>
+                  <ActionButton onClick={() => setVerifyOrder(selectedOrder)} style={{ background: '#10B981', borderColor: '#10B981', color: 'white' }}>{t('orders:liveOrdersPage.confirmPayment')}</ActionButton>
                 )}
                 {selectedOrder.payment_status === 'pending' && !['served', 'completed', 'cancelled'].includes(selectedOrder.status) && (
-                  <ActionButton onClick={() => setShowAddItemsView(true)} style={{ background: '#8B5CF6', borderColor: '#8B5CF6', color: 'white' }}>Add Items</ActionButton>
+                  <ActionButton onClick={() => setShowAddItemsView(true)} style={{ background: '#8B5CF6', borderColor: '#8B5CF6', color: 'white' }}>{t('orders:liveOrdersPage.addItems')}</ActionButton>
                 )}
-                <ActionButton onClick={() => setShowReceiptView(true)} style={{ marginRight: '10px' }}>View Receipt</ActionButton>
-                <ActionButton onClick={() => setShowKitchenTicketView(true)} style={{ marginRight: '10px' }}>View Order Ticket</ActionButton>
-                <ActionButton onClick={handlePrintReceipt}>Print Bill</ActionButton>
+                <ActionButton onClick={() => setShowReceiptView(true)} style={{ marginRight: '10px' }}>{t('orders:liveOrdersPage.viewReceipt')}</ActionButton>
+                <ActionButton onClick={() => setShowKitchenTicketView(true)} style={{ marginRight: '10px' }}>{t('orders:liveOrdersPage.viewOrderTicket')}</ActionButton>
+                <ActionButton onClick={handlePrintReceipt}>{t('orders:liveOrdersPage.printBill')}</ActionButton>
               </>
             )
           ) : undefined}
@@ -3343,7 +3346,7 @@ const LiveOrdersPage: React.FC = () => {
                                     }}
                                   >
                                     <span style={{ fontWeight: 500 }}>{item.code ? `${item.code} ` : ''}{item.name}</span>
-                                    {item.is_set_menu && <span style={{ marginLeft: '8px', fontSize: '11px', background: '#EDE9FE', color: '#7C3AED', padding: '2px 6px', borderRadius: '4px' }}>SET</span>}
+                                    {item.is_set_menu && <span style={{ marginLeft: '8px', fontSize: '11px', background: '#EDE9FE', color: '#7C3AED', padding: '2px 6px', borderRadius: '4px' }}>{t('orders:liveOrdersPage.set')}</span>}
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                                     <span style={{ color: '#635BFF', fontWeight: 500 }}>
@@ -3586,7 +3589,7 @@ const LiveOrdersPage: React.FC = () => {
                 <div style={{ padding: '24px' }}>
                   {/* Customer Information */}
                   <OrderDetailSection>
-                    <SectionTitle>Customer Information</SectionTitle>
+                    <SectionTitle>{t('orders:liveOrdersPage.customerInformation')}</SectionTitle>
                     <DetailRow>
                       <DetailLabel>Name:</DetailLabel>
                       <DetailValue>{selectedOrder.customer_name || 'Guest'}</DetailValue>
@@ -3632,7 +3635,7 @@ const LiveOrdersPage: React.FC = () => {
                     <>
                       <Divider />
                       <OrderDetailSection>
-                        <SectionTitle>Delivery Information</SectionTitle>
+                        <SectionTitle>{t('orders:liveOrdersPage.deliveryInformation')}</SectionTitle>
                         <DetailRow>
                           <DetailLabel>Address:</DetailLabel>
                           <DetailValue>{(selectedOrder as any).delivery_info.address}</DetailValue>
@@ -3667,7 +3670,7 @@ const LiveOrdersPage: React.FC = () => {
 
                   {/* Order Information */}
                   <OrderDetailSection>
-                    <SectionTitle>Order Information</SectionTitle>
+                    <SectionTitle>{t('orders:liveOrdersPage.orderInformation')}</SectionTitle>
                     <DetailRow>
                       <DetailLabel>Order Time:</DetailLabel>
                       <DetailValue>{formatDateTime(selectedOrder.createdAt)}</DetailValue>
@@ -3688,13 +3691,13 @@ const LiveOrdersPage: React.FC = () => {
                       <DetailLabel>Payment Status:</DetailLabel>
                       <DetailValue>
                         {(selectedOrder.payment_status as any) === 'payment_verification_pending' ? (
-                          <span style={{ color: '#F59E0B', fontWeight: 500 }}>Verification Pending</span>
+                          <span style={{ color: '#F59E0B', fontWeight: 500 }}>{t('orders:liveOrdersPage.verificationPending')}</span>
                         ) : (selectedOrder.payment_status as any) === 'rejected' ? (
-                          <span style={{ color: '#DC2626', fontWeight: 500 }}>Payment Rejected</span>
+                          <span style={{ color: '#DC2626', fontWeight: 500 }}>{t('orders:liveOrdersPage.paymentRejected')}</span>
                         ) : selectedOrder.payment_status === 'pending' ? (
-                          <span style={{ color: '#FF6B6B', fontWeight: 500 }}>Pending</span>
+                          <span style={{ color: '#FF6B6B', fontWeight: 500 }}>{t('orders:liveOrdersPage.pending')}</span>
                         ) : selectedOrder.payment_status === 'paid' || selectedOrder.payment_status === 'completed' ? (
-                          <span style={{ color: '#10B981', fontWeight: 500 }}>Paid</span>
+                          <span style={{ color: '#10B981', fontWeight: 500 }}>{t('orders:liveOrdersPage.paid')}</span>
                         ) : (
                           selectedOrder.payment_status || 'N/A'
                         )}
@@ -3777,7 +3780,7 @@ const LiveOrdersPage: React.FC = () => {
 
                   {/* Items - grouped by order_group */}
                   <OrderDetailSection>
-                    <SectionTitle>Order Items</SectionTitle>
+                    <SectionTitle>{t('orders:liveOrdersPage.orderItems')}</SectionTitle>
                     {(() => {
                       const items = selectedOrder.order_items && Array.isArray(selectedOrder.order_items) ? selectedOrder.order_items : [];
                       // Add original index to each item for deletion
@@ -3879,18 +3882,18 @@ const LiveOrdersPage: React.FC = () => {
                   {/* Payment Summary */}
                   <TotalSection>
                     <TotalRow>
-                      <span>Subtotal</span>
+                      <span>{t('orders:liveOrdersPage.subtotal')}</span>
                       <span>{formatCurrency(Number((selectedOrder as any).subtotal || selectedOrder.total_amount), operationSettings.currency)}</span>
                     </TotalRow>
                     {(selectedOrder as any).takeaway_charge && parseFloat((selectedOrder as any).takeaway_charge) > 0 && (
                       <TotalRow>
-                        <span>Takeaway Charge</span>
+                        <span>{t('orders:liveOrdersPage.takeawayCharge')}</span>
                         <span>{formatCurrency(parseFloat((selectedOrder as any).takeaway_charge), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
                     {(selectedOrder as any).discount > 0 && (
                       <TotalRow>
-                        <span>Discount</span>
+                        <span>{t('orders:liveOrdersPage.discount')}</span>
                         <span>{formatCurrency(-Number((selectedOrder as any).discount), operationSettings.currency)}</span>
                       </TotalRow>
                     )}
@@ -3925,7 +3928,7 @@ const LiveOrdersPage: React.FC = () => {
                       </TotalRow>
                     )}
                     <TotalRow isTotal>
-                      <span>Total</span>
+                      <span>{t('orders:liveOrdersPage.total')}</span>
                       <span>{formatCurrency(Number(selectedOrder.total_amount), operationSettings.currency)}</span>
                     </TotalRow>
                   </TotalSection>
@@ -4013,10 +4016,10 @@ const LiveOrdersPage: React.FC = () => {
               <table style={{ width: '100%', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px dashed #000' }}>
-                    <th style={{ textAlign: 'left', padding: '5px 0' }}>Item</th>
-                    <th style={{ textAlign: 'center', width: '40px' }}>Qty</th>
-                    <th style={{ textAlign: 'right', width: '60px' }}>Price</th>
-                    <th style={{ textAlign: 'right', width: '60px' }}>Total</th>
+                    <th style={{ textAlign: 'left', padding: '5px 0' }}>{t('orders:liveOrdersPage.item')}</th>
+                    <th style={{ textAlign: 'center', width: '40px' }}>{t('orders:liveOrdersPage.qty')}</th>
+                    <th style={{ textAlign: 'right', width: '60px' }}>{t('orders:liveOrdersPage.price')}</th>
+                    <th style={{ textAlign: 'right', width: '60px' }}>{t('orders:liveOrdersPage.total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -4093,8 +4096,8 @@ const LiveOrdersPage: React.FC = () => {
 
             <BillFooter>
               <div>*** CUSTOMER COPY ***</div>
-              <div>Thank you for your purchase!</div>
-              <div>Please keep this receipt for your records</div>
+              <div>{t('orders:liveOrdersPage.thankYouForYourPurchase')}</div>
+              <div>{t('orders:liveOrdersPage.pleaseKeepThisReceiptForYourRecords')}</div>
             </BillFooter>
           </BillPrintContainer>,
           document.body
@@ -4102,8 +4105,8 @@ const LiveOrdersPage: React.FC = () => {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-        <CommonModal isOpen={true} onClose={cancelDeleteOrder} title="Delete Order" footer={<><ActionButton variant="secondary" onClick={cancelDeleteOrder}>Cancel</ActionButton><ActionButton onClick={confirmDeleteOrder} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>Delete Order</ActionButton></>}>
-              <p>Are you sure you want to delete this order? This action cannot be undone.</p>
+        <CommonModal isOpen={true} onClose={cancelDeleteOrder} title="Delete Order" footer={<><ActionButton variant="secondary" onClick={cancelDeleteOrder}>{t('orders:liveOrdersPage.cancel')}</ActionButton><ActionButton onClick={confirmDeleteOrder} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>{t('orders:liveOrdersPage.deleteOrder')}</ActionButton></>}>
+              <p>{t('orders:liveOrdersPage.areYouSureYouWantToDeleteThisOrderThisActionCannotBeUndone')}</p>
               <p style={{ color: '#FF6B6B', fontWeight: 500, marginTop: '16px' }}>
                 Order #{orderToDelete && orders.find(o => o.id === orderToDelete)?.order_number}
               </p>
@@ -4112,7 +4115,7 @@ const LiveOrdersPage: React.FC = () => {
 
         {/* Cancel Order Confirmation Modal */}
         {showCancelConfirm && (
-        <CommonModal isOpen={true} onClose={cancelCancelOrder} title="Cancel Order" footer={<><ActionButton variant="secondary" onClick={cancelCancelOrder}>No, Keep Order</ActionButton><ActionButton onClick={confirmCancelOrder} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>Yes, Cancel Order</ActionButton></>}>
+        <CommonModal isOpen={true} onClose={cancelCancelOrder} title="Cancel Order" footer={<><ActionButton variant="secondary" onClick={cancelCancelOrder}>{t('orders:liveOrdersPage.noKeepOrder')}</ActionButton><ActionButton onClick={confirmCancelOrder} style={{ background: '#FF6B6B', borderColor: '#FF6B6B', color: 'white' }}>{t('orders:liveOrdersPage.yesCancelOrder')}</ActionButton></>}>
               <p style={{ margin: 0, fontSize: '14px', lineHeight: '1.6' }}>
                 Are you sure you want to cancel this order? The order history will be kept for your records.
               </p>
@@ -4142,8 +4145,8 @@ const LiveOrdersPage: React.FC = () => {
           size="small"
           footer={(verifyOrder?.payment_status as any) === 'payment_verification_pending' ? (
             <>
-              <VerifyRejectButton variant="secondary" onClick={handleVerifyReject}>Reject</VerifyRejectButton>
-              <VerifyConfirmButton variant="primary" onClick={handleVerifyConfirm}>Confirm Payment</VerifyConfirmButton>
+              <VerifyRejectButton variant="secondary" onClick={handleVerifyReject}>{t('orders:liveOrdersPage.reject')}</VerifyRejectButton>
+              <VerifyConfirmButton variant="primary" onClick={handleVerifyConfirm}>{t('orders:liveOrdersPage.confirmPayment')}</VerifyConfirmButton>
             </>
           ) : undefined}
         >
@@ -4159,7 +4162,7 @@ const LiveOrdersPage: React.FC = () => {
                 </div>
 
                 <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Customer Submitted Proof</div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>{t('orders:liveOrdersPage.customerSubmittedProof')}</div>
                   {currentProof ? (
                     <>
                       {currentProof.reference && (
@@ -4289,7 +4292,7 @@ const LiveOrdersPage: React.FC = () => {
 
         {/* Merge Target Selection Modal */}
         {showMergeModal && (
-        <CommonModal isOpen={true} onClose={() => setShowMergeModal(false)} title="Select Target Order" footer={<><ActionButton onClick={() => setShowMergeModal(false)} style={{ background: 'white', color: '#374151', border: '1px solid #E5E7EB' }}>Cancel</ActionButton><ActionButton onClick={() => mergeTargetOrderId && executeMergeOrders(mergeTargetOrderId)} disabled={!mergeTargetOrderId || isMerging} style={{ background: mergeTargetOrderId ? '#635BFF' : '#E5E7EB', color: mergeTargetOrderId ? 'white' : '#9CA3AF', cursor: mergeTargetOrderId ? 'pointer' : 'not-allowed' }}>{isMerging ? 'Merging...' : 'Merge Orders'}</ActionButton></>}>
+        <CommonModal isOpen={true} onClose={() => setShowMergeModal(false)} title="Select Target Order" footer={<><ActionButton onClick={() => setShowMergeModal(false)} style={{ background: 'white', color: '#374151', border: '1px solid #E5E7EB' }}>{t('orders:liveOrdersPage.cancel')}</ActionButton><ActionButton onClick={() => mergeTargetOrderId && executeMergeOrders(mergeTargetOrderId)} disabled={!mergeTargetOrderId || isMerging} style={{ background: mergeTargetOrderId ? '#635BFF' : '#E5E7EB', color: mergeTargetOrderId ? 'white' : '#9CA3AF', cursor: mergeTargetOrderId ? 'pointer' : 'not-allowed' }}>{isMerging ? 'Merging...' : 'Merge Orders'}</ActionButton></>}>
             <div>
               <p style={{ marginBottom: '16px', color: '#6B7C93', fontSize: '14px' }}>
                 Select which order to merge INTO. The selected order's table/pager number will be kept.

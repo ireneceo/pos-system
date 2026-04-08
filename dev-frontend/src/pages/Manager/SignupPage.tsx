@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 interface SignupFormData {
   name: string;
@@ -306,6 +307,7 @@ const restaurantCountOptions = [
 ];
 
 const ManagerSignupPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const navigate = useNavigate();
   const [formData, setFormData] = useState<SignupFormData>({
     name: '',
@@ -402,14 +404,14 @@ const ManagerSignupPage: React.FC = () => {
     <Container>
       <SignupBox>
         <Header>
-          <Title>Manager Registration</Title>
-          <Subtitle>Create your multi-restaurant management account</Subtitle>
+          <Title>{t('admin:signupPage.managerRegistration')}</Title>
+          <Subtitle>{t('admin:signupPage.createYourMultirestaurantManagementAccount')}</Subtitle>
         </Header>
 
         <Content>
           <Form onSubmit={handleSubmit}>
             <Section>
-              <SectionTitle>Personal Information</SectionTitle>
+              <SectionTitle>{t('admin:signupPage.personalInformation')}</SectionTitle>
               <Row>
                 <InputGroup>
                   <Label>Full Name *</Label>
@@ -462,7 +464,7 @@ const ManagerSignupPage: React.FC = () => {
             </Section>
 
             <Section>
-              <SectionTitle>Business Information</SectionTitle>
+              <SectionTitle>{t('admin:signupPage.businessInformation')}</SectionTitle>
               <InputGroup>
                 <Label>Company/Business Name *</Label>
                 <Input
@@ -497,7 +499,7 @@ const ManagerSignupPage: React.FC = () => {
             </Section>
 
             <Section>
-              <SectionTitle>Restaurant Management Plan</SectionTitle>
+              <SectionTitle>{t('admin:signupPage.restaurantManagementPlan')}</SectionTitle>
               <RestaurantCountSection>
                 <Label style={{ fontSize: '16px', marginBottom: '8px' }}>
                   How many restaurants will you manage?
@@ -567,7 +569,7 @@ const ManagerSignupPage: React.FC = () => {
           </Form>
 
           <LoginLink>
-            Already have an account? <a href="/pos">Sign in here</a>
+            Already have an account? <a href="/pos">{t('admin:signupPage.signInHere')}</a>
           </LoginLink>
         </Content>
       </SignupBox>

@@ -5,6 +5,7 @@ import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardSta
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -355,6 +356,7 @@ interface RestaurantSummary {
 }
 
 const BrandManagerDashboard: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
@@ -503,9 +505,9 @@ const BrandManagerDashboard: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <Header><Title>Brand Manager Dashboard</Title></Header>
+        <Header><Title>{t('common:brandManagerDashboard.brandManagerDashboard')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px' }}>Loading dashboard...</div>
+          <div style={{ textAlign: 'center', padding: '40px' }}>{t('common:brandManagerDashboard.loadingDashboard')}</div>
         </Content>
       </Container>
     );
@@ -514,7 +516,7 @@ const BrandManagerDashboard: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Brand Manager Dashboard</Title>
+        <Title>{t('common:brandManagerDashboard.brandManagerDashboard')}</Title>
         {brandName && (
           <Subtitle>
             <span>{brandName}</span>
@@ -526,27 +528,27 @@ const BrandManagerDashboard: React.FC = () => {
         {/* KPI Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#DC2626">
-            <DashboardStatLabel>Total Restaurants</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:brandManagerDashboard.totalRestaurants')}</DashboardStatLabel>
             <DashboardStatValue>{totalRestaurants}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#059669">
-            <DashboardStatLabel>Active Restaurants</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:brandManagerDashboard.activeRestaurants')}</DashboardStatLabel>
             <DashboardStatValue>{activeRestaurants}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#F59E0B">
-            <DashboardStatLabel>Today's Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:brandManagerDashboard.todaysRevenue')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(totalTodayRevenue, selectedCurrency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#2563EB">
-            <DashboardStatLabel>Today's Orders</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:brandManagerDashboard.todaysOrders')}</DashboardStatLabel>
             <DashboardStatValue>{totalTodayOrders}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#10B981">
-            <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:brandManagerDashboard.monthlyRevenue')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(totalMonthlyRevenue, selectedCurrency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#7C3AED">
-            <DashboardStatLabel>Avg Revenue / Store</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:brandManagerDashboard.avgRevenueStore')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(avgRevenuePerStore, selectedCurrency)}</DashboardStatValue>
           </DashboardStatCard>
         </DashboardStatsGrid>
@@ -554,27 +556,27 @@ const BrandManagerDashboard: React.FC = () => {
         {/* Summary + Quick Actions */}
         <MainGrid>
           <ChartContainer>
-            <h3>Brand Summary</h3>
+            <h3>{t('common:brandManagerDashboard.brandSummary')}</h3>
             <SummaryItem>
-              <SummaryLabel>Monthly Revenue</SummaryLabel>
+              <SummaryLabel>{t('common:brandManagerDashboard.monthlyRevenue')}</SummaryLabel>
               <SummaryValue>{formatCurrency(totalMonthlyRevenue, selectedCurrency)}</SummaryValue>
             </SummaryItem>
             <SummaryItem>
-              <SummaryLabel>Avg Revenue / Store</SummaryLabel>
+              <SummaryLabel>{t('common:brandManagerDashboard.avgRevenueStore')}</SummaryLabel>
               <SummaryValue>{formatCurrency(avgRevenuePerStore, selectedCurrency)}</SummaryValue>
             </SummaryItem>
             <SummaryItem>
-              <SummaryLabel>Active Restaurants</SummaryLabel>
+              <SummaryLabel>{t('common:brandManagerDashboard.activeRestaurants')}</SummaryLabel>
               <SummaryValue>{activeRestaurants} / {totalRestaurants}</SummaryValue>
             </SummaryItem>
             <SummaryItem>
-              <SummaryLabel>Today's Total Orders</SummaryLabel>
+              <SummaryLabel>{t('common:brandManagerDashboard.todaysTotalOrders')}</SummaryLabel>
               <SummaryValue>{totalTodayOrders}</SummaryValue>
             </SummaryItem>
           </ChartContainer>
 
           <AlertsPanel>
-            <h3>Notifications</h3>
+            <h3>{t('common:brandManagerDashboard.notifications')}</h3>
             <AlertsList>
               {alerts.map((alert, idx) => (
                 <Alert key={idx} type={alert.type} onClick={() => alert.link && navigate(alert.link)}>
@@ -590,45 +592,45 @@ const BrandManagerDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <QuickActionsSection>
-          <h3>Quick Actions</h3>
+          <h3>{t('common:brandManagerDashboard.quickActions')}</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/manager/restaurants')}>
               <div className="icon">◐</div>
-              <div className="title">Restaurants</div>
-              <div className="description">Restaurant management</div>
+              <div className="title">{t('common:brandManagerDashboard.restaurants')}</div>
+              <div className="description">{t('common:brandManagerDashboard.restaurantManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/brand/invoices')}>
               <div className="icon">▦</div>
-              <div className="title">Invoices</div>
-              <div className="description">Invoice management</div>
+              <div className="title">{t('common:brandManagerDashboard.invoices')}</div>
+              <div className="description">{t('common:brandManagerDashboard.invoiceManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/brand/general/reports')}>
               <div className="icon">◉</div>
-              <div className="title">Reports</div>
-              <div className="description">Performance analytics</div>
+              <div className="title">{t('common:brandManagerDashboard.reports')}</div>
+              <div className="description">{t('common:brandManagerDashboard.performanceAnalytics')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/manager/admins')}>
               <div className="icon">◆</div>
-              <div className="title">Restaurant Admins</div>
-              <div className="description">Admin management</div>
+              <div className="title">{t('common:brandManagerDashboard.restaurantAdmins')}</div>
+              <div className="description">{t('common:brandManagerDashboard.adminManagement')}</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>
 
         {/* Restaurant Performance Table */}
         <RecentOrdersSection>
-          <h3>Restaurant Performance</h3>
+          <h3>{t('common:brandManagerDashboard.restaurantPerformance')}</h3>
         </RecentOrdersSection>
         <TableContainer>
           <Table>
             <Thead>
               <Tr>
-                <Th>Restaurant</Th>
-                <Th>Admin</Th>
-                <Th>Status</Th>
-                <Th>Today's Orders</Th>
-                <Th>Today's Revenue</Th>
-                <Th>Monthly Revenue</Th>
+                <Th>{t('common:brandManagerDashboard.restaurant')}</Th>
+                <Th>{t('common:brandManagerDashboard.admin')}</Th>
+                <Th>{t('common:brandManagerDashboard.status')}</Th>
+                <Th>{t('common:brandManagerDashboard.todaysOrders')}</Th>
+                <Th>{t('common:brandManagerDashboard.todaysRevenue')}</Th>
+                <Th>{t('common:brandManagerDashboard.monthlyRevenue')}</Th>
               </Tr>
             </Thead>
             <Tbody>

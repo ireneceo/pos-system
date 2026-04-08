@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateArticleSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 interface BlogCategory {
   id: number;
@@ -354,6 +355,7 @@ const NotFoundState = styled.div`
 `;
 
 const BlogPostPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -397,10 +399,12 @@ const BlogPostPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
+  // useTranslation moved to component level
+
+  return (
       <LandingLayout>
         <PageContainer>
-          <LoadingState>Loading...</LoadingState>
+          <LoadingState>{t('landing:blogPostPage.loading')}</LoadingState>
         </PageContainer>
       </LandingLayout>
     );
@@ -411,13 +415,13 @@ const BlogPostPage: React.FC = () => {
       <LandingLayout>
         <PageContainer>
           <NotFoundState>
-            <h2>Post not found</h2>
-            <p>The blog post you're looking for doesn't exist or has been removed.</p>
+            <h2>{t('landing:blogPostPage.postNotFound')}</h2>
+            <p>{t('landing:blogPostPage.theBlogPostYoureLookingForDoesntExistOrHasBeenRemoved')}</p>
             <BackButton onClick={() => navigate('/blog')} style={{ background: '#635BFF', border: 'none' }}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Back to Blog
+              {t('landing:blogPostPage.backToBlog')}
             </BackButton>
           </NotFoundState>
         </PageContainer>
@@ -513,7 +517,7 @@ const BlogPostPage: React.FC = () => {
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Back to Blog
+              {t('landing:blogPostPage.backToBlog')}
             </BackButton>
           </ArticleHeader>
           <ArticleContent dangerouslySetInnerHTML={{ __html: post.content }} />
@@ -521,7 +525,7 @@ const BlogPostPage: React.FC = () => {
 
         {relatedPosts.length > 0 && (
           <RelatedSection>
-            <RelatedTitle>Related Posts</RelatedTitle>
+            <RelatedTitle>{t('landing:blogPostPage.relatedPosts')}</RelatedTitle>
             <RelatedGrid>
               {relatedPosts.map(relatedPost => (
                 <RelatedCard key={relatedPost.id} onClick={() => navigate(`/blog/${relatedPost.slug}`)}>

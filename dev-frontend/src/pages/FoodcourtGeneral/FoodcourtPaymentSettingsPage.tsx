@@ -6,6 +6,7 @@ import { Modal, ModalButton } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { useAuth } from '../../contexts/AuthContext';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import { useTranslation } from 'react-i18next';
 
 interface CurrencyConfig {
   [code: string]: {
@@ -308,6 +309,7 @@ const defaultPaymentSettings: PaymentSettings = {
 };
 
 const FoodcourtPaymentSettingsPage: React.FC = () => {
+  const { t } = useTranslation('foodcourt');
   const { user } = useAuth();
   const foodcourtId = user?.foodcourt_id;
 
@@ -581,7 +583,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
         <Container>
           <PageHeader title="Payment Settings" />
           <Content>
-            <p>Loading...</p>
+            <p>{t('foodcourt:foodcourtPaymentSettingsPage.loading')}</p>
           </Content>
         </Container>
       </>
@@ -595,14 +597,14 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
         <Content>
           {/* Section 1: Currency Settings */}
           <Section>
-            <SectionTitle>Currency Settings</SectionTitle>
+            <SectionTitle>{t('foodcourt:foodcourtPaymentSettingsPage.currencySettings')}</SectionTitle>
             <SectionDescription>
               Configure supported currencies for subscription plans and invoices.
             </SectionDescription>
 
             <FormRow>
               <FormGroup>
-                <Label>Default Currency</Label>
+                <Label>{t('foodcourt:foodcourtPaymentSettingsPage.defaultCurrency')}</Label>
                 <AutoSaveField type="select" onSave={savePaymentSettings}>
                   <Select
                     value={defaultCurrency}
@@ -615,11 +617,11 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                     ))}
                   </Select>
                 </AutoSaveField>
-                <HelpText>Used as default for new subscriptions and invoices</HelpText>
+                <HelpText>{t('foodcourt:foodcourtPaymentSettingsPage.usedAsDefaultForNewSubscriptionsAndInvoices')}</HelpText>
               </FormGroup>
 
               <FormGroup>
-                <Label>Supported Currencies</Label>
+                <Label>{t('foodcourt:foodcourtPaymentSettingsPage.supportedCurrencies')}</Label>
                 <CurrencySelector
                   onClick={() => {
                     setTempSelectedCurrencies(supportedCurrencies);
@@ -633,17 +635,17 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                       </CurrencyTag>
                     ))
                   ) : (
-                    <PlaceholderText>Click to select currencies</PlaceholderText>
+                    <PlaceholderText>{t('foodcourt:foodcourtPaymentSettingsPage.clickToSelectCurrencies')}</PlaceholderText>
                   )}
                 </CurrencySelector>
-                <HelpText>Currencies available for pricing plans and invoices</HelpText>
+                <HelpText>{t('foodcourt:foodcourtPaymentSettingsPage.currenciesAvailableForPricingPlansAndInvoices')}</HelpText>
               </FormGroup>
             </FormRow>
           </Section>
 
           {/* Section 2: Online Payment (Global) */}
           <Section>
-            <SectionTitle>Online Payment</SectionTitle>
+            <SectionTitle>{t('foodcourt:foodcourtPaymentSettingsPage.onlinePayment')}</SectionTitle>
             <SectionDescription>
               Configure online payment gateways. These settings apply to all currencies.
             </SectionDescription>
@@ -652,8 +654,8 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
             <PaymentMethodCard>
               <MethodHeader>
                 <MethodInfo>
-                  <MethodLabel>Stripe</MethodLabel>
-                  <MethodDescription>Credit/Debit Card payments</MethodDescription>
+                  <MethodLabel>{t('foodcourt:foodcourtPaymentSettingsPage.stripe')}</MethodLabel>
+                  <MethodDescription>{t('foodcourt:foodcourtPaymentSettingsPage.creditdebitCardPayments')}</MethodDescription>
                 </MethodInfo>
                 <ToggleSwitch>
                   <ToggleInput
@@ -667,7 +669,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
               {paymentSettings.stripe.enabled && (
                 <MethodContent>
                   <FormGroup>
-                    <Label>Publishable Key</Label>
+                    <Label>{t('foodcourt:foodcourtPaymentSettingsPage.publishableKey')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="text"
@@ -678,7 +680,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                     </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
-                    <Label>Secret Key</Label>
+                    <Label>{t('foodcourt:foodcourtPaymentSettingsPage.secretKey')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="password"
@@ -689,7 +691,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                     </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
-                    <Label>Webhook Secret</Label>
+                    <Label>{t('foodcourt:foodcourtPaymentSettingsPage.webhookSecret')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="password"
@@ -717,8 +719,8 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
             <PaymentMethodCard>
               <MethodHeader>
                 <MethodInfo>
-                  <MethodLabel>PayPal</MethodLabel>
-                  <MethodDescription>PayPal account or card</MethodDescription>
+                  <MethodLabel>{t('foodcourt:foodcourtPaymentSettingsPage.paypal')}</MethodLabel>
+                  <MethodDescription>{t('foodcourt:foodcourtPaymentSettingsPage.paypalAccountOrCard')}</MethodDescription>
                 </MethodInfo>
                 <ToggleSwitch>
                   <ToggleInput
@@ -732,7 +734,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
               {paymentSettings.paypal.enabled && (
                 <MethodContent>
                   <FormGroup>
-                    <Label>Client ID</Label>
+                    <Label>{t('foodcourt:foodcourtPaymentSettingsPage.clientId')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="text"
@@ -743,7 +745,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                     </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
-                    <Label>Client Secret</Label>
+                    <Label>{t('foodcourt:foodcourtPaymentSettingsPage.clientSecret')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="password"
@@ -760,7 +762,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
 
           {/* Section 3: Manual Payment (Per Currency) */}
           <Section>
-            <SectionTitle>Manual Payment</SectionTitle>
+            <SectionTitle>{t('foodcourt:foodcourtPaymentSettingsPage.manualPayment')}</SectionTitle>
             <SectionDescription>
               Configure bank transfer and QR payment for each currency. Different currencies require different bank accounts and QR codes.
             </SectionDescription>
@@ -788,7 +790,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                   <MethodHeader>
                     <MethodInfo>
                       <MethodLabel>Bank Transfer ({selectedCurrency})</MethodLabel>
-                      <MethodDescription>Manual transfer with receipt upload</MethodDescription>
+                      <MethodDescription>{t('foodcourt:foodcourtPaymentSettingsPage.manualTransferWithReceiptUpload')}</MethodDescription>
                     </MethodInfo>
                     <ToggleSwitch>
                       <ToggleInput
@@ -802,7 +804,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                   {getBankConfig(selectedCurrency).enabled && (
                     <MethodContent>
                       <FormGroup>
-                        <Label>Bank Name</Label>
+                        <Label>{t('foodcourt:foodcourtPaymentSettingsPage.bankName')}</Label>
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
@@ -813,7 +815,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
-                        <Label>Account Number</Label>
+                        <Label>{t('foodcourt:foodcourtPaymentSettingsPage.accountNumber')}</Label>
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
@@ -824,7 +826,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
-                        <Label>Account Name</Label>
+                        <Label>{t('foodcourt:foodcourtPaymentSettingsPage.accountName')}</Label>
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
@@ -843,7 +845,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                   <MethodHeader>
                     <MethodInfo>
                       <MethodLabel>QR Payment ({selectedCurrency})</MethodLabel>
-                      <MethodDescription>Scan QR code to pay (DuitNow, KakaoPay, etc.)</MethodDescription>
+                      <MethodDescription>{t('foodcourt:foodcourtPaymentSettingsPage.scanQrCodeToPayDuitnowKakaopayEtc')}</MethodDescription>
                     </MethodInfo>
                     <ToggleSwitch>
                       <ToggleInput
@@ -866,7 +868,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         imageAltText="Payment QR Code"
                       />
                       <FormGroup style={{ marginTop: '16px' }}>
-                        <Label>Description</Label>
+                        <Label>{t('foodcourt:foodcourtPaymentSettingsPage.description')}</Label>
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
@@ -875,7 +877,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                             onChange={(e) => handleQRPaymentChange(selectedCurrency, 'qrDescription', e.target.value)}
                           />
                         </AutoSaveField>
-                        <HelpText>Short description shown below the QR code</HelpText>
+                        <HelpText>{t('foodcourt:foodcourtPaymentSettingsPage.shortDescriptionShownBelowTheQrCode')}</HelpText>
                       </FormGroup>
                     </MethodContent>
                   )}
@@ -911,7 +913,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         <MethodContent>
                           <FormRow>
                             <FormGroup>
-                              <Label>Item Name</Label>
+                              <Label>{t('foodcourt:foodcourtPaymentSettingsPage.itemName')}</Label>
                               <AutoSaveField onSave={savePaymentSettings}>
                                 <Input
                                   type="text"
@@ -920,7 +922,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                                   placeholder="e.g., SST, VAT, Service Charge"
                                 />
                               </AutoSaveField>
-                              <HelpText>Name displayed on invoices</HelpText>
+                              <HelpText>{t('foodcourt:foodcourtPaymentSettingsPage.nameDisplayedOnInvoices')}</HelpText>
                             </FormGroup>
                             <FormGroup>
                               <Label>Rate (%)</Label>
@@ -935,7 +937,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                                   placeholder="0"
                                 />
                               </AutoSaveField>
-                              <HelpText>Percentage to add to subtotal</HelpText>
+                              <HelpText>{t('foodcourt:foodcourtPaymentSettingsPage.percentageToAddToSubtotal')}</HelpText>
                             </FormGroup>
                           </FormRow>
                         </MethodContent>

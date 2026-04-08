@@ -6,6 +6,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 interface Manager {
   id: string;
@@ -325,6 +326,7 @@ const PermissionLabel = styled.label`
 `;
 
 const FoodcourtStaffPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { user } = useAuth();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -576,7 +578,7 @@ const FoodcourtStaffPage: React.FC = () => {
     onChange: (updated: string[]) => void
   ) => (
     <div style={{ marginTop: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>Menu Access</div>
+      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>{t('common:foodcourtStaffPage.menuAccess')}</div>
       <div style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '12px' }}>
         Select which menu sections this manager can access:
       </div>
@@ -607,7 +609,7 @@ const FoodcourtStaffPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <HeaderTitle>Foodcourt Managers</HeaderTitle>
+          <HeaderTitle>{t('common:foodcourtStaffPage.foodcourtManagers')}</HeaderTitle>
           {isGeneral && (
             <HeaderActions>
               <Button variant="primary" onClick={handleOpenAddModal}>
@@ -621,11 +623,11 @@ const FoodcourtStaffPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#2563EB">
               <StatValue>{stats.total}</StatValue>
-              <StatLabel>Total Managers</StatLabel>
+              <StatLabel>{t('common:foodcourtStaffPage.totalManagers')}</StatLabel>
             </StatCard>
             <StatCard color="#059669">
               <StatValue>{stats.active}</StatValue>
-              <StatLabel>Active</StatLabel>
+              <StatLabel>{t('common:foodcourtStaffPage.active')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -653,12 +655,12 @@ const FoodcourtStaffPage: React.FC = () => {
               <Table>
                 <TableHead>
                   <tr>
-                    <th>Manager</th>
-                    <th>Phone</th>
-                    <th>Permissions</th>
-                    <th>Joined</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>{t('common:foodcourtStaffPage.manager')}</th>
+                    <th>{t('common:foodcourtStaffPage.phone')}</th>
+                    <th>{t('common:foodcourtStaffPage.permissions')}</th>
+                    <th>{t('common:foodcourtStaffPage.joined')}</th>
+                    <th>{t('common:foodcourtStaffPage.status')}</th>
+                    <th>{t('common:foodcourtStaffPage.actions')}</th>
                   </tr>
                 </TableHead>
                 <tbody>
@@ -678,7 +680,7 @@ const FoodcourtStaffPage: React.FC = () => {
                       <TableCell data-label="Permissions">
                         <PermissionTags>
                           {manager.permissions.length === 0 ? (
-                            <span style={{ fontSize: '12px', color: '#9CA3AF' }}>No permissions</span>
+                            <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('common:foodcourtStaffPage.noPermissions')}</span>
                           ) : (
                             manager.permissions.map(p => (
                               <PermissionTag key={p}>
@@ -734,8 +736,8 @@ const FoodcourtStaffPage: React.FC = () => {
           size="large"
           footer={
             <>
-              <ModalButton variant="secondary" onClick={() => { setShowAddModal(false); setFormError(''); }}>Cancel</ModalButton>
-              <ModalButton variant="primary" onClick={handleSubmitManager}>Add Manager</ModalButton>
+              <ModalButton variant="secondary" onClick={() => { setShowAddModal(false); setFormError(''); }}>{t('common:foodcourtStaffPage.cancel')}</ModalButton>
+              <ModalButton variant="primary" onClick={handleSubmitManager}>{t('common:foodcourtStaffPage.addManager')}</ModalButton>
             </>
           }
         >
@@ -777,7 +779,7 @@ const FoodcourtStaffPage: React.FC = () => {
               />
             </FormGroup>
             <FormGroup>
-              <FormLabel>Phone</FormLabel>
+              <FormLabel>{t('common:foodcourtStaffPage.phone')}</FormLabel>
               <PhoneInput
                 value={newManager.phone}
                 onChange={(value) => setNewManager(prev => ({ ...prev, phone: value }))}
@@ -803,8 +805,8 @@ const FoodcourtStaffPage: React.FC = () => {
           size="large"
           footer={
             <>
-              <ModalButton variant="secondary" onClick={() => { setShowEditModal(false); setEditingManager(null); setFormError(''); }}>Cancel</ModalButton>
-              <ModalButton variant="primary" onClick={handleUpdateManager}>Update Manager</ModalButton>
+              <ModalButton variant="secondary" onClick={() => { setShowEditModal(false); setEditingManager(null); setFormError(''); }}>{t('common:foodcourtStaffPage.cancel')}</ModalButton>
+              <ModalButton variant="primary" onClick={handleUpdateManager}>{t('common:foodcourtStaffPage.updateManager')}</ModalButton>
             </>
           }
         >
@@ -812,7 +814,7 @@ const FoodcourtStaffPage: React.FC = () => {
             <>
               <FormRow>
                 <FormGroup>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>{t('common:foodcourtStaffPage.username')}</FormLabel>
                   <FormInput
                     type="text"
                     value={editForm.username}
@@ -845,7 +847,7 @@ const FoodcourtStaffPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Phone</FormLabel>
+                  <FormLabel>{t('common:foodcourtStaffPage.phone')}</FormLabel>
                   <PhoneInput
                     value={editForm.phone}
                     onChange={(value) => setEditForm(prev => ({ ...prev, phone: value }))}
@@ -927,8 +929,8 @@ const FoodcourtStaffPage: React.FC = () => {
           size="small"
           footer={
             <>
-              <ModalButton variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</ModalButton>
-              <ModalButton variant="primary" onClick={executeDelete}>Delete</ModalButton>
+              <ModalButton variant="secondary" onClick={() => setDeleteTarget(null)}>{t('common:foodcourtStaffPage.cancel')}</ModalButton>
+              <ModalButton variant="primary" onClick={executeDelete}>{t('common:foodcourtStaffPage.delete')}</ModalButton>
             </>
           }
         >
@@ -947,7 +949,7 @@ const FoodcourtStaffPage: React.FC = () => {
           title="Notice"
           size="small"
           footer={
-            <ModalButton variant="primary" onClick={() => setErrorMessage('')}>OK</ModalButton>
+            <ModalButton variant="primary" onClick={() => setErrorMessage('')}>{t('common:foodcourtStaffPage.ok')}</ModalButton>
           }
         >
           <div style={{ fontSize: '14px', color: '#374151' }}>
@@ -963,8 +965,8 @@ const FoodcourtStaffPage: React.FC = () => {
           size="small"
           footer={
             <>
-              <ModalButton variant="secondary" onClick={() => setResetPasswordTarget(null)}>Cancel</ModalButton>
-              <ModalButton variant="primary" onClick={executeResetPassword}>Reset</ModalButton>
+              <ModalButton variant="secondary" onClick={() => setResetPasswordTarget(null)}>{t('common:foodcourtStaffPage.cancel')}</ModalButton>
+              <ModalButton variant="primary" onClick={executeResetPassword}>{t('common:foodcourtStaffPage.reset')}</ModalButton>
             </>
           }
         >

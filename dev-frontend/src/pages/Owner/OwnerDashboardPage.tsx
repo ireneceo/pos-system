@@ -6,6 +6,7 @@ import { formatCurrency } from '../../utils/currency';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -422,6 +423,7 @@ const SubscriptionBanner = styled.div<{ $type: 'trial' | 'warning' | 'danger' }>
 `;
 
 const OwnerDashboardPage: React.FC = () => {
+  const { t } = useTranslation('owner');
   const navigate = useNavigate();
   const { user } = useAuth();
   const { paymentStatus } = usePaymentStatus();
@@ -599,9 +601,9 @@ const OwnerDashboardPage: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <Header><Title>Owner Dashboard</Title></Header>
+        <Header><Title>{t('owner:ownerDashboardPage.ownerDashboard')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px' }}>Loading dashboard...</div>
+          <div style={{ textAlign: 'center', padding: '40px' }}>{t('owner:ownerDashboardPage.loadingDashboard')}</div>
         </Content>
       </Container>
     );
@@ -610,7 +612,7 @@ const OwnerDashboardPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Owner Dashboard</Title>
+        <Title>{t('owner:ownerDashboardPage.ownerDashboard')}</Title>
         {subscriptionInfo.planType && (
           <Subtitle>
             <span>{subscriptionInfo.planType}</span>
@@ -618,12 +620,12 @@ const OwnerDashboardPage: React.FC = () => {
               const s = subscriptionInfo;
               if (s.status === 'trial') return <SubscriptionBadge variant="trial" onClick={() => navigate('/pos/profile?tab=subscription')}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
               if (s.status === 'active' && s.daysLeft !== undefined) {
-                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>Expired</SubscriptionBadge>;
+                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('owner:ownerDashboardPage.expired')}</SubscriptionBadge>;
                 if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
                 return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
               }
               if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.status}</SubscriptionBadge>;
-              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>Active</SubscriptionBadge>;
+              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('owner:ownerDashboardPage.active')}</SubscriptionBadge>;
             })()}
           </Subtitle>
         )}
@@ -652,37 +654,37 @@ const OwnerDashboardPage: React.FC = () => {
         {/* KPI Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#635BFF">
-            <DashboardStatLabel>My Restaurants</DashboardStatLabel>
+            <DashboardStatLabel>{t('owner:ownerDashboardPage.myRestaurants')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalRestaurants}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#059669">
-            <DashboardStatLabel>Today's Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('owner:ownerDashboardPage.todaysRevenue')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(stats.todayRevenue, currency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#10B981">
-            <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('owner:ownerDashboardPage.monthlyRevenue')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(stats.monthRevenue, currency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#2563EB">
-            <DashboardStatLabel>Monthly Orders</DashboardStatLabel>
+            <DashboardStatLabel>{t('owner:ownerDashboardPage.monthlyOrders')}</DashboardStatLabel>
             <DashboardStatValue>{stats.monthOrders.toLocaleString()}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#F59E0B">
-            <DashboardStatLabel>Pending Invoices</DashboardStatLabel>
+            <DashboardStatLabel>{t('owner:ownerDashboardPage.pendingInvoices')}</DashboardStatLabel>
             <DashboardStatValue>{stats.pendingInvoices}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#7C3AED">
-            <DashboardStatLabel>Avg Order Value</DashboardStatLabel>
+            <DashboardStatLabel>{t('owner:ownerDashboardPage.avgOrderValue')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(stats.avgOrderValue, currency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#DC2626">
-            <DashboardStatLabel>Best Restaurant</DashboardStatLabel>
+            <DashboardStatLabel>{t('owner:ownerDashboardPage.bestRestaurant')}</DashboardStatLabel>
             <DashboardStatValue style={{ fontSize: stats.bestRestaurant.length > 15 ? '16px' : undefined }}>
               {stats.bestRestaurant}
             </DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#059669">
-            <DashboardStatLabel>Active Restaurants</DashboardStatLabel>
+            <DashboardStatLabel>{t('owner:ownerDashboardPage.activeRestaurants')}</DashboardStatLabel>
             <DashboardStatValue>{stats.activeRestaurants}</DashboardStatValue>
           </DashboardStatCard>
         </DashboardStatsGrid>
@@ -691,7 +693,7 @@ const OwnerDashboardPage: React.FC = () => {
         <MainGrid>
           <ChartContainer>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>Revenue Comparison</h3>
+              <h3 style={{ margin: 0 }}>{t('owner:ownerDashboardPage.revenueComparison')}</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {(['week', 'month', 'year'] as const).map(p => (
                   <button
@@ -730,12 +732,12 @@ const OwnerDashboardPage: React.FC = () => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <LoadingContainer>No comparison data available</LoadingContainer>
+              <LoadingContainer>{t('owner:ownerDashboardPage.noComparisonDataAvailable')}</LoadingContainer>
             )}
           </ChartContainer>
 
           <AlertsPanel>
-            <h3>Notifications</h3>
+            <h3>{t('owner:ownerDashboardPage.notifications')}</h3>
             <AlertsList>
               {alerts.map((alert, idx) => (
                 <Alert key={idx} type={alert.type} onClick={() => alert.link && navigate(alert.link)}>
@@ -751,27 +753,27 @@ const OwnerDashboardPage: React.FC = () => {
 
         {/* Quick Actions */}
         <QuickActionsSection>
-          <h3>Quick Actions</h3>
+          <h3>{t('owner:ownerDashboardPage.quickActions')}</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/owner/restaurants')}>
               <div className="icon">◐</div>
-              <div className="title">Restaurants</div>
-              <div className="description">Restaurant management</div>
+              <div className="title">{t('owner:ownerDashboardPage.restaurants')}</div>
+              <div className="description">{t('owner:ownerDashboardPage.restaurantManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/owner/invoices')}>
               <div className="icon">▦</div>
-              <div className="title">Invoices</div>
-              <div className="description">Invoice management</div>
+              <div className="title">{t('owner:ownerDashboardPage.invoices')}</div>
+              <div className="description">{t('owner:ownerDashboardPage.invoiceManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/owner/performance')}>
               <div className="icon">◈</div>
-              <div className="title">Performance</div>
-              <div className="description">Performance analytics</div>
+              <div className="title">{t('owner:ownerDashboardPage.performance')}</div>
+              <div className="description">{t('owner:ownerDashboardPage.performanceAnalytics')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/owner/reports')}>
               <div className="icon">☰</div>
-              <div className="title">Reports</div>
-              <div className="description">Detailed reports</div>
+              <div className="title">{t('owner:ownerDashboardPage.reports')}</div>
+              <div className="description">{t('owner:ownerDashboardPage.detailedReports')}</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>
@@ -780,7 +782,7 @@ const OwnerDashboardPage: React.FC = () => {
         <ChartGrid>
           <ChartCard>
             <ChartHeader>
-              <ChartTitle>Revenue Distribution</ChartTitle>
+              <ChartTitle>{t('owner:ownerDashboardPage.revenueDistribution')}</ChartTitle>
             </ChartHeader>
             {pieData.length > 0 ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
@@ -805,13 +807,13 @@ const OwnerDashboardPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <LoadingContainer>No revenue data available</LoadingContainer>
+              <LoadingContainer>{t('owner:ownerDashboardPage.noRevenueDataAvailable')}</LoadingContainer>
             )}
           </ChartCard>
         </ChartGrid>
 
         {/* Restaurant Performance Cards */}
-        <SectionTitle>Restaurant Performance</SectionTitle>
+        <SectionTitle>{t('owner:ownerDashboardPage.restaurantPerformance')}</SectionTitle>
         <RestaurantGrid>
           {restaurants.map(restaurant => (
             <RestaurantCard
@@ -827,11 +829,11 @@ const OwnerDashboardPage: React.FC = () => {
               </CardHeader>
               <CardStats>
                 <div>
-                  <CardStatLabel>Today</CardStatLabel>
+                  <CardStatLabel>{t('owner:ownerDashboardPage.today')}</CardStatLabel>
                   <CardStatValue>{formatCurrency(restaurant.todayRevenue, restaurant.currency || currency)}</CardStatValue>
                 </div>
                 <div>
-                  <CardStatLabel>This Month</CardStatLabel>
+                  <CardStatLabel>{t('owner:ownerDashboardPage.thisMonth')}</CardStatLabel>
                   <CardStatValue>{formatCurrency(restaurant.monthRevenue, restaurant.currency || currency)}</CardStatValue>
                 </div>
               </CardStats>

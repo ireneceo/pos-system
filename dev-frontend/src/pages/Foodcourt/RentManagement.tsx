@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { ModalComponent, FormGroup, FormLabel, FormInput, Button, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -242,6 +243,7 @@ interface Stats {
 }
 
 const RentManagement: React.FC = () => {
+  const { t } = useTranslation('common');
   const [searchTerm, setSearchTerm] = useState('');
   const [rentData, setRentData] = useState<RentData[]>([]);
   const [stats, setStats] = useState<Stats>({
@@ -357,18 +359,17 @@ const RentManagement: React.FC = () => {
     item.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.owner.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
   return (
     <>
       <Container>
         <Header>
           <div>
-            <Title>Rent Management</Title>
-            <Subtitle>Foodcourt tenant rent status and payment management</Subtitle>
+            <Title>{'Rent Management'}</Title>
+            <Subtitle>{'Foodcourt tenant rent status and payment management'}</Subtitle>
           </div>
           <ActionSection>
-            <ThemedButton variant="outline">Export Report</ThemedButton>
-            <ThemedButton variant="primary" onClick={handleAddRent}>Set Rent</ThemedButton>
+            <ThemedButton variant="outline">{'Export Report'}</ThemedButton>
+            <ThemedButton variant="primary" onClick={handleAddRent}>{'Set Rent'}</ThemedButton>
           </ActionSection>
         </Header>
 
@@ -376,27 +377,27 @@ const RentManagement: React.FC = () => {
           <StatsGrid>
             <StatCard>
               <StatValue>{stats.totalStores}</StatValue>
-              <StatLabel>Total Tenants</StatLabel>
-              <StatTrend trend="up">All active spaces</StatTrend>
+              <StatLabel>{'Total Tenants'}</StatLabel>
+              <StatTrend trend="up">{'All active spaces'}</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{stats.paidStores}</StatValue>
-              <StatLabel>Paid</StatLabel>
+              <StatLabel>{'Paid'}</StatLabel>
               <StatTrend trend="up">{Math.round((stats.paidStores/stats.totalStores)*100)}% payment rate</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{stats.pendingStores}</StatValue>
-              <StatLabel>Pending</StatLabel>
-              <StatTrend trend="down">Awaiting payment</StatTrend>
+              <StatLabel>{'Pending'}</StatLabel>
+              <StatTrend trend="down">{'Awaiting payment'}</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{stats.overdueStores}</StatValue>
-              <StatLabel>Overdue</StatLabel>
-              <StatTrend trend={stats.overdueStores > 0 ? "down" : "up"}>Requires attention</StatTrend>
+              <StatLabel>{'Overdue'}</StatLabel>
+              <StatTrend trend={stats.overdueStores > 0 ? "down" : "up"}>{'Requires attention'}</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>RM {(stats.totalRevenue / 1000000).toFixed(0)}M</StatValue>
-              <StatLabel>This Month Revenue</StatLabel>
+              <StatLabel>{'This Month Revenue'}</StatLabel>
               <StatTrend trend="up">+5% vs last month</StatTrend>
             </StatCard>
           </StatsGrid>
@@ -422,16 +423,16 @@ const RentManagement: React.FC = () => {
             <Table>
               <thead>
                 <tr>
-                  <TableHeader>Business Name</TableHeader>
-                  <TableHeader>Owner</TableHeader>
-                  <TableHeader>Contact</TableHeader>
-                  <TableHeader>Area</TableHeader>
-                  <TableHeader>Monthly Rent</TableHeader>
-                  <TableHeader>Due Date</TableHeader>
-                  <TableHeader>Status</TableHeader>
-                  <TableHeader>Payment Date</TableHeader>
-                  <TableHeader>Contract End</TableHeader>
-                  <TableHeader>Actions</TableHeader>
+                  <TableHeader>{'Business Name'}</TableHeader>
+                  <TableHeader>{'Owner'}</TableHeader>
+                  <TableHeader>{'Contact'}</TableHeader>
+                  <TableHeader>{'Area'}</TableHeader>
+                  <TableHeader>{'Monthly Rent'}</TableHeader>
+                  <TableHeader>{'Due Date'}</TableHeader>
+                  <TableHeader>{'Status'}</TableHeader>
+                  <TableHeader>{'Payment Date'}</TableHeader>
+                  <TableHeader>{'Contract End'}</TableHeader>
+                  <TableHeader>{'Actions'}</TableHeader>
                 </tr>
               </thead>
               <tbody>
@@ -482,7 +483,7 @@ const RentManagement: React.FC = () => {
           >
             <form onSubmit={handleFormSubmit}>
               <FormGroup>
-                <FormLabel>Business Name</FormLabel>
+                <FormLabel>{'Business Name'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.storeName}
@@ -492,7 +493,7 @@ const RentManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Owner Name</FormLabel>
+                <FormLabel>{'Owner Name'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.owner}
@@ -502,7 +503,7 @@ const RentManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Contact</FormLabel>
+                <FormLabel>{'Contact'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.phone}
@@ -512,7 +513,7 @@ const RentManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Area</FormLabel>
+                <FormLabel>{'Area'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.area}
@@ -523,7 +524,7 @@ const RentManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Monthly Rent (RM)</FormLabel>
+                <FormLabel>{'Monthly Rent (RM)'}</FormLabel>
                 <FormInput
                   type="number"
                   value={formData.rentAmount}
@@ -533,7 +534,7 @@ const RentManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Contract End Date</FormLabel>
+                <FormLabel>{'Contract End Date'}</FormLabel>
                 <FormInput
                   type="date"
                   value={formData.contractEndDate}

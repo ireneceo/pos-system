@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -194,6 +195,7 @@ const Td = styled.td`
 `;
 
 const TermsOfServicePage: React.FC = () => {
+  const { t } = useTranslation('landing');
   return (
     <LandingLayout>
       <SEOHead
@@ -204,9 +206,9 @@ const TermsOfServicePage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>Terms of Service</HeroTitle>
+          <HeroTitle>{t('landing:termsOfServicePage.termsOfService')}</HeroTitle>
           <HeroSubtitle>
-            Please read these terms carefully before using our services
+            {t('landing:termsOfServicePage.pleaseReadTheseTermsCarefullyBeforeUsing')}
           </HeroSubtitle>
         </HeroSection>
 
@@ -222,7 +224,7 @@ const TermsOfServicePage: React.FC = () => {
               By accessing or using our Services, you agree to be bound by these Terms. If you
               disagree with any part of these Terms, you may not access or use our Services.
             </Paragraph>
-            <LastUpdated>Last Updated: February 2026</LastUpdated>
+            <LastUpdated>{t('landing:termsOfServicePage.lastUpdatedFebruary2026')}</LastUpdated>
           </Section>
 
           <Section>
@@ -232,13 +234,13 @@ const TermsOfServicePage: React.FC = () => {
               food courts, and food service businesses. Our Services include:
             </Paragraph>
             <List>
-              <ListItem>Order management and processing</ListItem>
-              <ListItem>Menu and inventory management</ListItem>
-              <ListItem>Sales reporting and analytics</ListItem>
-              <ListItem>Customer relationship management</ListItem>
-              <ListItem>Staff management and scheduling</ListItem>
-              <ListItem>Payment processing integration</ListItem>
-              <ListItem>Mobile ordering capabilities</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.orderManagementAndProcessing')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.menuAndInventoryManagement')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.salesReportingAndAnalytics')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.customerRelationshipManagement')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.staffManagementAndScheduling')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.paymentProcessingIntegration')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.mobileOrderingCapabilities')}</ListItem>
             </List>
           </Section>
 
@@ -247,13 +249,13 @@ const TermsOfServicePage: React.FC = () => {
 
             <SubSectionTitle>3.1 Free Trial</SubSectionTitle>
             <Paragraph>
-              New users may be eligible for a 7-day free trial period. During the trial:
+              {t('landing:termsOfServicePage.newUsersMayBeEligibleForA7dayFreeTrialPe')}
             </Paragraph>
             <List>
-              <ListItem>Full access to all features is provided</ListItem>
-              <ListItem>No credit card is required to start the trial</ListItem>
-              <ListItem>Trial period begins upon account activation</ListItem>
-              <ListItem>Trial is available only for first-time registrations</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.fullAccessToAllFeaturesIsProvided')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.noCreditCardIsRequiredToStartTheTrial')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.trialPeriodBeginsUponAccountActivation')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.trialIsAvailableOnlyForFirsttimeRegistrations')}</ListItem>
             </List>
 
             <SubSectionTitle>3.2 Paid Subscriptions</SubSectionTitle>
@@ -290,7 +292,7 @@ const TermsOfServicePage: React.FC = () => {
             <SubSectionTitle>4.3 Late Payment and Grace Period</SubSectionTitle>
             <HighlightBox>
               <HighlightText>
-                <strong>Important:</strong> If payment is not received by the due date, a 7-day grace
+                <strong>{t('landing:termsOfServicePage.important')}</strong> If payment is not received by the due date, a 7-day grace
                 period will apply. During this period, you will receive payment reminders and your
                 account will remain fully functional. If payment is not received within the grace period,
                 your account will be suspended.
@@ -301,30 +303,30 @@ const TermsOfServicePage: React.FC = () => {
               <Table>
                 <thead>
                   <tr>
-                    <Th>Status</Th>
-                    <Th>Duration</Th>
-                    <Th>Account Access</Th>
-                    <Th>Action Required</Th>
+                    <Th>{t('landing:termsOfServicePage.status')}</Th>
+                    <Th>{t('landing:termsOfServicePage.duration')}</Th>
+                    <Th>{t('landing:termsOfServicePage.accountAccess')}</Th>
+                    <Th>{t('landing:termsOfServicePage.actionRequired')}</Th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <Td><strong>Active</strong></Td>
-                    <Td>Payment up to date</Td>
-                    <Td>Full access</Td>
-                    <Td>None</Td>
+                    <Td><strong>{t('landing:termsOfServicePage.active')}</strong></Td>
+                    <Td>{t('landing:termsOfServicePage.paymentUpToDate')}</Td>
+                    <Td>{t('landing:termsOfServicePage.fullAccess')}</Td>
+                    <Td>{t('landing:termsOfServicePage.none')}</Td>
                   </tr>
                   <tr>
-                    <Td><strong>Unpaid (Grace Period)</strong></Td>
+                    <Td><strong>{t('landing:termsOfServicePage.unpaidGracePeriod')}</strong></Td>
                     <Td>7 days after due date</Td>
-                    <Td>Full access with warnings</Td>
-                    <Td>Complete payment</Td>
+                    <Td>{t('landing:termsOfServicePage.fullAccessWithWarnings')}</Td>
+                    <Td>{t('landing:termsOfServicePage.completePayment')}</Td>
                   </tr>
                   <tr>
-                    <Td><strong>Suspended</strong></Td>
-                    <Td>After grace period</Td>
-                    <Td>Access blocked</Td>
-                    <Td>Complete payment to restore</Td>
+                    <Td><strong>{t('landing:termsOfServicePage.suspended')}</strong></Td>
+                    <Td>{t('landing:termsOfServicePage.afterGracePeriod')}</Td>
+                    <Td>{t('landing:termsOfServicePage.accessBlocked')}</Td>
+                    <Td>{t('landing:termsOfServicePage.completePaymentToRestore')}</Td>
                   </tr>
                 </tbody>
               </Table>
@@ -343,31 +345,31 @@ const TermsOfServicePage: React.FC = () => {
 
             <SubSectionTitle>5.1 Subscription Refunds</SubSectionTitle>
             <Paragraph>
-              We offer refunds under the following conditions:
+              {t('landing:termsOfServicePage.weOfferRefundsUnderTheFollowingCondition')}
             </Paragraph>
             <List>
               <ListItem>
-                <strong>Within 14 days of initial purchase:</strong> Full refund if you are not
+                <strong>{t('landing:termsOfServicePage.within14DaysOfInitialPurchase')}</strong> Full refund if you are not
                 satisfied with our Services. This applies only to first-time subscribers.
               </ListItem>
               <ListItem>
-                <strong>Service outage:</strong> Pro-rated refund if our Services are unavailable
+                <strong>{t('landing:termsOfServicePage.serviceOutage')}</strong> Pro-rated refund if our Services are unavailable
                 for more than 24 consecutive hours due to issues on our end.
               </ListItem>
               <ListItem>
-                <strong>Duplicate charges:</strong> Full refund for any erroneous duplicate billing.
+                <strong>{t('landing:termsOfServicePage.duplicateCharges')}</strong> {t('landing:termsOfServicePage.fullRefundForAnyErroneousDuplicateBillin')}
               </ListItem>
             </List>
 
             <SubSectionTitle>5.2 Non-Refundable Items</SubSectionTitle>
             <Paragraph>
-              The following are not eligible for refunds:
+              {t('landing:termsOfServicePage.theFollowingAreNotEligibleForRefunds')}
             </Paragraph>
             <List>
-              <ListItem>Subscription fees after the 14-day satisfaction guarantee period</ListItem>
-              <ListItem>Partial month usage after cancellation</ListItem>
-              <ListItem>Custom development or setup fees</ListItem>
-              <ListItem>Third-party service fees (payment processor fees, etc.)</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.subscriptionFeesAfterThe14daySatisfactionGuaranteePeriod')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.partialMonthUsageAfterCancellation')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.customDevelopmentOrSetupFees')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.thirdpartyServiceFeesPaymentProcessorFeesEtc')}</ListItem>
             </List>
 
             <SubSectionTitle>5.3 Refund Process</SubSectionTitle>
@@ -390,10 +392,10 @@ const TermsOfServicePage: React.FC = () => {
 
             <SubSectionTitle>6.2 Effect of Cancellation</SubSectionTitle>
             <List>
-              <ListItem>You retain access until the end of your paid billing period</ListItem>
-              <ListItem>No refund for unused time in the current billing period</ListItem>
-              <ListItem>Your data will be retained for 30 days after cancellation</ListItem>
-              <ListItem>You may export your data before the retention period expires</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.youRetainAccessUntilTheEndOfYourPaidBillingPeriod')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.noRefundForUnusedTimeInTheCurrentBillingPeriod')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.yourDataWillBeRetainedFor30DaysAfterCancellation')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.youMayExportYourDataBeforeTheRetentionPeriodExpires')}</ListItem>
             </List>
 
             <SubSectionTitle>6.3 Reactivation</SubSectionTitle>
@@ -413,23 +415,23 @@ const TermsOfServicePage: React.FC = () => {
               and for all activities under your account. You must:
             </Paragraph>
             <List>
-              <ListItem>Use strong, unique passwords</ListItem>
-              <ListItem>Not share account credentials with unauthorized users</ListItem>
-              <ListItem>Notify us immediately of any unauthorized access</ListItem>
-              <ListItem>Log out from shared devices</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.useStrongUniquePasswords')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.notShareAccountCredentialsWithUnauthorizedUsers')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.notifyUsImmediatelyOfAnyUnauthorizedAccess')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.logOutFromSharedDevices')}</ListItem>
             </List>
 
             <SubSectionTitle>7.2 Acceptable Use</SubSectionTitle>
             <Paragraph>
-              You agree not to use our Services to:
+              {t('landing:termsOfServicePage.youAgreeNotToUseOurServicesTo')}
             </Paragraph>
             <List>
-              <ListItem>Violate any applicable laws or regulations</ListItem>
-              <ListItem>Infringe on intellectual property rights</ListItem>
-              <ListItem>Transmit malware or malicious code</ListItem>
-              <ListItem>Attempt to gain unauthorized access to our systems</ListItem>
-              <ListItem>Interfere with or disrupt our Services</ListItem>
-              <ListItem>Use automated tools to access our Services without permission</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.violateAnyApplicableLawsOrRegulations')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.infringeOnIntellectualPropertyRights')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.transmitMalwareOrMaliciousCode')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.attemptToGainUnauthorizedAccessToOurSystems')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.interfereWithOrDisruptOurServices')}</ListItem>
+              <ListItem>{t('landing:termsOfServicePage.useAutomatedToolsToAccessOurServicesWithoutPermission')}</ListItem>
             </List>
 
             <SubSectionTitle>7.3 Data Accuracy</SubSectionTitle>
@@ -477,7 +479,7 @@ const TermsOfServicePage: React.FC = () => {
           <Section>
             <SectionTitle>10. Limitation of Liability</SectionTitle>
             <Paragraph>
-              TO THE MAXIMUM EXTENT PERMITTED BY LAW:
+              {t('landing:termsOfServicePage.toTheMaximumExtentPermittedByLaw')}
             </Paragraph>
             <List>
               <ListItem>
@@ -492,7 +494,7 @@ const TermsOfServicePage: React.FC = () => {
                 12 months preceding the claim
               </ListItem>
               <ListItem>
-                We are not responsible for any loss of data, revenue, or business opportunities
+                {t('landing:termsOfServicePage.weAreNotResponsibleForAnyLossOfDataReven')}
               </ListItem>
             </List>
           </Section>
@@ -518,12 +520,12 @@ const TermsOfServicePage: React.FC = () => {
 
             <SubSectionTitle>12.2 Dispute Resolution Process</SubSectionTitle>
             <Paragraph>
-              Any disputes arising from these Terms or our Services shall be resolved through:
+              {t('landing:termsOfServicePage.anyDisputesArisingFromTheseTermsOrOurSer')}
             </Paragraph>
             <List>
-              <ListItem><strong>Step 1:</strong> Good faith negotiation between the parties</ListItem>
-              <ListItem><strong>Step 2:</strong> Mediation, if negotiation fails</ListItem>
-              <ListItem><strong>Step 3:</strong> Binding arbitration in Kuala Lumpur, Malaysia</ListItem>
+              <ListItem><strong>{t('landing:termsOfServicePage.step1')}</strong> {t('landing:termsOfServicePage.goodFaithNegotiationBetweenTheParties')}</ListItem>
+              <ListItem><strong>{t('landing:termsOfServicePage.step2')}</strong> {t('landing:termsOfServicePage.mediationIfNegotiationFails')}</ListItem>
+              <ListItem><strong>{t('landing:termsOfServicePage.step3')}</strong> {t('landing:termsOfServicePage.bindingArbitrationInKualaLumpurMalaysia')}</ListItem>
             </List>
           </Section>
 
@@ -568,16 +570,16 @@ const TermsOfServicePage: React.FC = () => {
           <Section>
             <SectionTitle>15. Contact Information</SectionTitle>
             <Paragraph>
-              For questions about these Terms or our Services, please contact us:
+              {t('landing:termsOfServicePage.forQuestionsAboutTheseTermsOrOurServices')}
             </Paragraph>
             <ContactBlock>
               <ContactText>
-                <strong>GIT CONSULTING SDN. BHD.</strong><br />
-                P-02-06A, Tropicana Avenue, Persiaran Tropicana<br />
-                Tropicana Golf & Country Resort<br />
+                <strong>{t('landing:termsOfServicePage.gitConsultingSdnBhd')}</strong><br />
+                {t('landing:termsOfServicePage.p0206aTropicanaAvenuePersiaranTropicana')}<br />
+                {t('landing:termsOfServicePage.tropicanaGolfCountryResort')}<br />
                 47410, Petaling Jaya, Selangor, Malaysia<br /><br />
-                Email: <ContactLink href="mailto:help@gitconsulting.group">help@gitconsulting.group</ContactLink><br />
-                Website: <ContactLink href="https://purplehere.com">purplehere.com</ContactLink>
+                {t('landing:termsOfServicePage.email')}<ContactLink href="mailto:help@gitconsulting.group">help@gitconsulting.group</ContactLink><br />
+                {t('landing:termsOfServicePage.website')}<ContactLink href="https://purplehere.com">purplehere.com</ContactLink>
               </ContactText>
             </ContactBlock>
           </Section>

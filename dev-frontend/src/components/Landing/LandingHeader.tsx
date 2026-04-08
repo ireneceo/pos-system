@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
+import LanguageSelector from '../Common/LanguageSelector';
+import { useTranslation } from 'react-i18next';
 
 const Header = styled.header`
   position: fixed;
@@ -17,7 +19,7 @@ const Header = styled.header`
   backdrop-filter: blur(10px);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     padding: 12px 20px;
   }
 `;
@@ -33,7 +35,7 @@ const LogoImage = styled.img`
   height: 36px;
   width: auto;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     height: 28px;
   }
 `;
@@ -44,7 +46,7 @@ const LogoText = styled.span`
   color: #9CA3AF;
   letter-spacing: -0.3px;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     font-size: 12px;
   }
 `;
@@ -52,11 +54,18 @@ const LogoText = styled.span`
 const Nav = styled.nav`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: none;
   }
+`;
+
+const HeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 `;
 
 const MobileMenuButton = styled.button`
@@ -68,7 +77,7 @@ const MobileMenuButton = styled.button`
   cursor: pointer;
   padding: 8px;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: block;
   }
 `;
@@ -85,7 +94,7 @@ const MobileMenuOverlay = styled.div<{ isOpen: boolean }>`
   opacity: ${props => props.isOpen ? 1 : 0};
   transition: opacity 0.3s ease;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: ${props => props.isOpen ? 'block' : 'none'};
   }
 `;
@@ -104,7 +113,7 @@ const MobileMenu = styled.div<{ isOpen: boolean }>`
   transform: ${props => props.isOpen ? 'translateX(0)' : 'translateX(100%)'};
   transition: transform 0.3s ease;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: flex;
   }
 `;
@@ -191,11 +200,15 @@ const SignUpButton = styled.button`
   padding: 8px 20px;
   border-radius: 8px;
   transition: all 0.2s;
-  margin-left: 8px;
+  white-space: nowrap;
 
   &:hover {
     background: #F8F7FF;
     transform: translateY(-1px);
+  }
+
+  @media (max-width: 1024px) {
+    display: none;
   }
 `;
 
@@ -209,11 +222,15 @@ const LoginButton = styled.button`
   padding: 10px 20px;
   border-radius: 8px;
   transition: all 0.2s;
-  margin-left: 4px;
+  white-space: nowrap;
 
   &:hover {
     background: #5A51E6;
     transform: translateY(-1px);
+  }
+
+  @media (max-width: 1024px) {
+    display: none;
   }
 `;
 
@@ -253,6 +270,12 @@ const MobileLoginButton = styled.button`
   }
 `;
 
+const MobileLanguageWrapper = styled.div`
+  padding: 16px 24px 0;
+  display: flex;
+  justify-content: center;
+`;
+
 interface LandingHeaderProps {
   logo?: string;
 }
@@ -261,6 +284,7 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation('landing');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const brandLogo = '/uploads/logos/brand-logo.png';
 
@@ -281,37 +305,40 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
 
         <Nav>
           <NavLink active={isActive('/about')} onClick={() => handleNavigate('/about')}>
-            About
+            {t('nav.about')}
           </NavLink>
           <NavLink active={isActive('/features')} onClick={() => handleNavigate('/features')}>
-            Features
+            {t('nav.features')}
           </NavLink>
           <NavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
-            Pricing
+            {t('nav.pricing')}
           </NavLink>
           <NavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
-            FAQ
+            {t('nav.faq')}
           </NavLink>
           <NavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
-            Blog
+            {t('nav.blog')}
           </NavLink>
           <NavLink active={isActive('/packages')} onClick={() => handleNavigate('/packages')}>
-            Setup Quote
+            {t('nav.setupQuote')}
           </NavLink>
           <NavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
-            Contact
+            {t('nav.contact')}
           </NavLink>
-          <SignUpButton onClick={() => handleNavigate('/demo')}>
-            Try Demo
-          </SignUpButton>
-          <LoginButton onClick={() => window.open('/pos', '_blank')}>
-            POS System
-          </LoginButton>
         </Nav>
 
-        <MobileMenuButton onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-          {mobileMenuOpen ? '✕' : '☰'}
-        </MobileMenuButton>
+        <HeaderRight>
+          <LanguageSelector variant="globe" />
+          <SignUpButton onClick={() => handleNavigate('/demo')}>
+            {t('nav.tryDemo')}
+          </SignUpButton>
+          <LoginButton onClick={() => window.open('/pos', '_blank')}>
+            {t('nav.posSystem')}
+          </LoginButton>
+          <MobileMenuButton onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            {mobileMenuOpen ? '✕' : '☰'}
+          </MobileMenuButton>
+        </HeaderRight>
       </Header>
 
       <MobileMenuOverlay isOpen={mobileMenuOpen} onClick={() => setMobileMenuOpen(false)} />
@@ -322,28 +349,31 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
         </MobileMenuHeader>
         <MobileMenuContent>
           <MobileNavLink active={isActive('/about')} onClick={() => handleNavigate('/about')}>
-            About
+            {t('nav.about')}
           </MobileNavLink>
           <MobileNavLink active={isActive('/features')} onClick={() => handleNavigate('/features')}>
-            Features
+            {t('nav.features')}
           </MobileNavLink>
           <MobileNavLink active={isActive('/pricing')} onClick={() => handleNavigate('/pricing')}>
-            Pricing
+            {t('nav.pricing')}
           </MobileNavLink>
           <MobileNavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
-            FAQ
+            {t('nav.faq')}
           </MobileNavLink>
           <MobileNavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
-            Blog
+            {t('nav.blog')}
           </MobileNavLink>
           <MobileNavLink active={isActive('/packages')} onClick={() => handleNavigate('/packages')}>
-            Setup Quote
+            {t('nav.setupQuote')}
           </MobileNavLink>
           <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
-            Contact
+            {t('nav.contact')}
           </MobileNavLink>
+          <MobileLanguageWrapper>
+            <LanguageSelector variant="globe" />
+          </MobileLanguageWrapper>
           <MobileSignUpButton onClick={() => handleNavigate('/demo')}>
-            Try Demo
+            {t('nav.tryDemo')}
           </MobileSignUpButton>
           <MobileLoginButton onClick={() => window.open('/pos', '_blank')}>
             POS System

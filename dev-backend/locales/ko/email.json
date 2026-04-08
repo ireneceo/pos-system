@@ -1,0 +1,63 @@
+{
+  "footer": {
+    "automated": "{{company}}에서 발송된 자동 메시지입니다.",
+    "managePreferences": "알림 설정 관리",
+    "unsubscribe": "수신 거부"
+  },
+  "notice": {
+    "subject": "새 공지: {{title}}",
+    "heading": "새 공지",
+    "body": "새로운 공지가 등록되었습니다.",
+    "postedBy": "작성자",
+    "priority": "우선순위",
+    "date": "날짜",
+    "viewButton": "공지 보기"
+  },
+  "comment": {
+    "subject": "새 댓글: {{title}}",
+    "heading": "새 댓글",
+    "commentedOn": "{{name}}님이 {{title}}에 댓글을 남겼습니다.",
+    "viewButton": "보기 및 답글"
+  },
+  "invoice": {
+    "subject": "인보이스 {{number}} — {{restaurant}}",
+    "heading": "새 인보이스",
+    "restaurant": "레스토랑",
+    "invoiceNumber": "인보이스 번호",
+    "period": "기간",
+    "dueDate": "결제 기한",
+    "amount": "결제 금액",
+    "viewButton": "인보이스 보기",
+    "body": "레스토랑에 새 인보이스가 발행되었습니다."
+  },
+  "welcome": {
+    "subject": "{{platform}}에 오신 것을 환영합니다",
+    "heading": "환영합니다!",
+    "body": "계정이 성공적으로 생성되었습니다.",
+    "loginButton": "대시보드 로그인",
+    "credentials": "로그인 정보",
+    "email": "이메일",
+    "password": "임시 비밀번호"
+  },
+  "passwordReset": {
+    "subject": "비밀번호 재설정 요청",
+    "heading": "비밀번호 재설정",
+    "body": "비밀번호 재설정 요청이 접수되었습니다. 아래 버튼을 클릭하여 새 비밀번호를 설정하세요.",
+    "resetButton": "비밀번호 재설정",
+    "expiry": "이 링크는 {{hours}}시간 후에 만료됩니다.",
+    "ignore": "본인이 요청하지 않았다면 이 이메일을 무시하세요."
+  },
+  "emailVerification": {
+    "subject": "이메일 인증",
+    "heading": "이메일 인증",
+    "body": "아래 버튼을 클릭하여 이메일 주소를 인증해주세요.",
+    "verifyButton": "이메일 인증",
+    "expiry": "이 링크는 {{hours}}시간 후에 만료됩니다."
+  },
+  "ticket": {
+    "subject": "지원 티켓 업데이트: {{title}}",
+    "heading": "티켓 업데이트",
+    "status": "상태",
+    "viewButton": "티켓 보기"
+  }
+}

@@ -7,6 +7,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import IngredientsTab from './IngredientsTab';
 import IngredientCategoriesTab from './IngredientCategoriesTab';
+import { useTranslation } from 'react-i18next';
 
 const HeaderActions = styled.div`
   display: flex;
@@ -42,6 +43,7 @@ interface Brand {
 type TabType = 'ingredients' | 'ingredient-categories';
 
 const IngredientsPage: React.FC = () => {
+  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -102,9 +104,9 @@ const IngredientsPage: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <Header><Title>Ingredients</Title></Header>
+        <Header><Title>{t('recipes:ingredientsPage.ingredients')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('recipes:ingredientsPage.loading')}</div>
         </Content>
       </Container>
     );
@@ -113,7 +115,7 @@ const IngredientsPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Ingredients</Title>
+        <Title>{t('recipes:ingredientsPage.ingredients')}</Title>
         {user?.role === 'Brand General' && brands.length > 0 && (
           <HeaderActions>
             <BrandSelect value={selectedBrand || ''} onChange={(e) => handleBrandChange(Number(e.target.value))}>

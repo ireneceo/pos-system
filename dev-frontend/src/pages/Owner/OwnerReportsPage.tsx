@@ -306,6 +306,7 @@ interface Restaurant {
 const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const OwnerReportsPage: React.FC = () => {
+  const { t } = useTranslation('owner');
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const { defaultCurrency } = useBrandCurrency();
@@ -889,8 +890,8 @@ const OwnerReportsPage: React.FC = () => {
         )}
         <DropdownMenu show={showRestaurantDropdown}>
           <DropdownItem onClick={() => { setSelectedRestaurant('all'); setRestaurantSearchQuery(''); setShowRestaurantDropdown(false); }}>
-            <ItemName>All Restaurants</ItemName>
-            <ItemDetails>Show all restaurant data</ItemDetails>
+            <ItemName>{t('owner:ownerReportsPage.allRestaurants')}</ItemName>
+            <ItemDetails>{t('owner:ownerReportsPage.showAllRestaurantData')}</ItemDetails>
           </DropdownItem>
           {filteredRestaurants.map(restaurant => (
             <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
@@ -918,46 +919,46 @@ const OwnerReportsPage: React.FC = () => {
     <>
       <ReportsContainer>
         <Header>
-          <HeaderTitle>Reports</HeaderTitle>
+          <HeaderTitle>{t('owner:ownerReportsPage.reports')}</HeaderTitle>
         </Header>
 
         <Content>
           <Tabs>
-            <Tab active={activeTab === 'ranking'} onClick={() => handleTabChange('ranking')}>Sales Ranking</Tab>
-            <Tab active={activeTab === 'sales'} onClick={() => handleTabChange('sales')}>Sales Report</Tab>
-            <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>Sales Details</Tab>
-            <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>Menu Analysis</Tab>
-            <Tab active={activeTab === 'customers'} onClick={() => handleTabChange('customers')}>Customer Insights</Tab>
-            <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>Operations</Tab>
+            <Tab active={activeTab === 'ranking'} onClick={() => handleTabChange('ranking')}>{t('owner:ownerReportsPage.salesRanking')}</Tab>
+            <Tab active={activeTab === 'sales'} onClick={() => handleTabChange('sales')}>{t('owner:ownerReportsPage.salesReport')}</Tab>
+            <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>{t('owner:ownerReportsPage.salesDetails')}</Tab>
+            <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>{t('owner:ownerReportsPage.menuAnalysis')}</Tab>
+            <Tab active={activeTab === 'customers'} onClick={() => handleTabChange('customers')}>{t('owner:ownerReportsPage.customerInsights')}</Tab>
+            <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>{t('owner:ownerReportsPage.operations')}</Tab>
           </Tabs>
 
           {/* Sales Tab */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>
             <FilterComponent />
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+              <div style={{ textAlign: 'center', padding: '40px' }}>{t('owner:ownerReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>No order data available for the selected period</div>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('owner:ownerReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
             ) : (
               <div>
                 <StatsRow>
                   <StatCard color="#059669">
-                    <StatLabel>Total Revenue</StatLabel>
+                    <StatLabel>{t('owner:ownerReportsPage.totalRevenue')}</StatLabel>
                     <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0))}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
-                    <StatLabel>Total Orders</StatLabel>
+                    <StatLabel>{t('owner:ownerReportsPage.totalOrders')}</StatLabel>
                     <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
-                    <StatDescription>For selected period</StatDescription>
+                    <StatDescription>{t('owner:ownerReportsPage.forSelectedPeriod')}</StatDescription>
                   </StatCard>
                   <StatCard color="#DC2626">
-                    <StatLabel>Average Order Value</StatLabel>
+                    <StatLabel>{t('owner:ownerReportsPage.averageOrderValue')}</StatLabel>
                     <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0)}</StatValue>
-                    <StatDescription>Per order</StatDescription>
+                    <StatDescription>{t('owner:ownerReportsPage.perOrder')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
-                    <StatLabel>Completed Orders</StatLabel>
+                    <StatLabel>{t('owner:ownerReportsPage.completedOrders')}</StatLabel>
                     <StatValue>{filteredOrders.filter(o => o.status === 'completed').length}</StatValue>
                     <StatDescription>{Math.round(filteredOrders.filter(o => o.status === 'completed').length / filteredOrders.length * 100 || 0)}% completion rate</StatDescription>
                   </StatCard>
@@ -965,7 +966,7 @@ const OwnerReportsPage: React.FC = () => {
 
                 <ChartGrid>
                   <ChartCard>
-                    <ChartTitle>Revenue Trend</ChartTitle>
+                    <ChartTitle>{t('owner:ownerReportsPage.revenueTrend')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={salesData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -978,7 +979,7 @@ const OwnerReportsPage: React.FC = () => {
                   </ChartCard>
 
                   <ChartCard>
-                    <ChartTitle>Sales by Category</ChartTitle>
+                    <ChartTitle>{t('owner:ownerReportsPage.salesByCategory')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie data={categoryData} cx="50%" cy="50%" labelLine={true} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} outerRadius={70} fill="#8884d8" dataKey="value">
@@ -991,7 +992,7 @@ const OwnerReportsPage: React.FC = () => {
                 </ChartGrid>
 
                 <ChartCard>
-                  <ChartTitle>Hourly Orders Distribution</ChartTitle>
+                  <ChartTitle>{t('owner:ownerReportsPage.hourlyOrdersDistribution')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1010,43 +1011,43 @@ const OwnerReportsPage: React.FC = () => {
           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
             <FilterComponent />
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+              <div style={{ textAlign: 'center', padding: '40px' }}>{t('owner:ownerReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>No order data available for the selected period</div>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('owner:ownerReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
             ) : (
               <div>
                 <StatsRow>
                   <StatCard color="#059669">
-                    <StatLabel>Total Revenue</StatLabel>
+                    <StatLabel>{t('owner:ownerReportsPage.totalRevenue')}</StatLabel>
                     <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0))}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
-                    <StatLabel>Total Orders</StatLabel>
+                    <StatLabel>{t('owner:ownerReportsPage.totalOrders')}</StatLabel>
                     <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
                     <StatDescription>{filteredOrders.filter(o => o.status === 'completed').length} completed</StatDescription>
                   </StatCard>
                   <StatCard color="#DC2626">
-                    <StatLabel>Average Order Value</StatLabel>
+                    <StatLabel>{t('owner:ownerReportsPage.averageOrderValue')}</StatLabel>
                     <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0)}</StatValue>
-                    <StatDescription>Per order average</StatDescription>
+                    <StatDescription>{t('owner:ownerReportsPage.perOrderAverage')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
-                    <StatLabel>Period</StatLabel>
+                    <StatLabel>{t('owner:ownerReportsPage.period')}</StatLabel>
                     <StatValue>{getDateRangeDays()}</StatValue>
-                    <StatDescription>Days</StatDescription>
+                    <StatDescription>{t('owner:ownerReportsPage.days')}</StatDescription>
                   </StatCard>
                 </StatsRow>
 
                 <TableCard>
-                  <ChartTitle>Detailed Sales Breakdown</ChartTitle>
+                  <ChartTitle>{t('owner:ownerReportsPage.detailedSalesBreakdown')}</ChartTitle>
                   <Table>
                     <thead>
                       <tr>
-                        <TableHeader style={{ width: '40%' }}>Period</TableHeader>
-                        <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
-                        <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
-                        <TableHeader style={{ textAlign: 'right' }}>Avg Order Value</TableHeader>
+                        <TableHeader style={{ width: '40%' }}>{t('owner:ownerReportsPage.period')}</TableHeader>
+                        <TableHeader style={{ textAlign: 'right' }}>{t('owner:ownerReportsPage.revenue')}</TableHeader>
+                        <TableHeader style={{ textAlign: 'right' }}>{t('owner:ownerReportsPage.orders')}</TableHeader>
+                        <TableHeader style={{ textAlign: 'right' }}>{t('owner:ownerReportsPage.avgOrderValue')}</TableHeader>
                       </tr>
                     </thead>
                     <tbody>
@@ -1115,39 +1116,39 @@ const OwnerReportsPage: React.FC = () => {
             <FilterComponent />
             <StatsRow>
               <StatCard color="#F59E0B">
-                <StatLabel>Best Seller</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.bestSeller')}</StatLabel>
                 <StatValue>{allMenuData[0]?.name || 'N/A'}</StatValue>
                 <StatDescription>{allMenuData[0]?.orders || 0} orders</StatDescription>
               </StatCard>
               <StatCard color="#10B981">
-                <StatLabel>Total Items Analyzed</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.totalItemsAnalyzed')}</StatLabel>
                 <StatValue>{allMenuData.length}</StatValue>
-                <StatDescription>Complete menu analysis</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.completeMenuAnalysis')}</StatDescription>
               </StatCard>
               <StatCard color="#3B82F6">
-                <StatLabel>Total Orders</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.totalOrders')}</StatLabel>
                 <StatValue>{allMenuData.reduce((sum, item) => sum + item.orders, 0).toLocaleString()}</StatValue>
-                <StatDescription>For selected period</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.forSelectedPeriod')}</StatDescription>
               </StatCard>
               <StatCard color="#8B5CF6">
-                <StatLabel>Total Revenue</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.totalRevenue')}</StatLabel>
                 <StatValue>{formatCurrency(allMenuData.reduce((sum, item) => sum + item.revenue, 0))}</StatValue>
-                <StatDescription>For selected period</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.forSelectedPeriod')}</StatDescription>
               </StatCard>
             </StatsRow>
 
             <TableCard>
-              <ChartTitle>Complete Menu Performance Ranking</ChartTitle>
+              <ChartTitle>{t('owner:ownerReportsPage.completeMenuPerformanceRanking')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader>Rank</TableHeader>
-                    <TableHeader>Menu Item</TableHeader>
-                    <TableHeader>Category</TableHeader>
-                    <TableHeader>Price</TableHeader>
-                    <TableHeader>Orders</TableHeader>
-                    <TableHeader>Revenue</TableHeader>
-                    <TableHeader>Performance</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.rank')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.menuItem')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.category')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.price')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.orders')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.revenue')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.performance')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1182,29 +1183,29 @@ const OwnerReportsPage: React.FC = () => {
             <FilterComponent />
             <StatsRow>
               <StatCard color="#635BFF">
-                <StatLabel>Total Customers</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.totalCustomers')}</StatLabel>
                 <StatValue>{customers.length.toLocaleString()}</StatValue>
-                <StatDescription>Across all restaurants</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.acrossAllRestaurants')}</StatDescription>
               </StatCard>
               <StatCard color="#6FCF97">
-                <StatLabel>Repeat Customers</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.repeatCustomers')}</StatLabel>
                 <StatValue>{customers.filter((c: any) => c.total_orders > 1).length}</StatValue>
                 <StatDescription>{customers.length > 0 ? Math.round((customers.filter((c: any) => c.total_orders > 1).length / customers.length) * 100) : 0}% return rate</StatDescription>
               </StatCard>
               <StatCard color="#FFB800">
-                <StatLabel>Average Spent</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.averageSpent')}</StatLabel>
                 <StatValue>{formatCurrency(customers.length > 0 ? (customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length) : 0)}</StatValue>
-                <StatDescription>Per customer</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.perCustomer')}</StatDescription>
               </StatCard>
               <StatCard color="#8B5CF6">
-                <StatLabel>Total Points</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.totalPoints')}</StatLabel>
                 <StatValue>{customers.reduce((sum: number, c: any) => sum + (c.points || 0), 0).toLocaleString()}</StatValue>
-                <StatDescription>Across all customers</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.acrossAllCustomers')}</StatDescription>
               </StatCard>
             </StatsRow>
 
             <TableCard>
-              <ChartTitle>Customer insights will be available when customer data is loaded</ChartTitle>
+              <ChartTitle>{t('owner:ownerReportsPage.customerInsightsWillBeAvailableWhenCustomerDataIsLoaded')}</ChartTitle>
             </TableCard>
           </div>
 
@@ -1213,36 +1214,36 @@ const OwnerReportsPage: React.FC = () => {
             <FilterComponent />
             <StatsRow>
               <StatCard color="#10B981">
-                <StatLabel>Order Fulfillment</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.orderFulfillment')}</StatLabel>
                 <StatValue>{Math.round(95 * (0.9 + Math.random() * 0.15))}%</StatValue>
-                <StatDescription>On-time completion</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.ontimeCompletion')}</StatDescription>
               </StatCard>
               <StatCard color="#F59E0B">
-                <StatLabel>Avg. Wait Time</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.avgWaitTime')}</StatLabel>
                 <StatValue>{Math.round(8 * (0.7 + Math.random() * 0.6))} min</StatValue>
-                <StatDescription>Estimated</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.estimated')}</StatDescription>
               </StatCard>
               <StatCard color="#EF4444">
-                <StatLabel>Peak Hour</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.peakHour')}</StatLabel>
                 <StatValue>12-1 PM</StatValue>
-                <StatDescription>Busiest time</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.busiestTime')}</StatDescription>
               </StatCard>
               <StatCard color="#6366F1">
-                <StatLabel>Staff Efficiency</StatLabel>
+                <StatLabel>{t('owner:ownerReportsPage.staffEfficiency')}</StatLabel>
                 <StatValue>{Math.round(87 * (0.85 + Math.random() * 0.25))}%</StatValue>
-                <StatDescription>Estimated</StatDescription>
+                <StatDescription>{t('owner:ownerReportsPage.estimated')}</StatDescription>
               </StatCard>
             </StatsRow>
 
             <TableCard>
-              <ChartTitle>Peak Hours Performance</ChartTitle>
+              <ChartTitle>{t('owner:ownerReportsPage.peakHoursPerformance')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader>Time Slot</TableHeader>
-                    <TableHeader>Orders</TableHeader>
-                    <TableHeader>Revenue</TableHeader>
-                    <TableHeader>Efficiency</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.timeSlot')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.orders')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.revenue')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.efficiency')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1276,15 +1277,15 @@ const OwnerReportsPage: React.FC = () => {
 
             {/* Restaurant Rankings */}
             <RankingCard>
-              <ChartTitle>Restaurant Sales Ranking</ChartTitle>
+              <ChartTitle>{t('owner:ownerReportsPage.restaurantSalesRanking')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader style={{ width: '60px' }}>Rank</TableHeader>
-                    <TableHeader>Restaurant Name</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
-                    <TableHeader style={{ width: '150px' }}>Performance</TableHeader>
+                    <TableHeader style={{ width: '60px' }}>{t('owner:ownerReportsPage.rank')}</TableHeader>
+                    <TableHeader>{t('owner:ownerReportsPage.restaurantName')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('owner:ownerReportsPage.orders')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('owner:ownerReportsPage.revenue')}</TableHeader>
+                    <TableHeader style={{ width: '150px' }}>{t('owner:ownerReportsPage.performance')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1309,7 +1310,7 @@ const OwnerReportsPage: React.FC = () => {
                     );
                   })}
                   {rankingData.restaurants.length === 0 && (
-                    <tr><TableCell colSpan={5} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>No restaurant data available</TableCell></tr>
+                    <tr><TableCell colSpan={5} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>{t('owner:ownerReportsPage.noRestaurantDataAvailable')}</TableCell></tr>
                   )}
                 </tbody>
               </Table>

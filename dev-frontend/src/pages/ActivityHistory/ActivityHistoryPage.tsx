@@ -6,6 +6,7 @@ import { BaseButton, StatusBadge } from '../../components/UI/CommonStyles';
 import { FilterSelect } from '../../components/Common/FilterComponents';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 
 const ActivityList = styled.div`
@@ -117,6 +118,7 @@ interface ActivityLog {
 }
 
 const ActivityHistoryPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -267,7 +269,7 @@ const ActivityHistoryPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Activity History</Title>
+          <Title>{t('admin:activityHistoryPage.activityHistory')}</Title>
         </Header>
 
         <Content>
@@ -279,22 +281,22 @@ const ActivityHistoryPage: React.FC = () => {
             onCalendarRangeSelect={handleCalendarRangeSelect}
           >
             <FilterSelect value={entityType} onChange={(e) => { setEntityType(e.target.value); setCurrentPage(1); }}>
-              <option value="">All Types</option>
-              <option value="menu_item">Menu Item</option>
-              <option value="category">Category</option>
-              <option value="settings">Settings</option>
-              <option value="staff">Staff</option>
-              <option value="invoice">Invoice</option>
-              <option value="subscription">Subscription</option>
-              <option value="table">Table</option>
-              <option value="promotion">Promotion</option>
-              <option value="order_item">Order Item</option>
+              <option value="">{t('admin:activityHistoryPage.allTypes')}</option>
+              <option value="menu_item">{t('admin:activityHistoryPage.menuItem')}</option>
+              <option value="category">{t('admin:activityHistoryPage.category')}</option>
+              <option value="settings">{t('admin:activityHistoryPage.settings')}</option>
+              <option value="staff">{t('admin:activityHistoryPage.staff')}</option>
+              <option value="invoice">{t('admin:activityHistoryPage.invoice')}</option>
+              <option value="subscription">{t('admin:activityHistoryPage.subscription')}</option>
+              <option value="table">{t('admin:activityHistoryPage.table')}</option>
+              <option value="promotion">{t('admin:activityHistoryPage.promotion')}</option>
+              <option value="order_item">{t('admin:activityHistoryPage.orderItem')}</option>
             </FilterSelect>
             <FilterSelect value={actionType} onChange={(e) => { setActionType(e.target.value); setCurrentPage(1); }}>
-              <option value="">All Actions</option>
-              <option value="create">Create</option>
-              <option value="update">Update</option>
-              <option value="delete">Delete</option>
+              <option value="">{t('admin:activityHistoryPage.allActions')}</option>
+              <option value="create">{t('admin:activityHistoryPage.create')}</option>
+              <option value="update">{t('admin:activityHistoryPage.update')}</option>
+              <option value="delete">{t('admin:activityHistoryPage.delete')}</option>
             </FilterSelect>
             {hasActiveFilters && (
               <BaseButton variant="secondary" size="small" onClick={handleResetFilters}>
@@ -304,10 +306,10 @@ const ActivityHistoryPage: React.FC = () => {
           </DatePeriodFilter>
 
           {loading ? (
-            <LoadingState>Loading activity logs...</LoadingState>
+            <LoadingState>{t('admin:activityHistoryPage.loadingActivityLogs')}</LoadingState>
           ) : logs.length === 0 ? (
             <ActivityList>
-              <EmptyState>No activity logs found</EmptyState>
+              <EmptyState>{t('admin:activityHistoryPage.noActivityLogsFound')}</EmptyState>
             </ActivityList>
           ) : (
             <>

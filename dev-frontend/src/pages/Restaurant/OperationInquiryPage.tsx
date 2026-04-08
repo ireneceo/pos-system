@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
+import { useTranslation } from 'react-i18next';
 
 
 interface OperationTicket {
@@ -435,6 +436,7 @@ const FormTextArea = styled.textarea`
 `;
 
 const OperationInquiryPage: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { user } = useAuth();
   const [tickets, setTickets] = useState<OperationTicket[]>([]);
   const [managers, setManagers] = useState<{ id: number; name: string; email: string; role: string; company?: string }[]>([]);
@@ -634,54 +636,54 @@ const OperationInquiryPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Operation Inquiry</Title>
+          <Title>{t('settings:operationInquiryPage.operationInquiry')}</Title>
           <ActionSection>
-            <Button variant="primary" onClick={handleCreateTicket}>New Inquiry</Button>
+            <Button variant="primary" onClick={handleCreateTicket}>{t('settings:operationInquiryPage.newInquiry')}</Button>
           </ActionSection>
         </Header>
         <Content>
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{totalTickets}</StatValue>
-              <StatLabel>Total Inquiries</StatLabel>
+              <StatLabel>{t('settings:operationInquiryPage.totalInquiries')}</StatLabel>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{openTickets}</StatValue>
-              <StatLabel>Open</StatLabel>
+              <StatLabel>{t('settings:operationInquiryPage.open')}</StatLabel>
             </StatCard>
             <StatCard color="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
-              <StatLabel>In Progress</StatLabel>
+              <StatLabel>{t('settings:operationInquiryPage.inProgress')}</StatLabel>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
-              <StatLabel>Resolved</StatLabel>
+              <StatLabel>{t('settings:operationInquiryPage.resolved')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
           <FiltersContainer>
             <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in-progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option value="all">{t('settings:operationInquiryPage.allStatus')}</option>
+              <option value="open">{t('settings:operationInquiryPage.open')}</option>
+              <option value="in-progress">{t('settings:operationInquiryPage.inProgress')}</option>
+              <option value="resolved">{t('settings:operationInquiryPage.resolved')}</option>
+              <option value="closed">{t('settings:operationInquiryPage.closed')}</option>
             </Select>
             <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-              <option value="all">All Priority</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all">{t('settings:operationInquiryPage.allPriority')}</option>
+              <option value="urgent">{t('settings:operationInquiryPage.urgent')}</option>
+              <option value="high">{t('settings:operationInquiryPage.high')}</option>
+              <option value="medium">{t('settings:operationInquiryPage.medium')}</option>
+              <option value="low">{t('settings:operationInquiryPage.low')}</option>
             </Select>
             <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="all">All Categories</option>
-              <option value="schedule">Schedule</option>
-              <option value="inventory">Inventory</option>
-              <option value="staff">Staff</option>
-              <option value="menu">Menu</option>
-              <option value="customer">Customer</option>
-              <option value="other">Other</option>
+              <option value="all">{t('settings:operationInquiryPage.allCategories')}</option>
+              <option value="schedule">{t('settings:operationInquiryPage.schedule')}</option>
+              <option value="inventory">{t('settings:operationInquiryPage.inventory')}</option>
+              <option value="staff">{t('settings:operationInquiryPage.staff')}</option>
+              <option value="menu">{t('settings:operationInquiryPage.menu')}</option>
+              <option value="customer">{t('settings:operationInquiryPage.customer')}</option>
+              <option value="other">{t('settings:operationInquiryPage.other')}</option>
             </Select>
             <SearchInput
               placeholder="Search inquiries..."
@@ -718,11 +720,11 @@ const OperationInquiryPage: React.FC = () => {
 
                 <TicketMeta>
                   <MetaItem>
-                    <MetaLabel>Created</MetaLabel>
+                    <MetaLabel>{t('settings:operationInquiryPage.created')}</MetaLabel>
                     <MetaValue>{formatDateTime(ticket.createdAt)}</MetaValue>
                   </MetaItem>
                   <MetaItem>
-                    <MetaLabel>Category</MetaLabel>
+                    <MetaLabel>{t('settings:operationInquiryPage.category')}</MetaLabel>
                     <MetaValue>{ticket.category}</MetaValue>
                   </MetaItem>
                   {unreadCounts[ticket.id]?.total_comments > 0 && (
@@ -741,7 +743,7 @@ const OperationInquiryPage: React.FC = () => {
 
             {filteredTickets.length === 0 && (
               <EmptyState>
-                <h3>No inquiries yet</h3>
+                <h3>{t('settings:operationInquiryPage.noInquiriesYet')}</h3>
                 <p>Click "New Inquiry" to submit your first operation inquiry to your manager.</p>
               </EmptyState>
             )}
@@ -847,7 +849,7 @@ const OperationInquiryPage: React.FC = () => {
                     />
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Attachments</FormLabel>
+                    <FormLabel>{t('settings:operationInquiryPage.attachments')}</FormLabel>
                     <FileUpload
                       files={newAttachments}
                       onChange={setNewAttachments}
@@ -856,29 +858,29 @@ const OperationInquiryPage: React.FC = () => {
                   </FormGroup>
                   <FormRow>
                     <FormGroup>
-                      <FormLabel>Priority</FormLabel>
+                      <FormLabel>{t('settings:operationInquiryPage.priority')}</FormLabel>
                       <FormSelect
                         value={newTicket.priority}
                         onChange={(e) => setNewTicket({...newTicket, priority: e.target.value as OperationTicket['priority']})}
                       >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
+                        <option value="low">{t('settings:operationInquiryPage.low')}</option>
+                        <option value="medium">{t('settings:operationInquiryPage.medium')}</option>
+                        <option value="high">{t('settings:operationInquiryPage.high')}</option>
+                        <option value="urgent">{t('settings:operationInquiryPage.urgent')}</option>
                       </FormSelect>
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Category</FormLabel>
+                      <FormLabel>{t('settings:operationInquiryPage.category')}</FormLabel>
                       <FormSelect
                         value={newTicket.category}
                         onChange={(e) => setNewTicket({...newTicket, category: e.target.value as OperationTicket['category']})}
                       >
-                        <option value="schedule">Schedule</option>
-                        <option value="inventory">Inventory</option>
-                        <option value="staff">Staff</option>
-                        <option value="menu">Menu</option>
-                        <option value="customer">Customer</option>
-                        <option value="other">Other</option>
+                        <option value="schedule">{t('settings:operationInquiryPage.schedule')}</option>
+                        <option value="inventory">{t('settings:operationInquiryPage.inventory')}</option>
+                        <option value="staff">{t('settings:operationInquiryPage.staff')}</option>
+                        <option value="menu">{t('settings:operationInquiryPage.menu')}</option>
+                        <option value="customer">{t('settings:operationInquiryPage.customer')}</option>
+                        <option value="other">{t('settings:operationInquiryPage.other')}</option>
                       </FormSelect>
                     </FormGroup>
                   </FormRow>

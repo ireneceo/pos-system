@@ -1,0 +1,23 @@
+{
+  "suppliersPage.view": "Lihat",
+  "suppliersPage.edit": "Sunting",
+  "suppliersPage.suppliers": "Pembekal",
+  "suppliersPage.brandSuppliersReadOnly": "Jenama Pembekal (Read Only)",
+  "suppliersPage.noSuppliersYet": "Tidak Pembekal yet",
+  "suppliersPage.noSuppliersFound": "Tidak Pembekal found",
+  "suppliersPage.mySuppliers": "My Pembekal",
+  "suppliersPage.cancel": "Batal",
+  "suppliersPage.code": "Code",
+  "suppliersPage.contactPerson": "Hubungi Person",
+  "suppliersPage.phone": "Telefon",
+  "suppliersPage.email": "E-mel",
+  "suppliersPage.businessNumber": "Nombor Perniagaan",
+  "suppliersPage.address": "Alamat",
+  "suppliersPage.paymentTerms": "Pembayaran Terms",
+  "suppliersPage.bankName": "Bank Nama",
+  "suppliersPage.bankAccount": "Bank Akaun",
+  "suppliersPage.notes": "Nota",
+  "suppliersPage.close": "Tutup",
+  "suppliersPage.supplierName": "Pembekal Nama",
+  "suppliersPage.status": "Status"
+}

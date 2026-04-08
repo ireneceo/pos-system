@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface IngredientCategoriesTabProps {
   brandId: number | null;
@@ -232,6 +233,7 @@ const BrandCategoriesHeader = styled.div`
 `;
 
 const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, onCategoryChange }) => {
+  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   // URL 파라미터의 restaurantId가 우선, 없으면 user.restaurant_id 사용
   const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || (user as any)?.restaurantId;
@@ -507,7 +509,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         <CategoryInfo>
           <CategoryName>
             {category.name}
-            {readOnly && <ReadOnlyBadge>Brand</ReadOnlyBadge>}
+            {readOnly && <ReadOnlyBadge>{t('recipes:ingredientCategoriesTab.brand')}</ReadOnlyBadge>}
           </CategoryName>
           <CategoryMeta>
             <span>{category.ingredient_count || 0} ingredients</span>
@@ -537,7 +539,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   if (loading) {
     return (
       <Container>
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('recipes:ingredientCategoriesTab.loading')}</div>
       </Container>
     );
   }
@@ -545,7 +547,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
   return (
     <Container>
       <HeaderRow>
-        <SectionTitle>Ingredient Categories</SectionTitle>
+        <SectionTitle>{t('recipes:ingredientCategoriesTab.ingredientCategories')}</SectionTitle>
         <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
           Add Category
         </ThemedButton>
@@ -564,7 +566,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
 
       {categories.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No ingredient categories yet</EmptyTitle>
+          <EmptyTitle>{t('recipes:ingredientCategoriesTab.noIngredientCategoriesYet')}</EmptyTitle>
           <EmptyDescription>
             Create categories to organize your ingredients
           </EmptyDescription>
@@ -585,7 +587,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         size="medium"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={handleCloseModal}>Cancel</ModalButton>
+            <ModalButton variant="secondary" onClick={handleCloseModal}>{t('recipes:ingredientCategoriesTab.cancel')}</ModalButton>
             <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim()}>
               {editingCategory ? 'Update' : 'Create'}
             </ModalButton>
@@ -606,7 +608,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Icon</FormLabel>
+            <FormLabel>{t('recipes:ingredientCategoriesTab.icon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions.map(emoji => (
                 <EmojiOption
@@ -622,7 +624,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Description</FormLabel>
+            <FormLabel>{t('recipes:ingredientCategoriesTab.description')}</FormLabel>
             <FormTextArea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}

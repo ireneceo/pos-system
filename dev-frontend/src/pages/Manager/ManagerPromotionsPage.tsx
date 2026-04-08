@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface Restaurant {
   id: string;
@@ -543,6 +544,7 @@ const EmptyStateText = styled.p`
 `;
 
 const ManagerPromotionsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -824,7 +826,7 @@ const ManagerPromotionsPage: React.FC = () => {
       <Container>
         <Header>
           <HeaderContent>
-            <PageTitle>Promotions</PageTitle>
+            <PageTitle>{t('admin:managerPromotionsPage.promotions')}</PageTitle>
             <Controls>
               <Button variant="secondary" onClick={handleExportData}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -843,7 +845,7 @@ const ManagerPromotionsPage: React.FC = () => {
               value={selectedRestaurant}
               onChange={(e) => setSelectedRestaurant(e.target.value)}
             >
-              <option value="all">All Restaurants</option>
+              <option value="all">{t('admin:managerPromotionsPage.allRestaurants')}</option>
               {restaurants.map(restaurant => (
                 <option key={restaurant.id} value={restaurant.id}>
                   {restaurant.name} - {restaurant.location}
@@ -865,33 +867,33 @@ const ManagerPromotionsPage: React.FC = () => {
               value={typeFilter} 
               onChange={(e) => setTypeFilter(e.target.value)}
             >
-              <option value="all">All Types</option>
-              <option value="percentage">Percentage</option>
-              <option value="fixed_amount">Fixed Amount</option>
-              <option value="bogo">BOGO</option>
-              <option value="free_shipping">Free Delivery</option>
-              <option value="happy_hour">Time Discount</option>
+              <option value="all">{t('admin:managerPromotionsPage.allTypes')}</option>
+              <option value="percentage">{t('admin:managerPromotionsPage.percentage')}</option>
+              <option value="fixed_amount">{t('admin:managerPromotionsPage.fixedAmount')}</option>
+              <option value="bogo">{t('admin:managerPromotionsPage.bogo')}</option>
+              <option value="free_shipping">{t('admin:managerPromotionsPage.freeDelivery')}</option>
+              <option value="happy_hour">{t('admin:managerPromotionsPage.timeDiscount')}</option>
             </FilterSelect>
             
             <FilterSelect 
               value={statusFilter} 
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="paused">Paused</option>
-              <option value="expired">Expired</option>
+              <option value="all">{t('admin:managerPromotionsPage.allStatus')}</option>
+              <option value="active">{t('admin:managerPromotionsPage.active')}</option>
+              <option value="scheduled">{t('admin:managerPromotionsPage.scheduled')}</option>
+              <option value="paused">{t('admin:managerPromotionsPage.paused')}</option>
+              <option value="expired">{t('admin:managerPromotionsPage.expired')}</option>
             </FilterSelect>
             
             <FilterSelect 
               value={sortBy} 
               onChange={(e) => setSortBy(e.target.value)}
             >
-              <option value="name">Sort by Name</option>
-              <option value="startDate">Sort by Start Date</option>
-              <option value="usageCount">Sort by Usage</option>
-              <option value="revenue">Sort by Revenue</option>
+              <option value="name">{t('admin:managerPromotionsPage.sortByName')}</option>
+              <option value="startDate">{t('admin:managerPromotionsPage.sortByStartDate')}</option>
+              <option value="usageCount">{t('admin:managerPromotionsPage.sortByUsage')}</option>
+              <option value="revenue">{t('admin:managerPromotionsPage.sortByRevenue')}</option>
             </FilterSelect>
           </FilterRow>
         </Header>
@@ -899,37 +901,37 @@ const ManagerPromotionsPage: React.FC = () => {
         <Content>
           <StatsGrid>
             <StatCard color="#059669">
-              <StatLabel>Total Promotions</StatLabel>
+              <StatLabel>{t('admin:managerPromotionsPage.totalPromotions')}</StatLabel>
               <StatValue>{stats.totalPromotions}</StatValue>
-              <StatChange positive>All restaurants combined</StatChange>
+              <StatChange positive>{t('admin:managerPromotionsPage.allRestaurantsCombined')}</StatChange>
             </StatCard>
             <StatCard color="#2563EB">
-              <StatLabel>Active Promotions</StatLabel>
+              <StatLabel>{t('admin:managerPromotionsPage.activePromotions')}</StatLabel>
               <StatValue>{stats.activePromotions}</StatValue>
-              <StatChange positive>Currently running</StatChange>
+              <StatChange positive>{t('admin:managerPromotionsPage.currentlyRunning')}</StatChange>
             </StatCard>
             <StatCard color="#7C3AED">
-              <StatLabel>Used This Month</StatLabel>
+              <StatLabel>{t('admin:managerPromotionsPage.usedThisMonth')}</StatLabel>
               <StatValue>{stats.usedThisMonth}</StatValue>
-              <StatChange positive>Promotion activations</StatChange>
+              <StatChange positive>{t('admin:managerPromotionsPage.promotionActivations')}</StatChange>
             </StatCard>
             <StatCard color="#D97706">
-              <StatLabel>Generated Revenue</StatLabel>
+              <StatLabel>{t('admin:managerPromotionsPage.generatedRevenue')}</StatLabel>
               <StatValue>{formatCurrency(stats.totalRevenue, selectedCurrency)}</StatValue>
-              <StatChange positive>From all promotions</StatChange>
+              <StatChange positive>{t('admin:managerPromotionsPage.fromAllPromotions')}</StatChange>
             </StatCard>
           </StatsGrid>
 
           <PromotionTable>
             <TableHeader>
-              <span>Promotion</span>
-              <span style={{ textAlign: 'center' }}>Type</span>
-              <span>Restaurants</span>
-              <span style={{ textAlign: 'center' }}>Dates</span>
-              <span style={{ textAlign: 'right' }}>Usage</span>
-              <span style={{ textAlign: 'right' }}>Revenue</span>
-              <span style={{ textAlign: 'center' }}>Status</span>
-              <span>Actions</span>
+              <span>{t('admin:managerPromotionsPage.promotion')}</span>
+              <span style={{ textAlign: 'center' }}>{t('admin:managerPromotionsPage.type')}</span>
+              <span>{t('admin:managerPromotionsPage.restaurants')}</span>
+              <span style={{ textAlign: 'center' }}>{t('admin:managerPromotionsPage.dates')}</span>
+              <span style={{ textAlign: 'right' }}>{t('admin:managerPromotionsPage.usage')}</span>
+              <span style={{ textAlign: 'right' }}>{t('admin:managerPromotionsPage.revenue')}</span>
+              <span style={{ textAlign: 'center' }}>{t('admin:managerPromotionsPage.status')}</span>
+              <span>{t('admin:managerPromotionsPage.actions')}</span>
             </TableHeader>
             
             {filteredPromotions.length === 0 ? (
@@ -990,8 +992,8 @@ const ManagerPromotionsPage: React.FC = () => {
                     </div>
 
                     <ActionButtons onClick={(e) => e.stopPropagation()}>
-                      <ActionButton onClick={() => handleEditPromotion(promotion)}>Edit</ActionButton>
-                      <ActionButton onClick={() => handleCopyPromotion(promotion)}>Copy</ActionButton>
+                      <ActionButton onClick={() => handleEditPromotion(promotion)}>{t('admin:managerPromotionsPage.edit')}</ActionButton>
+                      <ActionButton onClick={() => handleCopyPromotion(promotion)}>{t('admin:managerPromotionsPage.copy')}</ActionButton>
                       <ActionButton onClick={() => handleTogglePromotionStatus(promotion.id)}>
                         {promotion.status === 'active' ? 'Pause' : 'Activate'}
                       </ActionButton>
@@ -1034,7 +1036,7 @@ const ManagerPromotionsPage: React.FC = () => {
 
         {/* Promotion Detail Modal */}
         {showDetailModal && (
-        <CommonModal isOpen={true} onClose={() => setShowDetailModal(false)} title="Promotion Details" footer={<><Button variant="secondary" onClick={() => setShowDetailModal(false)}>Close</Button>{selectedPromotion && (<><Button variant="secondary" onClick={() => { setShowDetailModal(false); handleEditPromotion(selectedPromotion); }}>Edit Promotion</Button><Button variant="primary" onClick={() => { setShowDetailModal(false); handleCopyPromotion(selectedPromotion); }}>Duplicate</Button></>)}</>}>
+        <CommonModal isOpen={true} onClose={() => setShowDetailModal(false)} title="Promotion Details" footer={<><Button variant="secondary" onClick={() => setShowDetailModal(false)}>{t('admin:managerPromotionsPage.close')}</Button>{selectedPromotion && (<><Button variant="secondary" onClick={() => { setShowDetailModal(false); handleEditPromotion(selectedPromotion); }}>{t('admin:managerPromotionsPage.editPromotion')}</Button><Button variant="primary" onClick={() => { setShowDetailModal(false); handleCopyPromotion(selectedPromotion); }}>{t('admin:managerPromotionsPage.duplicate')}</Button></>)}</>}>
             {selectedPromotion && (
               <div>
                 <div style={{ marginBottom: '24px' }}>
@@ -1054,7 +1056,7 @@ const ManagerPromotionsPage: React.FC = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
                   <div>
-                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>Discount Details</h4>
+                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>{t('admin:managerPromotionsPage.discountDetails')}</h4>
                     <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.5' }}>
                       <p><strong>Discount:</strong> {selectedPromotion.discountText}</p>
                       <p><strong>Min Order:</strong> {selectedPromotion.minOrderAmount ? formatCurrency(selectedPromotion.minOrderAmount, selectedCurrency) : 'No minimum'}</p>
@@ -1062,7 +1064,7 @@ const ManagerPromotionsPage: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>Usage & Performance</h4>
+                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>{t('admin:managerPromotionsPage.usagePerformance')}</h4>
                     <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.5' }}>
                       <p><strong>Usage:</strong> {selectedPromotion.usageCount} / {selectedPromotion.usageLimit || '∞'}</p>
                       <p><strong>Revenue:</strong> {formatCurrency(selectedPromotion.generatedRevenue, selectedCurrency)}</p>
@@ -1072,7 +1074,7 @@ const ManagerPromotionsPage: React.FC = () => {
                 </div>
 
                 <div style={{ marginBottom: '24px' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>Valid Period</h4>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>{t('admin:managerPromotionsPage.validPeriod')}</h4>
                   <p style={{ fontSize: '14px', color: '#374151' }}>
                     <strong>From:</strong> {formatDate(selectedPromotion.startDate)} <br/>
                     <strong>To:</strong> {formatDate(selectedPromotion.endDate)}
@@ -1080,7 +1082,7 @@ const ManagerPromotionsPage: React.FC = () => {
                 </div>
 
                 <div style={{ marginBottom: '24px' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>Applied Restaurants</h4>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>{t('admin:managerPromotionsPage.appliedRestaurants')}</h4>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     {selectedPromotion.restaurantNames.map((name, index) => (
                       <span 
@@ -1101,7 +1103,7 @@ const ManagerPromotionsPage: React.FC = () => {
 
                 {selectedPromotion.conditions.length > 0 && (
                   <div>
-                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>Terms & Conditions</h4>
+                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '12px' }}>{t('admin:managerPromotionsPage.termsConditions')}</h4>
                     <ul style={{ fontSize: '14px', color: '#374151', paddingLeft: '20px' }}>
                       {selectedPromotion.conditions.map((condition, index) => (
                         <li key={index} style={{ marginBottom: '4px' }}>{condition}</li>
@@ -1116,7 +1118,7 @@ const ManagerPromotionsPage: React.FC = () => {
 
         {/* Add/Edit Promotion Modal */}
         {showAddModal && (
-        <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title={editingPromotion ? 'Edit Promotion' : 'Create New Promotion'} size="large" footer={<><Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button><Button variant="primary" onClick={handleSavePromotion}>{editingPromotion ? 'Update Promotion' : 'Create Promotion'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title={editingPromotion ? 'Edit Promotion' : 'Create New Promotion'} size="large" footer={<><Button variant="secondary" onClick={() => setShowAddModal(false)}>{t('admin:managerPromotionsPage.cancel')}</Button><Button variant="primary" onClick={handleSavePromotion}>{editingPromotion ? 'Update Promotion' : 'Create Promotion'}</Button></>}>
             <div>
               <FormRow>
                 <FormGroup>
@@ -1134,11 +1136,11 @@ const ManagerPromotionsPage: React.FC = () => {
                     value={newPromotion.type}
                     onChange={(e) => setNewPromotion({ ...newPromotion, type: e.target.value as any })}
                   >
-                    <option value="percentage">Percentage Discount</option>
-                    <option value="fixed_amount">Fixed Amount Discount</option>
-                    <option value="bogo">Buy One Get One</option>
-                    <option value="free_shipping">Free Delivery</option>
-                    <option value="happy_hour">Happy Hour / Time-based</option>
+                    <option value="percentage">{t('admin:managerPromotionsPage.percentageDiscount')}</option>
+                    <option value="fixed_amount">{t('admin:managerPromotionsPage.fixedAmountDiscount')}</option>
+                    <option value="bogo">{t('admin:managerPromotionsPage.buyOneGetOne')}</option>
+                    <option value="free_shipping">{t('admin:managerPromotionsPage.freeDelivery')}</option>
+                    <option value="happy_hour">{t('admin:managerPromotionsPage.happyHourTimebased')}</option>
                   </Select>
                 </FormGroup>
               </FormRow>
@@ -1155,7 +1157,7 @@ const ManagerPromotionsPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <Label>Minimum Order Amount</Label>
+                  <Label>{t('admin:managerPromotionsPage.minimumOrderAmount')}</Label>
                   <Input
                     type="number"
                     value={newPromotion.minOrderAmount}
@@ -1187,7 +1189,7 @@ const ManagerPromotionsPage: React.FC = () => {
 
               <FormRow>
                 <FormGroup>
-                  <Label>Usage Limit (Optional)</Label>
+                  <Label>{t('admin:managerPromotionsPage.usageLimitOptional')}</Label>
                   <Input
                     type="number"
                     value={newPromotion.usageLimit}
@@ -1196,7 +1198,7 @@ const ManagerPromotionsPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <Label>Maximum Discount Amount</Label>
+                  <Label>{t('admin:managerPromotionsPage.maximumDiscountAmount')}</Label>
                   <Input
                     type="number"
                     value={newPromotion.maxDiscount}
@@ -1236,7 +1238,7 @@ const ManagerPromotionsPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Description</Label>
+                <Label>{t('admin:managerPromotionsPage.description')}</Label>
                 <TextArea
                   value={newPromotion.description}
                   onChange={(e) => setNewPromotion({ ...newPromotion, description: e.target.value })}

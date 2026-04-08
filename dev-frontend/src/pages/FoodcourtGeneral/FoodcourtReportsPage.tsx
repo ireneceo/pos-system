@@ -321,6 +321,7 @@ interface Restaurant {
 const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const FoodcourtReportsPage: React.FC = () => {
+  const { t } = useTranslation('foodcourt');
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const { defaultCurrency } = useBrandCurrency();
@@ -952,8 +953,8 @@ const FoodcourtReportsPage: React.FC = () => {
           )}
           <DropdownMenu show={showRestaurantDropdown}>
             <DropdownItem onClick={() => { setSelectedRestaurant('all'); setRestaurantSearchQuery(''); setShowRestaurantDropdown(false); }}>
-              <ItemName>All Restaurants</ItemName>
-              <ItemDetails>Show all restaurant data</ItemDetails>
+              <ItemName>{t('foodcourt:foodcourtReportsPage.allRestaurants')}</ItemName>
+              <ItemDetails>{t('foodcourt:foodcourtReportsPage.showAllRestaurantData')}</ItemDetails>
             </DropdownItem>
             {filteredRestaurants.map(restaurant => (
               <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
@@ -979,46 +980,46 @@ const FoodcourtReportsPage: React.FC = () => {
     <>
       <ReportsContainer>
         <Header>
-          <HeaderTitle>Foodcourt Reports</HeaderTitle>
+          <HeaderTitle>{t('foodcourt:foodcourtReportsPage.foodcourtReports')}</HeaderTitle>
         </Header>
 
         <Content>
           <Tabs>
-            <Tab active={activeTab === 'ranking'} onClick={() => handleTabChange('ranking')}>Sales Ranking</Tab>
-            <Tab active={activeTab === 'sales'} onClick={() => handleTabChange('sales')}>Sales Report</Tab>
-            <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>Sales Details</Tab>
-            <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>Menu Analysis</Tab>
-            <Tab active={activeTab === 'customers'} onClick={() => handleTabChange('customers')}>Customer Insights</Tab>
-            <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>Operations</Tab>
+            <Tab active={activeTab === 'ranking'} onClick={() => handleTabChange('ranking')}>{t('foodcourt:foodcourtReportsPage.salesRanking')}</Tab>
+            <Tab active={activeTab === 'sales'} onClick={() => handleTabChange('sales')}>{t('foodcourt:foodcourtReportsPage.salesReport')}</Tab>
+            <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>{t('foodcourt:foodcourtReportsPage.salesDetails')}</Tab>
+            <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>{t('foodcourt:foodcourtReportsPage.menuAnalysis')}</Tab>
+            <Tab active={activeTab === 'customers'} onClick={() => handleTabChange('customers')}>{t('foodcourt:foodcourtReportsPage.customerInsights')}</Tab>
+            <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>{t('foodcourt:foodcourtReportsPage.operations')}</Tab>
           </Tabs>
 
           {/* Sales Tab */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>
             <FilterComponent />
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+              <div style={{ textAlign: 'center', padding: '40px' }}>{t('foodcourt:foodcourtReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>No order data available for the selected period</div>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('foodcourt:foodcourtReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
             ) : (
               <div>
                 <StatsRow>
                   <StatCard color="#059669">
-                    <StatLabel>Total Revenue</StatLabel>
+                    <StatLabel>{t('foodcourt:foodcourtReportsPage.totalRevenue')}</StatLabel>
                     <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), selectedCurrency)}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
-                    <StatLabel>Total Orders</StatLabel>
+                    <StatLabel>{t('foodcourt:foodcourtReportsPage.totalOrders')}</StatLabel>
                     <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
-                    <StatDescription>For selected period</StatDescription>
+                    <StatDescription>{t('foodcourt:foodcourtReportsPage.forSelectedPeriod')}</StatDescription>
                   </StatCard>
                   <StatCard color="#DC2626">
-                    <StatLabel>Average Order Value</StatLabel>
+                    <StatLabel>{t('foodcourt:foodcourtReportsPage.averageOrderValue')}</StatLabel>
                     <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, selectedCurrency)}</StatValue>
-                    <StatDescription>Per order</StatDescription>
+                    <StatDescription>{t('foodcourt:foodcourtReportsPage.perOrder')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
-                    <StatLabel>Completed Orders</StatLabel>
+                    <StatLabel>{t('foodcourt:foodcourtReportsPage.completedOrders')}</StatLabel>
                     <StatValue>{filteredOrders.filter(o => o.status === 'completed').length}</StatValue>
                     <StatDescription>{Math.round(filteredOrders.filter(o => o.status === 'completed').length / filteredOrders.length * 100 || 0)}% completion rate</StatDescription>
                   </StatCard>
@@ -1026,7 +1027,7 @@ const FoodcourtReportsPage: React.FC = () => {
 
                 <ChartGrid>
                   <ChartCard>
-                    <ChartTitle>Revenue Trend</ChartTitle>
+                    <ChartTitle>{t('foodcourt:foodcourtReportsPage.revenueTrend')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={salesData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1039,7 +1040,7 @@ const FoodcourtReportsPage: React.FC = () => {
                   </ChartCard>
 
                   <ChartCard>
-                    <ChartTitle>Sales by Category</ChartTitle>
+                    <ChartTitle>{t('foodcourt:foodcourtReportsPage.salesByCategory')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie data={categoryData} cx="50%" cy="50%" labelLine={true} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} outerRadius={70} fill="#8884d8" dataKey="value">
@@ -1052,7 +1053,7 @@ const FoodcourtReportsPage: React.FC = () => {
                 </ChartGrid>
 
                 <ChartCard>
-                  <ChartTitle>Hourly Orders Distribution</ChartTitle>
+                  <ChartTitle>{t('foodcourt:foodcourtReportsPage.hourlyOrdersDistribution')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1071,43 +1072,43 @@ const FoodcourtReportsPage: React.FC = () => {
           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
             <FilterComponent />
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+              <div style={{ textAlign: 'center', padding: '40px' }}>{t('foodcourt:foodcourtReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>No order data available for the selected period</div>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('foodcourt:foodcourtReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
             ) : (
               <div>
                 <StatsRow>
                   <StatCard color="#059669">
-                    <StatLabel>Total Revenue</StatLabel>
+                    <StatLabel>{t('foodcourt:foodcourtReportsPage.totalRevenue')}</StatLabel>
                     <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), selectedCurrency)}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
-                    <StatLabel>Total Orders</StatLabel>
+                    <StatLabel>{t('foodcourt:foodcourtReportsPage.totalOrders')}</StatLabel>
                     <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
                     <StatDescription>{filteredOrders.filter(o => o.status === 'completed').length} completed</StatDescription>
                   </StatCard>
                   <StatCard color="#DC2626">
-                    <StatLabel>Average Order Value</StatLabel>
+                    <StatLabel>{t('foodcourt:foodcourtReportsPage.averageOrderValue')}</StatLabel>
                     <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, selectedCurrency)}</StatValue>
-                    <StatDescription>Per order average</StatDescription>
+                    <StatDescription>{t('foodcourt:foodcourtReportsPage.perOrderAverage')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
-                    <StatLabel>Period</StatLabel>
+                    <StatLabel>{t('foodcourt:foodcourtReportsPage.period')}</StatLabel>
                     <StatValue>{getDateRangeDays()}</StatValue>
-                    <StatDescription>Days</StatDescription>
+                    <StatDescription>{t('foodcourt:foodcourtReportsPage.days')}</StatDescription>
                   </StatCard>
                 </StatsRow>
 
                 <TableCard>
-                  <ChartTitle>Detailed Sales Breakdown</ChartTitle>
+                  <ChartTitle>{t('foodcourt:foodcourtReportsPage.detailedSalesBreakdown')}</ChartTitle>
                   <Table>
                     <thead>
                       <tr>
-                        <TableHeader style={{ width: '40%' }}>Period</TableHeader>
-                        <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
-                        <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
-                        <TableHeader style={{ textAlign: 'right' }}>Avg Order Value</TableHeader>
+                        <TableHeader style={{ width: '40%' }}>{t('foodcourt:foodcourtReportsPage.period')}</TableHeader>
+                        <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.revenue')}</TableHeader>
+                        <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.orders')}</TableHeader>
+                        <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.avgOrderValue')}</TableHeader>
                       </tr>
                     </thead>
                     <tbody>
@@ -1176,39 +1177,39 @@ const FoodcourtReportsPage: React.FC = () => {
             <FilterComponent />
             <StatsRow>
               <StatCard color="#F59E0B">
-                <StatLabel>Best Seller</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.bestSeller')}</StatLabel>
                 <StatValue>{allMenuData[0]?.name || 'N/A'}</StatValue>
                 <StatDescription>{allMenuData[0]?.orders || 0} orders</StatDescription>
               </StatCard>
               <StatCard color="#10B981">
-                <StatLabel>Total Items Analyzed</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.totalItemsAnalyzed')}</StatLabel>
                 <StatValue>{allMenuData.length}</StatValue>
-                <StatDescription>Complete menu analysis</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.completeMenuAnalysis')}</StatDescription>
               </StatCard>
               <StatCard color="#3B82F6">
-                <StatLabel>Total Orders</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.totalOrders')}</StatLabel>
                 <StatValue>{allMenuData.reduce((sum, item) => sum + item.orders, 0).toLocaleString()}</StatValue>
-                <StatDescription>For selected period</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.forSelectedPeriod')}</StatDescription>
               </StatCard>
               <StatCard color="#8B5CF6">
-                <StatLabel>Total Revenue</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.totalRevenue')}</StatLabel>
                 <StatValue>{formatCurrency(allMenuData.reduce((sum, item) => sum + item.revenue, 0), selectedCurrency)}</StatValue>
-                <StatDescription>For selected period</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.forSelectedPeriod')}</StatDescription>
               </StatCard>
             </StatsRow>
 
             <TableCard>
-              <ChartTitle>Complete Menu Performance Ranking</ChartTitle>
+              <ChartTitle>{t('foodcourt:foodcourtReportsPage.completeMenuPerformanceRanking')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader>Rank</TableHeader>
-                    <TableHeader>Menu Item</TableHeader>
-                    <TableHeader>Category</TableHeader>
-                    <TableHeader>Price</TableHeader>
-                    <TableHeader>Orders</TableHeader>
-                    <TableHeader>Revenue</TableHeader>
-                    <TableHeader>Performance</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.rank')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.menuItem')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.category')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.price')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.orders')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.revenue')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.performance')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1243,29 +1244,29 @@ const FoodcourtReportsPage: React.FC = () => {
             <FilterComponent />
             <StatsRow>
               <StatCard color="#635BFF">
-                <StatLabel>Total Customers</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.totalCustomers')}</StatLabel>
                 <StatValue>{customers.length.toLocaleString()}</StatValue>
-                <StatDescription>Across all restaurants</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.acrossAllRestaurants')}</StatDescription>
               </StatCard>
               <StatCard color="#6FCF97">
-                <StatLabel>Repeat Customers</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.repeatCustomers')}</StatLabel>
                 <StatValue>{customers.filter((c: any) => c.total_orders > 1).length}</StatValue>
                 <StatDescription>{customers.length > 0 ? Math.round((customers.filter((c: any) => c.total_orders > 1).length / customers.length) * 100) : 0}% return rate</StatDescription>
               </StatCard>
               <StatCard color="#FFB800">
-                <StatLabel>Average Spent</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.averageSpent')}</StatLabel>
                 <StatValue>{formatCurrency(customers.length > 0 ? (customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length) : 0, selectedCurrency)}</StatValue>
-                <StatDescription>Per customer</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.perCustomer')}</StatDescription>
               </StatCard>
               <StatCard color="#8B5CF6">
-                <StatLabel>Total Points</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.totalPoints')}</StatLabel>
                 <StatValue>{customers.reduce((sum: number, c: any) => sum + (c.points || 0), 0).toLocaleString()}</StatValue>
-                <StatDescription>Across all customers</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.acrossAllCustomers')}</StatDescription>
               </StatCard>
             </StatsRow>
 
             <TableCard>
-              <ChartTitle>Customer insights will be available when customer data is loaded</ChartTitle>
+              <ChartTitle>{t('foodcourt:foodcourtReportsPage.customerInsightsWillBeAvailableWhenCustomerDataIsLoaded')}</ChartTitle>
             </TableCard>
           </div>
 
@@ -1274,36 +1275,36 @@ const FoodcourtReportsPage: React.FC = () => {
             <FilterComponent />
             <StatsRow>
               <StatCard color="#10B981">
-                <StatLabel>Order Fulfillment</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.orderFulfillment')}</StatLabel>
                 <StatValue>{Math.round(95 * (0.9 + Math.random() * 0.15))}%</StatValue>
-                <StatDescription>On-time completion</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.ontimeCompletion')}</StatDescription>
               </StatCard>
               <StatCard color="#F59E0B">
-                <StatLabel>Avg. Wait Time</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.avgWaitTime')}</StatLabel>
                 <StatValue>{Math.round(8 * (0.7 + Math.random() * 0.6))} min</StatValue>
-                <StatDescription>Estimated</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.estimated')}</StatDescription>
               </StatCard>
               <StatCard color="#EF4444">
-                <StatLabel>Peak Hour</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.peakHour')}</StatLabel>
                 <StatValue>12-1 PM</StatValue>
-                <StatDescription>Busiest time</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.busiestTime')}</StatDescription>
               </StatCard>
               <StatCard color="#6366F1">
-                <StatLabel>Staff Efficiency</StatLabel>
+                <StatLabel>{t('foodcourt:foodcourtReportsPage.staffEfficiency')}</StatLabel>
                 <StatValue>{Math.round(87 * (0.85 + Math.random() * 0.25))}%</StatValue>
-                <StatDescription>Estimated</StatDescription>
+                <StatDescription>{t('foodcourt:foodcourtReportsPage.estimated')}</StatDescription>
               </StatCard>
             </StatsRow>
 
             <TableCard>
-              <ChartTitle>Peak Hours Performance</ChartTitle>
+              <ChartTitle>{t('foodcourt:foodcourtReportsPage.peakHoursPerformance')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader>Time Slot</TableHeader>
-                    <TableHeader>Orders</TableHeader>
-                    <TableHeader>Revenue</TableHeader>
-                    <TableHeader>Efficiency</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.timeSlot')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.orders')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.revenue')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.efficiency')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1338,16 +1339,16 @@ const FoodcourtReportsPage: React.FC = () => {
 
             {/* Brand Rankings */}
             <RankingCard>
-              <ChartTitle>Brand Sales Ranking</ChartTitle>
+              <ChartTitle>{t('foodcourt:foodcourtReportsPage.brandSalesRanking')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader style={{ width: '60px' }}>Rank</TableHeader>
-                    <TableHeader>Brand Name</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Restaurants</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
-                    <TableHeader style={{ width: '150px' }}>Performance</TableHeader>
+                    <TableHeader style={{ width: '60px' }}>{t('foodcourt:foodcourtReportsPage.rank')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.brandName')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.restaurants')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.orders')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.revenue')}</TableHeader>
+                    <TableHeader style={{ width: '150px' }}>{t('foodcourt:foodcourtReportsPage.performance')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1373,7 +1374,7 @@ const FoodcourtReportsPage: React.FC = () => {
                     );
                   })}
                   {rankingData.brands.length === 0 && (
-                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>No brand data available</TableCell></tr>
+                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>{t('foodcourt:foodcourtReportsPage.noBrandDataAvailable')}</TableCell></tr>
                   )}
                 </tbody>
               </Table>
@@ -1381,16 +1382,16 @@ const FoodcourtReportsPage: React.FC = () => {
 
             {/* Restaurant Rankings */}
             <RankingCard>
-              <ChartTitle>Restaurant Sales Ranking</ChartTitle>
+              <ChartTitle>{t('foodcourt:foodcourtReportsPage.restaurantSalesRanking')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader style={{ width: '60px' }}>Rank</TableHeader>
-                    <TableHeader>Restaurant Name</TableHeader>
-                    <TableHeader>Brand</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
-                    <TableHeader style={{ width: '150px' }}>Performance</TableHeader>
+                    <TableHeader style={{ width: '60px' }}>{t('foodcourt:foodcourtReportsPage.rank')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.restaurantName')}</TableHeader>
+                    <TableHeader>{t('foodcourt:foodcourtReportsPage.brand')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.orders')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.revenue')}</TableHeader>
+                    <TableHeader style={{ width: '150px' }}>{t('foodcourt:foodcourtReportsPage.performance')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1420,7 +1421,7 @@ const FoodcourtReportsPage: React.FC = () => {
                     );
                   })}
                   {rankingData.restaurants.length === 0 && (
-                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>No restaurant data available</TableCell></tr>
+                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>{t('foodcourt:foodcourtReportsPage.noRestaurantDataAvailable')}</TableCell></tr>
                   )}
                 </tbody>
               </Table>

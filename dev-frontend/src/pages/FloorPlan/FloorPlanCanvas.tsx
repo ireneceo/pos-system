@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import styled from 'styled-components';
 import { FloorPlanData, TableStatusInfo } from './types';
 import TableNode from './TableNode';
+import { useTranslation } from 'react-i18next';
 
 type TableStatus = 'available' | 'occupied' | 'ready' | 'needs-attention';
 
@@ -74,6 +75,7 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
   onCanvasClick,
   currency = ''
 }) => {
+  const { t } = useTranslation('common');
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const [uniformScale, setUniformScale] = useState(1);

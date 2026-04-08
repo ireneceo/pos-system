@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 interface CompanyProfile {
   id: string;
@@ -285,6 +286,7 @@ const UploadButton = styled.label`
 `;
 
 const CompanyProfilePage: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { user } = useAuth();
   const [profile, setProfile] = useState<CompanyProfile>({
     id: '',
@@ -423,7 +425,7 @@ const CompanyProfilePage: React.FC = () => {
   const renderManagerFields = () => (
     <>
       <Section>
-        <SectionTitle>Operation Mode</SectionTitle>
+        <SectionTitle>{t('settings:companyProfilePage.operationMode')}</SectionTitle>
         <InfoBox>
           <p>
             Select how your business operates. Manager mode is for managing multiple restaurants.
@@ -459,7 +461,7 @@ const CompanyProfilePage: React.FC = () => {
   const renderRestaurantFields = () => (
     <>
       <FormGroup>
-        <Label>Trade Name / Brand Name <span>*</span></Label>
+        <Label>{t('settings:companyProfilePage.tradeNameBrandName')}<span>*</span></Label>
         <Input
           type="text"
           value={profile.tradeName || ''}
@@ -474,7 +476,7 @@ const CompanyProfilePage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Company Profile</Title>
+          <Title>{t('settings:companyProfilePage.companyProfile')}</Title>
           <SaveButton
             hasChanges={hasChanges && autoSaveStatus !== 'saved'}
             onClick={handleSave}
@@ -489,10 +491,10 @@ const CompanyProfilePage: React.FC = () => {
           {['Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager'].includes(user?.role || '') && renderManagerFields()}
 
           <Section>
-            <SectionTitle>Basic Information</SectionTitle>
+            <SectionTitle>{t('settings:companyProfilePage.basicInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Company Name <span>*</span></Label>
+                <Label>{t('settings:companyProfilePage.companyName')}<span>*</span></Label>
                 <Input
                   type="text"
                   value={profile.companyName}
@@ -502,7 +504,7 @@ const CompanyProfilePage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Registration Number <span>*</span></Label>
+                <Label>{t('settings:companyProfilePage.registrationNumber')}<span>*</span></Label>
                 <Input
                   type="text"
                   value={profile.registrationNo}
@@ -514,7 +516,7 @@ const CompanyProfilePage: React.FC = () => {
               {user?.role === 'Restaurant Admin' && renderRestaurantFields()}
 
               <FormGroup>
-                <Label>Tax Number (SST/GST)</Label>
+                <Label>{t('settings:companyProfilePage.taxNumberSstgst')}</Label>
                 <Input
                   type="text"
                   value={profile.taxNo || ''}
@@ -524,7 +526,7 @@ const CompanyProfilePage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Website</Label>
+                <Label>{t('settings:companyProfilePage.website')}</Label>
                 <Input
                   type="url"
                   value={profile.website || ''}
@@ -536,10 +538,10 @@ const CompanyProfilePage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Contact Information</SectionTitle>
+            <SectionTitle>{t('settings:companyProfilePage.contactInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup fullWidth>
-                <Label>Address <span>*</span></Label>
+                <Label>{t('settings:companyProfilePage.address')}<span>*</span></Label>
                 <Input
                   type="text"
                   value={profile.address}
@@ -549,7 +551,7 @@ const CompanyProfilePage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>City <span>*</span></Label>
+                <Label>{t('settings:companyProfilePage.city')}<span>*</span></Label>
                 <Input
                   type="text"
                   value={profile.city}
@@ -559,31 +561,31 @@ const CompanyProfilePage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>State <span>*</span></Label>
+                <Label>{t('settings:companyProfilePage.state')}<span>*</span></Label>
                 <Select
                   value={profile.state}
                   onChange={(e) => handleInputChange('state', e.target.value)}
                 >
-                  <option value="">Select State</option>
-                  <option value="Wilayah Persekutuan">Wilayah Persekutuan</option>
-                  <option value="Selangor">Selangor</option>
-                  <option value="Penang">Penang</option>
-                  <option value="Johor">Johor</option>
-                  <option value="Perak">Perak</option>
-                  <option value="Kedah">Kedah</option>
-                  <option value="Kelantan">Kelantan</option>
-                  <option value="Melaka">Melaka</option>
-                  <option value="Negeri Sembilan">Negeri Sembilan</option>
-                  <option value="Pahang">Pahang</option>
-                  <option value="Perlis">Perlis</option>
-                  <option value="Sabah">Sabah</option>
-                  <option value="Sarawak">Sarawak</option>
-                  <option value="Terengganu">Terengganu</option>
+                  <option value="">{t('settings:companyProfilePage.selectState')}</option>
+                  <option value="Wilayah Persekutuan">{t('settings:companyProfilePage.wilayahPersekutuan')}</option>
+                  <option value="Selangor">{t('settings:companyProfilePage.selangor')}</option>
+                  <option value="Penang">{t('settings:companyProfilePage.penang')}</option>
+                  <option value="Johor">{t('settings:companyProfilePage.johor')}</option>
+                  <option value="Perak">{t('settings:companyProfilePage.perak')}</option>
+                  <option value="Kedah">{t('settings:companyProfilePage.kedah')}</option>
+                  <option value="Kelantan">{t('settings:companyProfilePage.kelantan')}</option>
+                  <option value="Melaka">{t('settings:companyProfilePage.melaka')}</option>
+                  <option value="Negeri Sembilan">{t('settings:companyProfilePage.negeriSembilan')}</option>
+                  <option value="Pahang">{t('settings:companyProfilePage.pahang')}</option>
+                  <option value="Perlis">{t('settings:companyProfilePage.perlis')}</option>
+                  <option value="Sabah">{t('settings:companyProfilePage.sabah')}</option>
+                  <option value="Sarawak">{t('settings:companyProfilePage.sarawak')}</option>
+                  <option value="Terengganu">{t('settings:companyProfilePage.terengganu')}</option>
                 </Select>
               </FormGroup>
 
               <FormGroup>
-                <Label>Postcode <span>*</span></Label>
+                <Label>{t('settings:companyProfilePage.postcode')}<span>*</span></Label>
                 <Input
                   type="text"
                   value={profile.postcode}
@@ -593,20 +595,20 @@ const CompanyProfilePage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Country <span>*</span></Label>
+                <Label>{t('settings:companyProfilePage.country')}<span>*</span></Label>
                 <Select
                   value={profile.country}
                   onChange={(e) => handleInputChange('country', e.target.value)}
                 >
-                  <option value="Malaysia">Malaysia</option>
-                  <option value="Singapore">Singapore</option>
-                  <option value="Thailand">Thailand</option>
-                  <option value="Indonesia">Indonesia</option>
+                  <option value="Malaysia">{t('settings:companyProfilePage.malaysia')}</option>
+                  <option value="Singapore">{t('settings:companyProfilePage.singapore')}</option>
+                  <option value="Thailand">{t('settings:companyProfilePage.thailand')}</option>
+                  <option value="Indonesia">{t('settings:companyProfilePage.indonesia')}</option>
                 </Select>
               </FormGroup>
 
               <FormGroup>
-                <Label>Phone <span>*</span></Label>
+                <Label>{t('settings:companyProfilePage.phone')}<span>*</span></Label>
                 <PhoneInput
                   value={profile.phone}
                   onChange={(value) => handleInputChange('phone', value)}
@@ -615,7 +617,7 @@ const CompanyProfilePage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Email <span>*</span></Label>
+                <Label>{t('settings:companyProfilePage.email')}<span>*</span></Label>
                 <Input
                   type="email"
                   value={profile.email}
@@ -627,32 +629,32 @@ const CompanyProfilePage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Banking Information</SectionTitle>
+            <SectionTitle>{t('settings:companyProfilePage.bankingInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Bank Name</Label>
+                <Label>{t('settings:companyProfilePage.bankName')}</Label>
                 <Select
                   value={profile.bankName || ''}
                   onChange={(e) => handleInputChange('bankName', e.target.value)}
                 >
-                  <option value="">Select Bank</option>
-                  <option value="Maybank">Maybank</option>
-                  <option value="CIMB Bank">CIMB Bank</option>
-                  <option value="Public Bank">Public Bank</option>
-                  <option value="RHB Bank">RHB Bank</option>
-                  <option value="Hong Leong Bank">Hong Leong Bank</option>
-                  <option value="AmBank">AmBank</option>
-                  <option value="UOB">UOB</option>
-                  <option value="OCBC Bank">OCBC Bank</option>
-                  <option value="HSBC">HSBC</option>
-                  <option value="Standard Chartered">Standard Chartered</option>
-                  <option value="Bank Islam">Bank Islam</option>
-                  <option value="Bank Rakyat">Bank Rakyat</option>
+                  <option value="">{t('settings:companyProfilePage.selectBank')}</option>
+                  <option value="Maybank">{t('settings:companyProfilePage.maybank')}</option>
+                  <option value="CIMB Bank">{t('settings:companyProfilePage.cimbBank')}</option>
+                  <option value="Public Bank">{t('settings:companyProfilePage.publicBank')}</option>
+                  <option value="RHB Bank">{t('settings:companyProfilePage.rhbBank')}</option>
+                  <option value="Hong Leong Bank">{t('settings:companyProfilePage.hongLeongBank')}</option>
+                  <option value="AmBank">{t('settings:companyProfilePage.ambank')}</option>
+                  <option value="UOB">{t('settings:companyProfilePage.uob')}</option>
+                  <option value="OCBC Bank">{t('settings:companyProfilePage.ocbcBank')}</option>
+                  <option value="HSBC">{t('settings:companyProfilePage.hsbc')}</option>
+                  <option value="Standard Chartered">{t('settings:companyProfilePage.standardChartered')}</option>
+                  <option value="Bank Islam">{t('settings:companyProfilePage.bankIslam')}</option>
+                  <option value="Bank Rakyat">{t('settings:companyProfilePage.bankRakyat')}</option>
                 </Select>
               </FormGroup>
 
               <FormGroup>
-                <Label>Account Number</Label>
+                <Label>{t('settings:companyProfilePage.accountNumber')}</Label>
                 <Input
                   type="text"
                   value={profile.bankAccount || ''}
@@ -662,7 +664,7 @@ const CompanyProfilePage: React.FC = () => {
               </FormGroup>
 
               <FormGroup fullWidth>
-                <Label>Account Name</Label>
+                <Label>{t('settings:companyProfilePage.accountName')}</Label>
                 <Input
                   type="text"
                   value={profile.bankAccountName || ''}
@@ -674,13 +676,13 @@ const CompanyProfilePage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Company Logo</SectionTitle>
+            <SectionTitle>{t('settings:companyProfilePage.companyLogo')}</SectionTitle>
             <LogoUpload>
               <LogoPreview>
                 {profile.logoUrl ? (
                   <img src={profile.logoUrl} alt="Company Logo" />
                 ) : (
-                  <span>No logo</span>
+                  <span>{t('settings:companyProfilePage.noLogo')}</span>
                 )}
               </LogoPreview>
               <div>

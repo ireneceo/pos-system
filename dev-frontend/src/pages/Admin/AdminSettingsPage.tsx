@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import { useTranslation } from 'react-i18next';
 
 interface CompanySettings {
   companyName: string;
@@ -185,6 +186,7 @@ const LogoPreview = styled.img`
 `;
 
 const AdminSettingsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [uploadError, setUploadError] = useState('');
   const [initialSettings, setInitialSettings] = useState<CompanySettings | null>(null);
 
@@ -301,18 +303,17 @@ const AdminSettingsPage: React.FC = () => {
     };
     reader.readAsDataURL(file);
   };
-
   return (
     <>
       <Container>
         <Header>
-          <PageTitle>Company Information</PageTitle>
+          <PageTitle>{t('admin:adminSettingsPage.companyInformation')}</PageTitle>
         </Header>
         <Content>
 
             <FormRow>
               <FormGroup>
-                <FormLabel>Company Logo</FormLabel>
+                <FormLabel>{t('admin:adminSettingsPage.companyLogo')}</FormLabel>
                 <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '12px', lineHeight: '1.5' }}>
                   Used on invoices and documents
                 </div>
@@ -362,7 +363,7 @@ const AdminSettingsPage: React.FC = () => {
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
-                <FormLabel>Registration Number</FormLabel>
+                <FormLabel>{t('admin:adminSettingsPage.registrationNumber')}</FormLabel>
                 <AutoSaveField onSave={saveSettings}>
                   <FormInput
                     type="text"
@@ -457,7 +458,7 @@ const AdminSettingsPage: React.FC = () => {
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
-                <FormLabel>WhatsApp</FormLabel>
+                <FormLabel>{t('admin:adminSettingsPage.whatsapp')}</FormLabel>
                 <AutoSaveField onSave={saveSettings}>
                   <PhoneInput
                     value={settings.whatsapp}
@@ -485,7 +486,7 @@ const AdminSettingsPage: React.FC = () => {
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
-                <FormLabel>Website</FormLabel>
+                <FormLabel>{t('admin:adminSettingsPage.website')}</FormLabel>
                 <AutoSaveField onSave={saveSettings}>
                   <FormInput
                     type="url"
@@ -499,7 +500,7 @@ const AdminSettingsPage: React.FC = () => {
 
             <FormRow>
               <FormGroup>
-                <FormLabel>Tax Number</FormLabel>
+                <FormLabel>{t('admin:adminSettingsPage.taxNumber')}</FormLabel>
                 <AutoSaveField onSave={saveSettings}>
                   <FormInput
                     type="text"
@@ -513,7 +514,7 @@ const AdminSettingsPage: React.FC = () => {
 
             <FormRow>
               <FormGroup>
-                <FormLabel>Business Hours (Weekdays)</FormLabel>
+                <FormLabel>{t('admin:adminSettingsPage.businessHoursWeekdays')}</FormLabel>
                 <AutoSaveField onSave={saveSettings}>
                   <FormInput
                     type="text"
@@ -524,7 +525,7 @@ const AdminSettingsPage: React.FC = () => {
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
-                <FormLabel>Business Hours (Weekend)</FormLabel>
+                <FormLabel>{t('admin:adminSettingsPage.businessHoursWeekend')}</FormLabel>
                 <AutoSaveField onSave={saveSettings}>
                   <FormInput
                     type="text"

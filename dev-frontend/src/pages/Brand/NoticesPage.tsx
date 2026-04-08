@@ -13,6 +13,7 @@ import CommentSection from '../../components/Common/CommentSection';
 import { linkifyText } from '../../utils/linkify';
 import ConfirmModal from '../../components/ConfirmModal';
 import { Modal as CommonModal } from '../../components/UI';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Interfaces
@@ -429,6 +430,7 @@ const ViewModalHeaderRight = styled.div`
 // ============================================================================
 
 const NoticesPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useTabParam<'received' | 'sent'>('received');
   const [receivedNotices, setReceivedNotices] = useState<Notice[]>([]);
@@ -784,7 +786,7 @@ const NoticesPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Notices</Title>
+        <Title>{t('common:noticesPage.notices')}</Title>
         <ActionSection>
           <Button variant="primary" onClick={handleOpenCreateModal}>
             New Notice
@@ -814,38 +816,38 @@ const NoticesPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{receivedTotal}</StatValue>
-              <StatLabel>Total Received</StatLabel>
+              <StatLabel>{t('common:noticesPage.totalReceived')}</StatLabel>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{receivedUnread}</StatValue>
-              <StatLabel>Unread</StatLabel>
+              <StatLabel>{t('common:noticesPage.unread')}</StatLabel>
             </StatCard>
             <StatCard color="#8B5CF6">
               <StatValue>{receivedImportant}</StatValue>
-              <StatLabel>Important</StatLabel>
+              <StatLabel>{t('common:noticesPage.important')}</StatLabel>
             </StatCard>
             <StatCard color="#EF4444">
               <StatValue>{receivedUrgent}</StatValue>
-              <StatLabel>Urgent</StatLabel>
+              <StatLabel>{t('common:noticesPage.urgent')}</StatLabel>
             </StatCard>
           </StatsGrid>
         ) : (
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{sentTotal}</StatValue>
-              <StatLabel>Total Sent</StatLabel>
+              <StatLabel>{t('common:noticesPage.totalSent')}</StatLabel>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{sentThisMonth}</StatValue>
-              <StatLabel>This Month</StatLabel>
+              <StatLabel>{t('common:noticesPage.thisMonth')}</StatLabel>
             </StatCard>
             <StatCard color="#8B5CF6">
               <StatValue>{sentImportant}</StatValue>
-              <StatLabel>Important</StatLabel>
+              <StatLabel>{t('common:noticesPage.important')}</StatLabel>
             </StatCard>
             <StatCard color="#EF4444">
               <StatValue>{sentUrgent}</StatValue>
-              <StatLabel>Urgent</StatLabel>
+              <StatLabel>{t('common:noticesPage.urgent')}</StatLabel>
             </StatCard>
           </StatsGrid>
         )}
@@ -886,21 +888,21 @@ const NoticesPage: React.FC = () => {
               value={authorRoleFilter}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAuthorRoleFilter(e.target.value)}
             >
-              <option value="all">All Senders</option>
-              <option value="System Admin">System Admin</option>
-              <option value="Brand General">Brand General</option>
-              <option value="Foodcourt General">Foodcourt General</option>
-              <option value="Restaurant Owner">Restaurant Owner</option>
+              <option value="all">{t('common:noticesPage.allSenders')}</option>
+              <option value="System Admin">{t('common:noticesPage.systemAdmin')}</option>
+              <option value="Brand General">{t('common:noticesPage.brandGeneral')}</option>
+              <option value="Foodcourt General">{t('common:noticesPage.foodcourtGeneral')}</option>
+              <option value="Restaurant Owner">{t('common:noticesPage.restaurantOwner')}</option>
             </FilterSelect>
           )}
           <FilterSelect
             value={priorityFilter}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setPriorityFilter(e.target.value)}
           >
-            <option value="">All Priorities</option>
-            <option value="normal">Normal</option>
-            <option value="important">Important</option>
-            <option value="urgent">Urgent</option>
+            <option value="">{t('common:noticesPage.allPriorities')}</option>
+            <option value="normal">{t('common:noticesPage.normal')}</option>
+            <option value="important">{t('common:noticesPage.important')}</option>
+            <option value="urgent">{t('common:noticesPage.urgent')}</option>
           </FilterSelect>
         </FilterBar>
 
@@ -908,13 +910,13 @@ const NoticesPage: React.FC = () => {
         <NoticesGrid>
           {loading && filteredNotices.length === 0 && (
             <EmptyState>
-              <p>Loading notices...</p>
+              <p>{t('common:noticesPage.loadingNotices')}</p>
             </EmptyState>
           )}
 
           {!loading && filteredNotices.length === 0 && (
             <EmptyState>
-              <h3>No notices found</h3>
+              <h3>{t('common:noticesPage.noNoticesFound')}</h3>
               <p>
                 {activeTab === 'received'
                   ? 'You have no received notices yet.'
@@ -937,7 +939,7 @@ const NoticesPage: React.FC = () => {
                 </NoticeCardTitleRow>
                 <BadgeContainer>
                   {notice.category === 'guide' && (
-                    <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>Guide</span>
+                    <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{t('common:noticesPage.guide')}</span>
                   )}
                   <PriorityBadge priority={notice.priority}>{notice.priority}</PriorityBadge>
                 </BadgeContainer>
@@ -986,7 +988,7 @@ const NoticesPage: React.FC = () => {
       {/* Create Notice Modal                                                 */}
       {/* ================================================================== */}
       {showCreateModal && (
-        <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="New Notice" maxWidth="720px" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button><Button variant="primary" onClick={handleCreateNotice} disabled={submitting || !newNotice.title.trim() || !newNotice.content.trim() || !newNotice.target_type || (newNotice.target_type === 'brand' && !newNotice.brand_id) || (newNotice.target_type === 'select_restaurants' && newNotice.restaurant_ids.length === 0)}>{submitting ? 'Sending...' : 'Send Notice'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="New Notice" maxWidth="720px" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('common:noticesPage.cancel')}</Button><Button variant="primary" onClick={handleCreateNotice} disabled={submitting || !newNotice.title.trim() || !newNotice.content.trim() || !newNotice.target_type || (newNotice.target_type === 'brand' && !newNotice.brand_id) || (newNotice.target_type === 'select_restaurants' && newNotice.restaurant_ids.length === 0)}>{submitting ? 'Sending...' : 'Send Notice'}</Button></>}>
               <FormGroup>
                 <FormLabel>Title *</FormLabel>
                 <FormInput
@@ -1007,7 +1009,7 @@ const NoticesPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Attachments</FormLabel>
+                <FormLabel>{t('common:noticesPage.attachments')}</FormLabel>
                 <FileUpload
                   files={newAttachments}
                   onChange={setNewAttachments}
@@ -1026,13 +1028,13 @@ const NoticesPage: React.FC = () => {
                     restaurant_ids: []
                   })}
                 >
-                  <option value="">Select target...</option>
+                  <option value="">{t('common:noticesPage.selectTarget')}</option>
                   {metadata?.targetOptions?.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   )) || (
                     <>
-                      <option value="brand">By Brand</option>
-                      <option value="select_restaurants">Select Restaurants</option>
+                      <option value="brand">{t('common:noticesPage.byBrand')}</option>
+                      <option value="select_restaurants">{t('common:noticesPage.selectRestaurants')}</option>
                     </>
                   )}
                 </FormSelect>
@@ -1046,7 +1048,7 @@ const NoticesPage: React.FC = () => {
                     value={newNotice.brand_id}
                     onChange={(e) => setNewNotice({ ...newNotice, brand_id: e.target.value })}
                   >
-                    <option value="">Choose a brand...</option>
+                    <option value="">{t('common:noticesPage.chooseABrand')}</option>
                     {metadata.brands.map(brand => (
                       <option key={brand.id} value={brand.id}>{brand.name}</option>
                     ))}
@@ -1083,24 +1085,24 @@ const NoticesPage: React.FC = () => {
 
               <FormRow>
                 <FormGroup>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>{t('common:noticesPage.category')}</FormLabel>
                   <FormSelect
                     value={newNotice.category}
                     onChange={(e) => setNewNotice({ ...newNotice, category: e.target.value })}
                   >
-                    <option value="general">General</option>
-                    <option value="guide">Guide</option>
+                    <option value="general">{t('common:noticesPage.general')}</option>
+                    <option value="guide">{t('common:noticesPage.guide')}</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Priority</FormLabel>
+                  <FormLabel>{t('common:noticesPage.priority')}</FormLabel>
                   <FormSelect
                     value={newNotice.priority}
                     onChange={(e) => setNewNotice({ ...newNotice, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
                   >
-                    <option value="normal">Normal</option>
-                    <option value="important">Important</option>
-                    <option value="urgent">Urgent</option>
+                    <option value="normal">{t('common:noticesPage.normal')}</option>
+                    <option value="important">{t('common:noticesPage.important')}</option>
+                    <option value="urgent">{t('common:noticesPage.urgent')}</option>
                   </FormSelect>
                 </FormGroup>
               </FormRow>
@@ -1111,27 +1113,27 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal                                                   */}
       {/* ================================================================== */}
       {showViewModal && selectedNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" headerActions={<ViewModalHeaderRight><PriorityBadge priority={selectedNotice.priority}>{selectedNotice.priority}</PriorityBadge>{isOwnNotice(selectedNotice) && (<DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>Delete</DeleteNoticeButton>)}</ViewModalHeaderRight>} footer={<><Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>Close</Button></>}>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" headerActions={<ViewModalHeaderRight><PriorityBadge priority={selectedNotice.priority}>{selectedNotice.priority}</PriorityBadge>{isOwnNotice(selectedNotice) && (<DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('common:noticesPage.delete')}</DeleteNoticeButton>)}</ViewModalHeaderRight>} footer={<><Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>{t('common:noticesPage.close')}</Button></>}>
               {/* Meta info */}
               <ViewNoticeMeta>
                 <MetaField>
-                  <MetaFieldLabel>From</MetaFieldLabel>
+                  <MetaFieldLabel>{t('common:noticesPage.from')}</MetaFieldLabel>
                   <MetaFieldValue>
                     {selectedNotice.author_name || selectedNotice.author?.full_name || 'Unknown'}{' '}
                     ({selectedNotice.author_role || selectedNotice.author?.role || 'N/A'})
                   </MetaFieldValue>
                 </MetaField>
                 <MetaField>
-                  <MetaFieldLabel>To</MetaFieldLabel>
+                  <MetaFieldLabel>{t('common:noticesPage.to')}</MetaFieldLabel>
                   <MetaFieldValue>{getTargetLabel(selectedNotice)}</MetaFieldValue>
                 </MetaField>
                 <MetaField>
-                  <MetaFieldLabel>Date</MetaFieldLabel>
+                  <MetaFieldLabel>{t('common:noticesPage.date')}</MetaFieldLabel>
                   <MetaFieldValue>{formatDateTime(selectedNotice.createdAt)}</MetaFieldValue>
                 </MetaField>
                 {selectedNotice.recipients && selectedNotice.recipients.length > 0 && (
                   <MetaField>
-                    <MetaFieldLabel>Read Status</MetaFieldLabel>
+                    <MetaFieldLabel>{t('common:noticesPage.readStatus')}</MetaFieldLabel>
                     <MetaFieldValue>
                       {getReadCount(selectedNotice)}/{getRecipientCount(selectedNotice)} read
                     </MetaFieldValue>

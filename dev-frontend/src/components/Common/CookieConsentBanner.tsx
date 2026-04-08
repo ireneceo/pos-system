@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 declare global {
   interface Window {
@@ -110,6 +111,7 @@ const DeclineButton = styled.button`
 `;
 
 const CookieConsentBanner: React.FC = () => {
+  const { t } = useTranslation('common');
   const [visible, setVisible] = useState(false);
   const location = useLocation();
 
@@ -171,14 +173,10 @@ const CookieConsentBanner: React.FC = () => {
   return (
     <Overlay>
       <Banner>
-        <TextContent>
-          We use cookies to enhance your experience and analyze site traffic.
-          By clicking "Accept All", you consent to our use of cookies.
-          See our <a href="/privacy">Privacy Policy</a> for details.
-        </TextContent>
+        <TextContent dangerouslySetInnerHTML={{ __html: t('cookie.message') }} />
         <ButtonGroup>
-          <DeclineButton onClick={handleDecline}>Essential Only</DeclineButton>
-          <AcceptButton onClick={handleAccept}>Accept All</AcceptButton>
+          <DeclineButton onClick={handleDecline}>{t('cookie.essentialOnly')}</DeclineButton>
+          <AcceptButton onClick={handleAccept}>{t('cookie.acceptAll')}</AcceptButton>
         </ButtonGroup>
       </Banner>
     </Overlay>

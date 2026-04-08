@@ -9,6 +9,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import SubscriptionTab from './SubscriptionTab';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import { useTranslation } from 'react-i18next';
 
 // 스타일 컴포넌트
 const ProfileContainer = styled.div`
@@ -270,6 +271,7 @@ const DayTime = styled.div`
 
 
 const ProfilePage: React.FC = () => {
+  const { t } = useTranslation('settings');
   // const navigate = useNavigate();
   // const location = useLocation();
   // const { restaurantId } = useParams<{ restaurantId?: string }>();
@@ -720,7 +722,7 @@ const ProfilePage: React.FC = () => {
           <Content>
             <ContentCard>
               <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                <div>Loading profile...</div>
+                <div>{t('settings:profilePage.loadingProfile')}</div>
               </div>
             </ContentCard>
           </Content>
@@ -738,8 +740,8 @@ const ProfilePage: React.FC = () => {
           <Content>
             <ContentCard>
               <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                <div style={{ fontSize: '18px', marginBottom: '8px' }}>Please log in to view your profile</div>
-                <div style={{ fontSize: '14px' }}>You need to be logged in to access this page.</div>
+                <div style={{ fontSize: '18px', marginBottom: '8px' }}>{t('settings:profilePage.pleaseLogInToViewYourProfile')}</div>
+                <div style={{ fontSize: '14px' }}>{t('settings:profilePage.youNeedToBeLoggedInToAccessThisPage')}</div>
               </div>
             </ContentCard>
           </Content>
@@ -797,7 +799,7 @@ const ProfilePage: React.FC = () => {
               <div>
                 <FormGrid>
                   <FormGroup>
-                    <Label>Full Name</Label>
+                    <Label>{t('settings:profilePage.fullName')}</Label>
                     <AutoSaveField onSave={handleSave}>
                       <Input
                         type="text"
@@ -810,7 +812,7 @@ const ProfilePage: React.FC = () => {
                     </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
-                    <Label>Role</Label>
+                    <Label>{t('settings:profilePage.role')}</Label>
                     <Input
                       type="text"
                       value={currentUser.role}
@@ -818,7 +820,7 @@ const ProfilePage: React.FC = () => {
                     />
                   </FormGroup>
                   <FormGroup>
-                    <Label>Email Address</Label>
+                    <Label>{t('settings:profilePage.emailAddress')}</Label>
                     <AutoSaveField onSave={handleSave}>
                       <Input
                         type="email"
@@ -829,7 +831,7 @@ const ProfilePage: React.FC = () => {
                     </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
-                    <Label>Username</Label>
+                    <Label>{t('settings:profilePage.username')}</Label>
                     <Input
                       type="text"
                       value={currentUser.username}
@@ -837,7 +839,7 @@ const ProfilePage: React.FC = () => {
                     />
                   </FormGroup>
                   <FormGroup>
-                    <Label>Phone Number</Label>
+                    <Label>{t('settings:profilePage.phoneNumber')}</Label>
                     <AutoSaveField onSave={handleSave}>
                       <PhoneInput
                         value={formData.phone || ''}
@@ -849,7 +851,7 @@ const ProfilePage: React.FC = () => {
                   {/* System Admin Role - Company Name */}
                   {currentUser.role === 'System Admin' && (
                     <FormGroup>
-                      <Label>Company Name</Label>
+                      <Label>{t('settings:profilePage.companyName')}</Label>
                       <AutoSaveField onSave={handleSave}>
                         <Input
                           type="text"
@@ -862,7 +864,7 @@ const ProfilePage: React.FC = () => {
                   )}
 
                   <FormGroup>
-                    <Label>Department</Label>
+                    <Label>{t('settings:profilePage.department')}</Label>
                     <AutoSaveField onSave={handleSave}>
                       <Input
                         type="text"
@@ -944,15 +946,15 @@ const ProfilePage: React.FC = () => {
                 }}>
                   <strong>Password Requirements:</strong>
                   <ul style={{ margin: '6px 0 0 0', paddingLeft: '18px' }}>
-                    <li>At least 8 characters</li>
-                    <li>At least one lowercase letter (a-z)</li>
-                    <li>At least one uppercase letter (A-Z)</li>
-                    <li>At least one number (0-9)</li>
+                    <li>{t('settings:profilePage.atLeast8Characters')}</li>
+                    <li>{t('settings:profilePage.atLeastOneLowercaseLetterAz')}</li>
+                    <li>{t('settings:profilePage.atLeastOneUppercaseLetterAz')}</li>
+                    <li>{t('settings:profilePage.atLeastOneNumber09')}</li>
                   </ul>
                 </div>
                 <FormGrid>
                   <FormGroup>
-                    <Label>Current Password</Label>
+                    <Label>{t('settings:profilePage.currentPassword')}</Label>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                       <Input
                         type={showCurrentPassword ? 'text' : 'password'}
@@ -970,7 +972,7 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </FormGroup>
                   <FormGroup>
-                    <Label>New Password</Label>
+                    <Label>{t('settings:profilePage.newPassword')}</Label>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                       <Input
                         type={showNewPassword ? 'text' : 'password'}
@@ -988,7 +990,7 @@ const ProfilePage: React.FC = () => {
                     </div>
                   </FormGroup>
                   <FormGroup>
-                    <Label>Confirm New Password</Label>
+                    <Label>{t('settings:profilePage.confirmNewPassword')}</Label>
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                       <Input
                         type={showConfirmPassword ? 'text' : 'password'}

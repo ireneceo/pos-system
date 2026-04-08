@@ -27,6 +27,9 @@
     "axios": "^1.10.0",
     "date-fns": "^4.1.0",
     "html2canvas": "^1.4.1",
+    "i18next": "^26.0.3",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "i18next-http-backend": "^3.0.4",
     "jspdf": "^4.0.0",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
@@ -35,6 +38,7 @@
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.1.0",
     "react-helmet-async": "^2.0.5",
+    "react-i18next": "^17.0.2",
     "react-router-dom": "^7.6.3",
     "react-scripts": "5.0.1",
     "react-window": "^2.2.3",
@@ -46,6 +50,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "i18n:verify": "node scripts/verify-translations.js",
     "start": "react-scripts start",
     "build": "CACHE_DIR=node_modules/.cache; if [ -d \"$CACHE_DIR\" ] && [ \"$(stat -c '%U' \"$CACHE_DIR\" 2>/dev/null)\" = 'root' ]; then SUDO_PW=$(grep SUDO_PASSWORD /var/www/dev-backend/.env | cut -d= -f2); echo $SUDO_PW | sudo -S chown -R $(whoami):$(whoami) \"$CACHE_DIR\"; fi; GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=1536' react-scripts build",
     "build:dev": "./deploy-dev.sh",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import Tabs from '../UI/Tabs';
+import { useTranslation } from 'react-i18next';
 
 const ContentCard = styled.div`
   background: white;
@@ -165,6 +166,7 @@ interface Settings {
 }
 
 const NotificationSettings: React.FC<NotificationSettingsProps> = ({ entityType, entityId }) => {
+  const { t } = useTranslation('common');
   const [activeTab, setActiveTab] = useState('email');
   const [settings, setSettings] = useState<Settings>({
     email_enabled: false,

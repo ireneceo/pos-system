@@ -11,6 +11,7 @@ import {
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { useTranslation } from 'react-i18next';
 
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
@@ -330,6 +331,7 @@ type TabType = 'manager_sales' | 'restaurant_sales' | 'subscriptions' | 'restaur
 const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const AnalyticsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { operationSettings } = useStore();
   const currency = operationSettings.currency;
   const [searchParams] = useSearchParams();
@@ -1118,7 +1120,7 @@ const AnalyticsPage: React.FC = () => {
             All Managers
           </DropdownItem>
           {managers.length === 0 ? (
-            <NoResults>Loading managers...</NoResults>
+            <NoResults>{t('admin:analyticsPage.loadingManagers')}</NoResults>
           ) : filteredManagers.length > 0 ? (
             filteredManagers.map((manager) => (
               <DropdownItem
@@ -1129,7 +1131,7 @@ const AnalyticsPage: React.FC = () => {
               </DropdownItem>
             ))
           ) : (
-            <NoResults>No managers found</NoResults>
+            <NoResults>{t('admin:analyticsPage.noManagersFound')}</NoResults>
           )}
         </DropdownMenu>
       </SearchableDropdownContainer>
@@ -1168,7 +1170,7 @@ const AnalyticsPage: React.FC = () => {
             </DropdownItem>
           ))
         ) : (
-          restaurantSearch && <NoResults>No restaurants found</NoResults>
+          restaurantSearch && <NoResults>{t('admin:analyticsPage.noRestaurantsFound')}</NoResults>
         )}
       </DropdownMenu>
     </SearchableDropdownContainer>
@@ -1178,7 +1180,7 @@ const AnalyticsPage: React.FC = () => {
     <>
       <ReportsContainer>
         <Header>
-          <HeaderTitle>Reports</HeaderTitle>
+          <HeaderTitle>{t('admin:analyticsPage.reports')}</HeaderTitle>
         </Header>
 
         <Content>
@@ -1244,7 +1246,7 @@ const AnalyticsPage: React.FC = () => {
 
                     return Math.round(totalRevenue);
                   })(), currency)}</StatValue>
-                  <StatLabel>Invoice Revenue</StatLabel>
+                  <StatLabel>{t('admin:analyticsPage.invoiceRevenue')}</StatLabel>
                   <StatDescription>
                     {selectedManager !== 'all' ? `${selectedManagerName}'s revenue` : 'All managers revenue'}
                   </StatDescription>
@@ -1271,8 +1273,8 @@ const AnalyticsPage: React.FC = () => {
 
                     return filteredInvoices.length.toLocaleString();
                   })()}</StatValue>
-                  <StatLabel>Total Invoices</StatLabel>
-                  <StatDescription>Issued invoices for period</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.totalInvoices')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.issuedInvoicesForPeriod')}</StatDescription>
                 </StatCard>
                 <StatCard color="#DC2626">
                   <StatValue>{(() => {
@@ -1303,8 +1305,8 @@ const AnalyticsPage: React.FC = () => {
                     const avgAmount = totalRevenue / filteredInvoices.length;
                     return formatCurrency(Math.round(avgAmount), currency);
                   })()}</StatValue>
-                  <StatLabel>Average Invoice Value</StatLabel>
-                  <StatDescription>Per invoice average</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.averageInvoiceValue')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.perInvoiceAverage')}</StatDescription>
                 </StatCard>
                 <StatCard color="#7C3AED">
                   <StatValue>{(() => {
@@ -1332,14 +1334,14 @@ const AnalyticsPage: React.FC = () => {
                     const paymentRate = Math.round((paidInvoices / filteredInvoices.length) * 100);
                     return `${paymentRate}%`;
                   })()}</StatValue>
-                  <StatLabel>Payment Rate</StatLabel>
-                  <StatDescription>Invoice collection rate</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.paymentRate')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.invoiceCollectionRate')}</StatDescription>
                 </StatCard>
               </StatsGrid>
 
               <ChartGrid>
                 <ChartCard>
-                  <ChartTitle>Manager Invoice Revenue Trend</ChartTitle>
+                  <ChartTitle>{t('admin:analyticsPage.managerInvoiceRevenueTrend')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={salesTrend.length > 0 ? salesTrend : salesData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1364,7 +1366,7 @@ const AnalyticsPage: React.FC = () => {
                 </ChartCard>
 
                 <ChartCard>
-                  <ChartTitle>Revenue by Region</ChartTitle>
+                  <ChartTitle>{t('admin:analyticsPage.revenueByRegion')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
@@ -1398,12 +1400,12 @@ const AnalyticsPage: React.FC = () => {
                 <Table>
                   <thead>
                     <tr>
-                      <TableHeader>Restaurant Name</TableHeader>
-                      <TableHeader>Manager</TableHeader>
-                      <TableHeader>Invoice Revenue</TableHeader>
-                      <TableHeader>Monthly Fee</TableHeader>
-                      <TableHeader>Status</TableHeader>
-                      <TableHeader>Performance</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.restaurantName')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.manager')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.invoiceRevenue')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.monthlyFee')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.status')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.performance')}</TableHeader>
                     </tr>
                   </thead>
                   <tbody>
@@ -1484,16 +1486,16 @@ const AnalyticsPage: React.FC = () => {
               {/* Manager Ranking Table - only show when no specific manager is selected */}
               {selectedManager === 'all' && (
                 <RankingTable>
-                  <ChartTitle>Top Managers by Invoice Revenue (Royalty & Rent)</ChartTitle>
+                  <ChartTitle>{t('admin:analyticsPage.topManagersByInvoiceRevenueRoyaltyRent')}</ChartTitle>
                   <Table>
                     <thead>
                       <tr>
-                        <TableHeader>Rank</TableHeader>
-                        <TableHeader>Manager Name</TableHeader>
-                        <TableHeader>Total Invoice Revenue</TableHeader>
-                        <TableHeader>Restaurants</TableHeader>
-                        <TableHeader>Avg. per Restaurant</TableHeader>
-                        <TableHeader>Growth</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.rank')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.managerName')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.totalInvoiceRevenue')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.restaurants')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.avgPerRestaurant')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.growth')}</TableHeader>
                       </tr>
                     </thead>
                     <tbody>
@@ -1570,7 +1572,7 @@ const AnalyticsPage: React.FC = () => {
 
                     return Math.round(totalRevenue);
                   })(), currency)}</StatValue>
-                  <StatLabel>Restaurant Revenue</StatLabel>
+                  <StatLabel>{t('admin:analyticsPage.restaurantRevenue')}</StatLabel>
                   <StatDescription>
                     {selectedRestaurant !== 'all' ? `${selectedRestaurantName} sales` : 'All restaurants sales'}
                   </StatDescription>
@@ -1594,8 +1596,8 @@ const AnalyticsPage: React.FC = () => {
 
                     return filteredOrders.length.toLocaleString();
                   })()}</StatValue>
-                  <StatLabel>Total Orders</StatLabel>
-                  <StatDescription>Completed orders for period</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.totalOrders')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.completedOrdersForPeriod')}</StatDescription>
                 </StatCard>
                 <StatCard color="#DC2626">
                   <StatValue>{(() => {
@@ -1623,8 +1625,8 @@ const AnalyticsPage: React.FC = () => {
                     const avgValue = totalRevenue / filteredOrders.length;
                     return formatCurrency(Math.round(avgValue), currency);
                   })()}</StatValue>
-                  <StatLabel>Average Order Value</StatLabel>
-                  <StatDescription>Per order average</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.averageOrderValue')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.perOrderAverage')}</StatDescription>
                 </StatCard>
                 <StatCard color="#7C3AED">
                   <StatValue>{(() => {
@@ -1649,14 +1651,14 @@ const AnalyticsPage: React.FC = () => {
                     const successRate = Math.round((completedOrders / filteredOrders.length) * 100);
                     return `${successRate}%`;
                   })()}</StatValue>
-                  <StatLabel>Order Success Rate</StatLabel>
-                  <StatDescription>Orders completion rate</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.orderSuccessRate')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.ordersCompletionRate')}</StatDescription>
                 </StatCard>
               </StatsGrid>
 
               <ChartGrid>
                 <ChartCard>
-                  <ChartTitle>Restaurant Sales Trend</ChartTitle>
+                  <ChartTitle>{t('admin:analyticsPage.restaurantSalesTrend')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={salesData.map(d => ({ ...d, sales: Math.round(d.sales * 0.85) }))}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1681,7 +1683,7 @@ const AnalyticsPage: React.FC = () => {
                 </ChartCard>
 
                 <ChartCard>
-                  <ChartTitle>Sales by Category</ChartTitle>
+                  <ChartTitle>{t('admin:analyticsPage.salesByCategory')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
@@ -1728,10 +1730,10 @@ const AnalyticsPage: React.FC = () => {
                           ) ? 'Day' :
                           activePeriod === 'year' ? 'Month' : 'Date'}
                         </TableHeader>
-                        <TableHeader>Sales (RM)</TableHeader>
-                        <TableHeader>Orders</TableHeader>
-                        <TableHeader>Avg. Order Value</TableHeader>
-                        <TableHeader>Performance</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.salesRm')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.orders')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.avgOrderValue')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.performance')}</TableHeader>
                       </tr>
                     </thead>
                     <tbody>
@@ -1831,16 +1833,16 @@ const AnalyticsPage: React.FC = () => {
               ) : (
                 // Show top restaurants ranking when no specific restaurant is selected
                 <RankingTable>
-                  <ChartTitle>Top Restaurants by Sales Revenue</ChartTitle>
+                  <ChartTitle>{t('admin:analyticsPage.topRestaurantsBySalesRevenue')}</ChartTitle>
                   <Table>
                     <thead>
                       <tr>
-                        <TableHeader>Rank</TableHeader>
-                        <TableHeader>Restaurant Name</TableHeader>
-                        <TableHeader>Total Sales</TableHeader>
-                        <TableHeader>Orders</TableHeader>
-                        <TableHeader>Avg. Order Value</TableHeader>
-                        <TableHeader>Growth</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.rank')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.restaurantName')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.totalSales')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.orders')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.avgOrderValue')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.growth')}</TableHeader>
                       </tr>
                     </thead>
                     <tbody>
@@ -1923,7 +1925,7 @@ const AnalyticsPage: React.FC = () => {
 
                     return filteredRestaurants.length;
                   })()}</StatValue>
-                  <StatLabel>Total Subscriptions</StatLabel>
+                  <StatLabel>{t('admin:analyticsPage.totalSubscriptions')}</StatLabel>
                   <StatDescription>
                     {selectedManager !== 'all' ? `${selectedManagerName}'s restaurants` : 'All restaurants'} in period
                   </StatDescription>
@@ -1965,8 +1967,8 @@ const AnalyticsPage: React.FC = () => {
 
                     return mostPopular;
                   })()}</StatValue>
-                  <StatLabel>Most Popular Plan</StatLabel>
-                  <StatDescription>Most common in period</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.mostPopularPlan')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.mostCommonInPeriod')}</StatDescription>
                 </StatCard>
                 <StatCard color="#059669">
                   <StatValue>{formatCurrency((() => {
@@ -2013,8 +2015,8 @@ const AnalyticsPage: React.FC = () => {
 
                     return totalRevenue;
                   })(), currency)}</StatValue>
-                  <StatLabel>Total Revenue</StatLabel>
-                  <StatDescription>Revenue for selected period</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.totalRevenue')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.revenueForSelectedPeriod')}</StatDescription>
                 </StatCard>
                 <StatCard color="#DC2626">
                   <StatValue>{(() => {
@@ -2043,24 +2045,24 @@ const AnalyticsPage: React.FC = () => {
 
                     return filteredRestaurants.length;
                   })()}</StatValue>
-                  <StatLabel>Active Plans</StatLabel>
-                  <StatDescription>Active in period</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.activePlans')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.activeInPeriod')}</StatDescription>
                 </StatCard>
               </StatsGrid>
 
               {/* Subscription List Table */}
               <RankingTable key={`subscription-table-${refreshKey}-${activePeriod}-${selectedManager}-${dateRange.start}-${dateRange.end}`}>
-                <ChartTitle>Restaurant Subscriptions</ChartTitle>
+                <ChartTitle>{t('admin:analyticsPage.restaurantSubscriptions')}</ChartTitle>
                 <Table>
                   <thead>
                     <tr>
-                      <TableHeader>Restaurant Name</TableHeader>
-                      <TableHeader>Manager</TableHeader>
-                      <TableHeader>Plan Type</TableHeader>
-                      <TableHeader>Monthly Fee</TableHeader>
-                      <TableHeader>Status</TableHeader>
-                      <TableHeader>Subscription Period</TableHeader>
-                      <TableHeader>Location</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.restaurantName')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.manager')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.planType')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.monthlyFee')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.status')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.subscriptionPeriod')}</TableHeader>
+                      <TableHeader>{t('admin:analyticsPage.location')}</TableHeader>
                     </tr>
                   </thead>
                   <tbody>
@@ -2174,8 +2176,8 @@ const AnalyticsPage: React.FC = () => {
 
                     return Math.round(totalRevenue);
                   })(), currency)}</StatValue>
-                  <StatLabel>Total Business Volume</StatLabel>
-                  <StatDescription>Invoice-based revenue for period</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.totalBusinessVolume')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.invoicebasedRevenueForPeriod')}</StatDescription>
                 </StatCard>
                 <StatCard color="#059669">
                   <StatValue>{(() => {
@@ -2204,8 +2206,8 @@ const AnalyticsPage: React.FC = () => {
                     const growth = prevRevenue > 0 ? ((currentRevenue - prevRevenue) / prevRevenue) * 100 : 0;
                     return growth > 0 ? `+${growth.toFixed(1)}%` : `${growth.toFixed(1)}%`;
                   })()}</StatValue>
-                  <StatLabel>Growth Rate</StatLabel>
-                  <StatDescription>Compared to previous period</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.growthRate')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.comparedToPreviousPeriod')}</StatDescription>
                 </StatCard>
                 <StatCard color="#2563EB">
                   <StatValue>{(() => {
@@ -2215,8 +2217,8 @@ const AnalyticsPage: React.FC = () => {
                     const penetration = ((activeRestaurants / estimatedMarketSize) * 100);
                     return penetration.toFixed(2);
                   })()}%</StatValue>
-                  <StatLabel>Market Penetration</StatLabel>
-                  <StatDescription>Of estimated market covered</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.marketPenetration')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.ofEstimatedMarketCovered')}</StatDescription>
                 </StatCard>
                 <StatCard color="#7C3AED">
                   <StatValue>{(() => {
@@ -2235,22 +2237,22 @@ const AnalyticsPage: React.FC = () => {
                     const satisfaction = (paymentRate * 0.6 + retentionRate * 0.4) * 5;
                     return satisfaction.toFixed(1);
                   })()}/5.0</StatValue>
-                  <StatLabel>Customer Satisfaction</StatLabel>
-                  <StatDescription>Based on payment & retention</StatDescription>
+                  <StatLabel>{t('admin:analyticsPage.customerSatisfaction')}</StatLabel>
+                  <StatDescription>{t('admin:analyticsPage.basedOnPaymentRetention')}</StatDescription>
                 </StatCard>
               </StatsGrid>
 
               {/* Business Intelligence Charts */}
               <TablesGrid>
                 <TableCard>
-                  <ChartTitle>Top Performing Plan Types</ChartTitle>
+                  <ChartTitle>{t('admin:analyticsPage.topPerformingPlanTypes')}</ChartTitle>
                   <Table>
                     <thead>
                       <tr>
-                        <TableHeader>Plan<br/>Type</TableHeader>
-                        <TableHeader>Sub-<br/>scribers</TableHeader>
-                        <TableHeader>Revenue<br/>Share</TableHeader>
-                        <TableHeader>Growth</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.plan')}<br/>{t('admin:analyticsPage.type')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.sub')}<br/>scribers</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.revenue')}<br/>{t('admin:analyticsPage.share')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.growth')}</TableHeader>
                       </tr>
                     </thead>
                     <tbody>
@@ -2306,14 +2308,14 @@ const AnalyticsPage: React.FC = () => {
                 </TableCard>
 
                 <TableCard>
-                  <ChartTitle>Manager Performance Ranking</ChartTitle>
+                  <ChartTitle>{t('admin:analyticsPage.managerPerformanceRanking')}</ChartTitle>
                   <Table>
                     <thead>
                       <tr>
-                        <TableHeader>Rank</TableHeader>
-                        <TableHeader>Manager</TableHeader>
-                        <TableHeader>Restau-<br/>rants</TableHeader>
-                        <TableHeader>Total<br/>Revenue</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.rank')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.manager')}</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.restau')}<br/>rants</TableHeader>
+                        <TableHeader>{t('admin:analyticsPage.total')}<br/>{t('admin:analyticsPage.revenue')}</TableHeader>
                       </tr>
                     </thead>
                     <tbody>
@@ -2372,7 +2374,7 @@ const AnalyticsPage: React.FC = () => {
 
               {/* Business Insights */}
               <RankingTable>
-                <ChartTitle>Business Intelligence Insights</ChartTitle>
+                <ChartTitle>{t('admin:analyticsPage.businessIntelligenceInsights')}</ChartTitle>
                 <div style={{ padding: '20px' }}>
                   <InsightsGrid>
                     <div>
@@ -2425,7 +2427,7 @@ const AnalyticsPage: React.FC = () => {
                       </h4>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '14px', color: '#6B7C93' }}>Average Invoice Revenue per Restaurant</span>
+                          <span style={{ fontSize: '14px', color: '#6B7C93' }}>{t('admin:analyticsPage.averageInvoiceRevenuePerRestaurant')}</span>
                           <span style={{ fontSize: '14px', fontWeight: 600, color: '#2B3674' }}>
                             {(() => {
                               if (!invoices.length || !restaurants.length) return formatCurrency(0, currency);
@@ -2447,7 +2449,7 @@ const AnalyticsPage: React.FC = () => {
                           </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '14px', color: '#6B7C93' }}>Invoice Payment Rate</span>
+                          <span style={{ fontSize: '14px', color: '#6B7C93' }}>{t('admin:analyticsPage.invoicePaymentRate')}</span>
                           <span style={{ fontSize: '14px', fontWeight: 600, color: '#059669' }}>
                             {(() => {
                               if (!invoices.length) return '0';
@@ -2457,13 +2459,13 @@ const AnalyticsPage: React.FC = () => {
                           </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '14px', color: '#6B7C93' }}>System Adoption Rate</span>
+                          <span style={{ fontSize: '14px', color: '#6B7C93' }}>{t('admin:analyticsPage.systemAdoptionRate')}</span>
                           <span style={{ fontSize: '14px', fontWeight: 600, color: '#2563EB' }}>
                             {restaurants.length > 0 ? Math.round((restaurants.filter(r => r.status === 'active').length / restaurants.length) * 100) : 0}%
                           </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '14px', color: '#6B7C93' }}>Revenue per Manager</span>
+                          <span style={{ fontSize: '14px', color: '#6B7C93' }}>{t('admin:analyticsPage.revenuePerManager')}</span>
                           <span style={{ fontSize: '14px', fontWeight: 600, color: '#7C3AED' }}>
                             {(() => {
                               if (!invoices.length || !managers.length) return formatCurrency(0, currency);

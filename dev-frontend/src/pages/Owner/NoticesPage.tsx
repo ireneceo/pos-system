@@ -9,6 +9,7 @@ import { linkifyText } from '../../utils/linkify';
 import { Modal as CommonModal } from '../../components/UI';
 import { Tabs, Tab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // TypeScript Interfaces
@@ -572,6 +573,7 @@ const RecipientTag = styled.span`
 // ============================================================================
 
 const NoticesPage: React.FC = () => {
+  const { t } = useTranslation('owner');
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useTabParam<'received' | 'sent'>('received');
   const [receivedNotices, setReceivedNotices] = useState<Notice[]>([]);
@@ -859,9 +861,9 @@ const NoticesPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Notices</Title>
+          <Title>{'Notices'}</Title>
           <ActionSection>
-            <Button variant="primary" onClick={() => setShowNewModal(true)}>New Notice</Button>
+            <Button variant="primary" onClick={() => setShowNewModal(true)}>{'New Notice'}</Button>
           </ActionSection>
         </Header>
 
@@ -870,19 +872,19 @@ const NoticesPage: React.FC = () => {
           <StatsGrid>
             <StatCard borderColor="#635BFF">
               <StatValue>{totalReceived}</StatValue>
-              <StatLabel>Received</StatLabel>
+              <StatLabel>{'Received'}</StatLabel>
             </StatCard>
             <StatCard borderColor="#F59E0B">
               <StatValue>{unreadCount}</StatValue>
-              <StatLabel>Unread</StatLabel>
+              <StatLabel>{'Unread'}</StatLabel>
             </StatCard>
             <StatCard borderColor="#10B981">
               <StatValue>{totalSent}</StatValue>
-              <StatLabel>Sent</StatLabel>
+              <StatLabel>{'Sent'}</StatLabel>
             </StatCard>
             <StatCard borderColor="#EF4444">
               <StatValue>{urgentCount}</StatValue>
-              <StatLabel>Urgent</StatLabel>
+              <StatLabel>{'Urgent'}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -932,21 +934,21 @@ const NoticesPage: React.FC = () => {
                 value={authorRoleFilter}
                 onChange={(e) => setAuthorRoleFilter(e.target.value)}
               >
-                <option value="all">All Senders</option>
-                <option value="System Admin">System Admin</option>
-                <option value="Brand General">Brand General</option>
-                <option value="Foodcourt General">Foodcourt General</option>
-                <option value="Restaurant Owner">Restaurant Owner</option>
+                <option value="all">{'All Senders'}</option>
+                <option value="System Admin">{'System Admin'}</option>
+                <option value="Brand General">{'Brand General'}</option>
+                <option value="Foodcourt General">{'Foodcourt General'}</option>
+                <option value="Restaurant Owner">{'Restaurant Owner'}</option>
               </FilterSelect>
             )}
             <FilterSelect
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
             >
-              <option value="all">All Priority</option>
-              <option value="normal">Normal</option>
-              <option value="important">Important</option>
-              <option value="urgent">Urgent</option>
+              <option value="all">{'All Priority'}</option>
+              <option value="normal">{'Normal'}</option>
+              <option value="important">{'Important'}</option>
+              <option value="urgent">{'Urgent'}</option>
             </FilterSelect>
           </FiltersContainer>
 
@@ -982,7 +984,7 @@ const NoticesPage: React.FC = () => {
                   </NoticeInfo>
                   <BadgeContainer>
                     {notice.category === 'guide' && (
-                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>Guide</span>
+                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{'Guide'}</span>
                     )}
                     <PriorityBadge priority={notice.priority}>{notice.priority}</PriorityBadge>
                   </BadgeContainer>
@@ -1038,7 +1040,7 @@ const NoticesPage: React.FC = () => {
       {/* New Notice Modal */}
       {/* ================================================================== */}
       {showNewModal && (
-        <CommonModal isOpen={true} onClose={() => setShowNewModal(false)} title="New Notice" footer={<><Button variant="secondary" onClick={() => setShowNewModal(false)}>Cancel</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim() || (!newNotice.allRestaurants && newNotice.selectedRestaurantIds.length === 0)}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => setShowNewModal(false)} title="New Notice" footer={<><Button variant="secondary" onClick={() => setShowNewModal(false)}>{'Cancel'}</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim() || (!newNotice.allRestaurants && newNotice.selectedRestaurantIds.length === 0)}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
               <FormGroup>
                 <FormLabel>Title *</FormLabel>
                 <FormInput
@@ -1059,7 +1061,7 @@ const NoticesPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Attachments</FormLabel>
+                <FormLabel>{'Attachments'}</FormLabel>
                 <FileUpload
                   files={newAttachments}
                   onChange={setNewAttachments}
@@ -1069,30 +1071,30 @@ const NoticesPage: React.FC = () => {
 
               <div style={{ display: 'flex', gap: '16px' }}>
                 <FormGroup style={{ flex: 1 }}>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>{'Category'}</FormLabel>
                   <FormSelect
                     value={newNotice.category}
                     onChange={(e) => setNewNotice(prev => ({ ...prev, category: e.target.value }))}
                   >
-                    <option value="general">General</option>
-                    <option value="guide">Guide</option>
+                    <option value="general">{'General'}</option>
+                    <option value="guide">{'Guide'}</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup style={{ flex: 1 }}>
-                  <FormLabel>Priority</FormLabel>
+                  <FormLabel>{'Priority'}</FormLabel>
                   <FormSelect
                     value={newNotice.priority}
                     onChange={(e) => setNewNotice(prev => ({ ...prev, priority: e.target.value as any }))}
                   >
-                    <option value="normal">Normal</option>
-                    <option value="important">Important</option>
-                    <option value="urgent">Urgent</option>
+                    <option value="normal">{'Normal'}</option>
+                    <option value="important">{'Important'}</option>
+                    <option value="urgent">{'Urgent'}</option>
                   </FormSelect>
                 </FormGroup>
               </div>
 
               <FormGroup>
-                <FormLabel>Target Restaurants</FormLabel>
+                <FormLabel>{'Target Restaurants'}</FormLabel>
                 <CheckboxRow>
                   <input
                     type="checkbox"
@@ -1134,7 +1136,7 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal */}
       {/* ================================================================== */}
       {showViewModal && viewNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setViewNotice(null); }} title={viewNotice.title} size="large" footer={<><Button variant="secondary" onClick={() => { setShowViewModal(false); setViewNotice(null); }}>Close</Button></>}>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setViewNotice(null); }} title={viewNotice.title} size="large" footer={<><Button variant="secondary" onClick={() => { setShowViewModal(false); setViewNotice(null); }}>{'Close'}</Button></>}>
               <NoticeDetailMeta>
                 <MetaItem>
                   <MetaLabel>From:</MetaLabel>
@@ -1157,7 +1159,7 @@ const NoticesPage: React.FC = () => {
               {/* Recipients (for sent notices) */}
               {viewNotice.recipients && viewNotice.recipients.length > 0 && (
                 <FormGroup>
-                  <FormLabel>Recipients</FormLabel>
+                  <FormLabel>{'Recipients'}</FormLabel>
                   <RecipientsTagList>
                     {viewNotice.recipients.map((r: any, idx: number) => (
                       <RecipientTag key={idx}>

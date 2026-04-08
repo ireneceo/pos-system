@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
+import { LanguageSelector } from '../../components/Common';
+import { useTranslation } from 'react-i18next';
 
 // Demo accounts (always visible)
 const DEMO_ACCOUNTS = [
@@ -64,9 +66,17 @@ const Container = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 20px;
+`;
+
+const LanguageBar = styled.div`
+  position: absolute;
+  top: 16px;
+  right: 24px;
+  z-index: 10;
 `;
 
 const LoginBox = styled.div`
@@ -427,6 +437,7 @@ const HomeLink = styled(Link)`
 `;
 
 const LoginPage: React.FC = () => {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const location = useLocation();
   const { login, user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -534,6 +545,9 @@ const LoginPage: React.FC = () => {
 
   return (
     <Container>
+      <LanguageBar>
+        <LanguageSelector />
+      </LanguageBar>
       <LoginBox>
         <LeftSection>
           {brandLogo && (
@@ -542,7 +556,7 @@ const LoginPage: React.FC = () => {
 
           <Form onSubmit={handleSubmit}>
             <InputGroup>
-              <Label>Email or Username</Label>
+              <Label>{t('auth:loginPage.emailOrUsername')}</Label>
               <Input
                 type="text"
                 value={email}
@@ -553,7 +567,7 @@ const LoginPage: React.FC = () => {
             </InputGroup>
             
             <InputGroup>
-              <Label>Password</Label>
+              <Label>{t('auth:loginPage.password')}</Label>
               <PasswordWrapper>
                 <Input
                   type={showPassword ? 'text' : 'password'}
@@ -635,8 +649,8 @@ const LoginPage: React.FC = () => {
           <Divider />
 
           <BottomLinks>
-            <Link to="/forgot-password" className="forgot-link">Forgot your password?</Link>
-            <span>Don't have an account? <Link to="/signup">Sign up</Link></span>
+            <Link to="/forgot-password" className="forgot-link">{t('auth:loginPage.forgotYourPassword')}</Link>
+            <span>{t('auth:loginPage.dontHaveAnAccount')}<Link to="/signup">{t('auth:loginPage.signUp')}</Link></span>
             <HomeLink to="/">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6" />
@@ -647,14 +661,14 @@ const LoginPage: React.FC = () => {
         </LeftSection>
         
         <RightSection>
-          <TestAccountsTitle>Available Accounts</TestAccountsTitle>
+          <TestAccountsTitle>{t('auth:loginPage.availableAccounts')}</TestAccountsTitle>
 
           <QuickLoginHint>
             <strong>Quick Login:</strong> Click any account card below to auto-fill credentials
           </QuickLoginHint>
 
           <DemoAccountsSection>
-            <DemoTitle>Demo Accounts</DemoTitle>
+            <DemoTitle>{t('auth:loginPage.demoAccounts')}</DemoTitle>
             {DEMO_ACCOUNTS.map((account) => (
               <DemoCard
                 key={account.email}
@@ -680,7 +694,7 @@ const LoginPage: React.FC = () => {
           </DemoAccountsSection>
 
           <TestAccountsToggle onClick={() => setShowTestAccounts(!showTestAccounts)}>
-            {showTestAccounts ? '▲' : '▼'} <span>TEST</span> Test Accounts
+            {showTestAccounts ? '▲' : '▼'} <span>{t('auth:loginPage.test')}</span> Test Accounts
           </TestAccountsToggle>
 
           <TestAccountsSection show={showTestAccounts}>

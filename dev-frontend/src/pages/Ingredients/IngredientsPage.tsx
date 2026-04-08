@@ -20,6 +20,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface Ingredient {
   id: number;
@@ -175,6 +176,7 @@ const EmptyDescription = styled.p`
 `;
 
 const IngredientsPage: React.FC = () => {
+  const { t } = useTranslation('inventory');
   const { user } = useAuth();
   const { defaultCurrency, supportedCurrencies } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('');
@@ -390,7 +392,7 @@ const IngredientsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Ingredients</Title>
+          <Title>{'Ingredients'}</Title>
           <ActionSection>
             <ThemedButton
               variant="primary"
@@ -403,17 +405,17 @@ const IngredientsPage: React.FC = () => {
 
         <StatsGrid>
           <StatCard>
-            <StatLabel>Total Ingredients</StatLabel>
+            <StatLabel>{'Total Ingredients'}</StatLabel>
             <StatValue>{ingredients.length}</StatValue>
             <StatDescription>{activeIngredients} active</StatDescription>
           </StatCard>
           <StatCard>
-            <StatLabel>Average Cost</StatLabel>
+            <StatLabel>{'Average Cost'}</StatLabel>
             <StatValue>{formatCurrency(avgCost, selectedCurrency || 'MYR')}</StatValue>
             <StatDescription>per unit</StatDescription>
           </StatCard>
           <StatCard>
-            <StatLabel>Categories</StatLabel>
+            <StatLabel>{'Categories'}</StatLabel>
             <StatValue>{categories.length - 1}</StatValue>
             <StatDescription>ingredient types</StatDescription>
           </StatCard>
@@ -460,11 +462,11 @@ const IngredientsPage: React.FC = () => {
 
           {loading ? (
             <EmptyState>
-              <EmptyTitle>Loading...</EmptyTitle>
+              <EmptyTitle>{'Loading...'}</EmptyTitle>
             </EmptyState>
           ) : filteredIngredients.length === 0 ? (
             <EmptyState>
-              <EmptyTitle>No ingredients found</EmptyTitle>
+              <EmptyTitle>{'No ingredients found'}</EmptyTitle>
               <EmptyDescription>
                 {searchTerm || selectedCategory !== 'all'
                   ? 'Try adjusting your filters'
@@ -492,22 +494,22 @@ const IngredientsPage: React.FC = () => {
 
                   <IngredientInfo>
                     <InfoRow>
-                      <InfoLabel>Unit Cost</InfoLabel>
+                      <InfoLabel>{'Unit Cost'}</InfoLabel>
                       <InfoValue>{formatCurrency(ingredient.unit_cost, selectedCurrency || 'MYR')}</InfoValue>
                     </InfoRow>
                     <InfoRow>
-                      <InfoLabel>Unit</InfoLabel>
+                      <InfoLabel>{'Unit'}</InfoLabel>
                       <InfoValue>{ingredient.unit}</InfoValue>
                     </InfoRow>
                     {ingredient.supplier_name && (
                       <InfoRow>
-                        <InfoLabel>Supplier</InfoLabel>
+                        <InfoLabel>{'Supplier'}</InfoLabel>
                         <InfoValue>{ingredient.supplier_name}</InfoValue>
                       </InfoRow>
                     )}
                     {ingredient.code && (
                       <InfoRow>
-                        <InfoLabel>Code</InfoLabel>
+                        <InfoLabel>{'Code'}</InfoLabel>
                         <InfoValue>{ingredient.code}</InfoValue>
                       </InfoRow>
                     )}
@@ -553,7 +555,7 @@ const IngredientsPage: React.FC = () => {
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Code</FormLabel>
+              <FormLabel>{'Code'}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.code}
@@ -575,7 +577,7 @@ const IngredientsPage: React.FC = () => {
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Supplier</FormLabel>
+              <FormLabel>{'Supplier'}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.supplier_name}
@@ -610,7 +612,7 @@ const IngredientsPage: React.FC = () => {
           </UIFormRow>
 
           <UIFormGroup>
-            <FormLabel>Minimum Stock</FormLabel>
+            <FormLabel>{'Minimum Stock'}</FormLabel>
             <FormInput
               type="number"
               value={formData.min_stock}

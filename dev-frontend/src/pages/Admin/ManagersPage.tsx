@@ -29,6 +29,7 @@ import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies,
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useStore } from '../../contexts/StoreContext';
+import { useTranslation } from 'react-i18next';
 
 interface Manager {
   id: string;
@@ -226,6 +227,7 @@ const getAuthHeaders = () => {
 };
 
 const ManagersPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { operationSettings } = useStore();
   useAuth();
   const [managers, setManagers] = useState<Manager[]>([]);
@@ -960,10 +962,10 @@ const ManagersPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Managers</Title>
+          <Title>{t('admin:managersPage.managers')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportManagers}>Export</Button>
-            <Button variant="primary" onClick={handleAddManager}>Add Manager</Button>
+            <Button variant="secondary" onClick={handleExportManagers}>{t('admin:managersPage.export')}</Button>
+            <Button variant="primary" onClick={handleAddManager}>{t('admin:managersPage.addManager')}</Button>
           </ActionSection>
         </Header>
         
@@ -971,23 +973,23 @@ const ManagersPage: React.FC = () => {
           <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalManagers}</StatValue>
-            <StatLabel>Total Managers</StatLabel>
-            <StatDescription>Currently active</StatDescription>
+            <StatLabel>{t('admin:managersPage.totalManagers')}</StatLabel>
+            <StatDescription>{t('admin:managersPage.currentlyActive')}</StatDescription>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{activeSubscriptions}</StatValue>
-            <StatLabel>Active Subscriptions</StatLabel>
+            <StatLabel>{t('admin:managersPage.activeSubscriptions')}</StatLabel>
             <StatDescription>{totalManagers > 0 ? (totalRestaurants/totalManagers).toFixed(1) : 0} restaurants per manager</StatDescription>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{totalRestaurants}</StatValue>
-            <StatLabel>Total Restaurants</StatLabel>
-            <StatDescription>Across all managers</StatDescription>
+            <StatLabel>{t('admin:managersPage.totalRestaurants')}</StatLabel>
+            <StatDescription>{t('admin:managersPage.acrossAllManagers')}</StatDescription>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{formatCurrency(totalRevenue / 1000, operationSettings.currency).replace(/\.\d+/, '')}k</StatValue>
-            <StatLabel>Total Revenue</StatLabel>
-            <StatDescription>From actual invoices</StatDescription>
+            <StatLabel>{t('admin:managersPage.totalRevenue')}</StatLabel>
+            <StatDescription>{t('admin:managersPage.fromActualInvoices')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
@@ -996,9 +998,9 @@ const ManagersPage: React.FC = () => {
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="all">{t('admin:managersPage.allStatus')}</option>
+            <option value="active">{t('admin:managersPage.active')}</option>
+            <option value="inactive">{t('admin:managersPage.inactive')}</option>
           </FilterSelect>
 
           <SearchInput
@@ -1011,12 +1013,12 @@ const ManagersPage: React.FC = () => {
 
         <Table>
           <ManagerTableHeader columns="2fr 1fr 1fr 1fr 1fr 200px">
-            <span className="col-info">Manager Info</span>
-            <span>Status</span>
-            <span>Restaurants</span>
-            <span className="col-revenue">Revenue (RM)</span>
-            <span>Last Active</span>
-            <span className="col-action">Actions</span>
+            <span className="col-info">{t('admin:managersPage.managerInfo')}</span>
+            <span>{t('admin:managersPage.status')}</span>
+            <span>{t('admin:managersPage.restaurants')}</span>
+            <span className="col-revenue">{t('admin:managersPage.revenueRm')}</span>
+            <span>{t('admin:managersPage.lastActive')}</span>
+            <span className="col-action">{t('admin:managersPage.actions')}</span>
           </ManagerTableHeader>
 
           {filteredManagers.length === 0 ? (
@@ -1033,9 +1035,9 @@ const ManagersPage: React.FC = () => {
               <ManagerTableRow columns="2fr 1fr 1fr 1fr 1fr 200px" key={manager.id}>
                 <MobileGrid>
                   <MobileValue className="col-info">
-                    <MobileLabel>Manager Info</MobileLabel>
+                    <MobileLabel>{t('admin:managersPage.managerInfo')}</MobileLabel>
                     <ManagerInfo>
-                      <CompanyName>{manager.fullName}{manager.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}{manager.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}</CompanyName>
+                      <CompanyName>{manager.fullName}{manager.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:managersPage.demo')}</span>}{manager.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:managersPage.test')}</span>}</CompanyName>
                       <ContactInfo>
                         {manager.managerId} • {manager.email}
                       </ContactInfo>
@@ -1043,7 +1045,7 @@ const ManagersPage: React.FC = () => {
                   </MobileValue>
 
                   <MobileValue>
-                    <MobileLabel>Status</MobileLabel>
+                    <MobileLabel>{t('admin:managersPage.status')}</MobileLabel>
                     <div>
                       <StatusBadge status={manager.status}>
                         {manager.status === 'active' ? 'Active' : 'Inactive'}
@@ -1052,7 +1054,7 @@ const ManagersPage: React.FC = () => {
                   </MobileValue>
 
                   <MobileValue>
-                    <MobileLabel>Restaurants</MobileLabel>
+                    <MobileLabel>{t('admin:managersPage.restaurants')}</MobileLabel>
                     <span
                       style={{
                         color: '#635BFF',
@@ -1068,14 +1070,14 @@ const ManagersPage: React.FC = () => {
                   </MobileValue>
 
                   <MobileValue className="col-revenue">
-                    <MobileLabel>Revenue (RM)</MobileLabel>
+                    <MobileLabel>{t('admin:managersPage.revenueRm')}</MobileLabel>
                     <div style={{ fontSize: '14px', color: '#374151', fontWeight: '600' }}>
                       {manager.totalRevenue.toLocaleString()}
                     </div>
                   </MobileValue>
 
                   <MobileValue>
-                    <MobileLabel>Last Active</MobileLabel>
+                    <MobileLabel>{t('admin:managersPage.lastActive')}</MobileLabel>
                     <div style={{ fontSize: '14px', color: '#6B7280' }}>
                       {manager.lastActive}
                     </div>
@@ -1087,7 +1089,7 @@ const ManagersPage: React.FC = () => {
                     onClick={() => handleEditManager(manager)}
                     title="Edit Manager"
                   >
-                    <IconSymbol>Edit</IconSymbol>
+                    <IconSymbol>{t('admin:managersPage.edit')}</IconSymbol>
                   </IconButton>
                   <IconButton
                     onClick={() => handleToggleStatus(manager)}
@@ -1115,7 +1117,7 @@ const ManagersPage: React.FC = () => {
 
         {/* Add Manager Modal */}
         {showAddModal && (
-                <CommonModal isOpen={true} onClose={handleCloseModal} title="Add New Manager" footer={<><Button variant="secondary" onClick={handleCloseModal}>Cancel</Button><Button variant="primary" onClick={handleSubmit}>Add Manager</Button></>}>
+                <CommonModal isOpen={true} onClose={handleCloseModal} title="Add New Manager" footer={<><Button variant="secondary" onClick={handleCloseModal}>{t('admin:managersPage.cancel')}</Button><Button variant="primary" onClick={handleSubmit}>{t('admin:managersPage.addManager')}</Button></>}>
 
               <FormGrid>
                 <FormGroup>
@@ -1171,11 +1173,11 @@ const ManagersPage: React.FC = () => {
                       }));
                     }}
                   >
-                    <option value="Foodcourt General">Foodcourt General</option>
-                    <option value="Foodcourt Manager">Foodcourt Manager</option>
-                    <option value="Brand General">Brand General</option>
-                    <option value="Brand Manager">Brand Manager</option>
-                    <option value="Restaurant Owner">Restaurant Owner</option>
+                    <option value="Foodcourt General">{t('admin:managersPage.foodcourtGeneral')}</option>
+                    <option value="Foodcourt Manager">{t('admin:managersPage.foodcourtManager')}</option>
+                    <option value="Brand General">{t('admin:managersPage.brandGeneral')}</option>
+                    <option value="Brand Manager">{t('admin:managersPage.brandManager')}</option>
+                    <option value="Restaurant Owner">{t('admin:managersPage.restaurantOwner')}</option>
                   </FilterSelect>
                 </FormGroup>
 
@@ -1187,7 +1189,7 @@ const ManagersPage: React.FC = () => {
                       value={newManager.parentManagerId}
                       onChange={(e) => handleInputChange('parentManagerId', e.target.value)}
                     >
-                      <option value="">Select Brand General</option>
+                      <option value="">{t('admin:managersPage.selectBrandGeneral')}</option>
                       {brandGenerals.map((bg: any) => (
                         <option key={bg.id} value={bg.id}>
                           {bg.full_name || bg.username} ({bg.company_name || 'No Company'})
@@ -1205,7 +1207,7 @@ const ManagersPage: React.FC = () => {
                       value={newManager.parentManagerId}
                       onChange={(e) => handleInputChange('parentManagerId', e.target.value)}
                     >
-                      <option value="">Select Foodcourt General</option>
+                      <option value="">{t('admin:managersPage.selectFoodcourtGeneral')}</option>
                       {foodcourtGenerals.map((fg: any) => (
                         <option key={fg.id} value={fg.id}>
                           {fg.full_name || fg.username} ({fg.company_name || 'No Company'})
@@ -1254,7 +1256,7 @@ const ManagersPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>{t('admin:managersPage.address')}</FormLabel>
                   <FormTextarea
                     placeholder="Enter company address"
                     value={newManager.address}
@@ -1266,7 +1268,7 @@ const ManagersPage: React.FC = () => {
                 {(newManager.role === 'Foodcourt General' || newManager.role === 'Brand General' || newManager.role === 'Restaurant Owner') && (
                   <>
                     <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
-                      <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
+                      <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>{t('admin:managersPage.subscriptionSettings')}</h3>
                     </FormGroup>
 
                     <FormGroup>
@@ -1300,7 +1302,7 @@ const ManagersPage: React.FC = () => {
                           }
                         }}
                       >
-                        <option value="">Select Plan</option>
+                        <option value="">{t('admin:managersPage.selectPlan')}</option>
                         {getFilteredPlans(newManager.role).map(plan => (
                           <option key={plan.id} value={plan.display_name}>
                             {plan.display_name} ({formatPlanPrice(plan, newManager.currency)}/month)
@@ -1315,8 +1317,8 @@ const ManagersPage: React.FC = () => {
                         value={newManager.billingCycle}
                         onChange={(e) => handleInputChange('billingCycle', e.target.value)}
                       >
-                        <option value="monthly">Monthly</option>
-                        <option value="annual">Annual</option>
+                        <option value="monthly">{t('admin:managersPage.monthly')}</option>
+                        <option value="annual">{t('admin:managersPage.annual')}</option>
                       </FilterSelect>
                     </FormGroup>
 
@@ -1330,7 +1332,7 @@ const ManagersPage: React.FC = () => {
                     </FormGroup>
 
                     <FormGroup>
-                      <FormLabel>Subscription End Date (Auto)</FormLabel>
+                      <FormLabel>{t('admin:managersPage.subscriptionEndDateAuto')}</FormLabel>
                       <FormInput
                         type="date"
                         value={newManager.subscriptionEnd}
@@ -1346,7 +1348,7 @@ const ManagersPage: React.FC = () => {
                         onChange={(e) => handleInputChange('autoRenew', e.target.checked ? 'true' : 'false')}
                         style={{width: '16px', height: '16px', accentColor: '#635BFF'}}
                       />
-                      <FormLabel style={{marginBottom: 0}}>Auto-renew subscription</FormLabel>
+                      <FormLabel style={{marginBottom: 0}}>{t('admin:managersPage.autorenewSubscription')}</FormLabel>
                     </FormGroup>
                   </>
                 )}
@@ -1364,76 +1366,76 @@ const ManagersPage: React.FC = () => {
         {showSuccessModal && (
         <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Password Generated" size="small" footer={<>
           {successPassword && <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</Button>}
-          <Button variant="primary" onClick={() => setShowSuccessModal(false)}>Done</Button>
+          <Button variant="primary" onClick={() => setShowSuccessModal(false)}>{t('admin:managersPage.done')}</Button>
         </>}>
           <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
             {successMessage} Please share this password securely. They should change it after first login.
           </div>
           {successPassword && (
             <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>Temporary Password</div>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:managersPage.temporaryPassword')}</div>
               <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
             </div>
           )}
-          <div style={{ fontSize: '12px', color: '#DC2626' }}>This password will not be shown again. Please copy it now.</div>
+          <div style={{ fontSize: '12px', color: '#DC2626' }}>{t('admin:managersPage.thisPasswordWillNotBeShownAgainPleaseCopyItNow')}</div>
         </CommonModal>
         )}
 
         {/* View Manager Modal */}
         {showViewModal && selectedManager && (
-                <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Manager Details" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button></>}>
+                <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Manager Details" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}>{t('admin:managersPage.close')}</Button></>}>
 
               <FormGrid>
                 <FormGroup>
-                  <FormLabel>Manager ID</FormLabel>
+                  <FormLabel>{t('admin:managersPage.managerId')}</FormLabel>
                   <FormInput type="text" value={selectedManager.managerId} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel>{t('admin:managersPage.fullName')}</FormLabel>
                   <FormInput type="text" value={selectedManager.fullName} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Company Name</FormLabel>
+                  <FormLabel>{t('admin:managersPage.companyName')}</FormLabel>
                   <FormInput type="text" value={selectedManager.companyName} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Position</FormLabel>
+                  <FormLabel>{t('admin:managersPage.position')}</FormLabel>
                   <FormInput type="text" value={selectedManager.position} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Department</FormLabel>
+                  <FormLabel>{t('admin:managersPage.department')}</FormLabel>
                   <FormInput type="text" value={selectedManager.department} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Email Address</FormLabel>
+                  <FormLabel>{t('admin:managersPage.emailAddress')}</FormLabel>
                   <FormInput type="email" value={selectedManager.email} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Phone Number</FormLabel>
+                  <FormLabel>{t('admin:managersPage.phoneNumber')}</FormLabel>
                   <FormInput type="tel" value={formatPhoneForDisplay(selectedManager.phone)} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('admin:managersPage.status')}</FormLabel>
                   <FormInput type="text" value={selectedManager.status === 'active' ? 'Active' : 'Inactive'} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Restaurant Count</FormLabel>
+                  <FormLabel>{t('admin:managersPage.restaurantCount')}</FormLabel>
                   <FormInput type="text" value={selectedManager.restaurantCount.toString()} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Total Revenue</FormLabel>
+                  <FormLabel>{t('admin:managersPage.totalRevenue')}</FormLabel>
                   <FormInput type="text" value={formatCurrency(selectedManager.totalRevenue, operationSettings.currency)} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Created Date</FormLabel>
+                  <FormLabel>{t('admin:managersPage.createdDate')}</FormLabel>
                   <FormInput type="text" value={selectedManager.createdAt} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Last Active</FormLabel>
+                  <FormLabel>{t('admin:managersPage.lastActive')}</FormLabel>
                   <FormInput type="text" value={selectedManager.lastActive} disabled />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>{t('admin:managersPage.address')}</FormLabel>
                   <FormTextarea value={selectedManager.address} disabled />
                 </FormGroup>
               </FormGrid>
@@ -1443,7 +1445,7 @@ const ManagersPage: React.FC = () => {
 
         {/* Edit Manager Modal */}
         {showEditModal && editingManager && (
-                <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Manager" footer={<><Button variant="secondary" onClick={() => { setShowEditModal(false); setEditModalWarning(''); }}>Cancel</Button><Button variant="primary" onClick={handleUpdateManager}>Update Manager</Button></>}>
+                <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Manager" footer={<><Button variant="secondary" onClick={() => { setShowEditModal(false); setEditModalWarning(''); }}>{t('admin:managersPage.cancel')}</Button><Button variant="primary" onClick={handleUpdateManager}>{t('admin:managersPage.updateManager')}</Button></>}>
 
               <FormGrid>
                 <FormGroup>
@@ -1503,7 +1505,7 @@ const ManagersPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>{t('admin:managersPage.address')}</FormLabel>
                   <FormTextarea
                     value={editingManager.address}
                     onChange={(e) => setEditingManager({...editingManager, address: e.target.value})}
@@ -1518,7 +1520,7 @@ const ManagersPage: React.FC = () => {
                       value={(editingManager as any).manager_id || ''}
                       onChange={(e) => setEditingManager({...editingManager, manager_id: e.target.value} as any)}
                     >
-                      <option value="">Select Brand General</option>
+                      <option value="">{t('admin:managersPage.selectBrandGeneral')}</option>
                       {brandGenerals.map((bg: any) => (
                         <option key={bg.id} value={bg.id}>
                           {bg.full_name || bg.username} ({bg.company_name || 'No Company'})
@@ -1536,7 +1538,7 @@ const ManagersPage: React.FC = () => {
                       value={(editingManager as any).manager_id || ''}
                       onChange={(e) => setEditingManager({...editingManager, manager_id: e.target.value} as any)}
                     >
-                      <option value="">Select Foodcourt General</option>
+                      <option value="">{t('admin:managersPage.selectFoodcourtGeneral')}</option>
                       {foodcourtGenerals.map((fg: any) => (
                         <option key={fg.id} value={fg.id}>
                           {fg.full_name || fg.username} ({fg.company_name || 'No Company'})
@@ -1550,7 +1552,7 @@ const ManagersPage: React.FC = () => {
                 {(editingManager.role === 'Foodcourt General' || editingManager.role === 'Brand General' || editingManager.role === 'Restaurant Owner') && (
                   <>
                     <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
-                      <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>Subscription Settings</h3>
+                      <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>{t('admin:managersPage.subscriptionSettings')}</h3>
                     </FormGroup>
 
                     <FormGroup>
@@ -1587,7 +1589,7 @@ const ManagersPage: React.FC = () => {
                           });
                         }}
                       >
-                        <option value="">Select Plan</option>
+                        <option value="">{t('admin:managersPage.selectPlan')}</option>
                         {getFilteredPlans(editingManager.role).map(plan => (
                           <option key={plan.id} value={plan.display_name}>
                             {plan.display_name} ({formatPlanPrice(plan, normalizeCurrencyCode((editingManager as any).currency || 'MYR'))}/month)
@@ -1609,8 +1611,8 @@ const ManagersPage: React.FC = () => {
                           });
                         }}
                       >
-                        <option value="monthly">Monthly</option>
-                        <option value="annual">Annual</option>
+                        <option value="monthly">{t('admin:managersPage.monthly')}</option>
+                        <option value="annual">{t('admin:managersPage.annual')}</option>
                       </FilterSelect>
                     </FormGroup>
 
@@ -1631,7 +1633,7 @@ const ManagersPage: React.FC = () => {
                     </FormGroup>
 
                     <FormGroup>
-                      <FormLabel>Subscription End Date (Auto)</FormLabel>
+                      <FormLabel>{t('admin:managersPage.subscriptionEndDateAuto')}</FormLabel>
                       <FormInput
                         type="date"
                         value={editingManager.subscriptionEnd || ''}
@@ -1653,7 +1655,7 @@ const ManagersPage: React.FC = () => {
 
         {/* Confirm Action Modal */}
         {showConfirmModal && (
-                <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button><Button variant={confirmAction === 'delete' ? 'danger' : 'primary'} onClick={handleConfirmAction} > {confirmAction === 'delete' ? 'Delete' : confirmAction === 'resetPassword' ? 'Reset Password' : 'Confirm'} </Button></>}>
+                <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><Button variant="secondary" onClick={() => setShowConfirmModal(false)}>{t('admin:managersPage.cancel')}</Button><Button variant={confirmAction === 'delete' ? 'danger' : 'primary'} onClick={handleConfirmAction} > {confirmAction === 'delete' ? 'Delete' : confirmAction === 'resetPassword' ? 'Reset Password' : 'Confirm'} </Button></>}>
 
               <div>
                 {confirmAction === 'delete' && (
@@ -1686,7 +1688,7 @@ const ManagersPage: React.FC = () => {
                           <div>• Activity logs will be preserved (user reference cleared)</div>
                         </>
                       )}
-                      <div style={{ marginTop: '8px', fontWeight: '600' }}>This action cannot be undone.</div>
+                      <div style={{ marginTop: '8px', fontWeight: '600' }}>{t('admin:managersPage.thisActionCannotBeUndone')}</div>
                     </div>
                   </div>
                 )}
@@ -1703,7 +1705,7 @@ const ManagersPage: React.FC = () => {
 
         {/* Action Error Modal */}
         {actionError && (
-                <CommonModal isOpen={true} onClose={() => setActionError('')} title="Error" footer={<><Button variant="primary" onClick={() => setActionError('')}>OK</Button></>}>
+                <CommonModal isOpen={true} onClose={() => setActionError('')} title="Error" footer={<><Button variant="primary" onClick={() => setActionError('')}>{t('admin:managersPage.ok')}</Button></>}>
 
               <p style={{ color: '#DC2626' }}>{actionError}</p>
             

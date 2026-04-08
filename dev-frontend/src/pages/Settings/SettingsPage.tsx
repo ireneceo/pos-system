@@ -16,6 +16,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { useTabParam } from '../../hooks/useTabParam';
 import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint } from '../../utils/billPrint';
 import { getCurrencySymbol } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 // 스타일 컴포넌트
 const SettingsContainer = styled.div`
@@ -595,6 +596,7 @@ const defaultMembershipSettings: MembershipSettings = {
 };
 
 const SettingsPage: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { user } = useAuth();
   const { updateSettings } = useStore();
   const { categories } = useMenu();
@@ -1971,7 +1973,7 @@ const SettingsPage: React.FC = () => {
           {activeTab === 'payment' && (
             <>
             <SettingsCard>
-              <CardTitle>Payment Methods</CardTitle>
+              <CardTitle>{t('settings:settingsPage.paymentMethods')}</CardTitle>
               <p style={{ color: '#6B7C93', marginBottom: '24px', fontSize: '14px' }}>
                 Configure payment methods for POS Terminal and Mobile Order
               </p>
@@ -2082,7 +2084,7 @@ const SettingsPage: React.FC = () => {
                   {key === 'bankTransfer' && method.enabled && (
                     <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
                       <FormGroup>
-                        <Label>Bank Name</Label>
+                        <Label>{t('settings:settingsPage.bankName')}</Label>
                         <AutoSaveField onSave={handleSave}>
                           <Input type="text" placeholder="e.g., Maybank, CIMB, Public Bank"
                             value={method.bankName || ''}
@@ -2090,7 +2092,7 @@ const SettingsPage: React.FC = () => {
                         </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
-                        <Label>Account Number</Label>
+                        <Label>{t('settings:settingsPage.accountNumber')}</Label>
                         <AutoSaveField onSave={handleSave}>
                           <Input type="text" placeholder="Enter Bank Account Number"
                             value={method.accountNumber || ''}
@@ -2098,7 +2100,7 @@ const SettingsPage: React.FC = () => {
                         </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
-                        <Label>Account Name</Label>
+                        <Label>{t('settings:settingsPage.accountName')}</Label>
                         <AutoSaveField onSave={handleSave}>
                           <Input type="text" placeholder="Enter Account Holder Name"
                             value={method.accountName || ''}
@@ -2122,13 +2124,13 @@ const SettingsPage: React.FC = () => {
                   {key === 'online' && method.enabled && (
                     <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
                       <FormGroup>
-                        <Label>Payment Provider</Label>
+                        <Label>{t('settings:settingsPage.paymentProvider')}</Label>
                         <AutoSaveField onSave={handleSave} type="select">
                           <Select value={method.provider || 'stripe'}
                             onChange={(e) => handlePaymentSettingChange(key, 'provider', e.target.value)}>
-                            <option value="stripe">Stripe</option>
-                            <option value="paypal">PayPal</option>
-                            <option value="both">Both Stripe & PayPal</option>
+                            <option value="stripe">{t('settings:settingsPage.stripe')}</option>
+                            <option value="paypal">{t('settings:settingsPage.paypal')}</option>
+                            <option value="both">{t('settings:settingsPage.bothStripePaypal')}</option>
                           </Select>
                         </AutoSaveField>
                       </FormGroup>
@@ -2136,7 +2138,7 @@ const SettingsPage: React.FC = () => {
                       {(method.provider === 'stripe' || method.provider === 'both') && (
                         <>
                           <FormGroup>
-                            <Label>Stripe Public Key</Label>
+                            <Label>{t('settings:settingsPage.stripePublicKey')}</Label>
                             <AutoSaveField onSave={handleSave}>
                               <Input type="text" placeholder="pk_live_..."
                                 value={method.config?.stripePublicKey || ''}
@@ -2144,7 +2146,7 @@ const SettingsPage: React.FC = () => {
                             </AutoSaveField>
                           </FormGroup>
                           <FormGroup>
-                            <Label>Stripe Secret Key</Label>
+                            <Label>{t('settings:settingsPage.stripeSecretKey')}</Label>
                             <AutoSaveField onSave={handleSave}>
                               <Input type="password" placeholder="sk_live_..."
                                 value={method.config?.stripeSecretKey || ''}
@@ -2157,7 +2159,7 @@ const SettingsPage: React.FC = () => {
                       {(method.provider === 'paypal' || method.provider === 'both') && (
                         <>
                           <FormGroup>
-                            <Label>PayPal Client ID</Label>
+                            <Label>{t('settings:settingsPage.paypalClientId')}</Label>
                             <AutoSaveField onSave={handleSave}>
                               <Input type="text" placeholder="Enter PayPal Client ID"
                                 value={method.config?.paypalClientId || ''}
@@ -2165,7 +2167,7 @@ const SettingsPage: React.FC = () => {
                             </AutoSaveField>
                           </FormGroup>
                           <FormGroup>
-                            <Label>PayPal Client Secret</Label>
+                            <Label>{t('settings:settingsPage.paypalClientSecret')}</Label>
                             <AutoSaveField onSave={handleSave}>
                               <Input type="password" placeholder="Enter PayPal Client Secret"
                                 value={method.config?.paypalClientSecret || ''}
@@ -2190,9 +2192,9 @@ const SettingsPage: React.FC = () => {
             <>
               <SettingsGrid>
                 <SettingsCard>
-                <CardTitle>Company Information</CardTitle>
+                <CardTitle>{t('settings:settingsPage.companyInformation')}</CardTitle>
                 <FormGroup>
-                  <Label>Company Name</Label>
+                  <Label>{t('settings:settingsPage.companyName')}</Label>
                   <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -2203,7 +2205,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Business Registration</Label>
+                  <Label>{t('settings:settingsPage.businessRegistration')}</Label>
                   <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -2214,7 +2216,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Tax ID</Label>
+                  <Label>{t('settings:settingsPage.taxId')}</Label>
                   <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -2225,7 +2227,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Industry</Label>
+                  <Label>{t('settings:settingsPage.industry')}</Label>
                   <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -2249,9 +2251,9 @@ const SettingsPage: React.FC = () => {
                 </AutoSaveField>
               </SettingsCard>
               <SettingsCard>
-                <CardTitle>Contact Information</CardTitle>
+                <CardTitle>{t('settings:settingsPage.contactInformation')}</CardTitle>
                 <FormGroup>
-                  <Label>Phone Number</Label>
+                  <Label>{t('settings:settingsPage.phoneNumber')}</Label>
                   <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -2262,7 +2264,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Email Address</Label>
+                  <Label>{t('settings:settingsPage.emailAddress')}</Label>
                   <AutoSaveField onSave={handleSave}>
                   <Input
                     type="email"
@@ -2273,7 +2275,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Website</Label>
+                  <Label>{t('settings:settingsPage.website')}</Label>
                   <AutoSaveField onSave={handleSave}>
                   <Input
                     type="url"
@@ -2284,7 +2286,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Address</Label>
+                  <Label>{t('settings:settingsPage.address')}</Label>
                   <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -2302,7 +2304,7 @@ const SettingsPage: React.FC = () => {
             <div>
               <div style={{ marginBottom: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540' }}>Brand Management</h3>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540' }}>{t('settings:settingsPage.brandManagement')}</h3>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     {!isDefaultTheme && user?.role === 'Restaurant Admin' && (
                       <ThemedButton variant="outline" size="small" onClick={resetTheme}>
@@ -2374,7 +2376,7 @@ const SettingsPage: React.FC = () => {
                           >
                             Preview Theme
                           </ThemedButton>
-                          <ThemedButton size="small">Edit</ThemedButton>
+                          <ThemedButton size="small">{t('settings:settingsPage.edit')}</ThemedButton>
                         </>
                       ) : (
                         <>
@@ -2388,7 +2390,7 @@ const SettingsPage: React.FC = () => {
                           >
                             Preview Theme
                           </Button>
-                          <Button>Edit</Button>
+                          <Button>{t('settings:settingsPage.edit')}</Button>
                         </>
                       )}
                     </div>
@@ -2398,7 +2400,7 @@ const SettingsPage: React.FC = () => {
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
                     <FormGroup>
-                      <Label>Primary Color</Label>
+                      <Label>{t('settings:settingsPage.primaryColor')}</Label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input 
                           type="color" 
@@ -2416,7 +2418,7 @@ const SettingsPage: React.FC = () => {
                       </div>
                     </FormGroup>
                     <FormGroup>
-                      <Label>Secondary Color</Label>
+                      <Label>{t('settings:settingsPage.secondaryColor')}</Label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input 
                           type="color" 
@@ -2434,7 +2436,7 @@ const SettingsPage: React.FC = () => {
                       </div>
                     </FormGroup>
                     <FormGroup>
-                      <Label>Accent Color</Label>
+                      <Label>{t('settings:settingsPage.accentColor')}</Label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input 
                           type="color" 
@@ -2502,7 +2504,7 @@ const SettingsPage: React.FC = () => {
                           ))}
                         </div>
                       ) : (
-                        <p style={{ color: '#6B7280', textAlign: 'center', margin: '20px 0' }}>No restaurants connected to this brand</p>
+                        <p style={{ color: '#6B7280', textAlign: 'center', margin: '20px 0' }}>{t('settings:settingsPage.noRestaurantsConnectedToThisBrand')}</p>
                       )}
                     </div>
                   </div>
@@ -2527,10 +2529,10 @@ const SettingsPage: React.FC = () => {
             <>
               <SettingsGrid>
                 <SettingsCard>
-                <CardTitle>Subscription Overview</CardTitle>
+                <CardTitle>{t('settings:settingsPage.subscriptionOverview')}</CardTitle>
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontWeight: '500' }}>Current Plan</span>
+                    <span style={{ fontWeight: '500' }}>{t('settings:settingsPage.currentPlan')}</span>
                     <span style={{ 
                       padding: '4px 12px', 
                       background: '#ECFDF5', 
@@ -2538,40 +2540,40 @@ const SettingsPage: React.FC = () => {
                       borderRadius: '6px', 
                       fontSize: '14px', 
                       fontWeight: '600'
-                    }}>Enterprise</span>
+                    }}>{t('settings:settingsPage.enterprise')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ color: '#6B7280' }}>Monthly Fee</span>
-                    <span style={{ fontWeight: '600' }}>RM 299.00</span>
+                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.monthlyFee')}</span>
+                    <span style={{ fontWeight: '600' }}>{t('settings:settingsPage.rm29900')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ color: '#6B7280' }}>Next Billing Date</span>
-                    <span>January 15, 2025</span>
+                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.nextBillingDate')}</span>
+                    <span>{t('settings:settingsPage.january152025')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#6B7280' }}>Active Restaurants</span>
+                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.activeRestaurants')}</span>
                     <span>12 / 15</span>
                   </div>
                 </div>
-                <Button onClick={() => alert('Billing management functionality coming soon')}>Manage Billing</Button>
+                <Button onClick={() => alert('Billing management functionality coming soon')}>{t('settings:settingsPage.manageBilling')}</Button>
               </SettingsCard>
               <SettingsCard>
-                <CardTitle>Usage Statistics</CardTitle>
+                <CardTitle>{t('settings:settingsPage.usageStatistics')}</CardTitle>
                 <div style={{ marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ color: '#6B7280' }}>Total Orders (This Month)</span>
+                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.totalOrdersThisMonth')}</span>
                     <span style={{ fontWeight: '600', fontSize: '18px' }}>8,945</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ color: '#6B7280' }}>Total Revenue (This Month)</span>
-                    <span style={{ fontWeight: '600', fontSize: '18px' }}>RM 145,230</span>
+                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.totalRevenueThisMonth')}</span>
+                    <span style={{ fontWeight: '600', fontSize: '18px' }}>{t('settings:settingsPage.rm145230')}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ color: '#6B7280' }}>Active Staff Members</span>
+                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.activeStaffMembers')}</span>
                     <span style={{ fontWeight: '600' }}>87</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ color: '#6B7280' }}>Storage Used</span>
+                    <span style={{ color: '#6B7280' }}>{t('settings:settingsPage.storageUsed')}</span>
                     <span style={{ fontWeight: '600' }}>2.4 GB / 10 GB</span>
                   </div>
                 </div>
@@ -2596,9 +2598,9 @@ const SettingsPage: React.FC = () => {
             <>
               <SettingsGrid>
                 <SettingsCard>
-                  <CardTitle>Basic Information</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.basicInformation')}</CardTitle>
                 <FormGroup>
-                  <Label>Store Name</Label>
+                  <Label>{t('settings:settingsPage.storeName')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="text" value={storeSettings.name}
                       onChange={(e) => setStoreSettings(prev => ({ ...prev, name: e.target.value }))}
@@ -2606,7 +2608,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Business Registration</Label>
+                  <Label>{t('settings:settingsPage.businessRegistration')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="text" value={storeSettings.businessRegistration}
                       onChange={(e) => setStoreSettings(prev => ({ ...prev, businessRegistration: e.target.value }))}
@@ -2614,7 +2616,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Tax No</Label>
+                  <Label>{t('settings:settingsPage.taxNo')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="text" value={storeSettings.gstRegNo}
                       onChange={(e) => setStoreSettings(prev => ({ ...prev, gstRegNo: e.target.value }))}
@@ -2622,7 +2624,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Phone Number</Label>
+                  <Label>{t('settings:settingsPage.phoneNumber')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <PhoneInput value={storeSettings.phone}
                       onChange={(value) => setStoreSettings(prev => ({ ...prev, phone: value }))}
@@ -2630,7 +2632,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Email</Label>
+                  <Label>{t('settings:settingsPage.email')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="email" value={storeSettings.email}
                       onChange={(e) => setStoreSettings(prev => ({ ...prev, email: e.target.value }))}
@@ -2648,9 +2650,9 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard>
-                <CardTitle>Location</CardTitle>
+                <CardTitle>{t('settings:settingsPage.location')}</CardTitle>
                 <FormGroup>
-                  <Label>Address</Label>
+                  <Label>{t('settings:settingsPage.address')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="text" value={storeSettings.address}
                       onChange={(e) => setStoreSettings(prev => ({ ...prev, address: e.target.value }))}
@@ -2658,7 +2660,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>City</Label>
+                  <Label>{t('settings:settingsPage.city')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="text" value={storeSettings.city}
                       onChange={(e) => setStoreSettings(prev => ({ ...prev, city: e.target.value }))}
@@ -2666,7 +2668,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>State</Label>
+                  <Label>{t('settings:settingsPage.state')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="text" value={storeSettings.state}
                       onChange={(e) => setStoreSettings(prev => ({ ...prev, state: e.target.value }))}
@@ -2674,7 +2676,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Postal Code</Label>
+                  <Label>{t('settings:settingsPage.postalCode')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="text" value={storeSettings.postalCode}
                       onChange={(e) => setStoreSettings(prev => ({ ...prev, postalCode: e.target.value }))}
@@ -2682,7 +2684,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Country</Label>
+                  <Label>{t('settings:settingsPage.country')}</Label>
                   <AutoSaveField onSave={handleSave} type="select">
                     <Select value={storeSettings.country}
                       onChange={(e) => {
@@ -2703,7 +2705,7 @@ const SettingsPage: React.FC = () => {
               {/* Brand (read-only) */}
               {brandInfo.brand_id && (
                 <SettingsCard style={{ marginTop: '24px' }}>
-                  <CardTitle>Brand</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.brand')}</CardTitle>
                   <FormGroup>
                     <div style={{
                       padding: '10px 12px',
@@ -2726,9 +2728,9 @@ const SettingsPage: React.FC = () => {
             <>
               <SettingsGrid>
                 <SettingsCard>
-                <CardTitle>Operating Hours</CardTitle>
+                <CardTitle>{t('settings:settingsPage.operatingHours')}</CardTitle>
                 <FormGroup>
-                  <Label>Opening Time</Label>
+                  <Label>{t('settings:settingsPage.openingTime')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input
                       type="time"
@@ -2740,7 +2742,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Closing Time</Label>
+                  <Label>{t('settings:settingsPage.closingTime')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input
                       type="time"
@@ -2752,7 +2754,7 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Time Zone</Label>
+                  <Label>{t('settings:settingsPage.timeZone')}</Label>
                   <AutoSaveField onSave={handleSave} type="select">
                     <Select
                       value={operationSettings.timeZone}
@@ -2769,7 +2771,7 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard>
-                <CardTitle>Break Times</CardTitle>
+                <CardTitle>{t('settings:settingsPage.breakTimes')}</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                   Set break times when orders cannot be picked up
                 </p>
@@ -2861,9 +2863,9 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard>
-                <CardTitle>Order Settings</CardTitle>
+                <CardTitle>{t('settings:settingsPage.orderSettings')}</CardTitle>
                 <FormGroup>
-                  <Label>Order Number Reset</Label>
+                  <Label>{t('settings:settingsPage.orderNumberReset')}</Label>
                   <AutoSaveField onSave={handleSave} type="select">
                     <Select
                       value={operationSettings.orderNumberReset}
@@ -2871,15 +2873,15 @@ const SettingsPage: React.FC = () => {
                         setOperationSettings(prev => ({ ...prev, orderNumberReset: e.target.value as any }));
                       }}
                     >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="never">Never</option>
+                      <option value="daily">{t('settings:settingsPage.daily')}</option>
+                      <option value="weekly">{t('settings:settingsPage.weekly')}</option>
+                      <option value="monthly">{t('settings:settingsPage.monthly')}</option>
+                      <option value="never">{t('settings:settingsPage.never')}</option>
                     </Select>
                   </AutoSaveField>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Default Preparation Time</Label>
+                  <Label>{t('settings:settingsPage.defaultPreparationTime')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <FeeInput
                       type="number"
@@ -2894,12 +2896,12 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard>
-                <CardTitle>Tax & Service Charge</CardTitle>
+                <CardTitle>{t('settings:settingsPage.taxServiceCharge')}</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                   Configure tax and service charge applied to orders
                 </p>
                 <Toggle>
-                    <ToggleLabel>Tax</ToggleLabel>
+                    <ToggleLabel>{t('settings:settingsPage.tax')}</ToggleLabel>
                     <AutoSaveField ref={taxToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
@@ -2940,7 +2942,7 @@ const SettingsPage: React.FC = () => {
                 <Divider />
 
                 <Toggle>
-                    <ToggleLabel>Service Charge</ToggleLabel>
+                    <ToggleLabel>{t('settings:settingsPage.serviceCharge')}</ToggleLabel>
                     <AutoSaveField ref={serviceChargeToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
@@ -2980,13 +2982,13 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
-                <CardTitle>Currency & Rounding Settings</CardTitle>
+                <CardTitle>{t('settings:settingsPage.currencyRoundingSettings')}</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '24px', fontSize: '14px' }}>
                   Configure currency and cash rounding for payments
                 </p>
 
                 <FormGroup>
-                  <Label>Currency</Label>
+                  <Label>{t('settings:settingsPage.currency')}</Label>
                   <AutoSaveField onSave={handleSave} type="select">
                     <Select
                       value={currencySettings.currency}
@@ -3034,7 +3036,7 @@ const SettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>Cash Rounding</Label>
+                  <Label>{t('settings:settingsPage.cashRounding')}</Label>
                   <AutoSaveField onSave={handleSave} type="select">
                     <Select
                       value={currencySettings.cashRounding !== null ? currencySettings.cashRounding.toFixed(2) : ''}
@@ -3043,7 +3045,7 @@ const SettingsPage: React.FC = () => {
                         setCurrencySettings(prev => ({ ...prev, cashRounding: value }));
                       }}
                     >
-                      <option value="">Disabled (No Rounding)</option>
+                      <option value="">{t('settings:settingsPage.disabledNoRounding')}</option>
                       <option value="0.05">0.05 (5 sen/cent)</option>
                       <option value="0.10">0.10 (10 sen/cent)</option>
                       <option value="0.50">0.50 (50 sen/cent)</option>
@@ -3054,7 +3056,7 @@ const SettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>Apply Rounding To</Label>
+                  <Label>{t('settings:settingsPage.applyRoundingTo')}</Label>
                   <AutoSaveField onSave={handleSave} type="select">
                     <Select
                       value={currencySettings.roundingApplyTo}
@@ -3063,18 +3065,18 @@ const SettingsPage: React.FC = () => {
                       }}
                       disabled={!currencySettings.cashRounding}
                     >
-                      <option value="cash_only">Cash Payments Only</option>
-                      <option value="all">All Payments</option>
+                      <option value="cash_only">{t('settings:settingsPage.cashPaymentsOnly')}</option>
+                      <option value="all">{t('settings:settingsPage.allPayments')}</option>
                     </Select>
                   </AutoSaveField>
-                  <HelpText>Choose whether to apply rounding to cash only or all payment methods</HelpText>
+                  <HelpText>{t('settings:settingsPage.chooseWhetherToApplyRoundingToCashOnlyOrAllPaymentMethods')}</HelpText>
                 </FormGroup>
               </SettingsCard>
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
-                <CardTitle>Takeaway Pricing Settings</CardTitle>
+                <CardTitle>{t('settings:settingsPage.takeawayPricingSettings')}</CardTitle>
                 <Toggle>
-                    <ToggleLabel>Enable Takeaway Charges</ToggleLabel>
+                    <ToggleLabel>{t('settings:settingsPage.enableTakeawayCharges')}</ToggleLabel>
                     <AutoSaveField ref={takeawayChargesToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
@@ -3097,7 +3099,7 @@ const SettingsPage: React.FC = () => {
                   <>
                     <Divider />
                     <FormGroup>
-                      <Label>Pricing Type</Label>
+                      <Label>{t('settings:settingsPage.pricingType')}</Label>
                       <AutoSaveField onSave={handleSave} type="select">
                         <Select
                           value={operationSettings.takeawayPricing.pricingType}
@@ -3108,15 +3110,15 @@ const SettingsPage: React.FC = () => {
                             }));
                           }}
                         >
-                          <option value="per-item">Per Item (Fixed charge per item)</option>
-                          <option value="per-category">Per Category (Different charges by category)</option>
+                          <option value="per-item">{t('settings:settingsPage.perItemFixedChargePerItem')}</option>
+                          <option value="per-category">{t('settings:settingsPage.perCategoryDifferentChargesByCategory')}</option>
                         </Select>
                       </AutoSaveField>
                     </FormGroup>
                     
                     {operationSettings.takeawayPricing.pricingType === 'per-item' ? (
                       <FormGroup>
-                        <Label>Charge Per Item</Label>
+                        <Label>{t('settings:settingsPage.chargePerItem')}</Label>
                         <AutoSaveField onSave={handleSave}>
                           <FeeInput
                             type="number"
@@ -3131,11 +3133,11 @@ const SettingsPage: React.FC = () => {
                           />
                         </AutoSaveField>
                         <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span>
-                        <HelpText>This amount will be added to each item for takeaway orders</HelpText>
+                        <HelpText>{t('settings:settingsPage.thisAmountWillBeAddedToEachItemForTakeawayOrders')}</HelpText>
                       </FormGroup>
                     ) : (
                       <>
-                        <Label style={{ marginBottom: '16px' }}>Category Charges</Label>
+                        <Label style={{ marginBottom: '16px' }}>{t('settings:settingsPage.categoryCharges')}</Label>
                         <SettingsGrid>
                           {categories.map(category => (
                             <FormGroup key={category.id}>
@@ -3163,7 +3165,7 @@ const SettingsPage: React.FC = () => {
                             </FormGroup>
                           ))}
                         </SettingsGrid>
-                        <HelpText>These amounts will be added to items based on their category for takeaway orders</HelpText>
+                        <HelpText>{t('settings:settingsPage.theseAmountsWillBeAddedToItemsBasedOnTheirCategoryForTakeawayOrders')}</HelpText>
                       </>
                     )}
                   </>
@@ -3171,9 +3173,9 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
-                <CardTitle>Pager System Settings</CardTitle>
+                <CardTitle>{t('settings:settingsPage.pagerSystemSettings')}</CardTitle>
                 <Toggle>
-                    <ToggleLabel>Enable Pager System</ToggleLabel>
+                    <ToggleLabel>{t('settings:settingsPage.enablePagerSystem')}</ToggleLabel>
                     <AutoSaveField ref={pagerSystemToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
@@ -3199,7 +3201,7 @@ const SettingsPage: React.FC = () => {
                   <>
                     <Divider />
                     <FormGroup>
-                      <Label>Total Number of Pagers</Label>
+                      <Label>{t('settings:settingsPage.totalNumberOfPagers')}</Label>
                       <AutoSaveField onSave={handleSave}>
                         <Input
                           type="number"
@@ -3227,7 +3229,7 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               <SettingsCard style={{ gridColumn: '1 / -1' }}>
-                <CardTitle>Table Management</CardTitle>
+                <CardTitle>{t('settings:settingsPage.tableManagement')}</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
                   Configure table numbers, QR codes, and customer seating options for your restaurant.
                 </p>
@@ -3235,7 +3237,7 @@ const SettingsPage: React.FC = () => {
                   <div>
                     <FormGroup>
                         <Toggle>
-                          <ToggleLabel>Enable Table Numbers</ToggleLabel>
+                          <ToggleLabel>{t('settings:settingsPage.enableTableNumbers')}</ToggleLabel>
                           <AutoSaveField ref={enableTableNumbersToggleRef} onSave={handleSave} type="toggle">
                           <ToggleSwitch>
                             <ToggleInput type="checkbox" checked={tableSettings.enableTableNumbers}
@@ -3244,11 +3246,11 @@ const SettingsPage: React.FC = () => {
                           </ToggleSwitch>
                           </AutoSaveField>
                         </Toggle>
-                      <HelpText>Allow customers to select table numbers when ordering</HelpText>
+                      <HelpText>{t('settings:settingsPage.allowCustomersToSelectTableNumbersWhenOrdering')}</HelpText>
                     </FormGroup>
                     <FormGroup>
                         <Toggle>
-                          <ToggleLabel>Table Number Required</ToggleLabel>
+                          <ToggleLabel>{t('settings:settingsPage.tableNumberRequired')}</ToggleLabel>
                           <AutoSaveField ref={tableNumberRequiredToggleRef} onSave={handleSave} type="toggle">
                           <ToggleSwitch>
                             <ToggleInput type="checkbox" checked={tableSettings.tableNumberRequired}
@@ -3258,21 +3260,21 @@ const SettingsPage: React.FC = () => {
                           </ToggleSwitch>
                           </AutoSaveField>
                         </Toggle>
-                      <HelpText>Make table number selection mandatory for dine-in orders</HelpText>
+                      <HelpText>{t('settings:settingsPage.makeTableNumberSelectionMandatoryForDineinOrders')}</HelpText>
                     </FormGroup>
                   </div>
                   <div>
                     <FormGroup>
-                      <Label>Table Prefix</Label>
+                      <Label>{t('settings:settingsPage.tablePrefix')}</Label>
                       <AutoSaveField onSave={handleSave}>
                         <Input type="text" value={tableSettings.tablePrefix}
                           onChange={(e) => { setTableSettings({...tableSettings, tablePrefix: e.target.value}); }}
                           placeholder="e.g., T, TABLE" />
                       </AutoSaveField>
-                      <HelpText>Prefix for table numbers (e.g., T001, TABLE001)</HelpText>
+                      <HelpText>{t('settings:settingsPage.prefixForTableNumbersEgT001Table001')}</HelpText>
                     </FormGroup>
                     <FormGroup>
-                      <Label>Number of Tables</Label>
+                      <Label>{t('settings:settingsPage.numberOfTables')}</Label>
                       <AutoSaveField onSave={handleSave}>
                         <Input type="number" value={tableSettings.totalTables}
                           onChange={(e) => { setTableSettings({...tableSettings, totalTables: parseInt(e.target.value) || 1}); }}
@@ -3282,31 +3284,31 @@ const SettingsPage: React.FC = () => {
                   </div>
                 </SettingsGrid>
                 <FormGroup>
-                  <Label>QR Code Base URL</Label>
+                  <Label>{t('settings:settingsPage.qrCodeBaseUrl')}</Label>
                   <AutoSaveField onSave={handleSave}>
                     <Input type="text" value={tableSettings.qrCodeBaseUrl}
                       onChange={(e) => { setTableSettings({...tableSettings, qrCodeBaseUrl: e.target.value}); }}
                       placeholder="https://yourdomain.com" />
                   </AutoSaveField>
-                  <HelpText>Base URL for QR codes (usually your domain)</HelpText>
+                  <HelpText>{t('settings:settingsPage.baseUrlForQrCodesUsuallyYourDomain')}</HelpText>
                 </FormGroup>
 
                 {/* QR Code Mode */}
                 <FormGroup>
-                  <Label>QR Code Mode</Label>
+                  <Label>{t('settings:settingsPage.qrCodeMode')}</Label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'static' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'static' ? '#F0F0FF' : 'white', flex: 1 }}>
                       <input type="radio" name="qrMode" value="static" checked={tableSettings.qrMode === 'static'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'static'}); handleSave(); }} />
                       <div>
-                        <div style={{ fontWeight: 500 }}>Static</div>
-                        <div style={{ fontSize: '12px', color: '#6B7280' }}>Permanent QR, no expiration</div>
+                        <div style={{ fontWeight: 500 }}>{t('settings:settingsPage.static')}</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>{t('settings:settingsPage.permanentQrNoExpiration')}</div>
                       </div>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'session' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'session' ? '#F0F0FF' : 'white', flex: 1 }}>
                       <input type="radio" name="qrMode" value="session" checked={tableSettings.qrMode === 'session'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'session'}); handleSave(); }} />
                       <div>
-                        <div style={{ fontWeight: 500 }}>Session</div>
-                        <div style={{ fontSize: '12px', color: '#6B7280' }}>Expiring QR, generated per visit</div>
+                        <div style={{ fontWeight: 500 }}>{t('settings:settingsPage.session')}</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>{t('settings:settingsPage.expiringQrGeneratedPerVisit')}</div>
                       </div>
                     </label>
                   </div>
@@ -3314,7 +3316,7 @@ const SettingsPage: React.FC = () => {
 
                 {tableSettings.qrMode === 'session' && (
                   <FormGroup>
-                    <Label>QR Expiration Time (hours)</Label>
+                    <Label>{t('settings:settingsPage.qrExpirationTimeHours')}</Label>
                     <AutoSaveField onSave={handleSave}>
                       <Input
                         type="number"
@@ -3324,7 +3326,7 @@ const SettingsPage: React.FC = () => {
                         onChange={(e) => { setTableSettings({...tableSettings, qrExpirationMinutes: parseInt(e.target.value) * 60 || 180}); }}
                       />
                     </AutoSaveField>
-                    <HelpText>QR codes expire automatically after this time</HelpText>
+                    <HelpText>{t('settings:settingsPage.qrCodesExpireAutomaticallyAfterThisTime')}</HelpText>
                   </FormGroup>
                 )}
                 {tableSettings.qrMode === 'static' && (
@@ -3337,7 +3339,7 @@ const SettingsPage: React.FC = () => {
                 </button>
                 <Divider />
                 <div style={{ marginTop: '24px' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>Table QR Codes</h4>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('settings:settingsPage.tableQrCodes')}</h4>
                   <TablesGrid>
                     {tables.map(table => {
                       const tableNumber = `${tableSettings.tablePrefix}${String(table.number).padStart(3, '0')}`;
@@ -3349,9 +3351,9 @@ const SettingsPage: React.FC = () => {
                             <QRCodeSVG id={`qr-svg-${table.id}`} value={table.qrCode} size={100} level="H" includeMargin={true} />
                           </QRContainer>
                           <TableActions>
-                            <ActionButton onClick={() => handleDownloadSVG(table)} title="Download SVG (recommended for print)">SVG</ActionButton>
-                            <ActionButton onClick={() => handleDownloadQR(table)} title="Download PNG">PNG</ActionButton>
-                            <ActionButton onClick={() => handlePrintQR(table)}>Print</ActionButton>
+                            <ActionButton onClick={() => handleDownloadSVG(table)} title="Download SVG (recommended for print)">{t('settings:settingsPage.svg')}</ActionButton>
+                            <ActionButton onClick={() => handleDownloadQR(table)} title="Download PNG">{t('settings:settingsPage.png')}</ActionButton>
+                            <ActionButton onClick={() => handlePrintQR(table)}>{t('settings:settingsPage.print')}</ActionButton>
                           </TableActions>
                         </TableItem>
                       );
@@ -3362,7 +3364,7 @@ const SettingsPage: React.FC = () => {
                 )}
                 {tableSettings.qrMode === 'session' && (
                   <div style={{ marginTop: '24px', padding: '16px', background: '#F0F0FF', borderRadius: '8px', color: '#635BFF', fontSize: '14px' }}>
-                    Session mode is active. QR codes are generated per visit from the <strong>Floor Plan</strong> page.
+                    Session mode is active. QR codes are generated per visit from the <strong>{t('settings:settingsPage.floorPlan')}</strong> page.
                   </div>
                 )}
               </SettingsCard>
@@ -3375,12 +3377,12 @@ const SettingsPage: React.FC = () => {
             <>
               <SettingsGrid>
                 <SettingsCard>
-                  <CardTitle>Order Types</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.orderTypes')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                     Enable or disable order types for mobile ordering
                   </p>
                   <Toggle>
-                      <ToggleLabel>Dine In</ToggleLabel>
+                      <ToggleLabel>{t('settings:settingsPage.dineIn')}</ToggleLabel>
                       <AutoSaveField ref={mobileOrderDineInRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.dineIn ?? true}
@@ -3390,7 +3392,7 @@ const SettingsPage: React.FC = () => {
                       </AutoSaveField>
                     </Toggle>
                   <Toggle>
-                      <ToggleLabel>Takeaway</ToggleLabel>
+                      <ToggleLabel>{t('settings:settingsPage.takeaway')}</ToggleLabel>
                       <AutoSaveField ref={mobileOrderTakeawayRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.takeaway ?? true}
@@ -3400,7 +3402,7 @@ const SettingsPage: React.FC = () => {
                       </AutoSaveField>
                     </Toggle>
                   <Toggle>
-                      <ToggleLabel>Pre-order Pickup</ToggleLabel>
+                      <ToggleLabel>{t('settings:settingsPage.preorderPickup')}</ToggleLabel>
                       <AutoSaveField ref={mobileOrderPickupRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.pickup ?? false}
@@ -3410,7 +3412,7 @@ const SettingsPage: React.FC = () => {
                       </AutoSaveField>
                     </Toggle>
                   <Toggle>
-                      <ToggleLabel>Delivery</ToggleLabel>
+                      <ToggleLabel>{t('settings:settingsPage.delivery')}</ToggleLabel>
                       <AutoSaveField ref={mobileOrderDeliveryRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.orderTypes?.delivery ?? false}
@@ -3422,13 +3424,13 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
 
                 <SettingsCard>
-                  <CardTitle>Quick Order</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.quickOrder')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                     Allow customers to order without providing contact information
                   </p>
                   <Toggle>
                       <ToggleLabel>
-                        <span>Allow Quick Order</span>
+                        <span>{t('settings:settingsPage.allowQuickOrder')}</span>
                         <span style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 400, marginLeft: '8px' }}>(No customer info required)</span>
                       </ToggleLabel>
                       <AutoSaveField ref={mobileOrderQuickOrderRef} onSave={handleSave} type="toggle">
@@ -3447,12 +3449,12 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
 
                 <SettingsCard>
-                  <CardTitle>Display Options</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.displayOptions')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                     Control which sections appear on the mobile menu
                   </p>
                   <Toggle>
-                      <ToggleLabel>Show Featured Menu</ToggleLabel>
+                      <ToggleLabel>{t('settings:settingsPage.showFeaturedMenu')}</ToggleLabel>
                       <AutoSaveField ref={mobileOrderShowFeaturedRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={mobileSettings.show_featured}
@@ -3465,7 +3467,7 @@ const SettingsPage: React.FC = () => {
                     Display recommended items in a dedicated tab (set in Menu Management)
                   </p>
                   <Toggle>
-                      <ToggleLabel>Show Popular Menu</ToggleLabel>
+                      <ToggleLabel>{t('settings:settingsPage.showPopularMenu')}</ToggleLabel>
                       <AutoSaveField ref={mobileOrderShowPopularRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={mobileSettings.show_popular}
@@ -3481,7 +3483,7 @@ const SettingsPage: React.FC = () => {
 
                 {mobileSettings.show_popular && categories.length > 0 && (
                   <SettingsCard>
-                    <CardTitle>Popular Menu Categories</CardTitle>
+                    <CardTitle>{t('settings:settingsPage.popularMenuCategories')}</CardTitle>
                     <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                       Turn off categories you don't want in the Popular section
                     </p>
@@ -3511,7 +3513,7 @@ const SettingsPage: React.FC = () => {
                 )}
 
                 <SettingsCard>
-                  <CardTitle>Category Time Restrictions</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.categoryTimeRestrictions')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                     Restrict specific categories to certain hours on mobile order only. Categories without a schedule are always visible.
                   </p>
@@ -3526,11 +3528,11 @@ const SettingsPage: React.FC = () => {
                               <button onClick={() => {
                                 setMobileSettings(prev => ({ ...prev, category_schedules: prev.category_schedules.filter((_, i) => i !== index) }));
                                 mobileOrderCategorySchedulesRef.current?.triggerSave();
-                              }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
+                              }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>{t('settings:settingsPage.remove')}</button>
                             </div>
                             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                               <FormGroup style={{ flex: 1, marginBottom: 0 }}>
-                                <Label>Available From</Label>
+                                <Label>{t('settings:settingsPage.availableFrom')}</Label>
                                 <Input type="time" value={sched.start_time}
                                   onChange={(e) => {
                                     setMobileSettings(prev => {
@@ -3542,7 +3544,7 @@ const SettingsPage: React.FC = () => {
                                   }} />
                               </FormGroup>
                               <FormGroup style={{ flex: 1, marginBottom: 0 }}>
-                                <Label>Available Until</Label>
+                                <Label>{t('settings:settingsPage.availableUntil')}</Label>
                                 <Input type="time" value={sched.end_time}
                                   onChange={(e) => {
                                     setMobileSettings(prev => {
@@ -3561,7 +3563,7 @@ const SettingsPage: React.FC = () => {
                         const scheduledIds = new Set((mobileSettings.category_schedules || []).map(s => s.category_id?.toString()));
                         const availableCats = categories.filter((c: any) => !scheduledIds.has(c.id?.toString()));
                         if (availableCats.length === 0) return (
-                          <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', padding: '12px' }}>All categories have schedules assigned</p>
+                          <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', padding: '12px' }}>{t('settings:settingsPage.allCategoriesHaveSchedulesAssigned')}</p>
                         );
                         return (
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -3593,9 +3595,9 @@ const SettingsPage: React.FC = () => {
                 </SettingsCard>
 
                 <SettingsCard>
-                  <CardTitle>Delivery Pricing Settings</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.deliveryPricingSettings')}</CardTitle>
                   <Toggle>
-                      <ToggleLabel>Enable Delivery Service</ToggleLabel>
+                      <ToggleLabel>{t('settings:settingsPage.enableDeliveryService')}</ToggleLabel>
                       <AutoSaveField ref={mobileOrderDeliveryEnabledRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={operationSettings.deliveryPricing?.enabled || false}
@@ -3609,7 +3611,7 @@ const SettingsPage: React.FC = () => {
                     <>
                       <Divider />
                       <FormGroup>
-                        <Label>Minimum Order Amount</Label>
+                        <Label>{t('settings:settingsPage.minimumOrderAmount')}</Label>
                         <AutoSaveField onSave={handleSave}>
                           <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.minimumOrder}
                             onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, minimumOrder: Number(e.target.value) } })); }} />
@@ -3618,7 +3620,7 @@ const SettingsPage: React.FC = () => {
                         <HelpText>Minimum subtotal required for delivery orders (0 = no minimum)</HelpText>
                       </FormGroup>
                       <FormGroup>
-                        <Label>Free Delivery Above</Label>
+                        <Label>{t('settings:settingsPage.freeDeliveryAbove')}</Label>
                         <AutoSaveField onSave={handleSave}>
                           <FeeInput type="number" step="1.00" value={operationSettings.deliveryPricing.freeAbove}
                             onChange={(e) => { setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, freeAbove: Number(e.target.value) } })); }} />
@@ -3627,8 +3629,8 @@ const SettingsPage: React.FC = () => {
                         <HelpText>Waive delivery fee if order subtotal exceeds this amount (999999 = never free)</HelpText>
                       </FormGroup>
                       <Divider />
-                      <Label style={{ marginBottom: '16px' }}>Delivery Zones</Label>
-                      <HelpText style={{ marginBottom: '16px' }}>Configure delivery zones and their corresponding fees</HelpText>
+                      <Label style={{ marginBottom: '16px' }}>{t('settings:settingsPage.deliveryZones')}</Label>
+                      <HelpText style={{ marginBottom: '16px' }}>{t('settings:settingsPage.configureDeliveryZonesAndTheirCorrespondingFees')}</HelpText>
                           {(operationSettings.deliveryPricing.zones || []).map((zone: any, index: number) => (
                             <div key={index} style={{ background: '#FAFBFC', padding: '16px', borderRadius: '8px', marginBottom: '12px', border: '1px solid #E6EBF1' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -3637,15 +3639,15 @@ const SettingsPage: React.FC = () => {
                                   const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones.splice(index, 1);
                                   setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } }));
                                   setTimeout(() => handleSave(), 300);
-                                }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>Remove</button>
+                                }} style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '14px', padding: '4px 8px' }}>{t('settings:settingsPage.remove')}</button>
                               </div>
-                              <FormGroup><Label>Zone Name</Label><AutoSaveField onSave={handleSave}><Input type="text" placeholder="e.g., Zone A (City Center)" value={zone.name}
+                              <FormGroup><Label>{t('settings:settingsPage.zoneName')}</Label><AutoSaveField onSave={handleSave}><Input type="text" placeholder="e.g., Zone A (City Center)" value={zone.name}
                                 onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], name: e.target.value };
                                   setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); }} /></AutoSaveField></FormGroup>
-                              <FormGroup><Label>Description</Label><AutoSaveField onSave={handleSave}><Input type="text" placeholder="e.g., 3km radius" value={zone.description}
+                              <FormGroup><Label>{t('settings:settingsPage.description')}</Label><AutoSaveField onSave={handleSave}><Input type="text" placeholder="e.g., 3km radius" value={zone.description}
                                 onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], description: e.target.value };
                                   setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); }} /></AutoSaveField></FormGroup>
-                              <FormGroup><Label>Delivery Fee</Label><AutoSaveField onSave={handleSave}><FeeInput type="number" step="0.50" value={zone.fee}
+                              <FormGroup><Label>{t('settings:settingsPage.deliveryFee')}</Label><AutoSaveField onSave={handleSave}><FeeInput type="number" step="0.50" value={zone.fee}
                                 onChange={(e) => { const zones = [...(operationSettings.deliveryPricing.zones || [])]; zones[index] = { ...zones[index], fee: Number(e.target.value) };
                                   setOperationSettings(prev => ({ ...prev, deliveryPricing: { ...prev.deliveryPricing, zones } })); }} /></AutoSaveField>
                                 <span style={{ color: '#6B7C93', fontSize: '14px' }}>{getCurrencySymbol(currencySettings.currency)}</span></FormGroup>
@@ -3670,7 +3672,7 @@ const SettingsPage: React.FC = () => {
             <>
               {/* Printer Mode Card - Full Width */}
               <SettingsCard style={{ marginBottom: '24px' }}>
-                <CardTitle>Printer Mode</CardTitle>
+                <CardTitle>{t('settings:settingsPage.printerMode')}</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
                   Select how to connect to your thermal printer
                 </p>
@@ -3813,13 +3815,13 @@ const SettingsPage: React.FC = () => {
                       padding: '32px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', flexShrink: 0
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                        <h2 style={{ margin: 0, fontSize: '20px', color: '#1F2937' }}>QZ Tray Setup Guide</h2>
+                        <h2 style={{ margin: 0, fontSize: '20px', color: '#1F2937' }}>{t('settings:settingsPage.qzTraySetupGuide')}</h2>
                         <button onClick={() => setShowQzGuide(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#6B7C93', padding: '4px' }}>&times;</button>
                       </div>
 
                       {/* What is QZ Tray */}
                       <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>What is QZ Tray?</h3>
+                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.whatIsQzTray')}</h3>
                         <p style={{ fontSize: '14px', color: '#6B7C93', lineHeight: '1.7', margin: 0 }}>
                           QZ Tray is a small program that runs in the background on your POS device. It acts as a bridge between your web browser and your network printers.
                           Without it, browsers cannot send print data directly to LAN printers.
@@ -3828,7 +3830,7 @@ const SettingsPage: React.FC = () => {
 
                       {/* Where to install */}
                       <div style={{ marginBottom: '24px', padding: '14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#92400E', marginBottom: '8px', marginTop: 0 }}>Where to Install</h3>
+                        <h3 style={{ fontSize: '15px', color: '#92400E', marginBottom: '8px', marginTop: 0 }}>{t('settings:settingsPage.whereToInstall')}</h3>
                         <p style={{ fontSize: '14px', color: '#92400E', lineHeight: '1.7', margin: 0 }}>
                           Install QZ Tray on your <strong>main POS device only</strong> &mdash; the PC or tablet where you process orders and payments.
                           This device must be connected to the same network (router/WiFi) as your printers.
@@ -3839,10 +3841,10 @@ const SettingsPage: React.FC = () => {
 
                       {/* Step by step */}
                       <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '12px' }}>Setup Steps</h3>
+                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '12px' }}>{t('settings:settingsPage.setupSteps')}</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                           {[
-                            { step: '1', title: 'Download & Install QZ Tray', desc: 'Download from qz.io and install on your POS device. Available for Windows, Mac, and Linux.', action: <button onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>Download QZ Tray</button> },
+                            { step: '1', title: 'Download & Install QZ Tray', desc: 'Download from qz.io and install on your POS device. Available for Windows, Mac, and Linux.', action: <button onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button> },
                             { step: '2', title: 'Start QZ Tray', desc: 'After installation, QZ Tray runs automatically in the system tray (bottom-right on Windows, top menu bar on Mac). It starts automatically when your device boots up.' },
                             { step: '3', title: 'Allow Browser Connection', desc: 'When you first connect from this page, QZ Tray will ask for permission. Click "Allow" or "Remember this decision" to avoid being asked again.' },
                             { step: '4', title: 'Find Your Printer IP Addresses', desc: 'Each network printer has an IP address assigned by your router (e.g. 192.168.1.100). You can find it by: printing a network status page from the printer itself, or checking your router\'s connected devices list. The standard print port is 9100.' },
@@ -3866,7 +3868,7 @@ const SettingsPage: React.FC = () => {
 
                       {/* Network diagram */}
                       <div style={{ marginBottom: '24px', padding: '16px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px', marginTop: 0 }}>How It Works</h3>
+                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px', marginTop: 0 }}>{t('settings:settingsPage.howItWorks')}</h3>
                         <div style={{ fontSize: '13px', color: '#6B7C93', fontFamily: 'monospace', lineHeight: '1.8', whiteSpace: 'pre-wrap' }}>
 {`Your Browser (POS)
     │
@@ -3885,7 +3887,7 @@ QZ Tray (installed on this device)
 
                       {/* Troubleshooting */}
                       <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>Troubleshooting</h3>
+                        <h3 style={{ fontSize: '15px', color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.troubleshooting')}</h3>
                         <div style={{ fontSize: '13px', color: '#6B7C93', lineHeight: '1.8' }}>
                           <strong>"Not Connected" status:</strong> Make sure QZ Tray is running (check system tray icon).<br />
                           <strong>"Test Print" fails:</strong> Verify the printer IP address is correct and the printer is turned on and connected to the network.<br />
@@ -3911,13 +3913,13 @@ QZ Tray (installed on this device)
               <SettingsGrid>
                 {/* Bill Printer Card */}
                 <SettingsCard>
-                  <CardTitle>Bill Printer</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.billPrinter')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
                     Configure receipt printer for customer bills
                   </p>
 
                   <Toggle>
-                    <ToggleLabel>Enable Bill Printer</ToggleLabel>
+                    <ToggleLabel>{t('settings:settingsPage.enableBillPrinter')}</ToggleLabel>
                     <AutoSaveField ref={billPrinterToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
@@ -3940,11 +3942,11 @@ QZ Tray (installed on this device)
                     <>
                       <div style={{ marginTop: '16px', padding: '10px 12px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
                         {printerMode === 'qztray' ? (
-                          <>Send receipts directly to a network printer via QZ Tray.<br />Enter the printer's network IP address below.</>
+                          <>{t('settings:settingsPage.sendReceiptsDirectlyToANetworkPrinterViaQzTray')}<br />{t('settings:settingsPage.enterThePrintersNetworkIpAddressBelow')}</>
                         ) : printerMode === 'rawbt' ? (
-                          <>Prints to RawBT default printer.<br />Set your bill printer as default in RawBT app.</>
+                          <>{t('settings:settingsPage.printsToRawbtDefaultPrinter')}<br />{t('settings:settingsPage.setYourBillPrinterAsDefaultInRawbtApp')}</>
                         ) : (
-                          <>Opens browser print dialog for receipts.<br />Connect a receipt printer via USB or network.</>
+                          <>{t('settings:settingsPage.opensBrowserPrintDialogForReceipts')}<br />{t('settings:settingsPage.connectAReceiptPrinterViaUsbOrNetwork')}</>
                         )}
                       </div>
 
@@ -4029,7 +4031,7 @@ QZ Tray (installed on this device)
                           }}
                           style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
                         />
-                        <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print after payment</span>
+                        <span style={{ fontSize: '14px', color: '#374151' }}>{t('settings:settingsPage.autoprintAfterPayment')}</span>
                       </label>
                       </AutoSaveField>
                     </>
@@ -4038,13 +4040,13 @@ QZ Tray (installed on this device)
 
                 {/* Kitchen Printer Card — Station 유무 관계없이 동일 */}
                 <SettingsCard>
-                  <CardTitle>Kitchen Printer</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.kitchenPrinter')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
                     Configure printer for kitchen order tickets
                   </p>
 
                   <Toggle>
-                    <ToggleLabel>Enable Kitchen Printer</ToggleLabel>
+                    <ToggleLabel>{t('settings:settingsPage.enableKitchenPrinter')}</ToggleLabel>
                     <AutoSaveField ref={kitchenPrinterToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
@@ -4067,9 +4069,9 @@ QZ Tray (installed on this device)
                     <>
                       <div style={{ marginTop: '16px', padding: '10px 12px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '6px', fontSize: '13px', color: '#075985', lineHeight: '1.5' }}>
                         {printerMode === 'qztray' ? (
-                          <>Send kitchen tickets directly to a network printer via QZ Tray.<br />Enter the kitchen printer's network IP address below.</>
+                          <>{t('settings:settingsPage.sendKitchenTicketsDirectlyToANetworkPrinterViaQzTray')}<br />{t('settings:settingsPage.enterTheKitchenPrintersNetworkIpAddressBelow')}</>
                         ) : printerMode === 'browser' ? (
-                          <>Opens browser print dialog for kitchen order tickets.</>
+                          <>{t('settings:settingsPage.opensBrowserPrintDialogForKitchenOrderTickets')}</>
                         ) : kitchenStations.length > 0 ? (
                           <>
                             Each station needs a separate device with Kitchen Display open.<br />
@@ -4234,7 +4236,7 @@ QZ Tray (installed on this device)
                           }}
                           style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
                         />
-                        <span style={{ fontSize: '14px', color: '#374151' }}>Auto-print on new order</span>
+                        <span style={{ fontSize: '14px', color: '#374151' }}>{t('settings:settingsPage.autoprintOnNewOrder')}</span>
                       </label>
                       </AutoSaveField>
                     </>
@@ -4246,14 +4248,14 @@ QZ Tray (installed on this device)
               {/* Kitchen Ticket Options - Always visible regardless of printer mode */}
               {!printerSettingsLoading && (
                 <SettingsCard style={{ marginTop: '24px' }}>
-                  <CardTitle>Kitchen Ticket Options</CardTitle>
+                  <CardTitle>{t('settings:settingsPage.kitchenTicketOptions')}</CardTitle>
                   <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
                     Configure how kitchen order tickets are printed
                   </p>
 
                   <Toggle>
                     <div style={{ flex: 1 }}>
-                      <ToggleLabel style={{ marginBottom: '4px' }}>Print separate ticket for each item</ToggleLabel>
+                      <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:settingsPage.printSeparateTicketForEachItem')}</ToggleLabel>
                       <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
                         When enabled, each menu item will print on a separate ticket instead of one combined ticket per order
                       </p>
@@ -4280,7 +4282,7 @@ QZ Tray (installed on this device)
 
               {/* Receipt Customization */}
               <SettingsCard style={{ marginTop: '24px' }}>
-                <CardTitle>Receipt Customization</CardTitle>
+                <CardTitle>{t('settings:settingsPage.receiptCustomization')}</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '20px', fontSize: '14px' }}>
                   Customize the customer receipt with your logo, message, and promotions
                 </p>
@@ -4301,7 +4303,7 @@ QZ Tray (installed on this device)
                     {/* Membership Info */}
                     <Toggle>
                       <div style={{ flex: 1 }}>
-                        <ToggleLabel style={{ marginBottom: '4px' }}>Membership Info on Receipt</ToggleLabel>
+                        <ToggleLabel style={{ marginBottom: '4px' }}>{t('settings:settingsPage.membershipInfoOnReceipt')}</ToggleLabel>
                         <p style={{ fontSize: '12px', color: '#6B7C93', margin: 0 }}>
                           QR code linking to mobile order page with points earning message
                         </p>
@@ -4319,7 +4321,7 @@ QZ Tray (installed on this device)
 
                     {/* Footer Message */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Footer Message</label>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.footerMessage')}</label>
                       <AutoSaveField onSave={handleSave}>
                       <input type="text" value={receiptSettings.footerMessage} onChange={(e) => setReceiptSettings(prev => ({ ...prev, footerMessage: e.target.value }))} placeholder="Thank you for dining with us!" maxLength={100} style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
                       </AutoSaveField>
@@ -4341,7 +4343,7 @@ QZ Tray (installed on this device)
                     </AutoSaveField>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Guide Text</label>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6B7C93', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.guideText')}</label>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <AutoSaveField onSave={handleSave}>
                         <input type="text" value={receiptSettings.customQrText} onChange={(e) => setReceiptSettings(prev => ({ ...prev, customQrText: e.target.value }))} placeholder="e.g. Follow us on Instagram!" maxLength={100} style={{ flex: 1, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
@@ -4350,11 +4352,11 @@ QZ Tray (installed on this device)
                         <div style={{ display: 'flex', gap: '8px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${receiptSettings.customQrPosition === 'front' ? '#635BFF' : '#E6EBF1'}`, background: receiptSettings.customQrPosition === 'front' ? '#F8F7FF' : 'white', fontSize: '12px', whiteSpace: 'nowrap' }}>
                           <input type="radio" name="customQrPosition" checked={receiptSettings.customQrPosition === 'front'} onChange={() => { setReceiptSettings(prev => ({ ...prev, customQrPosition: 'front' })); qrPositionRef.current?.triggerSave(); }} style={{ margin: 0 }} />
-                          <span style={{ fontWeight: 500, color: '#0A2540' }}>Before QR</span>
+                          <span style={{ fontWeight: 500, color: '#0A2540' }}>{t('settings:settingsPage.beforeQr')}</span>
                         </label>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${receiptSettings.customQrPosition === 'back' ? '#635BFF' : '#E6EBF1'}`, background: receiptSettings.customQrPosition === 'back' ? '#F8F7FF' : 'white', fontSize: '12px', whiteSpace: 'nowrap' }}>
                           <input type="radio" name="customQrPosition" checked={receiptSettings.customQrPosition === 'back'} onChange={() => { setReceiptSettings(prev => ({ ...prev, customQrPosition: 'back' })); qrPositionRef.current?.triggerSave(); }} style={{ margin: 0 }} />
-                          <span style={{ fontWeight: 500, color: '#0A2540' }}>After QR</span>
+                          <span style={{ fontWeight: 500, color: '#0A2540' }}>{t('settings:settingsPage.afterQr')}</span>
                         </label>
                         </div>
                         </AutoSaveField>
@@ -4388,13 +4390,13 @@ QZ Tray (installed on this device)
 
               {/* Item Merge Settings */}
               <SettingsCard style={{ marginBottom: '24px' }}>
-                <CardTitle>Item View Merge Settings</CardTitle>
+                <CardTitle>{t('settings:settingsPage.itemViewMergeSettings')}</CardTitle>
                 <p style={{ fontSize: '13px', color: '#6B7280', margin: '0 0 16px' }}>
                   Control how same-name items are grouped in Kitchen Display Item View. Leave empty or 0 for unlimited merging (default).
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '400px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Time Limit (minutes)</label>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.timeLimitMinutes')}</label>
                     <AutoSaveField onSave={handleSave}>
                     <input type="number" min="0" value={itemMergeTimeLimit || ''} placeholder="0 = unlimited"
                       onChange={(e) => setItemMergeTimeLimit(parseInt(e.target.value) || 0)}
@@ -4402,7 +4404,7 @@ QZ Tray (installed on this device)
                     </AutoSaveField>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Max Count per Group</label>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>{t('settings:settingsPage.maxCountPerGroup')}</label>
                     <AutoSaveField onSave={handleSave}>
                     <input type="number" min="0" value={itemMergeMaxCount || ''} placeholder="0 = unlimited"
                       onChange={(e) => setItemMergeMaxCount(parseInt(e.target.value) || 0)}
@@ -4414,7 +4416,7 @@ QZ Tray (installed on this device)
 
               {/* Assignment Mode */}
               <SettingsCard style={{ marginBottom: '24px' }}>
-                <CardTitle>Assignment Mode</CardTitle>
+                <CardTitle>{t('settings:settingsPage.assignmentMode')}</CardTitle>
                 <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                   {([
                     { key: 'category', label: 'By Category (Recommended)', desc: 'Assign categories to stations. New menu items automatically follow their category.' },
@@ -4446,7 +4448,7 @@ QZ Tray (installed on this device)
               {/* Stations List */}
               <SettingsCard>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <CardTitle style={{ marginBottom: 0 }}>Stations</CardTitle>
+                  <CardTitle style={{ marginBottom: 0 }}>{t('settings:settingsPage.stations')}</CardTitle>
                   <SaveButton onClick={() => {
                     setEditingStation(null);
                     setStationForm({ name: '', category_ids: [], product_ids: [], alert_sound: 'bell' });
@@ -4457,11 +4459,11 @@ QZ Tray (installed on this device)
                 </div>
 
                 {kitchenStationsLoading ? (
-                  <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>Loading...</div>
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('settings:settingsPage.loading')}</div>
                 ) : kitchenStations.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
-                    <div style={{ fontSize: '16px', fontWeight: 500, marginBottom: '8px' }}>No kitchen stations yet</div>
-                    <div style={{ fontSize: '14px' }}>Add stations to split orders by kitchen area</div>
+                    <div style={{ fontSize: '16px', fontWeight: 500, marginBottom: '8px' }}>{t('settings:settingsPage.noKitchenStationsYet')}</div>
+                    <div style={{ fontSize: '14px' }}>{t('settings:settingsPage.addStationsToSplitOrdersByKitchenArea')}</div>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -4480,7 +4482,7 @@ QZ Tray (installed on this device)
                                 {({ bell: 'Bell', beep: 'Double Beep', triple: 'Triple', urgent: 'Urgent', melody: 'Melody', deep: 'Deep' } as Record<string, string>)[station.alert_sound || 'bell'] || 'Bell'}
                               </span>
                               {!station.is_active && (
-                                <span style={{ fontSize: '11px', background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: '10px', fontWeight: 500 }}>Inactive</span>
+                                <span style={{ fontSize: '11px', background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: '10px', fontWeight: 500 }}>{t('settings:settingsPage.inactive')}</span>
                               )}
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
@@ -4516,7 +4518,7 @@ QZ Tray (installed on this device)
                               <div>Menu Items: {assignedProds.map((p: any) => p.name).join(', ')}</div>
                             )}
                             {!hasAssignment && (
-                              <div style={{ color: '#F59E0B' }}>No items assigned</div>
+                              <div style={{ color: '#F59E0B' }}>{t('settings:settingsPage.noItemsAssigned')}</div>
                             )}
                           </div>
                         </div>
@@ -4570,7 +4572,7 @@ QZ Tray (installed on this device)
                           <strong>{uncategorizedProds.length} uncategorized menu {uncategorizedProds.length === 1 ? 'item' : 'items'}</strong>
                         </div>
                         <div>{uncategorizedProds.map((p: any) => p.name).join(', ')}</div>
-                        <div style={{ marginTop: '6px', color: '#B91C1C', fontSize: '12px' }}>These items have no category and cannot be assigned to a station. <a href={`/restaurant/${user?.restaurantId}/menu`} style={{ color: '#B91C1C', textDecoration: 'underline' }}>Assign a category in Menu Management</a>.</div>
+                        <div style={{ marginTop: '6px', color: '#B91C1C', fontSize: '12px' }}>{t('settings:settingsPage.theseItemsHaveNoCategoryAndCannotBeAssignedToAStation')}<a href={`/restaurant/${user?.restaurantId}/menu`} style={{ color: '#B91C1C', textDecoration: 'underline' }}>{t('settings:settingsPage.assignACategoryInMenuManagement')}</a>.</div>
                       </div>
                     );
                   }
@@ -4673,7 +4675,7 @@ QZ Tray (installed on this device)
                     </FormGroup>
 
                     <FormGroup>
-                      <Label>Alert Sound</Label>
+                      <Label>{t('settings:settingsPage.alertSound')}</Label>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <select
                           value={stationForm.alert_sound}
@@ -4707,7 +4709,7 @@ QZ Tray (installed on this device)
 
                     {kitchenAssignmentMode === 'category' ? (
                       <FormGroup>
-                        <Label>Assign Categories</Label>
+                        <Label>{t('settings:settingsPage.assignCategories')}</Label>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
                           {allCategories.map((cat: any) => {
                             const isChecked = stationForm.category_ids.includes(cat.id);
@@ -4738,7 +4740,7 @@ QZ Tray (installed on this device)
                       </FormGroup>
                     ) : (
                       <FormGroup>
-                        <Label>Assign Menu Items</Label>
+                        <Label>{t('settings:settingsPage.assignMenuItems')}</Label>
                         <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           {allProducts.map((prod: any) => {
                             const isChecked = stationForm.product_ids.includes(prod.id);
@@ -4917,7 +4919,7 @@ QZ Tray (installed on this device)
                     {/* Points Settings */}
                     <SettingsCard>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <CardTitle style={{ marginBottom: 0 }}>Points Settings</CardTitle>
+                        <CardTitle style={{ marginBottom: 0 }}>{t('settings:settingsPage.pointsSettings')}</CardTitle>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <AutoSaveField ref={membershipActiveToggleRef} onSave={handleSaveMembership} type="toggle">
                           <ToggleSwitch>
@@ -4969,7 +4971,7 @@ QZ Tray (installed on this device)
                       </FormGroup>
 
                       <FormGroup>
-                        <Label>Points Value</Label>
+                        <Label>{t('settings:settingsPage.pointsValue')}</Label>
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           How many points equal {getCurrencySymbol(currencySettings.currency)} 1 when redeeming
                         </p>
@@ -4988,7 +4990,7 @@ QZ Tray (installed on this device)
                       </FormGroup>
 
                       <FormGroup>
-                        <Label>Minimum Points to Use</Label>
+                        <Label>{t('settings:settingsPage.minimumPointsToUse')}</Label>
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           Minimum points required before customer can redeem
                         </p>
@@ -5021,7 +5023,7 @@ QZ Tray (installed on this device)
                       </FormGroup>
 
                       <FormGroup>
-                        <Label>Points Expiry (Days)</Label>
+                        <Label>{t('settings:settingsPage.pointsExpiryDays')}</Label>
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           Number of days until points expire (0 = never)
                         </p>
@@ -5037,7 +5039,7 @@ QZ Tray (installed on this device)
                       </FormGroup>
 
                       <FormGroup>
-                        <Label>Welcome Points</Label>
+                        <Label>{t('settings:settingsPage.welcomePoints')}</Label>
                         <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#8898AA' }}>
                           Points given to new members on registration
                         </p>
@@ -5055,7 +5057,7 @@ QZ Tray (installed on this device)
 
                     {/* Tier Settings */}
                     <SettingsCard>
-                      <CardTitle>Tier Thresholds</CardTitle>
+                      <CardTitle>{t('settings:settingsPage.tierThresholds')}</CardTitle>
                       <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#8898AA' }}>
                         Total spending required to reach each tier
                       </p>
@@ -5099,14 +5101,14 @@ QZ Tray (installed on this device)
                         </AutoSaveField>
                       </FormGroup>
 
-                      <CardTitle style={{ marginTop: '24px' }}>Bonus Rates</CardTitle>
+                      <CardTitle style={{ marginTop: '24px' }}>{t('settings:settingsPage.bonusRates')}</CardTitle>
                       <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#8898AA' }}>
                         Point earning multiplier for each tier
                       </p>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <FormGroup>
-                          <Label>Bronze (x)</Label>
+                          <Label>{t('settings:settingsPage.bronzeX')}</Label>
                           <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
@@ -5119,7 +5121,7 @@ QZ Tray (installed on this device)
                         </FormGroup>
 
                         <FormGroup>
-                          <Label>Silver (x)</Label>
+                          <Label>{t('settings:settingsPage.silverX')}</Label>
                           <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
@@ -5132,7 +5134,7 @@ QZ Tray (installed on this device)
                         </FormGroup>
 
                         <FormGroup>
-                          <Label>Gold (x)</Label>
+                          <Label>{t('settings:settingsPage.goldX')}</Label>
                           <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
@@ -5145,7 +5147,7 @@ QZ Tray (installed on this device)
                         </FormGroup>
 
                         <FormGroup>
-                          <Label>VIP (x)</Label>
+                          <Label>{t('settings:settingsPage.vipX')}</Label>
                           <AutoSaveField onSave={handleSaveMembership}>
                           <Input
                             type="number"
@@ -5225,7 +5227,7 @@ QZ Tray (installed on this device)
 
                   {/* Point Policy Reference — info only, below save button */}
                   <SettingsCard style={{ marginTop: '24px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                    <CardTitle style={{ fontSize: '14px', color: '#64748B' }}>Point System Policy Reference</CardTitle>
+                    <CardTitle style={{ fontSize: '14px', color: '#64748B' }}>{t('settings:settingsPage.pointSystemPolicyReference')}</CardTitle>
                     <div style={{ fontSize: '13px', color: '#64748B', lineHeight: '1.8' }}>
                       <p style={{ marginBottom: '12px', fontWeight: '500', color: '#475569' }}>
                         These are the system rules that cannot be changed:

@@ -221,6 +221,15 @@ User.init({
     set(value) {
       this.setDataValue('notification_preferences', value ? JSON.stringify(value) : null);
     }
+  },
+  preferred_language: {
+    type: DataTypes.STRING(5),
+    allowNull: false,
+    defaultValue: 'en',
+    validate: {
+      isIn: [['en', 'ko', 'zh', 'ms']]
+    },
+    comment: 'UI language preference (en, ko, zh, ms)'
   }
 }, {
   sequelize: database.sequelize,

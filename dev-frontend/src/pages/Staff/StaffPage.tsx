@@ -6,6 +6,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormInput, FormSelect } from '../../components/UI/Modal';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 interface Staff {
   id: string;
@@ -375,6 +376,7 @@ const AlwaysOnBadge = styled.span`
 `;
 
 const StaffPage: React.FC = () => {
+  const { t } = useTranslation('staff');
   const { user } = useAuth();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -711,7 +713,7 @@ const StaffPage: React.FC = () => {
     onChange: (updated: string[]) => void
   ) => (
     <div style={{ marginTop: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>Menu Access</div>
+      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>{t('staff:staffPage.menuAccess')}</div>
       <div style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '4px' }}>
         Core menus are always visible: Dashboard, POS Terminal, Live Orders, Kitchen Display, Customer Display, Mobile Order, Profile.
       </div>
@@ -746,7 +748,7 @@ const StaffPage: React.FC = () => {
     <>
       <StaffContainer>
         <Header>
-          <HeaderTitle>Restaurant Staff</HeaderTitle>
+          <HeaderTitle>{t('staff:staffPage.restaurantStaff')}</HeaderTitle>
           <HeaderActions>
             <Button variant="primary" onClick={handleOpenAddModal}>
               Add Staff
@@ -758,19 +760,19 @@ const StaffPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{stats.total}</StatValue>
-              <StatLabel>Total Staff</StatLabel>
+              <StatLabel>{t('staff:staffPage.totalStaff')}</StatLabel>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>{stats.active}</StatValue>
-              <StatLabel>Active Staff</StatLabel>
+              <StatLabel>{t('staff:staffPage.activeStaff')}</StatLabel>
             </StatCard>
             <StatCard color="#DC2626">
               <StatValue>{stats.admins}</StatValue>
-              <StatLabel>Admins</StatLabel>
+              <StatLabel>{t('staff:staffPage.admins')}</StatLabel>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{stats.staff}</StatValue>
-              <StatLabel>Staff Members</StatLabel>
+              <StatLabel>{t('staff:staffPage.staffMembers')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -786,9 +788,9 @@ const StaffPage: React.FC = () => {
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
             >
-              <option value="">All Roles</option>
-              <option value="Restaurant Admin">Restaurant Admin</option>
-              <option value="Staff">Staff</option>
+              <option value="">{t('staff:staffPage.allRoles')}</option>
+              <option value="Restaurant Admin">{t('staff:staffPage.restaurantAdmin')}</option>
+              <option value="Staff">{t('staff:staffPage.staff')}</option>
             </FilterSelect>
           </FilterBar>
 
@@ -806,13 +808,13 @@ const StaffPage: React.FC = () => {
               <Table>
                 <TableHead>
                   <tr>
-                    <th>Staff Member</th>
-                    <th>Role</th>
-                    <th>Department</th>
-                    <th>PIN</th>
-                    <th>Permissions</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>{t('staff:staffPage.staffMember')}</th>
+                    <th>{t('staff:staffPage.role')}</th>
+                    <th>{t('staff:staffPage.department')}</th>
+                    <th>{t('staff:staffPage.pin')}</th>
+                    <th>{t('staff:staffPage.permissions')}</th>
+                    <th>{t('staff:staffPage.status')}</th>
+                    <th>{t('staff:staffPage.actions')}</th>
                   </tr>
                 </TableHead>
                 <tbody>
@@ -850,9 +852,9 @@ const StaffPage: React.FC = () => {
 
                       <TableCell data-label="Permissions">
                         {staff.role === 'Restaurant Admin' ? (
-                          <PermissionTag style={{ background: '#FEE2E2', color: '#DC2626' }}>Full Access</PermissionTag>
+                          <PermissionTag style={{ background: '#FEE2E2', color: '#DC2626' }}>{t('staff:staffPage.fullAccess')}</PermissionTag>
                         ) : staff.permissions.length === 0 ? (
-                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>No permissions</span>
+                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('staff:staffPage.noPermissions')}</span>
                         ) : (
                           <PermissionTags>
                             {staff.permissions.map(p => (
@@ -898,8 +900,8 @@ const StaffPage: React.FC = () => {
           size="large"
           footer={
             <>
-              <ModalButton variant="secondary" onClick={handleCloseAddModal}>Cancel</ModalButton>
-              <ModalButton variant="primary" onClick={handleSubmitStaff}>Add Staff</ModalButton>
+              <ModalButton variant="secondary" onClick={handleCloseAddModal}>{t('staff:staffPage.cancel')}</ModalButton>
+              <ModalButton variant="primary" onClick={handleSubmitStaff}>{t('staff:staffPage.addStaff')}</ModalButton>
             </>
           }
         >
@@ -941,7 +943,7 @@ const StaffPage: React.FC = () => {
               />
             </FormGroup>
             <FormGroup>
-              <FormLabel>Phone</FormLabel>
+              <FormLabel>{t('staff:staffPage.phone')}</FormLabel>
               <PhoneInput
                 value={newStaff.phone}
                 onChange={(value) => handleAddInputChange('phone', value)}
@@ -951,17 +953,17 @@ const StaffPage: React.FC = () => {
 
           <FormRow>
             <FormGroup>
-              <FormLabel>Role</FormLabel>
+              <FormLabel>{t('staff:staffPage.role')}</FormLabel>
               <FormSelect
                 value={newStaff.role}
                 onChange={(e) => handleAddInputChange('role', e.target.value)}
               >
-                <option value="Staff">Staff</option>
-                <option value="Restaurant Admin">Restaurant Admin</option>
+                <option value="Staff">{t('staff:staffPage.staff')}</option>
+                <option value="Restaurant Admin">{t('staff:staffPage.restaurantAdmin')}</option>
               </FormSelect>
             </FormGroup>
             <FormGroup>
-              <FormLabel>Department</FormLabel>
+              <FormLabel>{t('staff:staffPage.department')}</FormLabel>
               <FormInput
                 type="text"
                 value={newStaff.department}
@@ -974,7 +976,7 @@ const StaffPage: React.FC = () => {
 
           <FormRow>
             <FormGroup>
-              <FormLabel>Company Name</FormLabel>
+              <FormLabel>{t('staff:staffPage.companyName')}</FormLabel>
               <FormInput
                 type="text"
                 value={newStaff.company_name}
@@ -1023,8 +1025,8 @@ const StaffPage: React.FC = () => {
           size="large"
           footer={
             <>
-              <ModalButton variant="secondary" onClick={handleCloseEditModal}>Cancel</ModalButton>
-              <ModalButton variant="primary" onClick={handleUpdateStaff}>Update Staff</ModalButton>
+              <ModalButton variant="secondary" onClick={handleCloseEditModal}>{t('staff:staffPage.cancel')}</ModalButton>
+              <ModalButton variant="primary" onClick={handleUpdateStaff}>{t('staff:staffPage.updateStaff')}</ModalButton>
             </>
           }
         >
@@ -1032,7 +1034,7 @@ const StaffPage: React.FC = () => {
             <>
               <FormRow>
                 <FormGroup>
-                  <FormLabel>Staff ID (Username)</FormLabel>
+                  <FormLabel>{t('staff:staffPage.staffIdUsername')}</FormLabel>
                   <FormInput
                     type="text"
                     value={editingStaff.username}
@@ -1041,7 +1043,7 @@ const StaffPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Role</FormLabel>
+                  <FormLabel>{t('staff:staffPage.role')}</FormLabel>
                   <FormInput
                     type="text"
                     value={editingStaff.role}
@@ -1076,14 +1078,14 @@ const StaffPage: React.FC = () => {
 
               <FormRow>
                 <FormGroup>
-                  <FormLabel>Phone</FormLabel>
+                  <FormLabel>{t('staff:staffPage.phone')}</FormLabel>
                   <PhoneInput
                     value={editForm.phone}
                     onChange={(value) => handleEditInputChange('phone', value)}
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Department</FormLabel>
+                  <FormLabel>{t('staff:staffPage.department')}</FormLabel>
                   <FormInput
                     type="text"
                     value={editForm.department}
@@ -1096,7 +1098,7 @@ const StaffPage: React.FC = () => {
 
               <FormRow>
                 <FormGroup>
-                  <FormLabel>Company Name</FormLabel>
+                  <FormLabel>{t('staff:staffPage.companyName')}</FormLabel>
                   <FormInput
                     type="text"
                     value={editForm.company_name}
@@ -1106,7 +1108,7 @@ const StaffPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>PIN Code (4 digits)</FormLabel>
+                  <FormLabel>{t('staff:staffPage.pinCode4Digits')}</FormLabel>
                   <FormInput
                     type="text"
                     inputMode="numeric"
@@ -1200,7 +1202,7 @@ const StaffPage: React.FC = () => {
           title="Notice"
           size="small"
           footer={
-            <ModalButton variant="primary" onClick={() => setErrorMessage('')}>OK</ModalButton>
+            <ModalButton variant="primary" onClick={() => setErrorMessage('')}>{t('staff:staffPage.ok')}</ModalButton>
           }
         >
           <div style={{ fontSize: '14px', color: '#374151' }}>
@@ -1216,8 +1218,8 @@ const StaffPage: React.FC = () => {
           size="small"
           footer={
             <>
-              <ModalButton variant="secondary" onClick={() => setResetPasswordTarget(null)}>Cancel</ModalButton>
-              <ModalButton variant="primary" onClick={executeResetPassword}>Reset</ModalButton>
+              <ModalButton variant="secondary" onClick={() => setResetPasswordTarget(null)}>{t('staff:staffPage.cancel')}</ModalButton>
+              <ModalButton variant="primary" onClick={executeResetPassword}>{t('staff:staffPage.reset')}</ModalButton>
             </>
           }
         >

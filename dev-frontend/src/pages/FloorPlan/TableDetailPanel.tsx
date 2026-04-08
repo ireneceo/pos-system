@@ -7,6 +7,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR } from '../../utils/billPrint';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { Modal, ModalButton } from '../../components/UI';
+import { useTranslation } from 'react-i18next';
 
 // Helper: payment_proof 호환 — { current, history } 구조 또는 기존 단일 객체 모두 지원
 const getProofCurrent = (proof: any): any => {
@@ -522,6 +523,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   onOrderIndexChange,
   qrMode = 'static'
 }) => {
+  const { t } = useTranslation('floorplan');
   const [loading, setLoading] = useState(false);
   const { getStoreInfo, paymentSettings } = useStore();
 
@@ -1022,8 +1024,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         size="small"
         footer={showPaymentProofModal === 'verify' ? (
           <>
-            <RejectButton variant="secondary" onClick={handleRejectPayment} disabled={loading}>Reject</RejectButton>
-            <ConfirmPayButton variant="primary" onClick={handleConfirmPayment} disabled={loading}>Confirm Payment</ConfirmPayButton>
+            <RejectButton variant="secondary" onClick={handleRejectPayment} disabled={loading}>{'Reject'}</RejectButton>
+            <ConfirmPayButton variant="primary" onClick={handleConfirmPayment} disabled={loading}>{'Confirm Payment'}</ConfirmPayButton>
           </>
         ) : undefined}
       >
@@ -1034,7 +1036,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         </div>
 
         <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>Customer Submitted Proof</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: '#0A2540', marginBottom: '12px' }}>{'Customer Submitted Proof'}</div>
           {paymentProof ? (
             <>
               {paymentProof.reference && (
@@ -1131,7 +1133,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
           )}
           {!isOccupied && (
             <BadgeRow>
-              <StatusBadge $color={statusColors.text} $bg={statusColors.bg}>Available</StatusBadge>
+              <StatusBadge $color={statusColors.text} $bg={statusColors.bg}>{'Available'}</StatusBadge>
             </BadgeRow>
           )}
         </TableTitle>
@@ -1228,7 +1230,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                               {item.code ? `${item.code} ` : ''}{item.name}
                             </span>
                             {item.is_set_menu && (
-                              <span style={{ marginLeft: '6px', fontSize: '10px', background: '#EDE9FE', color: '#7C3AED', padding: '1px 5px', borderRadius: '3px' }}>SET</span>
+                              <span style={{ marginLeft: '6px', fontSize: '10px', background: '#EDE9FE', color: '#7C3AED', padding: '1px 5px', borderRadius: '3px' }}>{'SET'}</span>
                             )}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
@@ -1244,7 +1246,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                                 padding: '3px 8px', fontSize: '11px', background: '#FEF3C7',
                                 color: '#D97706', border: '1px solid #FCD34D', borderRadius: '4px',
                                 cursor: 'pointer', fontWeight: 500
-                              }}>Options</button>
+                              }}>{'Options'}</button>
                             )}
                           </div>
                         </div>
@@ -1254,7 +1256,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                     const q = addItemsSearchQuery.toLowerCase();
                     return item.name?.toLowerCase().includes(q) || (item.code && item.code.toLowerCase().includes(q));
                   }).length === 0 && (
-                    <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>No items found</div>
+                    <div style={{ padding: '14px', textAlign: 'center', color: '#9CA3AF', fontSize: '13px' }}>{'No items found'}</div>
                   )}
                 </div>
               )}
@@ -1337,36 +1339,36 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 </SectionTitle>
                 <InfoGrid>
                   <InfoItem>
-                    <InfoLabel>Customer</InfoLabel>
+                    <InfoLabel>{'Customer'}</InfoLabel>
                     <InfoValue>{statusInfo!.customerName || 'Walk-in'}</InfoValue>
                   </InfoItem>
                   {statusInfo!.customerPhone && (
                     <InfoItem>
-                      <InfoLabel>Phone</InfoLabel>
+                      <InfoLabel>{'Phone'}</InfoLabel>
                       <InfoValue>{statusInfo!.customerPhone}</InfoValue>
                     </InfoItem>
                   )}
                   <InfoItem>
-                    <InfoLabel>Type</InfoLabel>
+                    <InfoLabel>{'Type'}</InfoLabel>
                     <InfoValue>{(statusInfo!.orderType || 'dine_in').replace(/_/g, ' ').toUpperCase()}</InfoValue>
                   </InfoItem>
                   <InfoItem>
-                    <InfoLabel>Source</InfoLabel>
+                    <InfoLabel>{'Source'}</InfoLabel>
                     <InfoValue>{SOURCE_LABELS[statusInfo!.orderSource || 'pos'] || statusInfo!.orderSource}</InfoValue>
                   </InfoItem>
                   <InfoItem>
-                    <InfoLabel>Time</InfoLabel>
+                    <InfoLabel>{'Time'}</InfoLabel>
                     <InfoValue>{formatDT(statusInfo!.orderCreatedAt)}</InfoValue>
                   </InfoItem>
                   {statusInfo!.paymentMethod && (
                     <InfoItem>
-                      <InfoLabel>Payment</InfoLabel>
+                      <InfoLabel>{'Payment'}</InfoLabel>
                       <InfoValue>{formatPaymentDisplay(statusInfo!.paymentMethod, statusInfo!.cardType, paymentSettings || undefined)}</InfoValue>
                     </InfoItem>
                   )}
                   {paymentProof && (
                     <InfoItem>
-                      <InfoLabel>Receipt</InfoLabel>
+                      <InfoLabel>{'Receipt'}</InfoLabel>
                       <InfoValue>
                         <span
                           onClick={() => setShowPaymentProofModal('view')}
@@ -1379,7 +1381,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   )}
                   {statusInfo!.cashierName && (
                     <InfoItem>
-                      <InfoLabel>Cashier</InfoLabel>
+                      <InfoLabel>{'Cashier'}</InfoLabel>
                       <InfoValue>{statusInfo!.cashierName}</InfoValue>
                     </InfoItem>
                   )}
@@ -1454,15 +1456,15 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 })}
 
                 {items.length === 0 && (
-                  <div style={{ fontSize: '13px', color: '#9CA3AF' }}>No items</div>
+                  <div style={{ fontSize: '13px', color: '#9CA3AF' }}>{'No items'}</div>
                 )}
               </Section>
 
               {/* Payment Summary */}
               <Section style={{ borderBottom: 'none' }}>
-                <SectionTitle>Summary</SectionTitle>
+                <SectionTitle>{'Summary'}</SectionTitle>
                 <SummaryRow>
-                  <span>Subtotal</span>
+                  <span>{'Subtotal'}</span>
                   <span>{formatCurrency(statusInfo!.subtotal || 0, currency)}</span>
                 </SummaryRow>
 
@@ -1489,7 +1491,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
 
                 {(statusInfo!.discount || 0) > 0 && !statusInfo!.couponDiscount && !statusInfo!.discountPolicyAmount && !statusInfo!.pointDiscount && (
                   <SummaryRow>
-                    <span>Discount</span>
+                    <span>{'Discount'}</span>
                     <span>-{formatCurrency(statusInfo!.discount || 0, currency)}</span>
                   </SummaryRow>
                 )}
@@ -1509,7 +1511,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 )}
 
                 <SummaryRow $bold style={{ marginTop: '4px', paddingTop: '6px', borderTop: '1px solid #E6EBF1' }}>
-                  <span>Total</span>
+                  <span>{'Total'}</span>
                   <span>{formatCurrency(statusInfo!.totalAmount, currency)}</span>
                 </SummaryRow>
 
@@ -1622,7 +1624,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               <>
               <ActionRow>
                 <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
-                  {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Reprint QR</>}
+                  {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>{'Reprint QR'}</>}
                 </ActionBtn>
                 {qrSession && (
                   <ActionBtn $variant="danger" onClick={handleExpireQR} disabled={qrLoading} style={{ flex: '0 0 auto', width: 'auto', padding: '9px 16px' }}>
@@ -1655,7 +1657,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         <>
           <EmptyState>
             <span style={{ fontSize: 40, opacity: 0.3 }}>&#x25CB;</span>
-            <p>This table is available</p>
+            <p>{'This table is available'}</p>
           </EmptyState>
           <ActionGroup>
             <ActionBtn $variant="primary" onClick={onNewOrder}>
@@ -1664,7 +1666,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             {qrMode === 'session' && (
             <>
             <ActionBtn $variant="secondary" onClick={handlePrintQR} disabled={qrLoading}>
-              {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print QR</>}
+              {qrLoading ? 'Printing...' : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 4, verticalAlign: 'middle'}}><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>{'Print QR'}</>}
             </ActionBtn>
             {qrSession ? (
               <QRStatusInfo>
@@ -1680,7 +1682,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 </ActionBtn>
               </QRStatusInfo>
             ) : (
-              <QRStatusInfo style={{ color: '#6B7280', fontSize: '12px' }}>Print QR to generate a session-based ordering code for this table.</QRStatusInfo>
+              <QRStatusInfo style={{ color: '#6B7280', fontSize: '12px' }}>{'Print QR to generate a session-based ordering code for this table.'}</QRStatusInfo>
             )}
             </>
             )}
@@ -1720,8 +1722,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
             <ConfirmTitle>{confirmModal.title}</ConfirmTitle>
             <ConfirmMessage>{confirmModal.message}</ConfirmMessage>
             <ConfirmActions>
-              <ConfirmBtn onClick={() => setConfirmModal(null)}>Cancel</ConfirmBtn>
-              <ConfirmBtn $danger onClick={confirmModal.onConfirm}>Confirm</ConfirmBtn>
+              <ConfirmBtn onClick={() => setConfirmModal(null)}>{'Cancel'}</ConfirmBtn>
+              <ConfirmBtn $danger onClick={confirmModal.onConfirm}>{'Confirm'}</ConfirmBtn>
             </ConfirmActions>
           </ConfirmBox>
         </ConfirmOverlay>

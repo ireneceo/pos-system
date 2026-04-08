@@ -4,6 +4,7 @@ import PageHeader from '../../components/Common/PageHeader';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import { useTranslation } from 'react-i18next';
 
 interface CurrencyConfig {
   [code: string]: {
@@ -333,6 +334,7 @@ const defaultPaymentSettings: PaymentSettings = {
 };
 
 const PaymentSettingsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   // Currency settings (moved from Site Settings)
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({});
   const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([]);
@@ -635,12 +637,14 @@ const PaymentSettingsPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
+  // useTranslation moved to component level
+
+  return (
       <>
         <Container>
           <PageHeader title="Payment Settings" />
           <Content>
-            <p>Loading...</p>
+            <p>{t('admin:paymentSettingsPage.loading')}</p>
           </Content>
         </Container>
       </>
@@ -654,14 +658,14 @@ const PaymentSettingsPage: React.FC = () => {
         <Content>
           {/* Section 1: Currency Settings */}
           <Section>
-            <SectionTitle>Currency Settings</SectionTitle>
+            <SectionTitle>{t('admin:paymentSettingsPage.currencySettings')}</SectionTitle>
             <SectionDescription>
               Configure supported currencies for subscription plans and invoices.
             </SectionDescription>
 
             <FormRow>
               <FormGroup>
-                <Label>Default Currency</Label>
+                <Label>{t('admin:paymentSettingsPage.defaultCurrency')}</Label>
                 <Select
                   value={defaultCurrency}
                   onChange={(e) => updateDefaultCurrency(e.target.value)}
@@ -672,11 +676,11 @@ const PaymentSettingsPage: React.FC = () => {
                     </option>
                   ))}
                 </Select>
-                <HelpText>Used as default for new subscriptions and invoices</HelpText>
+                <HelpText>{t('admin:paymentSettingsPage.usedAsDefaultForNewSubscriptionsAndInvoices')}</HelpText>
               </FormGroup>
 
               <FormGroup>
-                <Label>Supported Currencies</Label>
+                <Label>{t('admin:paymentSettingsPage.supportedCurrencies')}</Label>
                 <CurrencySelector
                   onClick={() => {
                     setTempSelectedCurrencies(supportedCurrencies);
@@ -690,16 +694,16 @@ const PaymentSettingsPage: React.FC = () => {
                       </CurrencyTag>
                     ))
                   ) : (
-                    <PlaceholderText>Click to select currencies</PlaceholderText>
+                    <PlaceholderText>{t('admin:paymentSettingsPage.clickToSelectCurrencies')}</PlaceholderText>
                   )}
                 </CurrencySelector>
-                <HelpText>Currencies available for pricing plans and invoices</HelpText>
+                <HelpText>{t('admin:paymentSettingsPage.currenciesAvailableForPricingPlansAndInvoices')}</HelpText>
               </FormGroup>
             </FormRow>
 
             <FormRow>
               <FormGroup>
-                <Label>Supported Countries</Label>
+                <Label>{t('admin:paymentSettingsPage.supportedCountries')}</Label>
                 <CurrencySelector
                   onClick={() => {
                     setTempSelectedCountries(supportedCountries);
@@ -713,17 +717,17 @@ const PaymentSettingsPage: React.FC = () => {
                       </CurrencyTag>
                     ))
                   ) : (
-                    <PlaceholderText>Click to select countries</PlaceholderText>
+                    <PlaceholderText>{t('admin:paymentSettingsPage.clickToSelectCountries')}</PlaceholderText>
                   )}
                 </CurrencySelector>
-                <HelpText>Countries where hardware products are available for sale</HelpText>
+                <HelpText>{t('admin:paymentSettingsPage.countriesWhereHardwareProductsAreAvailableForSale')}</HelpText>
               </FormGroup>
             </FormRow>
           </Section>
 
           {/* Section 2: Online Payment (Global) */}
           <Section>
-            <SectionTitle>Online Payment</SectionTitle>
+            <SectionTitle>{t('admin:paymentSettingsPage.onlinePayment')}</SectionTitle>
             <SectionDescription>
               Configure online payment gateways. These settings apply to all currencies.
             </SectionDescription>
@@ -732,8 +736,8 @@ const PaymentSettingsPage: React.FC = () => {
             <PaymentMethodCard>
               <MethodHeader>
                 <MethodInfo>
-                  <MethodLabel>Stripe</MethodLabel>
-                  <MethodDescription>Credit/Debit Card payments</MethodDescription>
+                  <MethodLabel>{t('admin:paymentSettingsPage.stripe')}</MethodLabel>
+                  <MethodDescription>{t('admin:paymentSettingsPage.creditdebitCardPayments')}</MethodDescription>
                 </MethodInfo>
                 <ToggleSwitch>
                   <ToggleInput
@@ -747,7 +751,7 @@ const PaymentSettingsPage: React.FC = () => {
               {paymentSettings.stripe.enabled && (
                 <MethodContent>
                   <FormGroup>
-                    <Label>Publishable Key</Label>
+                    <Label>{t('admin:paymentSettingsPage.publishableKey')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="text"
@@ -758,7 +762,7 @@ const PaymentSettingsPage: React.FC = () => {
                     </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
-                    <Label>Secret Key</Label>
+                    <Label>{t('admin:paymentSettingsPage.secretKey')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="password"
@@ -769,7 +773,7 @@ const PaymentSettingsPage: React.FC = () => {
                     </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
-                    <Label>Webhook Secret</Label>
+                    <Label>{t('admin:paymentSettingsPage.webhookSecret')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="password"
@@ -797,8 +801,8 @@ const PaymentSettingsPage: React.FC = () => {
             <PaymentMethodCard>
               <MethodHeader>
                 <MethodInfo>
-                  <MethodLabel>PayPal</MethodLabel>
-                  <MethodDescription>PayPal account or card</MethodDescription>
+                  <MethodLabel>{t('admin:paymentSettingsPage.paypal')}</MethodLabel>
+                  <MethodDescription>{t('admin:paymentSettingsPage.paypalAccountOrCard')}</MethodDescription>
                 </MethodInfo>
                 <ToggleSwitch>
                   <ToggleInput
@@ -812,7 +816,7 @@ const PaymentSettingsPage: React.FC = () => {
               {paymentSettings.paypal.enabled && (
                 <MethodContent>
                   <FormGroup>
-                    <Label>Client ID</Label>
+                    <Label>{t('admin:paymentSettingsPage.clientId')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="text"
@@ -823,7 +827,7 @@ const PaymentSettingsPage: React.FC = () => {
                     </AutoSaveField>
                   </FormGroup>
                   <FormGroup>
-                    <Label>Client Secret</Label>
+                    <Label>{t('admin:paymentSettingsPage.clientSecret')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="password"
@@ -840,7 +844,7 @@ const PaymentSettingsPage: React.FC = () => {
 
           {/* Section 3: Manual Payment (Per Currency) */}
           <Section>
-            <SectionTitle>Manual Payment</SectionTitle>
+            <SectionTitle>{t('admin:paymentSettingsPage.manualPayment')}</SectionTitle>
             <SectionDescription>
               Configure bank transfer and QR payment for each currency. Different currencies require different bank accounts and QR codes.
             </SectionDescription>
@@ -868,7 +872,7 @@ const PaymentSettingsPage: React.FC = () => {
                   <MethodHeader>
                     <MethodInfo>
                       <MethodLabel>Bank Transfer ({selectedCurrency})</MethodLabel>
-                      <MethodDescription>Manual transfer with receipt upload</MethodDescription>
+                      <MethodDescription>{t('admin:paymentSettingsPage.manualTransferWithReceiptUpload')}</MethodDescription>
                     </MethodInfo>
                     <ToggleSwitch>
                       <ToggleInput
@@ -882,7 +886,7 @@ const PaymentSettingsPage: React.FC = () => {
                   {getBankConfig(selectedCurrency).enabled && (
                     <MethodContent>
                       <FormGroup>
-                        <Label>Bank Name</Label>
+                        <Label>{t('admin:paymentSettingsPage.bankName')}</Label>
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
@@ -893,7 +897,7 @@ const PaymentSettingsPage: React.FC = () => {
                         </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
-                        <Label>Account Number</Label>
+                        <Label>{t('admin:paymentSettingsPage.accountNumber')}</Label>
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
@@ -904,7 +908,7 @@ const PaymentSettingsPage: React.FC = () => {
                         </AutoSaveField>
                       </FormGroup>
                       <FormGroup>
-                        <Label>Account Name</Label>
+                        <Label>{t('admin:paymentSettingsPage.accountName')}</Label>
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
@@ -923,7 +927,7 @@ const PaymentSettingsPage: React.FC = () => {
                   <MethodHeader>
                     <MethodInfo>
                       <MethodLabel>QR Payment ({selectedCurrency})</MethodLabel>
-                      <MethodDescription>Scan QR code to pay (DuitNow, KakaoPay, etc.)</MethodDescription>
+                      <MethodDescription>{t('admin:paymentSettingsPage.scanQrCodeToPayDuitnowKakaopayEtc')}</MethodDescription>
                     </MethodInfo>
                     <ToggleSwitch>
                       <ToggleInput
@@ -946,7 +950,7 @@ const PaymentSettingsPage: React.FC = () => {
                         imageAltText="Payment QR Code"
                       />
                       <FormGroup style={{ marginTop: '16px' }}>
-                        <Label>Description</Label>
+                        <Label>{t('admin:paymentSettingsPage.description')}</Label>
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
@@ -955,7 +959,7 @@ const PaymentSettingsPage: React.FC = () => {
                             onChange={(e) => handleQRPaymentChange(selectedCurrency, 'qrDescription', e.target.value)}
                           />
                         </AutoSaveField>
-                        <HelpText>Short description shown below the QR code</HelpText>
+                        <HelpText>{t('admin:paymentSettingsPage.shortDescriptionShownBelowTheQrCode')}</HelpText>
                       </FormGroup>
                     </MethodContent>
                   )}
@@ -991,7 +995,7 @@ const PaymentSettingsPage: React.FC = () => {
                         <MethodContent>
                           <FormRow>
                             <FormGroup>
-                              <Label>Item Name</Label>
+                              <Label>{t('admin:paymentSettingsPage.itemName')}</Label>
                               <AutoSaveField onSave={savePaymentSettings}>
                                 <Input
                                   type="text"
@@ -1000,7 +1004,7 @@ const PaymentSettingsPage: React.FC = () => {
                                   placeholder="e.g., SST, VAT, Service Charge"
                                 />
                               </AutoSaveField>
-                              <HelpText>Name displayed on invoices</HelpText>
+                              <HelpText>{t('admin:paymentSettingsPage.nameDisplayedOnInvoices')}</HelpText>
                             </FormGroup>
                             <FormGroup>
                               <Label>Rate (%)</Label>
@@ -1015,7 +1019,7 @@ const PaymentSettingsPage: React.FC = () => {
                                   placeholder="0"
                                 />
                               </AutoSaveField>
-                              <HelpText>Percentage to add to subtotal</HelpText>
+                              <HelpText>{t('admin:paymentSettingsPage.percentageToAddToSubtotal')}</HelpText>
                             </FormGroup>
                           </FormRow>
                         </MethodContent>

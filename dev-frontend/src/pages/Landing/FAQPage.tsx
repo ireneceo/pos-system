@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateFAQSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 interface FAQCategory {
   id: number;
@@ -261,6 +262,7 @@ const LoadingSpinner = styled.div`
 `;
 
 const FAQPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [categories, setCategories] = useState<FAQCategory[]>([]);
@@ -324,7 +326,6 @@ const FAQPage: React.FC = () => {
     { name: 'Home', url: 'https://purplehere.com' },
     { name: 'FAQ', url: 'https://purplehere.com/faq' }
   ]);
-
   return (
     <LandingLayout>
       <SEOHead
@@ -336,9 +337,9 @@ const FAQPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>Frequently Asked Questions</HeroTitle>
+          <HeroTitle>{t('landing:fAQPage.frequentlyAskedQuestions')}</HeroTitle>
           <HeroSubtitle>
-            Find answers to common questions about PurpleHere POS system
+            {t('landing:fAQPage.findAnswersToCommonQuestionsAboutPurpleh')}
           </HeroSubtitle>
         </HeroSection>
 
@@ -362,11 +363,11 @@ const FAQPage: React.FC = () => {
           </CategoryTabs>
 
           {loading ? (
-            <LoadingSpinner>Loading...</LoadingSpinner>
+            <LoadingSpinner>{t('landing:fAQPage.loading')}</LoadingSpinner>
           ) : filteredFAQs.length === 0 ? (
             <EmptyState>
-              <h3>No FAQs found</h3>
-              <p>Check back later for updates</p>
+              <h3>{t('landing:fAQPage.noFaqsFound')}</h3>
+              <p>{t('landing:fAQPage.checkBackLaterForUpdates')}</p>
             </EmptyState>
           ) : (
             <FAQList>
@@ -394,10 +395,10 @@ const FAQPage: React.FC = () => {
           )}
 
           <ContactSection>
-            <h3>Still have questions?</h3>
-            <p>Can't find the answer you're looking for? Our support team is here to help.</p>
+            <h3>{t('landing:fAQPage.stillHaveQuestions')}</h3>
+            <p>{t('landing:fAQPage.cantFindTheAnswerYoureLookingForOurSupportTeamIsHereToHelp')}</p>
             <ContactButton onClick={() => navigate('/contact')}>
-              Contact Support
+              {t('landing:fAQPage.contactSupport')}
             </ContactButton>
           </ContactSection>
         </ContentSection>

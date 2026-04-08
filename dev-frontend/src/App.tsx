@@ -1,4 +1,5 @@
 import React, { Suspense } from 'react';
+import './i18n';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { OrderProvider } from './contexts/OrderContext';

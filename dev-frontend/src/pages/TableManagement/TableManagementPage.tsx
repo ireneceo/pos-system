@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   background: #FAFBFC;
@@ -260,6 +261,7 @@ interface Table {
 }
 
 const TableManagementPage: React.FC = () => {
+  const { t } = useTranslation('settings');
   const navigate = useNavigate();
   const [settings, setSettings] = useState({
     enableTableNumbers: true,
@@ -390,7 +392,7 @@ const TableManagementPage: React.FC = () => {
             <div class="qr-container">
               <canvas id="qr-print"></canvas>
             </div>
-            <p>Scan to order</p>
+            <p>{t('settings:tableManagementPage.scanToOrder')}</p>
           </body>
         </html>
       `);
@@ -411,11 +413,10 @@ const TableManagementPage: React.FC = () => {
       printWindow.print();
     }
   };
-  
   return (
     <Container>
       <Header>
-        <Title>Table Management</Title>
+        <Title>{t('settings:tableManagementPage.tableManagement')}</Title>
         <BackButton onClick={() => navigate('/pos/settings')}>
           ← Back to Settings
         </BackButton>
@@ -423,7 +424,7 @@ const TableManagementPage: React.FC = () => {
       
       <Content>
         <SettingsCard>
-          <SectionTitle>Table Settings</SectionTitle>
+          <SectionTitle>{t('settings:tableManagementPage.tableSettings')}</SectionTitle>
           
           <FormGroup>
             <CheckboxLabel>
@@ -434,7 +435,7 @@ const TableManagementPage: React.FC = () => {
               />
               Enable Table Numbers
             </CheckboxLabel>
-            <HelpText>Allow customers to select table numbers when ordering</HelpText>
+            <HelpText>{t('settings:tableManagementPage.allowCustomersToSelectTableNumbersWhenOrdering')}</HelpText>
           </FormGroup>
           
           <FormGroup>
@@ -447,22 +448,22 @@ const TableManagementPage: React.FC = () => {
               />
               Table Number Required
             </CheckboxLabel>
-            <HelpText>Make table number selection mandatory for dine-in orders</HelpText>
+            <HelpText>{t('settings:tableManagementPage.makeTableNumberSelectionMandatoryForDineinOrders')}</HelpText>
           </FormGroup>
           
           <FormGroup>
-            <Label>Table Prefix</Label>
+            <Label>{t('settings:tableManagementPage.tablePrefix')}</Label>
             <Input
               type="text"
               value={settings.tablePrefix}
               onChange={(e) => setSettings({...settings, tablePrefix: e.target.value})}
               placeholder="e.g., T, TABLE"
             />
-            <HelpText>Prefix for table numbers (e.g., T001, TABLE001)</HelpText>
+            <HelpText>{t('settings:tableManagementPage.prefixForTableNumbersEgT001Table001')}</HelpText>
           </FormGroup>
           
           <FormGroup>
-            <Label>Number of Tables</Label>
+            <Label>{t('settings:tableManagementPage.numberOfTables')}</Label>
             <Input
               type="number"
               value={settings.totalTables}
@@ -473,14 +474,14 @@ const TableManagementPage: React.FC = () => {
           </FormGroup>
           
           <FormGroup>
-            <Label>QR Code Base URL</Label>
+            <Label>{t('settings:tableManagementPage.qrCodeBaseUrl')}</Label>
             <Input
               type="text"
               value={settings.qrCodeBaseUrl}
               onChange={(e) => setSettings({...settings, qrCodeBaseUrl: e.target.value})}
               placeholder="https://yourdomain.com"
             />
-            <HelpText>Base URL for QR codes (usually your domain)</HelpText>
+            <HelpText>{t('settings:tableManagementPage.baseUrlForQrCodesUsuallyYourDomain')}</HelpText>
           </FormGroup>
           
           <SaveButton onClick={handleSaveSettings}>
@@ -489,7 +490,7 @@ const TableManagementPage: React.FC = () => {
         </SettingsCard>
         
         <TablesCard>
-          <SectionTitle>Table QR Codes</SectionTitle>
+          <SectionTitle>{t('settings:tableManagementPage.tableQrCodes')}</SectionTitle>
           
           <TablesGrid>
             {tables.map(table => {

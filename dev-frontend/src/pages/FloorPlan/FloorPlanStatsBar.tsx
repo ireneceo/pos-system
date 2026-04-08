@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { FloorTable, TableStatus, TableStatusInfo, STATUS_COLORS, STATUS_LABELS } from './types';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 interface FloorPlanStatsBarProps {
   tables: FloorTable[];
@@ -96,6 +97,7 @@ interface OrderStats {
 }
 
 const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStatuses, currency, restaurantId }) => {
+  const { t } = useTranslation('floorplan');
   const totalTables = tables.length;
   const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
   const [threshold, setThreshold] = useState(20);
@@ -209,7 +211,9 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
     loadThreshold();
     fetchStats();
     const interval = setInterval(fetchStats, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+  // useTranslation moved to component level
+
+  return () => clearInterval(interval);
   }, [restaurantId, threshold]);
 
   const handleThresholdChange = (value: string) => {
@@ -261,9 +265,9 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
       {orderStats && (
         <>
           <Divider />
-          <StatItem>Sales <span>{sym}{orderStats.totalSales.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
-          <StatItem>Avg <span>{sym}{orderStats.avgAmount.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
-          <StatItem>Max <span>{sym}{orderStats.maxAmount.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
+          <StatItem>{t('floorplan:floorPlanStatsBar.sales')}<span>{sym}{orderStats.totalSales.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
+          <StatItem>{t('floorplan:floorPlanStatsBar.avg')}<span>{sym}{orderStats.avgAmount.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
+          <StatItem>{t('floorplan:floorPlanStatsBar.max')}<span>{sym}{orderStats.maxAmount.toLocaleString(undefined, { minimumFractionDigits: currency === 'KRW' ? 0 : 2 })}</span></StatItem>
           <StatItem>
             ≥{sym}
             <ThresholdInput
@@ -280,9 +284,9 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
           {orderStats.avgServeTime > 0 && (
             <>
               <Divider />
-              <StatItem>Avg Serve <span>{orderStats.avgServeTime}m</span></StatItem>
-              <StatItem>Max <span>{orderStats.maxServeTime}m</span></StatItem>
-              <StatItem>Min <span>{orderStats.minServeTime}m</span></StatItem>
+              <StatItem>{t('floorplan:floorPlanStatsBar.avgServe')}<span>{orderStats.avgServeTime}m</span></StatItem>
+              <StatItem>{t('floorplan:floorPlanStatsBar.max')}<span>{orderStats.maxServeTime}m</span></StatItem>
+              <StatItem>{t('floorplan:floorPlanStatsBar.min')}<span>{orderStats.minServeTime}m</span></StatItem>
             </>
           )}
         </>

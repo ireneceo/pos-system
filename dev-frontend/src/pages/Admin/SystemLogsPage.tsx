@@ -7,6 +7,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/S
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import { getActionGuide } from '../../utils/logActionGuides';
+import { useTranslation } from 'react-i18next';
 
 interface SystemLog {
   id: string;
@@ -608,6 +609,7 @@ const transformLog = (log: any): SystemLog => ({
 });
 
 const SystemLogsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [activeTab, setActiveTab] = useState<ActiveTab>('logs');
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -701,7 +703,9 @@ const SystemLogsPage: React.FC = () => {
   useEffect(() => {
     if (checkNowCooldown <= 0) return;
     const timer = setTimeout(() => setCheckNowCooldown(prev => prev - 1), 1000);
-    return () => clearTimeout(timer);
+  // useTranslation moved to component level
+
+  return () => clearTimeout(timer);
   }, [checkNowCooldown]);
 
   useEffect(() => {
@@ -875,7 +879,7 @@ const SystemLogsPage: React.FC = () => {
 
   const renderHealthTab = () => {
     if (healthLoading && !healthData) {
-      return <NoDataMessage>Loading server health data...</NoDataMessage>;
+      return <NoDataMessage>{'Loading server health data...'}</NoDataMessage>;
     }
 
     if (!healthData || !healthData.current) {
@@ -913,17 +917,17 @@ const SystemLogsPage: React.FC = () => {
 
         <HealthGrid>
           <HealthCard status={cpuStatus}>
-            <HealthCardTitle>CPU Usage</HealthCardTitle>
+            <HealthCardTitle>{'CPU Usage'}</HealthCardTitle>
             <HealthCardValue status={cpuStatus}>{current.cpu.usage}%</HealthCardValue>
-            <HealthCardSub>Production Server</HealthCardSub>
+            <HealthCardSub>{'Production Server'}</HealthCardSub>
           </HealthCard>
           <HealthCard status={memStatus}>
-            <HealthCardTitle>Memory Usage</HealthCardTitle>
+            <HealthCardTitle>{'Memory Usage'}</HealthCardTitle>
             <HealthCardValue status={memStatus}>{current.memory.usagePercent}%</HealthCardValue>
             <HealthCardSub>{current.memory.used}MB / {current.memory.total}MB</HealthCardSub>
           </HealthCard>
           <HealthCard status={diskStatus}>
-            <HealthCardTitle>Disk Usage</HealthCardTitle>
+            <HealthCardTitle>{'Disk Usage'}</HealthCardTitle>
             <HealthCardValue status={diskStatus}>{current.disk.usagePercent}%</HealthCardValue>
             <HealthCardSub>{current.disk.used} / {current.disk.total}</HealthCardSub>
           </HealthCard>
@@ -931,15 +935,15 @@ const SystemLogsPage: React.FC = () => {
 
         {/* Services Status */}
         <HealthSection>
-          <HealthSectionTitle>Services</HealthSectionTitle>
+          <HealthSectionTitle>{'Services'}</HealthSectionTitle>
           <ServiceRow>
-            <ServiceName>Nginx (Web Server)</ServiceName>
+            <ServiceName>{'Nginx (Web Server)'}</ServiceName>
             <ServiceBadge status={getServiceStatus(current.services.nginx)}>
               {current.services.nginx === 'active' ? 'Active' : current.services.nginx}
             </ServiceBadge>
           </ServiceRow>
           <ServiceRow>
-            <ServiceName>MySQL (Database)</ServiceName>
+            <ServiceName>{'MySQL (Database)'}</ServiceName>
             <ServiceBadge status={getServiceStatus(current.services.mysql)}>
               {current.services.mysql === 'active' ? 'Active' : current.services.mysql}
             </ServiceBadge>
@@ -961,17 +965,17 @@ const SystemLogsPage: React.FC = () => {
 
         {/* Server Info */}
         <HealthSection>
-          <HealthSectionTitle>Server Info</HealthSectionTitle>
+          <HealthSectionTitle>{'Server Info'}</HealthSectionTitle>
           <ServiceRow>
-            <ServiceName>Server</ServiceName>
+            <ServiceName>{'Server'}</ServiceName>
             <span style={{ fontSize: 14, color: '#374151' }}>{current.ip} (production)</span>
           </ServiceRow>
           <ServiceRow>
-            <ServiceName>Uptime</ServiceName>
+            <ServiceName>{'Uptime'}</ServiceName>
             <span style={{ fontSize: 14, color: '#374151' }}>{formatUptime(current.serverUptime)}</span>
           </ServiceRow>
           <ServiceRow>
-            <ServiceName>Pending Security Updates</ServiceName>
+            <ServiceName>{'Pending Security Updates'}</ServiceName>
             <span style={{ fontSize: 14, fontWeight: 600, color: current.securityUpdates > 10 ? '#D97706' : '#374151' }}>
               {current.securityUpdates}
             </span>
@@ -983,7 +987,7 @@ const SystemLogsPage: React.FC = () => {
           <HealthSection>
             <HealthSectionTitle>24h Resource Trend ({trend.length} data points)</HealthSectionTitle>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>CPU</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{'CPU'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`cpu-${idx}`}>
                   <TrendTime>{new Date(point.timestamp).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })}</TrendTime>
@@ -995,7 +999,7 @@ const SystemLogsPage: React.FC = () => {
               ))}
             </div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Memory</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{'Memory'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`mem-${idx}`}>
                   <TrendTime>{new Date(point.timestamp).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })}</TrendTime>
@@ -1007,7 +1011,7 @@ const SystemLogsPage: React.FC = () => {
               ))}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Disk</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{'Disk'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`disk-${idx}`}>
                   <TrendTime>{new Date(point.timestamp).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })}</TrendTime>
@@ -1028,12 +1032,12 @@ const SystemLogsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>System Logs</Title>
+          <Title>{'System Logs'}</Title>
           <ActionSection>
             {activeTab === 'logs' && (
               <>
-                <BaseButton variant="secondary" onClick={handleExportLogs}>Export Logs</BaseButton>
-                <BaseButton variant="danger" onClick={handleClearLogs}>Clear Logs</BaseButton>
+                <BaseButton variant="secondary" onClick={handleExportLogs}>{'Export Logs'}</BaseButton>
+                <BaseButton variant="danger" onClick={handleClearLogs}>{'Clear Logs'}</BaseButton>
               </>
             )}
           </ActionSection>
@@ -1054,54 +1058,54 @@ const SystemLogsPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalLogs}</StatValue>
-            <StatLabel>Total Logs (24h)</StatLabel>
+            <StatLabel>{'Total Logs (24h)'}</StatLabel>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{errorLogs}</StatValue>
-            <StatLabel>Errors & Critical</StatLabel>
+            <StatLabel>{'Errors & Critical'}</StatLabel>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{warningLogs}</StatValue>
-            <StatLabel>Warnings</StatLabel>
+            <StatLabel>{'Warnings'}</StatLabel>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{recentLogs}</StatValue>
-            <StatLabel>Recent (1h)</StatLabel>
+            <StatLabel>{'Recent (1h)'}</StatLabel>
           </StatCard>
         </StatsGrid>
 
         <FilterBar>
           <FilterSelect value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)}>
-            <option value="all">All Levels</option>
-            <option value="critical">Critical</option>
-            <option value="error">Error</option>
-            <option value="warning">Warning</option>
-            <option value="info">Info</option>
-            <option value="debug">Debug</option>
+            <option value="all">{'All Levels'}</option>
+            <option value="critical">{'Critical'}</option>
+            <option value="error">{'Error'}</option>
+            <option value="warning">{'Warning'}</option>
+            <option value="info">{'Info'}</option>
+            <option value="debug">{'Debug'}</option>
           </FilterSelect>
           <FilterSelect value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-            <option value="all">All Categories</option>
-            <option value="system">System</option>
-            <option value="database">Database</option>
-            <option value="auth">Authentication</option>
-            <option value="payment">Payment</option>
-            <option value="api">API</option>
-            <option value="security">Security</option>
-            <option value="backup">Backup</option>
+            <option value="all">{'All Categories'}</option>
+            <option value="system">{'System'}</option>
+            <option value="database">{'Database'}</option>
+            <option value="auth">{'Authentication'}</option>
+            <option value="payment">{'Payment'}</option>
+            <option value="api">{'API'}</option>
+            <option value="security">{'Security'}</option>
+            <option value="backup">{'Backup'}</option>
           </FilterSelect>
           <FilterSelect value={filterService} onChange={(e) => setFilterService(e.target.value)}>
-            <option value="all">All Services</option>
-            <option value="server-health">Server Health</option>
-            <option value="invoice-scheduler">Invoice Scheduler</option>
-            <option value="subscription-scheduler">Subscription Scheduler</option>
-            <option value="stripe">Stripe</option>
-            <option value="stripe-webhook">Stripe Webhook</option>
-            <option value="order-service">Order Service</option>
-            <option value="auth-service">Auth Service</option>
-            <option value="pos-api">POS API</option>
-            <option value="payment-service">Payment Service</option>
-            <option value="backup-service">Backup Service</option>
-            <option value="kitchen-display-service">Kitchen Display</option>
+            <option value="all">{'All Services'}</option>
+            <option value="server-health">{'Server Health'}</option>
+            <option value="invoice-scheduler">{'Invoice Scheduler'}</option>
+            <option value="subscription-scheduler">{'Subscription Scheduler'}</option>
+            <option value="stripe">{'Stripe'}</option>
+            <option value="stripe-webhook">{'Stripe Webhook'}</option>
+            <option value="order-service">{'Order Service'}</option>
+            <option value="auth-service">{'Auth Service'}</option>
+            <option value="pos-api">{'POS API'}</option>
+            <option value="payment-service">{'Payment Service'}</option>
+            <option value="backup-service">{'Backup Service'}</option>
+            <option value="kitchen-display-service">{'Kitchen Display'}</option>
           </FilterSelect>
           <DateInput
             type="date"
@@ -1178,9 +1182,9 @@ const SystemLogsPage: React.FC = () => {
                   if (!guide) return null;
                   return (
                     <ActionGuidePanel>
-                      <GuideTitle>Action Guide</GuideTitle>
+                      <GuideTitle>{'Action Guide'}</GuideTitle>
                       <GuideWhatHappened>{guide.whatHappened}</GuideWhatHappened>
-                      <GuideTitle style={{ fontSize: '11px', marginBottom: '6px' }}>What to do</GuideTitle>
+                      <GuideTitle style={{ fontSize: '11px', marginBottom: '6px' }}>{'What to do'}</GuideTitle>
                       <GuideStepList>
                         {guide.whatToDo.map((step, i) => <li key={i}>{step}</li>)}
                       </GuideStepList>
@@ -1211,22 +1215,22 @@ const SystemLogsPage: React.FC = () => {
             <ExportOption onClick={() => confirmExport('csv')}>
               <ExportIcon>📊</ExportIcon>
               <ExportInfo>
-                <ExportTitle>CSV Format</ExportTitle>
-                <ExportDesc>Comma-separated values for spreadsheet analysis</ExportDesc>
+                <ExportTitle>{'CSV Format'}</ExportTitle>
+                <ExportDesc>{'Comma-separated values for spreadsheet analysis'}</ExportDesc>
               </ExportInfo>
             </ExportOption>
             <ExportOption onClick={() => confirmExport('json')}>
               <ExportIcon>📄</ExportIcon>
               <ExportInfo>
-                <ExportTitle>JSON Format</ExportTitle>
-                <ExportDesc>Structured data with full details</ExportDesc>
+                <ExportTitle>{'JSON Format'}</ExportTitle>
+                <ExportDesc>{'Structured data with full details'}</ExportDesc>
               </ExportInfo>
             </ExportOption>
             <ExportOption onClick={() => confirmExport('txt')}>
               <ExportIcon>📝</ExportIcon>
               <ExportInfo>
-                <ExportTitle>Text Format</ExportTitle>
-                <ExportDesc>Human-readable log format</ExportDesc>
+                <ExportTitle>{'Text Format'}</ExportTitle>
+                <ExportDesc>{'Human-readable log format'}</ExportDesc>
               </ExportInfo>
             </ExportOption>
           </ExportOptions>

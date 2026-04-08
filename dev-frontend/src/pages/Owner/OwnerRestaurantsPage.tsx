@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend , Modal as CommonModal } from '../../components/UI';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 interface Restaurant {
   id: string;
@@ -483,6 +484,7 @@ const ItemDetails = styled.div`
 `;
 
 const OwnerRestaurantsPage: React.FC = () => {
+  const { t } = useTranslation('owner');
   const { user } = useAuth();
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -859,10 +861,10 @@ const OwnerRestaurantsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Restaurants</Title>
+          <Title>{t('owner:ownerRestaurantsPage.restaurants')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportData}>Export Data</Button>
-            <Button variant="primary" onClick={handleAddRestaurant}>Add Restaurant</Button>
+            <Button variant="secondary" onClick={handleExportData}>{t('owner:ownerRestaurantsPage.exportData')}</Button>
+            <Button variant="primary" onClick={handleAddRestaurant}>{t('owner:ownerRestaurantsPage.addRestaurant')}</Button>
           </ActionSection>
         </Header>
 
@@ -870,28 +872,28 @@ const OwnerRestaurantsPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{totalRestaurants}</StatValue>
-              <StatLabel>Total Restaurants</StatLabel>
-              <StatTrend trend="up">Owned restaurants</StatTrend>
+              <StatLabel>{t('owner:ownerRestaurantsPage.totalRestaurants')}</StatLabel>
+              <StatTrend trend="up">{t('owner:ownerRestaurantsPage.ownedRestaurants')}</StatTrend>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{activeRestaurants}</StatValue>
-              <StatLabel>Active Restaurants</StatLabel>
+              <StatLabel>{t('owner:ownerRestaurantsPage.activeRestaurants')}</StatLabel>
               <StatTrend trend="up">{totalRestaurants > 0 ? Math.round((activeRestaurants/totalRestaurants)*100) : 0}% operational</StatTrend>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>RM {totalSales.toFixed(2)}</StatValue>
-              <StatLabel>Today's Total Sales</StatLabel>
-              <StatTrend trend="neutral">Across all restaurants</StatTrend>
+              <StatLabel>{t('owner:ownerRestaurantsPage.todaysTotalSales')}</StatLabel>
+              <StatTrend trend="neutral">{t('owner:ownerRestaurantsPage.acrossAllRestaurants')}</StatTrend>
             </StatCard>
             <StatCard color="#DC2626">
               <StatValue>{totalOrders}</StatValue>
-              <StatLabel>Today's Orders</StatLabel>
-              <StatTrend trend="neutral">Across all restaurants</StatTrend>
+              <StatLabel>{t('owner:ownerRestaurantsPage.todaysOrders')}</StatLabel>
+              <StatTrend trend="neutral">{t('owner:ownerRestaurantsPage.acrossAllRestaurants')}</StatTrend>
             </StatCard>
             <StatCard color="#D97706">
               <StatValue>{totalStaff}</StatValue>
-              <StatLabel>Total Staff</StatLabel>
-              <StatTrend trend="neutral">All restaurants</StatTrend>
+              <StatLabel>{t('owner:ownerRestaurantsPage.totalStaff')}</StatLabel>
+              <StatTrend trend="neutral">{t('owner:ownerRestaurantsPage.allRestaurants')}</StatTrend>
             </StatCard>
           </StatsGrid>
 
@@ -902,13 +904,13 @@ const OwnerRestaurantsPage: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <PageFilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="trial">Trial</option>
-              <option value="inactive">Inactive</option>
-              <option value="expired">Expired</option>
-              <option value="suspended">Suspended</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="all">{t('owner:ownerRestaurantsPage.allStatus')}</option>
+              <option value="active">{t('owner:ownerRestaurantsPage.active')}</option>
+              <option value="trial">{t('owner:ownerRestaurantsPage.trial')}</option>
+              <option value="inactive">{t('owner:ownerRestaurantsPage.inactive')}</option>
+              <option value="expired">{t('owner:ownerRestaurantsPage.expired')}</option>
+              <option value="suspended">{t('owner:ownerRestaurantsPage.suspended')}</option>
+              <option value="cancelled">{t('owner:ownerRestaurantsPage.cancelled')}</option>
             </PageFilterSelect>
           </PageFilterWrapper>
 
@@ -952,22 +954,22 @@ const OwnerRestaurantsPage: React.FC = () => {
                   <MetricsGrid>
                     <Metric>
                       <MetricValue>RM {restaurant.todaySales.toFixed(2)}</MetricValue>
-                      <MetricLabel>Today's Sales</MetricLabel>
+                      <MetricLabel>{t('owner:ownerRestaurantsPage.todaysSales')}</MetricLabel>
                     </Metric>
                     <Metric>
                       <MetricValue>{restaurant.todayOrders}</MetricValue>
-                      <MetricLabel>Orders</MetricLabel>
+                      <MetricLabel>{t('owner:ownerRestaurantsPage.orders')}</MetricLabel>
                     </Metric>
                     <Metric>
                       <MetricValue>{restaurant.staffCount}</MetricValue>
-                      <MetricLabel>Staff</MetricLabel>
+                      <MetricLabel>{t('owner:ownerRestaurantsPage.staff')}</MetricLabel>
                     </Metric>
                   </MetricsGrid>
 
                   <ActionButtons>
-                    <ActionButton onClick={(e) => handleEditRestaurant(e, restaurant)}>Edit</ActionButton>
-                    <ActionButton onClick={(e) => handleViewReports(e, restaurant)}>View Reports</ActionButton>
-                    <ActionButton onClick={(e) => handleDeleteRestaurant(e, restaurant)} style={{ color: '#DC2626', borderColor: '#FEE2E2' }}>Remove</ActionButton>
+                    <ActionButton onClick={(e) => handleEditRestaurant(e, restaurant)}>{t('owner:ownerRestaurantsPage.edit')}</ActionButton>
+                    <ActionButton onClick={(e) => handleViewReports(e, restaurant)}>{t('owner:ownerRestaurantsPage.viewReports')}</ActionButton>
+                    <ActionButton onClick={(e) => handleDeleteRestaurant(e, restaurant)} style={{ color: '#DC2626', borderColor: '#FEE2E2' }}>{t('owner:ownerRestaurantsPage.remove')}</ActionButton>
                   </ActionButtons>
                 </RestaurantCard>
               ))}
@@ -978,7 +980,7 @@ const OwnerRestaurantsPage: React.FC = () => {
 
       {/* Add Restaurant Modal */}
       {showAddModal && (
-                <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add New Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowAddModal(false); setFormError(''); }}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitNewRestaurant}>Add Restaurant</ThemedButton></>}>
+                <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add New Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowAddModal(false); setFormError(''); }}>{t('owner:ownerRestaurantsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitNewRestaurant}>{t('owner:ownerRestaurantsPage.addRestaurant')}</ThemedButton></>}>
 
               <FormGrid>
                 <FormGroup style={{gridColumn: '1 / -1'}}>
@@ -1006,7 +1008,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                       <input type="radio" name="adminActionOwner" checked={adminAction === 'create'}
                         onChange={() => { setAdminAction('create'); setSelectedAdmin(null); }}
                         style={{ accentColor: '#635BFF' }} />
-                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Create New Account</span>
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('owner:ownerRestaurantsPage.createNewAccount')}</span>
                     </label>
                     <label style={{
                       display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
@@ -1017,7 +1019,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                       <input type="radio" name="adminActionOwner" checked={adminAction === 'assign'}
                         onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', password: '', phone: '' }); }}
                         style={{ accentColor: '#635BFF' }} />
-                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Select Existing User</span>
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('owner:ownerRestaurantsPage.selectExistingUser')}</span>
                     </label>
                   </div>
                 </div>
@@ -1049,7 +1051,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                         onChange={(e) => setNewAdminData({...newAdminData, password: e.target.value})} />
                     </FormGroup>
                     <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Admin Phone</FormLabel>
+                      <FormLabel>{t('owner:ownerRestaurantsPage.adminPhone')}</FormLabel>
                       <PhoneInput
                         value={newAdminData.phone}
                         onChange={(value) => setNewAdminData({...newAdminData, phone: value})}
@@ -1059,7 +1061,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                   </>
                 ) : (
                   <FormGroup style={{ position: 'relative', gridColumn: '1 / -1', zIndex: 100 }}>
-                    <FormLabel>Search and select an existing user</FormLabel>
+                    <FormLabel>{t('owner:ownerRestaurantsPage.searchAndSelectAnExistingUser')}</FormLabel>
                     <DropdownContainer>
                       <DropdownInput type="text" placeholder="Type to search by name, email, or username..."
                         value={adminSearchQuery}
@@ -1147,42 +1149,42 @@ const OwnerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>City</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.city')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., Kuala Lumpur"
                     value={newRestaurant.city}
                     onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>State / Province</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.stateProvince')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., Wilayah Persekutuan"
                     value={newRestaurant.state}
                     onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Postal Code</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.postalCode')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., 50000"
                     value={newRestaurant.postalCode}
                     onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Cuisine Type</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.cuisineType')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., Malaysian, Chinese, Italian"
                     value={newRestaurant.cuisine}
                     onChange={(e) => setNewRestaurant({...newRestaurant, cuisine: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Business Registration No.</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.businessRegistrationNo')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., 202401012345"
                     value={newRestaurant.businessRegistration}
                     onChange={(e) => setNewRestaurant({...newRestaurant, businessRegistration: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Tax ID / GST No.</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.taxIdGstNo')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., MY1234567890"
                     value={newRestaurant.taxId}
                     onChange={(e) => setNewRestaurant({...newRestaurant, taxId: e.target.value})} />
@@ -1194,7 +1196,7 @@ const OwnerRestaurantsPage: React.FC = () => {
 
       {/* Edit Restaurant Modal */}
       {showEditModal && (
-                <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowEditModal(false); setFormError(''); }}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateRestaurant}>Update Restaurant</ThemedButton></>}>
+                <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowEditModal(false); setFormError(''); }}>{t('owner:ownerRestaurantsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateRestaurant}>{t('owner:ownerRestaurantsPage.updateRestaurant')}</ThemedButton></>}>
 
               <FormGrid>
                 <FormGroup style={{gridColumn: '1 / -1'}}>
@@ -1238,42 +1240,42 @@ const OwnerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>City</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.city')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., Kuala Lumpur"
                     value={newRestaurant.city}
                     onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>State / Province</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.stateProvince')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., Wilayah Persekutuan"
                     value={newRestaurant.state}
                     onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Postal Code</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.postalCode')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., 50000"
                     value={newRestaurant.postalCode}
                     onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Cuisine Type</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.cuisineType')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., Malaysian, Chinese, Italian"
                     value={newRestaurant.cuisine}
                     onChange={(e) => setNewRestaurant({...newRestaurant, cuisine: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Business Registration No.</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.businessRegistrationNo')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., 202401012345"
                     value={newRestaurant.businessRegistration}
                     onChange={(e) => setNewRestaurant({...newRestaurant, businessRegistration: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Tax ID / GST No.</FormLabel>
+                  <FormLabel>{t('owner:ownerRestaurantsPage.taxIdGstNo')}</FormLabel>
                   <FormInput type="text" placeholder="e.g., MY1234567890"
                     value={newRestaurant.taxId}
                     onChange={(e) => setNewRestaurant({...newRestaurant, taxId: e.target.value})} />
@@ -1285,7 +1287,7 @@ const OwnerRestaurantsPage: React.FC = () => {
 
       {/* Remove Confirmation Modal */}
       {showDeleteModal && restaurantToDelete && (
-                <CommonModal isOpen={true} onClose={() => setShowDeleteModal(false)} title="Remove Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => setShowDeleteModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={confirmDeleteRestaurant} style={{ background: '#EF4444' }} > Remove Restaurant </ThemedButton></>}>
+                <CommonModal isOpen={true} onClose={() => setShowDeleteModal(false)} title="Remove Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => setShowDeleteModal(false)}>{t('owner:ownerRestaurantsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={confirmDeleteRestaurant} style={{ background: '#EF4444' }} > Remove Restaurant </ThemedButton></>}>
 
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <div style={{

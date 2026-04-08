@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { FloorTable, TableStatusInfo } from './types';
 import { formatCurrency } from '../../utils/currency';
 import OptionModal from '../../components/POSTerminal/OptionModal';
+import { useTranslation } from 'react-i18next';
 
 interface OrderOverlayProps {
   isOpen: boolean;
@@ -601,6 +602,7 @@ const OrderOverlay: React.FC<OrderOverlayProps> = ({
   currency,
   onOrderComplete
 }) => {
+  const { t } = useTranslation('floorplan');
   const { categories, menuItems, getItemsByCategory } = useMenu();
   const { operationSettings } = useStore();
   const { addOrder } = useOrders();
@@ -852,7 +854,7 @@ const OrderOverlay: React.FC<OrderOverlayProps> = ({
                     $soldOut={item.soldOut}
                     onClick={() => handleMenuItemClick(item)}
                   >
-                    {(item as any).is_set_menu && <SetBadge>SET</SetBadge>}
+                    {(item as any).is_set_menu && <SetBadge>{'SET'}</SetBadge>}
                     <MenuImage $hasImage={!!item.image}>
                       {item.image
                         ? <img src={item.image} alt={item.name} />
@@ -865,11 +867,11 @@ const OrderOverlay: React.FC<OrderOverlayProps> = ({
                         + Add
                       </OptionButton>
                     </MenuItemActions>
-                    {item.soldOut && <SoldOutBadge>SOLD OUT</SoldOutBadge>}
+                    {item.soldOut && <SoldOutBadge>{'SOLD OUT'}</SoldOutBadge>}
                   </MenuCard>
                 ))}
                 {filteredItems.length === 0 && (
-                  <EmptyMenu>No items found</EmptyMenu>
+                  <EmptyMenu>{'No items found'}</EmptyMenu>
                 )}
               </MenuGrid>
             </MenuSection>
@@ -930,14 +932,14 @@ const OrderOverlay: React.FC<OrderOverlayProps> = ({
               ) : (
                 <EmptyOrder>
                   <span style={{ fontSize: '36px', opacity: 0.3 }}>&#x1F4CB;</span>
-                  <span>No items in order</span>
-                  <span style={{ fontSize: '12px' }}>Select menu items to start</span>
+                  <span>{'No items in order'}</span>
+                  <span style={{ fontSize: '12px' }}>{'Select menu items to start'}</span>
                 </EmptyOrder>
               )}
 
               <OrderSummary>
                 <SummaryRow>
-                  <SummaryLabel>Subtotal</SummaryLabel>
+                  <SummaryLabel>{'Subtotal'}</SummaryLabel>
                   <SummaryValue>{formatCurrency(cartCalc.subtotal, currency)}</SummaryValue>
                 </SummaryRow>
                 {cartCalc.tax > 0 && (
@@ -953,7 +955,7 @@ const OrderOverlay: React.FC<OrderOverlayProps> = ({
                   </SummaryRow>
                 )}
                 <TotalRow>
-                  <SummaryLabel>Total</SummaryLabel>
+                  <SummaryLabel>{'Total'}</SummaryLabel>
                   <SummaryValue>{formatCurrency(cartCalc.total, currency)}</SummaryValue>
                 </TotalRow>
               </OrderSummary>

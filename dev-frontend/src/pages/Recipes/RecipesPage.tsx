@@ -20,6 +20,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface Recipe {
   id: number;
@@ -388,6 +389,7 @@ const ButtonGroup = styled.div`
 `;
 
 const RecipesPage: React.FC = () => {
+  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const { defaultCurrency, supportedCurrencies } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('');
@@ -799,7 +801,7 @@ const RecipesPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Recipes</Title>
+          <Title>{'Recipes'}</Title>
           <ActionSection>
             {canCreateRecipe && (
               <ThemedButton
@@ -815,17 +817,17 @@ const RecipesPage: React.FC = () => {
         {/* Stats */}
         <StatsGrid>
           <StatCard>
-            <StatLabel>Total Recipes</StatLabel>
+            <StatLabel>{'Total Recipes'}</StatLabel>
             <StatValue>{recipes.length}</StatValue>
             <StatDescription>{activeRecipes} active</StatDescription>
           </StatCard>
           <StatCard>
-            <StatLabel>Average Cost</StatLabel>
+            <StatLabel>{'Average Cost'}</StatLabel>
             <StatValue>{formatCurrency(avgCost, selectedCurrency || 'MYR')}</StatValue>
             <StatDescription>per recipe</StatDescription>
           </StatCard>
           <StatCard>
-            <StatLabel>Total Value</StatLabel>
+            <StatLabel>{'Total Value'}</StatLabel>
             <StatValue>{formatCurrency(totalCost, selectedCurrency || 'MYR')}</StatValue>
             <StatDescription>all recipes</StatDescription>
           </StatCard>
@@ -879,11 +881,11 @@ const RecipesPage: React.FC = () => {
 
           {loading ? (
             <EmptyState>
-              <EmptyTitle>Loading...</EmptyTitle>
+              <EmptyTitle>{'Loading...'}</EmptyTitle>
             </EmptyState>
           ) : filteredRecipes.length === 0 ? (
             <EmptyState>
-              <EmptyTitle>No recipes found</EmptyTitle>
+              <EmptyTitle>{'No recipes found'}</EmptyTitle>
               <EmptyDescription>
                 {searchTerm || selectedCategory !== 'all'
                   ? 'Try adjusting your filters'
@@ -925,11 +927,11 @@ const RecipesPage: React.FC = () => {
 
                   <RecipeCosts>
                     <CostItem>
-                      <CostLabel>Cost</CostLabel>
+                      <CostLabel>{'Cost'}</CostLabel>
                       <CostValue>{formatCurrency(recipe.total_ingredient_cost || 0, selectedCurrency || 'MYR')}</CostValue>
                     </CostItem>
                     <CostItem>
-                      <CostLabel>Suggested</CostLabel>
+                      <CostLabel>{'Suggested'}</CostLabel>
                       <CostValue>{formatCurrency(recipe.suggested_price || 0, selectedCurrency || 'MYR')}</CostValue>
                     </CostItem>
                   </RecipeCosts>
@@ -1056,7 +1058,7 @@ const RecipesPage: React.FC = () => {
 
             <UIFormRow>
               <UIFormGroup>
-                <FormLabel>Emoji</FormLabel>
+                <FormLabel>{'Emoji'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.emoji}
@@ -1081,7 +1083,7 @@ const RecipesPage: React.FC = () => {
 
             <UIFormRow>
               <UIFormGroup>
-                <FormLabel>Prep Time (minutes)</FormLabel>
+                <FormLabel>{'Prep Time (minutes)'}</FormLabel>
                 <FormInput
                   type="number"
                   value={formData.prep_time}
@@ -1091,7 +1093,7 @@ const RecipesPage: React.FC = () => {
                 />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>Cook Time (minutes)</FormLabel>
+                <FormLabel>{'Cook Time (minutes)'}</FormLabel>
                 <FormInput
                   type="number"
                   value={formData.cook_time}
@@ -1103,7 +1105,7 @@ const RecipesPage: React.FC = () => {
             </UIFormRow>
 
             <UIFormGroup>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{'Description'}</FormLabel>
               <FormTextArea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1113,7 +1115,7 @@ const RecipesPage: React.FC = () => {
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Cooking Instructions</FormLabel>
+              <FormLabel>{'Cooking Instructions'}</FormLabel>
               <FormTextArea
                 value={formData.instructions}
                 onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
@@ -1125,19 +1127,19 @@ const RecipesPage: React.FC = () => {
 
             {/* Ingredients Section */}
             <div>
-              <SectionTitle>Ingredients</SectionTitle>
+              <SectionTitle>{'Ingredients'}</SectionTitle>
               <IngredientsList>
                 {recipeIngredients.map((ri, index) => (
                   <IngredientRow key={index}>
                     <UIFormGroup>
-                      <FormLabel>Ingredient</FormLabel>
+                      <FormLabel>{'Ingredient'}</FormLabel>
                       <FormSelect
                         value={ri.ingredient_id}
                         onChange={(e) => updateIngredient(index, 'ingredient_id', parseInt(e.target.value))}
                         required={!viewMode}
                         disabled={viewMode}
                       >
-                        <option value={0}>Select ingredient...</option>
+                        <option value={0}>{'Select ingredient...'}</option>
                         {ingredients.map(ing => (
                           <option key={ing.id} value={ing.id}>
                             {ing.name} ({formatCurrency(ing.unit_cost, selectedCurrency || 'MYR')}/{ing.unit})
@@ -1146,7 +1148,7 @@ const RecipesPage: React.FC = () => {
                       </FormSelect>
                     </UIFormGroup>
                     <UIFormGroup>
-                      <FormLabel>Quantity</FormLabel>
+                      <FormLabel>{'Quantity'}</FormLabel>
                       <FormInput
                         type="number"
                         step="0.01"
@@ -1158,7 +1160,7 @@ const RecipesPage: React.FC = () => {
                       />
                     </UIFormGroup>
                     <UIFormGroup>
-                      <FormLabel>Unit</FormLabel>
+                      <FormLabel>{'Unit'}</FormLabel>
                       <FormInput
                         type="text"
                         value={ri.unit}
@@ -1169,7 +1171,7 @@ const RecipesPage: React.FC = () => {
                       />
                     </UIFormGroup>
                     <UIFormGroup>
-                      <FormLabel>Notes</FormLabel>
+                      <FormLabel>{'Notes'}</FormLabel>
                       <FormInput
                         type="text"
                         value={ri.notes}
@@ -1195,7 +1197,7 @@ const RecipesPage: React.FC = () => {
 
               {recipeIngredients.length > 0 && (
                 <CostSummary>
-                  <CostSummaryLabel>Total Ingredient Cost</CostSummaryLabel>
+                  <CostSummaryLabel>{'Total Ingredient Cost'}</CostSummaryLabel>
                   <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency || 'MYR')}</CostSummaryValue>
                 </CostSummary>
               )}

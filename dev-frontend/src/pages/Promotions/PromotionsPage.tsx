@@ -7,6 +7,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import PageHeader from '../../components/Common/PageHeader';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 // 스타일 컴포넌트
 const CouponsContainer = styled.div`
@@ -409,6 +410,7 @@ interface CustomerOption {
 }
 
 const CouponsPage: React.FC = () => {
+  const { t } = useTranslation('menu');
   const { user } = useAuth();
   const { operationSettings } = useStore();
   const restaurantId = user?.restaurantId;
@@ -689,32 +691,32 @@ const CouponsPage: React.FC = () => {
     <>
       <CouponsContainer>
         <PageHeader title="Coupons">
-          <Button primary onClick={handleCreateCoupon}>Create Coupon</Button>
+          <Button primary onClick={handleCreateCoupon}>{'Create Coupon'}</Button>
         </PageHeader>
 
         <Content>
           <SectionCard>
-            <SectionTitle>Coupon List</SectionTitle>
+            <SectionTitle>{'Coupon List'}</SectionTitle>
 
             {loading ? (
-              <LoadingSpinner>Loading coupons...</LoadingSpinner>
+              <LoadingSpinner>{'Loading coupons...'}</LoadingSpinner>
             ) : error ? (
               <EmptyState>
                 <EmptyStateText>{error}</EmptyStateText>
-                <Button onClick={fetchCoupons}>Retry</Button>
+                <Button onClick={fetchCoupons}>{'Retry'}</Button>
               </EmptyState>
             ) : coupons.length > 0 ? (
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader>Code</TableHeader>
-                    <TableHeader>Name</TableHeader>
-                    <TableHeader>Discount</TableHeader>
-                    <TableHeader>Target</TableHeader>
-                    <TableHeader>Valid Until</TableHeader>
-                    <TableHeader>Usage</TableHeader>
-                    <TableHeader>Status</TableHeader>
-                    <TableHeader>Actions</TableHeader>
+                    <TableHeader>{'Code'}</TableHeader>
+                    <TableHeader>{'Name'}</TableHeader>
+                    <TableHeader>{'Discount'}</TableHeader>
+                    <TableHeader>{'Target'}</TableHeader>
+                    <TableHeader>{'Valid Until'}</TableHeader>
+                    <TableHeader>{'Usage'}</TableHeader>
+                    <TableHeader>{'Status'}</TableHeader>
+                    <TableHeader>{'Actions'}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -727,13 +729,13 @@ const CouponsPage: React.FC = () => {
                         <TableCell>{formatDiscount(coupon)}</TableCell>
                         <TableCell>
                           {coupon.target_type === 'all' ? (
-                            <TargetBadge>All</TargetBadge>
+                            <TargetBadge>{'All'}</TargetBadge>
                           ) : coupon.target_type === 'customers' ? (
                             <TargetBadge>{coupon.target_customer_ids?.length || 0} Customers</TargetBadge>
                           ) : coupon.target_type === 'tiers' ? (
                             <TargetBadge>{coupon.target_loyalty_tiers?.join(', ') || '-'}</TargetBadge>
                           ) : (
-                            <TargetBadge>All</TargetBadge>
+                            <TargetBadge>{'All'}</TargetBadge>
                           )}
                         </TableCell>
                         <TableCell>{formatDate(coupon.valid_until)}</TableCell>
@@ -768,8 +770,8 @@ const CouponsPage: React.FC = () => {
               </Table>
             ) : (
               <EmptyState>
-                <EmptyStateText>No coupons created yet</EmptyStateText>
-                <Button primary onClick={handleCreateCoupon}>Create Your First Coupon</Button>
+                <EmptyStateText>{'No coupons created yet'}</EmptyStateText>
+                <Button primary onClick={handleCreateCoupon}>{'Create Your First Coupon'}</Button>
               </EmptyState>
             )}
           </SectionCard>
@@ -777,7 +779,7 @@ const CouponsPage: React.FC = () => {
 
         {/* 쿠폰 생성/편집 모달 */}
         {showModal && (
-        <CommonModal isOpen={true} onClose={() => setShowModal(false)} title={editingCoupon ? 'Edit Coupon' : 'Create New Coupon'} footer={<><Button onClick={() => setShowModal(false)} disabled={saving}>Cancel</Button><Button primary onClick={handleSaveCoupon} disabled={saving}>{saving ? 'Saving...' : (editingCoupon ? 'Update Coupon' : 'Create Coupon')}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => setShowModal(false)} title={editingCoupon ? 'Edit Coupon' : 'Create New Coupon'} footer={<><Button onClick={() => setShowModal(false)} disabled={saving}>{'Cancel'}</Button><Button primary onClick={handleSaveCoupon} disabled={saving}>{saving ? 'Saving...' : (editingCoupon ? 'Update Coupon' : 'Create Coupon')}</Button></>}>
               <FormGroup>
                 <Label>Coupon Code *</Label>
                 <Input
@@ -789,7 +791,7 @@ const CouponsPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Name</Label>
+                <Label>{'Name'}</Label>
                 <Input
                   type="text"
                   value={couponForm.name}
@@ -800,13 +802,13 @@ const CouponsPage: React.FC = () => {
 
               <FormRow>
                 <FormGroup>
-                  <Label>Discount Type</Label>
+                  <Label>{'Discount Type'}</Label>
                   <Select
                     value={couponForm.type}
                     onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value as 'percentage' | 'fixed' })}
                   >
                     <option value="percentage">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount (RM)</option>
+                    <option value="fixed">{'Fixed Amount (RM)'}</option>
                   </Select>
                 </FormGroup>
 
@@ -825,7 +827,7 @@ const CouponsPage: React.FC = () => {
 
               <FormRow>
                 <FormGroup>
-                  <Label>Min Order Amount</Label>
+                  <Label>{'Min Order Amount'}</Label>
                   <Input
                     type="number"
                     value={couponForm.min_order}
@@ -852,7 +854,7 @@ const CouponsPage: React.FC = () => {
 
               <FormRow>
                 <FormGroup>
-                  <Label>Valid From</Label>
+                  <Label>{'Valid From'}</Label>
                   <Input
                     type="date"
                     value={couponForm.valid_from}
@@ -861,7 +863,7 @@ const CouponsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>Valid Until</Label>
+                  <Label>{'Valid Until'}</Label>
                   <Input
                     type="date"
                     value={couponForm.valid_until}
@@ -871,7 +873,7 @@ const CouponsPage: React.FC = () => {
               </FormRow>
 
               <FormGroup>
-                <Label>Usage Limit</Label>
+                <Label>{'Usage Limit'}</Label>
                 <Input
                   type="number"
                   value={couponForm.usage_limit}
@@ -882,7 +884,7 @@ const CouponsPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Target Audience</Label>
+                <Label>{'Target Audience'}</Label>
                 <RadioGroup>
                   <RadioLabel>
                     <input
@@ -923,7 +925,7 @@ const CouponsPage: React.FC = () => {
                     />
                     <CustomerList>
                       {loadingCustomers ? (
-                        <CustomerItem>Loading customers...</CustomerItem>
+                        <CustomerItem>{'Loading customers...'}</CustomerItem>
                       ) : customers
                           .filter(c =>
                             c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
@@ -955,7 +957,7 @@ const CouponsPage: React.FC = () => {
                         c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
                         c.phone.includes(customerSearch)
                       ).length === 0 && (
-                        <CustomerItem>No customers found</CustomerItem>
+                        <CustomerItem>{'No customers found'}</CustomerItem>
                       )}
                     </CustomerList>
                     <SelectedCount>
@@ -989,7 +991,7 @@ const CouponsPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Description</Label>
+                <Label>{'Description'}</Label>
                 <TextArea
                   value={couponForm.description}
                   onChange={(e) => setCouponForm({ ...couponForm, description: e.target.value })}

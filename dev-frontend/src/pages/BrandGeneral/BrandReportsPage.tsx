@@ -328,6 +328,7 @@ interface Restaurant {
 const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const BrandReportsPage: React.FC = () => {
+  const { t } = useTranslation('brand');
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const { defaultCurrency } = useBrandCurrency();
@@ -1021,8 +1022,8 @@ const BrandReportsPage: React.FC = () => {
           )}
           <DropdownMenu show={showBrandDropdown}>
             <DropdownItem onClick={() => { setSelectedBrand('all'); setBrandSearchQuery(''); setShowBrandDropdown(false); }}>
-              <ItemName>All Brands</ItemName>
-              <ItemDetails>Show all brand data</ItemDetails>
+              <ItemName>{t('brand:brandReportsPage.allBrands')}</ItemName>
+              <ItemDetails>{t('brand:brandReportsPage.showAllBrandData')}</ItemDetails>
             </DropdownItem>
             {filteredBrands.map(brand => (
               <DropdownItem key={brand.id} onClick={() => handleBrandSelect(brand)}>
@@ -1055,8 +1056,8 @@ const BrandReportsPage: React.FC = () => {
           )}
           <DropdownMenu show={showRestaurantDropdown}>
             <DropdownItem onClick={() => { setSelectedRestaurant('all'); setRestaurantSearchQuery(''); setShowRestaurantDropdown(false); }}>
-              <ItemName>All Restaurants</ItemName>
-              <ItemDetails>Show all restaurant data</ItemDetails>
+              <ItemName>{t('brand:brandReportsPage.allRestaurants')}</ItemName>
+              <ItemDetails>{t('brand:brandReportsPage.showAllRestaurantData')}</ItemDetails>
             </DropdownItem>
             {filteredRestaurants.map(restaurant => (
               <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
@@ -1082,46 +1083,46 @@ const BrandReportsPage: React.FC = () => {
     <>
       <ReportsContainer>
         <Header>
-          <HeaderTitle>Brand Reports</HeaderTitle>
+          <HeaderTitle>{t('brand:brandReportsPage.brandReports')}</HeaderTitle>
         </Header>
 
         <Content>
           <Tabs>
-            <Tab active={activeTab === 'ranking'} onClick={() => handleTabChange('ranking')}>Sales Ranking</Tab>
-            <Tab active={activeTab === 'sales'} onClick={() => handleTabChange('sales')}>Sales Report</Tab>
-            <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>Sales Details</Tab>
-            <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>Menu Analysis</Tab>
-            <Tab active={activeTab === 'customers'} onClick={() => handleTabChange('customers')}>Customer Insights</Tab>
-            <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>Operations</Tab>
+            <Tab active={activeTab === 'ranking'} onClick={() => handleTabChange('ranking')}>{t('brand:brandReportsPage.salesRanking')}</Tab>
+            <Tab active={activeTab === 'sales'} onClick={() => handleTabChange('sales')}>{t('brand:brandReportsPage.salesReport')}</Tab>
+            <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>{t('brand:brandReportsPage.salesDetails')}</Tab>
+            <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>{t('brand:brandReportsPage.menuAnalysis')}</Tab>
+            <Tab active={activeTab === 'customers'} onClick={() => handleTabChange('customers')}>{t('brand:brandReportsPage.customerInsights')}</Tab>
+            <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>{t('brand:brandReportsPage.operations')}</Tab>
           </Tabs>
 
           {/* Sales Tab */}
           <div style={{ display: activeTab === 'sales' ? 'block' : 'none' }}>
             <FilterComponent />
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+              <div style={{ textAlign: 'center', padding: '40px' }}>{t('brand:brandReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>No order data available for the selected period</div>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('brand:brandReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
             ) : (
               <div>
                 <StatsRow>
                   <StatCard color="#059669">
-                    <StatLabel>Total Revenue</StatLabel>
+                    <StatLabel>{t('brand:brandReportsPage.totalRevenue')}</StatLabel>
                     <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), selectedCurrency)}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
-                    <StatLabel>Total Orders</StatLabel>
+                    <StatLabel>{t('brand:brandReportsPage.totalOrders')}</StatLabel>
                     <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
-                    <StatDescription>For selected period</StatDescription>
+                    <StatDescription>{t('brand:brandReportsPage.forSelectedPeriod')}</StatDescription>
                   </StatCard>
                   <StatCard color="#DC2626">
-                    <StatLabel>Average Order Value</StatLabel>
+                    <StatLabel>{t('brand:brandReportsPage.averageOrderValue')}</StatLabel>
                     <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, selectedCurrency)}</StatValue>
-                    <StatDescription>Per order</StatDescription>
+                    <StatDescription>{t('brand:brandReportsPage.perOrder')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
-                    <StatLabel>Completed Orders</StatLabel>
+                    <StatLabel>{t('brand:brandReportsPage.completedOrders')}</StatLabel>
                     <StatValue>{filteredOrders.filter(o => o.status === 'completed').length}</StatValue>
                     <StatDescription>{Math.round(filteredOrders.filter(o => o.status === 'completed').length / filteredOrders.length * 100 || 0)}% completion rate</StatDescription>
                   </StatCard>
@@ -1129,7 +1130,7 @@ const BrandReportsPage: React.FC = () => {
 
                 <ChartGrid>
                   <ChartCard>
-                    <ChartTitle>Revenue Trend</ChartTitle>
+                    <ChartTitle>{t('brand:brandReportsPage.revenueTrend')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={salesData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1142,7 +1143,7 @@ const BrandReportsPage: React.FC = () => {
                   </ChartCard>
 
                   <ChartCard>
-                    <ChartTitle>Sales by Category</ChartTitle>
+                    <ChartTitle>{t('brand:brandReportsPage.salesByCategory')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
                         <Pie data={categoryData} cx="50%" cy="50%" labelLine={true} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} outerRadius={70} fill="#8884d8" dataKey="value">
@@ -1155,7 +1156,7 @@ const BrandReportsPage: React.FC = () => {
                 </ChartGrid>
 
                 <ChartCard>
-                  <ChartTitle>Hourly Orders Distribution</ChartTitle>
+                  <ChartTitle>{t('brand:brandReportsPage.hourlyOrdersDistribution')}</ChartTitle>
                   <ResponsiveContainer width="100%" height={250}>
                     <BarChart data={hourlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#F6F9FC" />
@@ -1174,43 +1175,43 @@ const BrandReportsPage: React.FC = () => {
           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
             <FilterComponent />
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
+              <div style={{ textAlign: 'center', padding: '40px' }}>{t('brand:brandReportsPage.loading')}</div>
             ) : filteredOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>No order data available for the selected period</div>
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>{t('brand:brandReportsPage.noOrderDataAvailableForTheSelectedPeriod')}</div>
             ) : (
               <div>
                 <StatsRow>
                   <StatCard color="#059669">
-                    <StatLabel>Total Revenue</StatLabel>
+                    <StatLabel>{t('brand:brandReportsPage.totalRevenue')}</StatLabel>
                     <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), selectedCurrency)}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
-                    <StatLabel>Total Orders</StatLabel>
+                    <StatLabel>{t('brand:brandReportsPage.totalOrders')}</StatLabel>
                     <StatValue>{filteredOrders.length.toLocaleString()}</StatValue>
                     <StatDescription>{filteredOrders.filter(o => o.status === 'completed').length} completed</StatDescription>
                   </StatCard>
                   <StatCard color="#DC2626">
-                    <StatLabel>Average Order Value</StatLabel>
+                    <StatLabel>{t('brand:brandReportsPage.averageOrderValue')}</StatLabel>
                     <StatValue>{formatCurrency(filteredOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / filteredOrders.length) : 0, selectedCurrency)}</StatValue>
-                    <StatDescription>Per order average</StatDescription>
+                    <StatDescription>{t('brand:brandReportsPage.perOrderAverage')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
-                    <StatLabel>Period</StatLabel>
+                    <StatLabel>{t('brand:brandReportsPage.period')}</StatLabel>
                     <StatValue>{getDateRangeDays()}</StatValue>
-                    <StatDescription>Days</StatDescription>
+                    <StatDescription>{t('brand:brandReportsPage.days')}</StatDescription>
                   </StatCard>
                 </StatsRow>
 
                 <TableCard>
-                  <ChartTitle>Detailed Sales Breakdown</ChartTitle>
+                  <ChartTitle>{t('brand:brandReportsPage.detailedSalesBreakdown')}</ChartTitle>
                   <Table>
                     <thead>
                       <tr>
-                        <TableHeader style={{ width: '40%' }}>Period</TableHeader>
-                        <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
-                        <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
-                        <TableHeader style={{ textAlign: 'right' }}>Avg Order Value</TableHeader>
+                        <TableHeader style={{ width: '40%' }}>{t('brand:brandReportsPage.period')}</TableHeader>
+                        <TableHeader style={{ textAlign: 'right' }}>{t('brand:brandReportsPage.revenue')}</TableHeader>
+                        <TableHeader style={{ textAlign: 'right' }}>{t('brand:brandReportsPage.orders')}</TableHeader>
+                        <TableHeader style={{ textAlign: 'right' }}>{t('brand:brandReportsPage.avgOrderValue')}</TableHeader>
                       </tr>
                     </thead>
                     <tbody>
@@ -1279,39 +1280,39 @@ const BrandReportsPage: React.FC = () => {
             <FilterComponent />
             <StatsRow>
               <StatCard color="#F59E0B">
-                <StatLabel>Best Seller</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.bestSeller')}</StatLabel>
                 <StatValue>{allMenuData[0]?.name || 'N/A'}</StatValue>
                 <StatDescription>{allMenuData[0]?.orders || 0} orders</StatDescription>
               </StatCard>
               <StatCard color="#10B981">
-                <StatLabel>Total Items Analyzed</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.totalItemsAnalyzed')}</StatLabel>
                 <StatValue>{allMenuData.length}</StatValue>
-                <StatDescription>Complete menu analysis</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.completeMenuAnalysis')}</StatDescription>
               </StatCard>
               <StatCard color="#3B82F6">
-                <StatLabel>Total Orders</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.totalOrders')}</StatLabel>
                 <StatValue>{allMenuData.reduce((sum, item) => sum + item.orders, 0).toLocaleString()}</StatValue>
-                <StatDescription>For selected period</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.forSelectedPeriod')}</StatDescription>
               </StatCard>
               <StatCard color="#8B5CF6">
-                <StatLabel>Total Revenue</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.totalRevenue')}</StatLabel>
                 <StatValue>{formatCurrency(allMenuData.reduce((sum, item) => sum + item.revenue, 0), selectedCurrency)}</StatValue>
-                <StatDescription>For selected period</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.forSelectedPeriod')}</StatDescription>
               </StatCard>
             </StatsRow>
 
             <TableCard>
-              <ChartTitle>Complete Menu Performance Ranking</ChartTitle>
+              <ChartTitle>{t('brand:brandReportsPage.completeMenuPerformanceRanking')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader>Rank</TableHeader>
-                    <TableHeader>Menu Item</TableHeader>
-                    <TableHeader>Category</TableHeader>
-                    <TableHeader>Price</TableHeader>
-                    <TableHeader>Orders</TableHeader>
-                    <TableHeader>Revenue</TableHeader>
-                    <TableHeader>Performance</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.rank')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.menuItem')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.category')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.price')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.orders')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.revenue')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.performance')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1346,29 +1347,29 @@ const BrandReportsPage: React.FC = () => {
             <FilterComponent />
             <StatsRow>
               <StatCard color="#635BFF">
-                <StatLabel>Total Customers</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.totalCustomers')}</StatLabel>
                 <StatValue>{customers.length.toLocaleString()}</StatValue>
-                <StatDescription>Across all restaurants</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.acrossAllRestaurants')}</StatDescription>
               </StatCard>
               <StatCard color="#6FCF97">
-                <StatLabel>Repeat Customers</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.repeatCustomers')}</StatLabel>
                 <StatValue>{customers.filter((c: any) => c.total_orders > 1).length}</StatValue>
                 <StatDescription>{customers.length > 0 ? Math.round((customers.filter((c: any) => c.total_orders > 1).length / customers.length) * 100) : 0}% return rate</StatDescription>
               </StatCard>
               <StatCard color="#FFB800">
-                <StatLabel>Average Spent</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.averageSpent')}</StatLabel>
                 <StatValue>{formatCurrency(customers.length > 0 ? (customers.reduce((sum: number, c: any) => sum + parseFloat(c.total_spent || 0), 0) / customers.length) : 0, selectedCurrency)}</StatValue>
-                <StatDescription>Per customer</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.perCustomer')}</StatDescription>
               </StatCard>
               <StatCard color="#8B5CF6">
-                <StatLabel>Total Points</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.totalPoints')}</StatLabel>
                 <StatValue>{customers.reduce((sum: number, c: any) => sum + (c.points || 0), 0).toLocaleString()}</StatValue>
-                <StatDescription>Across all customers</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.acrossAllCustomers')}</StatDescription>
               </StatCard>
             </StatsRow>
 
             <TableCard>
-              <ChartTitle>Customer insights will be available when customer data is loaded</ChartTitle>
+              <ChartTitle>{t('brand:brandReportsPage.customerInsightsWillBeAvailableWhenCustomerDataIsLoaded')}</ChartTitle>
             </TableCard>
           </div>
 
@@ -1377,36 +1378,36 @@ const BrandReportsPage: React.FC = () => {
             <FilterComponent />
             <StatsRow>
               <StatCard color="#10B981">
-                <StatLabel>Order Fulfillment</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.orderFulfillment')}</StatLabel>
                 <StatValue>{Math.round(95 * (0.9 + Math.random() * 0.15))}%</StatValue>
-                <StatDescription>On-time completion</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.ontimeCompletion')}</StatDescription>
               </StatCard>
               <StatCard color="#F59E0B">
-                <StatLabel>Avg. Wait Time</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.avgWaitTime')}</StatLabel>
                 <StatValue>{Math.round(8 * (0.7 + Math.random() * 0.6))} min</StatValue>
-                <StatDescription>Estimated</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.estimated')}</StatDescription>
               </StatCard>
               <StatCard color="#EF4444">
-                <StatLabel>Peak Hour</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.peakHour')}</StatLabel>
                 <StatValue>12-1 PM</StatValue>
-                <StatDescription>Busiest time</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.busiestTime')}</StatDescription>
               </StatCard>
               <StatCard color="#6366F1">
-                <StatLabel>Staff Efficiency</StatLabel>
+                <StatLabel>{t('brand:brandReportsPage.staffEfficiency')}</StatLabel>
                 <StatValue>{Math.round(87 * (0.85 + Math.random() * 0.25))}%</StatValue>
-                <StatDescription>Estimated</StatDescription>
+                <StatDescription>{t('brand:brandReportsPage.estimated')}</StatDescription>
               </StatCard>
             </StatsRow>
 
             <TableCard>
-              <ChartTitle>Peak Hours Performance</ChartTitle>
+              <ChartTitle>{t('brand:brandReportsPage.peakHoursPerformance')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader>Time Slot</TableHeader>
-                    <TableHeader>Orders</TableHeader>
-                    <TableHeader>Revenue</TableHeader>
-                    <TableHeader>Efficiency</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.timeSlot')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.orders')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.revenue')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.efficiency')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1441,16 +1442,16 @@ const BrandReportsPage: React.FC = () => {
 
             {/* Brand Rankings */}
             <RankingCard>
-              <ChartTitle>Brand Sales Ranking</ChartTitle>
+              <ChartTitle>{t('brand:brandReportsPage.brandSalesRanking')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader style={{ width: '60px' }}>Rank</TableHeader>
-                    <TableHeader>Brand Name</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Restaurants</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
-                    <TableHeader style={{ width: '150px' }}>Performance</TableHeader>
+                    <TableHeader style={{ width: '60px' }}>{t('brand:brandReportsPage.rank')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.brandName')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('brand:brandReportsPage.restaurants')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('brand:brandReportsPage.orders')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('brand:brandReportsPage.revenue')}</TableHeader>
+                    <TableHeader style={{ width: '150px' }}>{t('brand:brandReportsPage.performance')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1476,7 +1477,7 @@ const BrandReportsPage: React.FC = () => {
                     );
                   })}
                   {rankingData.brands.length === 0 && (
-                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>No brand data available</TableCell></tr>
+                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>{t('brand:brandReportsPage.noBrandDataAvailable')}</TableCell></tr>
                   )}
                 </tbody>
               </Table>
@@ -1484,16 +1485,16 @@ const BrandReportsPage: React.FC = () => {
 
             {/* Restaurant Rankings */}
             <RankingCard>
-              <ChartTitle>Restaurant Sales Ranking</ChartTitle>
+              <ChartTitle>{t('brand:brandReportsPage.restaurantSalesRanking')}</ChartTitle>
               <Table>
                 <thead>
                   <tr>
-                    <TableHeader style={{ width: '60px' }}>Rank</TableHeader>
-                    <TableHeader>Restaurant Name</TableHeader>
-                    <TableHeader>Brand</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Orders</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>Revenue</TableHeader>
-                    <TableHeader style={{ width: '150px' }}>Performance</TableHeader>
+                    <TableHeader style={{ width: '60px' }}>{t('brand:brandReportsPage.rank')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.restaurantName')}</TableHeader>
+                    <TableHeader>{t('brand:brandReportsPage.brand')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('brand:brandReportsPage.orders')}</TableHeader>
+                    <TableHeader style={{ textAlign: 'right' }}>{t('brand:brandReportsPage.revenue')}</TableHeader>
+                    <TableHeader style={{ width: '150px' }}>{t('brand:brandReportsPage.performance')}</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -1523,7 +1524,7 @@ const BrandReportsPage: React.FC = () => {
                     );
                   })}
                   {rankingData.restaurants.length === 0 && (
-                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>No restaurant data available</TableCell></tr>
+                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>{t('brand:brandReportsPage.noRestaurantDataAvailable')}</TableCell></tr>
                   )}
                 </tbody>
               </Table>

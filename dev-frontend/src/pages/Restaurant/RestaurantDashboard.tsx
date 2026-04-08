@@ -10,6 +10,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
+import { useTranslation } from 'react-i18next';
 
 interface DashboardData {
   restaurant: {
@@ -468,6 +469,7 @@ interface SalesChartData {
 }
 
 const RestaurantDashboard: React.FC = () => {
+  const { t } = useTranslation('settings');
   const navigate = useNavigate();
   const { user } = useAuth();
   const { paymentSettings } = useStore();
@@ -608,7 +610,7 @@ const RestaurantDashboard: React.FC = () => {
       <>
         <Container>
           <Header>
-            <Title>Restaurant Dashboard</Title>
+            <Title>{t('settings:restaurantDashboard.restaurantDashboard')}</Title>
           </Header>
           <Content>
             <div style={{ textAlign: 'center', padding: '40px' }}>
@@ -625,7 +627,7 @@ const RestaurantDashboard: React.FC = () => {
       <>
         <Container>
           <Header>
-            <Title>Restaurant Dashboard</Title>
+            <Title>{t('settings:restaurantDashboard.restaurantDashboard')}</Title>
           </Header>
           <Content>
             <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
@@ -643,7 +645,7 @@ const RestaurantDashboard: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Restaurant Dashboard</Title>
+          <Title>{t('settings:restaurantDashboard.restaurantDashboard')}</Title>
           <Subtitle>
             <span>{restaurant.name} • {restaurant.planType}</span>
             {(() => {
@@ -655,11 +657,11 @@ const RestaurantDashboard: React.FC = () => {
                   const daysLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
                   return <SubscriptionBadge variant="trial">Trial • {daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}</SubscriptionBadge>;
                 }
-                return <SubscriptionBadge variant="trial">Trial</SubscriptionBadge>;
+                return <SubscriptionBadge variant="trial">{t('settings:restaurantDashboard.trial')}</SubscriptionBadge>;
               }
               if (endDate) {
                 const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                if (daysLeft <= 0) return <SubscriptionBadge variant="expired">Subscription expired</SubscriptionBadge>;
+                if (daysLeft <= 0) return <SubscriptionBadge variant="expired">{t('settings:restaurantDashboard.subscriptionExpired')}</SubscriptionBadge>;
                 if (daysLeft <= 30) return <SubscriptionBadge variant="expiring">{daysLeft} days left</SubscriptionBadge>;
                 return <SubscriptionBadge variant="active">{daysLeft} days left</SubscriptionBadge>;
               }
@@ -675,42 +677,42 @@ const RestaurantDashboard: React.FC = () => {
 
           <DashboardStatsGrid>
             <DashboardStatCard color="#F59E0B">
-              <DashboardStatLabel>Today's Sales</DashboardStatLabel>
+              <DashboardStatLabel>{t('settings:restaurantDashboard.todaysSales')}</DashboardStatLabel>
               <DashboardStatValue>{formatCurrency(today.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard color="#2563EB">
-              <DashboardStatLabel>Today's Orders</DashboardStatLabel>
+              <DashboardStatLabel>{t('settings:restaurantDashboard.todaysOrders')}</DashboardStatLabel>
               <DashboardStatValue>{today.orders || 0}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard color="#10B981">
-              <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+              <DashboardStatLabel>{t('settings:restaurantDashboard.monthlyRevenue')}</DashboardStatLabel>
               <DashboardStatValue>{formatCurrency(monthly.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard color="#7C3AED">
-              <DashboardStatLabel>Monthly Orders</DashboardStatLabel>
+              <DashboardStatLabel>{t('settings:restaurantDashboard.monthlyOrders')}</DashboardStatLabel>
               <DashboardStatValue>{monthly.orders || 0}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard color="#059669">
-              <DashboardStatLabel>This Year Revenue</DashboardStatLabel>
+              <DashboardStatLabel>{t('settings:restaurantDashboard.thisYearRevenue')}</DashboardStatLabel>
               <DashboardStatValue>{formatCurrency(yearly.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard color="#6366F1">
-              <DashboardStatLabel>This Year Orders</DashboardStatLabel>
+              <DashboardStatLabel>{t('settings:restaurantDashboard.thisYearOrders')}</DashboardStatLabel>
               <DashboardStatValue>{yearly.orders || 0}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard color="#8B5CF6">
-              <DashboardStatLabel>Total Revenue</DashboardStatLabel>
+              <DashboardStatLabel>{t('settings:restaurantDashboard.totalRevenue')}</DashboardStatLabel>
               <DashboardStatValue>{formatCurrency(total.revenue || 0, selectedCurrency)}</DashboardStatValue>
             </DashboardStatCard>
 
             <DashboardStatCard color="#EF4444">
-              <DashboardStatLabel>Total Orders</DashboardStatLabel>
+              <DashboardStatLabel>{t('settings:restaurantDashboard.totalOrders')}</DashboardStatLabel>
               <DashboardStatValue>{total.orders || 0}</DashboardStatValue>
             </DashboardStatCard>
           </DashboardStatsGrid>
@@ -718,7 +720,7 @@ const RestaurantDashboard: React.FC = () => {
           <MainGrid>
             <ChartContainer>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3>Sales & Orders Overview</h3>
+                <h3>{t('settings:restaurantDashboard.salesOrdersOverview')}</h3>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     onClick={() => setTimePeriod('week')}
@@ -833,20 +835,20 @@ const RestaurantDashboard: React.FC = () => {
                 <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px', minHeight: '160px' }}>
                   <div style={{ textAlign: 'center', paddingTop: '40px', color: '#6B7280' }}>
                     <p>Total Revenue: {formatCurrency(monthly.revenue, selectedCurrency)}</p>
-                    <p>Loading chart data...</p>
+                    <p>{t('settings:restaurantDashboard.loadingChartData')}</p>
                   </div>
                 </div>
               )}
             </ChartContainer>
 
             <AlertsPanel>
-              <h3>Notifications</h3>
+              <h3>{t('settings:restaurantDashboard.notifications')}</h3>
 
               <AlertsList>
                 {(today.pendingOrders || 0) > 0 && (
                   <Alert type="warning" onClick={() => navigate(`/restaurant/${restaurantId}/live-orders`)}>
                     <AlertContent>
-                      <AlertTitle type="warning">Pending Orders</AlertTitle>
+                      <AlertTitle type="warning">{t('settings:restaurantDashboard.pendingOrders')}</AlertTitle>
                       <AlertDescription>{today.pendingOrders} order(s) waiting to be processed</AlertDescription>
                     </AlertContent>
                   </Alert>
@@ -855,7 +857,7 @@ const RestaurantDashboard: React.FC = () => {
                 {(billing.unpaidInvoices || 0) > 0 && (
                   <Alert type="warning" onClick={() => navigate(`/restaurant/${restaurantId}/invoices`)}>
                     <AlertContent>
-                      <AlertTitle type="warning">Unpaid Invoices</AlertTitle>
+                      <AlertTitle type="warning">{t('settings:restaurantDashboard.unpaidInvoices')}</AlertTitle>
                       <AlertDescription>{billing.unpaidInvoices} invoice(s) • {formatCurrency(billing.totalUnpaidAmount || 0, selectedCurrency)} due</AlertDescription>
                     </AlertContent>
                   </Alert>
@@ -864,7 +866,7 @@ const RestaurantDashboard: React.FC = () => {
                 {badgeCounts.notices > 0 && (
                   <Alert type="info" onClick={() => navigate(`/restaurant/${restaurantId}/notices`)}>
                     <AlertContent>
-                      <AlertTitle type="info">Unread Notices</AlertTitle>
+                      <AlertTitle type="info">{t('settings:restaurantDashboard.unreadNotices')}</AlertTitle>
                       <AlertDescription>{badgeCounts.notices} unread notice(s)</AlertDescription>
                     </AlertContent>
                   </Alert>
@@ -873,7 +875,7 @@ const RestaurantDashboard: React.FC = () => {
                 {badgeCounts.systemInquiry > 0 && (
                   <Alert type="info" onClick={() => navigate(`/restaurant/${restaurantId}/support`)}>
                     <AlertContent>
-                      <AlertTitle type="info">System Inquiry Updates</AlertTitle>
+                      <AlertTitle type="info">{t('settings:restaurantDashboard.systemInquiryUpdates')}</AlertTitle>
                       <AlertDescription>{badgeCounts.systemInquiry} inquiry(s) with new replies</AlertDescription>
                     </AlertContent>
                   </Alert>
@@ -882,7 +884,7 @@ const RestaurantDashboard: React.FC = () => {
                 {badgeCounts.operationInquiry > 0 && (
                   <Alert type="info" onClick={() => navigate(`/restaurant/${restaurantId}/operation-inquiry`)}>
                     <AlertContent>
-                      <AlertTitle type="info">Operation Inquiry Updates</AlertTitle>
+                      <AlertTitle type="info">{t('settings:restaurantDashboard.operationInquiryUpdates')}</AlertTitle>
                       <AlertDescription>{badgeCounts.operationInquiry} inquiry(s) with responses</AlertDescription>
                     </AlertContent>
                   </Alert>
@@ -904,21 +906,21 @@ const RestaurantDashboard: React.FC = () => {
           </MainGrid>
 
           <QuickActionsSection>
-            <h3>Quick Actions</h3>
+            <h3>{t('settings:restaurantDashboard.quickActions')}</h3>
             <QuickActionsGrid>
               {(() => {
                 // System Access 항목 (새 창) — 사이드바와 동일 아이콘
                 const systemItems: { icon: string; title: string; desc: string; onClick: () => void }[] = [];
                 if (isRouteAllowed(`/restaurant/${restaurantId}/pos-terminal`))
-                  systemItems.push({ icon: '▦', title: 'POS Terminal', desc: 'Process orders', onClick: () => window.open(`/restaurant/${restaurantId}/pos-terminal`, '_blank') });
+                  systemItems.push({ icon: '▦', title: t('common:nav.posTerminal'), desc: t('settings:restaurantDashboard.processOrders'), onClick: () => window.open(`/restaurant/${restaurantId}/pos-terminal`, '_blank') });
                 if (isRouteAllowed(`/restaurant/${restaurantId}/floor-plan`))
-                  systemItems.push({ icon: '\u25A6', title: 'Floor Plan', desc: 'Table layout', onClick: () => window.open(`/restaurant/${restaurantId}/floor-plan`, '_blank') });
+                  systemItems.push({ icon: '\u25A6', title: t('common:nav.floorPlan'), desc: t('settings:restaurantDashboard.tableLayout'), onClick: () => window.open(`/restaurant/${restaurantId}/floor-plan`, '_blank') });
                 if (isRouteAllowed(`/restaurant/${restaurantId}/kitchen`))
-                  systemItems.push({ icon: '◐', title: 'Kitchen Display', desc: 'View kitchen orders', onClick: () => window.open(`/restaurant/${restaurantId}/kitchen`, '_blank') });
+                  systemItems.push({ icon: '◐', title: t('common:nav.kitchenDisplay'), desc: t('settings:restaurantDashboard.viewKitchenOrders'), onClick: () => window.open(`/restaurant/${restaurantId}/kitchen`, '_blank') });
                 if (isRouteAllowed(`/restaurant/${restaurantId}/display`))
-                  systemItems.push({ icon: '□', title: 'Customer Display', desc: 'Pickup number', onClick: () => window.open(`/restaurant/${restaurantId}/display`, '_blank') });
+                  systemItems.push({ icon: '□', title: t('settings:restaurantDashboard.customerDisplay'), desc: t('settings:restaurantDashboard.pickupNumber'), onClick: () => window.open(`/restaurant/${restaurantId}/display`, '_blank') });
                 if (isRouteAllowed(`/mobile/:slug/menu`))
-                  systemItems.push({ icon: '◯', title: 'Mobile Order', desc: 'Customer ordering', onClick: async () => {
+                  systemItems.push({ icon: '◯', title: t('common:nav.mobileOrder'), desc: t('settings:restaurantDashboard.customerOrdering'), onClick: async () => {
                     try {
                       const token = localStorage.getItem('auth_token');
                       const res = await fetch(`/api/restaurants/${restaurantId}`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
@@ -934,10 +936,10 @@ const RestaurantDashboard: React.FC = () => {
 
                 // 4개 미만이면 일반 메뉴로 채움 (같은 탭)
                 if (items.length < 4) {
-                  items.push({ icon: '◉', title: 'Live Orders', desc: 'Monitor all orders', onClick: () => navigate(`/restaurant/${restaurantId}/live-orders`) });
+                  items.push({ icon: '◉', title: t('common:nav.liveOrders'), desc: t('settings:restaurantDashboard.monitorAllOrders'), onClick: () => navigate(`/restaurant/${restaurantId}/live-orders`) });
                 }
                 if (items.length < 4) {
-                  items.push({ icon: '≡', title: 'Menu', desc: 'Edit menu items', onClick: () => navigate(`/restaurant/${restaurantId}/menu`) });
+                  items.push({ icon: '≡', title: t('common:nav.menu'), desc: t('settings:restaurantDashboard.editMenuItems'), onClick: () => navigate(`/restaurant/${restaurantId}/menu`) });
                 }
 
                 return items.slice(0, 4).map((item, idx) => (
@@ -952,17 +954,17 @@ const RestaurantDashboard: React.FC = () => {
           </QuickActionsSection>
 
           <RecentOrdersSection>
-            <h3>Recent Orders</h3>
+            <h3>{t('settings:restaurantDashboard.recentOrders')}</h3>
           </RecentOrdersSection>
           <TableContainer>
             <Table>
               <Thead>
                 <Tr>
-                  <Th>Order</Th>
-                  <Th>Items</Th>
-                  <Th>Status</Th>
-                  <Th>Time</Th>
-                  <Th>Amount</Th>
+                  <Th>{t('settings:restaurantDashboard.order')}</Th>
+                  <Th>{t('settings:restaurantDashboard.items')}</Th>
+                  <Th>{t('settings:restaurantDashboard.status')}</Th>
+                  <Th>{t('settings:restaurantDashboard.time')}</Th>
+                  <Th>{t('settings:restaurantDashboard.amount')}</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -993,7 +995,7 @@ const RestaurantDashboard: React.FC = () => {
                             // 안전하게 items 배열 추출
                             const items = order.items || order.order_items || [];
                             if (!Array.isArray(items) || items.length === 0) {
-                              return <span style={{ color: '#6B7280', fontSize: '13px' }}>No items</span>;
+                              return <span style={{ color: '#6B7280', fontSize: '13px' }}>{t('settings:restaurantDashboard.noItems')}</span>;
                             }
 
                             return items.map((item: any, index: number) => {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface Plan {
   id: string;
@@ -337,6 +338,7 @@ const CrossMark = styled.span`
 `;
 
 const PlansPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   // const { } = useAuth();
   const navigate = useNavigate();
   const [isAnnual, setIsAnnual] = useState(false);
@@ -428,7 +430,6 @@ const PlansPage: React.FC = () => {
     const percentage = Math.round((saving / monthlyCost) * 100);
     return percentage;
   };
-
   return (
     <>
       <Container>
@@ -437,25 +438,25 @@ const PlansPage: React.FC = () => {
             ← Back to Subscriptions
           </BackButton>
           <HeaderContent>
-            <Title>Choose the Perfect Plan</Title>
-            <Subtitle>Scale your restaurant operations with flexible pricing</Subtitle>
+            <Title>{t('admin:plansPage.chooseThePerfectPlan')}</Title>
+            <Subtitle>{t('admin:plansPage.scaleYourRestaurantOperationsWithFlexiblePricing')}</Subtitle>
           </HeaderContent>
         </Header>
 
         <Content>
           <BillingToggle>
-            <BillingLabel active={!isAnnual}>Monthly</BillingLabel>
+            <BillingLabel active={!isAnnual}>{t('admin:plansPage.monthly')}</BillingLabel>
             <ToggleSwitch onClick={() => setIsAnnual(!isAnnual)}>
               <ToggleKnob annual={isAnnual} />
             </ToggleSwitch>
-            <BillingLabel active={isAnnual}>Annual</BillingLabel>
+            <BillingLabel active={isAnnual}>{t('admin:plansPage.annual')}</BillingLabel>
             {isAnnual && plans.length > 0 && <SavingBadge>Save up to {Math.max(...plans.map(p => getAnnualSaving(p.monthlyPrice, p.annualPrice)))}%</SavingBadge>}
           </BillingToggle>
 
           <PlansGrid>
             {plans.map(plan => (
               <PlanCard key={plan.id} recommended={plan.recommended}>
-                {plan.recommended && <RecommendedBadge>Most Popular</RecommendedBadge>}
+                {plan.recommended && <RecommendedBadge>{t('admin:plansPage.mostPopular')}</RecommendedBadge>}
                 
                 <PlanHeader>
                   <PlanName>{plan.name}</PlanName>
@@ -492,13 +493,13 @@ const PlansPage: React.FC = () => {
           </PlansGrid>
 
           <ComparisonSection>
-            <SectionTitle>Detailed Feature Comparison</SectionTitle>
+            <SectionTitle>{t('admin:plansPage.detailedFeatureComparison')}</SectionTitle>
             <ComparisonTable>
               <TableHeader>
-                <TableHeaderCell>Features</TableHeaderCell>
-                <TableHeaderCell>Basic</TableHeaderCell>
-                <TableHeaderCell>Professional</TableHeaderCell>
-                <TableHeaderCell>Enterprise</TableHeaderCell>
+                <TableHeaderCell>{t('admin:plansPage.features')}</TableHeaderCell>
+                <TableHeaderCell>{t('admin:plansPage.basic')}</TableHeaderCell>
+                <TableHeaderCell>{t('admin:plansPage.professional')}</TableHeaderCell>
+                <TableHeaderCell>{t('admin:plansPage.enterprise')}</TableHeaderCell>
               </TableHeader>
               
               {comparisonFeatures.map((item, index) => (

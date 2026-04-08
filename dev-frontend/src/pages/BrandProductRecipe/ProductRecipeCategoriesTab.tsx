@@ -6,6 +6,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 import { fetchAPI } from '../../utils/api';
+import { useTranslation } from 'react-i18next';
 
 interface ProductRecipeCategoriesTabProps {
   onCountChange?: (count: number) => void;
@@ -194,6 +195,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
 `;
 
 const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({ onCountChange, onCategoryChange }) => {
+  const { t } = useTranslation('brand');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -359,9 +361,11 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
   };
 
   if (loading) {
-    return (
+  // useTranslation moved to component level
+
+  return (
       <Container>
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('brand:productRecipeCategoriesTab.loading')}</div>
       </Container>
     );
   }
@@ -369,7 +373,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
   return (
     <Container>
       <HeaderRow>
-        <SectionTitle>Recipe Categories</SectionTitle>
+        <SectionTitle>{t('brand:productRecipeCategoriesTab.recipeCategories')}</SectionTitle>
         <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
           Add Category
         </ThemedButton>
@@ -377,8 +381,8 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
 
       {categories.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No categories yet</EmptyTitle>
-          <EmptyDescription>Create categories to organize your product recipes</EmptyDescription>
+          <EmptyTitle>{t('brand:productRecipeCategoriesTab.noCategoriesYet')}</EmptyTitle>
+          <EmptyDescription>{t('brand:productRecipeCategoriesTab.createCategoriesToOrganizeYourProductRecipes')}</EmptyDescription>
           <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
             Add First Category
           </ThemedButton>
@@ -446,7 +450,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
         size="medium"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={handleCloseModal}>Cancel</ModalButton>
+            <ModalButton variant="secondary" onClick={handleCloseModal}>{t('brand:productRecipeCategoriesTab.cancel')}</ModalButton>
             <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim() || saving}>
               {saving ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
             </ModalButton>
@@ -467,7 +471,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Icon</FormLabel>
+            <FormLabel>{t('brand:productRecipeCategoriesTab.icon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions.map(emoji => (
                 <EmojiOption
@@ -483,7 +487,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Description</FormLabel>
+            <FormLabel>{t('brand:productRecipeCategoriesTab.description')}</FormLabel>
             <FormTextArea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}

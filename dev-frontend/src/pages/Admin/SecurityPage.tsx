@@ -7,6 +7,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/S
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { Modal, ModalButton } from '../../components/UI/Modal';
+import { useTranslation } from 'react-i18next';
 
 interface SecurityEvent {
   id: string;
@@ -319,6 +320,7 @@ const PolicyToggle = styled.div`
 `;
 
 const SecurityPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [activeTab, handleTabChange] = useTabParam<'events' | 'policies' | 'access'>('events');
   const [events, setEvents] = useState<SecurityEvent[]>([]);
   const [policies, setPolicies] = useState<SecurityPolicy[]>([]);
@@ -424,15 +426,14 @@ const SecurityPage: React.FC = () => {
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString('en-MY');
   };
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Security & Access Control</Title>
+          <Title>{t('admin:securityPage.securityAccessControl')}</Title>
           <ActionSection>
-            <BaseButton variant="secondary" onClick={handleSecurityReport}>Security Report</BaseButton>
-            <BaseButton variant="primary" onClick={handleLockAllSessions}>Lock All Sessions</BaseButton>
+            <BaseButton variant="secondary" onClick={handleSecurityReport}>{t('admin:securityPage.securityReport')}</BaseButton>
+            <BaseButton variant="primary" onClick={handleLockAllSessions}>{t('admin:securityPage.lockAllSessions')}</BaseButton>
           </ActionSection>
         </Header>
         <Content>
@@ -440,19 +441,19 @@ const SecurityPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalEvents}</StatValue>
-            <StatLabel>Security Events (24h)</StatLabel>
+            <StatLabel>{t('admin:securityPage.securityEvents24h')}</StatLabel>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{criticalEvents}</StatValue>
-            <StatLabel>Critical Alerts</StatLabel>
+            <StatLabel>{t('admin:securityPage.criticalAlerts')}</StatLabel>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{unresolvedEvents}</StatValue>
-            <StatLabel>Unresolved Events</StatLabel>
+            <StatLabel>{t('admin:securityPage.unresolvedEvents')}</StatLabel>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{enabledPolicies}/{policies.length}</StatValue>
-            <StatLabel>Active Policies</StatLabel>
+            <StatLabel>{t('admin:securityPage.activePolicies')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -472,7 +473,7 @@ const SecurityPage: React.FC = () => {
           {activeTab === 'events' && (
             <>
               <SectionHeader>
-                <SectionTitle>Recent Security Events</SectionTitle>
+                <SectionTitle>{t('admin:securityPage.recentSecurityEvents')}</SectionTitle>
               </SectionHeader>
               <EventsList>
                 {events.map(event => (
@@ -501,7 +502,7 @@ const SecurityPage: React.FC = () => {
           {activeTab === 'policies' && (
             <>
               <SectionHeader>
-                <SectionTitle>Security Policies</SectionTitle>
+                <SectionTitle>{t('admin:securityPage.securityPolicies')}</SectionTitle>
               </SectionHeader>
               <PoliciesGrid>
                 {policies.map(policy => (
@@ -520,7 +521,7 @@ const SecurityPage: React.FC = () => {
                         />
                         <ToggleSlider />
                       </Toggle>
-                      <BaseButton variant="secondary" onClick={() => handleConfigurePolicy(policy)}>Configure</BaseButton>
+                      <BaseButton variant="secondary" onClick={() => handleConfigurePolicy(policy)}>{t('admin:securityPage.configure')}</BaseButton>
                     </PolicyActions>
                   </PolicyItem>
                 ))}
@@ -531,7 +532,7 @@ const SecurityPage: React.FC = () => {
           {activeTab === 'access' && (
             <>
               <SectionHeader>
-                <SectionTitle>Access Control Matrix</SectionTitle>
+                <SectionTitle>{t('admin:securityPage.accessControlMatrix')}</SectionTitle>
               </SectionHeader>
               <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280' }}>
                 Access Control Matrix will be implemented here with role-based permissions management.
@@ -558,7 +559,7 @@ const SecurityPage: React.FC = () => {
         >
           <WarningIcon>⚠️</WarningIcon>
           <WarningText>
-            <strong>Are you sure you want to lock all active user sessions?</strong>
+            <strong>{t('admin:securityPage.areYouSureYouWantToLockAllActiveUserSessions')}</strong>
           </WarningText>
           <p style={{ color: '#6B7280', marginBottom: '0', textAlign: 'center' }}>
             This will immediately terminate all user sessions across all devices.
@@ -596,7 +597,7 @@ const SecurityPage: React.FC = () => {
                 </PolicyInfo>
                 <ConfigForm>
                   <FormGroup>
-                    <FormLabel>Policy Status</FormLabel>
+                    <FormLabel>{t('admin:securityPage.policyStatus')}</FormLabel>
                     <PolicyToggle>
                       <Toggle>
                         <ToggleInput
@@ -613,11 +614,11 @@ const SecurityPage: React.FC = () => {
                   {selectedPolicy.category === 'authentication' && (
                     <>
                       <FormGroup>
-                        <FormLabel>Session Timeout (minutes)</FormLabel>
+                        <FormLabel>{t('admin:securityPage.sessionTimeoutMinutes')}</FormLabel>
                         <FormInput type="number" defaultValue="30" min="5" max="480" />
                       </FormGroup>
                       <FormGroup>
-                        <FormLabel>Max Login Attempts</FormLabel>
+                        <FormLabel>{t('admin:securityPage.maxLoginAttempts')}</FormLabel>
                         <FormInput type="number" defaultValue="5" min="3" max="10" />
                       </FormGroup>
                     </>
@@ -626,14 +627,14 @@ const SecurityPage: React.FC = () => {
                   {selectedPolicy.category === 'data_protection' && (
                     <>
                       <FormGroup>
-                        <FormLabel>Encryption Level</FormLabel>
+                        <FormLabel>{t('admin:securityPage.encryptionLevel')}</FormLabel>
                         <StandardSelect defaultValue="aes256">
-                          <option value="aes128">AES-128</option>
-                          <option value="aes256">AES-256</option>
+                          <option value="aes128">{t('admin:securityPage.aes128')}</option>
+                          <option value="aes256">{t('admin:securityPage.aes256')}</option>
                         </StandardSelect>
                       </FormGroup>
                       <FormGroup>
-                        <FormLabel>Data Retention (days)</FormLabel>
+                        <FormLabel>{t('admin:securityPage.dataRetentionDays')}</FormLabel>
                         <FormInput type="number" defaultValue="365" min="30" max="2555" />
                       </FormGroup>
                     </>
@@ -642,16 +643,16 @@ const SecurityPage: React.FC = () => {
                   {selectedPolicy.category === 'monitoring' && (
                     <>
                       <FormGroup>
-                        <FormLabel>Alert Threshold</FormLabel>
+                        <FormLabel>{t('admin:securityPage.alertThreshold')}</FormLabel>
                         <StandardSelect defaultValue="medium">
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="critical">Critical</option>
+                          <option value="low">{t('admin:securityPage.low')}</option>
+                          <option value="medium">{t('admin:securityPage.medium')}</option>
+                          <option value="high">{t('admin:securityPage.high')}</option>
+                          <option value="critical">{t('admin:securityPage.critical')}</option>
                         </StandardSelect>
                       </FormGroup>
                       <FormGroup>
-                        <FormLabel>Monitoring Interval (minutes)</FormLabel>
+                        <FormLabel>{t('admin:securityPage.monitoringIntervalMinutes')}</FormLabel>
                         <FormInput type="number" defaultValue="5" min="1" max="60" />
                       </FormGroup>
                     </>

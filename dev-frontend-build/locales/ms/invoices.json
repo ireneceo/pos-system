@@ -1,0 +1,18 @@
+{
+  "invoiceSettingsPage.monthlyFeeRm": "Monthly Fee (RM)",
+  "invoiceSettingsPage.annualFeeRm": "Yuran Tahunan (RM)",
+  "invoiceSettingsPage.fixedRental": "Sewa Tetap",
+  "invoiceSettingsPage.revenueShare": "Hasil Share",
+  "invoiceSettingsPage.fixedAmountRm": "Amaun Tetap (RM)",
+  "invoiceSettingsPage.calculationExample": "Contoh Pengiraan",
+  "invoiceSettingsPage.exampleMonthlyRevenueRm": "Example Bulanan Hasil (RM)",
+  "invoiceSettingsPage.managementFees": "Pengurusan Fees",
+  "invoiceSettingsPage.rm": "RM",
+  "invoiceSettingsPage.monthlyInvoiceTotal": "Bulanan Invois Jumlah",
+  "invoiceSettingsPage.invoiceSettings": "Tetapan Invois",
+  "invoiceSettingsPage.invoiceConfiguration": "Invois Configuration",
+  "invoiceSettingsPage.invoicePrefix": "Invois Prefix",
+  "invoiceSettingsPage.startingNumber": "Nombor Permulaan",
+  "invoiceSettingsPage.paymentTermsDays": "Terma Pembayaran (Hari)",
+  "invoiceSettingsPage.automationSettings": "Automation Tetapan"
+}

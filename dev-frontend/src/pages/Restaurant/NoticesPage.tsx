@@ -10,6 +10,7 @@ import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
 import { linkifyText } from '../../utils/linkify';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // TypeScript Interfaces
@@ -354,6 +355,7 @@ const LoadingText = styled.div`
 // ============================================================================
 
 const NoticesPage: React.FC = () => {
+  const { t } = useTranslation('settings');
   useParams<{ restaurantId: string }>();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -369,7 +371,6 @@ const NoticesPage: React.FC = () => {
 
   // Unread counts for comment badges
   const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
-
   const { user } = useAuth();
 
   const token = localStorage.getItem('auth_token');
@@ -517,7 +518,7 @@ const NoticesPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Notices</Title>
+        <Title>{t('settings:noticesPage.notices')}</Title>
       </Header>
 
       <Content>
@@ -525,19 +526,19 @@ const NoticesPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#635BFF">
             <StatValue>{totalReceived}</StatValue>
-            <StatLabel>Total Received</StatLabel>
+            <StatLabel>{t('settings:noticesPage.totalReceived')}</StatLabel>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{unreadCount}</StatValue>
-            <StatLabel>Unread</StatLabel>
+            <StatLabel>{t('settings:noticesPage.unread')}</StatLabel>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{importantCount}</StatValue>
-            <StatLabel>Important</StatLabel>
+            <StatLabel>{t('settings:noticesPage.important')}</StatLabel>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{urgentCount}</StatValue>
-            <StatLabel>Urgent</StatLabel>
+            <StatLabel>{t('settings:noticesPage.urgent')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -576,29 +577,29 @@ const NoticesPage: React.FC = () => {
             value={authorRoleFilter}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAuthorRoleFilter(e.target.value)}
           >
-            <option value="all">All Senders</option>
-            <option value="System Admin">System Admin</option>
-            <option value="Brand General">Brand General</option>
-            <option value="Foodcourt General">Foodcourt General</option>
-            <option value="Restaurant Owner">Restaurant Owner</option>
+            <option value="all">{t('settings:noticesPage.allSenders')}</option>
+            <option value="System Admin">{t('settings:noticesPage.systemAdmin')}</option>
+            <option value="Brand General">{t('settings:noticesPage.brandGeneral')}</option>
+            <option value="Foodcourt General">{t('settings:noticesPage.foodcourtGeneral')}</option>
+            <option value="Restaurant Owner">{t('settings:noticesPage.restaurantOwner')}</option>
           </FilterSelect>
           <FilterSelect
             value={filterPriority}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterPriority(e.target.value)}
           >
-            <option value="all">All Priorities</option>
-            <option value="normal">Normal</option>
-            <option value="important">Important</option>
-            <option value="urgent">Urgent</option>
+            <option value="all">{t('settings:noticesPage.allPriorities')}</option>
+            <option value="normal">{t('settings:noticesPage.normal')}</option>
+            <option value="important">{t('settings:noticesPage.important')}</option>
+            <option value="urgent">{t('settings:noticesPage.urgent')}</option>
           </FilterSelect>
         </FilterBar>
 
         {/* Notices List */}
         {loading ? (
-          <LoadingText>Loading notices...</LoadingText>
+          <LoadingText>{t('settings:noticesPage.loadingNotices')}</LoadingText>
         ) : filteredNotices.length === 0 ? (
           <EmptyState>
-            <h3>No notices found</h3>
+            <h3>{t('settings:noticesPage.noNoticesFound')}</h3>
             <p>
               {searchTerm || filterPriority !== 'all'
                 ? 'Try adjusting your search or filter criteria.'
@@ -647,7 +648,7 @@ const NoticesPage: React.FC = () => {
                     </NoticeCardInfo>
                     <NoticeCardBadges>
                       {notice.category === 'guide' && (
-                        <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>Guide</span>
+                        <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{t('settings:noticesPage.guide')}</span>
                       )}
                       <PriorityBadge priority={notice.priority}>
                         {notice.priority}
@@ -685,7 +686,7 @@ const NoticesPage: React.FC = () => {
 
                 {/* From Info */}
                 <NoticeDetailSection>
-                  <NoticeDetailLabel>From</NoticeDetailLabel>
+                  <NoticeDetailLabel>{t('settings:noticesPage.from')}</NoticeDetailLabel>
                   <NoticeFromInfo>
                     <NoticeFromAvatar>
                       {getInitial(noticeDetail?.author_name || selectedNotice.author_name)}
@@ -704,19 +705,19 @@ const NoticesPage: React.FC = () => {
                 {/* Meta: Date & Target */}
                 <DetailMetaRow>
                   <DetailMetaItem>
-                    <DetailMetaLabel>Date</DetailMetaLabel>
+                    <DetailMetaLabel>{t('settings:noticesPage.date')}</DetailMetaLabel>
                     <DetailMetaValue>
                       {formatDateTime(noticeDetail?.createdAt || selectedNotice.createdAt)}
                     </DetailMetaValue>
                   </DetailMetaItem>
                   <DetailMetaItem>
-                    <DetailMetaLabel>Priority</DetailMetaLabel>
+                    <DetailMetaLabel>{t('settings:noticesPage.priority')}</DetailMetaLabel>
                     <DetailMetaValue style={{ textTransform: 'capitalize' }}>
                       {noticeDetail?.priority || selectedNotice.priority}
                     </DetailMetaValue>
                   </DetailMetaItem>
                   <DetailMetaItem>
-                    <DetailMetaLabel>Status</DetailMetaLabel>
+                    <DetailMetaLabel>{t('settings:noticesPage.status')}</DetailMetaLabel>
                     <DetailMetaValue style={{ textTransform: 'capitalize' }}>
                       {noticeDetail?.status || selectedNotice.status}
                     </DetailMetaValue>
@@ -725,7 +726,7 @@ const NoticesPage: React.FC = () => {
 
                 {/* Content */}
                 <NoticeDetailSection>
-                  <NoticeDetailLabel>Content</NoticeDetailLabel>
+                  <NoticeDetailLabel>{t('settings:noticesPage.content')}</NoticeDetailLabel>
                   <NoticeDetailContent>
                     {(noticeDetail?.content || selectedNotice.content).split('\n').map((line: string, i: number) => (
                       <React.Fragment key={i}>{i > 0 && <br />}{linkifyText(line)}</React.Fragment>
@@ -737,7 +738,7 @@ const NoticesPage: React.FC = () => {
                 {(noticeDetail?.attachments || selectedNotice?.attachments) &&
                   (noticeDetail?.attachments || selectedNotice?.attachments || []).length > 0 && (
                   <NoticeDetailSection>
-                    <NoticeDetailLabel>Attachments</NoticeDetailLabel>
+                    <NoticeDetailLabel>{t('settings:noticesPage.attachments')}</NoticeDetailLabel>
                     <AttachmentList attachments={noticeDetail?.attachments || selectedNotice?.attachments || []} />
                   </NoticeDetailSection>
                 )}

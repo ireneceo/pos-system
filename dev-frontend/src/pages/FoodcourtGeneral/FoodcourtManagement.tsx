@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { ModalComponent, FormGroup, FormLabel, FormInput, Button, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -211,6 +212,7 @@ interface FoodcourtFormData {
 }
 
 const FoodcourtManagement: React.FC = () => {
+  const { t } = useTranslation('foodcourt');
   const [stats, setStats] = useState({
     totalFoodcourts: 0,
     totalTenants: 0,
@@ -315,18 +317,17 @@ const FoodcourtManagement: React.FC = () => {
       default: return status;
     }
   };
-
   return (
     <>
       <Container>
         <Header>
           <div>
-            <Title>Foodcourt Management</Title>
-            <Subtitle>Integrated management and operational optimization for entire foodcourt network</Subtitle>
+            <Title>{'Foodcourt Management'}</Title>
+            <Subtitle>{'Integrated management and operational optimization for entire foodcourt network'}</Subtitle>
           </div>
           <ActionSection>
-            <ThemedButton variant="outline">Export Data</ThemedButton>
-            <ThemedButton variant="primary" onClick={handleAddFoodcourt}>Add Foodcourt</ThemedButton>
+            <ThemedButton variant="outline">{'Export Data'}</ThemedButton>
+            <ThemedButton variant="primary" onClick={handleAddFoodcourt}>{'Add Foodcourt'}</ThemedButton>
           </ActionSection>
         </Header>
 
@@ -334,29 +335,29 @@ const FoodcourtManagement: React.FC = () => {
           <StatsGrid>
             <StatCard>
               <StatValue>{stats.totalFoodcourts}</StatValue>
-              <StatLabel>Total Foodcourts</StatLabel>
+              <StatLabel>{'Total Foodcourts'}</StatLabel>
               <StatTrend trend="up">+1 this month</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{stats.totalTenants}</StatValue>
-              <StatLabel>Total Tenants</StatLabel>
+              <StatLabel>{'Total Tenants'}</StatLabel>
               <StatTrend trend="up">+5 new tenants</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{stats.avgOccupancyRate.toFixed(1)}%</StatValue>
-              <StatLabel>Average Occupancy</StatLabel>
+              <StatLabel>{'Average Occupancy'}</StatLabel>
               <StatTrend trend="up">+2.5% vs last month</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>RM {(stats.monthlyRevenue / 1000000).toFixed(0)}M</StatValue>
-              <StatLabel>Total Monthly Revenue</StatLabel>
+              <StatLabel>{'Total Monthly Revenue'}</StatLabel>
               <StatTrend trend="up">+12% vs last month</StatTrend>
             </StatCard>
           </StatsGrid>
 
           <ContentCard>
             <SectionHeader>
-              <SectionTitle>Foodcourt List</SectionTitle>
+              <SectionTitle>{'Foodcourt List'}</SectionTitle>
               <ThemedButton variant="primary" onClick={handleAddFoodcourt}>
                 Add New Foodcourt
               </ThemedButton>
@@ -417,7 +418,7 @@ const FoodcourtManagement: React.FC = () => {
           >
             <form onSubmit={handleFormSubmit}>
               <FormGroup>
-                <FormLabel>Foodcourt Name</FormLabel>
+                <FormLabel>{'Foodcourt Name'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.name}
@@ -427,7 +428,7 @@ const FoodcourtManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Location</FormLabel>
+                <FormLabel>{'Location'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.location}
@@ -437,7 +438,7 @@ const FoodcourtManagement: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Manager</FormLabel>
+                <FormLabel>{'Manager'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.manager}

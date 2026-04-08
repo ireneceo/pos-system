@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useStaff, Staff } from '../../contexts/StaffContext';
 import PhoneInput from '../Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   display: ${props => props.isOpen ? 'flex' : 'none'};
@@ -342,6 +343,7 @@ interface StaffProfileModalProps {
 }
 
 const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation('common');
   const { currentStaff, updateStaff, isLoggedIn } = useStaff();
   const [activeTab, setActiveTab] = useState<'profile' | 'schedule' | 'performance'>('profile');
   const [isEditing, setIsEditing] = useState(false);

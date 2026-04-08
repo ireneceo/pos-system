@@ -7,6 +7,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import RecipesTab from './RecipesTab';
 import RecipeCategoriesTab from './RecipeCategoriesTab';
+import { useTranslation } from 'react-i18next';
 
 const HeaderActions = styled.div`
   display: flex;
@@ -46,6 +47,7 @@ type TabType = 'recipes' | 'recipe-categories';
 interface RecipeManagementPageProps {}
 
 const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
+  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -146,7 +148,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
     <>
       <Container>
         <Header>
-          <Title>Recipes</Title>
+          <Title>{t('recipes:recipeManagementPage.recipes')}</Title>
           {user?.role === 'Brand General' && brands.length > 0 && (
             <HeaderActions>
               <BrandSelect

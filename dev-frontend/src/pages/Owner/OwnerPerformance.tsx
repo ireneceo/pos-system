@@ -16,6 +16,7 @@ import {
 } from '../../components/UI';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { useTranslation } from 'react-i18next';
 
 
 const SortRow = styled.div`
@@ -237,6 +238,7 @@ interface RestaurantPerformanceData {
 }
 
 const OwnerPerformance: React.FC = () => {
+  const { t } = useTranslation('owner');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
@@ -539,16 +541,15 @@ const OwnerPerformance: React.FC = () => {
     link.click();
     URL.revokeObjectURL(link.href);
   };
-
   return (
     <>
       <Container>
         <Header>
           <div>
-            <Title>Performance</Title>
+            <Title>{t('owner:ownerPerformance.performance')}</Title>
           </div>
           <ActionSection>
-            <Button variant="primary" onClick={handleExportReport}>Export Report</Button>
+            <Button variant="primary" onClick={handleExportReport}>{t('owner:ownerPerformance.exportReport')}</Button>
           </ActionSection>
         </Header>
 
@@ -568,10 +569,10 @@ const OwnerPerformance: React.FC = () => {
               value={selectedMetric}
               onChange={(e) => setSelectedMetric(e.target.value)}
             >
-              <option value="sales">Revenue</option>
-              <option value="growth">Growth</option>
-              <option value="orders">Orders</option>
-              <option value="customers">Customers</option>
+              <option value="sales">{t('owner:ownerPerformance.revenue')}</option>
+              <option value="growth">{t('owner:ownerPerformance.growth')}</option>
+              <option value="orders">{t('owner:ownerPerformance.orders')}</option>
+              <option value="customers">{t('owner:ownerPerformance.customers')}</option>
             </FilterSelect>
           </SortRow>
 
@@ -579,23 +580,23 @@ const OwnerPerformance: React.FC = () => {
           <StatsGrid>
             <StatCard color="#7C3AED">
               <StatValue>{formatCurrency(stats.totalSales)}</StatValue>
-              <StatLabel>Total Revenue</StatLabel>
+              <StatLabel>{t('owner:ownerPerformance.totalRevenue')}</StatLabel>
               <StatDescription>{periodLabel}</StatDescription>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{stats.totalOrders.toLocaleString()}</StatValue>
-              <StatLabel>Total Orders</StatLabel>
-              <StatDescription>Completed orders</StatDescription>
+              <StatLabel>{t('owner:ownerPerformance.totalOrders')}</StatLabel>
+              <StatDescription>{t('owner:ownerPerformance.completedOrders')}</StatDescription>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{stats.totalCustomers.toLocaleString()}</StatValue>
-              <StatLabel>Customers</StatLabel>
-              <StatDescription>Unique customers</StatDescription>
+              <StatLabel>{t('owner:ownerPerformance.customers')}</StatLabel>
+              <StatDescription>{t('owner:ownerPerformance.uniqueCustomers')}</StatDescription>
             </StatCard>
             <StatCard color="#8B5CF6">
               <StatValue>{formatCurrency(stats.overallAvgOrder)}</StatValue>
-              <StatLabel>Avg Order</StatLabel>
-              <StatDescription>Per order value</StatDescription>
+              <StatLabel>{t('owner:ownerPerformance.avgOrder')}</StatLabel>
+              <StatDescription>{t('owner:ownerPerformance.perOrderValue')}</StatDescription>
             </StatCard>
           </StatsGrid>
 
@@ -603,34 +604,34 @@ const OwnerPerformance: React.FC = () => {
           <StatsGrid style={{ marginTop: '-16px' }}>
             <StatCard color="#EC4899">
               <StatValue>{formatCurrency(stats.maxOrderValue)}</StatValue>
-              <StatLabel>Max Order</StatLabel>
-              <StatDescription>Highest order value</StatDescription>
+              <StatLabel>{t('owner:ownerPerformance.maxOrder')}</StatLabel>
+              <StatDescription>{t('owner:ownerPerformance.highestOrderValue')}</StatDescription>
             </StatCard>
             <StatCard color="#06B6D4">
               <StatValue>{stats.overallAvgServiceTime > 0 ? `${stats.overallAvgServiceTime} min` : 'N/A'}</StatValue>
-              <StatLabel>Avg Fulfillment</StatLabel>
-              <StatDescription>Order to served</StatDescription>
+              <StatLabel>{t('owner:ownerPerformance.avgFulfillment')}</StatLabel>
+              <StatDescription>{t('owner:ownerPerformance.orderToServed')}</StatDescription>
             </StatCard>
             <StatCard color="#F97316">
               <StatValue>{stats.overallGrowth > 0 ? '+' : ''}{stats.overallGrowth}%</StatValue>
-              <StatLabel>Growth</StatLabel>
+              <StatLabel>{t('owner:ownerPerformance.growth')}</StatLabel>
               <StatDescription>vs previous period</StatDescription>
             </StatCard>
             <StatCard color="#14B8A6">
               <StatValue>{stats.totalRestaurants}</StatValue>
-              <StatLabel>Restaurants</StatLabel>
-              <StatDescription>Your restaurants</StatDescription>
+              <StatLabel>{t('owner:ownerPerformance.restaurants')}</StatLabel>
+              <StatDescription>{t('owner:ownerPerformance.yourRestaurants')}</StatDescription>
             </StatCard>
           </StatsGrid>
 
           {loading ? (
             <EmptyState>
-              <p>Loading performance data...</p>
+              <p>{t('owner:ownerPerformance.loadingPerformanceData')}</p>
             </EmptyState>
           ) : sortedRestaurants.length === 0 ? (
             <EmptyState>
-              <h3>No Data Available</h3>
-              <p>No performance data found for the selected period.</p>
+              <h3>{t('owner:ownerPerformance.noDataAvailable')}</h3>
+              <p>{t('owner:ownerPerformance.noPerformanceDataFoundForTheSelectedPeriod')}</p>
             </EmptyState>
           ) : (
             <>
@@ -644,7 +645,7 @@ const OwnerPerformance: React.FC = () => {
                       </StatusBadge>
                     </RestaurantHeader>
                     <MetricRow>
-                      <MetricLabel>Revenue</MetricLabel>
+                      <MetricLabel>{t('owner:ownerPerformance.revenue')}</MetricLabel>
                       <MetricValue>
                         {formatCurrency(restaurant.sales, restaurant.currency)}
                         {restaurant.growth !== 0 && (
@@ -655,27 +656,27 @@ const OwnerPerformance: React.FC = () => {
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Orders</MetricLabel>
+                      <MetricLabel>{t('owner:ownerPerformance.orders')}</MetricLabel>
                       <MetricValue>{restaurant.completedOrders.toLocaleString()} completed</MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Customers</MetricLabel>
+                      <MetricLabel>{t('owner:ownerPerformance.customers')}</MetricLabel>
                       <MetricValue>{restaurant.uniqueCustomers.toLocaleString()} unique</MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Avg Order</MetricLabel>
+                      <MetricLabel>{t('owner:ownerPerformance.avgOrder')}</MetricLabel>
                       <MetricValue>
                         {restaurant.avgOrder > 0 ? formatCurrency(restaurant.avgOrder, restaurant.currency) : 'N/A'}
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Max Order</MetricLabel>
+                      <MetricLabel>{t('owner:ownerPerformance.maxOrder')}</MetricLabel>
                       <MetricValue>
                         {restaurant.maxOrder > 0 ? formatCurrency(restaurant.maxOrder, restaurant.currency) : 'N/A'}
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Avg Fulfillment</MetricLabel>
+                      <MetricLabel>{t('owner:ownerPerformance.avgFulfillment')}</MetricLabel>
                       <MetricValue>
                         {restaurant.avgServiceTime > 0 ? `${restaurant.avgServiceTime} min` : 'N/A'}
                       </MetricValue>

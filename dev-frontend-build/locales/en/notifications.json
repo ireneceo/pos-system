@@ -1,0 +1,23 @@
+{
+  "notificationSettingsPage.systemSettings": "System Settings",
+  "notificationSettingsPage.loading": "Loading...",
+  "notificationSettingsPage.profileSettings": "Profile Settings",
+  "notificationSettingsPage.loadingPreferences": "Loading preferences...",
+  "notificationSettingsPage.noNotificationCategoriesAvailableForYourRole": "No notification categories available for your role.",
+  "notificationSettingsPage.smtpServer": "SMTP Server",
+  "notificationSettingsPage.smtpPort": "SMTP Port",
+  "notificationSettingsPage.typically587TlsOr465Ssl": "Typically 587 (TLS) or 465 (SSL)",
+  "notificationSettingsPage.smtpUsername": "SMTP Username",
+  "notificationSettingsPage.yourFullEmailAddress": "Your full email address",
+  "notificationSettingsPage.smtpPassword": "SMTP Password",
+  "notificationSettingsPage.fromEmail": "From Email",
+  "notificationSettingsPage.emailAddressShownToRecipients": "Email address shown to recipients",
+  "notificationSettingsPage.fromName": "From Name",
+  "notificationSettingsPage.displayNameShownToRecipients": "Display name shown to recipients",
+  "notificationSettingsPage.replytoEmailOptional": "Reply-To Email (Optional)",
+  "notificationSettingsPage.whereRepliesShouldBeSent": "Where replies should be sent",
+  "notificationSettingsPage.cancel": "Cancel",
+  "notificationSettingsPage.enterTheEmailAddressWhereYouWantToReceiveTheTestEmail": "Enter the email address where you want to receive the test email.",
+  "notificationSettingsPage.emailAddress": "Email Address",
+  "notificationSettingsPage.ok": "OK"
+}

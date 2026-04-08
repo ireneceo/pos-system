@@ -5,6 +5,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface BrandProductCategoriesTabProps {
   onCountChange: (count: number) => void;
@@ -184,6 +185,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
   onCountChange,
   onCategoryChange
 }) => {
+  const { t } = useTranslation('brand');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -350,7 +352,9 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
   };
 
   if (loading) {
-    return (
+  // useTranslation moved to component level
+
+  return (
       <Container>
         <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
           Loading categories...
@@ -369,9 +373,9 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
 
       {categories.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No categories yet</EmptyTitle>
-          <EmptyDescription>Create your first product category to organize your products.</EmptyDescription>
-          <ThemedButton onClick={() => handleOpenModal()}>Add Category</ThemedButton>
+          <EmptyTitle>{'No categories yet'}</EmptyTitle>
+          <EmptyDescription>{'Create your first product category to organize your products.'}</EmptyDescription>
+          <ThemedButton onClick={() => handleOpenModal()}>{'Add Category'}</ThemedButton>
         </EmptyState>
       ) : (
         <CategoryGrid>
@@ -441,7 +445,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Emoji</FormLabel>
+              <FormLabel>{'Emoji'}</FormLabel>
               <EmojiPicker>
                 {emojiOptions.map((emoji) => (
                   <EmojiOption
@@ -457,7 +461,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{'Description'}</FormLabel>
               <FormTextArea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}

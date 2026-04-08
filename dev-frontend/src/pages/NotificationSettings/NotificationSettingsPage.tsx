@@ -7,6 +7,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import ImportDataTab from '../../components/Settings/ImportDataTab';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
+import { useTranslation } from 'react-i18next';
 
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -373,6 +374,7 @@ interface NotificationCategory {
 }
 
 const NotificationSettingsPage: React.FC = () => {
+  const { t } = useTranslation('notifications');
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [activeTab, handleTabChange] = useTabParam<'preferences' | 'email' | 'import'>('preferences');
@@ -575,8 +577,8 @@ const NotificationSettingsPage: React.FC = () => {
   if (loading && prefsLoading) {
     return (
       <SettingsContainer>
-        <Header><HeaderTitle>System Settings</HeaderTitle></Header>
-        <Content><SettingsCard>Loading...</SettingsCard></Content>
+        <Header><HeaderTitle>{t('notifications:notificationSettingsPage.systemSettings')}</HeaderTitle></Header>
+        <Content><SettingsCard>{t('notifications:notificationSettingsPage.loading')}</SettingsCard></Content>
       </SettingsContainer>
     );
   }
@@ -585,7 +587,7 @@ const NotificationSettingsPage: React.FC = () => {
     <>
       <SettingsContainer>
         <Header>
-          <HeaderTitle>System Settings</HeaderTitle>
+          <HeaderTitle>{t('notifications:notificationSettingsPage.systemSettings')}</HeaderTitle>
         </Header>
 
         <Content>
@@ -612,15 +614,15 @@ const NotificationSettingsPage: React.FC = () => {
                   <EmailInfoContent>
                     Notifications will be sent to <EmailAddress>{user.email}</EmailAddress>
                     <br />
-                    To change your email, go to <EmailInfoLink href="/pos/profile">Profile Settings</EmailInfoLink>.
+                    To change your email, go to <EmailInfoLink href="/pos/profile">{t('notifications:notificationSettingsPage.profileSettings')}</EmailInfoLink>.
                   </EmailInfoContent>
                 </EmailInfoBox>
               )}
 
               {prefsLoading ? (
-                <DescriptionText>Loading preferences...</DescriptionText>
+                <DescriptionText>{t('notifications:notificationSettingsPage.loadingPreferences')}</DescriptionText>
               ) : categories.length === 0 ? (
-                <DescriptionText>No notification categories available for your role.</DescriptionText>
+                <DescriptionText>{t('notifications:notificationSettingsPage.noNotificationCategoriesAvailableForYourRole')}</DescriptionText>
               ) : (
                 <>
                   {Object.entries(groupedCategories).map(([section, cats], idx) => (
@@ -681,7 +683,7 @@ const NotificationSettingsPage: React.FC = () => {
 
               <FormGrid>
                 <FormGroup>
-                  <Label>SMTP Server<RequiredMark>*</RequiredMark></Label>
+                  <Label>{t('notifications:notificationSettingsPage.smtpServer')}<RequiredMark>*</RequiredMark></Label>
                   <AutoSaveField onSave={handleSmtpSave}>
                     <Input
                       type="text"
@@ -695,7 +697,7 @@ const NotificationSettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>SMTP Port<RequiredMark>*</RequiredMark></Label>
+                  <Label>{t('notifications:notificationSettingsPage.smtpPort')}<RequiredMark>*</RequiredMark></Label>
                   <AutoSaveField onSave={handleSmtpSave}>
                     <Input
                       type="number"
@@ -705,11 +707,11 @@ const NotificationSettingsPage: React.FC = () => {
                       disabled={!smtpSettings.email_enabled}
                     />
                   </AutoSaveField>
-                  <HelpText>Typically 587 (TLS) or 465 (SSL)</HelpText>
+                  <HelpText>{t('notifications:notificationSettingsPage.typically587TlsOr465Ssl')}</HelpText>
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>SMTP Username<RequiredMark>*</RequiredMark></Label>
+                  <Label>{t('notifications:notificationSettingsPage.smtpUsername')}<RequiredMark>*</RequiredMark></Label>
                   <AutoSaveField onSave={handleSmtpSave}>
                     <Input
                       type="email"
@@ -719,11 +721,11 @@ const NotificationSettingsPage: React.FC = () => {
                       disabled={!smtpSettings.email_enabled}
                     />
                   </AutoSaveField>
-                  <HelpText>Your full email address</HelpText>
+                  <HelpText>{t('notifications:notificationSettingsPage.yourFullEmailAddress')}</HelpText>
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>SMTP Password<RequiredMark>*</RequiredMark></Label>
+                  <Label>{t('notifications:notificationSettingsPage.smtpPassword')}<RequiredMark>*</RequiredMark></Label>
                   <AutoSaveField onSave={handleSmtpSave}>
                     <Input
                       type="password"
@@ -737,7 +739,7 @@ const NotificationSettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>From Email<RequiredMark>*</RequiredMark></Label>
+                  <Label>{t('notifications:notificationSettingsPage.fromEmail')}<RequiredMark>*</RequiredMark></Label>
                   <AutoSaveField onSave={handleSmtpSave}>
                     <Input
                       type="email"
@@ -747,11 +749,11 @@ const NotificationSettingsPage: React.FC = () => {
                       disabled={!smtpSettings.email_enabled}
                     />
                   </AutoSaveField>
-                  <HelpText>Email address shown to recipients</HelpText>
+                  <HelpText>{t('notifications:notificationSettingsPage.emailAddressShownToRecipients')}</HelpText>
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>From Name<RequiredMark>*</RequiredMark></Label>
+                  <Label>{t('notifications:notificationSettingsPage.fromName')}<RequiredMark>*</RequiredMark></Label>
                   <AutoSaveField onSave={handleSmtpSave}>
                     <Input
                       type="text"
@@ -761,12 +763,12 @@ const NotificationSettingsPage: React.FC = () => {
                       disabled={!smtpSettings.email_enabled}
                     />
                   </AutoSaveField>
-                  <HelpText>Display name shown to recipients</HelpText>
+                  <HelpText>{t('notifications:notificationSettingsPage.displayNameShownToRecipients')}</HelpText>
                 </FormGroup>
               </FormGrid>
 
               <FormGroup>
-                <Label>Reply-To Email (Optional)</Label>
+                <Label>{t('notifications:notificationSettingsPage.replytoEmailOptional')}</Label>
                 <AutoSaveField onSave={handleSmtpSave}>
                   <Input
                     type="email"
@@ -776,7 +778,7 @@ const NotificationSettingsPage: React.FC = () => {
                     disabled={!smtpSettings.email_enabled}
                   />
                 </AutoSaveField>
-                <HelpText>Where replies should be sent</HelpText>
+                <HelpText>{t('notifications:notificationSettingsPage.whereRepliesShouldBeSent')}</HelpText>
               </FormGroup>
 
               {smtpSettings.email_enabled && (
@@ -797,10 +799,10 @@ const NotificationSettingsPage: React.FC = () => {
 
       {/* Test Email Modal */}
       {showTestEmailModal && (
-        <CommonModal isOpen={true} onClose={() => setShowTestEmailModal(false)} title="Send Test Email" footer={<><CancelButton onClick={() => setShowTestEmailModal(false)}>Cancel</CancelButton><SaveButton onClick={sendTestEmail} disabled={sendingTestEmail || !testEmailAddress}>{sendingTestEmail ? 'Sending...' : 'Send'}</SaveButton></>}>
-            <ModalText>Enter the email address where you want to receive the test email.</ModalText>
+        <CommonModal isOpen={true} onClose={() => setShowTestEmailModal(false)} title="Send Test Email" footer={<><CancelButton onClick={() => setShowTestEmailModal(false)}>{t('notifications:notificationSettingsPage.cancel')}</CancelButton><SaveButton onClick={sendTestEmail} disabled={sendingTestEmail || !testEmailAddress}>{sendingTestEmail ? 'Sending...' : 'Send'}</SaveButton></>}>
+            <ModalText>{t('notifications:notificationSettingsPage.enterTheEmailAddressWhereYouWantToReceiveTheTestEmail')}</ModalText>
             <FormGroup>
-              <Label>Email Address</Label>
+              <Label>{t('notifications:notificationSettingsPage.emailAddress')}</Label>
               <Input
                 type="email"
                 placeholder="test@example.com"
@@ -814,7 +816,7 @@ const NotificationSettingsPage: React.FC = () => {
 
       {/* Result Modal */}
       {showResultModal && (
-        <CommonModal isOpen={true} onClose={() => setShowResultModal(false)} title={resultMessage.success ? 'Success' : 'Error'} footer={<SaveButton onClick={() => setShowResultModal(false)}>OK</SaveButton>}>
+        <CommonModal isOpen={true} onClose={() => setShowResultModal(false)} title={resultMessage.success ? 'Success' : 'Error'} footer={<SaveButton onClick={() => setShowResultModal(false)}>{t('notifications:notificationSettingsPage.ok')}</SaveButton>}>
             <ModalText>{resultMessage.text}</ModalText>
         </CommonModal>
       )}

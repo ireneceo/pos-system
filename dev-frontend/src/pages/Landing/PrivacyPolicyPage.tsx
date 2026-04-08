@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -153,6 +154,7 @@ const ContactLink = styled.a`
 `;
 
 const PrivacyPolicyPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   return (
     <LandingLayout>
       <SEOHead
@@ -163,15 +165,15 @@ const PrivacyPolicyPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>Privacy Policy</HeroTitle>
+          <HeroTitle>{t('landing:privacyPolicyPage.privacyPolicy')}</HeroTitle>
           <HeroSubtitle>
-            How we collect, use, and protect your personal information
+            {t('landing:privacyPolicyPage.howWeCollectUseAndProtectYourPersonalInf')}
           </HeroSubtitle>
         </HeroSection>
 
         <ContentSection>
           <Section>
-            <SectionTitle>Introduction</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.introduction')}</SectionTitle>
             <Paragraph>
               GIT CONSULTING SDN. BHD. ("we", "us", "our", or "PurpleHere") is committed to protecting
               your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard
@@ -181,101 +183,101 @@ const PrivacyPolicyPage: React.FC = () => {
               By using our services, you agree to the collection and use of information in accordance
               with this policy. If you do not agree with this policy, please do not use our services.
             </Paragraph>
-            <LastUpdated>Last Updated: February 2026</LastUpdated>
+            <LastUpdated>{t('landing:privacyPolicyPage.lastUpdatedFebruary2026')}</LastUpdated>
           </Section>
 
           <Section>
-            <SectionTitle>Information We Collect</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.informationWeCollect')}</SectionTitle>
 
-            <SubSectionTitle>Personal Information</SubSectionTitle>
+            <SubSectionTitle>{t('landing:privacyPolicyPage.personalInformation')}</SubSectionTitle>
             <Paragraph>
-              We may collect personally identifiable information that you voluntarily provide to us, including:
+              {t('landing:privacyPolicyPage.weMayCollectPersonallyIdentifiableInform')}
             </Paragraph>
             <List>
-              <ListItem>Name, email address, and phone number</ListItem>
-              <ListItem>Business name and address</ListItem>
-              <ListItem>Payment and billing information</ListItem>
-              <ListItem>Account credentials (username and password)</ListItem>
-              <ListItem>Communication preferences</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.nameEmailAddressAndPhoneNumber')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.businessNameAndAddress')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.paymentAndBillingInformation')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.accountCredentialsUsernameAndPassword')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.communicationPreferences')}</ListItem>
             </List>
 
-            <SubSectionTitle>Business Data</SubSectionTitle>
+            <SubSectionTitle>{t('landing:privacyPolicyPage.businessData')}</SubSectionTitle>
             <Paragraph>
-              When you use our POS system, we collect business-related data including:
+              {t('landing:privacyPolicyPage.whenYouUseOurPosSystemWeCollectBusinessr')}
             </Paragraph>
             <List>
-              <ListItem>Transaction records and sales data</ListItem>
-              <ListItem>Inventory and menu information</ListItem>
-              <ListItem>Customer data you input into the system</ListItem>
-              <ListItem>Staff information and access logs</ListItem>
-              <ListItem>Reports and analytics data</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.transactionRecordsAndSalesData')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.inventoryAndMenuInformation')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.customerDataYouInputIntoTheSystem')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.staffInformationAndAccessLogs')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.reportsAndAnalyticsData')}</ListItem>
             </List>
 
-            <SubSectionTitle>Technical Information</SubSectionTitle>
+            <SubSectionTitle>{t('landing:privacyPolicyPage.technicalInformation')}</SubSectionTitle>
             <Paragraph>
-              We automatically collect certain technical information when you use our services:
+              {t('landing:privacyPolicyPage.weAutomaticallyCollectCertainTechnicalIn')}
             </Paragraph>
             <List>
-              <ListItem>Device information (browser type, operating system)</ListItem>
-              <ListItem>IP address and location data</ListItem>
-              <ListItem>Usage patterns and feature interactions</ListItem>
-              <ListItem>Error logs and diagnostic data</ListItem>
-            </List>
-          </Section>
-
-          <Section>
-            <SectionTitle>How We Use Your Information</SectionTitle>
-            <Paragraph>
-              We use the information we collect for the following purposes:
-            </Paragraph>
-            <List>
-              <ListItem>To provide, operate, and maintain our POS services</ListItem>
-              <ListItem>To process transactions and manage your subscription</ListItem>
-              <ListItem>To send you service-related communications and updates</ListItem>
-              <ListItem>To provide customer support and respond to inquiries</ListItem>
-              <ListItem>To improve our services and develop new features</ListItem>
-              <ListItem>To detect, prevent, and address technical issues or fraud</ListItem>
-              <ListItem>To comply with legal obligations</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.deviceInformationBrowserTypeOperatingSystem')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.ipAddressAndLocationData')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.usagePatternsAndFeatureInteractions')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.errorLogsAndDiagnosticData')}</ListItem>
             </List>
           </Section>
 
           <Section>
-            <SectionTitle>Data Sharing and Disclosure</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.howWeUseYourInformation')}</SectionTitle>
+            <Paragraph>
+              {t('landing:privacyPolicyPage.weUseTheInformationWeCollectForTheFollow')}
+            </Paragraph>
+            <List>
+              <ListItem>{t('landing:privacyPolicyPage.toProvideOperateAndMaintainOurPosServices')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.toProcessTransactionsAndManageYourSubscription')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.toSendYouServicerelatedCommunicationsAndUpdates')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.toProvideCustomerSupportAndRespondToInquiries')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.toImproveOurServicesAndDevelopNewFeatures')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.toDetectPreventAndAddressTechnicalIssuesOrFraud')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.toComplyWithLegalObligations')}</ListItem>
+            </List>
+          </Section>
+
+          <Section>
+            <SectionTitle>{t('landing:privacyPolicyPage.dataSharingAndDisclosure')}</SectionTitle>
             <Paragraph>
               We do not sell, trade, or rent your personal information to third parties.
               We may share your information only in the following circumstances:
             </Paragraph>
             <List>
               <ListItem>
-                <strong>Service Providers:</strong> With trusted third-party service providers who
+                <strong>{t('landing:privacyPolicyPage.serviceProviders')}</strong> With trusted third-party service providers who
                 assist us in operating our services (e.g., payment processors, cloud hosting)
               </ListItem>
               <ListItem>
-                <strong>Legal Requirements:</strong> When required by law, court order, or government
+                <strong>{t('landing:privacyPolicyPage.legalRequirements')}</strong> When required by law, court order, or government
                 authority
               </ListItem>
               <ListItem>
-                <strong>Business Transfers:</strong> In connection with a merger, acquisition, or sale
+                <strong>{t('landing:privacyPolicyPage.businessTransfers')}</strong> In connection with a merger, acquisition, or sale
                 of assets
               </ListItem>
               <ListItem>
-                <strong>Consent:</strong> With your explicit consent for specific purposes
+                <strong>{t('landing:privacyPolicyPage.consent')}</strong> {t('landing:privacyPolicyPage.withYourExplicitConsentForSpecificPurpos')}
               </ListItem>
             </List>
           </Section>
 
           <Section>
-            <SectionTitle>Data Security</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.dataSecurity')}</SectionTitle>
             <Paragraph>
               We implement appropriate technical and organizational security measures to protect
               your personal information, including:
             </Paragraph>
             <List>
-              <ListItem>SSL/TLS encryption for data transmission</ListItem>
-              <ListItem>Encrypted storage of sensitive data</ListItem>
-              <ListItem>Regular security audits and vulnerability assessments</ListItem>
-              <ListItem>Access controls and authentication mechanisms</ListItem>
-              <ListItem>Employee training on data protection</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.ssltlsEncryptionForDataTransmission')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.encryptedStorageOfSensitiveData')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.regularSecurityAuditsAndVulnerabilityAssessments')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.accessControlsAndAuthenticationMechanisms')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.employeeTrainingOnDataProtection')}</ListItem>
             </List>
             <Paragraph>
               However, no method of transmission over the Internet or electronic storage is 100%
@@ -284,15 +286,15 @@ const PrivacyPolicyPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Data Retention</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.dataRetention')}</SectionTitle>
             <Paragraph>
               We retain your personal information for as long as necessary to provide our services
               and fulfill the purposes described in this policy. Specifically:
             </Paragraph>
             <List>
-              <ListItem>Account information: Retained while your account is active and for 5 years after termination</ListItem>
-              <ListItem>Transaction records: Retained for 7 years for legal and accounting purposes</ListItem>
-              <ListItem>Technical logs: Retained for up to 12 months</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.accountInformationRetainedWhileYourAccou')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.transactionRecordsRetainedFor7YearsForLe')}</ListItem>
+              <ListItem>{t('landing:privacyPolicyPage.technicalLogsRetainedForUpTo12Months')}</ListItem>
             </List>
             <Paragraph>
               You may request deletion of your data at any time, subject to our legal obligations
@@ -301,32 +303,32 @@ const PrivacyPolicyPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Your Rights</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.yourRights')}</SectionTitle>
             <Paragraph>
-              Depending on your location, you may have the following rights regarding your personal data:
+              {t('landing:privacyPolicyPage.dependingOnYourLocationYouMayHaveTheFoll')}
             </Paragraph>
             <List>
-              <ListItem><strong>Access:</strong> Request a copy of the personal data we hold about you</ListItem>
-              <ListItem><strong>Correction:</strong> Request correction of inaccurate or incomplete data</ListItem>
-              <ListItem><strong>Deletion:</strong> Request deletion of your personal data</ListItem>
-              <ListItem><strong>Portability:</strong> Request transfer of your data to another service</ListItem>
-              <ListItem><strong>Objection:</strong> Object to certain processing of your data</ListItem>
-              <ListItem><strong>Restriction:</strong> Request restriction of processing in certain circumstances</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.access')}</strong> {t('landing:privacyPolicyPage.requestACopyOfThePersonalDataWeHoldAbout')}</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.correction')}</strong> {t('landing:privacyPolicyPage.requestCorrectionOfInaccurateOrIncomplet')}</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.deletion')}</strong> {t('landing:privacyPolicyPage.requestDeletionOfYourPersonalData')}</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.portability')}</strong> {t('landing:privacyPolicyPage.requestTransferOfYourDataToAnotherServic')}</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.objection')}</strong> {t('landing:privacyPolicyPage.objectToCertainProcessingOfYourData')}</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.restriction')}</strong> {t('landing:privacyPolicyPage.requestRestrictionOfProcessingInCertainC')}</ListItem>
             </List>
             <Paragraph>
-              To exercise these rights, please contact us using the information provided below.
+              {t('landing:privacyPolicyPage.toExerciseTheseRightsPleaseContactUsUsin')}
             </Paragraph>
           </Section>
 
           <Section>
-            <SectionTitle>Cookies and Tracking</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.cookiesAndTracking')}</SectionTitle>
             <Paragraph>
-              We use cookies and similar tracking technologies to enhance your experience:
+              {t('landing:privacyPolicyPage.weUseCookiesAndSimilarTrackingTechnologi')}
             </Paragraph>
             <List>
-              <ListItem><strong>Essential Cookies:</strong> Required for basic functionality and security</ListItem>
-              <ListItem><strong>Analytics Cookies:</strong> Help us understand how users interact with our services</ListItem>
-              <ListItem><strong>Preference Cookies:</strong> Remember your settings and preferences</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.essentialCookies')}</strong> {t('landing:privacyPolicyPage.requiredForBasicFunctionalityAndSecurity')}</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.analyticsCookies')}</strong> {t('landing:privacyPolicyPage.helpUsUnderstandHowUsersInteractWithOurS')}</ListItem>
+              <ListItem><strong>{t('landing:privacyPolicyPage.preferenceCookies')}</strong> {t('landing:privacyPolicyPage.rememberYourSettingsAndPreferences')}</ListItem>
             </List>
             <Paragraph>
               You can manage cookie preferences through your browser settings. Note that disabling
@@ -335,7 +337,7 @@ const PrivacyPolicyPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>International Data Transfers</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.internationalDataTransfers')}</SectionTitle>
             <Paragraph>
               Our services are hosted in Malaysia. If you access our services from outside Malaysia,
               your information may be transferred to, stored, and processed in Malaysia or other
@@ -348,7 +350,7 @@ const PrivacyPolicyPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Children's Privacy</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.childrensPrivacy')}</SectionTitle>
             <Paragraph>
               Our services are not intended for individuals under the age of 18. We do not knowingly
               collect personal information from children. If you believe we have collected information
@@ -357,30 +359,30 @@ const PrivacyPolicyPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Changes to This Policy</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.changesToThisPolicy')}</SectionTitle>
             <Paragraph>
               We may update this Privacy Policy from time to time. We will notify you of any changes
               by posting the new policy on this page and updating the "Last Updated" date. We encourage
               you to review this policy periodically.
             </Paragraph>
             <Paragraph>
-              Continued use of our services after any changes constitutes acceptance of the updated policy.
+              {t('landing:privacyPolicyPage.continuedUseOfOurServicesAfterAnyChanges')}
             </Paragraph>
           </Section>
 
           <Section>
-            <SectionTitle>Contact Us</SectionTitle>
+            <SectionTitle>{t('landing:privacyPolicyPage.contactUs')}</SectionTitle>
             <Paragraph>
-              If you have any questions about this Privacy Policy or our data practices, please contact us:
+              {t('landing:privacyPolicyPage.ifYouHaveAnyQuestionsAboutThisPrivacyPol')}
             </Paragraph>
             <ContactBlock>
               <ContactText>
-                <strong>GIT CONSULTING SDN. BHD.</strong><br />
-                P-02-06A, Tropicana Avenue, Persiaran Tropicana<br />
-                Tropicana Golf & Country Resort<br />
+                <strong>{t('landing:privacyPolicyPage.gitConsultingSdnBhd')}</strong><br />
+                {t('landing:privacyPolicyPage.p0206aTropicanaAvenuePersiaranTropicana')}<br />
+                {t('landing:privacyPolicyPage.tropicanaGolfCountryResort')}<br />
                 47410, Petaling Jaya, Selangor, Malaysia<br /><br />
-                Email: <ContactLink href="mailto:help@gitconsulting.group">help@gitconsulting.group</ContactLink><br />
-                Website: <ContactLink href="https://purplehere.com">purplehere.com</ContactLink>
+                {t('landing:privacyPolicyPage.email')}<ContactLink href="mailto:help@gitconsulting.group">help@gitconsulting.group</ContactLink><br />
+                {t('landing:privacyPolicyPage.website')}<ContactLink href="https://purplehere.com">purplehere.com</ContactLink>
               </ContactText>
             </ContactBlock>
           </Section>

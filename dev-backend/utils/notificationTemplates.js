@@ -15,11 +15,11 @@ function ctaButton(label, url) {
     </div>`;
 }
 
-function wrapTemplate(title, bodyContent) {
+function wrapTemplate(title, bodyContent, lang) {
   const content = `
     <h2 style="color:#1A1A2E;font-size:20px;font-weight:600;margin:0 0 8px;">${title}</h2>
     ${bodyContent}`;
-  return emailLayout(content);
+  return emailLayout(content, undefined, lang);
 }
 
 function infoRow(label, value) {
@@ -37,48 +37,53 @@ function infoTable(rows) {
 /**
  * New notice received
  */
-function noticeReceivedEmail(notice, authorName) {
+function noticeReceivedEmail(notice, authorName, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (key, params) => getEmailText(lang, key, params);
+
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
-      A new notice has been posted.
+      ${t('notice.body')}
     </p>
     ${infoTable(
-      infoRow('Title', notice.title || 'Untitled') +
-      infoRow('Posted by', authorName || 'Unknown') +
-      infoRow('Priority', notice.priority || 'Normal') +
-      infoRow('Date', new Date(notice.created_at || notice.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))
+      infoRow(t('notice.postedBy'), authorName || 'Unknown') +
+      infoRow(t('notice.priority'), notice.priority || 'Normal') +
+      infoRow(t('notice.date'), new Date(notice.created_at || notice.createdAt).toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' }))
     )}
     <div style="color: #6B7280; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
       ${(notice.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}${(notice.content || '').length > 500 ? '...' : ''}
     </div>
-    ${ctaButton('View Notice', `${BASE_URL}/pos/notices`)}`;
+    ${ctaButton(t('notice.viewButton'), `${BASE_URL}/pos/notices`)}`;
 
   return {
-    subject: `New Notice: ${(notice.title || 'Untitled').slice(0, 60)}`,
-    html: wrapTemplate('New Notice', body),
-    text: `New Notice: ${notice.title}\nPosted by: ${authorName}\n\n${(notice.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
+    subject: t('notice.subject', { title: (notice.title || 'Untitled').slice(0, 60) }),
+    html: wrapTemplate(t('notice.heading'), body, lang),
+    text: `${t('notice.heading')}: ${notice.title}\n${t('notice.postedBy')}: ${authorName}\n\n${(notice.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
   };
 }
 
 /**
  * New comment on a notice or ticket
  */
-function commentReceivedEmail(comment, entityTitle, commenterName) {
+function commentReceivedEmail(comment, entityTitle, commenterName, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (key, params) => getEmailText(lang, key, params);
+
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
-      <strong>${commenterName || 'Someone'}</strong> commented on <strong>${entityTitle || 'an item'}</strong>.
+      ${t('comment.commentedOn', { name: `<strong>${commenterName || 'Someone'}</strong>`, title: `<strong>${entityTitle || 'an item'}</strong>` })}
     </p>
     <div style="background: #F9FAFB; border-left: 4px solid #635BFF; padding: 16px; margin: 0 0 24px; border-radius: 0 8px 8px 0;">
       <p style="color: #374151; font-size: 14px; margin: 0;">
         ${(comment.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}
       </p>
     </div>
-    ${ctaButton('View & Reply', `${BASE_URL}/pos/dashboard`)}`;
+    ${ctaButton(t('comment.viewButton'), `${BASE_URL}/pos/dashboard`)}`;
 
   return {
-    subject: `New Comment on: ${(entityTitle || 'item').slice(0, 50)}`,
-    html: wrapTemplate('New Comment', body),
-    text: `${commenterName} commented on "${entityTitle}":\n\n${(comment.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
+    subject: t('comment.subject', { title: (entityTitle || 'item').slice(0, 50) }),
+    html: wrapTemplate(t('comment.heading'), body, lang),
+    text: `${commenterName} → "${entityTitle}":\n\n${(comment.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
   };
 }
 

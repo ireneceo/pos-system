@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal as CommonModal } from '../../components/UI';
 import CommentSection from '../../components/Common/CommentSection';
 import AttachmentList from '../../components/Common/AttachmentList';
+import { useTranslation } from 'react-i18next';
 
 interface OperationTicket {
   id: string;
@@ -389,6 +390,7 @@ const StatusRow = styled.div`
 `;
 
 const OperationInquiryPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [tickets, setTickets] = useState<OperationTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -487,25 +489,25 @@ const OperationInquiryPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Operation Inquiry</Title>
+          <Title>{t('admin:operationInquiryPage.operationInquiry')}</Title>
         </Header>
         <Content>
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{totalTickets}</StatValue>
-              <StatLabel>Total Inquiries</StatLabel>
+              <StatLabel>{t('admin:operationInquiryPage.totalInquiries')}</StatLabel>
             </StatCard>
             <StatCard color="#D97706">
               <StatValue>{openTickets}</StatValue>
-              <StatLabel>Open</StatLabel>
+              <StatLabel>{t('admin:operationInquiryPage.open')}</StatLabel>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{inProgressTickets}</StatValue>
-              <StatLabel>In Progress</StatLabel>
+              <StatLabel>{t('admin:operationInquiryPage.inProgress')}</StatLabel>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>{resolvedTickets}</StatValue>
-              <StatLabel>Resolved</StatLabel>
+              <StatLabel>{t('admin:operationInquiryPage.resolved')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -516,18 +518,18 @@ const OperationInquiryPage: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in-progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option value="all">{t('admin:operationInquiryPage.allStatus')}</option>
+              <option value="open">{t('admin:operationInquiryPage.open')}</option>
+              <option value="in-progress">{t('admin:operationInquiryPage.inProgress')}</option>
+              <option value="resolved">{t('admin:operationInquiryPage.resolved')}</option>
+              <option value="closed">{t('admin:operationInquiryPage.closed')}</option>
             </Select>
             <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-              <option value="all">All Priority</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all">{t('admin:operationInquiryPage.allPriority')}</option>
+              <option value="urgent">{t('admin:operationInquiryPage.urgent')}</option>
+              <option value="high">{t('admin:operationInquiryPage.high')}</option>
+              <option value="medium">{t('admin:operationInquiryPage.medium')}</option>
+              <option value="low">{t('admin:operationInquiryPage.low')}</option>
             </Select>
           </FiltersContainer>
 
@@ -552,7 +554,7 @@ const OperationInquiryPage: React.FC = () => {
 
                 <TicketMeta>
                   <div>
-                    <MetaLabel>Created </MetaLabel>
+                    <MetaLabel>{t('admin:operationInquiryPage.created')}</MetaLabel>
                     <MetaValue>{formatDateTime(ticket.createdAt)}</MetaValue>
                   </div>
                   {unreadCounts[ticket.id] && (
@@ -576,38 +578,38 @@ const OperationInquiryPage: React.FC = () => {
                 color: '#6B7280',
                 gridColumn: '1 / -1'
               }}>
-                <h3 style={{ color: '#374151', marginBottom: '8px' }}>No inquiries yet</h3>
-                <p>No operation inquiries have been submitted.</p>
+                <h3 style={{ color: '#374151', marginBottom: '8px' }}>{t('admin:operationInquiryPage.noInquiriesYet')}</h3>
+                <p>{t('admin:operationInquiryPage.noOperationInquiriesHaveBeenSubmitted')}</p>
               </div>
             )}
           </TicketsGrid>
 
           {/* Detail Modal */}
           {selectedTicket && (
-            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={<><Button variant="secondary" onClick={() => setSelectedTicket(null)}>Close</Button></>}>
+            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={<><Button variant="secondary" onClick={() => setSelectedTicket(null)}>{t('admin:operationInquiryPage.close')}</Button></>}>
                   <InfoBox>
                     <InfoRow>
-                      <InfoLabel>Subject</InfoLabel>
+                      <InfoLabel>{t('admin:operationInquiryPage.subject')}</InfoLabel>
                       <InfoValue>{selectedTicket.subject}</InfoValue>
                     </InfoRow>
                     <InfoRow>
-                      <InfoLabel>Restaurant</InfoLabel>
+                      <InfoLabel>{t('admin:operationInquiryPage.restaurant')}</InfoLabel>
                       <InfoValue>{selectedTicket.restaurantName}</InfoValue>
                     </InfoRow>
                     <InfoRow>
-                      <InfoLabel>From</InfoLabel>
+                      <InfoLabel>{t('admin:operationInquiryPage.from')}</InfoLabel>
                       <InfoValue>{selectedTicket.requesterName} ({selectedTicket.requesterRole})</InfoValue>
                     </InfoRow>
                     <InfoRow>
-                      <InfoLabel>Priority</InfoLabel>
+                      <InfoLabel>{t('admin:operationInquiryPage.priority')}</InfoLabel>
                       <InfoValue><PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge></InfoValue>
                     </InfoRow>
                     <InfoRow>
-                      <InfoLabel>Category</InfoLabel>
+                      <InfoLabel>{t('admin:operationInquiryPage.category')}</InfoLabel>
                       <InfoValue>{selectedTicket.category}</InfoValue>
                     </InfoRow>
                     <InfoRow>
-                      <InfoLabel>Created</InfoLabel>
+                      <InfoLabel>{t('admin:operationInquiryPage.created')}</InfoLabel>
                       <InfoValue>{formatDateTime(selectedTicket.createdAt)}</InfoValue>
                     </InfoRow>
                   </InfoBox>
@@ -619,13 +621,13 @@ const OperationInquiryPage: React.FC = () => {
                   )}
 
                   <FormGroup>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel>{t('admin:operationInquiryPage.status')}</FormLabel>
                     <StatusRow>
                       <Select value={detailStatus} onChange={(e) => setDetailStatus(e.target.value)}>
-                        <option value="open">Open</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="closed">Closed</option>
+                        <option value="open">{t('admin:operationInquiryPage.open')}</option>
+                        <option value="in-progress">{t('admin:operationInquiryPage.inProgress')}</option>
+                        <option value="resolved">{t('admin:operationInquiryPage.resolved')}</option>
+                        <option value="closed">{t('admin:operationInquiryPage.closed')}</option>
                       </Select>
                       <Button
                         variant="primary"

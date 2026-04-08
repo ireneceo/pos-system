@@ -17,6 +17,7 @@ import {
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency as formatCurrencyUtil, getCurrencySymbol } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 
 const FilterControlsWrapper = styled.div`
@@ -352,6 +353,7 @@ interface RestaurantPerformanceData {
 
 
 const BrandPerformance: React.FC = () => {
+  const { t } = useTranslation('brand');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
@@ -770,10 +772,10 @@ const BrandPerformance: React.FC = () => {
       <Container>
         <Header>
           <div>
-            <Title>Performance</Title>
+            <Title>{t('brand:brandPerformance.performance')}</Title>
           </div>
           <ActionSection>
-            <Button variant="primary">Export Report</Button>
+            <Button variant="primary">{t('brand:brandPerformance.exportReport')}</Button>
           </ActionSection>
         </Header>
 
@@ -797,8 +799,8 @@ const BrandPerformance: React.FC = () => {
               )}
               <DropdownMenu show={showBrandDropdown}>
                 <DropdownItem onClick={() => { setSelectedBrandId('all'); setBrandSearchQuery(''); setShowBrandDropdown(false); setSelectedRestaurantId('all'); setRestaurantSearchQuery(''); }}>
-                  <ItemName>All Brands</ItemName>
-                  <ItemDetails>Show all brand data</ItemDetails>
+                  <ItemName>{t('brand:brandPerformance.allBrands')}</ItemName>
+                  <ItemDetails>{t('brand:brandPerformance.showAllBrandData')}</ItemDetails>
                 </DropdownItem>
                 {filteredBrandsList.map(brand => (
                   <DropdownItem key={brand.id} onClick={() => handleBrandSelect(brand)}>
@@ -830,8 +832,8 @@ const BrandPerformance: React.FC = () => {
               )}
               <DropdownMenu show={showRestaurantDropdown}>
                 <DropdownItem onClick={() => { setSelectedRestaurantId('all'); setRestaurantSearchQuery(''); setShowRestaurantDropdown(false); }}>
-                  <ItemName>All Restaurants</ItemName>
-                  <ItemDetails>Show all restaurant data</ItemDetails>
+                  <ItemName>{t('brand:brandPerformance.allRestaurants')}</ItemName>
+                  <ItemDetails>{t('brand:brandPerformance.showAllRestaurantData')}</ItemDetails>
                 </DropdownItem>
                 {filteredRestaurantsList.map(restaurant => (
                   <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
@@ -860,10 +862,10 @@ const BrandPerformance: React.FC = () => {
                 value={selectedMetric}
                 onChange={(e) => setSelectedMetric(e.target.value)}
               >
-                <option value="sales">Revenue</option>
-                <option value="growth">Growth</option>
-                <option value="orders">Orders</option>
-                <option value="customers">Customers</option>
+                <option value="sales">{t('brand:brandPerformance.revenue')}</option>
+                <option value="growth">{t('brand:brandPerformance.growth')}</option>
+                <option value="orders">{t('brand:brandPerformance.orders')}</option>
+                <option value="customers">{t('brand:brandPerformance.customers')}</option>
               </SortSelect>
             </div>
           </div>
@@ -872,23 +874,23 @@ const BrandPerformance: React.FC = () => {
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{formatCurrency(stats.totalSales)}</StatValue>
-              <StatLabel>Total Revenue</StatLabel>
+              <StatLabel>{t('brand:brandPerformance.totalRevenue')}</StatLabel>
               <StatDescription>{periodLabel}</StatDescription>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{stats.totalOrders.toLocaleString()}</StatValue>
-              <StatLabel>Total Orders</StatLabel>
-              <StatDescription>Completed orders</StatDescription>
+              <StatLabel>{t('brand:brandPerformance.totalOrders')}</StatLabel>
+              <StatDescription>{t('brand:brandPerformance.completedOrders')}</StatDescription>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{stats.totalCustomers.toLocaleString()}</StatValue>
-              <StatLabel>Customers</StatLabel>
-              <StatDescription>Unique customers</StatDescription>
+              <StatLabel>{t('brand:brandPerformance.customers')}</StatLabel>
+              <StatDescription>{t('brand:brandPerformance.uniqueCustomers')}</StatDescription>
             </StatCard>
             <StatCard color="#8B5CF6">
               <StatValue>{formatCurrency(stats.overallAvgOrder)}</StatValue>
-              <StatLabel>Avg Order</StatLabel>
-              <StatDescription>Per order value</StatDescription>
+              <StatLabel>{t('brand:brandPerformance.avgOrder')}</StatLabel>
+              <StatDescription>{t('brand:brandPerformance.perOrderValue')}</StatDescription>
             </StatCard>
           </StatsGrid>
 
@@ -896,34 +898,34 @@ const BrandPerformance: React.FC = () => {
           <StatsGrid style={{ marginTop: '-16px' }}>
             <StatCard color="#EC4899">
               <StatValue>{formatCurrency(stats.maxOrderValue)}</StatValue>
-              <StatLabel>Max Order</StatLabel>
-              <StatDescription>Highest order value</StatDescription>
+              <StatLabel>{t('brand:brandPerformance.maxOrder')}</StatLabel>
+              <StatDescription>{t('brand:brandPerformance.highestOrderValue')}</StatDescription>
             </StatCard>
             <StatCard color="#06B6D4">
               <StatValue>{stats.overallAvgServiceTime > 0 ? `${stats.overallAvgServiceTime} min` : 'N/A'}</StatValue>
-              <StatLabel>Avg Fulfillment Time</StatLabel>
-              <StatDescription>Order to served</StatDescription>
+              <StatLabel>{t('brand:brandPerformance.avgFulfillmentTime')}</StatLabel>
+              <StatDescription>{t('brand:brandPerformance.orderToServed')}</StatDescription>
             </StatCard>
             <StatCard color="#F97316">
               <StatValue>{stats.overallGrowth > 0 ? '+' : ''}{stats.overallGrowth}%</StatValue>
-              <StatLabel>Growth</StatLabel>
+              <StatLabel>{t('brand:brandPerformance.growth')}</StatLabel>
               <StatDescription>vs previous period</StatDescription>
             </StatCard>
             <StatCard color="#14B8A6">
               <StatValue>{stats.totalRestaurants}</StatValue>
-              <StatLabel>Restaurants</StatLabel>
+              <StatLabel>{t('brand:brandPerformance.restaurants')}</StatLabel>
               <StatDescription>{selectedBrandId === 'all' ? 'All brands' : 'Selected brand'}</StatDescription>
             </StatCard>
           </StatsGrid>
 
           {loading ? (
             <EmptyState>
-              <p>Loading performance data...</p>
+              <p>{t('brand:brandPerformance.loadingPerformanceData')}</p>
             </EmptyState>
           ) : sortedRestaurants.length === 0 ? (
             <EmptyState>
-              <h3>No Data Available</h3>
-              <p>No performance data found for the selected period.</p>
+              <h3>{t('brand:brandPerformance.noDataAvailable')}</h3>
+              <p>{t('brand:brandPerformance.noPerformanceDataFoundForTheSelectedPeriod')}</p>
             </EmptyState>
           ) : (
             <>
@@ -935,7 +937,7 @@ const BrandPerformance: React.FC = () => {
                       <BrandBadge>{restaurant.brandCode}</BrandBadge>
                     </RestaurantHeader>
                     <MetricRow>
-                      <MetricLabel>Revenue</MetricLabel>
+                      <MetricLabel>{t('brand:brandPerformance.revenue')}</MetricLabel>
                       <MetricValue>
                         {formatCurrency(restaurant.sales, restaurant.currency)}
                         {restaurant.growth !== 0 && (
@@ -946,27 +948,27 @@ const BrandPerformance: React.FC = () => {
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Orders</MetricLabel>
+                      <MetricLabel>{t('brand:brandPerformance.orders')}</MetricLabel>
                       <MetricValue>{restaurant.completedOrders.toLocaleString()} completed</MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Customers</MetricLabel>
+                      <MetricLabel>{t('brand:brandPerformance.customers')}</MetricLabel>
                       <MetricValue>{restaurant.uniqueCustomers.toLocaleString()} unique</MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Avg Order</MetricLabel>
+                      <MetricLabel>{t('brand:brandPerformance.avgOrder')}</MetricLabel>
                       <MetricValue>
                         {restaurant.avgOrder > 0 ? formatCurrency(restaurant.avgOrder, restaurant.currency) : 'N/A'}
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Max Order</MetricLabel>
+                      <MetricLabel>{t('brand:brandPerformance.maxOrder')}</MetricLabel>
                       <MetricValue>
                         {restaurant.maxOrder > 0 ? formatCurrency(restaurant.maxOrder, restaurant.currency) : 'N/A'}
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
-                      <MetricLabel>Avg Fulfillment</MetricLabel>
+                      <MetricLabel>{t('brand:brandPerformance.avgFulfillment')}</MetricLabel>
                       <MetricValue>
                         {restaurant.avgServiceTime > 0 ? `${restaurant.avgServiceTime} min` : 'N/A'}
                       </MetricValue>

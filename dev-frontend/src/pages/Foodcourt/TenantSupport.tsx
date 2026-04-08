@@ -5,6 +5,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -325,6 +326,7 @@ interface SupportRequest {
 }
 
 const TenantSupport: React.FC = () => {
+  const { t } = useTranslation('common');
   const [activeTab, setActiveTab] = useTabParam<'requests' | 'communication' | 'announcements'>('requests');
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -407,16 +409,15 @@ const TenantSupport: React.FC = () => {
       default: return 'Process';
     }
   };
-
   return (
     <>
       <Container>
         <Header>
           <div>
-            <Title>Tenant Support</Title>
-            <Subtitle>Foodcourt tenant request and support management</Subtitle>
+            <Title>{'Tenant Support'}</Title>
+            <Subtitle>{'Foodcourt tenant request and support management'}</Subtitle>
           </div>
-          <ThemedButton variant="outline">Export Support Report</ThemedButton>
+          <ThemedButton variant="outline">{'Export Support Report'}</ThemedButton>
         </Header>
 
         <Content>
@@ -446,28 +447,28 @@ Announcements
               <StatsGrid>
                 <StatCard>
                   <StatValue>{supportStats.totalRequests}</StatValue>
-                  <StatLabel>Total Requests</StatLabel>
-                  <StatTrend trend="up">All support cases</StatTrend>
+                  <StatLabel>{'Total Requests'}</StatLabel>
+                  <StatTrend trend="up">{'All support cases'}</StatTrend>
                 </StatCard>
                 <StatCard>
                   <StatValue>{supportStats.urgentRequests}</StatValue>
-                  <StatLabel>Urgent Requests</StatLabel>
-                  <StatTrend trend={supportStats.urgentRequests > 0 ? "down" : "up"}>High priority</StatTrend>
+                  <StatLabel>{'Urgent Requests'}</StatLabel>
+                  <StatTrend trend={supportStats.urgentRequests > 0 ? "down" : "up"}>{'High priority'}</StatTrend>
                 </StatCard>
                 <StatCard>
                   <StatValue>{supportStats.pending}</StatValue>
-                  <StatLabel>Pending</StatLabel>
-                  <StatTrend trend={supportStats.pending > 0 ? "down" : "up"}>Awaiting action</StatTrend>
+                  <StatLabel>{'Pending'}</StatLabel>
+                  <StatTrend trend={supportStats.pending > 0 ? "down" : "up"}>{'Awaiting action'}</StatTrend>
                 </StatCard>
                 <StatCard>
                   <StatValue>{supportStats.inProgress}</StatValue>
-                  <StatLabel>In Progress</StatLabel>
-                  <StatTrend trend="up">Being processed</StatTrend>
+                  <StatLabel>{'In Progress'}</StatLabel>
+                  <StatTrend trend="up">{'Being processed'}</StatTrend>
                 </StatCard>
                 <StatCard>
                   <StatValue>{supportStats.completed}</StatValue>
-                  <StatLabel>Completed</StatLabel>
-                  <StatTrend trend="up">Successfully resolved</StatTrend>
+                  <StatLabel>{'Completed'}</StatLabel>
+                  <StatTrend trend="up">{'Successfully resolved'}</StatTrend>
                 </StatCard>
               </StatsGrid>
 
@@ -482,10 +483,10 @@ Announcements
                   value={priorityFilter}
                   onChange={(e) => setPriorityFilter(e.target.value)}
                 >
-                  <option value="all">All Priorities</option>
-                  <option value="high">Urgent</option>
-                  <option value="medium">Normal</option>
-                  <option value="low">Low</option>
+                  <option value="all">{'All Priorities'}</option>
+                  <option value="high">{'Urgent'}</option>
+                  <option value="medium">{'Normal'}</option>
+                  <option value="low">{'Low'}</option>
                 </FilterSelect>
               </ActionBar>
 
@@ -502,27 +503,27 @@ Announcements
 
                       <RequestInfo>
                         <InfoRow>
-                          <InfoLabel>Business Name</InfoLabel>
+                          <InfoLabel>{'Business Name'}</InfoLabel>
                           <InfoValue>{request.storeName}</InfoValue>
                         </InfoRow>
                         <InfoRow>
-                          <InfoLabel>Owner</InfoLabel>
+                          <InfoLabel>{'Owner'}</InfoLabel>
                           <InfoValue>{request.owner}</InfoValue>
                         </InfoRow>
                         <InfoRow>
-                          <InfoLabel>Contact</InfoLabel>
+                          <InfoLabel>{'Contact'}</InfoLabel>
                           <InfoValue>{request.phone || '-'}</InfoValue>
                         </InfoRow>
                         <InfoRow>
-                          <InfoLabel>Category</InfoLabel>
+                          <InfoLabel>{'Category'}</InfoLabel>
                           <InfoValue>{request.category}</InfoValue>
                         </InfoRow>
                         <InfoRow>
-                          <InfoLabel>Request Date</InfoLabel>
+                          <InfoLabel>{'Request Date'}</InfoLabel>
                           <InfoValue>{request.requestDate}</InfoValue>
                         </InfoRow>
                         <InfoRow>
-                          <InfoLabel>Status</InfoLabel>
+                          <InfoLabel>{'Status'}</InfoLabel>
                           <InfoValue>
                             <StatusBadge status={request.status}>
                               {request.status}
@@ -581,18 +582,18 @@ Announcements
 
           {activeTab === 'communication' && (
             <ContentSection>
-              <h3 style={{ marginBottom: '20px', color: '#0A2540', fontSize: '20px', fontWeight: '600' }}>Tenant Communication Management</h3>
+              <h3 style={{ marginBottom: '20px', color: '#0A2540', fontSize: '20px', fontWeight: '600' }}>{'Tenant Communication Management'}</h3>
               <SectionContent>
                 <p style={{ color: '#6B7280', lineHeight: 1.6, fontSize: '16px', marginBottom: '24px' }}>
                   Manages various channels for smooth communication with tenants and collects feedback.
                 </p>
                 <FeatureList>
-                  <FeatureItem>Regular meeting schedule management and attendance monitoring</FeatureItem>
-                  <FeatureItem>Tenant feedback collection and analysis system</FeatureItem>
-                  <FeatureItem>Suggestion reception and processing status tracking</FeatureItem>
-                  <FeatureItem>Quarterly satisfaction surveys and result analysis</FeatureItem>
-                  <FeatureItem>Communication channel effectiveness evaluation</FeatureItem>
-                  <FeatureItem>Conflict resolution and mediation process management</FeatureItem>
+                  <FeatureItem>{'Regular meeting schedule management and attendance monitoring'}</FeatureItem>
+                  <FeatureItem>{'Tenant feedback collection and analysis system'}</FeatureItem>
+                  <FeatureItem>{'Suggestion reception and processing status tracking'}</FeatureItem>
+                  <FeatureItem>{'Quarterly satisfaction surveys and result analysis'}</FeatureItem>
+                  <FeatureItem>{'Communication channel effectiveness evaluation'}</FeatureItem>
+                  <FeatureItem>{'Conflict resolution and mediation process management'}</FeatureItem>
                 </FeatureList>
               </SectionContent>
             </ContentSection>
@@ -600,18 +601,18 @@ Announcements
 
           {activeTab === 'announcements' && (
             <ContentSection>
-              <h3 style={{ marginBottom: '20px', color: '#0A2540', fontSize: '20px', fontWeight: '600' }}>Announcement Management</h3>
+              <h3 style={{ marginBottom: '20px', color: '#0A2540', fontSize: '20px', fontWeight: '600' }}>{'Announcement Management'}</h3>
               <SectionContent>
                 <p style={{ color: '#6B7280', lineHeight: 1.6, fontSize: '16px', marginBottom: '24px' }}>
                   Efficiently manages and delivers announcements to all foodcourt tenants.
                 </p>
                 <FeatureList>
-                  <FeatureItem>Immediate notification of operational regulations and policy changes</FeatureItem>
-                  <FeatureItem>Advance notice of facility inspections and regular maintenance schedules</FeatureItem>
-                  <FeatureItem>Foodcourt event and promotion participation guidance</FeatureItem>
-                  <FeatureItem>Emergency situation and contingency plan notification system</FeatureItem>
-                  <FeatureItem>Industry trends and market information sharing</FeatureItem>
-                  <FeatureItem>Training and workshop schedule guidance</FeatureItem>
+                  <FeatureItem>{'Immediate notification of operational regulations and policy changes'}</FeatureItem>
+                  <FeatureItem>{'Advance notice of facility inspections and regular maintenance schedules'}</FeatureItem>
+                  <FeatureItem>{'Foodcourt event and promotion participation guidance'}</FeatureItem>
+                  <FeatureItem>{'Emergency situation and contingency plan notification system'}</FeatureItem>
+                  <FeatureItem>{'Industry trends and market information sharing'}</FeatureItem>
+                  <FeatureItem>{'Training and workshop schedule guidance'}</FeatureItem>
                 </FeatureList>
               </SectionContent>
             </ContentSection>

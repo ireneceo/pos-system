@@ -4,6 +4,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 // import QRCode from 'qrcode'; // Temporarily disabled for testing
 
 const Container = styled.div`
@@ -241,6 +242,7 @@ const DownloadButton = styled.button`
 `;
 
 const QRPaymentPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();

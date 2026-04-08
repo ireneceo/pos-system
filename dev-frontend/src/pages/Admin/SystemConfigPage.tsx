@@ -4,6 +4,7 @@ import { Container, Header, Title, ActionSection, Content } from '../../componen
 import { BaseButton } from '../../components/UI/CommonStyles';
 import { StandardSelect } from '../../components/UI/SelectComponents';
 import { Modal, ModalButton } from '../../components/UI/Modal';
+import { useTranslation } from 'react-i18next';
 
 interface SystemConfig {
   id: string;
@@ -247,6 +248,7 @@ const WarningText = styled.div`
 `;
 
 const SystemConfigPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [configs, setConfigs] = useState<SystemConfig[]>([]);
   const [tempValues, setTempValues] = useState<{ [key: string]: string }>({});
   const [changedConfigs, setChangedConfigs] = useState<Set<string>>(new Set());
@@ -404,13 +406,15 @@ const SystemConfigPage: React.FC = () => {
     }
 
     if (config.dataType === 'boolean') {
-      return (
+  // useTranslation moved to component level
+
+  return (
         <StandardSelect
           value={currentValue}
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleValueChange(config.id, e.target.value)}
         >
-          <option value="true">True</option>
-          <option value="false">False</option>
+          <option value="true">{t('admin:systemConfigPage.true')}</option>
+          <option value="false">{t('admin:systemConfigPage.false')}</option>
         </StandardSelect>
       );
     }
@@ -429,11 +433,11 @@ const SystemConfigPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>System Configuration</Title>
+          <Title>{t('admin:systemConfigPage.systemConfiguration')}</Title>
           <ActionSection>
-            <BaseButton variant="secondary" onClick={handleExportConfig}>Export Config</BaseButton>
-            <BaseButton variant="secondary" onClick={handleImportConfig}>Import Config</BaseButton>
-            <BaseButton variant="primary" onClick={handleRestartSystem}>Restart System</BaseButton>
+            <BaseButton variant="secondary" onClick={handleExportConfig}>{t('admin:systemConfigPage.exportConfig')}</BaseButton>
+            <BaseButton variant="secondary" onClick={handleImportConfig}>{t('admin:systemConfigPage.importConfig')}</BaseButton>
+            <BaseButton variant="primary" onClick={handleRestartSystem}>{t('admin:systemConfigPage.restartSystem')}</BaseButton>
           </ActionSection>
         </Header>
 
@@ -450,7 +454,7 @@ const SystemConfigPage: React.FC = () => {
                       <ConfigInfo>
                         <ConfigName>
                           {config.displayName}
-                          {config.requiresRestart && <RequiresBadge>Requires Restart</RequiresBadge>}
+                          {config.requiresRestart && <RequiresBadge>{t('admin:systemConfigPage.requiresRestart')}</RequiresBadge>}
                         </ConfigName>
                         <ConfigDescription>{config.description}</ConfigDescription>
                         <ConfigKey>{config.key}</ConfigKey>
@@ -543,7 +547,7 @@ const SystemConfigPage: React.FC = () => {
             >
               <WarningIcon>⚠️</WarningIcon>
               <WarningText>
-                <strong>Are you sure you want to restart the system?</strong>
+                <strong>{t('admin:systemConfigPage.areYouSureYouWantToRestartTheSystem')}</strong>
               </WarningText>
               <p style={{ color: '#6B7280', marginBottom: '0' }}>
                 This will temporarily interrupt service for all users. The system will be back online in a few minutes.

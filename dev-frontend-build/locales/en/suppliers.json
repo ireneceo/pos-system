@@ -1,0 +1,23 @@
+{
+  "suppliersPage.view": "View",
+  "suppliersPage.edit": "Edit",
+  "suppliersPage.suppliers": "Suppliers",
+  "suppliersPage.brandSuppliersReadOnly": "Brand Suppliers (Read Only)",
+  "suppliersPage.noSuppliersYet": "No suppliers yet",
+  "suppliersPage.noSuppliersFound": "No suppliers found",
+  "suppliersPage.mySuppliers": "My Suppliers",
+  "suppliersPage.cancel": "Cancel",
+  "suppliersPage.code": "Code",
+  "suppliersPage.contactPerson": "Contact Person",
+  "suppliersPage.phone": "Phone",
+  "suppliersPage.email": "Email",
+  "suppliersPage.businessNumber": "Business Number",
+  "suppliersPage.address": "Address",
+  "suppliersPage.paymentTerms": "Payment Terms",
+  "suppliersPage.bankName": "Bank Name",
+  "suppliersPage.bankAccount": "Bank Account",
+  "suppliersPage.notes": "Notes",
+  "suppliersPage.close": "Close",
+  "suppliersPage.supplierName": "Supplier Name",
+  "suppliersPage.status": "Status"
+}

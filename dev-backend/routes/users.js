@@ -157,6 +157,28 @@ router.get('/available-admins', authenticateToken, async (req, res) => {
   }
 });
 
+// Update user language preference (must be before /:id routes)
+router.put('/language', authenticateToken, async (req, res) => {
+  try {
+    const { language } = req.body;
+    const validLanguages = ['en', 'ko', 'zh', 'ms'];
+
+    if (!language || !validLanguages.includes(language)) {
+      return res.status(400).json({ success: false, message: `Invalid language. Must be one of: ${validLanguages.join(', ')}` });
+    }
+
+    await User.update(
+      { preferred_language: language },
+      { where: { id: req.user.id } }
+    );
+
+    res.json({ success: true, data: { preferred_language: language } });
+  } catch (error) {
+    console.error('[Users] Error updating language:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to update language preference' });
+  }
+});
+
 // Get single user
 router.get('/:id', authenticateToken, async (req, res) => {
   try {

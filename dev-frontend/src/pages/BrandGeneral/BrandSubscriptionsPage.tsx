@@ -281,6 +281,7 @@ const LoadingSpinner = styled.div`
 // ============================================
 
 const BrandSubscriptionsPage: React.FC = () => {
+  const { t } = useTranslation('brand');
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const currency = defaultCurrency || 'MYR';
@@ -532,9 +533,9 @@ const BrandSubscriptionsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Brand Subscriptions</Title>
+          <Title>{t('brand:brandSubscriptionsPage.brandSubscriptions')}</Title>
           <ActionSection>
-            <ThemedButton variant="outline" onClick={handleExportData}>Export</ThemedButton>
+            <ThemedButton variant="outline" onClick={handleExportData}>{t('brand:brandSubscriptionsPage.export')}</ThemedButton>
           </ActionSection>
         </Header>
 
@@ -542,23 +543,23 @@ const BrandSubscriptionsPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{totalRestaurants}</StatValue>
-              <StatLabel>Total Restaurants</StatLabel>
-              <StatDescription>In your brand</StatDescription>
+              <StatLabel>{t('brand:brandSubscriptionsPage.totalRestaurants')}</StatLabel>
+              <StatDescription>{t('brand:brandSubscriptionsPage.inYourBrand')}</StatDescription>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{assignedCount}</StatValue>
-              <StatLabel>Plan Assigned</StatLabel>
+              <StatLabel>{t('brand:brandSubscriptionsPage.planAssigned')}</StatLabel>
               <StatDescription>{totalRestaurants > 0 ? Math.round((assignedCount/totalRestaurants)*100) : 0}% covered</StatDescription>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>{unassignedCount}</StatValue>
-              <StatLabel>No Plan</StatLabel>
-              <StatDescription>Need plan assignment</StatDescription>
+              <StatLabel>{t('brand:brandSubscriptionsPage.noPlan')}</StatLabel>
+              <StatDescription>{t('brand:brandSubscriptionsPage.needPlanAssignment')}</StatDescription>
             </StatCard>
             <StatCard color="#D97706">
               <StatValue>{formatCurrency(totalMonthlyCharges, currency)}</StatValue>
-              <StatLabel>Est. Monthly Charges</StatLabel>
-              <StatDescription>From all restaurants</StatDescription>
+              <StatLabel>{t('brand:brandSubscriptionsPage.estMonthlyCharges')}</StatLabel>
+              <StatDescription>{t('brand:brandSubscriptionsPage.fromAllRestaurants')}</StatDescription>
             </StatCard>
           </StatsGrid>
 
@@ -567,11 +568,11 @@ const BrandSubscriptionsPage: React.FC = () => {
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
-              <option value="all">All Restaurants</option>
-              <option value="assigned">Plan Assigned</option>
-              <option value="unassigned">No Plan</option>
-              <option value="active">Active</option>
-              <option value="overdue">Overdue</option>
+              <option value="all">{t('brand:brandSubscriptionsPage.allRestaurants')}</option>
+              <option value="assigned">{t('brand:brandSubscriptionsPage.planAssigned')}</option>
+              <option value="unassigned">{t('brand:brandSubscriptionsPage.noPlan')}</option>
+              <option value="active">{t('brand:brandSubscriptionsPage.active')}</option>
+              <option value="overdue">{t('brand:brandSubscriptionsPage.overdue')}</option>
             </FilterSelect>
             <SearchInput
               placeholder="Search restaurants or plans..."
@@ -581,7 +582,7 @@ const BrandSubscriptionsPage: React.FC = () => {
           </FilterBar>
 
           {loading ? (
-            <LoadingSpinner>Loading subscription data...</LoadingSpinner>
+            <LoadingSpinner>{t('brand:brandSubscriptionsPage.loadingSubscriptionData')}</LoadingSpinner>
           ) : filteredSubscriptions.length === 0 ? (
             <EmptyState>
               <EmptyIcon>&#x1F4CB;</EmptyIcon>
@@ -598,20 +599,20 @@ const BrandSubscriptionsPage: React.FC = () => {
             )}
             <Table>
               <SubscriptionTableHeader columns="2fr 1.5fr 1fr 1fr 1fr 1fr 180px">
-                <span className="col-info">Restaurant</span>
-                <span>Plan</span>
-                <span>Status</span>
-                <span className="col-fee">Est. Charges</span>
-                <span>Latest Invoice</span>
-                <span className="col-revenue">Revenue (MTD)</span>
-                <span className="col-action">Actions</span>
+                <span className="col-info">{t('brand:brandSubscriptionsPage.restaurant')}</span>
+                <span>{t('brand:brandSubscriptionsPage.plan')}</span>
+                <span>{t('brand:brandSubscriptionsPage.status')}</span>
+                <span className="col-fee">{t('brand:brandSubscriptionsPage.estCharges')}</span>
+                <span>{t('brand:brandSubscriptionsPage.latestInvoice')}</span>
+                <span className="col-revenue">{t('brand:brandSubscriptionsPage.revenueMtd')}</span>
+                <span className="col-action">{t('brand:brandSubscriptionsPage.actions')}</span>
               </SubscriptionTableHeader>
 
               {filteredSubscriptions.map(sub => (
                 <SubscriptionTableRow columns="2fr 1.5fr 1fr 1fr 1fr 1fr 180px" key={sub.restaurant_id}>
                   <MobileGrid>
                     <MobileValue className="col-info">
-                      <MobileLabel>Restaurant</MobileLabel>
+                      <MobileLabel>{t('brand:brandSubscriptionsPage.restaurant')}</MobileLabel>
                       <RestaurantInfo>
                         <RestaurantName>{sub.restaurant_name} {sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_currency}</span>}</RestaurantName>
                         <RestaurantMeta>{sub.restaurant_email}</RestaurantMeta>
@@ -619,7 +620,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                     </MobileValue>
 
                     <MobileValue>
-                      <MobileLabel>Plan</MobileLabel>
+                      <MobileLabel>{t('brand:brandSubscriptionsPage.plan')}</MobileLabel>
                       {sub.plan ? (
                         <div>
                           <div style={{fontWeight: 600, color: '#0A2540', fontSize: '13px'}}>{sub.plan.name}</div>
@@ -654,14 +655,14 @@ const BrandSubscriptionsPage: React.FC = () => {
                     </MobileValue>
 
                     <MobileValue>
-                      <MobileLabel>Status</MobileLabel>
+                      <MobileLabel>{t('brand:brandSubscriptionsPage.status')}</MobileLabel>
                       <StatusBadge status={sub.restaurant_status}>
                         {sub.restaurant_status.charAt(0).toUpperCase() + sub.restaurant_status.slice(1)}
                       </StatusBadge>
                     </MobileValue>
 
                     <MobileValue className="col-fee">
-                      <MobileLabel>Est. Charges</MobileLabel>
+                      <MobileLabel>{t('brand:brandSubscriptionsPage.estCharges')}</MobileLabel>
                       {sub.current_month?.estimated_charges ? (
                         <span style={{fontWeight: 500, color: '#0A2540'}}>
                           {formatCurrency(sub.current_month.estimated_charges.totalAmount, currency)}
@@ -672,7 +673,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                     </MobileValue>
 
                     <MobileValue>
-                      <MobileLabel>Latest Invoice</MobileLabel>
+                      <MobileLabel>{t('brand:brandSubscriptionsPage.latestInvoice')}</MobileLabel>
                       {sub.latest_invoice ? (
                         <div>
                           <div style={{fontSize: '13px', fontWeight: 500, color: '#0A2540'}}>{sub.latest_invoice.invoice_number}</div>
@@ -681,12 +682,12 @@ const BrandSubscriptionsPage: React.FC = () => {
                           </StatusBadge>
                         </div>
                       ) : (
-                        <span style={{color: '#9CA3AF'}}>No invoice</span>
+                        <span style={{color: '#9CA3AF'}}>{t('brand:brandSubscriptionsPage.noInvoice')}</span>
                       )}
                     </MobileValue>
 
                     <MobileValue className="col-revenue">
-                      <MobileLabel>Revenue (MTD)</MobileLabel>
+                      <MobileLabel>{t('brand:brandSubscriptionsPage.revenueMtd')}</MobileLabel>
                       <div>
                         <div style={{fontWeight: 500, color: '#0A2540'}}>
                           {formatCurrency(sub.current_month?.revenue || 0, currency)}
@@ -699,7 +700,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                   </MobileGrid>
 
                   <ActionButtons>
-                    <CommonActionButton onClick={() => handleViewDetails(sub)}>View</CommonActionButton>
+                    <CommonActionButton onClick={() => handleViewDetails(sub)}>{t('brand:brandSubscriptionsPage.view')}</CommonActionButton>
                     <CommonActionButton onClick={() => handleAssignPlan(sub)}>
                       {sub.plan ? 'Change' : 'Assign'}
                     </CommonActionButton>
@@ -720,11 +721,11 @@ const BrandSubscriptionsPage: React.FC = () => {
 
           {/* Assign Plan Modal */}
           {showAssignModal && assignTarget && (
-                        <CommonModal isOpen={true} onClose={() => setShowAssignModal(false)} title={assignTarget.plan ? 'Change Plan' : 'Assign Plan'} footer={<><ThemedButton variant="cancel" onClick={() => setShowAssignModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitAssign} disabled={!selectedPlanId || brandPlans.length === 0} > {assignTarget.plan ? 'Change Plan' : 'Assign Plan'} </ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowAssignModal(false)} title={assignTarget.plan ? 'Change Plan' : 'Assign Plan'} footer={<><ThemedButton variant="cancel" onClick={() => setShowAssignModal(false)}>{t('brand:brandSubscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitAssign} disabled={!selectedPlanId || brandPlans.length === 0} > {assignTarget.plan ? 'Change Plan' : 'Assign Plan'} </ThemedButton></>}>
 
                   <FormGrid>
                     <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Restaurant</FormLabel>
+                      <FormLabel>{t('brand:brandSubscriptionsPage.restaurant')}</FormLabel>
                       <FormInput
                         type="text"
                         value={assignTarget.restaurant_name}
@@ -734,7 +735,7 @@ const BrandSubscriptionsPage: React.FC = () => {
 
                     {assignTarget.plan && (
                       <FormGroup style={{gridColumn: '1 / -1'}}>
-                        <FormLabel>Current Plan</FormLabel>
+                        <FormLabel>{t('brand:brandSubscriptionsPage.currentPlan')}</FormLabel>
                         <div style={{
                           padding: '12px', background: '#F0F7FF', border: '1px solid #B3D9FF',
                           borderRadius: '8px', fontSize: '14px', color: '#0A2540'
@@ -751,7 +752,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                         value={selectedPlanId}
                         onChange={(e) => setSelectedPlanId(e.target.value ? parseInt(e.target.value) : '')}
                       >
-                        <option value="">Select a plan...</option>
+                        <option value="">{t('brand:brandSubscriptionsPage.selectAPlan')}</option>
                         {brandPlans.map(plan => (
                           <option key={plan.id} value={plan.id}>
                             {plan.name} — {formatCurrency(parseFloat(plan.subscription_fee) || 0, currency)}/mo
@@ -794,23 +795,23 @@ const BrandSubscriptionsPage: React.FC = () => {
 
           {/* View Details Modal */}
           {showViewModal && viewingSub && (
-                        <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Subscription Details" footer={<><ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>Close</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Subscription Details" footer={<><ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>{t('brand:brandSubscriptionsPage.close')}</ThemedButton></>}>
 
                   <div style={{display: 'grid', gap: '20px'}}>
                     {/* Restaurant Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Restaurant</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('brand:brandSubscriptionsPage.restaurant')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Name</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.name')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_name}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Email</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.email')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_email}</div>
                         </div>
                         <div>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Status</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.status')}</div>
                           <StatusBadge status={viewingSub.restaurant_status}>
                             {viewingSub.restaurant_status.charAt(0).toUpperCase() + viewingSub.restaurant_status.slice(1)}
                           </StatusBadge>
@@ -820,16 +821,16 @@ const BrandSubscriptionsPage: React.FC = () => {
 
                     {/* Plan Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Plan</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('brand:brandSubscriptionsPage.plan')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         {viewingSub.plan ? (
                           <>
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Plan Name</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.planName')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.name}</div>
                             </div>
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Subscription Fee</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.subscriptionFee')}</div>
                               {viewingSub.plan.discount_type && viewingSub.plan.discount_type !== 'none' && (viewingSub.plan.discount_value || 0) > 0 ? (
                                 <div>
                                   <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '13px'}}>{formatCurrency(parseFloat(viewingSub.plan.subscription_fee) || 0, currency)}/mo</span>
@@ -851,13 +852,13 @@ const BrandSubscriptionsPage: React.FC = () => {
                             </div>
                             {parseFloat(viewingSub.plan.revenue_percentage) > 0 && (
                               <div style={{marginBottom: '12px'}}>
-                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Revenue Share</div>
+                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.revenueShare')}</div>
                                 <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.revenue_percentage}%</div>
                               </div>
                             )}
                             {viewingSub.plan.rent_type !== 'none' && (
                               <div style={{marginBottom: '12px'}}>
-                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Rent</div>
+                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.rent')}</div>
                                 <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                                   {viewingSub.plan.rent_type === 'fixed' ? formatCurrency(parseFloat(viewingSub.plan.rent_fixed || '0'), currency) :
                                    viewingSub.plan.rent_type === 'percentage' ? `${viewingSub.plan.rent_percentage}%` :
@@ -866,15 +867,15 @@ const BrandSubscriptionsPage: React.FC = () => {
                               </div>
                             )}
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Billing Cycle</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.billingCycle')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.billing_cycle}</div>
                             </div>
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Activation Date</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.activationDate')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{new Date(viewingSub.plan.activation_date).toLocaleDateString()}</div>
                             </div>
                             <div>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Discount</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.discount')}</div>
                               {viewingSub.plan.discount_type && viewingSub.plan.discount_type !== 'none' && (viewingSub.plan.discount_value || 0) > 0 ? (
                                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                   <span style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>
@@ -883,35 +884,35 @@ const BrandSubscriptionsPage: React.FC = () => {
                                       : `${formatCurrency(viewingSub.plan.discount_value || 0, currency)}`}
                                     {viewingSub.plan.discount_reason ? ` (${viewingSub.plan.discount_reason})` : ''}
                                   </span>
-                                  <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#6B7280', cursor: 'pointer'}}>Edit</button>
+                                  <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#6B7280', cursor: 'pointer'}}>{t('brand:brandSubscriptionsPage.edit')}</button>
                                 </div>
                               ) : (
-                                <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', color: '#635BFF', cursor: 'pointer', fontWeight: '500'}}>Set Discount</button>
+                                <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', color: '#635BFF', cursor: 'pointer', fontWeight: '500'}}>{t('brand:brandSubscriptionsPage.setDiscount')}</button>
                               )}
                             </div>
                           </>
                         ) : (
-                          <div style={{color: '#92400E', fontSize: '14px'}}>No plan assigned to this restaurant.</div>
+                          <div style={{color: '#92400E', fontSize: '14px'}}>{t('brand:brandSubscriptionsPage.noPlanAssignedToThisRestaurant')}</div>
                         )}
                       </div>
                     </div>
 
                     {/* Current Month */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Current Month</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('brand:brandSubscriptionsPage.currentMonth')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Revenue</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.revenue')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(viewingSub.current_month?.revenue || 0, currency)}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Orders</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.orders')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.current_month?.order_count || 0}</div>
                         </div>
                         {viewingSub.current_month?.estimated_charges && (
                           <>
                             <div style={{borderTop: '1px solid #E6EBF1', paddingTop: '12px', marginTop: '8px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600}}>Estimated Charges Breakdown</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600}}>{t('brand:brandSubscriptionsPage.estimatedChargesBreakdown')}</div>
                               {viewingSub.current_month.estimated_charges.items.map((item: any, index: number) => (
                                 <div key={index} style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px'}}>
                                   <span style={{color: '#374151'}}>{item.description}</span>
@@ -919,7 +920,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                                 </div>
                               ))}
                               <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #E6EBF1', fontWeight: 600}}>
-                                <span style={{color: '#0A2540'}}>Total</span>
+                                <span style={{color: '#0A2540'}}>{t('brand:brandSubscriptionsPage.total')}</span>
                                 <span style={{color: '#0A2540'}}>{formatCurrency(viewingSub.current_month.estimated_charges.totalAmount, currency)}</span>
                               </div>
                             </div>
@@ -931,24 +932,24 @@ const BrandSubscriptionsPage: React.FC = () => {
                     {/* Latest Invoice */}
                     {viewingSub.latest_invoice && (
                       <div>
-                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Latest Invoice</div>
+                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('brand:brandSubscriptionsPage.latestInvoice')}</div>
                         <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Invoice Number</div>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.invoiceNumber')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.latest_invoice.invoice_number}</div>
                           </div>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Amount</div>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.amount')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(parseFloat(viewingSub.latest_invoice.total_amount) || 0, currency)}</div>
                           </div>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Status</div>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.status')}</div>
                             <StatusBadge status={viewingSub.latest_invoice.status}>
                               {viewingSub.latest_invoice.status.replace('_', ' ')}
                             </StatusBadge>
                           </div>
                           <div>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Due Date</div>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.dueDate')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{new Date(viewingSub.latest_invoice.due_date).toLocaleDateString()}</div>
                           </div>
                         </div>
@@ -961,7 +962,7 @@ const BrandSubscriptionsPage: React.FC = () => {
 
           {/* Confirm Action Modal */}
           {showConfirmModal && confirmTarget && (
-                        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>Cancel</ThemedButton><ThemedButton variant="danger" onClick={handleConfirmAction}>Remove Plan</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>{t('brand:brandSubscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="danger" onClick={handleConfirmAction}>{t('brand:brandSubscriptionsPage.removePlan')}</ThemedButton></>}>
 
                   <p>
                     {confirmAction === 'unassign' && `Are you sure you want to remove the plan "${confirmTarget.plan?.name}" from ${confirmTarget.restaurant_name}?`}
@@ -972,13 +973,13 @@ const BrandSubscriptionsPage: React.FC = () => {
 
           {/* Discount Modal */}
           {showDiscountModal && discountTarget && (
-                        <CommonModal isOpen={true} onClose={() => setShowDiscountModal(false)} title={`Set Discount - ${discountTarget.restaurant_name}`} footer={<><ThemedButton variant="cancel" onClick={() => setShowDiscountModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSaveDiscount}>Save Discount</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowDiscountModal(false)} title={`Set Discount - ${discountTarget.restaurant_name}`} footer={<><ThemedButton variant="cancel" onClick={() => setShowDiscountModal(false)}>{t('brand:brandSubscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleSaveDiscount}>{t('brand:brandSubscriptionsPage.saveDiscount')}</ThemedButton></>}>
 
                   <div style={{display: 'grid', gap: '16px'}}>
                     <div>
-                      <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>Discount Type</div>
+                      <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>{t('brand:brandSubscriptionsPage.discountType')}</div>
                       <FormSelect value={discountForm.discount_type} onChange={(e) => setDiscountForm({...discountForm, discount_type: e.target.value, discount_value: e.target.value === 'none' ? 0 : discountForm.discount_value})}>
-                        <option value="none">None</option>
+                        <option value="none">{t('brand:brandSubscriptionsPage.none')}</option>
                         <option value="percentage">Percentage (%)</option>
                         <option value="fixed">Fixed Amount ({currency})</option>
                       </FormSelect>
@@ -1001,7 +1002,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                     )}
                     {discountForm.discount_type !== 'none' && (
                       <div>
-                        <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>Reason (optional)</div>
+                        <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>{t('brand:brandSubscriptionsPage.reasonOptional')}</div>
                         <FormInput
                           type="text"
                           value={discountForm.discount_reason}
@@ -1012,7 +1013,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                     )}
                     {discountForm.discount_type !== 'none' && discountForm.discount_value > 0 && discountTarget.plan && (
                       <div style={{background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 16px'}}>
-                        <div style={{fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '4px'}}>Preview</div>
+                        <div style={{fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.preview')}</div>
                         <div style={{fontSize: '13px', color: '#15803D'}}>
                           {discountForm.discount_type === 'percentage'
                             ? `${discountForm.discount_value}% off all charges`

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================
 // Types
@@ -421,6 +422,7 @@ function formatLimit(value: number): string {
 // Component
 // ============================================================
 const SubscriptionTab: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { user: authUser } = useAuth();
   const [data, setData] = useState<MyPlanResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -556,7 +558,7 @@ const SubscriptionTab: React.FC = () => {
   };
 
   // ── Render ──
-  if (loading) return <LoadingSpinner>Loading subscription data...</LoadingSpinner>;
+  if (loading) return <LoadingSpinner>{t('settings:subscriptionTab.loadingSubscriptionData')}</LoadingSpinner>;
   if (error || !data) return <BlockedBox variant="warning">{error || 'Failed to load subscription data.'}</BlockedBox>;
 
   const { current, pending_change, available_plans } = data;
@@ -598,21 +600,21 @@ const SubscriptionTab: React.FC = () => {
 
         <InfoGrid>
           <InfoItem>
-            <InfoLabel>Status</InfoLabel>
+            <InfoLabel>{t('settings:subscriptionTab.status')}</InfoLabel>
             <StatusBadge status={current.status}>
               {current.status === 'active' ? '● Active' : current.status === 'trial' ? '● Trial' : current.status.charAt(0).toUpperCase() + current.status.slice(1)}
             </StatusBadge>
           </InfoItem>
           <InfoItem>
-            <InfoLabel>Billing Cycle</InfoLabel>
+            <InfoLabel>{t('settings:subscriptionTab.billingCycle')}</InfoLabel>
             <InfoValue>{current.billing_cycle === 'annual' ? 'Annual' : 'Monthly'}</InfoValue>
           </InfoItem>
           <InfoItem>
-            <InfoLabel>Current Period</InfoLabel>
+            <InfoLabel>{t('settings:subscriptionTab.currentPeriod')}</InfoLabel>
             <InfoValue>{formatDate(current.subscription_start)} – {formatDate(current.subscription_end)}</InfoValue>
           </InfoItem>
           <InfoItem>
-            <InfoLabel>Next Billing</InfoLabel>
+            <InfoLabel>{t('settings:subscriptionTab.nextBilling')}</InfoLabel>
             <InfoValue>{formatDate(current.next_billing_date)}</InfoValue>
           </InfoItem>
         </InfoGrid>
@@ -626,7 +628,7 @@ const SubscriptionTab: React.FC = () => {
               <strong>Effective:</strong> {formatDate(pending_change.effective_date)} (next billing date)<br /><br />
               Your current features remain available until the change takes effect.
             </PendingDetail>
-            <CancelButton onClick={() => setShowCancelConfirm(true)}>Cancel Change</CancelButton>
+            <CancelButton onClick={() => setShowCancelConfirm(true)}>{t('settings:subscriptionTab.cancelChange')}</CancelButton>
           </PendingBox>
         )}
 
@@ -652,7 +654,7 @@ const SubscriptionTab: React.FC = () => {
         title="Change Your Plan"
         size="large"
         footer={
-          <ModalButton variant="secondary" onClick={() => setShowPlanModal(false)}>Close</ModalButton>
+          <ModalButton variant="secondary" onClick={() => setShowPlanModal(false)}>{t('settings:subscriptionTab.close')}</ModalButton>
         }
       >
         <BillingToggle>
@@ -671,7 +673,7 @@ const SubscriptionTab: React.FC = () => {
             Annual
           </ToggleOption>
           {current.billing_cycle === 'annual' && (
-            <span style={{ fontSize: '12px', color: '#9CA3AF' }}>Monthly not available for annual plans</span>
+            <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('settings:subscriptionTab.monthlyNotAvailableForAnnualPlans')}</span>
           )}
         </BillingToggle>
 
@@ -687,7 +689,7 @@ const SubscriptionTab: React.FC = () => {
                 isCurrent={isCurrent}
                 onClick={() => !isCurrent && handleSelectPlan(plan)}
               >
-                {isCurrent && <CurrentBadge>Current</CurrentBadge>}
+                {isCurrent && <CurrentBadge>{t('settings:subscriptionTab.current')}</CurrentBadge>}
                 <PlanCardName>{plan.display_name}</PlanCardName>
                 <PlanCardPrice>
                   {formatCurrency(price, current.currency)} <span>/ {selectedCycle === 'annual' ? 'year' : 'month'}</span>
@@ -723,7 +725,7 @@ const SubscriptionTab: React.FC = () => {
           title={current.status === 'trial' ? `Upgrade to ${selectedPlan.display_name}` : `Upgrade to ${selectedPlan.display_name}`}
           footer={
             <>
-              <ModalButton variant="secondary" onClick={() => { setShowConfirmModal(false); setShowPlanModal(true); }}>Back</ModalButton>
+              <ModalButton variant="secondary" onClick={() => { setShowConfirmModal(false); setShowPlanModal(true); }}>{t('settings:subscriptionTab.back')}</ModalButton>
               <ModalButton variant="primary" onClick={handleConfirmChange} disabled={submitting}>
                 {submitting ? 'Processing...' : 'Confirm Upgrade'}
               </ModalButton>
@@ -743,11 +745,11 @@ const SubscriptionTab: React.FC = () => {
             <>
               <SummaryBox>
                 <SummaryRow>
-                  <span>Current</span>
+                  <span>{t('settings:subscriptionTab.current')}</span>
                   <span>{current.plan_type} — {formatCurrency(current.plan_amount, current.currency)}/{current.billing_cycle === 'annual' ? 'yr' : 'mo'}</span>
                 </SummaryRow>
                 <SummaryRow>
-                  <span>New</span>
+                  <span>{t('settings:subscriptionTab.new')}</span>
                   <span>{selectedPlan.display_name} — {formatCurrency(getEffectivePrice(selectedPlan, selectedCycle), current.currency)}/{selectedCycle === 'annual' ? 'yr' : 'mo'}</span>
                 </SummaryRow>
 
@@ -758,16 +760,16 @@ const SubscriptionTab: React.FC = () => {
                       Prorated charge for remaining period ({selectedPlan.proration_estimate.remaining_days} days)
                     </div>
                     <SummaryRow>
-                      <span>New plan cost</span>
+                      <span>{t('settings:subscriptionTab.newPlanCost')}</span>
                       <span>{formatCurrency(selectedPlan.proration_estimate.charge, current.currency)}</span>
                     </SummaryRow>
                     <SummaryRow>
-                      <span>Current plan credit</span>
+                      <span>{t('settings:subscriptionTab.currentPlanCredit')}</span>
                       <span>-{formatCurrency(selectedPlan.proration_estimate.credit, current.currency)}</span>
                     </SummaryRow>
                     <Divider />
                     <SummaryRow bold>
-                      <span>Prorated amount</span>
+                      <span>{t('settings:subscriptionTab.proratedAmount')}</span>
                       <span>{formatCurrency(selectedPlan.proration_estimate.net_amount, current.currency)}</span>
                     </SummaryRow>
                   </>
@@ -796,7 +798,7 @@ const SubscriptionTab: React.FC = () => {
             : `Downgrade to ${selectedPlan.display_name}`}
           footer={
             <>
-              <ModalButton variant="secondary" onClick={() => { setShowConfirmModal(false); setShowPlanModal(true); }}>Back</ModalButton>
+              <ModalButton variant="secondary" onClick={() => { setShowConfirmModal(false); setShowPlanModal(true); }}>{t('settings:subscriptionTab.back')}</ModalButton>
               <ModalButton variant="primary" onClick={handleConfirmChange} disabled={submitting}>
                 {submitting ? 'Processing...' : getChangeType(selectedPlan, selectedCycle) === 'cycle_change' ? 'Confirm Change' : 'Confirm Downgrade'}
               </ModalButton>
@@ -805,11 +807,11 @@ const SubscriptionTab: React.FC = () => {
         >
           <SummaryBox>
             <SummaryRow>
-              <span>Current</span>
+              <span>{t('settings:subscriptionTab.current')}</span>
               <span>{current.plan_type} — {formatCurrency(current.plan_amount, current.currency)}/{current.billing_cycle === 'annual' ? 'yr' : 'mo'}</span>
             </SummaryRow>
             <SummaryRow>
-              <span>New</span>
+              <span>{t('settings:subscriptionTab.new')}</span>
               <span>{selectedPlan.display_name} — {formatCurrency(getEffectivePrice(selectedPlan, selectedCycle), current.currency)}/{selectedCycle === 'annual' ? 'yr' : 'mo'}</span>
             </SummaryRow>
           </SummaryBox>
@@ -822,15 +824,15 @@ const SubscriptionTab: React.FC = () => {
               <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>• After {formatDate(current.next_billing_date)}:</div>
               <div style={{ paddingLeft: '16px' }}>
                 <LimitChange>
-                  <span>Orders</span>
+                  <span>{t('settings:subscriptionTab.orders')}</span>
                   <span>{formatLimit(data?.available_plans.find(p => p.is_current)?.limits.orders ?? -1)} → {formatLimit(selectedPlan.limits.orders)}/month</span>
                 </LimitChange>
                 <LimitChange>
-                  <span>Menu items</span>
+                  <span>{t('settings:subscriptionTab.menuItems')}</span>
                   <span>{formatLimit(data?.available_plans.find(p => p.is_current)?.limits.menu_items ?? -1)} → {formatLimit(selectedPlan.limits.menu_items)}</span>
                 </LimitChange>
                 <LimitChange>
-                  <span>Staff</span>
+                  <span>{t('settings:subscriptionTab.staff')}</span>
                   <span>{formatLimit(data?.available_plans.find(p => p.is_current)?.limits.staff ?? -1)} → {formatLimit(selectedPlan.limits.staff)}</span>
                 </LimitChange>
               </div>
@@ -858,7 +860,7 @@ const SubscriptionTab: React.FC = () => {
         title="Cancel Scheduled Change?"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={() => setShowCancelConfirm(false)}>Keep Scheduled Change</ModalButton>
+            <ModalButton variant="secondary" onClick={() => setShowCancelConfirm(false)}>{t('settings:subscriptionTab.keepScheduledChange')}</ModalButton>
             <ModalButton variant="primary" onClick={handleCancelPending} disabled={submitting}>
               {submitting ? 'Cancelling...' : 'Cancel Change'}
             </ModalButton>
@@ -880,8 +882,8 @@ const SubscriptionTab: React.FC = () => {
             <ModalButton variant="secondary" onClick={() => {
               setShowAnnualBlock(false);
               window.location.href = getSupportPath();
-            }}>Contact Support</ModalButton>
-            <ModalButton onClick={() => setShowAnnualBlock(false)}>Close</ModalButton>
+            }}>{t('settings:subscriptionTab.contactSupport')}</ModalButton>
+            <ModalButton onClick={() => setShowAnnualBlock(false)}>{t('settings:subscriptionTab.close')}</ModalButton>
           </>
         }
       >
@@ -892,8 +894,8 @@ const SubscriptionTab: React.FC = () => {
           To change to monthly billing:
         </p>
         <ol style={{ fontSize: '14px', color: '#374151', lineHeight: '1.8', paddingLeft: '20px' }}>
-          <li>Contact support to request a full refund for the remaining annual period</li>
-          <li>Once refunded, subscribe to a monthly plan</li>
+          <li>{t('settings:subscriptionTab.contactSupportToRequestAFullRefundForTheRemainingAnnualPeriod')}</li>
+          <li>{t('settings:subscriptionTab.onceRefundedSubscribeToAMonthlyPlan')}</li>
         </ol>
       </Modal>
 
@@ -904,12 +906,12 @@ const SubscriptionTab: React.FC = () => {
         title={changeResult?.change_type === 'upgrade' ? 'Plan Upgraded' : 'Change Scheduled'}
         footer={
           <>
-            <ModalButton variant="secondary" onClick={() => setShowSuccessModal(false)}>Close</ModalButton>
+            <ModalButton variant="secondary" onClick={() => setShowSuccessModal(false)}>{t('settings:subscriptionTab.close')}</ModalButton>
             {changeResult?.proration_invoice && (
               <ModalButton variant="primary" onClick={() => {
                 setShowSuccessModal(false);
                 window.location.href = getInvoicesPath();
-              }}>Go to Invoices</ModalButton>
+              }}>{t('settings:subscriptionTab.goToInvoices')}</ModalButton>
             )}
           </>
         }

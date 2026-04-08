@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   display: flex;
@@ -22,6 +23,7 @@ const Card = styled.div`
 `;
 
 const VerifyEmailPage: React.FC = () => {
+  const { t } = useTranslation('auth');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'already'>('loading');
@@ -58,21 +60,20 @@ const VerifyEmailPage: React.FC = () => {
         setMessage('Verification failed. Please try again.');
       });
   }, [searchParams]);
-
   return (
     <Container>
       <Card>
         {status === 'loading' && (
           <>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-            <h2 style={{ color: '#374151', margin: '0 0 8px' }}>Verifying your email...</h2>
-            <p style={{ color: '#6B7280' }}>Please wait a moment.</p>
+            <h2 style={{ color: '#374151', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.verifyingYourEmail')}</h2>
+            <p style={{ color: '#6B7280' }}>{t('auth:verifyEmailPage.pleaseWaitAMoment')}</p>
           </>
         )}
         {status === 'success' && (
           <>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✓</div>
-            <h2 style={{ color: '#059669', margin: '0 0 8px' }}>Email Verified!</h2>
+            <h2 style={{ color: '#059669', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.emailVerified')}</h2>
             <p style={{ color: '#6B7280', marginBottom: '24px' }}>{message}</p>
             <button
               onClick={() => navigate('/pos')}
@@ -88,7 +89,7 @@ const VerifyEmailPage: React.FC = () => {
         {status === 'already' && (
           <>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✓</div>
-            <h2 style={{ color: '#374151', margin: '0 0 8px' }}>Already Verified</h2>
+            <h2 style={{ color: '#374151', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.alreadyVerified')}</h2>
             <p style={{ color: '#6B7280', marginBottom: '24px' }}>{message}</p>
             <button
               onClick={() => navigate('/pos')}
@@ -104,7 +105,7 @@ const VerifyEmailPage: React.FC = () => {
         {status === 'error' && (
           <>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>✗</div>
-            <h2 style={{ color: '#EF4444', margin: '0 0 8px' }}>Verification Failed</h2>
+            <h2 style={{ color: '#EF4444', margin: '0 0 8px' }}>{t('auth:verifyEmailPage.verificationFailed')}</h2>
             <p style={{ color: '#6B7280', marginBottom: '24px' }}>{message}</p>
             <button
               onClick={() => navigate('/pos')}

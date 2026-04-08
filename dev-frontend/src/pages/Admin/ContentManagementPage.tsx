@@ -22,6 +22,7 @@ import {
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { useTranslation } from 'react-i18next';
 
 interface ContentCategory {
   id: number;
@@ -245,6 +246,7 @@ const FilterBarWithButton = styled(FilterBar)`
 `;
 
 const ContentManagementPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [activeTab, setTabParam] = useTabParam<'blog' | 'blog-categories' | 'faq' | 'faq-categories'>('blog');
   const [categories, setCategories] = useState<ContentCategory[]>([]);
   const [contents, setContents] = useState<ContentItem[]>([]);
@@ -524,7 +526,7 @@ const ContentManagementPage: React.FC = () => {
               value={editingContent?.category_id?.toString() || ''}
               onChange={(e) => setEditingContent({ ...editingContent, category_id: parseInt(e.target.value) })}
             >
-              <option value="">Select category</option>
+              <option value="">{t('admin:contentManagementPage.selectCategory')}</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
               ))}
@@ -535,7 +537,7 @@ const ContentManagementPage: React.FC = () => {
         {contentType === 'blog' && (
           <FormRow>
             <FormGroup>
-              <FormLabel>Excerpt</FormLabel>
+              <FormLabel>{t('admin:contentManagementPage.excerpt')}</FormLabel>
               <FormTextArea
                 value={editingContent?.excerpt || ''}
                 onChange={(e) => setEditingContent({ ...editingContent, excerpt: e.target.value })}
@@ -544,12 +546,12 @@ const ContentManagementPage: React.FC = () => {
               />
             </FormGroup>
             <FormGroup>
-              <FormLabel>Thumbnail</FormLabel>
+              <FormLabel>{t('admin:contentManagementPage.thumbnail')}</FormLabel>
               <ThumbnailUpload>
                 {editingContent?.thumbnail_url ? (
                   <img src={editingContent.thumbnail_url} alt="Thumbnail" />
                 ) : (
-                  <p>Click to upload thumbnail image</p>
+                  <p>{t('admin:contentManagementPage.clickToUploadThumbnailImage')}</p>
                 )}
                 <FormInput
                   type="text"
@@ -579,7 +581,7 @@ const ContentManagementPage: React.FC = () => {
           </h4>
 
           <FormGroup>
-            <FormLabel>AI Summary (for AI citation)</FormLabel>
+            <FormLabel>{t('admin:contentManagementPage.aiSummaryForAiCitation')}</FormLabel>
             <FormTextArea
               value={editingContent?.ai_summary || ''}
               onChange={(e) => setEditingContent({ ...editingContent, ai_summary: e.target.value })}
@@ -594,7 +596,7 @@ const ContentManagementPage: React.FC = () => {
             <>
               <FormRow>
                 <FormGroup>
-                  <FormLabel>SEO Title (max 70 chars)</FormLabel>
+                  <FormLabel>{t('admin:contentManagementPage.seoTitleMax70Chars')}</FormLabel>
                   <FormInput
                     type="text"
                     value={editingContent?.seo_title || ''}
@@ -604,7 +606,7 @@ const ContentManagementPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>OG Image URL</FormLabel>
+                  <FormLabel>{t('admin:contentManagementPage.ogImageUrl')}</FormLabel>
                   <FormInput
                     type="text"
                     value={editingContent?.og_image_url || ''}
@@ -615,7 +617,7 @@ const ContentManagementPage: React.FC = () => {
               </FormRow>
 
               <FormGroup>
-                <FormLabel>SEO Description (max 160 chars)</FormLabel>
+                <FormLabel>{t('admin:contentManagementPage.seoDescriptionMax160Chars')}</FormLabel>
                 <FormTextArea
                   value={editingContent?.seo_description || ''}
                   onChange={(e) => setEditingContent({ ...editingContent, seo_description: e.target.value })}
@@ -627,7 +629,7 @@ const ContentManagementPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>SEO Keywords (comma separated)</FormLabel>
+                <FormLabel>{t('admin:contentManagementPage.seoKeywordsCommaSeparated')}</FormLabel>
                 <FormInput
                   type="text"
                   value={editingContent?.seo_keywords || ''}
@@ -663,7 +665,7 @@ const ContentManagementPage: React.FC = () => {
       <CategoryGrid>
         {categories.length === 0 ? (
           <EmptyState>
-            <h3>No categories yet</h3>
+            <h3>{t('admin:contentManagementPage.noCategoriesYet')}</h3>
             <p>Create your first category to organize your {contentType === 'blog' ? 'blog posts' : 'FAQ items'}</p>
             <ThemedButton onClick={() => { setEditingCategory({ type: contentType as 'blog' | 'faq' }); setShowCategoryModal(true); }}>
               Add Category
@@ -710,26 +712,26 @@ const ContentManagementPage: React.FC = () => {
         </StatCard>
         <StatCard>
           <StatValue>{stats.published}</StatValue>
-          <StatLabel>Published</StatLabel>
+          <StatLabel>{t('admin:contentManagementPage.published')}</StatLabel>
         </StatCard>
         <StatCard>
           <StatValue>{stats.draft}</StatValue>
-          <StatLabel>Drafts</StatLabel>
+          <StatLabel>{t('admin:contentManagementPage.drafts')}</StatLabel>
         </StatCard>
         <StatCard>
           <StatValue>{stats.categories}</StatValue>
-          <StatLabel>Categories</StatLabel>
+          <StatLabel>{t('admin:contentManagementPage.categories')}</StatLabel>
         </StatCard>
       </StatsGrid>
 
       <FilterBarWithButton>
         <FilterSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="all">All Status</option>
-          <option value="published">Published</option>
-          <option value="draft">Draft</option>
+          <option value="all">{t('admin:contentManagementPage.allStatus')}</option>
+          <option value="published">{t('admin:contentManagementPage.published')}</option>
+          <option value="draft">{t('admin:contentManagementPage.draft')}</option>
         </FilterSelect>
         <FilterSelect value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-          <option value="all">All Categories</option>
+          <option value="all">{t('admin:contentManagementPage.allCategories')}</option>
           {categories.map(cat => (
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
@@ -751,7 +753,7 @@ const ContentManagementPage: React.FC = () => {
         renderEditor()
       ) : filteredContents.length === 0 ? (
         <EmptyState>
-          <h3>No content yet</h3>
+          <h3>{t('admin:contentManagementPage.noContentYet')}</h3>
           <p>Create your first {contentType === 'blog' ? 'blog post' : 'FAQ item'}</p>
           <ThemedButton onClick={() => { setEditingContent({ type: contentType as 'blog' | 'faq' }); setIsEditing(true); }}>
             New {contentType === 'blog' ? 'Post' : 'FAQ'}
@@ -760,11 +762,11 @@ const ContentManagementPage: React.FC = () => {
       ) : (
         <Table>
           <TableHeader columns="2fr 1fr 1fr 1fr 120px">
-            <span className="col-info">Title</span>
-            <span>Category</span>
-            <span>Status</span>
-            <span>Date</span>
-            <span className="col-action">Actions</span>
+            <span className="col-info">{t('admin:contentManagementPage.title')}</span>
+            <span>{t('admin:contentManagementPage.category')}</span>
+            <span>{t('admin:contentManagementPage.status')}</span>
+            <span>{t('admin:contentManagementPage.date')}</span>
+            <span className="col-action">{t('admin:contentManagementPage.actions')}</span>
           </TableHeader>
           {filteredContents.map(item => (
             <TableRow key={item.id} columns="2fr 1fr 1fr 1fr 120px">
@@ -800,12 +802,11 @@ const ContentManagementPage: React.FC = () => {
       )}
     </>
   );
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Content</Title>
+          <Title>{t('admin:contentManagementPage.content')}</Title>
         </Header>
 
         {successMessage && (
@@ -859,7 +860,7 @@ const ContentManagementPage: React.FC = () => {
           />
         </FormGroup>
         <FormGroup>
-          <FormLabel>Icon (emoji)</FormLabel>
+          <FormLabel>{t('admin:contentManagementPage.iconEmoji')}</FormLabel>
           <FormInput
             value={editingCategory?.icon || ''}
             onChange={(e) => setEditingCategory({ ...editingCategory, icon: e.target.value })}
@@ -867,7 +868,7 @@ const ContentManagementPage: React.FC = () => {
           />
         </FormGroup>
         <FormGroup>
-          <FormLabel>Description</FormLabel>
+          <FormLabel>{t('admin:contentManagementPage.description')}</FormLabel>
           <FormTextArea
             value={editingCategory?.description || ''}
             onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface CompanyInfo {
   id: string;
@@ -308,6 +309,7 @@ const ButtonGroup = styled.div`
 `;
 
 const ManagerCompanySettingsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [activeTab, handleTabChange] = useTabParam<'company' | 'operations'>('company');
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
@@ -398,7 +400,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
   const renderCompanyTab = () => (
     <FormGrid>
       <Section>
-        <SectionTitle>Basic Information</SectionTitle>
+        <SectionTitle>{t('admin:companySettingsPage.basicInformation')}</SectionTitle>
         <FormRow>
           <FormGroup>
             <Label>Company Name *</Label>
@@ -437,20 +439,20 @@ const ManagerCompanySettingsPage: React.FC = () => {
         </FormRow>
         <FormRow>
           <FormGroup>
-            <Label>Industry</Label>
+            <Label>{t('admin:companySettingsPage.industry')}</Label>
             <Select
               value={companyInfo.industry}
               onChange={(e) => handleInputChange('industry', e.target.value)}
             >
-              <option value="Food & Beverage Management">Food & Beverage Management</option>
-              <option value="Restaurant Chain">Restaurant Chain</option>
-              <option value="Franchise Management">Franchise Management</option>
-              <option value="Hospitality">Hospitality</option>
-              <option value="Other">Other</option>
+              <option value="Food & Beverage Management">{t('admin:companySettingsPage.foodBeverageManagement')}</option>
+              <option value="Restaurant Chain">{t('admin:companySettingsPage.restaurantChain')}</option>
+              <option value="Franchise Management">{t('admin:companySettingsPage.franchiseManagement')}</option>
+              <option value="Hospitality">{t('admin:companySettingsPage.hospitality')}</option>
+              <option value="Other">{t('admin:companySettingsPage.other')}</option>
             </Select>
           </FormGroup>
           <FormGroup>
-            <Label>Founded Year</Label>
+            <Label>{t('admin:companySettingsPage.foundedYear')}</Label>
             <Input
               type="number"
               value={companyInfo.foundedYear}
@@ -461,7 +463,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
           </FormGroup>
         </FormRow>
         <FormGroup>
-          <Label>Company Description</Label>
+          <Label>{t('admin:companySettingsPage.companyDescription')}</Label>
           <TextArea
             value={companyInfo.description}
             onChange={(e) => handleInputChange('description', e.target.value)}
@@ -471,7 +473,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
       </Section>
 
       <Section>
-        <SectionTitle>Contact Information</SectionTitle>
+        <SectionTitle>{t('admin:companySettingsPage.contactInformation')}</SectionTitle>
         <FormRow>
           <FormGroup>
             <Label>Address *</Label>
@@ -528,7 +530,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
           </FormGroup>
         </FormRow>
         <FormGroup>
-          <Label>Website</Label>
+          <Label>{t('admin:companySettingsPage.website')}</Label>
           <Input
             value={companyInfo.website}
             onChange={(e) => handleInputChange('website', e.target.value)}
@@ -538,9 +540,9 @@ const ManagerCompanySettingsPage: React.FC = () => {
       </Section>
 
       <Section>
-        <SectionTitle>Branding</SectionTitle>
+        <SectionTitle>{t('admin:companySettingsPage.branding')}</SectionTitle>
         <FormGroup>
-          <Label>Company Logo</Label>
+          <Label>{t('admin:companySettingsPage.companyLogo')}</Label>
           <LogoUploadArea>
             {companyInfo.logoUrl ? (
               <LogoPreview src={companyInfo.logoUrl} alt="Company Logo" />
@@ -558,7 +560,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
         </FormGroup>
         <FormRow>
           <FormGroup>
-            <Label>Primary Brand Color</Label>
+            <Label>{t('admin:companySettingsPage.primaryBrandColor')}</Label>
             <ColorPicker>
               <ColorInput
                 type="color"
@@ -569,7 +571,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
             </ColorPicker>
           </FormGroup>
           <FormGroup>
-            <Label>Secondary Brand Color</Label>
+            <Label>{t('admin:companySettingsPage.secondaryBrandColor')}</Label>
             <ColorPicker>
               <ColorInput
                 type="color"
@@ -587,7 +589,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
   const renderOperationsTab = () => (
     <FormGrid>
       <Section>
-        <SectionTitle>Business Hours</SectionTitle>
+        <SectionTitle>{t('admin:companySettingsPage.businessHours')}</SectionTitle>
         <BusinessHoursGrid>
           {Object.entries(companyInfo.businessHours).map(([day, hours]) => (
             <BusinessHourRow key={day}>
@@ -610,7 +612,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
                   checked={hours.closed}
                   onChange={(e) => handleBusinessHoursChange(day, 'closed', e.target.checked)}
                 />
-                <Label style={{ margin: 0, fontSize: '12px' }}>Closed</Label>
+                <Label style={{ margin: 0, fontSize: '12px' }}>{t('admin:companySettingsPage.closed')}</Label>
               </div>
             </BusinessHourRow>
           ))}
@@ -618,10 +620,10 @@ const ManagerCompanySettingsPage: React.FC = () => {
       </Section>
 
       <Section>
-        <SectionTitle>Social Media</SectionTitle>
+        <SectionTitle>{t('admin:companySettingsPage.socialMedia')}</SectionTitle>
         <FormRow>
           <FormGroup>
-            <Label>Facebook</Label>
+            <Label>{t('admin:companySettingsPage.facebook')}</Label>
             <Input
               value={companyInfo.socialMedia.facebook}
               onChange={(e) => handleInputChange('facebook', e.target.value, 'socialMedia')}
@@ -629,7 +631,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
             />
           </FormGroup>
           <FormGroup>
-            <Label>Instagram</Label>
+            <Label>{t('admin:companySettingsPage.instagram')}</Label>
             <Input
               value={companyInfo.socialMedia.instagram}
               onChange={(e) => handleInputChange('instagram', e.target.value, 'socialMedia')}
@@ -639,7 +641,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
         </FormRow>
         <FormRow>
           <FormGroup>
-            <Label>Twitter</Label>
+            <Label>{t('admin:companySettingsPage.twitter')}</Label>
             <Input
               value={companyInfo.socialMedia.twitter}
               onChange={(e) => handleInputChange('twitter', e.target.value, 'socialMedia')}
@@ -647,7 +649,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
             />
           </FormGroup>
           <FormGroup>
-            <Label>LinkedIn</Label>
+            <Label>{t('admin:companySettingsPage.linkedin')}</Label>
             <Input
               value={companyInfo.socialMedia.linkedin}
               onChange={(e) => handleInputChange('linkedin', e.target.value, 'socialMedia')}
@@ -658,7 +660,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
       </Section>
 
       <Section>
-        <SectionTitle>Bank Details</SectionTitle>
+        <SectionTitle>{t('admin:companySettingsPage.bankDetails')}</SectionTitle>
         <FormRow>
           <FormGroup>
             <Label>Bank Name *</Label>
@@ -687,7 +689,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
             />
           </FormGroup>
           <FormGroup>
-            <Label>SWIFT Code</Label>
+            <Label>{t('admin:companySettingsPage.swiftCode')}</Label>
             <Input
               value={companyInfo.bankDetails.swiftCode}
               onChange={(e) => handleInputChange('swiftCode', e.target.value, 'bankDetails')}
@@ -703,8 +705,8 @@ const ManagerCompanySettingsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Company Settings</Title>
-          <Subtitle>Manage your company information and brand settings</Subtitle>
+          <Title>{t('admin:companySettingsPage.companySettings')}</Title>
+          <Subtitle>{t('admin:companySettingsPage.manageYourCompanyInformationAndBrandSettings')}</Subtitle>
         </Header>
         
         <Content>
@@ -721,7 +723,7 @@ const ManagerCompanySettingsPage: React.FC = () => {
           {activeTab === 'operations' && renderOperationsTab()}
 
           <ButtonGroup>
-            <Button variant="secondary">Cancel</Button>
+            <Button variant="secondary">{t('admin:companySettingsPage.cancel')}</Button>
             <Button variant="primary" onClick={handleSave}>
               Save Changes
             </Button>

@@ -9,6 +9,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -712,17 +713,17 @@ const getToken = () => localStorage.getItem('auth_token');
 // ─── Main Page Component ─────────────────────────────────────────────────────
 
 const SystemProductManagementPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [activeTab, handleTabChange] = useTabParam<TabType>('products');
   const [productsCount, setProductsCount] = useState(0);
   const [categoriesCount, setCategoriesCount] = useState(0);
   const [optionsCount, setOptionsCount] = useState(0);
   const [categoryRefreshKey, setCategoryRefreshKey] = useState(0);
   const [optionRefreshKey, setOptionRefreshKey] = useState(0);
-
   return (
     <Container>
       <Header>
-        <Title>System Products</Title>
+        <Title>{'System Products'}</Title>
       </Header>
 
       <Content>
@@ -1306,7 +1307,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="all">All Categories</option>
+            <option value="all">{'All Categories'}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id.toString()}>
                 {cat.emoji} {cat.name}
@@ -1342,7 +1343,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
               : 'Start by adding your first system product.'}
           </EmptyDescription>
           {!searchTerm && categoryFilter === 'all' && (
-            <ThemedButton onClick={() => handleOpenModal()}>Add Product</ThemedButton>
+            <ThemedButton onClick={() => handleOpenModal()}>{'Add Product'}</ThemedButton>
           )}
         </EmptyState>
       ) : (
@@ -1361,8 +1362,8 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                 <ProductInfo>
                   <ProductName>
                     {product.name}
-                    {product.is_set && <SetBadge>SET</SetBadge>}
-                    {product.is_recommended && <RecommendedBadge>Recommended</RecommendedBadge>}
+                    {product.is_set && <SetBadge>{'SET'}</SetBadge>}
+                    {product.is_recommended && <RecommendedBadge>{'Recommended'}</RecommendedBadge>}
                   </ProductName>
                   {product.sku && <ProductSku>SKU: {product.sku}</ProductSku>}
                   {product.category && (
@@ -1380,24 +1381,24 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
 
               <ProductDetails>
                 <DetailRow>
-                  <DetailLabel>Price</DetailLabel>
+                  <DetailLabel>{'Price'}</DetailLabel>
                   <PriceValue>{getDisplayPrice(product)}</PriceValue>
                 </DetailRow>
                 {product.is_set && product.set_group && (
                   <DetailRow>
-                    <DetailLabel>Group</DetailLabel>
+                    <DetailLabel>{'Group'}</DetailLabel>
                     <span style={{ color: '#0A2540', fontWeight: 500 }}>{product.set_group}</span>
                   </DetailRow>
                 )}
                 {product.is_set && product.set_tier && (
                   <DetailRow>
-                    <DetailLabel>Tier</DetailLabel>
+                    <DetailLabel>{'Tier'}</DetailLabel>
                     <span style={{ color: '#0A2540', fontWeight: 500 }}>{product.set_tier}</span>
                   </DetailRow>
                 )}
                 {product.shipping_countries && product.shipping_countries.length > 0 && (
                   <DetailRow>
-                    <DetailLabel>Ships to</DetailLabel>
+                    <DetailLabel>{'Ships to'}</DetailLabel>
                     <span style={{ color: '#0A2540', fontWeight: 500 }}>
                       {product.shipping_countries.join(', ')}
                     </span>
@@ -1447,7 +1448,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                 />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>SKU</FormLabel>
+                <FormLabel>{'SKU'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.sku}
@@ -1458,12 +1459,12 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             </div>
 
             <UIFormGroup>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>{'Category'}</FormLabel>
               <FormSelect
                 value={formData.category_id}
                 onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
               >
-                <option value="">No category</option>
+                <option value="">{'No category'}</option>
                 {categories.map(cat => (
                   <option key={cat.id} value={cat.id.toString()}>
                     {cat.emoji} {cat.name}
@@ -1473,7 +1474,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{'Description'}</FormLabel>
               <FormTextArea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1483,7 +1484,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Product Image</FormLabel>
+              <FormLabel>{'Product Image'}</FormLabel>
               <ImageUploadDropzone
                 value={formData.image_url}
                 onChange={(url) => setFormData({ ...formData, image_url: url || '' })}
@@ -1493,7 +1494,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             </UIFormGroup>
 
             {/* Prices */}
-            <SectionTitle>Pricing</SectionTitle>
+            <SectionTitle>{'Pricing'}</SectionTitle>
             {supportedCurrencies.length > 0 ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                 {supportedCurrencies.map(cur => {
@@ -1533,7 +1534,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             )}
 
             {/* Set Product */}
-            <SectionTitle>Set Configuration</SectionTitle>
+            <SectionTitle>{'Set Configuration'}</SectionTitle>
             <UIFormGroup>
               <CheckboxLabel>
                 <input
@@ -1555,34 +1556,34 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <UIFormGroup>
-                    <FormLabel>Set Group</FormLabel>
+                    <FormLabel>{'Set Group'}</FormLabel>
                     <FormSelect
                       value={formData.set_group}
                       onChange={(e) => setFormData({ ...formData, set_group: e.target.value })}
                     >
-                      <option value="">Select group</option>
-                      <option value="tablet">Tablet</option>
-                      <option value="monitor">Monitor</option>
-                      <option value="custom">Custom</option>
+                      <option value="">{'Select group'}</option>
+                      <option value="tablet">{'Tablet'}</option>
+                      <option value="monitor">{'Monitor'}</option>
+                      <option value="custom">{'Custom'}</option>
                     </FormSelect>
                   </UIFormGroup>
                   <UIFormGroup>
-                    <FormLabel>Set Tier</FormLabel>
+                    <FormLabel>{'Set Tier'}</FormLabel>
                     <FormSelect
                       value={formData.set_tier}
                       onChange={(e) => setFormData({ ...formData, set_tier: e.target.value })}
                     >
-                      <option value="">Select tier</option>
-                      <option value="standard">Standard</option>
-                      <option value="hybrid">Hybrid</option>
-                      <option value="premium">Premium</option>
-                      <option value="custom">Custom</option>
+                      <option value="">{'Select tier'}</option>
+                      <option value="standard">{'Standard'}</option>
+                      <option value="hybrid">{'Hybrid'}</option>
+                      <option value="premium">{'Premium'}</option>
+                      <option value="custom">{'Custom'}</option>
                     </FormSelect>
                   </UIFormGroup>
                 </div>
 
                 <UIFormGroup>
-                  <FormLabel>Use Case</FormLabel>
+                  <FormLabel>{'Use Case'}</FormLabel>
                   <FormInput
                     type="text"
                     value={formData.set_use_case}
@@ -1603,7 +1604,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                 </UIFormGroup>
 
                 <UIFormGroup>
-                  <FormLabel>Setup Items (one per line)</FormLabel>
+                  <FormLabel>{'Setup Items (one per line)'}</FormLabel>
                   <FormTextArea
                     value={formData.set_setup_items}
                     onChange={(e) => setFormData({ ...formData, set_setup_items: e.target.value })}
@@ -1614,7 +1615,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
 
                 {/* Set Items */}
                 <UIFormGroup>
-                  <FormLabel>Set Items</FormLabel>
+                  <FormLabel>{'Set Items'}</FormLabel>
                   {formData.set_items.length > 0 && (
                     <div style={{ marginBottom: '12px' }}>
                       {formData.set_items.map(item => (
@@ -1667,7 +1668,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
 
                 {/* Addons */}
                 <UIFormGroup>
-                  <FormLabel>Addons</FormLabel>
+                  <FormLabel>{'Addons'}</FormLabel>
                   {formData.addons.length > 0 && (
                     <div style={{ marginBottom: '12px' }}>
                       {formData.addons.map(addon => (
@@ -1738,7 +1739,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             {/* Option Groups - only for non-set products */}
             {!formData.is_set && systemOptionGroups.length > 0 && (
               <>
-                <SectionTitle>Option Groups</SectionTitle>
+                <SectionTitle>{'Option Groups'}</SectionTitle>
                 <UIFormGroup>
                   <CheckboxGroup>
                     {systemOptionGroups.map(og => (
@@ -1757,9 +1758,9 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             )}
 
             {/* Shipping */}
-            <SectionTitle>Shipping</SectionTitle>
+            <SectionTitle>{'Shipping'}</SectionTitle>
             <UIFormGroup>
-              <FormLabel>Available Countries</FormLabel>
+              <FormLabel>{'Available Countries'}</FormLabel>
               {supportedCountries.length > 0 ? (
                 <CheckboxGroup>
                   {supportedCountries.map(country => (
@@ -2023,9 +2024,9 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
 
       {categories.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No categories yet</EmptyTitle>
-          <EmptyDescription>Create your first product category to organize your system products.</EmptyDescription>
-          <ThemedButton onClick={() => handleOpenModal()}>Add Category</ThemedButton>
+          <EmptyTitle>{'No categories yet'}</EmptyTitle>
+          <EmptyDescription>{'Create your first product category to organize your system products.'}</EmptyDescription>
+          <ThemedButton onClick={() => handleOpenModal()}>{'Add Category'}</ThemedButton>
         </EmptyState>
       ) : (
         <CategoryGrid>
@@ -2095,7 +2096,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Emoji</FormLabel>
+              <FormLabel>{'Emoji'}</FormLabel>
               <EmojiPicker>
                 {emojiOptions.map((emoji) => (
                   <EmojiOption
@@ -2111,7 +2112,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ onCountChange, onCategory
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{'Description'}</FormLabel>
               <FormTextArea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -2307,7 +2308,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
   );
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>Loading...</div>;
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>{'Loading...'}</div>;
   }
 
   return (
@@ -2328,7 +2329,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
 
       {filteredGroups.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No option groups yet</EmptyTitle>
+          <EmptyTitle>{'No option groups yet'}</EmptyTitle>
           <EmptyDescription>
             Create option groups to add customizable options to your system products
           </EmptyDescription>
@@ -2390,7 +2391,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
         title={editingGroup ? 'Edit Option Group' : 'New Option Group'}
       >
         <OptionFormGroup>
-          <OptionFormLabel>Group Name</OptionFormLabel>
+          <OptionFormLabel>{'Group Name'}</OptionFormLabel>
           <OptionFormInput
             type="text"
             value={formData.name}
@@ -2413,7 +2414,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
         </OptionFormGroup>
 
         <OptionFormGroup>
-          <OptionFormLabel>Options</OptionFormLabel>
+          <OptionFormLabel>{'Options'}</OptionFormLabel>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             <OptionFormInput
               type="text"
@@ -2451,7 +2452,7 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
         </OptionFormGroup>
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <OptionFormButton type="button" variant="secondary" onClick={handleCloseModal}>Cancel</OptionFormButton>
+          <OptionFormButton type="button" variant="secondary" onClick={handleCloseModal}>{'Cancel'}</OptionFormButton>
           <OptionFormButton type="button" onClick={handleSave} disabled={!formData.name.trim() || formData.options.length === 0}>
             {editingGroup ? 'Update' : 'Create'}
           </OptionFormButton>
@@ -2464,10 +2465,10 @@ const OptionsTab: React.FC<OptionsTabProps> = ({ onCountChange, onOptionChange }
         onClose={() => setIsDeleteModalOpen(false)}
         title="Delete Option Group"
       >
-        <p>Are you sure you want to delete this option group? This action cannot be undone.</p>
+        <p>{'Are you sure you want to delete this option group? This action cannot be undone.'}</p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <OptionFormButton type="button" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancel</OptionFormButton>
-          <OptionFormButton type="button" variant="danger" onClick={handleConfirmDelete}>Delete</OptionFormButton>
+          <OptionFormButton type="button" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>{'Cancel'}</OptionFormButton>
+          <OptionFormButton type="button" variant="danger" onClick={handleConfirmDelete}>{'Delete'}</OptionFormButton>
         </div>
       </Modal>
     </>

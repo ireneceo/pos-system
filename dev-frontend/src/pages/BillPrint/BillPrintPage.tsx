@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
+import { useTranslation } from 'react-i18next';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -258,6 +259,7 @@ const ReceiptPointsSection = styled.div`
 `;
 
 const BillPrintPage: React.FC = () => {
+  const { t } = useTranslation('pos');
   const { orders } = useOrders();
   const storeContext = useStore();
   const companyInfo = (storeContext as any).companyInfo;
@@ -323,7 +325,7 @@ const BillPrintPage: React.FC = () => {
     <>
       <PageContainer className="no-print">
         <PageHeader>
-          <Title>Bill Print</Title>
+          <Title>{t('pos:billPrintPage.billPrint')}</Title>
         </PageHeader>
 
         <SearchSection>
@@ -373,7 +375,7 @@ const BillPrintPage: React.FC = () => {
               </BillRow>
               <BillRow>
                 <Label>Cashier:</Label>
-                <Value>POS Terminal</Value>
+                <Value>{t('pos:billPrintPage.posTerminal')}</Value>
               </BillRow>
               <BillRow>
                 <Label>Customer:</Label>
@@ -388,10 +390,10 @@ const BillPrintPage: React.FC = () => {
             <ItemsTable>
               <thead>
                 <tr>
-                  <TableHeader style={{ width: '60%' }}>Item</TableHeader>
-                  <TableHeader style={{ width: '15%' }}>Qty</TableHeader>
-                  <TableHeader style={{ width: '12.5%' }}>Price</TableHeader>
-                  <TableHeader style={{ width: '12.5%' }}>Total</TableHeader>
+                  <TableHeader style={{ width: '60%' }}>{t('pos:billPrintPage.item')}</TableHeader>
+                  <TableHeader style={{ width: '15%' }}>{t('pos:billPrintPage.qty')}</TableHeader>
+                  <TableHeader style={{ width: '12.5%' }}>{t('pos:billPrintPage.price')}</TableHeader>
+                  <TableHeader style={{ width: '12.5%' }}>{t('pos:billPrintPage.total')}</TableHeader>
                 </tr>
               </thead>
               <tbody>
@@ -476,7 +478,7 @@ const BillPrintPage: React.FC = () => {
             {/* Membership QR — all customers see the same */}
             {receiptSettings.showMembership && qrDataUrl && (
               <ReceiptQrSection>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0A2540', marginBottom: '6px' }}>Order online & earn points!</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0A2540', marginBottom: '6px' }}>{t('pos:billPrintPage.orderOnlineEarnPoints')}</div>
                 <img src={qrDataUrl} alt="QR Code" style={{ width: '100px', height: '100px' }} />
                 <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '4px' }}>
                   purplehere.com/m/{user?.restaurantId}
@@ -501,7 +503,7 @@ const BillPrintPage: React.FC = () => {
 
         {!selectedOrder && searchTerm && (
           <EmptyState>
-            <p>No order found with that order number or phone number.</p>
+            <p>{t('pos:billPrintPage.noOrderFoundWithThatOrderNumberOrPhoneNumber')}</p>
           </EmptyState>
         )}
       </PageContainer>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateBreadcrumbSchema, generateLocalBusinessSchema } from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -531,6 +532,7 @@ const countryToCurrency: Record<string, string> = {
 };
 
 const PricingPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'restaurant' | 'brand' | 'foodcourt' | 'owner'>('restaurant');
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -724,7 +726,6 @@ const PricingPage: React.FC = () => {
     { name: 'Home', url: 'https://purplehere.com' },
     { name: 'Pricing', url: 'https://purplehere.com/pricing' }
   ]);
-
   return (
     <LandingLayout>
       <SEOHead
@@ -736,9 +737,9 @@ const PricingPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>Simple, Transparent Pricing</HeroTitle>
+          <HeroTitle>{t('landing:pricingPage.simpleTransparentPricing')}</HeroTitle>
           <HeroSubtitle>
-            Choose the plan that fits your business. No hidden fees, cancel anytime.
+            {t('landing:pricingPage.chooseThePlanThatFitsYourBusinessNoHidde')}
           </HeroSubtitle>
           <FreeTrialBadge>7 Days Free Trial - No Credit Card Required</FreeTrialBadge>
         </HeroSection>
@@ -758,7 +759,7 @@ const PricingPage: React.FC = () => {
             </PlanTabs>
 
             <CurrencySelector>
-              <CurrencyLabel>Currency:</CurrencyLabel>
+              <CurrencyLabel>{t('landing:pricingPage.currency')}</CurrencyLabel>
               <CurrencySelect
                 value={selectedCurrency}
                 onChange={(e) => setSelectedCurrency(e.target.value)}
@@ -773,10 +774,10 @@ const PricingPage: React.FC = () => {
           </FilterBar>
 
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>Loading plans...</div>
+            <div style={{ textAlign: 'center', padding: '40px' }}>{t('landing:pricingPage.loadingPlans')}</div>
           ) : displayPlans.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#6B7C93' }}>
-              No plans available for this category yet.
+              {t('landing:pricingPage.noPlansAvailableForThisCategoryYet')}
             </div>
           ) : (
             <PlansGrid>
@@ -788,7 +789,7 @@ const PricingPage: React.FC = () => {
 
                 return (
                   <PlanCard key={plan.id} popular={isPopular}>
-                    {isPopular && <PopularBadge>Most Popular</PopularBadge>}
+                    {isPopular && <PopularBadge>{t('landing:pricingPage.mostPopular')}</PopularBadge>}
                     <PlanName>{plan.display_name}</PlanName>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#635BFF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '24px', textAlign: 'center' }}>
                       {plan.plan_target === 'restaurant' ? 'Restaurant Plan' : plan.plan_target === 'brand' ? 'Brand Plan' : plan.plan_target === 'foodcourt' ? 'Foodcourt Plan' : 'Owner Plan'}
@@ -796,7 +797,7 @@ const PricingPage: React.FC = () => {
 
                     <PriceSection>
                       {monthlyPrice === 0 ? (
-                        <MonthlyPrice>Contact Us</MonthlyPrice>
+                        <MonthlyPrice>{t('landing:pricingPage.contactUs')}</MonthlyPrice>
                       ) : (
                         <>
                           <MonthlyPrice>
@@ -810,7 +811,7 @@ const PricingPage: React.FC = () => {
                               {annualSavings > 0 && ` (Save ${annualSavings}%)`}
                             </AnnualPrice>
                           )}
-                          <BillingNote>Billed monthly or annually</BillingNote>
+                          <BillingNote>{t('landing:pricingPage.billedMonthlyOrAnnually')}</BillingNote>
                         </>
                       )}
                     </PriceSection>
@@ -819,15 +820,15 @@ const PricingPage: React.FC = () => {
                       {plan.plan_target === 'restaurant' && (
                         <>
                           <LimitItem>
-                            <LimitLabel>Staff Limit</LimitLabel>
+                            <LimitLabel>{t('landing:pricingPage.staffLimit')}</LimitLabel>
                             <LimitValue>{formatLimit(plan.staff_limit)}</LimitValue>
                           </LimitItem>
                           <LimitItem>
-                            <LimitLabel>Orders/month</LimitLabel>
+                            <LimitLabel>{t('landing:pricingPage.ordersmonth')}</LimitLabel>
                             <LimitValue>{formatLimit(plan.order_limit)}</LimitValue>
                           </LimitItem>
                           <LimitItem>
-                            <LimitLabel>Menu Items</LimitLabel>
+                            <LimitLabel>{t('landing:pricingPage.menuItems')}</LimitLabel>
                             <LimitValue>{formatLimit(plan.menu_item_limit)}</LimitValue>
                           </LimitItem>
                         </>
@@ -835,18 +836,18 @@ const PricingPage: React.FC = () => {
                       {(plan.plan_target === 'brand' || plan.plan_target === 'foodcourt') && (
                         <>
                           <LimitItem>
-                            <LimitLabel>Restaurants</LimitLabel>
+                            <LimitLabel>{t('landing:pricingPage.restaurants')}</LimitLabel>
                             <LimitValue>{formatLimit(plan.restaurant_limit)}</LimitValue>
                           </LimitItem>
                           <LimitItem>
-                            <LimitLabel>Managers</LimitLabel>
+                            <LimitLabel>{t('landing:pricingPage.managers')}</LimitLabel>
                             <LimitValue>{formatLimit(plan.manager_limit)}</LimitValue>
                           </LimitItem>
                         </>
                       )}
                       {plan.plan_target === 'owner' && (
                         <LimitItem>
-                          <LimitLabel>Restaurants</LimitLabel>
+                          <LimitLabel>{t('landing:pricingPage.restaurants')}</LimitLabel>
                           <LimitValue>{formatLimit(plan.restaurant_limit)}</LimitValue>
                         </LimitItem>
                       )}
@@ -879,10 +880,10 @@ const PricingPage: React.FC = () => {
 
                       return targetModules.length > 0 ? (
                         <ModulesSection>
-                          <ModulesTitle>Modules</ModulesTitle>
+                          <ModulesTitle>{t('landing:pricingPage.modules')}</ModulesTitle>
                           <ModulesList>
                             {basicMods.length > 0 && (
-                              <ModuleCategoryLabel>Basic</ModuleCategoryLabel>
+                              <ModuleCategoryLabel>{t('landing:pricingPage.basic')}</ModuleCategoryLabel>
                             )}
                             {basicMods.map((m) => (
                               <ModuleItem key={m.module_code} included={includedSet.has(m.module_code)}>
@@ -893,7 +894,7 @@ const PricingPage: React.FC = () => {
                               </ModuleItem>
                             ))}
                             {advancedMods.length > 0 && (
-                              <ModuleCategoryLabel>Advanced</ModuleCategoryLabel>
+                              <ModuleCategoryLabel>{t('landing:pricingPage.advanced')}</ModuleCategoryLabel>
                             )}
                             {advancedMods.map((m) => (
                               <ModuleItem key={m.module_code} included={includedSet.has(m.module_code)}>
@@ -928,7 +929,7 @@ const PricingPage: React.FC = () => {
                         }
                       })}
                     >
-                      Start Free Trial
+                      {t('landing:pricingPage.startFreeTrial')}
                     </ContactButton>
                   </PlanCard>
                 );
@@ -938,12 +939,12 @@ const PricingPage: React.FC = () => {
         </ContentSection>
 
         <CTASection>
-          <CTATitle>Need POS hardware?</CTATitle>
+          <CTATitle>{t('landing:pricingPage.needPosHardware')}</CTATitle>
           <CTASubtitle>
-            Choose from ready-made hardware packages with everything you need to get started.
+            {t('landing:pricingPage.chooseFromReadymadeHardwarePackagesWithE')}
           </CTASubtitle>
           <CTAButton onClick={() => navigate('/packages')}>
-            View Hardware Packages
+            {t('landing:pricingPage.viewHardwarePackages')}
           </CTAButton>
         </CTASection>
       </PageContainer>

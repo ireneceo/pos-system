@@ -1,0 +1,23 @@
+{
+  "notificationSettingsPage.systemSettings": "系统设置",
+  "notificationSettingsPage.loading": "加载中...",
+  "notificationSettingsPage.profileSettings": "个人资料 设置",
+  "notificationSettingsPage.loadingPreferences": "加载偏好设置中...",
+  "notificationSettingsPage.noNotificationCategoriesAvailableForYourRole": "No notification categories available for your role.",
+  "notificationSettingsPage.smtpServer": "SMTP服务器",
+  "notificationSettingsPage.smtpPort": "SMTP端口",
+  "notificationSettingsPage.typically587TlsOr465Ssl": "通常587 (TLS) 或 465 (SSL)",
+  "notificationSettingsPage.smtpUsername": "SMTP用户名",
+  "notificationSettingsPage.yourFullEmailAddress": "您的完整邮箱地址",
+  "notificationSettingsPage.smtpPassword": "SMTP密码",
+  "notificationSettingsPage.fromEmail": "开始 邮箱",
+  "notificationSettingsPage.emailAddressShownToRecipients": "显示给收件人的邮箱地址",
+  "notificationSettingsPage.fromName": "开始 名称",
+  "notificationSettingsPage.displayNameShownToRecipients": "显示给收件人的名称",
+  "notificationSettingsPage.replytoEmailOptional": "回复邮箱（可选）",
+  "notificationSettingsPage.whereRepliesShouldBeSent": "回复应发送至",
+  "notificationSettingsPage.cancel": "取消",
+  "notificationSettingsPage.enterTheEmailAddressWhereYouWantToReceiveTheTestEmail": "输入您要接收测试邮件的邮箱地址。",
+  "notificationSettingsPage.emailAddress": "邮箱 地址",
+  "notificationSettingsPage.ok": "确定"
+}

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { useTranslation } from 'react-i18next';
 // Chart libraries temporarily removed - will be added when needed
 
 interface RestaurantSales {
@@ -336,6 +337,7 @@ const ActionButton = styled.button`
 `;
 
 const ManagerSalesPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   // const { } = useAuth();
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
@@ -448,7 +450,7 @@ const ManagerSalesPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <PageTitle>Sales</PageTitle>
+          <PageTitle>{t('admin:salesPage.sales')}</PageTitle>
         </Header>
         
         <Content>
@@ -457,7 +459,7 @@ const ManagerSalesPage: React.FC = () => {
               value={selectedRestaurant}
               onChange={(e) => setSelectedRestaurant(e.target.value)}
             >
-              <option value="all">All Restaurants</option>
+              <option value="all">{t('admin:salesPage.allRestaurants')}</option>
               {restaurantSales.map(restaurant => (
                 <option key={restaurant.id} value={restaurant.id}>
                   {restaurant.name} - {restaurant.location}
@@ -484,28 +486,28 @@ const ManagerSalesPage: React.FC = () => {
           
           <StatsGrid>
             <StatCard color="#059669">
-              <StatLabel>Total Sales</StatLabel>
+              <StatLabel>{t('admin:salesPage.totalSales')}</StatLabel>
               <StatValue>{formatCurrency(totals.todaySales, selectedCurrency)}</StatValue>
               <StatTrend positive={salesChange > 0}>
                 {salesChange > 0 ? '↑' : '↓'} {Math.abs(salesChange).toFixed(1)}% vs yesterday
               </StatTrend>
             </StatCard>
             <StatCard color="#2563EB">
-              <StatLabel>Total Orders</StatLabel>
+              <StatLabel>{t('admin:salesPage.totalOrders')}</StatLabel>
               <StatValue>{totals.todayOrders}</StatValue>
               <StatTrend positive>
                 ↑ 12% vs yesterday
               </StatTrend>
             </StatCard>
             <StatCard color="#7C3AED">
-              <StatLabel>Average Order Value</StatLabel>
+              <StatLabel>{t('admin:salesPage.averageOrderValue')}</StatLabel>
               <StatValue>{formatCurrency(averageOrderValue, selectedCurrency)}</StatValue>
               <StatTrend positive>
                 ↑ 5.3% vs yesterday
               </StatTrend>
             </StatCard>
             <StatCard color="#DC2626">
-              <StatLabel>Active Restaurants</StatLabel>
+              <StatLabel>{t('admin:salesPage.activeRestaurants')}</StatLabel>
               <StatValue>{restaurantSales.length}</StatValue>
               <StatTrend positive>
                 All operational
@@ -515,7 +517,7 @@ const ManagerSalesPage: React.FC = () => {
 
           <ChartsGrid>
             <ChartCard>
-              <ChartTitle>Sales Trend - All Restaurants</ChartTitle>
+              <ChartTitle>{t('admin:salesPage.salesTrendAllRestaurants')}</ChartTitle>
               <div style={{
                 height: '300px',
                 display: 'flex',
@@ -529,7 +531,7 @@ const ManagerSalesPage: React.FC = () => {
             </ChartCard>
             
             <ChartCard>
-              <ChartTitle>Sales Distribution</ChartTitle>
+              <ChartTitle>{t('admin:salesPage.salesDistribution')}</ChartTitle>
               <div style={{
                 height: '300px',
                 display: 'flex',
@@ -544,7 +546,7 @@ const ManagerSalesPage: React.FC = () => {
           </ChartsGrid>
 
           <ChartCard>
-            <ChartTitle>Daily Comparison</ChartTitle>
+            <ChartTitle>{t('admin:salesPage.dailyComparison')}</ChartTitle>
             <div style={{
               height: '250px',
               display: 'flex',
@@ -561,13 +563,13 @@ const ManagerSalesPage: React.FC = () => {
             <SalesTable>
               <SalesTableHead>
                 <tr>
-                  <th>Restaurant</th>
-                  <th>Today's Sales</th>
-                  <th>Orders</th>
-                  <th>Avg Order</th>
-                  <th>Week Total</th>
-                  <th>Month Total</th>
-                  <th>Action</th>
+                  <th>{t('admin:salesPage.restaurant')}</th>
+                  <th>{t('admin:salesPage.todaysSales')}</th>
+                  <th>{t('admin:salesPage.orders')}</th>
+                  <th>{t('admin:salesPage.avgOrder')}</th>
+                  <th>{t('admin:salesPage.weekTotal')}</th>
+                  <th>{t('admin:salesPage.monthTotal')}</th>
+                  <th>{t('admin:salesPage.action')}</th>
                 </tr>
               </SalesTableHead>
               <tbody>
@@ -605,7 +607,7 @@ const ManagerSalesPage: React.FC = () => {
                         <ValueCell>{formatCurrency(restaurant.monthSales, selectedCurrency)}</ValueCell>
                       </SalesTableCell>
                       <SalesTableCell data-label="">
-                        <ActionButton>View Details</ActionButton>
+                        <ActionButton>{t('admin:salesPage.viewDetails')}</ActionButton>
                       </SalesTableCell>
                     </SalesTableRow>
                   );

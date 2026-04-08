@@ -280,6 +280,7 @@ const LoadingSpinner = styled.div`
 // ============================================
 
 const FoodcourtSubscriptionsPage: React.FC = () => {
+  const { t } = useTranslation('foodcourt');
   const { user } = useAuth();
   const token = localStorage.getItem('auth_token');
   const foodcourtId = user?.foodcourt_id || null;
@@ -529,9 +530,9 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Foodcourt Subscriptions</Title>
+          <Title>{t('foodcourt:foodcourtSubscriptionsPage.foodcourtSubscriptions')}</Title>
           <ActionSection>
-            <ThemedButton variant="outline" onClick={handleExportData}>Export</ThemedButton>
+            <ThemedButton variant="outline" onClick={handleExportData}>{t('foodcourt:foodcourtSubscriptionsPage.export')}</ThemedButton>
           </ActionSection>
         </Header>
 
@@ -539,23 +540,23 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{totalTenants}</StatValue>
-              <StatLabel>Total Tenants</StatLabel>
-              <StatDescription>In your foodcourt</StatDescription>
+              <StatLabel>{t('foodcourt:foodcourtSubscriptionsPage.totalTenants')}</StatLabel>
+              <StatDescription>{t('foodcourt:foodcourtSubscriptionsPage.inYourFoodcourt')}</StatDescription>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{assignedCount}</StatValue>
-              <StatLabel>Plan Assigned</StatLabel>
+              <StatLabel>{t('foodcourt:foodcourtSubscriptionsPage.planAssigned')}</StatLabel>
               <StatDescription>{totalTenants > 0 ? Math.round((assignedCount/totalTenants)*100) : 0}% covered</StatDescription>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>{unassignedCount}</StatValue>
-              <StatLabel>No Plan</StatLabel>
-              <StatDescription>Need plan assignment</StatDescription>
+              <StatLabel>{t('foodcourt:foodcourtSubscriptionsPage.noPlan')}</StatLabel>
+              <StatDescription>{t('foodcourt:foodcourtSubscriptionsPage.needPlanAssignment')}</StatDescription>
             </StatCard>
             <StatCard color="#D97706">
               <StatValue>{formatCurrency(totalMonthlyCharges, currency)}</StatValue>
-              <StatLabel>Est. Monthly Charges</StatLabel>
-              <StatDescription>From all tenants</StatDescription>
+              <StatLabel>{t('foodcourt:foodcourtSubscriptionsPage.estMonthlyCharges')}</StatLabel>
+              <StatDescription>{t('foodcourt:foodcourtSubscriptionsPage.fromAllTenants')}</StatDescription>
             </StatCard>
           </StatsGrid>
 
@@ -564,11 +565,11 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
-              <option value="all">All Tenants</option>
-              <option value="assigned">Plan Assigned</option>
-              <option value="unassigned">No Plan</option>
-              <option value="active">Active</option>
-              <option value="overdue">Overdue</option>
+              <option value="all">{t('foodcourt:foodcourtSubscriptionsPage.allTenants')}</option>
+              <option value="assigned">{t('foodcourt:foodcourtSubscriptionsPage.planAssigned')}</option>
+              <option value="unassigned">{t('foodcourt:foodcourtSubscriptionsPage.noPlan')}</option>
+              <option value="active">{t('foodcourt:foodcourtSubscriptionsPage.active')}</option>
+              <option value="overdue">{t('foodcourt:foodcourtSubscriptionsPage.overdue')}</option>
             </FilterSelect>
             <SearchInput
               placeholder="Search tenants or plans..."
@@ -578,7 +579,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
           </FilterBar>
 
           {loading ? (
-            <LoadingSpinner>Loading subscription data...</LoadingSpinner>
+            <LoadingSpinner>{t('foodcourt:foodcourtSubscriptionsPage.loadingSubscriptionData')}</LoadingSpinner>
           ) : filteredSubscriptions.length === 0 ? (
             <EmptyState>
               <EmptyIcon>&#x1F4CB;</EmptyIcon>
@@ -595,20 +596,20 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
             )}
             <Table>
               <SubscriptionTableHeader columns="2fr 1.5fr 1fr 1fr 1fr 1fr 180px">
-                <span className="col-info">Tenant</span>
-                <span>Plan</span>
-                <span>Status</span>
-                <span className="col-fee">Est. Charges</span>
-                <span>Latest Invoice</span>
-                <span className="col-revenue">Revenue (MTD)</span>
-                <span className="col-action">Actions</span>
+                <span className="col-info">{t('foodcourt:foodcourtSubscriptionsPage.tenant')}</span>
+                <span>{t('foodcourt:foodcourtSubscriptionsPage.plan')}</span>
+                <span>{t('foodcourt:foodcourtSubscriptionsPage.status')}</span>
+                <span className="col-fee">{t('foodcourt:foodcourtSubscriptionsPage.estCharges')}</span>
+                <span>{t('foodcourt:foodcourtSubscriptionsPage.latestInvoice')}</span>
+                <span className="col-revenue">{t('foodcourt:foodcourtSubscriptionsPage.revenueMtd')}</span>
+                <span className="col-action">{t('foodcourt:foodcourtSubscriptionsPage.actions')}</span>
               </SubscriptionTableHeader>
 
               {filteredSubscriptions.map(sub => (
                 <SubscriptionTableRow columns="2fr 1.5fr 1fr 1fr 1fr 1fr 180px" key={sub.restaurant_id}>
                   <MobileGrid>
                     <MobileValue className="col-info">
-                      <MobileLabel>Tenant</MobileLabel>
+                      <MobileLabel>{t('foodcourt:foodcourtSubscriptionsPage.tenant')}</MobileLabel>
                       <RestaurantInfo>
                         <RestaurantName>{sub.restaurant_name} {sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_currency}</span>}</RestaurantName>
                         <RestaurantMeta>{sub.restaurant_email}</RestaurantMeta>
@@ -616,7 +617,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     </MobileValue>
 
                     <MobileValue>
-                      <MobileLabel>Plan</MobileLabel>
+                      <MobileLabel>{t('foodcourt:foodcourtSubscriptionsPage.plan')}</MobileLabel>
                       {sub.plan ? (
                         <div>
                           <div style={{fontWeight: 600, color: '#0A2540', fontSize: '13px'}}>{sub.plan.name}</div>
@@ -651,14 +652,14 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     </MobileValue>
 
                     <MobileValue>
-                      <MobileLabel>Status</MobileLabel>
+                      <MobileLabel>{t('foodcourt:foodcourtSubscriptionsPage.status')}</MobileLabel>
                       <StatusBadge status={sub.restaurant_status}>
                         {sub.restaurant_status.charAt(0).toUpperCase() + sub.restaurant_status.slice(1)}
                       </StatusBadge>
                     </MobileValue>
 
                     <MobileValue className="col-fee">
-                      <MobileLabel>Est. Charges</MobileLabel>
+                      <MobileLabel>{t('foodcourt:foodcourtSubscriptionsPage.estCharges')}</MobileLabel>
                       {sub.current_month?.estimated_charges ? (
                         <span style={{fontWeight: 500, color: '#0A2540'}}>
                           {formatCurrency(sub.current_month.estimated_charges.totalAmount, currency)}
@@ -669,7 +670,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     </MobileValue>
 
                     <MobileValue>
-                      <MobileLabel>Latest Invoice</MobileLabel>
+                      <MobileLabel>{t('foodcourt:foodcourtSubscriptionsPage.latestInvoice')}</MobileLabel>
                       {sub.latest_invoice ? (
                         <div>
                           <div style={{fontSize: '13px', fontWeight: 500, color: '#0A2540'}}>{sub.latest_invoice.invoice_number}</div>
@@ -678,12 +679,12 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                           </StatusBadge>
                         </div>
                       ) : (
-                        <span style={{color: '#9CA3AF'}}>No invoice</span>
+                        <span style={{color: '#9CA3AF'}}>{t('foodcourt:foodcourtSubscriptionsPage.noInvoice')}</span>
                       )}
                     </MobileValue>
 
                     <MobileValue className="col-revenue">
-                      <MobileLabel>Revenue (MTD)</MobileLabel>
+                      <MobileLabel>{t('foodcourt:foodcourtSubscriptionsPage.revenueMtd')}</MobileLabel>
                       <div>
                         <div style={{fontWeight: 500, color: '#0A2540'}}>
                           {formatCurrency(sub.current_month?.revenue || 0, currency)}
@@ -696,7 +697,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                   </MobileGrid>
 
                   <ActionButtons>
-                    <CommonActionButton onClick={() => handleViewDetails(sub)}>View</CommonActionButton>
+                    <CommonActionButton onClick={() => handleViewDetails(sub)}>{t('foodcourt:foodcourtSubscriptionsPage.view')}</CommonActionButton>
                     <CommonActionButton onClick={() => handleAssignPlan(sub)}>
                       {sub.plan ? 'Change' : 'Assign'}
                     </CommonActionButton>
@@ -717,11 +718,11 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
           {/* Assign Plan Modal */}
           {showAssignModal && assignTarget && (
-                        <CommonModal isOpen={true} onClose={() => setShowAssignModal(false)} title={assignTarget.plan ? 'Change Plan' : 'Assign Plan'} footer={<><ThemedButton variant="cancel" onClick={() => setShowAssignModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitAssign} disabled={!selectedPlanId || foodcourtPlans.length === 0} > {assignTarget.plan ? 'Change Plan' : 'Assign Plan'} </ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowAssignModal(false)} title={assignTarget.plan ? 'Change Plan' : 'Assign Plan'} footer={<><ThemedButton variant="cancel" onClick={() => setShowAssignModal(false)}>{t('foodcourt:foodcourtSubscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitAssign} disabled={!selectedPlanId || foodcourtPlans.length === 0} > {assignTarget.plan ? 'Change Plan' : 'Assign Plan'} </ThemedButton></>}>
 
                   <FormGrid>
                     <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Tenant</FormLabel>
+                      <FormLabel>{t('foodcourt:foodcourtSubscriptionsPage.tenant')}</FormLabel>
                       <FormInput
                         type="text"
                         value={assignTarget.restaurant_name}
@@ -731,7 +732,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
                     {assignTarget.plan && (
                       <FormGroup style={{gridColumn: '1 / -1'}}>
-                        <FormLabel>Current Plan</FormLabel>
+                        <FormLabel>{t('foodcourt:foodcourtSubscriptionsPage.currentPlan')}</FormLabel>
                         <div style={{
                           padding: '12px', background: '#EFF6FF', border: '1px solid #BFDBFE',
                           borderRadius: '8px', fontSize: '14px', color: '#0A2540'
@@ -748,7 +749,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                         value={selectedPlanId}
                         onChange={(e) => setSelectedPlanId(e.target.value ? parseInt(e.target.value) : '')}
                       >
-                        <option value="">Select a plan...</option>
+                        <option value="">{t('foodcourt:foodcourtSubscriptionsPage.selectAPlan')}</option>
                         {foodcourtPlans.map(plan => (
                           <option key={plan.id} value={plan.id}>
                             {plan.name} — {formatCurrency(parseFloat(plan.subscription_fee) || 0, currency)}/mo
@@ -791,23 +792,23 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
           {/* View Details Modal */}
           {showViewModal && viewingSub && (
-                        <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Subscription Details" footer={<><ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>Close</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Subscription Details" footer={<><ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>{t('foodcourt:foodcourtSubscriptionsPage.close')}</ThemedButton></>}>
 
                   <div style={{display: 'grid', gap: '20px'}}>
                     {/* Tenant Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Tenant</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.tenant')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Name</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.name')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_name}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Email</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.email')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_email}</div>
                         </div>
                         <div>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Status</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.status')}</div>
                           <StatusBadge status={viewingSub.restaurant_status}>
                             {viewingSub.restaurant_status.charAt(0).toUpperCase() + viewingSub.restaurant_status.slice(1)}
                           </StatusBadge>
@@ -817,16 +818,16 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
                     {/* Plan Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Plan</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.plan')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         {viewingSub.plan ? (
                           <>
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Plan Name</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.planName')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.name}</div>
                             </div>
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Management Fee</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.managementFee')}</div>
                               {viewingSub.plan.discount_type && viewingSub.plan.discount_type !== 'none' && (viewingSub.plan.discount_value || 0) > 0 ? (
                                 <div>
                                   <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '13px'}}>{formatCurrency(parseFloat(viewingSub.plan.subscription_fee) || 0, currency)}/mo</span>
@@ -848,13 +849,13 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                             </div>
                             {parseFloat(viewingSub.plan.revenue_percentage) > 0 && (
                               <div style={{marginBottom: '12px'}}>
-                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Revenue Share</div>
+                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.revenueShare')}</div>
                                 <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.revenue_percentage}%</div>
                               </div>
                             )}
                             {viewingSub.plan.rent_type !== 'none' && (
                               <div style={{marginBottom: '12px'}}>
-                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Rent</div>
+                                <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.rent')}</div>
                                 <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                                   {viewingSub.plan.rent_type === 'fixed' ? formatCurrency(parseFloat(viewingSub.plan.rent_fixed || '0'), currency) :
                                    viewingSub.plan.rent_type === 'percentage' ? `${viewingSub.plan.rent_percentage}%` :
@@ -863,15 +864,15 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                               </div>
                             )}
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Billing Cycle</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.billingCycle')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.plan.billing_cycle}</div>
                             </div>
                             <div style={{marginBottom: '12px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Activation Date</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.activationDate')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{new Date(viewingSub.plan.activation_date).toLocaleDateString()}</div>
                             </div>
                             <div>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Discount</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.discount')}</div>
                               {viewingSub.plan.discount_type && viewingSub.plan.discount_type !== 'none' && (viewingSub.plan.discount_value || 0) > 0 ? (
                                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                   <span style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>
@@ -880,35 +881,35 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                                       : `${formatCurrency(viewingSub.plan.discount_value || 0, currency)}`}
                                     {viewingSub.plan.discount_reason ? ` (${viewingSub.plan.discount_reason})` : ''}
                                   </span>
-                                  <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#6B7280', cursor: 'pointer'}}>Edit</button>
+                                  <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#6B7280', cursor: 'pointer'}}>{t('foodcourt:foodcourtSubscriptionsPage.edit')}</button>
                                 </div>
                               ) : (
-                                <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', color: '#635BFF', cursor: 'pointer', fontWeight: '500'}}>Set Discount</button>
+                                <button onClick={() => handleOpenDiscount(viewingSub)} style={{background: 'none', border: '1px solid #D1D5DB', borderRadius: '4px', padding: '4px 12px', fontSize: '12px', color: '#635BFF', cursor: 'pointer', fontWeight: '500'}}>{t('foodcourt:foodcourtSubscriptionsPage.setDiscount')}</button>
                               )}
                             </div>
                           </>
                         ) : (
-                          <div style={{color: '#92400E', fontSize: '14px'}}>No plan assigned to this tenant.</div>
+                          <div style={{color: '#92400E', fontSize: '14px'}}>{t('foodcourt:foodcourtSubscriptionsPage.noPlanAssignedToThisTenant')}</div>
                         )}
                       </div>
                     </div>
 
                     {/* Current Month */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Current Month</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.currentMonth')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Revenue</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.revenue')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(viewingSub.current_month?.revenue || 0, currency)}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Orders</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.orders')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.current_month?.order_count || 0}</div>
                         </div>
                         {viewingSub.current_month?.estimated_charges && (
                           <>
                             <div style={{borderTop: '1px solid #E6EBF1', paddingTop: '12px', marginTop: '8px'}}>
-                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600}}>Estimated Charges Breakdown</div>
+                              <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600}}>{t('foodcourt:foodcourtSubscriptionsPage.estimatedChargesBreakdown')}</div>
                               {viewingSub.current_month.estimated_charges.items.map((item: any, index: number) => (
                                 <div key={index} style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '13px'}}>
                                   <span style={{color: '#374151'}}>{item.description}</span>
@@ -916,7 +917,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                                 </div>
                               ))}
                               <div style={{display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #E6EBF1', fontWeight: 600}}>
-                                <span style={{color: '#0A2540'}}>Total</span>
+                                <span style={{color: '#0A2540'}}>{t('foodcourt:foodcourtSubscriptionsPage.total')}</span>
                                 <span style={{color: '#0A2540'}}>{formatCurrency(viewingSub.current_month.estimated_charges.totalAmount, currency)}</span>
                               </div>
                             </div>
@@ -928,24 +929,24 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     {/* Latest Invoice */}
                     {viewingSub.latest_invoice && (
                       <div>
-                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Latest Invoice</div>
+                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('foodcourt:foodcourtSubscriptionsPage.latestInvoice')}</div>
                         <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Invoice Number</div>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.invoiceNumber')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.latest_invoice.invoice_number}</div>
                           </div>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Amount</div>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.amount')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{formatCurrency(parseFloat(viewingSub.latest_invoice.total_amount) || 0, currency)}</div>
                           </div>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Status</div>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.status')}</div>
                             <StatusBadge status={viewingSub.latest_invoice.status}>
                               {viewingSub.latest_invoice.status.replace('_', ' ')}
                             </StatusBadge>
                           </div>
                           <div>
-                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Due Date</div>
+                            <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.dueDate')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{new Date(viewingSub.latest_invoice.due_date).toLocaleDateString()}</div>
                           </div>
                         </div>
@@ -958,7 +959,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
           {/* Confirm Action Modal */}
           {showConfirmModal && confirmTarget && (
-                        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>Cancel</ThemedButton><ThemedButton variant="danger" onClick={handleConfirmAction}>Remove Plan</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>{t('foodcourt:foodcourtSubscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="danger" onClick={handleConfirmAction}>{t('foodcourt:foodcourtSubscriptionsPage.removePlan')}</ThemedButton></>}>
 
                   <p>
                     {confirmAction === 'unassign' && `Are you sure you want to remove the plan "${confirmTarget.plan?.name}" from ${confirmTarget.restaurant_name}?`}
@@ -969,13 +970,13 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
 
           {/* Discount Modal */}
           {showDiscountModal && discountTarget && (
-                        <CommonModal isOpen={true} onClose={() => setShowDiscountModal(false)} title={`Set Discount - ${discountTarget.restaurant_name}`} footer={<><ThemedButton variant="cancel" onClick={() => setShowDiscountModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSaveDiscount}>Save Discount</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowDiscountModal(false)} title={`Set Discount - ${discountTarget.restaurant_name}`} footer={<><ThemedButton variant="cancel" onClick={() => setShowDiscountModal(false)}>{t('foodcourt:foodcourtSubscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleSaveDiscount}>{t('foodcourt:foodcourtSubscriptionsPage.saveDiscount')}</ThemedButton></>}>
 
                   <div style={{display: 'grid', gap: '16px'}}>
                     <div>
-                      <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>Discount Type</div>
+                      <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>{t('foodcourt:foodcourtSubscriptionsPage.discountType')}</div>
                       <FormSelect value={discountForm.discount_type} onChange={(e) => setDiscountForm({...discountForm, discount_type: e.target.value, discount_value: e.target.value === 'none' ? 0 : discountForm.discount_value})}>
-                        <option value="none">None</option>
+                        <option value="none">{t('foodcourt:foodcourtSubscriptionsPage.none')}</option>
                         <option value="percentage">Percentage (%)</option>
                         <option value="fixed">Fixed Amount ({currency})</option>
                       </FormSelect>
@@ -998,7 +999,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     )}
                     {discountForm.discount_type !== 'none' && (
                       <div>
-                        <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>Reason (optional)</div>
+                        <div style={{fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px'}}>{t('foodcourt:foodcourtSubscriptionsPage.reasonOptional')}</div>
                         <FormInput
                           type="text"
                           value={discountForm.discount_reason}
@@ -1009,7 +1010,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     )}
                     {discountForm.discount_type !== 'none' && discountForm.discount_value > 0 && discountTarget.plan && (
                       <div style={{background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 16px'}}>
-                        <div style={{fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '4px'}}>Preview</div>
+                        <div style={{fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '4px'}}>{t('foodcourt:foodcourtSubscriptionsPage.preview')}</div>
                         <div style={{fontSize: '13px', color: '#15803D'}}>
                           {discountForm.discount_type === 'percentage'
                             ? `${discountForm.discount_value}% off all charges`

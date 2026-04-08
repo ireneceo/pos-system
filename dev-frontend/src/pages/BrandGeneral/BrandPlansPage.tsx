@@ -17,6 +17,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 // ============================================
 // Types
@@ -434,6 +435,7 @@ const REVENUE_BASE_LABELS: Record<string, string> = {
 // ============================================
 
 const BrandPlansPage: React.FC = () => {
+  const { t } = useTranslation('brand');
   const { user } = useAuth();
 
   const [plans, setPlans] = useState<EntityPlan[]>([]);
@@ -889,21 +891,21 @@ const BrandPlansPage: React.FC = () => {
     setFormData: React.Dispatch<React.SetStateAction<typeof createFormData>>
   ) => (
     <>
-      <SectionDivider>Charge Type</SectionDivider>
+      <SectionDivider>{t('brand:brandPlansPage.chargeType')}</SectionDivider>
       <FormGroup>
         <FormLabel>Charge Type *</FormLabel>
         <FormSelect
           value={formData.charge_type}
           onChange={(e) => setFormData(prev => ({...prev, charge_type: e.target.value as 'fixed' | 'percentage'}))}
         >
-          <option value="fixed">Fixed Amount (Currency Pricing)</option>
+          <option value="fixed">{t('brand:brandPlansPage.fixedAmountCurrencyPricing')}</option>
           <option value="percentage">% of Revenue</option>
         </FormSelect>
       </FormGroup>
 
       {formData.charge_type === 'fixed' ? (
         <FormGroup>
-          <FormLabel>Pricing by Currency</FormLabel>
+          <FormLabel>{t('brand:brandPlansPage.pricingByCurrency')}</FormLabel>
           <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
             {supportedCurrencies.map(code => {
               const config = currencyConfig[code];
@@ -914,7 +916,7 @@ const BrandPlansPage: React.FC = () => {
                   </div>
                   <PricingRow>
                     <FormGroup style={{ marginBottom: 0 }}>
-                      <FormLabel style={{ fontSize: '12px' }}>Monthly</FormLabel>
+                      <FormLabel style={{ fontSize: '12px' }}>{t('brand:brandPlansPage.monthly')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="0"
@@ -929,7 +931,7 @@ const BrandPlansPage: React.FC = () => {
                       />
                     </FormGroup>
                     <FormGroup style={{ marginBottom: 0 }}>
-                      <FormLabel style={{ fontSize: '12px' }}>Annual</FormLabel>
+                      <FormLabel style={{ fontSize: '12px' }}>{t('brand:brandPlansPage.annual')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="0"
@@ -967,21 +969,21 @@ const BrandPlansPage: React.FC = () => {
             />
           </FormGroup>
           <FormGroup>
-            <FormLabel>Revenue Base Period</FormLabel>
+            <FormLabel>{t('brand:brandPlansPage.revenueBasePeriod')}</FormLabel>
             <FormSelect
               value={formData.revenue_base}
               onChange={(e) => setFormData(prev => ({...prev, revenue_base: e.target.value as any}))}
             >
-              <option value="previous_month">Previous Month</option>
-              <option value="previous_year">Previous Year</option>
-              <option value="up_to_billing_day">Up to Billing Day</option>
+              <option value="previous_month">{t('brand:brandPlansPage.previousMonth')}</option>
+              <option value="previous_year">{t('brand:brandPlansPage.previousYear')}</option>
+              <option value="up_to_billing_day">{t('brand:brandPlansPage.upToBillingDay')}</option>
             </FormSelect>
           </FormGroup>
         </>
       )}
 
       <FormGroup>
-        <FormLabel>Billing Day (1-28)</FormLabel>
+        <FormLabel>{t('brand:brandPlansPage.billingDay128')}</FormLabel>
         <FormInput
           type="number"
           min="1"
@@ -1005,9 +1007,9 @@ const BrandPlansPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Brand Plans</Title>
+          <Title>{t('brand:brandPlansPage.brandPlans')}</Title>
           <ActionSection>
-            <Button variant="primary" onClick={handleCreatePlan}>Create Plan</Button>
+            <Button variant="primary" onClick={handleCreatePlan}>{t('brand:brandPlansPage.createPlan')}</Button>
           </ActionSection>
         </Header>
         <Content>
@@ -1015,23 +1017,23 @@ const BrandPlansPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{plans.length}</StatValue>
-            <StatLabel>Total Plans</StatLabel>
+            <StatLabel>{t('brand:brandPlansPage.totalPlans')}</StatLabel>
             <StatDescription>{activePlans} active</StatDescription>
           </StatCard>
           <StatCard color="#10B981">
             <StatValue>{activePlans}</StatValue>
-            <StatLabel>Active Plans</StatLabel>
+            <StatLabel>{t('brand:brandPlansPage.activePlans')}</StatLabel>
             <StatDescription>{plans.length > 0 ? Math.round((activePlans/plans.length)*100) : 0}% available</StatDescription>
           </StatCard>
           <StatCard color="#F59E0B">
             <StatValue>{totalSubscriptions}</StatValue>
-            <StatLabel>Total Subscriptions</StatLabel>
-            <StatDescription>Across all plans</StatDescription>
+            <StatLabel>{t('brand:brandPlansPage.totalSubscriptions')}</StatLabel>
+            <StatDescription>{t('brand:brandPlansPage.acrossAllPlans')}</StatDescription>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{formatCurrency(monthlyRevenue, displayCurrency)}</StatValue>
-            <StatLabel>Fixed Monthly Revenue</StatLabel>
-            <StatDescription>From fixed-type plans</StatDescription>
+            <StatLabel>{t('brand:brandPlansPage.fixedMonthlyRevenue')}</StatLabel>
+            <StatDescription>{t('brand:brandPlansPage.fromFixedtypePlans')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
@@ -1046,9 +1048,9 @@ const BrandPlansPage: React.FC = () => {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
           >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="all">{t('brand:brandPlansPage.allStatus')}</option>
+            <option value="active">{t('brand:brandPlansPage.active')}</option>
+            <option value="inactive">{t('brand:brandPlansPage.inactive')}</option>
           </FilterSelect>
           <FilterSelect
             value={displayCurrency}
@@ -1063,7 +1065,7 @@ const BrandPlansPage: React.FC = () => {
         </FilterBar>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#6B7280' }}>Loading plans...</div>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#6B7280' }}>{t('brand:brandPlansPage.loadingPlans')}</div>
         ) : filteredPlans.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#6B7280' }}>
             {plans.length === 0 ? 'No plans created yet. Click "Create Plan" to get started.' : 'No plans match your filters.'}
@@ -1106,11 +1108,11 @@ const BrandPlansPage: React.FC = () => {
                             )}
                           </AnnualPrice>
                         )}
-                        <PricingNote>Billed monthly or annually</PricingNote>
+                        <PricingNote>{t('brand:brandPlansPage.billedMonthlyOrAnnually')}</PricingNote>
                       </>
                     ) : (
                       <>
-                        <MonthlyPrice style={{color: '#F59E0B'}}>Price Not Set</MonthlyPrice>
+                        <MonthlyPrice style={{color: '#F59E0B'}}>{t('brand:brandPlansPage.priceNotSet')}</MonthlyPrice>
                         <PricingNote style={{color: '#F59E0B'}}>Set {displayCurrency} price in "Prices"</PricingNote>
                       </>
                     )}
@@ -1120,15 +1122,15 @@ const BrandPlansPage: React.FC = () => {
                 {/* Billing Info */}
                 <BrandChargesSection>
                   <BrandChargeItem>
-                    <span style={{color: '#92400E', fontWeight: 500}}>Billing Day</span>
+                    <span style={{color: '#92400E', fontWeight: 500}}>{t('brand:brandPlansPage.billingDay')}</span>
                     <span style={{color: '#0A2540', fontWeight: 600}}>
                       {plan.billing_day ? `Every ${plan.billing_day}${plan.billing_day === 1 ? 'st' : plan.billing_day === 2 ? 'nd' : plan.billing_day === 3 ? 'rd' : 'th'}` : 'Subscription Start'}
                     </span>
                   </BrandChargeItem>
                   {plan.auto_generate && (
                     <BrandChargeItem style={{marginTop: 4}}>
-                      <span style={{color: '#92400E', fontWeight: 500}}>Auto-invoice</span>
-                      <span style={{color: '#059669', fontWeight: 600}}>Enabled</span>
+                      <span style={{color: '#92400E', fontWeight: 500}}>{t('brand:brandPlansPage.autoinvoice')}</span>
+                      <span style={{color: '#059669', fontWeight: 600}}>{t('brand:brandPlansPage.enabled')}</span>
                     </BrandChargeItem>
                   )}
                 </BrandChargesSection>
@@ -1144,7 +1146,7 @@ const BrandPlansPage: React.FC = () => {
                 <PlanStats>
                   <StatItem>
                     <StatNumber>{getSubscriptionCount(plan)}</StatNumber>
-                    <StatDesc>Subscriptions</StatDesc>
+                    <StatDesc>{t('brand:brandPlansPage.subscriptions')}</StatDesc>
                   </StatItem>
                   <StatItem>
                     <StatNumber>
@@ -1158,11 +1160,11 @@ const BrandPlansPage: React.FC = () => {
                 </PlanStats>
 
                 <ActionButtons>
-                  <PlanButton variant="primary" onClick={() => handleEditPlan(plan)}>Edit</PlanButton>
+                  <PlanButton variant="primary" onClick={() => handleEditPlan(plan)}>{t('brand:brandPlansPage.edit')}</PlanButton>
                   {plan.charge_type === 'fixed' && (
-                    <PlanButton variant="secondary" onClick={() => handlePlanPrices(plan)}>Prices</PlanButton>
+                    <PlanButton variant="secondary" onClick={() => handlePlanPrices(plan)}>{t('brand:brandPlansPage.prices')}</PlanButton>
                   )}
-                  <PlanButton variant="secondary" onClick={() => handleViewDetails(plan)}>View</PlanButton>
+                  <PlanButton variant="secondary" onClick={() => handleViewDetails(plan)}>{t('brand:brandPlansPage.view')}</PlanButton>
                 </ActionButtons>
               </PlanCard>
             ))}
@@ -1171,7 +1173,7 @@ const BrandPlansPage: React.FC = () => {
 
         {/* Create Plan Modal */}
         {showCreateModal && (
-                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button><Button variant="primary" onClick={createPlan}>Create Plan</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('brand:brandPlansPage.cancel')}</Button><Button variant="primary" onClick={createPlan}>{t('brand:brandPlansPage.createPlan')}</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Name *</FormLabel>
@@ -1183,7 +1185,7 @@ const BrandPlansPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('brand:brandPlansPage.description')}</FormLabel>
                   <FormTextArea
                     placeholder="Enter plan description..."
                     rows={3}
@@ -1195,7 +1197,7 @@ const BrandPlansPage: React.FC = () => {
                 {renderChargeTypeFields(createFormData, setCreateFormData)}
 
                 <FormGroup>
-                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormLabel>{t('brand:brandPlansPage.featuresOnePerLine')}</FormLabel>
                   <FormTextArea
                     placeholder="Enter features, one per line..."
                     rows={4}
@@ -1208,17 +1210,17 @@ const BrandPlansPage: React.FC = () => {
                   <CheckboxItem>
                     <input type="checkbox" id="create-auto-generate" checked={createFormData.auto_generate}
                       onChange={(e) => setCreateFormData(prev => ({...prev, auto_generate: e.target.checked}))} />
-                    <label htmlFor="create-auto-generate">Auto-generate invoices</label>
+                    <label htmlFor="create-auto-generate">{t('brand:brandPlansPage.autogenerateInvoices')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input type="checkbox" id="create-popular" checked={createFormData.is_popular}
                       onChange={(e) => setCreateFormData(prev => ({...prev, is_popular: e.target.checked}))} />
-                    <label htmlFor="create-popular">Mark as Most Popular</label>
+                    <label htmlFor="create-popular">{t('brand:brandPlansPage.markAsMostPopular')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input type="checkbox" id="create-active" checked={createFormData.is_active}
                       onChange={(e) => setCreateFormData(prev => ({...prev, is_active: e.target.checked}))} />
-                    <label htmlFor="create-active">Set as Active</label>
+                    <label htmlFor="create-active">{t('brand:brandPlansPage.setAsActive')}</label>
                   </CheckboxItem>
                 </CheckboxGroup>
               
@@ -1227,7 +1229,7 @@ const BrandPlansPage: React.FC = () => {
 
         {/* Edit Plan Modal */}
         {showEditModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Plan: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button><Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>Delete</Button><Button variant="primary" onClick={updatePlan}>Save Changes</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Plan: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}>{t('brand:brandPlansPage.cancel')}</Button><Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>{t('brand:brandPlansPage.delete')}</Button><Button variant="primary" onClick={updatePlan}>{t('brand:brandPlansPage.saveChanges')}</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Name *</FormLabel>
@@ -1238,7 +1240,7 @@ const BrandPlansPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('brand:brandPlansPage.description')}</FormLabel>
                   <FormTextArea
                     rows={3}
                     value={editFormData.description}
@@ -1249,7 +1251,7 @@ const BrandPlansPage: React.FC = () => {
                 {renderChargeTypeFields(editFormData, setEditFormData)}
 
                 <FormGroup>
-                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormLabel>{t('brand:brandPlansPage.featuresOnePerLine')}</FormLabel>
                   <FormTextArea
                     rows={4}
                     value={editFormData.features}
@@ -1261,17 +1263,17 @@ const BrandPlansPage: React.FC = () => {
                   <CheckboxItem>
                     <input type="checkbox" id="edit-auto-generate" checked={editFormData.auto_generate}
                       onChange={(e) => setEditFormData(prev => ({...prev, auto_generate: e.target.checked}))} />
-                    <label htmlFor="edit-auto-generate">Auto-generate invoices</label>
+                    <label htmlFor="edit-auto-generate">{t('brand:brandPlansPage.autogenerateInvoices')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input type="checkbox" id="edit-popular" checked={editFormData.is_popular}
                       onChange={(e) => setEditFormData(prev => ({...prev, is_popular: e.target.checked}))} />
-                    <label htmlFor="edit-popular">Mark as Most Popular</label>
+                    <label htmlFor="edit-popular">{t('brand:brandPlansPage.markAsMostPopular')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input type="checkbox" id="edit-active" checked={editFormData.is_active}
                       onChange={(e) => setEditFormData(prev => ({...prev, is_active: e.target.checked}))} />
-                    <label htmlFor="edit-active">Set as Active</label>
+                    <label htmlFor="edit-active">{t('brand:brandPlansPage.setAsActive')}</label>
                   </CheckboxItem>
                 </CheckboxGroup>
               
@@ -1280,46 +1282,46 @@ const BrandPlansPage: React.FC = () => {
 
         {/* View Details Modal */}
         {showDetailsModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title={`Plan Details: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>Close</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title={`Plan Details: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>{t('brand:brandPlansPage.close')}</Button></>}>
 
                 <DetailSection>
-                  <h4>Plan Info</h4>
+                  <h4>{t('brand:brandPlansPage.planInfo')}</h4>
                   <DetailRow>
-                    <DetailLabel>Plan ID</DetailLabel>
+                    <DetailLabel>{t('brand:brandPlansPage.planId')}</DetailLabel>
                     <DetailValue>{selectedPlan.id}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Name</DetailLabel>
+                    <DetailLabel>{t('brand:brandPlansPage.name')}</DetailLabel>
                     <DetailValue>{selectedPlan.name}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Status</DetailLabel>
+                    <DetailLabel>{t('brand:brandPlansPage.status')}</DetailLabel>
                     <StatusBadge isActive={selectedPlan.is_active}>
                       {selectedPlan.is_active ? 'Active' : 'Inactive'}
                     </StatusBadge>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Charge Type</DetailLabel>
+                    <DetailLabel>{t('brand:brandPlansPage.chargeType')}</DetailLabel>
                     <ChargeTypeBadge chargeType={selectedPlan.charge_type || 'fixed'}>
                       {selectedPlan.charge_type === 'percentage' ? '% Revenue' : 'Fixed'}
                     </ChargeTypeBadge>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Popular Plan</DetailLabel>
+                    <DetailLabel>{t('brand:brandPlansPage.popularPlan')}</DetailLabel>
                     <DetailValue>{selectedPlan.is_popular ? 'Yes' : 'No'}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
                 <DetailSection>
-                  <h4>Billing</h4>
+                  <h4>{t('brand:brandPlansPage.billing')}</h4>
                   {selectedPlan.charge_type === 'percentage' ? (
                     <>
                       <DetailRow>
-                        <DetailLabel>Revenue Percentage</DetailLabel>
+                        <DetailLabel>{t('brand:brandPlansPage.revenuePercentage')}</DetailLabel>
                         <DetailValue>{parseFloat(selectedPlan.percentage_value || '0')}%</DetailValue>
                       </DetailRow>
                       <DetailRow>
-                        <DetailLabel>Revenue Base</DetailLabel>
+                        <DetailLabel>{t('brand:brandPlansPage.revenueBase')}</DetailLabel>
                         <DetailValue>{REVENUE_BASE_LABELS[selectedPlan.revenue_base] || selectedPlan.revenue_base}</DetailValue>
                       </DetailRow>
                     </>
@@ -1337,12 +1339,12 @@ const BrandPlansPage: React.FC = () => {
                               {currencyConfig[code]?.symbol || code} {code}
                             </div>
                             <DetailRow>
-                              <DetailLabel>Monthly</DetailLabel>
+                              <DetailLabel>{t('brand:brandPlansPage.monthly')}</DetailLabel>
                               <DetailValue>{formatCurrency(monthly, code)}</DetailValue>
                             </DetailRow>
                             {annual > 0 && (
                               <DetailRow>
-                                <DetailLabel>Annual</DetailLabel>
+                                <DetailLabel>{t('brand:brandPlansPage.annual')}</DetailLabel>
                                 <DetailValue>{formatCurrency(annual, code)}</DetailValue>
                               </DetailRow>
                             )}
@@ -1352,30 +1354,30 @@ const BrandPlansPage: React.FC = () => {
                     </>
                   )}
                   <DetailRow>
-                    <DetailLabel>Billing Day</DetailLabel>
+                    <DetailLabel>{t('brand:brandPlansPage.billingDay')}</DetailLabel>
                     <DetailValue>{selectedPlan.billing_day ? `Every ${selectedPlan.billing_day}th` : 'Subscription Start Date'}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Auto-generate Invoices</DetailLabel>
+                    <DetailLabel>{t('brand:brandPlansPage.autogenerateInvoices')}</DetailLabel>
                     <DetailValue>{selectedPlan.auto_generate ? 'Yes' : 'No'}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
                 <DetailSection>
-                  <h4>Statistics</h4>
+                  <h4>{t('brand:brandPlansPage.statistics')}</h4>
                   <DetailRow>
-                    <DetailLabel>Current Subscriptions</DetailLabel>
+                    <DetailLabel>{t('brand:brandPlansPage.currentSubscriptions')}</DetailLabel>
                     <DetailValue>{getSubscriptionCount(selectedPlan)}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Created Date</DetailLabel>
+                    <DetailLabel>{t('brand:brandPlansPage.createdDate')}</DetailLabel>
                     <DetailValue>{new Date(selectedPlan.createdAt).toLocaleDateString()}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
                 {Array.isArray(selectedPlan.features) && selectedPlan.features.length > 0 && (
                   <DetailSection>
-                    <h4>Features</h4>
+                    <h4>{t('brand:brandPlansPage.features')}</h4>
                     <FeaturesList>
                       {selectedPlan.features.map((feature, index) => (
                         <FeatureItem key={index}>{feature}</FeatureItem>
@@ -1401,7 +1403,7 @@ const BrandPlansPage: React.FC = () => {
                       ))}
                     </RestaurantList>
                   ) : (
-                    <p style={{color: '#6B7280', fontSize: '14px'}}>No restaurants assigned to this plan.</p>
+                    <p style={{color: '#6B7280', fontSize: '14px'}}>{t('brand:brandPlansPage.noRestaurantsAssignedToThisPlan')}</p>
                   )}
                   <Button variant="secondary" style={{marginTop: '12px', width: '100%'}} onClick={() => handleManageRestaurants(selectedPlan)}>
                     Manage Restaurant Assignments
@@ -1413,7 +1415,7 @@ const BrandPlansPage: React.FC = () => {
 
         {/* Plan Prices Modal (Fixed type only) */}
         {showPricesModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowPricesModal(false)} title={`Set Prices for ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowPricesModal(false)}>Cancel</Button><Button variant="primary" onClick={savePlanPrices}>Save Prices</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowPricesModal(false)} title={`Set Prices for ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowPricesModal(false)}>{t('brand:brandPlansPage.cancel')}</Button><Button variant="primary" onClick={savePlanPrices}>{t('brand:brandPlansPage.savePrices')}</Button></>}>
 
                 <p style={{ marginBottom: '20px', color: '#6B7280', fontSize: '14px' }}>
                   Configure pricing for each supported currency.
@@ -1429,13 +1431,13 @@ const BrandPlansPage: React.FC = () => {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                           <div>
-                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>Monthly Price</label>
+                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>{t('brand:brandPlansPage.monthlyPrice')}</label>
                             <input type="number" value={editingPlanPrices[code]?.monthly || ''} onChange={(e) => setEditingPlanPrices({
                               ...editingPlanPrices, [code]: { ...editingPlanPrices[code], monthly: e.target.value }
                             })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' as const }} placeholder="0.00" />
                           </div>
                           <div>
-                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>Annual Price</label>
+                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>{t('brand:brandPlansPage.annualPrice')}</label>
                             <input type="number" value={editingPlanPrices[code]?.annual || ''} onChange={(e) => setEditingPlanPrices({
                               ...editingPlanPrices, [code]: { ...editingPlanPrices[code], annual: e.target.value }
                             })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' as const }} placeholder="0.00" />
@@ -1451,7 +1453,7 @@ const BrandPlansPage: React.FC = () => {
 
         {/* Restaurant Assignment Modal */}
         {showRestaurantModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowRestaurantModal(false)} title={`Manage Restaurants: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowRestaurantModal(false)}>Close</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowRestaurantModal(false)} title={`Manage Restaurants: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowRestaurantModal(false)}>{t('brand:brandPlansPage.close')}</Button></>}>
 
                 <p style={{ marginBottom: '16px', color: '#6B7280', fontSize: '14px' }}>
                   Assign or remove restaurants from this plan.
@@ -1466,15 +1468,15 @@ const BrandPlansPage: React.FC = () => {
                           <div style={{fontSize: '12px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
                         </div>
                         {isAssigned ? (
-                          <Button variant="danger-outline" onClick={() => removeRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>Remove</Button>
+                          <Button variant="danger-outline" onClick={() => removeRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>{t('brand:brandPlansPage.remove')}</Button>
                         ) : (
-                          <Button variant="primary" onClick={() => assignRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>Assign</Button>
+                          <Button variant="primary" onClick={() => assignRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>{t('brand:brandPlansPage.assign')}</Button>
                         )}
                       </RestaurantItem>
                     );
                   })}
                   {brandRestaurants.length === 0 && (
-                    <div style={{padding: '20px', textAlign: 'center', color: '#6B7280'}}>No restaurants found.</div>
+                    <div style={{padding: '20px', textAlign: 'center', color: '#6B7280'}}>{t('brand:brandPlansPage.noRestaurantsFound')}</div>
                   )}
                 </RestaurantList>
               

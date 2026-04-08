@@ -430,6 +430,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
 `;
 
 const ManagerInvoicesPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -837,10 +838,10 @@ const ManagerInvoicesPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Restaurant Invoice Management</Title>
+          <Title>{t('admin:invoicesPage.restaurantInvoiceManagement')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportInvoices}>Export</Button>
-            <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
+            <Button variant="secondary" onClick={handleExportInvoices}>{t('admin:invoicesPage.export')}</Button>
+            <Button variant="primary" onClick={handleCreateInvoice}>{t('admin:invoicesPage.createInvoice')}</Button>
           </ActionSection>
         </Header>
         <Content>
@@ -848,19 +849,19 @@ const ManagerInvoicesPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalInvoices}</StatValue>
-            <StatLabel>Total Invoices</StatLabel>
+            <StatLabel>{t('admin:invoicesPage.totalInvoices')}</StatLabel>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{paidInvoices}</StatValue>
-            <StatLabel>Paid Invoices</StatLabel>
+            <StatLabel>{t('admin:invoicesPage.paidInvoices')}</StatLabel>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{overdueInvoices}</StatValue>
-            <StatLabel>Overdue Invoices</StatLabel>
+            <StatLabel>{t('admin:invoicesPage.overdueInvoices')}</StatLabel>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{formatCurrency(totalRevenue)}</StatValue>
-            <StatLabel>Total Revenue</StatLabel>
+            <StatLabel>{t('admin:invoicesPage.totalRevenue')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -873,19 +874,19 @@ const ManagerInvoicesPage: React.FC = () => {
           />
 
           <FilterSelect value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="sent">Sent</option>
-            <option value="paid">Paid</option>
-            <option value="overdue">Overdue</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="all">{t('admin:invoicesPage.allStatus')}</option>
+            <option value="draft">{t('admin:invoicesPage.draft')}</option>
+            <option value="sent">{t('admin:invoicesPage.sent')}</option>
+            <option value="paid">{t('admin:invoicesPage.paid')}</option>
+            <option value="overdue">{t('admin:invoicesPage.overdue')}</option>
+            <option value="cancelled">{t('admin:invoicesPage.cancelled')}</option>
           </FilterSelect>
 
           <FilterSelect value={filterMonth} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterMonth(e.target.value)}>
-            <option value="all">All Months</option>
-            <option value="2025-01">January 2025</option>
-            <option value="2024-12">December 2024</option>
-            <option value="2024-11">November 2024</option>
+            <option value="all">{t('admin:invoicesPage.allMonths')}</option>
+            <option value="2025-01">{t('admin:invoicesPage.january2025')}</option>
+            <option value="2024-12">{t('admin:invoicesPage.december2024')}</option>
+            <option value="2024-11">{t('admin:invoicesPage.november2024')}</option>
           </FilterSelect>
         </FilterBar>
 
@@ -903,14 +904,14 @@ const ManagerInvoicesPage: React.FC = () => {
             <DataTable>
               <DataTableHead>
                 <tr>
-                  <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
-                  <DataTableHeaderCell align="left">Restaurant</DataTableHeaderCell>
-                  <DataTableHeaderCell align="center">Issue Date</DataTableHeaderCell>
-                  <DataTableHeaderCell align="center">Due Date</DataTableHeaderCell>
-                  <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                  <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
-                  <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                  <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:invoicesPage.invoice')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:invoicesPage.restaurant')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center">{t('admin:invoicesPage.issueDate')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center">{t('admin:invoicesPage.dueDate')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="center">{t('admin:invoicesPage.status')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('admin:invoicesPage.amount')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('admin:invoicesPage.total')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:invoicesPage.actions')}</DataTableHeaderCell>
                 </tr>
               </DataTableHead>
               <tbody>
@@ -949,27 +950,27 @@ const ManagerInvoicesPage: React.FC = () => {
                     </DataTableCell>
 
                     <DataTableCell data-label="Total" align="right">
-                      <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total)}</DataTableAmount>
+                      <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('admin:invoicesPage.free')}</span> : formatCurrency(invoice.total)}</DataTableAmount>
                     </DataTableCell>
 
                     <DataTableCell data-label="" mobileFullWidth>
                       <LocalActionButtons>
-                        <ActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</ActionButton>
+                        <ActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('admin:invoicesPage.view')}</ActionButton>
                         {invoice.status === 'draft' && (
                           <>
-                            <ActionButton onClick={() => handleEditInvoice(invoice)}>Edit</ActionButton>
-                            <ActionButton onClick={() => handleSendInvoice(invoice)}>Send</ActionButton>
+                            <ActionButton onClick={() => handleEditInvoice(invoice)}>{t('admin:invoicesPage.edit')}</ActionButton>
+                            <ActionButton onClick={() => handleSendInvoice(invoice)}>{t('admin:invoicesPage.send')}</ActionButton>
                           </>
                         )}
                         {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
                           <>
-                            {Number(invoice.total) > 0 && <ActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay Now</ActionButton>}
-                            {Number(invoice.total) === 0 && <ActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</ActionButton>}
-                            {invoice.status === 'sent' && <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>Mark Overdue</ActionButton>}
+                            {Number(invoice.total) > 0 && <ActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>{t('admin:invoicesPage.payNow')}</ActionButton>}
+                            {Number(invoice.total) === 0 && <ActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>{t('admin:invoicesPage.confirm')}</ActionButton>}
+                            {invoice.status === 'sent' && <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>{t('admin:invoicesPage.markOverdue')}</ActionButton>}
                           </>
                         )}
                         {invoice.status === 'paid' && (
-                          <ActionButton onClick={() => window.print()}>Print Receipt</ActionButton>
+                          <ActionButton onClick={() => window.print()}>{t('admin:invoicesPage.printReceipt')}</ActionButton>
                         )}
                       </LocalActionButtons>
                     </DataTableCell>
@@ -996,7 +997,7 @@ const ManagerInvoicesPage: React.FC = () => {
                     />
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Restaurant Manager</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.restaurantManager')}</FormLabel>
                     <FormInput
                       type="text"
                       value={newInvoice.restaurantManager}
@@ -1032,19 +1033,19 @@ const ManagerInvoicesPage: React.FC = () => {
                 </FormRow>
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Plan Type</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.planType')}</FormLabel>
                     <FormSelect
                       value={newInvoice.planType}
                       onChange={(e) => setNewInvoice({...newInvoice, planType: e.target.value})}
                     >
-                      <option value="Basic Plan">Basic Plan</option>
-                      <option value="Professional Plan">Professional Plan</option>
-                      <option value="Enterprise Plan">Enterprise Plan</option>
+                      <option value="Basic Plan">{t('admin:invoicesPage.basicPlan')}</option>
+                      <option value="Professional Plan">{t('admin:invoicesPage.professionalPlan')}</option>
+                      <option value="Enterprise Plan">{t('admin:invoicesPage.enterprisePlan')}</option>
                     </FormSelect>
                   </FormGroup>
                 </FormRow>
                 <FormGroup>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('admin:invoicesPage.description')}</FormLabel>
                   <FormTextArea
                     value={newInvoice.description}
                     onChange={(e) => setNewInvoice({...newInvoice, description: e.target.value})}
@@ -1078,11 +1079,11 @@ const ManagerInvoicesPage: React.FC = () => {
 
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Invoice Number</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.invoiceNumber')}</FormLabel>
                     <div>{selectedInvoice.invoiceNumber}</div>
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.status')}</FormLabel>
                     <StatusBadge status={selectedInvoice.status}>
                       {selectedInvoice.status}
                     </StatusBadge>
@@ -1090,26 +1091,26 @@ const ManagerInvoicesPage: React.FC = () => {
                 </FormRow>
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Restaurant</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.restaurant')}</FormLabel>
                     <div>{selectedInvoice.restaurantName}</div>
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Manager</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.manager')}</FormLabel>
                     <div>{selectedInvoice.restaurantManager}</div>
                   </FormGroup>
                 </FormRow>
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Issue Date</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.issueDate')}</FormLabel>
                     <div>{selectedInvoice.issueDate}</div>
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Due Date</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.dueDate')}</FormLabel>
                     <div>{selectedInvoice.dueDate}</div>
                   </FormGroup>
                 </FormRow>
                 <FormGroup>
-                  <FormLabel>Items</FormLabel>
+                  <FormLabel>{t('admin:invoicesPage.items')}</FormLabel>
                   {selectedInvoice.items.map((item, index) => (
                     <div key={index} style={{ padding: '8px', background: '#F8FAFC', borderRadius: '4px', marginBottom: '8px' }}>
                       {item.description} - {formatCurrency(item.total, selectedCurrency)}
@@ -1211,7 +1212,7 @@ const ManagerInvoicesPage: React.FC = () => {
                     <CommonModal isOpen={true} onClose={() => setShowPaymentModal(false)} title={`Submit Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentModal(false)}> Cancel </Button><Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || availablePaymentMethods.length === 0} > Submit Payment </Button></>}>
 
                 <FormGroup>
-                  <FormLabel>Invoice Details</FormLabel>
+                  <FormLabel>{t('admin:invoicesPage.invoiceDetails')}</FormLabel>
                   <InvoiceSummary>
                     <SummaryRow>
                       <span>Restaurant:</span>
@@ -1229,9 +1230,9 @@ const ManagerInvoicesPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Payment Method</FormLabel>
+                  <FormLabel>{t('admin:invoicesPage.paymentMethod')}</FormLabel>
                   {loadingPaymentMethods ? (
-                    <div style={{ padding: '16px', textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>Loading payment methods...</div>
+                    <div style={{ padding: '16px', textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>{t('admin:invoicesPage.loadingPaymentMethods')}</div>
                   ) : availablePaymentMethods.length === 0 ? (
                     <div style={{ padding: '16px', textAlign: 'center', color: '#EF4444', fontSize: '14px', background: '#FEF2F2', borderRadius: '8px' }}>
                       No payment methods configured by the invoice issuer.
@@ -1284,7 +1285,7 @@ const ManagerInvoicesPage: React.FC = () => {
                 {paymentData.paymentMethod && paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
                   <>
                     <FormGroup>
-                      <FormLabel>Transaction ID / Reference Number</FormLabel>
+                      <FormLabel>{t('admin:invoicesPage.transactionIdReferenceNumber')}</FormLabel>
                       <FormInput
                         type="text"
                         value={paymentData.transactionId}
@@ -1294,7 +1295,7 @@ const ManagerInvoicesPage: React.FC = () => {
                     </FormGroup>
 
                     <FormGroup>
-                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormLabel>{t('admin:invoicesPage.notesOptional')}</FormLabel>
                       <textarea
                         placeholder="Any additional information about the payment..."
                         value={paymentData.notes}
@@ -1303,13 +1304,13 @@ const ManagerInvoicesPage: React.FC = () => {
                       />
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Payment Receipt Image</FormLabel>
+                      <FormLabel>{t('admin:invoicesPage.paymentReceiptImage')}</FormLabel>
                       <div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC', cursor: 'pointer', position: 'relative' }}>
                         {paymentData.receiptImage ? (
                           <div>
                             <img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} />
                             <div>
-                              <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>Remove Image</button>
+                              <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('admin:invoicesPage.removeImage')}</button>
                             </div>
                           </div>
                         ) : (
@@ -1324,8 +1325,8 @@ const ManagerInvoicesPage: React.FC = () => {
                             }} style={{ display: 'none' }} />
                             <div style={{ color: '#6B7280', fontSize: '14px' }}>
                               <div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div>
-                              <div>Click to upload payment receipt</div>
-                              <div style={{ fontSize: '12px', marginTop: '4px' }}>Supports JPG, PNG (max 5MB)</div>
+                              <div>{t('admin:invoicesPage.clickToUploadPaymentReceipt')}</div>
+                              <div style={{ fontSize: '12px', marginTop: '4px' }}>{t('admin:invoicesPage.supportsJpgPngMax5mb')}</div>
                             </div>
                           </label>
                         )}
@@ -1349,7 +1350,7 @@ const ManagerInvoicesPage: React.FC = () => {
 
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Amount (RM)</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.amountRm')}</FormLabel>
                     <FormInput
                       type="number"
                       value={editInvoice.amount}
@@ -1367,7 +1368,7 @@ const ManagerInvoicesPage: React.FC = () => {
                     />
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Due Date</FormLabel>
+                    <FormLabel>{t('admin:invoicesPage.dueDate')}</FormLabel>
                     <FormInput
                       type="date"
                       value={editInvoice.dueDate}
@@ -1376,16 +1377,16 @@ const ManagerInvoicesPage: React.FC = () => {
                   </FormGroup>
                 </FormRow>
                 <FormGroup>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('admin:invoicesPage.status')}</FormLabel>
                   <FormSelect
                     value={editInvoice.status}
                     onChange={(e) => setEditInvoice({...editInvoice, status: e.target.value})}
                   >
-                    <option value="draft">Draft</option>
-                    <option value="sent">Sent</option>
-                    <option value="paid">Paid</option>
-                    <option value="overdue">Overdue</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="draft">{t('admin:invoicesPage.draft')}</option>
+                    <option value="sent">{t('admin:invoicesPage.sent')}</option>
+                    <option value="paid">{t('admin:invoicesPage.paid')}</option>
+                    <option value="overdue">{t('admin:invoicesPage.overdue')}</option>
+                    <option value="cancelled">{t('admin:invoicesPage.cancelled')}</option>
                   </FormSelect>
                 </FormGroup>
                 <InvoiceSummary>

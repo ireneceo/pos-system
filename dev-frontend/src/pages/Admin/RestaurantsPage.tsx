@@ -22,6 +22,7 @@ import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies,
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { COUNTRIES } from '../../constants/countries';
+import { useTranslation } from 'react-i18next';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
 
 interface Restaurant {
@@ -544,6 +545,7 @@ const ActiveButton = styled.button`
 `;
 
 const RestaurantsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { operationSettings } = useStore();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -1522,10 +1524,10 @@ const RestaurantsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Restaurants</Title>
+          <Title>{t('admin:restaurantsPage.restaurants')}</Title>
           <ActionSection>
-            <ThemedButton variant="outline" onClick={handleExportRestaurants}>Export</ThemedButton>
-            <ThemedButton variant="primary" onClick={handleAddRestaurant}>Add Restaurant</ThemedButton>
+            <ThemedButton variant="outline" onClick={handleExportRestaurants}>{t('admin:restaurantsPage.export')}</ThemedButton>
+            <ThemedButton variant="primary" onClick={handleAddRestaurant}>{t('admin:restaurantsPage.addRestaurant')}</ThemedButton>
           </ActionSection>
         </Header>
         
@@ -1533,23 +1535,23 @@ const RestaurantsPage: React.FC = () => {
           <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalRestaurants}</StatValue>
-            <StatLabel>Total Restaurants</StatLabel>
-            <StatDescription>Across all managers</StatDescription>
+            <StatLabel>{t('admin:restaurantsPage.totalRestaurants')}</StatLabel>
+            <StatDescription>{t('admin:restaurantsPage.acrossAllManagers')}</StatDescription>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{activeRestaurants}</StatValue>
-            <StatLabel>Active Restaurants</StatLabel>
+            <StatLabel>{t('admin:restaurantsPage.activeRestaurants')}</StatLabel>
             <StatDescription>{totalRestaurants > 0 ? Math.round((activeRestaurants/totalRestaurants)*100) : 0}% operational</StatDescription>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{formatCurrency(totalSales, operationSettings.currency)}</StatValue>
-            <StatLabel>Today's Total Sales</StatLabel>
-            <StatDescription>Combined revenue</StatDescription>
+            <StatLabel>{t('admin:restaurantsPage.todaysTotalSales')}</StatLabel>
+            <StatDescription>{t('admin:restaurantsPage.combinedRevenue')}</StatDescription>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{totalOrders}</StatValue>
-            <StatLabel>Today's Orders</StatLabel>
-            <StatDescription>All restaurants</StatDescription>
+            <StatLabel>{t('admin:restaurantsPage.todaysOrders')}</StatLabel>
+            <StatDescription>{t('admin:restaurantsPage.allRestaurants')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
@@ -1579,8 +1581,8 @@ const RestaurantsPage: React.FC = () => {
                 setFilterManagerSearchQuery('');
                 setShowFilterManagerDropdown(false);
               }}>
-                <ManagerName>All Managers</ManagerName>
-                <ManagerDetails>Show all restaurants</ManagerDetails>
+                <ManagerName>{t('admin:restaurantsPage.allManagers')}</ManagerName>
+                <ManagerDetails>{t('admin:restaurantsPage.showAllRestaurants')}</ManagerDetails>
               </DropdownItem>
               {filteredFilterManagers.map(manager => (
                 <DropdownItem
@@ -1619,8 +1621,8 @@ const RestaurantsPage: React.FC = () => {
                 setShowFilterBrandDropdown(false);
                 navigate('/pos/admin/restaurants', { replace: true });
               }}>
-                <ManagerName>All Brands</ManagerName>
-                <ManagerDetails>Show all restaurants</ManagerDetails>
+                <ManagerName>{t('admin:restaurantsPage.allBrands')}</ManagerName>
+                <ManagerDetails>{t('admin:restaurantsPage.showAllRestaurants')}</ManagerDetails>
               </DropdownItem>
               {filteredFilterBrands.map(brand => (
                 <DropdownItem
@@ -1634,13 +1636,13 @@ const RestaurantsPage: React.FC = () => {
             </DropdownMenu>
           </FilterDropdownContainer>
           <PageFilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="trial">Trial</option>
-            <option value="expired">Expired</option>
-            <option value="suspended">Suspended</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="all">{t('admin:restaurantsPage.allStatus')}</option>
+            <option value="active">{t('admin:restaurantsPage.active')}</option>
+            <option value="inactive">{t('admin:restaurantsPage.inactive')}</option>
+            <option value="trial">{t('admin:restaurantsPage.trial')}</option>
+            <option value="expired">{t('admin:restaurantsPage.expired')}</option>
+            <option value="suspended">{t('admin:restaurantsPage.suspended')}</option>
+            <option value="cancelled">{t('admin:restaurantsPage.cancelled')}</option>
           </PageFilterSelect>
           <PageSearchInput
             placeholder="Search restaurants..."
@@ -1672,7 +1674,7 @@ const RestaurantsPage: React.FC = () => {
             <RestaurantCard key={restaurant.id}>
               <RestaurantHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{restaurant.name} {restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}{restaurant.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}{restaurant.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}</RestaurantName>
+                  <RestaurantName>{restaurant.name} {restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}{restaurant.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.demo')}</span>}{restaurant.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:restaurantsPage.test')}</span>}</RestaurantName>
                   <RestaurantMeta>
                     Admin: {restaurant.admin ? `${restaurant.admin.name} (${restaurant.admin.email})` : 'No Admin Assigned'}
                   </RestaurantMeta>
@@ -1698,15 +1700,15 @@ const RestaurantsPage: React.FC = () => {
               <MetricsGrid>
                 <Metric>
                   <MetricValue>{formatCurrency(restaurant.todaySales, operationSettings.currency)}</MetricValue>
-                  <MetricLabel>Today's Sales</MetricLabel>
+                  <MetricLabel>{t('admin:restaurantsPage.todaysSales')}</MetricLabel>
                 </Metric>
                 <Metric>
                   <MetricValue>{restaurant.todayOrders}</MetricValue>
-                  <MetricLabel>Orders</MetricLabel>
+                  <MetricLabel>{t('admin:restaurantsPage.orders')}</MetricLabel>
                 </Metric>
                 <Metric>
                   <MetricValue>{restaurant.staffCount}</MetricValue>
-                  <MetricLabel>Staff</MetricLabel>
+                  <MetricLabel>{t('admin:restaurantsPage.staff')}</MetricLabel>
                 </Metric>
               </MetricsGrid>
               
@@ -1745,7 +1747,7 @@ const RestaurantsPage: React.FC = () => {
 
         {/* Add Restaurant Modal */}
         {showAddModal && (
-                    <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => { setAddModalWarning(''); setShowAddModal(false); }}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitAdd}>Add Restaurant</ThemedButton></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => { setAddModalWarning(''); setShowAddModal(false); }}>{t('admin:restaurantsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitAdd}>{t('admin:restaurantsPage.addRestaurant')}</ThemedButton></>}>
 
                 <FormGrid>
                   <FormGroup style={{ gridColumn: '1 / -1' }}>
@@ -1778,7 +1780,7 @@ const RestaurantsPage: React.FC = () => {
                           onChange={() => { setAdminAction('create'); setSelectedAdmin(null); }}
                           style={{ accentColor: '#635BFF' }}
                         />
-                        <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Create New Account</span>
+                        <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.createNewAccount')}</span>
                       </label>
                       <label style={{
                         display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
@@ -1794,7 +1796,7 @@ const RestaurantsPage: React.FC = () => {
                           onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', phone: '' }); }}
                           style={{ accentColor: '#635BFF' }}
                         />
-                        <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Select Existing User</span>
+                        <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.selectExistingUser')}</span>
                       </label>
                     </div>
                   </div>
@@ -1829,7 +1831,7 @@ const RestaurantsPage: React.FC = () => {
                         />
                       </FormGroup>
                       <FormGroup style={{gridColumn: '1 / -1'}}>
-                        <FormLabel>Admin Phone</FormLabel>
+                        <FormLabel>{t('admin:restaurantsPage.adminPhone')}</FormLabel>
                         <PhoneInput
                           value={newAdminData.phone}
                           onChange={(value) => setNewAdminData({...newAdminData, phone: value})}
@@ -1839,7 +1841,7 @@ const RestaurantsPage: React.FC = () => {
                     </>
                   ) : (
                     <FormGroup style={{ position: 'relative', gridColumn: '1 / -1', zIndex: 100 }}>
-                      <FormLabel>Search and select an existing user</FormLabel>
+                      <FormLabel>{t('admin:restaurantsPage.searchAndSelectAnExistingUser')}</FormLabel>
                       <DropdownContainer>
                         <DropdownInput
                           type="text"
@@ -1971,7 +1973,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>City</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.city')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., Kuala Lumpur"
@@ -1981,7 +1983,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>State / Province</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.stateProvince')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., Selangor"
@@ -1991,7 +1993,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Postal Code</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.postalCode')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., 50000"
@@ -2001,7 +2003,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Country</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.country')}</FormLabel>
                     <FormSelect
                       value={newRestaurant.country}
                       onChange={(e) => {
@@ -2026,7 +2028,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Business Registration No.</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.businessRegistrationNo')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., 123456-A"
@@ -2036,7 +2038,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Tax ID / GST No.</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.taxIdGstNo')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., 000123456789"
@@ -2046,7 +2048,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Cuisine Type</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.cuisineType')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., Malaysian, Chinese, Italian"
@@ -2171,8 +2173,8 @@ const RestaurantsPage: React.FC = () => {
                         });
                       }}
                     >
-                      <option value="monthly">Monthly</option>
-                      <option value="annual">Annual</option>
+                      <option value="monthly">{t('admin:restaurantsPage.monthly')}</option>
+                      <option value="annual">{t('admin:restaurantsPage.annual')}</option>
                     </FormSelect>
                   </FormGroup>
 
@@ -2182,9 +2184,9 @@ const RestaurantsPage: React.FC = () => {
                       value={newRestaurant.paymentModel}
                       onChange={(e) => setNewRestaurant({...newRestaurant, paymentModel: e.target.value as any})}
                     >
-                      <option value="restaurant">Restaurant Admin</option>
-                      <option value="foodcourt_manager">Foodcourt Manager</option>
-                      <option value="brand_manager">Brand Manager</option>
+                      <option value="restaurant">{t('admin:restaurantsPage.restaurantAdmin')}</option>
+                      <option value="foodcourt_manager">{t('admin:restaurantsPage.foodcourtManager')}</option>
+                      <option value="brand_manager">{t('admin:restaurantsPage.brandManager')}</option>
                     </FormSelect>
                   </FormGroup>
 
@@ -2241,7 +2243,7 @@ const RestaurantsPage: React.FC = () => {
 
         {/* Edit Restaurant Modal */}
         {showEditModal && editingRestaurant && (
-                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => { setEditModalWarning(''); setShowEditModal(false); }}>Cancel</ThemedButton><ThemedButton variant="danger-outline" onClick={() => handleDeleteRestaurant(editingRestaurant)}>Delete</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitEdit}>Update Restaurant</ThemedButton></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => { setEditModalWarning(''); setShowEditModal(false); }}>{t('admin:restaurantsPage.cancel')}</ThemedButton><ThemedButton variant="danger-outline" onClick={() => handleDeleteRestaurant(editingRestaurant)}>{t('admin:restaurantsPage.delete')}</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitEdit}>{t('admin:restaurantsPage.updateRestaurant')}</ThemedButton></>}>
 
                 <FormGrid>
                   <FormGroup style={{ gridColumn: '1 / -1' }}>
@@ -2279,14 +2281,14 @@ const RestaurantsPage: React.FC = () => {
                               background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '6px',
                               padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#92400E'
                             }}
-                          >Change Admin</button>
+                          >{t('admin:restaurantsPage.changeAdmin')}</button>
                         )}
                       </div>
                     </div>
                   ) : (
                     <div style={{gridColumn: '1 / -1', padding: '12px 16px', background: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA'}}>
                       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <div style={{fontSize: '13px', color: '#DC2626'}}>No Restaurant Admin assigned</div>
+                        <div style={{fontSize: '13px', color: '#DC2626'}}>{t('admin:restaurantsPage.noRestaurantAdminAssigned')}</div>
                         {editAdminAction === 'keep' && (
                           <button
                             onClick={() => setEditAdminAction('create')}
@@ -2294,7 +2296,7 @@ const RestaurantsPage: React.FC = () => {
                               background: '#635BFF', border: 'none', borderRadius: '6px',
                               padding: '6px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: '600', color: '#fff'
                             }}
-                          >Assign Admin</button>
+                          >{t('admin:restaurantsPage.assignAdmin')}</button>
                         )}
                       </div>
                     </div>
@@ -2312,7 +2314,7 @@ const RestaurantsPage: React.FC = () => {
                           <input type="radio" name="editAdminAction" checked={editAdminAction === 'create'}
                             onChange={() => { setEditAdminAction('create'); setEditSelectedAdmin(null); }}
                             style={{ accentColor: '#635BFF' }} />
-                          <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Create New Account</span>
+                          <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.createNewAccount')}</span>
                         </label>
                         <label style={{
                           display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
@@ -2323,12 +2325,12 @@ const RestaurantsPage: React.FC = () => {
                           <input type="radio" name="editAdminAction" checked={editAdminAction === 'change'}
                             onChange={() => { setEditAdminAction('change'); setEditNewAdminData({ fullName: '', email: '', username: '', phone: '' }); }}
                             style={{ accentColor: '#635BFF' }} />
-                          <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Select Existing User</span>
+                          <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.selectExistingUser')}</span>
                         </label>
                         <button onClick={() => setEditAdminAction('keep')} style={{
                           background: 'none', border: '1px solid #E5E7EB', borderRadius: '8px',
                           padding: '8px 16px', cursor: 'pointer', fontSize: '13px', color: '#6B7280'
-                        }}>Cancel</button>
+                        }}>{t('admin:restaurantsPage.cancel')}</button>
                       </div>
 
                       {editAdminAction === 'create' ? (
@@ -2354,7 +2356,7 @@ const RestaurantsPage: React.FC = () => {
                         </>
                       ) : (
                         <FormGroup style={{ position: 'relative', gridColumn: '1 / -1', zIndex: 100 }}>
-                          <FormLabel>Search and select an existing user</FormLabel>
+                          <FormLabel>{t('admin:restaurantsPage.searchAndSelectAnExistingUser')}</FormLabel>
                           <DropdownContainer>
                             <DropdownInput type="text" placeholder="Type to search by name, email, or username..."
                               value={editAdminSearchQuery}
@@ -2481,7 +2483,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>City</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.city')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., Kuala Lumpur"
@@ -2491,7 +2493,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>State / Province</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.stateProvince')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., Selangor"
@@ -2501,7 +2503,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Postal Code</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.postalCode')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., 50000"
@@ -2511,7 +2513,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Country</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.country')}</FormLabel>
                     <FormSelect
                       value={editingRestaurant.country || 'MY'}
                       onChange={(e) => setEditingRestaurant({...editingRestaurant, country: e.target.value})}
@@ -2525,7 +2527,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Business Registration No.</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.businessRegistrationNo')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., 123456-A"
@@ -2535,7 +2537,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Tax ID / GST No.</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.taxIdGstNo')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., 000123456789"
@@ -2545,7 +2547,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Cuisine Type</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.cuisineType')}</FormLabel>
                     <FormInput
                       type="text"
                       placeholder="e.g., Malaysian, Chinese, Italian"
@@ -2619,8 +2621,8 @@ const RestaurantsPage: React.FC = () => {
                         });
                       }}
                     >
-                      <option value="monthly">Monthly</option>
-                      <option value="annual">Annual</option>
+                      <option value="monthly">{t('admin:restaurantsPage.monthly')}</option>
+                      <option value="annual">{t('admin:restaurantsPage.annual')}</option>
                     </FormSelect>
                   </FormGroup>
 
@@ -2630,9 +2632,9 @@ const RestaurantsPage: React.FC = () => {
                       value={editingRestaurant.paymentModel || 'restaurant'}
                       onChange={(e) => setEditingRestaurant({...editingRestaurant, paymentModel: e.target.value as any})}
                     >
-                      <option value="restaurant">Restaurant Admin</option>
-                      <option value="foodcourt_manager">Foodcourt Manager</option>
-                      <option value="brand_manager">Brand Manager</option>
+                      <option value="restaurant">{t('admin:restaurantsPage.restaurantAdmin')}</option>
+                      <option value="foodcourt_manager">{t('admin:restaurantsPage.foodcourtManager')}</option>
+                      <option value="brand_manager">{t('admin:restaurantsPage.brandManager')}</option>
                     </FormSelect>
                   </FormGroup>
 
@@ -2679,14 +2681,14 @@ const RestaurantsPage: React.FC = () => {
                   </div>
 
                   <FormGroup>
-                    <FormLabel>Discount Type</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.discountType')}</FormLabel>
                     <FormSelect
                       value={editingRestaurant.discount_type || 'none'}
                       onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_type: e.target.value as any, discount_value: e.target.value === 'none' ? 0 : editingRestaurant.discount_value})}
                     >
-                      <option value="none">None</option>
+                      <option value="none">{t('admin:restaurantsPage.none')}</option>
                       <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed Amount</option>
+                      <option value="fixed">{t('admin:restaurantsPage.fixedAmount')}</option>
                     </FormSelect>
                   </FormGroup>
 
@@ -2707,7 +2709,7 @@ const RestaurantsPage: React.FC = () => {
 
                   {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (
                     <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Discount Reason</FormLabel>
+                      <FormLabel>{t('admin:restaurantsPage.discountReason')}</FormLabel>
                       <FormInput
                         type="text"
                         value={editingRestaurant.discount_reason || ''}
@@ -2743,11 +2745,11 @@ const RestaurantsPage: React.FC = () => {
 
         {/* View Restaurant Modal */}
         {showViewModal && selectedRestaurant && (
-                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Restaurant Details" size="large" footer={<><ActionButton onClick={() => setShowViewModal(false)}>Close</ActionButton></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Restaurant Details" size="large" footer={<><ActionButton onClick={() => setShowViewModal(false)}>{t('admin:restaurantsPage.close')}</ActionButton></>}>
 
                 <FormGrid>
                   <FormGroup style={{ gridColumn: '1 / -1' }}>
-                    <FormLabel>Restaurant Name</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.restaurantName')}</FormLabel>
                     <FormInput
                       type="text"
                       value={selectedRestaurant.name}
@@ -2757,7 +2759,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Restaurant Admin</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.restaurantAdmin')}</FormLabel>
                     {selectedRestaurant.admin ? (
                       <div style={{padding: '10px 12px', background: '#F0EFFF', borderRadius: '8px', border: '1px solid #D4D0FF'}}>
                         <div style={{fontWeight: '600', color: '#1F2937', fontSize: '14px'}}>
@@ -2773,7 +2775,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Oversight Managers</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.oversightManagers')}</FormLabel>
                     <FormTextarea
                       value={
                         selectedRestaurant.managers && selectedRestaurant.managers.length > 0
@@ -2788,7 +2790,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Email Address</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.emailAddress')}</FormLabel>
                     <FormInput
                       type="email"
                       value={selectedRestaurant.email || 'N/A'}
@@ -2798,7 +2800,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Phone Number</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.phoneNumber')}</FormLabel>
                     <FormInput
                       type="tel"
                       value={formatPhoneForDisplay(selectedRestaurant.phone) || 'N/A'}
@@ -2808,7 +2810,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.address')}</FormLabel>
                     <FormTextarea
                       value={selectedRestaurant.address || selectedRestaurant.location || 'N/A'}
                       disabled
@@ -2817,7 +2819,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Cuisine Type</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.cuisineType')}</FormLabel>
                     <FormInput
                       type="text"
                       value={selectedRestaurant.cuisine || 'Various'}
@@ -2827,7 +2829,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.status')}</FormLabel>
                     <FormInput
                       type="text"
                       value={selectedRestaurant.status ? selectedRestaurant.status.charAt(0).toUpperCase() + selectedRestaurant.status.slice(1) : 'Unknown'}
@@ -2837,7 +2839,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Plan Type</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.planType')}</FormLabel>
                     <FormInput
                       type="text"
                       value={selectedRestaurant.planType || 'Basic Plan'}
@@ -2847,7 +2849,7 @@ const RestaurantsPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <FormLabel>Created Date</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.createdDate')}</FormLabel>
                     <FormInput
                       type="text"
                       value={selectedRestaurant.createdAt ? new Date(selectedRestaurant.createdAt).toLocaleDateString() : 'N/A'}
@@ -2877,18 +2879,18 @@ const RestaurantsPage: React.FC = () => {
         {showSuccessModal && (
           <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Password Generated" size="small" footer={<>
             {successPassword && <ThemedButton variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</ThemedButton>}
-            <ThemedButton onClick={() => setShowSuccessModal(false)}>Done</ThemedButton>
+            <ThemedButton onClick={() => setShowSuccessModal(false)}>{t('admin:restaurantsPage.done')}</ThemedButton>
           </>}>
             <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
               {successMessage} Please share this password securely. They should change it after first login.
             </div>
             {successPassword && (
               <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>Temporary Password</div>
+                <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:restaurantsPage.temporaryPassword')}</div>
                 <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
               </div>
             )}
-            <div style={{ fontSize: '12px', color: '#DC2626' }}>This password will not be shown again. Please copy it now.</div>
+            <div style={{ fontSize: '12px', color: '#DC2626' }}>{t('admin:restaurantsPage.thisPasswordWillNotBeShownAgainPleaseCopyItNow')}</div>
           </CommonModal>
         )}
 

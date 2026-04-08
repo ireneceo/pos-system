@@ -8,6 +8,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency } from '../../utils/currency';
 import CommentSection from '../../components/Common/CommentSection';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -567,6 +568,7 @@ const PROGRESS_STATUSES = ['contacted', 'confirmed'];
 const CLOSED_STATUSES = ['invoiced', 'cancelled'];
 
 const HardwareQuotesPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [quotes, setQuotes] = useState<HardwareQuote[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, new: 0, contacted: 0, confirmed: 0, invoiced: 0 });
@@ -1066,30 +1068,30 @@ const HardwareQuotesPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Hardware Quotes</Title>
+          <Title>{t('admin:hardwareQuotesPage.hardwareQuotes')}</Title>
         </Header>
 
         <Content>
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{stats.total}</StatValue>
-              <StatLabel>Total</StatLabel>
+              <StatLabel>{t('admin:hardwareQuotesPage.total')}</StatLabel>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{stats.new}</StatValue>
-              <StatLabel>New</StatLabel>
+              <StatLabel>{t('admin:hardwareQuotesPage.new')}</StatLabel>
             </StatCard>
             <StatCard color="#3B82F6">
               <StatValue>{stats.contacted}</StatValue>
-              <StatLabel>Contacted</StatLabel>
+              <StatLabel>{t('admin:hardwareQuotesPage.contacted')}</StatLabel>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{stats.confirmed}</StatValue>
-              <StatLabel>Confirmed</StatLabel>
+              <StatLabel>{t('admin:hardwareQuotesPage.confirmed')}</StatLabel>
             </StatCard>
             <StatCard color="#8B5CF6">
               <StatValue>{stats.invoiced}</StatValue>
-              <StatLabel>Invoiced</StatLabel>
+              <StatLabel>{t('admin:hardwareQuotesPage.invoiced')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -1115,25 +1117,25 @@ const HardwareQuotesPage: React.FC = () => {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">All Status</option>
+              <option value="all">{t('admin:hardwareQuotesPage.allStatus')}</option>
               {activeTab === 'new' ? (
-                <option value="new">New</option>
+                <option value="new">{t('admin:hardwareQuotesPage.new')}</option>
               ) : activeTab === 'progress' ? (
                 <>
-                  <option value="contacted">Contacted</option>
-                  <option value="confirmed">Confirmed</option>
+                  <option value="contacted">{t('admin:hardwareQuotesPage.contacted')}</option>
+                  <option value="confirmed">{t('admin:hardwareQuotesPage.confirmed')}</option>
                 </>
               ) : (
                 <>
-                  <option value="invoiced">Invoiced</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="invoiced">{t('admin:hardwareQuotesPage.invoiced')}</option>
+                  <option value="cancelled">{t('admin:hardwareQuotesPage.cancelled')}</option>
                 </>
               )}
             </FilterSelect>
           </FilterBar>
 
           {loading ? (
-            <EmptyState>Loading...</EmptyState>
+            <EmptyState>{t('admin:hardwareQuotesPage.loading')}</EmptyState>
           ) : filteredQuotes.length === 0 ? (
             <div style={{
               textAlign: 'center',
@@ -1144,7 +1146,7 @@ const HardwareQuotesPage: React.FC = () => {
               <h3 style={{ color: '#374151', marginBottom: '8px' }}>
                 No {activeTab === 'new' ? 'new' : activeTab === 'progress' ? 'in progress' : 'closed'} quotes
               </h3>
-              <p>Hardware quotes will appear here when submitted.</p>
+              <p>{t('admin:hardwareQuotesPage.hardwareQuotesWillAppearHereWhenSubmitted')}</p>
             </div>
           ) : (
             <QuoteGrid>
@@ -1191,7 +1193,7 @@ const HardwareQuotesPage: React.FC = () => {
 
                   {quote.invoice_id && (
                     <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 600, background: '#ECFDF5', color: '#059669', borderRadius: '4px' }}>Invoice Created</span>
+                      <span style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 600, background: '#ECFDF5', color: '#059669', borderRadius: '4px' }}>{t('admin:hardwareQuotesPage.invoiceCreated')}</span>
                       {quote.invoice?.invoice_number && (
                         <a
                           href={`/pos/admin/invoices?search=${quote.invoice.invoice_number}`}
@@ -1266,61 +1268,61 @@ const HardwareQuotesPage: React.FC = () => {
             }
           >
             {/* Quote Info */}
-            <SectionTitle style={{ marginTop: 0 }}>Quote Info</SectionTitle>
+            <SectionTitle style={{ marginTop: 0 }}>{t('admin:hardwareQuotesPage.quoteInfo')}</SectionTitle>
             <DetailGrid>
               <DetailItem>
-                <DetailItemLabel>Quote Number</DetailItemLabel>
+                <DetailItemLabel>{t('admin:hardwareQuotesPage.quoteNumber')}</DetailItemLabel>
                 <DetailItemValue style={{ fontFamily: 'monospace' }}>{selectedQuote.quote_number}</DetailItemValue>
               </DetailItem>
               <DetailItem>
-                <DetailItemLabel>Status</DetailItemLabel>
+                <DetailItemLabel>{t('admin:hardwareQuotesPage.status')}</DetailItemLabel>
                 <DetailItemValue>
                   <StatusSelect
                     value={detailStatus}
                     onChange={(e) => handleStatusChange(e.target.value)}
                     disabled={detailStatus === 'invoiced'}
                   >
-                    <option value="new">New</option>
-                    <option value="contacted">In Progress</option>
-                    <option value="confirmed">Confirmed</option>
-                    {detailStatus === 'invoiced' && <option value="invoiced">Invoiced</option>}
-                    <option value="cancelled">Closed</option>
+                    <option value="new">{t('admin:hardwareQuotesPage.new')}</option>
+                    <option value="contacted">{t('admin:hardwareQuotesPage.inProgress')}</option>
+                    <option value="confirmed">{t('admin:hardwareQuotesPage.confirmed')}</option>
+                    {detailStatus === 'invoiced' && <option value="invoiced">{t('admin:hardwareQuotesPage.invoiced')}</option>}
+                    <option value="cancelled">{t('admin:hardwareQuotesPage.closed')}</option>
                   </StatusSelect>
                 </DetailItemValue>
               </DetailItem>
               <DetailItem>
-                <DetailItemLabel>Created</DetailItemLabel>
+                <DetailItemLabel>{t('admin:hardwareQuotesPage.created')}</DetailItemLabel>
                 <DetailItemValue>{formatDate(selectedQuote.created_at)}</DetailItemValue>
               </DetailItem>
             </DetailGrid>
 
             {/* Customer Info */}
-            <SectionTitle>Customer Info</SectionTitle>
+            <SectionTitle>{t('admin:hardwareQuotesPage.customerInfo')}</SectionTitle>
             <DetailGrid>
               <DetailItem>
-                <DetailItemLabel>Name</DetailItemLabel>
+                <DetailItemLabel>{t('admin:hardwareQuotesPage.name')}</DetailItemLabel>
                 <DetailItemValue>{selectedQuote.contact_name}</DetailItemValue>
               </DetailItem>
               <DetailItem>
-                <DetailItemLabel>Email</DetailItemLabel>
+                <DetailItemLabel>{t('admin:hardwareQuotesPage.email')}</DetailItemLabel>
                 <DetailItemValue>{selectedQuote.contact_email}</DetailItemValue>
               </DetailItem>
               {selectedQuote.contact_phone && (
                 <DetailItem>
-                  <DetailItemLabel>Phone</DetailItemLabel>
+                  <DetailItemLabel>{t('admin:hardwareQuotesPage.phone')}</DetailItemLabel>
                   <DetailItemValue>{selectedQuote.contact_phone}</DetailItemValue>
                 </DetailItem>
               )}
               {selectedQuote.company_name && (
                 <DetailItem>
-                  <DetailItemLabel>Company</DetailItemLabel>
+                  <DetailItemLabel>{t('admin:hardwareQuotesPage.company')}</DetailItemLabel>
                   <DetailItemValue>{selectedQuote.company_name}</DetailItemValue>
                 </DetailItem>
               )}
             </DetailGrid>
 
             {/* Linked User */}
-            <SectionTitle>Linked User</SectionTitle>
+            <SectionTitle>{t('admin:hardwareQuotesPage.linkedUser')}</SectionTitle>
             {selectedQuote.user ? (
               <LinkedUserBox>
                 <LinkedUserInfo>
@@ -1328,17 +1330,17 @@ const HardwareQuotesPage: React.FC = () => {
                   <span style={{ color: '#6B7280', marginLeft: 8 }}>({selectedQuote.user.email})</span>
                   <span style={{ color: '#635BFF', marginLeft: 8, fontSize: 12 }}>{selectedQuote.user.role}</span>
                 </LinkedUserInfo>
-                <ActionButton onClick={openLinkUserModal}>Change</ActionButton>
+                <ActionButton onClick={openLinkUserModal}>{t('admin:hardwareQuotesPage.change')}</ActionButton>
               </LinkedUserBox>
             ) : (
               <LinkedUserBox style={{ background: '#F9FAFB' }}>
-                <LinkedUserInfo style={{ color: '#6B7280' }}>Not linked</LinkedUserInfo>
-                <ActionButton variant="primary" onClick={openLinkUserModal}>Link User</ActionButton>
+                <LinkedUserInfo style={{ color: '#6B7280' }}>{t('admin:hardwareQuotesPage.notLinked')}</LinkedUserInfo>
+                <ActionButton variant="primary" onClick={openLinkUserModal}>{t('admin:hardwareQuotesPage.linkUser')}</ActionButton>
               </LinkedUserBox>
             )}
 
             {/* Quote Details */}
-            <SectionTitle>Quote Details</SectionTitle>
+            <SectionTitle>{t('admin:hardwareQuotesPage.quoteDetails')}</SectionTitle>
             <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 16 }}>
               <AddonRow>
                 <div>
@@ -1365,7 +1367,7 @@ const HardwareQuotesPage: React.FC = () => {
               )}
 
               <TotalRow>
-                <div>Total</div>
+                <div>{t('admin:hardwareQuotesPage.total')}</div>
                 <div>{formatCurrency(selectedQuote.total_amount, quoteCurrency)}</div>
               </TotalRow>
 
@@ -1387,19 +1389,19 @@ const HardwareQuotesPage: React.FC = () => {
             {/* Subscription Plan Info */}
             {selectedQuote.plan_id && selectedQuote.plan_snapshot && (
               <>
-                <SectionTitle>Subscription Plan</SectionTitle>
+                <SectionTitle>{t('admin:hardwareQuotesPage.subscriptionPlan')}</SectionTitle>
                 <div style={{ background: '#ECFDF5', borderRadius: 8, padding: 16, marginBottom: 16, borderLeft: '3px solid #059669' }}>
                   <DetailGrid style={{ marginBottom: 0 }}>
                     <DetailItem>
-                      <DetailItemLabel>Plan</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.plan')}</DetailItemLabel>
                       <DetailItemValue style={{ fontWeight: 600 }}>{selectedQuote.plan_snapshot.display_name}</DetailItemValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailItemLabel>Billing Cycle</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.billingCycle')}</DetailItemLabel>
                       <DetailItemValue style={{ textTransform: 'capitalize' }}>{selectedQuote.billing_cycle || 'monthly'}</DetailItemValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailItemLabel>Monthly Price</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.monthlyPrice')}</DetailItemLabel>
                       <DetailItemValue>
                         {formatCurrency(
                           selectedQuote.plan_snapshot.currency_prices?.[quoteCurrency]?.monthly || selectedQuote.plan_snapshot.base_price_monthly,
@@ -1408,7 +1410,7 @@ const HardwareQuotesPage: React.FC = () => {
                       </DetailItemValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailItemLabel>Annual Price</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.annualPrice')}</DetailItemLabel>
                       <DetailItemValue>
                         {formatCurrency(
                           selectedQuote.plan_snapshot.currency_prices?.[quoteCurrency]?.annual || selectedQuote.plan_snapshot.base_price_annual,
@@ -1424,13 +1426,13 @@ const HardwareQuotesPage: React.FC = () => {
             {/* Customer Message */}
             {selectedQuote.message && (
               <>
-                <SectionTitle>Customer Message</SectionTitle>
+                <SectionTitle>{t('admin:hardwareQuotesPage.customerMessage')}</SectionTitle>
                 <MessageBlock>{selectedQuote.message}</MessageBlock>
               </>
             )}
 
             {/* Admin Notes */}
-            <SectionTitle>Admin Notes</SectionTitle>
+            <SectionTitle>{t('admin:hardwareQuotesPage.adminNotes')}</SectionTitle>
             <FormGroup style={{ marginBottom: 0 }}>
               <FormTextArea
                 value={adminNotes}
@@ -1459,11 +1461,11 @@ const HardwareQuotesPage: React.FC = () => {
             {/* Invoice Info */}
             {selectedQuote.invoice && (
               <>
-                <SectionTitle>Hardware Invoice</SectionTitle>
+                <SectionTitle>{t('admin:hardwareQuotesPage.hardwareInvoice')}</SectionTitle>
                 <InvoiceInfoBox>
                   <DetailGrid style={{ marginBottom: 0 }}>
                     <DetailItem>
-                      <DetailItemLabel>Invoice Number</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.invoiceNumber')}</DetailItemLabel>
                       <DetailItemValue>
                         <a href={`/pos/admin/invoices?search=${selectedQuote.invoice.invoice_number}`} style={{ fontFamily: 'monospace', color: '#635BFF', textDecoration: 'none', fontWeight: 600 }}>
                           {selectedQuote.invoice.invoice_number} →
@@ -1471,7 +1473,7 @@ const HardwareQuotesPage: React.FC = () => {
                       </DetailItemValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailItemLabel>Status</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.status')}</DetailItemLabel>
                       <DetailItemValue>
                         <StatusBadge status={selectedQuote.invoice.status}>
                           {formatStatusLabel(selectedQuote.invoice.status)}
@@ -1479,7 +1481,7 @@ const HardwareQuotesPage: React.FC = () => {
                       </DetailItemValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailItemLabel>Amount</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.amount')}</DetailItemLabel>
                       <DetailItemValue style={{ fontWeight: 600 }}>
                         {formatCurrency(selectedQuote.invoice.total_amount, selectedQuote.invoice.currency)}
                       </DetailItemValue>
@@ -1492,11 +1494,11 @@ const HardwareQuotesPage: React.FC = () => {
             {/* Subscription Invoice Info */}
             {selectedQuote.subscription_invoice && (
               <>
-                <SectionTitle>Subscription Invoice</SectionTitle>
+                <SectionTitle>{t('admin:hardwareQuotesPage.subscriptionInvoice')}</SectionTitle>
                 <InvoiceInfoBox style={{ borderLeftColor: '#059669' }}>
                   <DetailGrid style={{ marginBottom: 0 }}>
                     <DetailItem>
-                      <DetailItemLabel>Invoice Number</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.invoiceNumber')}</DetailItemLabel>
                       <DetailItemValue>
                         <a href={`/pos/admin/invoices?search=${selectedQuote.subscription_invoice.invoice_number}`} style={{ fontFamily: 'monospace', color: '#635BFF', textDecoration: 'none', fontWeight: 600 }}>
                           {selectedQuote.subscription_invoice.invoice_number} →
@@ -1504,7 +1506,7 @@ const HardwareQuotesPage: React.FC = () => {
                       </DetailItemValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailItemLabel>Status</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.status')}</DetailItemLabel>
                       <DetailItemValue>
                         <StatusBadge status={selectedQuote.subscription_invoice.status}>
                           {formatStatusLabel(selectedQuote.subscription_invoice.status)}
@@ -1512,7 +1514,7 @@ const HardwareQuotesPage: React.FC = () => {
                       </DetailItemValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailItemLabel>Amount</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:hardwareQuotesPage.amount')}</DetailItemLabel>
                       <DetailItemValue style={{ fontWeight: 600 }}>
                         {formatCurrency(selectedQuote.subscription_invoice.total_amount, selectedQuote.subscription_invoice.currency)}
                       </DetailItemValue>
@@ -1531,11 +1533,11 @@ const HardwareQuotesPage: React.FC = () => {
             onClose={() => setShowLinkUserModal(false)}
             title="Link User to Quote"
             footer={
-              <ActionButton onClick={() => setShowLinkUserModal(false)}>Cancel</ActionButton>
+              <ActionButton onClick={() => setShowLinkUserModal(false)}>{t('admin:hardwareQuotesPage.cancel')}</ActionButton>
             }
           >
             <FormGroup>
-              <FormLabel>Search users by name or email</FormLabel>
+              <FormLabel>{t('admin:hardwareQuotesPage.searchUsersByNameOrEmail')}</FormLabel>
               <FormInput
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
@@ -1544,7 +1546,7 @@ const HardwareQuotesPage: React.FC = () => {
               />
             </FormGroup>
 
-            {searchingUsers && <div style={{ textAlign: 'center', color: '#6B7280', padding: 16 }}>Searching...</div>}
+            {searchingUsers && <div style={{ textAlign: 'center', color: '#6B7280', padding: 16 }}>{t('admin:hardwareQuotesPage.searching')}</div>}
 
             {userResults.length > 0 && (
               <UserSearchList>
@@ -1558,7 +1560,7 @@ const HardwareQuotesPage: React.FC = () => {
             )}
 
             {userSearch.length >= 2 && !searchingUsers && userResults.length === 0 && (
-              <div style={{ textAlign: 'center', color: '#6B7280', padding: 16 }}>No users found</div>
+              <div style={{ textAlign: 'center', color: '#6B7280', padding: 16 }}>{t('admin:hardwareQuotesPage.noUsersFound')}</div>
             )}
           </CommonModal>
         )}
@@ -1571,7 +1573,7 @@ const HardwareQuotesPage: React.FC = () => {
             title="Create Invoice from Quote"
             footer={
               <>
-                <ActionButton onClick={() => setShowInvoiceModal(false)}>Cancel</ActionButton>
+                <ActionButton onClick={() => setShowInvoiceModal(false)}>{t('admin:hardwareQuotesPage.cancel')}</ActionButton>
                 <ActionButton variant="primary" onClick={createInvoice} disabled={creatingInvoice}>
                   {creatingInvoice ? 'Creating...' : 'Create Invoice'}
                 </ActionButton>
@@ -1579,7 +1581,7 @@ const HardwareQuotesPage: React.FC = () => {
             }
           >
             {/* Quote Summary */}
-            <SectionTitle style={{ marginTop: 0 }}>Quote Summary</SectionTitle>
+            <SectionTitle style={{ marginTop: 0 }}>{t('admin:hardwareQuotesPage.quoteSummary')}</SectionTitle>
             <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 20 }}>
               <AddonRow>
                 <div><strong>{selectedQuote.packageProduct?.name || selectedQuote.package_snapshot?.name || 'N/A'}</strong> ({selectedQuote.packageProduct?.set_group || ''} - {selectedQuote.packageProduct?.set_tier || ''})</div>
@@ -1592,14 +1594,14 @@ const HardwareQuotesPage: React.FC = () => {
                 </AddonRow>
               ))}
               <TotalRow>
-                <div>Subtotal</div>
+                <div>{t('admin:hardwareQuotesPage.subtotal')}</div>
                 <div>{formatCurrency(selectedQuote.total_amount, quoteCurrency)}</div>
               </TotalRow>
             </div>
 
             {/* Due Date */}
             <FormGroup>
-              <FormLabel>Due Date</FormLabel>
+              <FormLabel>{t('admin:hardwareQuotesPage.dueDate')}</FormLabel>
               <FormInput
                 type="date"
                 value={invoiceDueDate}
@@ -1609,16 +1611,16 @@ const HardwareQuotesPage: React.FC = () => {
 
             {/* Discount */}
             <FormGroup>
-              <FormLabel>Discount</FormLabel>
+              <FormLabel>{t('admin:hardwareQuotesPage.discount')}</FormLabel>
               <div style={{ display: 'flex', gap: 12 }}>
                 <FormSelect
                   style={{ width: 'auto', minWidth: 150 }}
                   value={discountType}
                   onChange={(e) => setDiscountType(e.target.value as 'none' | 'percentage' | 'fixed')}
                 >
-                  <option value="none">No Discount</option>
+                  <option value="none">{t('admin:hardwareQuotesPage.noDiscount')}</option>
                   <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount</option>
+                  <option value="fixed">{t('admin:hardwareQuotesPage.fixedAmount')}</option>
                 </FormSelect>
                 {discountType !== 'none' && (
                   <FormInput
@@ -1636,7 +1638,7 @@ const HardwareQuotesPage: React.FC = () => {
 
             {/* Additional Charges */}
             <FormGroup>
-              <FormLabel>Additional Charges</FormLabel>
+              <FormLabel>{t('admin:hardwareQuotesPage.additionalCharges')}</FormLabel>
               {additionalCharges.map((charge, idx) => (
                 <ChargeRow key={idx}>
                   <InlineFormGroup>
@@ -1668,7 +1670,7 @@ const HardwareQuotesPage: React.FC = () => {
 
             {/* Calculated Total */}
             <TotalRow style={{ fontSize: 18 }}>
-              <div>Invoice Total</div>
+              <div>{t('admin:hardwareQuotesPage.invoiceTotal')}</div>
               <div>{formatCurrency(calculateInvoiceTotal(), quoteCurrency)}</div>
             </TotalRow>
           </CommonModal>
@@ -1687,7 +1689,7 @@ const HardwareQuotesPage: React.FC = () => {
                 </ActionButton>
               ) : (
                 <>
-                  <ActionButton onClick={() => setShowProceedModal(false)}>Cancel</ActionButton>
+                  <ActionButton onClick={() => setShowProceedModal(false)}>{t('admin:hardwareQuotesPage.cancel')}</ActionButton>
                   <ActionButton variant="primary" onClick={proceedContract} disabled={proceeding || !selectedQuote.user_id}>
                     {proceeding ? 'Processing...' : 'Proceed Contract'}
                   </ActionButton>
@@ -1697,7 +1699,7 @@ const HardwareQuotesPage: React.FC = () => {
           >
             {proceedResult ? (
               <div style={{ background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8, padding: 24, textAlign: 'center', color: '#065F46', lineHeight: 1.6 }}>
-                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>Contract Created Successfully</div>
+                <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12 }}>{t('admin:hardwareQuotesPage.contractCreatedSuccessfully')}</div>
                 {proceedResult.hardware_invoice && (
                   <div>Hardware Invoice: <strong style={{ fontFamily: 'monospace' }}>{proceedResult.hardware_invoice}</strong></div>
                 )}
@@ -1714,7 +1716,7 @@ const HardwareQuotesPage: React.FC = () => {
                 )}
 
                 {/* Hardware Summary */}
-                <SectionTitle style={{ marginTop: 0 }}>Hardware</SectionTitle>
+                <SectionTitle style={{ marginTop: 0 }}>{t('admin:hardwareQuotesPage.hardware')}</SectionTitle>
                 <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 16, marginBottom: 20 }}>
                   <AddonRow>
                     <div><strong>{selectedQuote.packageProduct?.name || selectedQuote.package_snapshot?.name || 'N/A'}</strong></div>
@@ -1727,7 +1729,7 @@ const HardwareQuotesPage: React.FC = () => {
                     </AddonRow>
                   ))}
                   <TotalRow>
-                    <div>Hardware Subtotal</div>
+                    <div>{t('admin:hardwareQuotesPage.hardwareSubtotal')}</div>
                     <div>{formatCurrency(selectedQuote.total_amount, quoteCurrency)}</div>
                   </TotalRow>
                 </div>
@@ -1735,7 +1737,7 @@ const HardwareQuotesPage: React.FC = () => {
                 {/* Subscription Plan Summary */}
                 {selectedQuote.plan_snapshot && (
                   <>
-                    <SectionTitle>Subscription Plan</SectionTitle>
+                    <SectionTitle>{t('admin:hardwareQuotesPage.subscriptionPlan')}</SectionTitle>
                     <div style={{ background: '#ECFDF5', borderRadius: 8, padding: 16, marginBottom: 20, borderLeft: '3px solid #059669' }}>
                       <div style={{ fontWeight: 600, fontSize: 14, color: '#0A2540', marginBottom: 4 }}>
                         {selectedQuote.plan_snapshot.display_name}
@@ -1756,7 +1758,7 @@ const HardwareQuotesPage: React.FC = () => {
 
                 {/* Due Date */}
                 <FormGroup>
-                  <FormLabel>Due Date</FormLabel>
+                  <FormLabel>{t('admin:hardwareQuotesPage.dueDate')}</FormLabel>
                   <FormInput
                     type="date"
                     value={proceedDueDate}
@@ -1766,16 +1768,16 @@ const HardwareQuotesPage: React.FC = () => {
 
                 {/* Discount (for hardware) */}
                 <FormGroup>
-                  <FormLabel>Hardware Discount</FormLabel>
+                  <FormLabel>{t('admin:hardwareQuotesPage.hardwareDiscount')}</FormLabel>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <FormSelect
                       style={{ width: 'auto', minWidth: 150 }}
                       value={proceedDiscountType}
                       onChange={(e) => setProceedDiscountType(e.target.value as 'none' | 'percentage' | 'fixed')}
                     >
-                      <option value="none">No Discount</option>
+                      <option value="none">{t('admin:hardwareQuotesPage.noDiscount')}</option>
                       <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed Amount</option>
+                      <option value="fixed">{t('admin:hardwareQuotesPage.fixedAmount')}</option>
                     </FormSelect>
                     {proceedDiscountType !== 'none' && (
                       <FormInput
@@ -1793,7 +1795,7 @@ const HardwareQuotesPage: React.FC = () => {
 
                 {/* Additional Charges */}
                 <FormGroup>
-                  <FormLabel>Additional Charges</FormLabel>
+                  <FormLabel>{t('admin:hardwareQuotesPage.additionalCharges')}</FormLabel>
                   {proceedCharges.map((charge, idx) => (
                     <ChargeRow key={idx}>
                       <InlineFormGroup>
@@ -1838,7 +1840,7 @@ const HardwareQuotesPage: React.FC = () => {
 
                 {/* Calculated Total */}
                 <TotalRow style={{ fontSize: 18 }}>
-                  <div>Hardware Invoice Total</div>
+                  <div>{t('admin:hardwareQuotesPage.hardwareInvoiceTotal')}</div>
                   <div>{formatCurrency(calculateProceedTotal(), quoteCurrency)}</div>
                 </TotalRow>
               </>
@@ -1854,8 +1856,8 @@ const HardwareQuotesPage: React.FC = () => {
             title="Confirm Delete"
             footer={
               <>
-                <ActionButton onClick={() => setShowDeleteConfirm(false)}>Cancel</ActionButton>
-                <ActionButton variant="danger" onClick={deleteQuote}>Delete</ActionButton>
+                <ActionButton onClick={() => setShowDeleteConfirm(false)}>{t('admin:hardwareQuotesPage.cancel')}</ActionButton>
+                <ActionButton variant="danger" onClick={deleteQuote}>{t('admin:hardwareQuotesPage.delete')}</ActionButton>
               </>
             }
           >

@@ -7,6 +7,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { useTranslation } from 'react-i18next';
 
 interface Restaurant {
   id: string;
@@ -185,6 +186,7 @@ const ProgressBar = styled.div<{ percentage: number }>`
 `;
 
 const ManagerReportsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const location = useLocation();
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
@@ -383,7 +385,7 @@ const ManagerReportsPage: React.FC = () => {
               value={selectedRestaurant}
               onChange={(e) => setSelectedRestaurant(e.target.value)}
             >
-              <option value="all">All Restaurants</option>
+              <option value="all">{t('admin:managerReportsPage.allRestaurants')}</option>
               {restaurants.map(restaurant => (
                 <option key={restaurant.id} value={restaurant.id}>
                   {restaurant.name} - {restaurant.location}
@@ -396,37 +398,37 @@ const ManagerReportsPage: React.FC = () => {
           <StatsGrid>
             <StatCard>
               <StatValue>{formatCurrency(reportData.totalRevenue, selectedCurrency)}</StatValue>
-              <StatLabel>Total Revenue</StatLabel>
+              <StatLabel>{t('admin:managerReportsPage.totalRevenue')}</StatLabel>
               <StatTrend trend="up">+18% vs yesterday</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{reportData.totalOrders}</StatValue>
-              <StatLabel>Total Orders</StatLabel>
+              <StatLabel>{t('admin:managerReportsPage.totalOrders')}</StatLabel>
               <StatTrend trend="up">+12% vs yesterday</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{formatCurrency(reportData.averageOrderValue, selectedCurrency)}</StatValue>
-              <StatLabel>Average Order Value</StatLabel>
+              <StatLabel>{t('admin:managerReportsPage.averageOrderValue')}</StatLabel>
               <StatTrend trend="up">+5.3% vs yesterday</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{reportData.customerCount}</StatValue>
-              <StatLabel>Customer Count</StatLabel>
+              <StatLabel>{t('admin:managerReportsPage.customerCount')}</StatLabel>
               <StatTrend trend="up">+24% vs yesterday</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{selectedRestaurant === 'all' ? restaurants.length : 1}</StatValue>
-              <StatLabel>Active Restaurants</StatLabel>
-              <StatTrend>All operational</StatTrend>
+              <StatLabel>{t('admin:managerReportsPage.activeRestaurants')}</StatLabel>
+              <StatTrend>{t('admin:managerReportsPage.allOperational')}</StatTrend>
             </StatCard>
           </StatsGrid>
 
           {/* Order Analysis */}
           <ReportSection>
-            <SectionTitle>Order Analysis</SectionTitle>
+            <SectionTitle>{t('admin:managerReportsPage.orderAnalysis')}</SectionTitle>
             <ReportGrid>
               <div>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>Revenue Trend</h4>
+                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('admin:managerReportsPage.revenueTrend')}</h4>
                 <ChartPlaceholder>
                   Revenue trend chart will be displayed here
                   <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
@@ -435,7 +437,7 @@ const ManagerReportsPage: React.FC = () => {
                 </ChartPlaceholder>
               </div>
               <div>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>Order Distribution</h4>
+                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('admin:managerReportsPage.orderDistribution')}</h4>
                 <ChartPlaceholder>
                   🍰 Order distribution pie chart
                   <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
@@ -448,43 +450,43 @@ const ManagerReportsPage: React.FC = () => {
 
           {/* Customer Analysis - Enhanced */}
           <ReportSection>
-            <SectionTitle>Customer Analysis</SectionTitle>
+            <SectionTitle>{t('admin:managerReportsPage.customerAnalysis')}</SectionTitle>
             <StatsGrid style={{ marginBottom: '24px' }}>
               <StatCard>
                 <StatValue>{reportData.customerAnalysis.totalCustomers}</StatValue>
-                <StatLabel>Total Customers</StatLabel>
-                <StatTrend trend="up">Active across all restaurants</StatTrend>
+                <StatLabel>{t('admin:managerReportsPage.totalCustomers')}</StatLabel>
+                <StatTrend trend="up">{t('admin:managerReportsPage.activeAcrossAllRestaurants')}</StatTrend>
               </StatCard>
               <StatCard>
                 <StatValue>{reportData.customerAnalysis.newCustomers}</StatValue>
-                <StatLabel>New Customers</StatLabel>
+                <StatLabel>{t('admin:managerReportsPage.newCustomers')}</StatLabel>
                 <StatTrend trend="up">+15% vs last period</StatTrend>
               </StatCard>
               <StatCard>
                 <StatValue>{reportData.customerAnalysis.vipCustomers}</StatValue>
-                <StatLabel>VIP Customers</StatLabel>
+                <StatLabel>{t('admin:managerReportsPage.vipCustomers')}</StatLabel>
                 <StatTrend trend="up">{Math.round((reportData.customerAnalysis.vipCustomers/reportData.customerAnalysis.totalCustomers)*100)}% of total</StatTrend>
               </StatCard>
               <StatCard>
                 <StatValue>{reportData.customerAnalysis.averageOrdersPerCustomer}</StatValue>
-                <StatLabel>Avg Orders per Customer</StatLabel>
+                <StatLabel>{t('admin:managerReportsPage.avgOrdersPerCustomer')}</StatLabel>
                 <StatTrend trend="up">+0.3 vs last period</StatTrend>
               </StatCard>
               <StatCard>
                 <StatValue>{reportData.customerAnalysis.customerRetentionRate}%</StatValue>
-                <StatLabel>Customer Retention</StatLabel>
+                <StatLabel>{t('admin:managerReportsPage.customerRetention')}</StatLabel>
                 <StatTrend trend="up">+2.1% vs last period</StatTrend>
               </StatCard>
               <StatCard>
                 <StatValue>{reportData.customerAnalysis.satisfaction}/5.0</StatValue>
-                <StatLabel>Satisfaction Score</StatLabel>
+                <StatLabel>{t('admin:managerReportsPage.satisfactionScore')}</StatLabel>
                 <StatTrend trend="up">+0.2 vs last period</StatTrend>
               </StatCard>
             </StatsGrid>
             
             <ReportGrid>
               <div>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>Customer Segmentation</h4>
+                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('admin:managerReportsPage.customerSegmentation')}</h4>
                 <ChartPlaceholder>
                   Customer tier distribution
                   <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
@@ -493,7 +495,7 @@ const ManagerReportsPage: React.FC = () => {
                 </ChartPlaceholder>
               </div>
               <div>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>Customer Growth</h4>
+                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540', marginBottom: '16px' }}>{t('admin:managerReportsPage.customerGrowth')}</h4>
                 <ChartPlaceholder>
                   Customer acquisition trend
                   <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.7 }}>
@@ -506,15 +508,15 @@ const ManagerReportsPage: React.FC = () => {
 
           {/* Popular Items */}
           <ReportSection>
-            <SectionTitle>Popular Items</SectionTitle>
+            <SectionTitle>{t('admin:managerReportsPage.popularItems')}</SectionTitle>
             <Table>
               <thead>
                 <tr>
-                  <TableHeader>Rank</TableHeader>
-                  <TableHeader>Item Name</TableHeader>
-                  <TableHeader>Quantity Sold</TableHeader>
-                  <TableHeader>Revenue</TableHeader>
-                  <TableHeader>Performance</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.rank')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.itemName')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.quantitySold')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.revenue')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.performance')}</TableHeader>
                 </tr>
               </thead>
               <tbody>
@@ -548,7 +550,7 @@ const ManagerReportsPage: React.FC = () => {
 
           {/* Hourly Analysis */}
           <ReportSection>
-            <SectionTitle>Hourly Analysis</SectionTitle>
+            <SectionTitle>{t('admin:managerReportsPage.hourlyAnalysis')}</SectionTitle>
             <div style={{ marginBottom: '20px' }}>
               <ChartPlaceholder style={{ height: '250px' }}>
                 Hourly orders and revenue bar chart
@@ -560,10 +562,10 @@ const ManagerReportsPage: React.FC = () => {
             <Table>
               <thead>
                 <tr>
-                  <TableHeader>Time Slot</TableHeader>
-                  <TableHeader>Orders</TableHeader>
-                  <TableHeader>Revenue</TableHeader>
-                  <TableHeader>Avg Order Value</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.timeSlot')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.orders')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.revenue')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.avgOrderValue')}</TableHeader>
                 </tr>
               </thead>
               <tbody>
@@ -581,14 +583,14 @@ const ManagerReportsPage: React.FC = () => {
 
           {/* Staff Performance */}
           <ReportSection>
-            <SectionTitle>Staff Performance</SectionTitle>
+            <SectionTitle>{t('admin:managerReportsPage.staffPerformance')}</SectionTitle>
             <Table>
               <thead>
                 <tr>
-                  <TableHeader>Staff Name</TableHeader>
-                  <TableHeader>Orders Handled</TableHeader>
-                  <TableHeader>Efficiency</TableHeader>
-                  <TableHeader>Performance</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.staffName')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.ordersHandled')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.efficiency')}</TableHeader>
+                  <TableHeader>{t('admin:managerReportsPage.performance')}</TableHeader>
                 </tr>
               </thead>
               <tbody>

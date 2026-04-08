@@ -8,6 +8,7 @@ import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -383,6 +384,7 @@ const PIE_COLORS = ['#EA580C', '#F97316', '#FB923C', '#FDBA74', '#FED7AA', '#FFF
 // ============================================================================
 
 const FoodcourtGeneralDashboard: React.FC = () => {
+  const { t } = useTranslation('foodcourt');
   const navigate = useNavigate();
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
@@ -578,9 +580,9 @@ const FoodcourtGeneralDashboard: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <Header><Title>Foodcourt Dashboard</Title></Header>
+        <Header><Title>{t('foodcourt:foodcourtGeneralDashboard.foodcourtDashboard')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px' }}>Loading dashboard...</div>
+          <div style={{ textAlign: 'center', padding: '40px' }}>{t('foodcourt:foodcourtGeneralDashboard.loadingDashboard')}</div>
         </Content>
       </Container>
     );
@@ -589,7 +591,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Foodcourt Dashboard</Title>
+        <Title>{t('foodcourt:foodcourtGeneralDashboard.foodcourtDashboard')}</Title>
         {subscriptionInfo.planType && (
           <Subtitle>
             <span>{subscriptionInfo.planType}</span>
@@ -597,12 +599,12 @@ const FoodcourtGeneralDashboard: React.FC = () => {
               const s = subscriptionInfo;
               if (s.status === 'trial') return <SubscriptionBadge variant="trial" onClick={() => navigate('/pos/profile?tab=subscription')}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
               if (s.status === 'active' && s.daysLeft !== undefined) {
-                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>Expired</SubscriptionBadge>;
+                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('foodcourt:foodcourtGeneralDashboard.expired')}</SubscriptionBadge>;
                 if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
                 return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
               }
               if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.status}</SubscriptionBadge>;
-              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>Active</SubscriptionBadge>;
+              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('foodcourt:foodcourtGeneralDashboard.active')}</SubscriptionBadge>;
             })()}
           </Subtitle>
         )}
@@ -616,35 +618,35 @@ const FoodcourtGeneralDashboard: React.FC = () => {
         {/* KPI Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#EA580C">
-            <DashboardStatLabel>Tenant Restaurants</DashboardStatLabel>
+            <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.tenantRestaurants')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalRestaurants}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#059669">
-            <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.monthlyRevenue')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(stats.monthlyRevenue, currency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#2563EB">
-            <DashboardStatLabel>Monthly Orders</DashboardStatLabel>
+            <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.monthlyOrders')}</DashboardStatLabel>
             <DashboardStatValue>{stats.monthlyOrders.toLocaleString()}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#7C3AED">
-            <DashboardStatLabel>Avg Revenue / Tenant</DashboardStatLabel>
+            <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.avgRevenueTenant')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(stats.avgRevenuePerTenant, currency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#F59E0B">
-            <DashboardStatLabel>Pending Invoices</DashboardStatLabel>
+            <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.pendingInvoices')}</DashboardStatLabel>
             <DashboardStatValue>{stats.pendingInvoices}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color={stats.overdueInvoices > 0 ? '#EF4444' : '#059669'}>
-            <DashboardStatLabel>Overdue Invoices</DashboardStatLabel>
+            <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.overdueInvoices')}</DashboardStatLabel>
             <DashboardStatValue>{stats.overdueInvoices}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#10B981">
-            <DashboardStatLabel>Active Plans</DashboardStatLabel>
+            <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.activePlans')}</DashboardStatLabel>
             <DashboardStatValue>{stats.activePlans}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#6366F1">
-            <DashboardStatLabel>Foodcourt Managers</DashboardStatLabel>
+            <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.foodcourtManagers')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalManagers}</DashboardStatValue>
           </DashboardStatCard>
         </DashboardStatsGrid>
@@ -653,7 +655,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
         <MainGrid>
           <ChartContainer>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>Revenue Trend</h3>
+              <h3 style={{ margin: 0 }}>{t('foodcourt:foodcourtGeneralDashboard.revenueTrend')}</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {(['week', 'month', 'year'] as const).map(p => (
                   <button
@@ -689,12 +691,12 @@ const FoodcourtGeneralDashboard: React.FC = () => {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <LoadingContainer>No sales data for this period</LoadingContainer>
+              <LoadingContainer>{t('foodcourt:foodcourtGeneralDashboard.noSalesDataForThisPeriod')}</LoadingContainer>
             )}
           </ChartContainer>
 
           <AlertsPanel>
-            <h3>Notifications</h3>
+            <h3>{t('foodcourt:foodcourtGeneralDashboard.notifications')}</h3>
             <AlertsList>
               {alerts.map((alert, idx) => (
                 <Alert key={idx} type={alert.type} onClick={() => alert.link && navigate(alert.link)}>
@@ -710,27 +712,27 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <QuickActionsSection>
-          <h3>Quick Actions</h3>
+          <h3>{t('foodcourt:foodcourtGeneralDashboard.quickActions')}</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/general/management')}>
               <div className="icon">◉</div>
-              <div className="title">Foodcourts</div>
-              <div className="description">Foodcourt management</div>
+              <div className="title">{t('foodcourt:foodcourtGeneralDashboard.foodcourts')}</div>
+              <div className="description">{t('foodcourt:foodcourtGeneralDashboard.foodcourtManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/invoices')}>
               <div className="icon">▦</div>
-              <div className="title">Invoices</div>
-              <div className="description">Invoice management</div>
+              <div className="title">{t('foodcourt:foodcourtGeneralDashboard.invoices')}</div>
+              <div className="description">{t('foodcourt:foodcourtGeneralDashboard.invoiceManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/plans')}>
               <div className="icon">☰</div>
-              <div className="title">Subscription Plans</div>
-              <div className="description">Plan configuration</div>
+              <div className="title">{t('foodcourt:foodcourtGeneralDashboard.subscriptionPlans')}</div>
+              <div className="description">{t('foodcourt:foodcourtGeneralDashboard.planConfiguration')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/general/reports')}>
               <div className="icon">▲</div>
-              <div className="title">Statistics</div>
-              <div className="description">Performance analytics</div>
+              <div className="title">{t('foodcourt:foodcourtGeneralDashboard.statistics')}</div>
+              <div className="description">{t('foodcourt:foodcourtGeneralDashboard.performanceAnalytics')}</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>
@@ -739,7 +741,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
         <ChartGrid>
           <ChartCard>
             <ChartHeader>
-              <ChartTitle>Revenue Distribution</ChartTitle>
+              <ChartTitle>{t('foodcourt:foodcourtGeneralDashboard.revenueDistribution')}</ChartTitle>
             </ChartHeader>
             {pieData.length > 0 ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
@@ -764,25 +766,25 @@ const FoodcourtGeneralDashboard: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <LoadingContainer>No revenue data available</LoadingContainer>
+              <LoadingContainer>{t('foodcourt:foodcourtGeneralDashboard.noRevenueDataAvailable')}</LoadingContainer>
             )}
           </ChartCard>
         </ChartGrid>
 
         {/* Tenant Performance Table */}
         <RecentOrdersSection>
-          <h3>Tenant Performance</h3>
+          <h3>{t('foodcourt:foodcourtGeneralDashboard.tenantPerformance')}</h3>
         </RecentOrdersSection>
         <TableContainer>
           <Table>
             <Thead>
               <Tr>
-                <Th>Tenant</Th>
-                <Th>Plan</Th>
-                <Th>Monthly Revenue</Th>
-                <Th>Orders</Th>
-                <Th>Estimated Charges</Th>
-                <Th>Invoice Status</Th>
+                <Th>{t('foodcourt:foodcourtGeneralDashboard.tenant')}</Th>
+                <Th>{t('foodcourt:foodcourtGeneralDashboard.plan')}</Th>
+                <Th>{t('foodcourt:foodcourtGeneralDashboard.monthlyRevenue')}</Th>
+                <Th>{t('foodcourt:foodcourtGeneralDashboard.orders')}</Th>
+                <Th>{t('foodcourt:foodcourtGeneralDashboard.estimatedCharges')}</Th>
+                <Th>{t('foodcourt:foodcourtGeneralDashboard.invoiceStatus')}</Th>
               </Tr>
             </Thead>
             <Tbody>

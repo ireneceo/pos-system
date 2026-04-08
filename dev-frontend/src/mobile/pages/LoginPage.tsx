@@ -6,6 +6,7 @@ import MobileAlertModal from '../components/common/MobileAlertModal';
 import { useCustomer, Customer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import PhoneInput from '../components/common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 const ContentWrapper = styled.div`
   padding: 20px 0;
@@ -163,6 +164,7 @@ const Tab = styled.button<{ active: boolean }>`
 `;
 
 const LoginPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const { setCurrentCustomer } = useCustomer();

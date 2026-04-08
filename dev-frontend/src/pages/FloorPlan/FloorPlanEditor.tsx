@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useParams } from 'react-router-dom';
 import { FloorPlanData, FloorTable, DEFAULT_FLOOR_PLAN, TABLE_SHAPES, FIXTURE_PRESETS } from './types';
 import FloorPlanCanvas from './FloorPlanCanvas';
+import { useTranslation } from 'react-i18next';
 
 // ─── Styled Components ───
 
@@ -261,6 +262,7 @@ const StatusMsg = styled.div<{ $type: 'success' | 'info' }>`
 // ─── Main Component ───
 
 const FloorPlanEditor: React.FC = () => {
+  const { t } = useTranslation('floorplan');
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -504,7 +506,9 @@ const FloorPlanEditor: React.FC = () => {
     document.addEventListener('touchmove', handleMove, { passive: false });
     document.addEventListener('touchend', handleUp);
 
-    return () => {
+  // useTranslation moved to component level
+
+  return () => {
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
       document.removeEventListener('touchmove', handleMove);
@@ -533,8 +537,8 @@ const FloorPlanEditor: React.FC = () => {
   if (loading) {
     return (
       <PageContainer>
-        <Header><HeaderTitle>Floor Plan Editor</HeaderTitle></Header>
-        <Content><div style={{ color: '#6B7C93' }}>Loading...</div></Content>
+        <Header><HeaderTitle>{t('floorplan:floorPlanEditor.floorPlanEditor')}</HeaderTitle></Header>
+        <Content><div style={{ color: '#6B7C93' }}>{t('floorplan:floorPlanEditor.loading')}</div></Content>
       </PageContainer>
     );
   }
@@ -542,10 +546,10 @@ const FloorPlanEditor: React.FC = () => {
   return (
     <PageContainer>
       <Header>
-        <HeaderTitle>Floor Plan Editor</HeaderTitle>
+        <HeaderTitle>{t('floorplan:floorPlanEditor.floorPlanEditor')}</HeaderTitle>
         <HeaderActions>
           {statusMsg && <StatusMsg $type="success">{statusMsg}</StatusMsg>}
-          {hasChanges && <StatusMsg $type="info">Unsaved changes</StatusMsg>}
+          {hasChanges && <StatusMsg $type="info">{t('floorplan:floorPlanEditor.unsavedChanges')}</StatusMsg>}
           <Btn $variant="secondary" onClick={handleUndo} disabled={undoStack.length === 0}>
             Undo
           </Btn>
@@ -587,7 +591,7 @@ const FloorPlanEditor: React.FC = () => {
 
           {/* Text Labels (Kitchen, Entrance) */}
           <SidebarCard>
-            <CardTitle>Labels</CardTitle>
+            <CardTitle>{t('floorplan:floorPlanEditor.labels')}</CardTitle>
             <ShapeGrid>
               {FIXTURE_PRESETS.filter(p => p.textOnly).map(preset => (
                 <ShapeBtn
@@ -610,7 +614,7 @@ const FloorPlanEditor: React.FC = () => {
                 <CardTitle>{isFixture ? 'Fixture Properties' : 'Table Properties'}</CardTitle>
                 {!isFixture && (
                   <FormGroup>
-                    <FormLabel>Table Number</FormLabel>
+                    <FormLabel>{t('floorplan:floorPlanEditor.tableNumber')}</FormLabel>
                     <FormSelect
                       value={selectedTable.tableNumber}
                       onChange={(e) => updateTable({ tableNumber: e.target.value, label: e.target.value })}
@@ -623,7 +627,7 @@ const FloorPlanEditor: React.FC = () => {
                   </FormGroup>
                 )}
                 <FormGroup>
-                  <FormLabel>Label</FormLabel>
+                  <FormLabel>{t('floorplan:floorPlanEditor.label')}</FormLabel>
                   <FormInput
                     value={selectedTable.label}
                     onChange={(e) => updateTable({ label: e.target.value })}
@@ -632,7 +636,7 @@ const FloorPlanEditor: React.FC = () => {
                 {!isFixture && (
                   <>
                     <FormGroup>
-                      <FormLabel>Shape</FormLabel>
+                      <FormLabel>{t('floorplan:floorPlanEditor.shape')}</FormLabel>
                       <FormSelect
                         value={selectedTable.shape}
                         onChange={(e) => {
@@ -647,7 +651,7 @@ const FloorPlanEditor: React.FC = () => {
                       </FormSelect>
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Size</FormLabel>
+                      <FormLabel>{t('floorplan:floorPlanEditor.size')}</FormLabel>
                       <SizeRow>
                         {(() => {
                           const isRect = selectedTable.shape === 'rectangle';
@@ -670,7 +674,7 @@ const FloorPlanEditor: React.FC = () => {
                       </SizeRow>
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Seats</FormLabel>
+                      <FormLabel>{t('floorplan:floorPlanEditor.seats')}</FormLabel>
                       <FormInput
                         type="number"
                         min={1} max={20}
@@ -682,7 +686,7 @@ const FloorPlanEditor: React.FC = () => {
                 )}
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Width</FormLabel>
+                    <FormLabel>{t('floorplan:floorPlanEditor.width')}</FormLabel>
                     <FormInput
                       type="number"
                       min={30} max={300}
@@ -697,7 +701,7 @@ const FloorPlanEditor: React.FC = () => {
                     />
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Height</FormLabel>
+                    <FormLabel>{t('floorplan:floorPlanEditor.height')}</FormLabel>
                     <FormInput
                       type="number"
                       min={30} max={300}
@@ -716,7 +720,7 @@ const FloorPlanEditor: React.FC = () => {
 
           {/* Canvas Settings */}
           <SidebarCard>
-            <CardTitle>Canvas</CardTitle>
+            <CardTitle>{t('floorplan:floorPlanEditor.canvas')}</CardTitle>
             <CheckboxRow>
               <input
                 type="checkbox"
@@ -729,7 +733,7 @@ const FloorPlanEditor: React.FC = () => {
               Show Grid
             </CheckboxRow>
             <FormGroup style={{ marginTop: '8px' }}>
-              <FormLabel>Grid Size</FormLabel>
+              <FormLabel>{t('floorplan:floorPlanEditor.gridSize')}</FormLabel>
               <FormInput
                 type="number"
                 min={10} max={50} step={5}

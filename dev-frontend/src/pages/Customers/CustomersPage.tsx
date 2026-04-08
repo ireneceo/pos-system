@@ -11,6 +11,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PageHeader from '../../components/Common/PageHeader';
+import { useTranslation } from 'react-i18next';
 
 // 스타일 컴포넌트
 const CustomersContainer = styled.div`
@@ -357,6 +358,7 @@ const DetailValue = styled.span`
 
 
 const CustomersPage: React.FC = () => {
+  const { t } = useTranslation('customers');
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const {
     customers,
@@ -526,31 +528,31 @@ const CustomersPage: React.FC = () => {
               value={tierFilter}
               onChange={(e) => setTierFilter(e.target.value)}
             >
-              <option value="all">All Tiers</option>
-              <option value="Bronze">Bronze</option>
-              <option value="Silver">Silver</option>
-              <option value="Gold">Gold</option>
-              <option value="VIP">VIP</option>
+              <option value="all">{t('customers:customersPage.allTiers')}</option>
+              <option value="Bronze">{t('customers:customersPage.bronze')}</option>
+              <option value="Silver">{t('customers:customersPage.silver')}</option>
+              <option value="Gold">{t('customers:customersPage.gold')}</option>
+              <option value="VIP">{t('customers:customersPage.vip')}</option>
             </FilterSelect>
 
             <FilterSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">{t('customers:customersPage.allStatus')}</option>
+              <option value="active">{t('customers:customersPage.active')}</option>
+              <option value="inactive">{t('customers:customersPage.inactive')}</option>
             </FilterSelect>
 
             <FilterSelect
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
             >
-              <option value="name">Sort by Name</option>
-              <option value="joinDate">Sort by Join Date</option>
-              <option value="totalSpent">Sort by Total Spent</option>
-              <option value="totalOrders">Sort by Orders</option>
-              <option value="points">Sort by Points</option>
+              <option value="name">{t('customers:customersPage.sortByName')}</option>
+              <option value="joinDate">{t('customers:customersPage.sortByJoinDate')}</option>
+              <option value="totalSpent">{t('customers:customersPage.sortByTotalSpent')}</option>
+              <option value="totalOrders">{t('customers:customersPage.sortByOrders')}</option>
+              <option value="points">{t('customers:customersPage.sortByPoints')}</option>
             </FilterSelect>
 
             <SearchContainer>
@@ -566,33 +568,33 @@ const CustomersPage: React.FC = () => {
 
           <StatsGrid>
             <StatCard color="#635BFF">
-              <StatLabel>Total Customers</StatLabel>
+              <StatLabel>{t('customers:customersPage.totalCustomers')}</StatLabel>
               <StatValue>{stats.totalCustomers}</StatValue>
             </StatCard>
             <StatCard color="#10B981">
-              <StatLabel>Active Customers</StatLabel>
+              <StatLabel>{t('customers:customersPage.activeCustomers')}</StatLabel>
               <StatValue>{stats.activeCustomers}</StatValue>
             </StatCard>
             <StatCard color="#F59E0B">
-              <StatLabel>VIP Members</StatLabel>
+              <StatLabel>{t('customers:customersPage.vipMembers')}</StatLabel>
               <StatValue>{stats.vipCustomers}</StatValue>
             </StatCard>
             <StatCard color="#8B5CF6">
-              <StatLabel>Avg Orders per Customer</StatLabel>
+              <StatLabel>{t('customers:customersPage.avgOrdersPerCustomer')}</StatLabel>
               <StatValue>{stats.averageOrders}</StatValue>
             </StatCard>
           </StatsGrid>
 
           <CustomersTable>
             <TableHeader style={{ minWidth: '960px' }}>
-              <span>Customer</span>
-              <span>Contact</span>
-              <span>Tier</span>
-              <span>Points</span>
-              <span>Orders</span>
-              <span>Total Spent</span>
-              <span>Coupons</span>
-              <span>Actions</span>
+              <span>{t('customers:customersPage.customer')}</span>
+              <span>{t('customers:customersPage.contact')}</span>
+              <span>{t('customers:customersPage.tier')}</span>
+              <span>{t('customers:customersPage.points')}</span>
+              <span>{t('customers:customersPage.orders')}</span>
+              <span>{t('customers:customersPage.totalSpent')}</span>
+              <span>{t('customers:customersPage.coupons')}</span>
+              <span>{t('customers:customersPage.actions')}</span>
               <span></span>
             </TableHeader>
             
@@ -761,46 +763,46 @@ const CustomersPage: React.FC = () => {
                 </DetailSection>
 
                 <DetailSection>
-                  <DetailTitle>Contact Information</DetailTitle>
+                  <DetailTitle>{t('customers:customersPage.contactInformation')}</DetailTitle>
                   <DetailGrid>
                     <DetailItem>
-                      <DetailLabel>Phone Number</DetailLabel>
+                      <DetailLabel>{t('customers:customersPage.phoneNumber')}</DetailLabel>
                       <DetailValue>{formatPhoneForDisplay(selectedCustomer.phone)}</DetailValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailLabel>Email Address</DetailLabel>
+                      <DetailLabel>{t('customers:customersPage.emailAddress')}</DetailLabel>
                       <DetailValue>{selectedCustomer.email || 'Not provided'}</DetailValue>
                     </DetailItem>
                   </DetailGrid>
                 </DetailSection>
 
                 <DetailSection>
-                  <DetailTitle>Account Statistics</DetailTitle>
+                  <DetailTitle>{t('customers:customersPage.accountStatistics')}</DetailTitle>
                   <DetailGrid>
                     <DetailItem>
-                      <DetailLabel>Member Since</DetailLabel>
+                      <DetailLabel>{t('customers:customersPage.memberSince')}</DetailLabel>
                       <DetailValue>{formatDate(selectedCustomer.joinDate)}</DetailValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailLabel>Last Order</DetailLabel>
+                      <DetailLabel>{t('customers:customersPage.lastOrder')}</DetailLabel>
                       <DetailValue>
                         {selectedCustomer.lastOrderDate ? formatDate(selectedCustomer.lastOrderDate) : 'No orders yet'}
                       </DetailValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailLabel>Total Orders</DetailLabel>
+                      <DetailLabel>{t('customers:customersPage.totalOrders')}</DetailLabel>
                       <DetailValue>{selectedCustomer.totalOrders} orders</DetailValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailLabel>Total Spent</DetailLabel>
+                      <DetailLabel>{t('customers:customersPage.totalSpent')}</DetailLabel>
                       <DetailValue>{formatCurrency(selectedCustomer.totalSpent, selectedCurrency)}</DetailValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailLabel>Loyalty Points</DetailLabel>
+                      <DetailLabel>{t('customers:customersPage.loyaltyPoints')}</DetailLabel>
                       <DetailValue>{selectedCustomer.points.toLocaleString()} points</DetailValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailLabel>Average Order Value</DetailLabel>
+                      <DetailLabel>{t('customers:customersPage.averageOrderValue')}</DetailLabel>
                       <DetailValue>
                         {formatCurrency(selectedCustomer.totalOrders > 0
                           ? (selectedCustomer.totalSpent / selectedCustomer.totalOrders)
@@ -812,7 +814,7 @@ const CustomersPage: React.FC = () => {
 
                 {selectedCustomer.favoriteItems.length > 0 && (
                   <DetailSection>
-                    <DetailTitle>Favorite Items</DetailTitle>
+                    <DetailTitle>{t('customers:customersPage.favoriteItems')}</DetailTitle>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {selectedCustomer.favoriteItems.map((itemId, index) => (
                         <span 
@@ -833,9 +835,9 @@ const CustomersPage: React.FC = () => {
                 )}
 
                 <DetailSection>
-                  <DetailTitle>Coupons</DetailTitle>
+                  <DetailTitle>{t('customers:customersPage.coupons')}</DetailTitle>
                   {loadingCoupons ? (
-                    <div style={{ color: '#6B7280', fontSize: '14px' }}>Loading...</div>
+                    <div style={{ color: '#6B7280', fontSize: '14px' }}>{t('customers:customersPage.loading')}</div>
                   ) : customerCoupons ? (
                     <>
                       {customerCoupons.available.length > 0 && (
@@ -885,11 +887,11 @@ const CustomersPage: React.FC = () => {
                         </div>
                       )}
                       {customerCoupons.available.length === 0 && customerCoupons.history.length === 0 && (
-                        <div style={{ color: '#6B7280', fontSize: '14px' }}>No coupons available or used</div>
+                        <div style={{ color: '#6B7280', fontSize: '14px' }}>{t('customers:customersPage.noCouponsAvailableOrUsed')}</div>
                       )}
                     </>
                   ) : (
-                    <div style={{ color: '#6B7280', fontSize: '14px' }}>No coupon data</div>
+                    <div style={{ color: '#6B7280', fontSize: '14px' }}>{t('customers:customersPage.noCouponData')}</div>
                   )}
                 </DetailSection>
               </>

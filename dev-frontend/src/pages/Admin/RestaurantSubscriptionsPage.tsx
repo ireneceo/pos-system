@@ -4,6 +4,7 @@ import { Modal as CommonModal } from '../../components/UI';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -426,6 +427,7 @@ const TextArea = styled.textarea`
 
 
 const RestaurantSubscriptionsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -664,15 +666,14 @@ const RestaurantSubscriptionsPage: React.FC = () => {
     setShowAddRestaurantModal(false);
     alert('Restaurant added successfully with 30-day trial!');
   };
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Restaurant Subscriptions</Title>
+          <Title>{t('admin:restaurantSubscriptionsPage.restaurantSubscriptions')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportReport}>Export Report</Button>
-            <Button variant="primary" onClick={handleAddRestaurant}>Add Restaurant</Button>
+            <Button variant="secondary" onClick={handleExportReport}>{t('admin:restaurantSubscriptionsPage.exportReport')}</Button>
+            <Button variant="primary" onClick={handleAddRestaurant}>{t('admin:restaurantSubscriptionsPage.addRestaurant')}</Button>
           </ActionSection>
         </Header>
         <Content>
@@ -680,23 +681,23 @@ const RestaurantSubscriptionsPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalSubscriptions}</StatValue>
-            <StatLabel>Total Restaurants</StatLabel>
+            <StatLabel>{t('admin:restaurantSubscriptionsPage.totalRestaurants')}</StatLabel>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{activeSubscriptions}</StatValue>
-            <StatLabel>Active Subscriptions</StatLabel>
+            <StatLabel>{t('admin:restaurantSubscriptionsPage.activeSubscriptions')}</StatLabel>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{trialSubscriptions}</StatValue>
-            <StatLabel>Trial Subscriptions</StatLabel>
+            <StatLabel>{t('admin:restaurantSubscriptionsPage.trialSubscriptions')}</StatLabel>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{selfPayingRestaurants}</StatValue>
-            <StatLabel>Self-Paying</StatLabel>
+            <StatLabel>{t('admin:restaurantSubscriptionsPage.selfpaying')}</StatLabel>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{formatCurrency(monthlyRevenue)}</StatValue>
-            <StatLabel>Monthly Revenue</StatLabel>
+            <StatLabel>{t('admin:restaurantSubscriptionsPage.monthlyRevenue')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -705,31 +706,31 @@ const RestaurantSubscriptionsPage: React.FC = () => {
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="trial">Trial</option>
-            <option value="expired">Expired</option>
-            <option value="suspended">Suspended</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="all">{t('admin:restaurantSubscriptionsPage.allStatus')}</option>
+            <option value="active">{t('admin:restaurantSubscriptionsPage.active')}</option>
+            <option value="trial">{t('admin:restaurantSubscriptionsPage.trial')}</option>
+            <option value="expired">{t('admin:restaurantSubscriptionsPage.expired')}</option>
+            <option value="suspended">{t('admin:restaurantSubscriptionsPage.suspended')}</option>
+            <option value="cancelled">{t('admin:restaurantSubscriptionsPage.cancelled')}</option>
           </FilterSelect>
 
           <FilterSelect
             value={filterPlan}
             onChange={(e) => setFilterPlan(e.target.value)}
           >
-            <option value="all">All Plans</option>
-            <option value="basic">Basic</option>
-            <option value="professional">Professional</option>
-            <option value="enterprise">Enterprise</option>
+            <option value="all">{t('admin:restaurantSubscriptionsPage.allPlans')}</option>
+            <option value="basic">{t('admin:restaurantSubscriptionsPage.basic')}</option>
+            <option value="professional">{t('admin:restaurantSubscriptionsPage.professional')}</option>
+            <option value="enterprise">{t('admin:restaurantSubscriptionsPage.enterprise')}</option>
           </FilterSelect>
 
           <FilterSelect
             value={filterPayment}
             onChange={(e) => setFilterPayment(e.target.value)}
           >
-            <option value="all">All Payment Types</option>
-            <option value="self">Self-Paying</option>
-            <option value="manager">Manager-Paid</option>
+            <option value="all">{t('admin:restaurantSubscriptionsPage.allPaymentTypes')}</option>
+            <option value="self">{t('admin:restaurantSubscriptionsPage.selfpaying')}</option>
+            <option value="manager">{t('admin:restaurantSubscriptionsPage.managerpaid')}</option>
           </FilterSelect>
 
           <SearchInput
@@ -742,13 +743,13 @@ const RestaurantSubscriptionsPage: React.FC = () => {
 
         <SubscriptionTable>
           <TableHeader>
-            <span>Restaurant</span>
-            <span>Manager</span>
-            <span>Plan</span>
-            <span>Price</span>
-            <span>Status</span>
-            <span>Usage</span>
-            <span>Actions</span>
+            <span>{t('admin:restaurantSubscriptionsPage.restaurant')}</span>
+            <span>{t('admin:restaurantSubscriptionsPage.manager')}</span>
+            <span>{t('admin:restaurantSubscriptionsPage.plan')}</span>
+            <span>{t('admin:restaurantSubscriptionsPage.price')}</span>
+            <span>{t('admin:restaurantSubscriptionsPage.status')}</span>
+            <span>{t('admin:restaurantSubscriptionsPage.usage')}</span>
+            <span>{t('admin:restaurantSubscriptionsPage.actions')}</span>
           </TableHeader>
 
           {filteredSubscriptions.map(subscription => (
@@ -826,39 +827,39 @@ const RestaurantSubscriptionsPage: React.FC = () => {
         
         {/* Details Modal */}
         {showDetailsModal && selectedSubscription && (
-          <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title="Subscription Details" footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>Close</Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title="Subscription Details" footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>{t('admin:restaurantSubscriptionsPage.close')}</Button></>}>
                 <DetailSection>
-                  <DetailLabel>Restaurant</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.restaurant')}</DetailLabel>
                   <DetailValue>{selectedSubscription.restaurantName}</DetailValue>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Manager</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.manager')}</DetailLabel>
                   <DetailValue>{selectedSubscription.managerName}</DetailValue>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Plan</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.plan')}</DetailLabel>
                   <DetailValue>{selectedSubscription.planType}</DetailValue>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Status</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.status')}</DetailLabel>
                   <StatusBadge status={selectedSubscription.status}>{selectedSubscription.status}</StatusBadge>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Pricing</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.pricing')}</DetailLabel>
                   <DetailValue>
                     {formatCurrency(selectedSubscription.billingCycle === 'monthly' ? selectedSubscription.monthlyFee : selectedSubscription.annualFee)}
                     /{selectedSubscription.billingCycle}
                   </DetailValue>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Order Usage</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.orderUsage')}</DetailLabel>
                   <DetailValue>
                     {selectedSubscription.currentOrders.toLocaleString()} / {formatLimit(selectedSubscription.orderLimit)}
                     {selectedSubscription.orderLimit > 0 && ` (${selectedSubscription.usagePercentage}%)`}
                   </DetailValue>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Payment Model</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.paymentModel')}</DetailLabel>
                   <DetailValue>
                     <PaymentBadge type={selectedSubscription.paymentModel}>
                       {selectedSubscription.paymentModel === 'self' ? 'Self-Paying' : 'Manager-Paid'}
@@ -869,7 +870,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                   </DetailValue>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Features</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.features')}</DetailLabel>
                   <FeaturesList>
                     {selectedSubscription.features.map((feature, index) => (
                       <li key={index}>{feature}</li>
@@ -877,19 +878,19 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                   </FeaturesList>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Subscription Period</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.subscriptionPeriod')}</DetailLabel>
                   <DetailValue>{selectedSubscription.startDate} to {selectedSubscription.endDate}</DetailValue>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Last Payment</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.lastPayment')}</DetailLabel>
                   <DetailValue>{selectedSubscription.lastPayment}</DetailValue>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Next Payment</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.nextPayment')}</DetailLabel>
                   <DetailValue>{selectedSubscription.nextPayment}</DetailValue>
                 </DetailSection>
                 <DetailSection>
-                  <DetailLabel>Auto Renew</DetailLabel>
+                  <DetailLabel>{t('admin:restaurantSubscriptionsPage.autoRenew')}</DetailLabel>
                   <DetailValue>{selectedSubscription.autoRenew ? 'Yes' : 'No'}</DetailValue>
                 </DetailSection>
           </CommonModal>
@@ -897,14 +898,14 @@ const RestaurantSubscriptionsPage: React.FC = () => {
 
         {/* Change Plan Modal */}
         {showPlanModal && selectedSubscription && (
-          <CommonModal isOpen={true} onClose={() => setShowPlanModal(false)} title="Change Plan" footer={<><Button variant="secondary" onClick={() => setShowPlanModal(false)}>Cancel</Button><Button variant="primary" onClick={confirmChangePlan}>Change Plan</Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowPlanModal(false)} title="Change Plan" footer={<><Button variant="secondary" onClick={() => setShowPlanModal(false)}>{t('admin:restaurantSubscriptionsPage.cancel')}</Button><Button variant="primary" onClick={confirmChangePlan}>{t('admin:restaurantSubscriptionsPage.changePlan')}</Button></>}>
                 <FormGroup>
                   <FormLabel>Current Plan: {selectedSubscription.planType}</FormLabel>
                   <FormLabel>Select New Plan:</FormLabel>
                   <FilterSelect value={newPlan} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewPlan(e.target.value)}>
-                    <option value="basic">Basic - RM 29/month (Up to 1k orders)</option>
-                    <option value="professional">Professional - RM 99/month (Up to 10k orders)</option>
-                    <option value="enterprise">Enterprise - RM 199/month (Unlimited orders)</option>
+                    <option value="basic">{t('admin:restaurantSubscriptionsPage.basicRm29monthUpTo1kOrders')}</option>
+                    <option value="professional">{t('admin:restaurantSubscriptionsPage.professionalRm99monthUpTo10kOrders')}</option>
+                    <option value="enterprise">{t('admin:restaurantSubscriptionsPage.enterpriseRm199monthUnlimitedOrders')}</option>
                   </FilterSelect>
                 </FormGroup>
           </CommonModal>
@@ -912,13 +913,13 @@ const RestaurantSubscriptionsPage: React.FC = () => {
 
         {/* Switch Payment Modal */}
         {showPaymentModal && selectedSubscription && (
-          <CommonModal isOpen={true} onClose={() => setShowPaymentModal(false)} title="Switch Payment Method" footer={<><Button variant="secondary" onClick={() => setShowPaymentModal(false)}>Cancel</Button><Button variant="primary" onClick={confirmSwitchPayment}>Update Payment</Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowPaymentModal(false)} title="Switch Payment Method" footer={<><Button variant="secondary" onClick={() => setShowPaymentModal(false)}>{t('admin:restaurantSubscriptionsPage.cancel')}</Button><Button variant="primary" onClick={confirmSwitchPayment}>{t('admin:restaurantSubscriptionsPage.updatePayment')}</Button></>}>
                 <FormGroup>
                   <FormLabel>Current: {selectedSubscription.paymentModel === 'self' ? 'Self-Paying' : 'Manager-Paid'}</FormLabel>
                   <FormLabel>Select New Payment Method:</FormLabel>
                   <FilterSelect value={newPaymentModel} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewPaymentModel(e.target.value)}>
-                    <option value="self">Self-Paying (Restaurant pays directly)</option>
-                    <option value="manager">Manager-Paid (Manager pays on behalf)</option>
+                    <option value="self">{t('admin:restaurantSubscriptionsPage.selfpayingRestaurantPaysDirectly')}</option>
+                    <option value="manager">{t('admin:restaurantSubscriptionsPage.managerpaidManagerPaysOnBehalf')}</option>
                   </FilterSelect>
                 </FormGroup>
           </CommonModal>
@@ -926,7 +927,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
 
         {/* Suspend Modal */}
         {showSuspendModal && selectedSubscription && (
-          <CommonModal isOpen={true} onClose={() => setShowSuspendModal(false)} title="Suspend Subscription" footer={<><Button variant="secondary" onClick={() => setShowSuspendModal(false)}>Cancel</Button><Button variant="primary" onClick={confirmSuspend} disabled={!suspendReason.trim()} style={{background: suspendReason.trim() ? '#DC2626' : '#9CA3AF'}}>Suspend Subscription</Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowSuspendModal(false)} title="Suspend Subscription" footer={<><Button variant="secondary" onClick={() => setShowSuspendModal(false)}>{t('admin:restaurantSubscriptionsPage.cancel')}</Button><Button variant="primary" onClick={confirmSuspend} disabled={!suspendReason.trim()} style={{background: suspendReason.trim() ? '#DC2626' : '#9CA3AF'}}>{t('admin:restaurantSubscriptionsPage.suspendSubscription')}</Button></>}>
                 <FormGroup>
                   <FormLabel>Restaurant: {selectedSubscription.restaurantName}</FormLabel>
                   <FormLabel>Suspension Reason:</FormLabel>
@@ -945,7 +946,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
 
         {/* Add Restaurant Modal */}
         {showAddRestaurantModal && (
-          <CommonModal isOpen={true} onClose={() => setShowAddRestaurantModal(false)} title="Add New Restaurant" footer={<><Button variant="secondary" onClick={() => setShowAddRestaurantModal(false)}>Cancel</Button><Button variant="primary" onClick={confirmAddRestaurant} disabled={!newRestaurant.name || !newRestaurant.managerName}>Add Restaurant</Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowAddRestaurantModal(false)} title="Add New Restaurant" footer={<><Button variant="secondary" onClick={() => setShowAddRestaurantModal(false)}>{t('admin:restaurantSubscriptionsPage.cancel')}</Button><Button variant="primary" onClick={confirmAddRestaurant} disabled={!newRestaurant.name || !newRestaurant.managerName}>{t('admin:restaurantSubscriptionsPage.addRestaurant')}</Button></>}>
                 <FormGroup>
                   <FormLabel>Restaurant Name *</FormLabel>
                   <SearchInput
@@ -963,7 +964,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Manager ID (optional)</FormLabel>
+                  <FormLabel>{t('admin:restaurantSubscriptionsPage.managerIdOptional')}</FormLabel>
                   <SearchInput
                     value={newRestaurant.managerId}
                     onChange={(e) => setNewRestaurant(prev => ({...prev, managerId: e.target.value}))}
@@ -971,34 +972,34 @@ const RestaurantSubscriptionsPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Initial Plan</FormLabel>
+                  <FormLabel>{t('admin:restaurantSubscriptionsPage.initialPlan')}</FormLabel>
                   <FilterSelect
                     value={newRestaurant.planType}
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewRestaurant(prev => ({...prev, planType: e.target.value as 'basic' | 'professional' | 'enterprise'}))}
                   >
-                    <option value="basic">Basic - RM 29/month (Up to 1k orders)</option>
-                    <option value="professional">Professional - RM 99/month (Up to 10k orders)</option>
-                    <option value="enterprise">Enterprise - RM 199/month (Unlimited orders)</option>
+                    <option value="basic">{t('admin:restaurantSubscriptionsPage.basicRm29monthUpTo1kOrders')}</option>
+                    <option value="professional">{t('admin:restaurantSubscriptionsPage.professionalRm99monthUpTo10kOrders')}</option>
+                    <option value="enterprise">{t('admin:restaurantSubscriptionsPage.enterpriseRm199monthUnlimitedOrders')}</option>
                   </FilterSelect>
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Payment Model</FormLabel>
+                  <FormLabel>{t('admin:restaurantSubscriptionsPage.paymentModel')}</FormLabel>
                   <FilterSelect
                     value={newRestaurant.paymentModel}
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewRestaurant(prev => ({...prev, paymentModel: e.target.value as 'self' | 'manager'}))}
                   >
-                    <option value="self">Self-Paying (Restaurant pays directly)</option>
-                    <option value="manager">Manager-Paid (Manager pays on behalf)</option>
+                    <option value="self">{t('admin:restaurantSubscriptionsPage.selfpayingRestaurantPaysDirectly')}</option>
+                    <option value="manager">{t('admin:restaurantSubscriptionsPage.managerpaidManagerPaysOnBehalf')}</option>
                   </FilterSelect>
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Billing Cycle</FormLabel>
+                  <FormLabel>{t('admin:restaurantSubscriptionsPage.billingCycle')}</FormLabel>
                   <FilterSelect
                     value={newRestaurant.billingCycle}
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewRestaurant(prev => ({...prev, billingCycle: e.target.value as 'monthly' | 'annual'}))}
                   >
-                    <option value="monthly">Monthly</option>
-                    <option value="annual">Annual</option>
+                    <option value="monthly">{t('admin:restaurantSubscriptionsPage.monthly')}</option>
+                    <option value="annual">{t('admin:restaurantSubscriptionsPage.annual')}</option>
                   </FilterSelect>
                 </FormGroup>
                 <div style={{color: '#059669', fontSize: '14px', padding: '12px', background: '#ECFDF5', borderRadius: '8px', marginTop: '16px'}}>

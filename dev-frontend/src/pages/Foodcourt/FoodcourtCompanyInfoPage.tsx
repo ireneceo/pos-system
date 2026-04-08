@@ -4,6 +4,7 @@ import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import { useTranslation } from 'react-i18next';
 
 interface OperationSettings {
   openingTime: string;
@@ -175,6 +176,7 @@ const Select = styled.select`
 `;
 
 const FoodcourtCompanyInfoPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     companyName: '',
     registrationNo: '',
@@ -291,20 +293,19 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
       throw new Error('Failed to save');
     }
   };
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Company Information</Title>
+          <Title>{t('common:foodcourtCompanyInfoPage.companyInformation')}</Title>
         </Header>
 
         <Content>
           <Section>
-            <SectionTitle>Basic Information</SectionTitle>
+            <SectionTitle>{t('common:foodcourtCompanyInfoPage.basicInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Company Name <span>*</span></Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.companyName')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -316,7 +317,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Registration No.</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.registrationNo')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -328,7 +329,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Trade Name</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.tradeName')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -340,7 +341,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Tax No. (SST/GST)</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.taxNoSstgst')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -354,10 +355,10 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Address</SectionTitle>
+            <SectionTitle>{t('common:foodcourtCompanyInfoPage.address')}</SectionTitle>
             <FormGrid>
               <FormGroup fullWidth>
-                <Label>Street Address <span>*</span></Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.streetAddress')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -369,7 +370,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>City</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.city')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -381,7 +382,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>State</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.state')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -393,7 +394,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Postal Code</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.postalCode')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -405,7 +406,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Country <span>*</span></Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.country')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave} type="select">
                   <Select
                     value={companyInfo.country}
@@ -423,10 +424,10 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Contact Information</SectionTitle>
+            <SectionTitle>{t('common:foodcourtCompanyInfoPage.contactInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Phone <span>*</span></Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.phone')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <PhoneInput
                     value={companyInfo.phone}
@@ -437,7 +438,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Email <span>*</span></Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.email')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="email"
@@ -449,7 +450,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Website</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.website')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="url"
@@ -463,10 +464,10 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Banking Information</SectionTitle>
+            <SectionTitle>{t('common:foodcourtCompanyInfoPage.bankingInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Bank Name</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.bankName')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -478,7 +479,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Account Number</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.accountNumber')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -490,7 +491,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Account Name</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.accountName')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -504,10 +505,10 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Operation Settings</SectionTitle>
+            <SectionTitle>{t('common:foodcourtCompanyInfoPage.operationSettings')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Opening Time</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.openingTime')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="time"
@@ -518,7 +519,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Closing Time</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.closingTime')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="time"
@@ -529,7 +530,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Timezone</Label>
+                <Label>{t('common:foodcourtCompanyInfoPage.timezone')}</Label>
                 <AutoSaveField onSave={handleSave} type="select">
                   <Select
                     value={companyInfo.operationSettings.timeZone}
@@ -547,7 +548,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Company Logo</SectionTitle>
+            <SectionTitle>{t('common:foodcourtCompanyInfoPage.companyLogo')}</SectionTitle>
             <AutoSaveField onSave={handleSave} type="image">
               <ImageUploadDropzone
                 value={companyInfo.logoUrl}

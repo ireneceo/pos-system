@@ -29,6 +29,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { useTranslation } from 'react-i18next';
 
 interface AdditionalCharge {
   name: string;
@@ -271,6 +272,7 @@ const FormInput = styled.input`
 type TabType = 'all' | 'to_pay';
 
 const OwnerInvoicesPage: React.FC = () => {
+  const { t } = useTranslation('owner');
   const [searchParams, setSearchParams] = useSearchParams();
 
   // States
@@ -734,7 +736,7 @@ const OwnerInvoicesPage: React.FC = () => {
                 </div>
             </div>
             <div class="invoice-title">
-                <div class="invoice-label">INVOICE</div>
+                <div class="invoice-label">{t('owner:ownerInvoicesPage.invoice')}</div>
                 <div class="invoice-number">${invoice.invoiceNumber}</div>
                 <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
             </div>
@@ -742,7 +744,7 @@ const OwnerInvoicesPage: React.FC = () => {
 
         <div class="billing-info">
             <div class="bill-to-section">
-                <div class="section-label">Bill To</div>
+                <div class="section-label">{t('owner:ownerInvoicesPage.billTo')}</div>
                 <div class="customer-name">${payerCompany?.name || invoice.restaurantName || 'Restaurant'}</div>
                 ${payerCompany?.address ? `<div class="customer-details">${payerCompany.address}</div>` : ''}
                 ${[payerCompany?.city, payerCompany?.state, payerCompany?.postalCode].filter(Boolean).length > 0 ? `<div class="customer-details">${[payerCompany?.city, payerCompany?.state, payerCompany?.postalCode].filter(Boolean).join(', ')}</div>` : ''}
@@ -772,14 +774,14 @@ const OwnerInvoicesPage: React.FC = () => {
         </div>
 
         <div class="items-section">
-            <div class="section-label">Items</div>
+            <div class="section-label">{t('owner:ownerInvoicesPage.items')}</div>
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th>Description</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-right">Unit Price</th>
-                        <th class="text-right">Amount</th>
+                        <th>{t('owner:ownerInvoicesPage.description')}</th>
+                        <th class="text-center">{t('owner:ownerInvoicesPage.qty')}</th>
+                        <th class="text-right">{t('owner:ownerInvoicesPage.unitPrice')}</th>
+                        <th class="text-right">{t('owner:ownerInvoicesPage.amount')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -829,7 +831,7 @@ const OwnerInvoicesPage: React.FC = () => {
 
         ${issuerInfo?.bankName ? `
         <div class="bank-section">
-            <div class="bank-title">Payment Details</div>
+            <div class="bank-title">{t('owner:ownerInvoicesPage.paymentDetails')}</div>
             <div class="bank-details">
                 <strong>Bank:</strong> ${issuerInfo.bankName}<br>
                 <strong>Account Name:</strong> ${issuerInfo.bankAccountName || '-'}<br>
@@ -848,8 +850,8 @@ const OwnerInvoicesPage: React.FC = () => {
         ` : ''}
 
         <div class="footer">
-            <div class="footer-text">Thank you for your business!</div>
-            <div class="footer-text">This is a computer-generated invoice and does not require a signature.</div>
+            <div class="footer-text">{t('owner:ownerInvoicesPage.thankYouForYourBusiness')}</div>
+            <div class="footer-text">{t('owner:ownerInvoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
         </div>
     </div>
 </body>
@@ -944,16 +946,16 @@ const OwnerInvoicesPage: React.FC = () => {
       <DataTable>
         <DataTableHead>
           <tr>
-            <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
-            <DataTableHeaderCell align="left">Restaurant</DataTableHeaderCell>
-            <DataTableHeaderCell align="left">Issuer</DataTableHeaderCell>
-            <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
-            <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
-            <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
-            <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-            <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
-            <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-            <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
+            <DataTableHeaderCell align="left">{t('owner:ownerInvoicesPage.invoice')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="left">{t('owner:ownerInvoicesPage.restaurant')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="left">{t('owner:ownerInvoicesPage.issuer')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="center">{t('owner:ownerInvoicesPage.period')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="center">{t('owner:ownerInvoicesPage.issued')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="center">{t('owner:ownerInvoicesPage.due')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="center">{t('owner:ownerInvoicesPage.status')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="right">{t('owner:ownerInvoicesPage.amount')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="right">{t('owner:ownerInvoicesPage.total')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="left">{t('owner:ownerInvoicesPage.actions')}</DataTableHeaderCell>
           </tr>
         </DataTableHead>
         <tbody>
@@ -964,7 +966,7 @@ const OwnerInvoicesPage: React.FC = () => {
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.invoiceNumber}
-                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('owner:ownerInvoicesPage.auto')}</AutoBadge>}
                     </InvoiceNumber>
                     <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                   </InvoiceInfo>
@@ -999,7 +1001,7 @@ const OwnerInvoicesPage: React.FC = () => {
                   <DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="Total" align="right">
-                  <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
+                  <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('owner:ownerInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="" mobileFullWidth>
                   <ActionButtons>
@@ -1041,7 +1043,7 @@ const OwnerInvoicesPage: React.FC = () => {
           ) : (
             <DataTableRow>
               <DataTableCell colSpan={10}>
-                <DataTableEmpty>No invoices found</DataTableEmpty>
+                <DataTableEmpty>{t('owner:ownerInvoicesPage.noInvoicesFound')}</DataTableEmpty>
               </DataTableCell>
             </DataTableRow>
           )}
@@ -1049,12 +1051,11 @@ const OwnerInvoicesPage: React.FC = () => {
       </DataTable>
     </DataTableContainer>
   );
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Invoices</Title>
+          <Title>{t('owner:ownerInvoicesPage.invoices')}</Title>
         </Header>
 
         <Content>
@@ -1062,20 +1063,20 @@ const OwnerInvoicesPage: React.FC = () => {
           <StatsGrid>
             <StatCard>
               <StatValue>{stats.total}</StatValue>
-              <StatLabel>Total Invoices</StatLabel>
+              <StatLabel>{t('owner:ownerInvoicesPage.totalInvoices')}</StatLabel>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{stats.pending}</StatValue>
-              <StatLabel>To Pay</StatLabel>
+              <StatLabel>{t('owner:ownerInvoicesPage.toPay')}</StatLabel>
               <StatDescription>{formatCurrency(stats.pendingAmount, 'MYR')}</StatDescription>
             </StatCard>
             <StatCard color="#3B82F6">
               <StatValue>{stats.confirming}</StatValue>
-              <StatLabel>Confirming</StatLabel>
+              <StatLabel>{t('owner:ownerInvoicesPage.confirming')}</StatLabel>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{stats.paid}</StatValue>
-              <StatLabel>Paid</StatLabel>
+              <StatLabel>{t('owner:ownerInvoicesPage.paid')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -1101,7 +1102,7 @@ const OwnerInvoicesPage: React.FC = () => {
               value={selectedRestaurant}
               onChange={(e) => setSelectedRestaurant(e.target.value)}
             >
-              <option value="">All Restaurants</option>
+              <option value="">{t('owner:ownerInvoicesPage.allRestaurants')}</option>
               {restaurants.map(r => (
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
@@ -1146,7 +1147,7 @@ const OwnerInvoicesPage: React.FC = () => {
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>INVOICE</div>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>{t('owner:ownerInvoicesPage.invoice')}</div>
                     <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.invoiceNumber}</div>
                     <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
                       {getStatusDisplay(selectedInvoice.status)}
@@ -1157,7 +1158,7 @@ const OwnerInvoicesPage: React.FC = () => {
                 {/* Bill To + Dates Section */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Bill To</div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('owner:ownerInvoicesPage.billTo')}</div>
                     <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{payerCompany?.name || selectedInvoice.restaurantName || 'Restaurant'}</div>
                     {payerCompany?.address && (
                       <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{payerCompany.address}</div>
@@ -1205,14 +1206,14 @@ const OwnerInvoicesPage: React.FC = () => {
 
                 {/* Items Table */}
                 <div style={{ marginBottom: '24px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>Items</div>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>{t('owner:ownerInvoicesPage.items')}</div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
-                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Description</th>
-                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Qty</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Unit Price</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Amount</th>
+                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('owner:ownerInvoicesPage.description')}</th>
+                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('owner:ownerInvoicesPage.qty')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('owner:ownerInvoicesPage.unitPrice')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('owner:ownerInvoicesPage.amount')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1272,7 +1273,7 @@ const OwnerInvoicesPage: React.FC = () => {
                 {/* Bank Details (from issuer) */}
                 {issuerInfo?.bankName && (
                   <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Payment Details</div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('owner:ownerInvoicesPage.paymentDetails')}</div>
                     <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
                       <div><strong>Bank:</strong> {issuerInfo.bankName}</div>
                       <div><strong>Account Name:</strong> {issuerInfo.bankAccountName || '-'}</div>
@@ -1308,10 +1309,10 @@ const OwnerInvoicesPage: React.FC = () => {
                 </div>
 
                 {loadingPaymentMethods ? (
-                  <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>Loading payment methods...</div>
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>{t('owner:ownerInvoicesPage.loadingPaymentMethods')}</div>
                 ) : availablePaymentMethods.length === 0 ? (
                   <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
-                    <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>Payment Not Available</p>
+                    <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>{t('owner:ownerInvoicesPage.paymentNotAvailable')}</p>
                     <p style={{ margin: 0, color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
                       <strong>{selectedInvoice.issuerName || (selectedInvoice.issuerType === 'brand' ? 'Brand' : selectedInvoice.issuerType === 'foodcourt' ? 'Foodcourt' : 'System Admin')}</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the invoice issuer to set up payment options.
                     </p>
@@ -1363,7 +1364,7 @@ const OwnerInvoicesPage: React.FC = () => {
                       const m = availablePaymentMethods.find(m => m.id === 'bank_transfer');
                       return m ? (
                         <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', fontSize: '14px', lineHeight: '1.8' }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>Bank Transfer Details</h4>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('owner:ownerInvoicesPage.bankTransferDetails')}</h4>
                           <p style={{ margin: '0' }}><strong>Bank:</strong> {m.bankName}</p>
                           <p style={{ margin: '0' }}><strong>Account Number:</strong> {m.accountNumber}</p>
                           <p style={{ margin: '0' }}><strong>Account Name:</strong> {m.accountName}</p>
@@ -1376,7 +1377,7 @@ const OwnerInvoicesPage: React.FC = () => {
                       const m = availablePaymentMethods.find(m => m.id === 'qr_payment');
                       return m ? (
                         <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>QR Payment</h4>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('owner:ownerInvoicesPage.qrPayment')}</h4>
                           {m.qrImage && <img src={m.qrImage} alt="Payment QR Code" style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #E5E7EB', borderRadius: '8px' }} />}
                           {m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{m.qrDescription}</p>}
                         </div>
@@ -1388,14 +1389,14 @@ const OwnerInvoicesPage: React.FC = () => {
                       <>
                         <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                           <span style={{ fontWeight: '600', flexShrink: 0 }}>*</span>
-                          <span>Please provide either a <strong>Transaction ID / Reference Number</strong> or upload a <strong>Payment Receipt Image</strong> to submit your payment.</span>
+                          <span>{t('owner:ownerInvoicesPage.pleaseProvideEitherA')}<strong>{t('owner:ownerInvoicesPage.transactionIdReferenceNumber')}</strong> or upload a <strong>{t('owner:ownerInvoicesPage.paymentReceiptImage')}</strong> to submit your payment.</span>
                         </div>
                         <FormGroup>
-                          <FormLabel>Transaction ID / Reference Number</FormLabel>
+                          <FormLabel>{t('owner:ownerInvoicesPage.transactionIdReferenceNumber')}</FormLabel>
                           <FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} />
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormLabel>{t('owner:ownerInvoicesPage.notesOptional')}</FormLabel>
                           <textarea
                             placeholder="Any additional information about the payment..."
                             value={paymentData.notes}
@@ -1404,17 +1405,17 @@ const OwnerInvoicesPage: React.FC = () => {
                           />
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Payment Receipt Image</FormLabel>
+                          <FormLabel>{t('owner:ownerInvoicesPage.paymentReceiptImage')}</FormLabel>
                           <div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
                             {paymentData.receiptImage ? (
                               <div>
                                 <img src={paymentData.receiptImage} alt="Receipt" style={{ maxWidth: '200px', maxHeight: '200px', marginBottom: '8px', borderRadius: '8px' }} />
-                                <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>Click to change image</p>
+                                <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{t('owner:ownerInvoicesPage.clickToChangeImage')}</p>
                               </div>
                             ) : (
                               <div>
-                                <p style={{ margin: '0', fontSize: '14px', color: '#6B7280' }}>Click to upload receipt image</p>
-                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#9CA3AF' }}>Max 5MB, JPG/PNG</p>
+                                <p style={{ margin: '0', fontSize: '14px', color: '#6B7280' }}>{t('owner:ownerInvoicesPage.clickToUploadReceiptImage')}</p>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#9CA3AF' }}>{t('owner:ownerInvoicesPage.max5mbJpgpng')}</p>
                               </div>
                             )}
                             <input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }} />

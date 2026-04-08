@@ -8,6 +8,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { fetchAPI } from '../../utils/api';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 interface ProductIngredientsTabProps {
   onCountChange?: (count: number) => void;
@@ -337,6 +338,7 @@ const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
 `;
 
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountChange, categoryRefreshKey }) => {
+  const { t } = useTranslation('brand');
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -604,7 +606,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
   if (loading) {
     return (
       <EmptyState>
-        <EmptyTitle>Loading...</EmptyTitle>
+        <EmptyTitle>{'Loading...'}</EmptyTitle>
       </EmptyState>
     );
   }
@@ -647,7 +649,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
       {filteredIngredients.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No ingredients found</EmptyTitle>
+          <EmptyTitle>{'No ingredients found'}</EmptyTitle>
           <EmptyDescription>
             {searchTerm || categoryFilter !== 'all'
               ? 'Try adjusting your filters'
@@ -694,28 +696,28 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
               <IngredientInfo>
                 <InfoRow>
-                  <InfoLabel>Unit Cost</InfoLabel>
+                  <InfoLabel>{'Unit Cost'}</InfoLabel>
                   <InfoValue>{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}</InfoValue>
                 </InfoRow>
                 <InfoRow>
-                  <InfoLabel>Base Qty / Unit</InfoLabel>
+                  <InfoLabel>{'Base Qty / Unit'}</InfoLabel>
                   <InfoValue>{Number(ingredient.base_quantity || 1)} {ingredient.unit}</InfoValue>
                 </InfoRow>
                 {ingredient.supplier_name && (
                   <InfoRow>
-                    <InfoLabel>Supplier</InfoLabel>
+                    <InfoLabel>{'Supplier'}</InfoLabel>
                     <InfoValue>{ingredient.supplier_name}</InfoValue>
                   </InfoRow>
                 )}
                 {ingredient.code && (
                   <InfoRow>
-                    <InfoLabel>Code</InfoLabel>
+                    <InfoLabel>{'Code'}</InfoLabel>
                     <InfoValue>{ingredient.code}</InfoValue>
                   </InfoRow>
                 )}
                 {ingredient.track_stock && (
                   <InfoRow>
-                    <InfoLabel>Stock</InfoLabel>
+                    <InfoLabel>{'Stock'}</InfoLabel>
                     <StockBadge status={getStockStatus(ingredient)}>
                       {ingredient.current_stock} {ingredient.unit}
                     </StockBadge>
@@ -725,7 +727,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
               {/* Track Stock 토글 */}
               <TrackStockRow>
-                <TrackStockLabel>Track in Inventory</TrackStockLabel>
+                <TrackStockLabel>{'Track in Inventory'}</TrackStockLabel>
                 <ToggleSwitch>
                   <ToggleInput
                     type="checkbox"
@@ -766,7 +768,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
       >
         <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <UIFormGroup>
-            <FormLabel>Image</FormLabel>
+            <FormLabel>{'Image'}</FormLabel>
             <input
               type="file"
               accept="image/*"
@@ -780,7 +782,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
               {formData.image_url ? (
                 <img src={formData.image_url} alt="Ingredient" />
               ) : (
-                <ImagePlaceholder>Click to upload image</ImagePlaceholder>
+                <ImagePlaceholder>{'Click to upload image'}</ImagePlaceholder>
               )}
             </ImagePreview>
           </UIFormGroup>
@@ -797,12 +799,12 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>{'Category'}</FormLabel>
               <FormSelect
                 value={formData.category_id}
                 onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
               >
-                <option value="">Select category...</option>
+                <option value="">{'Select category...'}</option>
                 {categories.map(cat => (
                   <option key={cat.id} value={cat.id}>
                     {cat.emoji} {cat.name}
@@ -832,7 +834,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                 required
               >
-                <option value="">Select unit...</option>
+                <option value="">{'Select unit...'}</option>
                 <option value="kg">kg</option>
                 <option value="g">g</option>
                 <option value="L">L</option>
@@ -859,7 +861,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Supplier</FormLabel>
+              <FormLabel>{'Supplier'}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.supplier_name}
@@ -905,7 +907,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
               {detailIngredient.category_name || 'Uncategorized'}
             </span>
             {detailIngredient.track_stock && (
-              <span style={{ fontSize: '11px', fontWeight: 500, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: '4px' }}>Tracking</span>
+              <span style={{ fontSize: '11px', fontWeight: 500, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: '4px' }}>{'Tracking'}</span>
             )}
           </div>
 
@@ -915,15 +917,15 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Base Qty</div>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>{'Base Qty'}</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{Number(detailIngredient.base_quantity || 1)} {detailIngredient.unit}</div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Current Stock</div>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>{'Current Stock'}</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}` : '-'}</div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Min Stock</div>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>{'Min Stock'}</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.min_stock || 0)} ${detailIngredient.unit}` : '-'}</div>
             </div>
           </div>
@@ -936,20 +938,20 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
 
           {/* Connected recipes/products */}
           <div style={{ padding: '12px', background: '#F0F4FF', borderRadius: '8px', border: '1px solid #DBEAFE', marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1E40AF', marginBottom: '8px' }}>Used In</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1E40AF', marginBottom: '8px' }}>{'Used In'}</div>
             {linkedItems.recipes.length === 0 && linkedItems.products.length === 0 ? (
-              <div style={{ fontSize: '13px', color: '#6B7280' }}>Not linked to any recipe or product yet.</div>
+              <div style={{ fontSize: '13px', color: '#6B7280' }}>{'Not linked to any recipe or product yet.'}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {linkedItems.recipes.map((r: any) => (
                   <div key={'r' + r.id} style={{ fontSize: '13px', color: '#1E40AF' }}>
-                    <span style={{ fontSize: '11px', background: '#EFF6FF', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>Recipe</span>
+                    <span style={{ fontSize: '11px', background: '#EFF6FF', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>{'Recipe'}</span>
                     {r.name}
                   </div>
                 ))}
                 {linkedItems.products.map((p: any) => (
                   <div key={'p' + p.id} style={{ fontSize: '13px', color: '#059669' }}>
-                    <span style={{ fontSize: '11px', background: '#ECFDF5', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>Product</span>
+                    <span style={{ fontSize: '11px', background: '#ECFDF5', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>{'Product'}</span>
                     {p.name}
                   </div>
                 ))}

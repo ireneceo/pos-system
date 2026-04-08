@@ -8,6 +8,7 @@ import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -386,6 +387,7 @@ const PIE_COLORS = ['#DC2626', '#EF4444', '#F87171', '#FCA5A5', '#FECACA', '#FEE
 // ============================================================================
 
 const BrandGeneralDashboard: React.FC = () => {
+  const { t } = useTranslation('brand');
   const navigate = useNavigate();
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
@@ -581,9 +583,9 @@ const BrandGeneralDashboard: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <Header><Title>Brand Dashboard</Title></Header>
+        <Header><Title>{t('brand:brandGeneralDashboard.brandDashboard')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px' }}>Loading dashboard...</div>
+          <div style={{ textAlign: 'center', padding: '40px' }}>{t('brand:brandGeneralDashboard.loadingDashboard')}</div>
         </Content>
       </Container>
     );
@@ -592,7 +594,7 @@ const BrandGeneralDashboard: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Brand Dashboard</Title>
+        <Title>{t('brand:brandGeneralDashboard.brandDashboard')}</Title>
         {subscriptionInfo.planType && (
           <Subtitle>
             <span>{subscriptionInfo.planType}</span>
@@ -602,12 +604,12 @@ const BrandGeneralDashboard: React.FC = () => {
                 return <SubscriptionBadge variant="trial" onClick={() => navigate('/pos/profile?tab=subscription')}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
               }
               if (s.status === 'active' && s.daysLeft !== undefined) {
-                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>Expired</SubscriptionBadge>;
+                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('brand:brandGeneralDashboard.expired')}</SubscriptionBadge>;
                 if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
                 return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
               }
               if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.status}</SubscriptionBadge>;
-              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>Active</SubscriptionBadge>;
+              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('brand:brandGeneralDashboard.active')}</SubscriptionBadge>;
             })()}
           </Subtitle>
         )}
@@ -621,35 +623,35 @@ const BrandGeneralDashboard: React.FC = () => {
         {/* KPI Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#DC2626">
-            <DashboardStatLabel>Franchise Restaurants</DashboardStatLabel>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.franchiseRestaurants')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalRestaurants}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#059669">
-            <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.monthlyRevenue')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(stats.monthlyRevenue, currency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#2563EB">
-            <DashboardStatLabel>Monthly Orders</DashboardStatLabel>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.monthlyOrders')}</DashboardStatLabel>
             <DashboardStatValue>{stats.monthlyOrders.toLocaleString()}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#7C3AED">
-            <DashboardStatLabel>Avg Revenue / Restaurant</DashboardStatLabel>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.avgRevenueRestaurant')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(stats.avgRevenuePerRestaurant, currency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#F59E0B">
-            <DashboardStatLabel>Pending Invoices</DashboardStatLabel>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.pendingInvoices')}</DashboardStatLabel>
             <DashboardStatValue>{stats.pendingInvoices}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color={stats.overdueInvoices > 0 ? '#EF4444' : '#059669'}>
-            <DashboardStatLabel>Overdue Invoices</DashboardStatLabel>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.overdueInvoices')}</DashboardStatLabel>
             <DashboardStatValue>{stats.overdueInvoices}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#10B981">
-            <DashboardStatLabel>Active Plans</DashboardStatLabel>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.activePlans')}</DashboardStatLabel>
             <DashboardStatValue>{stats.activePlans}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#6366F1">
-            <DashboardStatLabel>Brand Managers</DashboardStatLabel>
+            <DashboardStatLabel>{t('brand:brandGeneralDashboard.brandManagers')}</DashboardStatLabel>
             <DashboardStatValue>{stats.totalManagers}</DashboardStatValue>
           </DashboardStatCard>
         </DashboardStatsGrid>
@@ -658,7 +660,7 @@ const BrandGeneralDashboard: React.FC = () => {
         <MainGrid>
           <ChartContainer>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>Revenue Trend</h3>
+              <h3 style={{ margin: 0 }}>{t('brand:brandGeneralDashboard.revenueTrend')}</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {(['week', 'month', 'year'] as const).map(p => (
                   <button
@@ -694,12 +696,12 @@ const BrandGeneralDashboard: React.FC = () => {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <LoadingContainer>No sales data for this period</LoadingContainer>
+              <LoadingContainer>{t('brand:brandGeneralDashboard.noSalesDataForThisPeriod')}</LoadingContainer>
             )}
           </ChartContainer>
 
           <AlertsPanel>
-            <h3>Notifications</h3>
+            <h3>{t('brand:brandGeneralDashboard.notifications')}</h3>
             <AlertsList>
               {alerts.map((alert, idx) => (
                 <Alert key={idx} type={alert.type} onClick={() => alert.link && navigate(alert.link)}>
@@ -715,27 +717,27 @@ const BrandGeneralDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <QuickActionsSection>
-          <h3>Quick Actions</h3>
+          <h3>{t('brand:brandGeneralDashboard.quickActions')}</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/brand/general/management')}>
               <div className="icon">▬</div>
-              <div className="title">Brands</div>
-              <div className="description">Brand management</div>
+              <div className="title">{t('brand:brandGeneralDashboard.brands')}</div>
+              <div className="description">{t('brand:brandGeneralDashboard.brandManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/brand/invoices')}>
               <div className="icon">▦</div>
-              <div className="title">Invoices</div>
-              <div className="description">Invoice management</div>
+              <div className="title">{t('brand:brandGeneralDashboard.invoices')}</div>
+              <div className="description">{t('brand:brandGeneralDashboard.invoiceManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/brand/plans')}>
               <div className="icon">☰</div>
-              <div className="title">Subscription Plans</div>
-              <div className="description">Plan configuration</div>
+              <div className="title">{t('brand:brandGeneralDashboard.subscriptionPlans')}</div>
+              <div className="description">{t('brand:brandGeneralDashboard.planConfiguration')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/brand/general/reports')}>
               <div className="icon">◉</div>
-              <div className="title">Reports</div>
-              <div className="description">Performance analytics</div>
+              <div className="title">{t('brand:brandGeneralDashboard.reports')}</div>
+              <div className="description">{t('brand:brandGeneralDashboard.performanceAnalytics')}</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>
@@ -744,7 +746,7 @@ const BrandGeneralDashboard: React.FC = () => {
         <ChartGrid>
           <ChartCard>
             <ChartHeader>
-              <ChartTitle>Revenue Distribution</ChartTitle>
+              <ChartTitle>{t('brand:brandGeneralDashboard.revenueDistribution')}</ChartTitle>
             </ChartHeader>
             {pieData.length > 0 ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
@@ -769,25 +771,25 @@ const BrandGeneralDashboard: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <LoadingContainer>No revenue data available</LoadingContainer>
+              <LoadingContainer>{t('brand:brandGeneralDashboard.noRevenueDataAvailable')}</LoadingContainer>
             )}
           </ChartCard>
         </ChartGrid>
 
         {/* Restaurant Performance Table */}
         <RecentOrdersSection>
-          <h3>Restaurant Performance</h3>
+          <h3>{t('brand:brandGeneralDashboard.restaurantPerformance')}</h3>
         </RecentOrdersSection>
         <TableContainer>
           <Table>
             <Thead>
               <Tr>
-                <Th>Restaurant</Th>
-                <Th>Plan</Th>
-                <Th>Monthly Revenue</Th>
-                <Th>Orders</Th>
-                <Th>Estimated Charges</Th>
-                <Th>Invoice Status</Th>
+                <Th>{t('brand:brandGeneralDashboard.restaurant')}</Th>
+                <Th>{t('brand:brandGeneralDashboard.plan')}</Th>
+                <Th>{t('brand:brandGeneralDashboard.monthlyRevenue')}</Th>
+                <Th>{t('brand:brandGeneralDashboard.orders')}</Th>
+                <Th>{t('brand:brandGeneralDashboard.estimatedCharges')}</Th>
+                <Th>{t('brand:brandGeneralDashboard.invoiceStatus')}</Th>
               </Tr>
             </Thead>
             <Tbody>

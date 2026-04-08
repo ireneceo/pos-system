@@ -5,6 +5,7 @@ import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardSta
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -355,6 +356,7 @@ interface TenantSummary {
 }
 
 const FoodcourtManagerDashboard: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [tenants, setTenants] = useState<TenantSummary[]>([]);
@@ -490,9 +492,9 @@ const FoodcourtManagerDashboard: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <Header><Title>Foodcourt Manager Dashboard</Title></Header>
+        <Header><Title>{t('common:foodcourtManagerDashboard.foodcourtManagerDashboard')}</Title></Header>
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px' }}>Loading dashboard...</div>
+          <div style={{ textAlign: 'center', padding: '40px' }}>{t('common:foodcourtManagerDashboard.loadingDashboard')}</div>
         </Content>
       </Container>
     );
@@ -501,7 +503,7 @@ const FoodcourtManagerDashboard: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Foodcourt Manager Dashboard</Title>
+        <Title>{t('common:foodcourtManagerDashboard.foodcourtManagerDashboard')}</Title>
         {foodcourtName && (
           <Subtitle>
             <span>{foodcourtName}</span>
@@ -513,27 +515,27 @@ const FoodcourtManagerDashboard: React.FC = () => {
         {/* KPI Cards */}
         <DashboardStatsGrid>
           <DashboardStatCard color="#059669">
-            <DashboardStatLabel>Total Tenants</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:foodcourtManagerDashboard.totalTenants')}</DashboardStatLabel>
             <DashboardStatValue>{totalTenants}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#10B981">
-            <DashboardStatLabel>Active Tenants</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:foodcourtManagerDashboard.activeTenants')}</DashboardStatLabel>
             <DashboardStatValue>{activeTenants}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#F59E0B">
-            <DashboardStatLabel>Today's Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:foodcourtManagerDashboard.todaysRevenue')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(totalTodayRevenue, selectedCurrency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#2563EB">
-            <DashboardStatLabel>Today's Orders</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:foodcourtManagerDashboard.todaysOrders')}</DashboardStatLabel>
             <DashboardStatValue>{totalTodayOrders}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#7C3AED">
-            <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:foodcourtManagerDashboard.monthlyRevenue')}</DashboardStatLabel>
             <DashboardStatValue>{formatCurrency(totalMonthlyRevenue, selectedCurrency)}</DashboardStatValue>
           </DashboardStatCard>
           <DashboardStatCard color="#EA580C">
-            <DashboardStatLabel>Occupancy Rate</DashboardStatLabel>
+            <DashboardStatLabel>{t('common:foodcourtManagerDashboard.occupancyRate')}</DashboardStatLabel>
             <DashboardStatValue>{occupancyRate}%</DashboardStatValue>
           </DashboardStatCard>
         </DashboardStatsGrid>
@@ -541,27 +543,27 @@ const FoodcourtManagerDashboard: React.FC = () => {
         {/* Summary + Notifications */}
         <MainGrid>
           <ChartContainer>
-            <h3>Foodcourt Summary</h3>
+            <h3>{t('common:foodcourtManagerDashboard.foodcourtSummary')}</h3>
             <SummaryItem>
-              <SummaryLabel>Monthly Revenue</SummaryLabel>
+              <SummaryLabel>{t('common:foodcourtManagerDashboard.monthlyRevenue')}</SummaryLabel>
               <SummaryValue>{formatCurrency(totalMonthlyRevenue, selectedCurrency)}</SummaryValue>
             </SummaryItem>
             <SummaryItem>
-              <SummaryLabel>Occupancy Rate</SummaryLabel>
+              <SummaryLabel>{t('common:foodcourtManagerDashboard.occupancyRate')}</SummaryLabel>
               <SummaryValue>{occupancyRate}%</SummaryValue>
             </SummaryItem>
             <SummaryItem>
-              <SummaryLabel>Active Tenants</SummaryLabel>
+              <SummaryLabel>{t('common:foodcourtManagerDashboard.activeTenants')}</SummaryLabel>
               <SummaryValue>{activeTenants} / {totalTenants}</SummaryValue>
             </SummaryItem>
             <SummaryItem>
-              <SummaryLabel>Today's Total Orders</SummaryLabel>
+              <SummaryLabel>{t('common:foodcourtManagerDashboard.todaysTotalOrders')}</SummaryLabel>
               <SummaryValue>{totalTodayOrders}</SummaryValue>
             </SummaryItem>
           </ChartContainer>
 
           <AlertsPanel>
-            <h3>Notifications</h3>
+            <h3>{t('common:foodcourtManagerDashboard.notifications')}</h3>
             <AlertsList>
               {alerts.map((alert, idx) => (
                 <Alert key={idx} type={alert.type} onClick={() => alert.link && navigate(alert.link)}>
@@ -577,45 +579,45 @@ const FoodcourtManagerDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <QuickActionsSection>
-          <h3>Quick Actions</h3>
+          <h3>{t('common:foodcourtManagerDashboard.quickActions')}</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/manager/restaurants')}>
               <div className="icon">◐</div>
-              <div className="title">Restaurants</div>
-              <div className="description">Tenant management</div>
+              <div className="title">{t('common:foodcourtManagerDashboard.restaurants')}</div>
+              <div className="description">{t('common:foodcourtManagerDashboard.tenantManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/invoices')}>
               <div className="icon">▦</div>
-              <div className="title">Invoices</div>
-              <div className="description">Invoice management</div>
+              <div className="title">{t('common:foodcourtManagerDashboard.invoices')}</div>
+              <div className="description">{t('common:foodcourtManagerDashboard.invoiceManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/foodcourt/general/reports')}>
               <div className="icon">▲</div>
-              <div className="title">Statistics</div>
-              <div className="description">Performance analytics</div>
+              <div className="title">{t('common:foodcourtManagerDashboard.statistics')}</div>
+              <div className="description">{t('common:foodcourtManagerDashboard.performanceAnalytics')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/manager/admins')}>
               <div className="icon">◆</div>
-              <div className="title">Restaurant Admins</div>
-              <div className="description">Admin management</div>
+              <div className="title">{t('common:foodcourtManagerDashboard.restaurantAdmins')}</div>
+              <div className="description">{t('common:foodcourtManagerDashboard.adminManagement')}</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>
 
         {/* Tenant Performance Table */}
         <RecentOrdersSection>
-          <h3>Tenant Performance</h3>
+          <h3>{t('common:foodcourtManagerDashboard.tenantPerformance')}</h3>
         </RecentOrdersSection>
         <TableContainer>
           <Table>
             <Thead>
               <Tr>
-                <Th>Tenant</Th>
-                <Th>Admin</Th>
-                <Th>Status</Th>
-                <Th>Today's Orders</Th>
-                <Th>Today's Revenue</Th>
-                <Th>Monthly Revenue</Th>
+                <Th>{t('common:foodcourtManagerDashboard.tenant')}</Th>
+                <Th>{t('common:foodcourtManagerDashboard.admin')}</Th>
+                <Th>{t('common:foodcourtManagerDashboard.status')}</Th>
+                <Th>{t('common:foodcourtManagerDashboard.todaysOrders')}</Th>
+                <Th>{t('common:foodcourtManagerDashboard.todaysRevenue')}</Th>
+                <Th>{t('common:foodcourtManagerDashboard.monthlyRevenue')}</Th>
               </Tr>
             </Thead>
             <Tbody>

@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -950,6 +951,7 @@ interface FormErrors {
 }
 
 const PackagesPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   // Data
   const [packages, setPackages] = useState<Package[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
@@ -970,7 +972,9 @@ const PackagesPage: React.FC = () => {
     const checkCookie = () => setCookieBarVisible(!localStorage.getItem('cookie_consent_accepted'));
     window.addEventListener('storage', checkCookie);
     const interval = setInterval(checkCookie, 1000);
-    return () => { window.removeEventListener('storage', checkCookie); clearInterval(interval); };
+  // useTranslation moved to component level
+
+  return () => { window.removeEventListener('storage', checkCookie); clearInterval(interval); };
   }, []);
 
   // Currency
@@ -1330,9 +1334,9 @@ const PackagesPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>POS Hardware Packages</HeroTitle>
+          <HeroTitle>{t('landing:packagesPage.posHardwarePackages')}</HeroTitle>
           <HeroSubtitle>
-            Choose the right hardware setup for your restaurant. Select a package, add extra equipment, and get an instant quote.
+            {t('landing:packagesPage.chooseTheRightHardwareSetupForYourRestau')}
           </HeroSubtitle>
         </HeroSection>
 
@@ -1341,7 +1345,7 @@ const PackagesPage: React.FC = () => {
           <CountriesBanner>
             <CountriesBannerInner>
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                <span style={{ color: '#6B7280', fontWeight: 500, fontSize: '14px' }}>Available in:</span>
+                <span style={{ color: '#6B7280', fontWeight: 500, fontSize: '14px' }}>{t('landing:packagesPage.availableIn')}</span>
                 <CountriesList>
                   {supportedCountries.map(c => (
                     <CountryItem key={c.code}>
@@ -1351,7 +1355,7 @@ const PackagesPage: React.FC = () => {
                 </CountriesList>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CurrencyLabel>Currency:</CurrencyLabel>
+                <CurrencyLabel>{t('landing:packagesPage.currency')}</CurrencyLabel>
                 <CurrencySelect
                   value={selectedCurrency}
                   onChange={(e) => setSelectedCurrency(e.target.value)}
@@ -1374,17 +1378,17 @@ const PackagesPage: React.FC = () => {
         <ContentSection>
 
           {loading ? (
-            <LoadingText>Loading packages...</LoadingText>
+            <LoadingText>{t('landing:packagesPage.loadingPackages')}</LoadingText>
           ) : !hasPackages ? (
             <EmptyMessage>
-              Hardware packages are not yet available in your region.<br />
-              Please <Link to="/contact">contact us</Link> for a custom quote.
+              {t('landing:packagesPage.hardwarePackagesAreNotYetAvailableInYour')}<br />
+              {t('landing:packagesPage.please')}<Link to="/contact">contact us</Link> for a custom quote.
             </EmptyMessage>
           ) : (
             <>
               {/* Step 1: Group Selection */}
               <SectionTitle>1. Choose Your Setup Type</SectionTitle>
-              <SectionSubtitle>Select the type of hardware configuration for your restaurant.</SectionSubtitle>
+              <SectionSubtitle>{t('landing:packagesPage.selectTheTypeOfHardwareConfigurationForYourRestaurant')}</SectionSubtitle>
               <GroupGrid>
                 <GroupCard
                   selected={selectedGroup === 'tablet'}
@@ -1397,8 +1401,8 @@ const PackagesPage: React.FC = () => {
                     </svg>
                   </GroupIcon>
                   <GroupTextWrap>
-                    <GroupName>Compact (All Tablet)</GroupName>
-                    <GroupDesc>All screens use tablets. Compact setup, easy to install.</GroupDesc>
+                    <GroupName>{t('landing:packagesPage.compactAllTablet')}</GroupName>
+                    <GroupDesc>{t('landing:packagesPage.allScreensUseTabletsCompactSetupEasyToInstall')}</GroupDesc>
                   </GroupTextWrap>
                 </GroupCard>
                 <GroupCard
@@ -1413,7 +1417,7 @@ const PackagesPage: React.FC = () => {
                     </svg>
                   </GroupIcon>
                   <GroupTextWrap>
-                    <GroupName>Pro (with Touchscreen)</GroupName>
+                    <GroupName>{t('landing:packagesPage.proWithTouchscreen')}</GroupName>
                     <GroupDesc>Includes 15"+ touchscreen for larger kitchens with multiple staff.</GroupDesc>
                   </GroupTextWrap>
                 </GroupCard>
@@ -1423,11 +1427,11 @@ const PackagesPage: React.FC = () => {
               {selectedGroup && (
                 <>
                   <SectionTitle>2. Select a Package</SectionTitle>
-                  <SectionSubtitle>Pick the package that best fits your restaurant's needs.</SectionSubtitle>
+                  <SectionSubtitle>{t('landing:packagesPage.pickThePackageThatBestFitsYourRestaurantsNeeds')}</SectionSubtitle>
                   {groupPackages.length === 0 ? (
                     <EmptyMessage>
-                      No packages available for this setup type yet.<br />
-                      Please <Link to="/contact">contact us</Link> for a custom quote.
+                      {t('landing:packagesPage.noPackagesAvailableForThisSetupTypeYet')}<br />
+                      {t('landing:packagesPage.please')}<Link to="/contact">contact us</Link> for a custom quote.
                     </EmptyMessage>
                   ) : (
                     <PackagesGrid>
@@ -1444,7 +1448,7 @@ const PackagesPage: React.FC = () => {
                             recommended={pkg.is_recommended}
                             onClick={() => handlePackageSelect(pkg)}
                           >
-                            {pkg.is_recommended && <RecommendedBadge>RECOMMENDED</RecommendedBadge>}
+                            {pkg.is_recommended && <RecommendedBadge>{t('landing:packagesPage.recommended')}</RecommendedBadge>}
                             {isSelected && <SelectedCheck>&#x2713;</SelectedCheck>}
                             <PackageName>{pkg.name}</PackageName>
                             {pkg.set_use_case && (
@@ -1464,13 +1468,13 @@ const PackagesPage: React.FC = () => {
                                   </SubscriptionNotice>
                                 </>
                               ) : (
-                                <PackagePrice style={{ color: '#0A2540' }}>Contact Us</PackagePrice>
+                                <PackagePrice style={{ color: '#0A2540' }}>{t('landing:packagesPage.contactUs')}</PackagePrice>
                               )}
                             </PackagePriceSection>
 
                             {items.length > 0 && (
                               <>
-                                <SetupTitle>Included Equipment</SetupTitle>
+                                <SetupTitle>{t('landing:packagesPage.includedEquipment')}</SetupTitle>
                                 <EquipmentList>
                                   {(() => {
                                     // Merge same products, sum quantities, keep role_label as category
@@ -1497,7 +1501,7 @@ const PackagesPage: React.FC = () => {
 
                             {setupItems.length > 0 && (
                               <>
-                                <SetupTitle>Included Setup</SetupTitle>
+                                <SetupTitle>{t('landing:packagesPage.includedSetup')}</SetupTitle>
                                 {setupItems.map((item, idx) => (
                                   <SetupItem key={idx}>
                                     <SetupCheck>&#x2713;</SetupCheck>
@@ -1523,16 +1527,16 @@ const PackagesPage: React.FC = () => {
               {selectedGroup && (
                 <>
                   <SectionTitle>3. Additional Equipment</SectionTitle>
-                  <SectionSubtitle>Add extra hardware to your package as needed.</SectionSubtitle>
+                  <SectionSubtitle>{t('landing:packagesPage.addExtraHardwareToYourPackageAsNeeded')}</SectionSubtitle>
                   <AddonsContainer disabled={!selectedPackage}>
                     {!selectedPackage && (
                       <AddonsOverlay>
-                        <AddonsOverlayText>Select a package first</AddonsOverlayText>
+                        <AddonsOverlayText>{t('landing:packagesPage.selectAPackageFirst')}</AddonsOverlayText>
                       </AddonsOverlay>
                     )}
                     {Object.keys(addonsByCategory).length === 0 && selectedPackage && (
                       <div style={{ textAlign: 'center', padding: '32px', color: '#6B7280' }}>
-                        No additional equipment available for this package.
+                        {t('landing:packagesPage.noAdditionalEquipmentAvailableForThisPac')}
                       </div>
                     )}
                     {Object.entries(addonsByCategory).map(([categoryName, addons]) => (
@@ -1551,13 +1555,13 @@ const PackagesPage: React.FC = () => {
                                 <AddonInfo>
                                   <AddonName>{addon.addonProduct.name}</AddonName>
                                   {addon.is_inquiry_only ? (
-                                    <InquiryLabel>Contact for pricing</InquiryLabel>
+                                    <InquiryLabel>{t('landing:packagesPage.contactForPricing')}</InquiryLabel>
                                   ) : price > 0 ? (
                                     <AddonPrice>
                                       {currencyInfo.symbol} {formatPrice(price, selectedCurrency)}
                                     </AddonPrice>
                                   ) : (
-                                    <InquiryLabel>Contact for pricing</InquiryLabel>
+                                    <InquiryLabel>{t('landing:packagesPage.contactForPricing')}</InquiryLabel>
                                   )}
                                 </AddonInfo>
                                 {addon.is_inquiry_only ? null : (
@@ -1621,7 +1625,7 @@ const PackagesPage: React.FC = () => {
                 )}
               </StickyPriceBreakdown>
               <QuoteButton onClick={() => setShowQuoteModal(true)}>
-                Request Quote
+                {t('landing:packagesPage.requestQuote')}
               </QuoteButton>
             </StickyRight>
           </StickyContent>
@@ -1631,15 +1635,15 @@ const PackagesPage: React.FC = () => {
         {showQuoteModal && (
           <ModalOverlay onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
             <ModalContent>
-              <ModalTitle>Request a Quote</ModalTitle>
+              <ModalTitle>{t('landing:packagesPage.requestAQuote')}</ModalTitle>
 
               {quoteSubmitted ? (
                 <>
                   <SuccessMessage>
-                    Your quote request has been submitted! We'll contact you within 1-2 business days.
+                    {t('landing:packagesPage.yourQuoteRequestHasBeenSubmittedWellCont')}
                   </SuccessMessage>
                   <div style={{ marginTop: 20, textAlign: 'center' }}>
-                    <CancelButton onClick={closeModal}>Close</CancelButton>
+                    <CancelButton onClick={closeModal}>{t('landing:packagesPage.close')}</CancelButton>
                   </div>
                 </>
               ) : (
@@ -1647,7 +1651,7 @@ const PackagesPage: React.FC = () => {
                   {submitError && <ErrorMessage>{submitError}</ErrorMessage>}
 
                   <FormGroup>
-                    <Label>Name<Required>*</Required></Label>
+                    <Label>{t('landing:packagesPage.name')}<Required>*</Required></Label>
                     <Input
                       type="text"
                       name="name"
@@ -1661,7 +1665,7 @@ const PackagesPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Email<Required>*</Required></Label>
+                    <Label>{t('landing:packagesPage.email')}<Required>*</Required></Label>
                     <Input
                       type="email"
                       name="email"
@@ -1675,7 +1679,7 @@ const PackagesPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Phone<Required>*</Required></Label>
+                    <Label>{t('landing:packagesPage.phone')}<Required>*</Required></Label>
                     <PhoneInput
                       value={formData.phone}
                       onChange={(value) => {
@@ -1708,7 +1712,7 @@ const PackagesPage: React.FC = () => {
                       placeholder="Your company or restaurant name"
                     />
                     {formData.wants_invoice && !formData.company_name.trim() && formTouched.company_name && (
-                      <FieldError>Company name is required for invoice</FieldError>
+                      <FieldError>{t('landing:packagesPage.companyNameIsRequiredForInvoice')}</FieldError>
                     )}
                   </FormGroup>
 
@@ -1720,14 +1724,14 @@ const PackagesPage: React.FC = () => {
                         onChange={(e) => setFormData(prev => ({ ...prev, wants_invoice: e.target.checked }))}
                         style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
                       />
-                      I need a formal invoice
+                      {t('landing:packagesPage.iNeedAFormalInvoice')}
                     </label>
                   </FormGroup>
 
                   {formData.wants_invoice && (
                     <>
                       <FormGroup>
-                        <Label>Company Address <span style={{ color: '#DC2626' }}>*</span></Label>
+                        <Label>{t('landing:packagesPage.companyAddress')}<span style={{ color: '#DC2626' }}>*</span></Label>
                         <TextArea
                           name="company_address"
                           value={formData.company_address}
@@ -1737,7 +1741,7 @@ const PackagesPage: React.FC = () => {
                         />
                       </FormGroup>
                       <FormGroup>
-                        <Label>Tax ID / Registration Number</Label>
+                        <Label>{t('landing:packagesPage.taxIdRegistrationNumber')}</Label>
                         <Input
                           type="text"
                           name="tax_id"
@@ -1758,14 +1762,14 @@ const PackagesPage: React.FC = () => {
                         onChange={(e) => setFormData(prev => ({ ...prev, plan_id: e.target.checked ? (plans[0]?.id || null) : null }))}
                         style={{ width: '18px', height: '18px', accentColor: '#635BFF' }}
                       />
-                      Include software subscription
+                      {t('landing:packagesPage.includeSoftwareSubscription')}
                     </label>
                   </FormGroup>
 
                   {formData.plan_id && plans.length > 0 && (
                     <>
                       <FormGroup>
-                        <Label>Subscription Plan</Label>
+                        <Label>{t('landing:packagesPage.subscriptionPlan')}</Label>
                         <select
                           style={{
                             padding: '12px 16px',
@@ -1787,7 +1791,7 @@ const PackagesPage: React.FC = () => {
                         </select>
                       </FormGroup>
                       <FormGroup>
-                        <Label>Billing Cycle</Label>
+                        <Label>{t('landing:packagesPage.billingCycle')}</Label>
                         <div style={{ display: 'flex', gap: '12px' }}>
                           {(['monthly', 'annual'] as const).map(cycle => {
                             const isActive = formData.billing_cycle === cycle;
@@ -1838,7 +1842,7 @@ const PackagesPage: React.FC = () => {
                   )}
 
                   <FormGroup>
-                    <Label>Message</Label>
+                    <Label>{t('landing:packagesPage.message')}</Label>
                     <TextArea
                       name="message"
                       value={formData.message}
@@ -1855,7 +1859,7 @@ const PackagesPage: React.FC = () => {
                     fontSize: 13,
                     color: '#374151',
                   }}>
-                    <div style={{ fontWeight: 700, marginBottom: 8 }}>Quote Summary</div>
+                    <div style={{ fontWeight: 700, marginBottom: 8 }}>{t('landing:packagesPage.quoteSummary')}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                       <span>{selectedPackage?.name}</span>
                       <span>{currencyInfo.symbol} {formatPrice(packagePrice, selectedCurrency)}</span>
@@ -1867,7 +1871,7 @@ const PackagesPage: React.FC = () => {
                     ))}
                     {addonTotal > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span>Addon Total</span>
+                        <span>{t('landing:packagesPage.addonTotal')}</span>
                         <span>{currencyInfo.symbol} {formatPrice(addonTotal, selectedCurrency)}</span>
                       </div>
                     )}
@@ -1880,13 +1884,13 @@ const PackagesPage: React.FC = () => {
                       fontWeight: 700,
                       color: '#059669',
                     }}>
-                      <span>Total</span>
+                      <span>{t('landing:packagesPage.total')}</span>
                       <span>{currencyInfo.symbol} {formatPrice(totalAmount, selectedCurrency)}</span>
                     </div>
                   </div>
 
                   <ModalButtonRow>
-                    <CancelButton type="button" onClick={closeModal}>Cancel</CancelButton>
+                    <CancelButton type="button" onClick={closeModal}>{t('landing:packagesPage.cancel')}</CancelButton>
                     <SubmitButton type="submit" disabled={submitting || !isFormValid}>
                       {submitting ? 'Submitting...' : 'Submit Quote Request'}
                     </SubmitButton>

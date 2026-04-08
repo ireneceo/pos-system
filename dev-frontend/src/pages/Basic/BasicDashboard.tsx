@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   padding: 32px;
@@ -102,6 +103,7 @@ const InfoText = styled.p`
 `;
 
 const BasicDashboard: React.FC = () => {
+  const { t } = useTranslation('dashboard');
   const { user } = useAuth();
 
   const getRoleDescription = (role: string) => {
@@ -123,7 +125,7 @@ const BasicDashboard: React.FC = () => {
     <>
       <Container>
         <WelcomeCard>
-          <Title>Welcome to Purple Here POS</Title>
+          <Title>{t('dashboard:basicDashboard.welcomeToPurpleHerePos')}</Title>
           <RoleBadge role={user?.role || 'User'}>
             {user?.role}
           </RoleBadge>
@@ -131,21 +133,21 @@ const BasicDashboard: React.FC = () => {
           
           <InfoGrid>
             <InfoCard>
-              <InfoTitle>Your Role</InfoTitle>
+              <InfoTitle>{t('dashboard:basicDashboard.yourRole')}</InfoTitle>
               <InfoText>
                 {getRoleDescription(user?.role || '')}
               </InfoText>
             </InfoCard>
             
             <InfoCard>
-              <InfoTitle>System Status</InfoTitle>
+              <InfoTitle>{t('dashboard:basicDashboard.systemStatus')}</InfoTitle>
               <InfoText>
                 All systems operational. You can access your permitted functions through the sidebar menu.
               </InfoText>
             </InfoCard>
             
             <InfoCard>
-              <InfoTitle>Getting Started</InfoTitle>
+              <InfoTitle>{t('dashboard:basicDashboard.gettingStarted')}</InfoTitle>
               <InfoText>
                 Use the navigation menu on the left to access available features for your role.
               </InfoText>

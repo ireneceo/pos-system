@@ -24,6 +24,7 @@ import {
 , Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { getPlanPrice, formatPlanPrice, normalizeCurrencyCode, formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 interface RestaurantSubscription {
   id: string;
@@ -265,6 +266,7 @@ const FormSelect = styled.select`
 `;
 
 const SubscriptionsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -1063,15 +1065,14 @@ const SubscriptionsPage: React.FC = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Subscriptions</Title>
+          <Title>{t('admin:subscriptionsPage.subscriptions')}</Title>
           <ActionSection>
-            <ThemedButton variant="outline" onClick={handleExportData}>Export</ThemedButton>
-            <ThemedButton variant="primary" onClick={handleAddSubscription}>Add Subscription</ThemedButton>
+            <ThemedButton variant="outline" onClick={handleExportData}>{t('admin:subscriptionsPage.export')}</ThemedButton>
+            <ThemedButton variant="primary" onClick={handleAddSubscription}>{t('admin:subscriptionsPage.addSubscription')}</ThemedButton>
           </ActionSection>
         </Header>
         
@@ -1079,23 +1080,23 @@ const SubscriptionsPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{totalSubscriptions}</StatValue>
-              <StatLabel>Total Subscriptions</StatLabel>
-              <StatDescription>Across all restaurants</StatDescription>
+              <StatLabel>{t('admin:subscriptionsPage.totalSubscriptions')}</StatLabel>
+              <StatDescription>{t('admin:subscriptionsPage.acrossAllRestaurants')}</StatDescription>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{activeSubscriptions}</StatValue>
-              <StatLabel>Active Subscriptions</StatLabel>
+              <StatLabel>{t('admin:subscriptionsPage.activeSubscriptions')}</StatLabel>
               <StatDescription>{totalSubscriptions > 0 ? Math.round((activeSubscriptions/totalSubscriptions)*100) : 0}% operational</StatDescription>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>{trialSubscriptions}</StatValue>
-              <StatLabel>Trial Subscriptions</StatLabel>
-              <StatDescription>Currently evaluating</StatDescription>
+              <StatLabel>{t('admin:subscriptionsPage.trialSubscriptions')}</StatLabel>
+              <StatDescription>{t('admin:subscriptionsPage.currentlyEvaluating')}</StatDescription>
             </StatCard>
             <StatCard color="#D97706">
               <StatValue>RM {totalRevenue.toLocaleString()}</StatValue>
-              <StatLabel>Monthly Revenue</StatLabel>
-              <StatDescription>From active subscriptions</StatDescription>
+              <StatLabel>{t('admin:subscriptionsPage.monthlyRevenue')}</StatLabel>
+              <StatDescription>{t('admin:subscriptionsPage.fromActiveSubscriptions')}</StatDescription>
             </StatCard>
           </StatsGrid>
 
@@ -1104,23 +1105,23 @@ const SubscriptionsPage: React.FC = () => {
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="trial">Trial</option>
-              <option value="expired">Expired</option>
-              <option value="suspended">Suspended</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="all">{t('admin:subscriptionsPage.allStatus')}</option>
+              <option value="active">{t('admin:subscriptionsPage.active')}</option>
+              <option value="trial">{t('admin:subscriptionsPage.trial')}</option>
+              <option value="expired">{t('admin:subscriptionsPage.expired')}</option>
+              <option value="suspended">{t('admin:subscriptionsPage.suspended')}</option>
+              <option value="cancelled">{t('admin:subscriptionsPage.cancelled')}</option>
             </FilterSelect>
 
             <FilterSelect
               value={filterEntityType}
               onChange={(e) => setFilterEntityType(e.target.value as any)}
             >
-              <option value="all">All Types</option>
-              <option value="restaurant">Restaurant</option>
-              <option value="brand">Brand General</option>
-              <option value="foodcourt">Foodcourt General</option>
-              <option value="owner">Restaurant Owner</option>
+              <option value="all">{t('admin:subscriptionsPage.allTypes')}</option>
+              <option value="restaurant">{t('admin:subscriptionsPage.restaurant')}</option>
+              <option value="brand">{t('admin:subscriptionsPage.brandGeneral')}</option>
+              <option value="foodcourt">{t('admin:subscriptionsPage.foodcourtGeneral')}</option>
+              <option value="owner">{t('admin:subscriptionsPage.restaurantOwner')}</option>
             </FilterSelect>
 
             <SearchInput
@@ -1132,26 +1133,26 @@ const SubscriptionsPage: React.FC = () => {
 
           <Table>
             <SubscriptionTableHeader columns="2.5fr 1.3fr 0.8fr 1fr 1fr 0.8fr 0.8fr 200px">
-              <span className="col-info">Subscriber</span>
-              <span>Plan</span>
-              <span>Status</span>
-              <span>Menu Items</span>
-              <span className="col-fee">Monthly Fee</span>
-              <span>Expires In</span>
-              <span>Auto-Renew</span>
-              <span className="col-action">Actions</span>
+              <span className="col-info">{t('admin:subscriptionsPage.subscriber')}</span>
+              <span>{t('admin:subscriptionsPage.plan')}</span>
+              <span>{t('admin:subscriptionsPage.status')}</span>
+              <span>{t('admin:subscriptionsPage.menuItems')}</span>
+              <span className="col-fee">{t('admin:subscriptionsPage.monthlyFee')}</span>
+              <span>{t('admin:subscriptionsPage.expiresIn')}</span>
+              <span>{t('admin:subscriptionsPage.autorenew')}</span>
+              <span className="col-action">{t('admin:subscriptionsPage.actions')}</span>
             </SubscriptionTableHeader>
 
             {filteredSubscriptions.map(subscription => (
               <SubscriptionTableRow columns="2.5fr 1.3fr 0.8fr 1fr 1fr 0.8fr 0.8fr 200px" key={subscription.id}>
                 <MobileGrid>
                   <MobileValue className="col-info">
-                    <MobileLabel>Subscriber</MobileLabel>
+                    <MobileLabel>{t('admin:subscriptionsPage.subscriber')}</MobileLabel>
                     <RestaurantInfo>
                       <RestaurantName>
                         {subscription.restaurantName}
-                        {(subscription as any).isDemo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}
-                        {(subscription as any).isTest && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}
+                        {(subscription as any).isDemo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:subscriptionsPage.demo')}</span>}
+                        {(subscription as any).isTest && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:subscriptionsPage.test')}</span>}
                         {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}
                         {(subscription as any).entityType && (subscription as any).entityType !== 'restaurant' && (
                           <span style={{ fontSize: '10px', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', marginLeft: '4px', verticalAlign: 'middle',
@@ -1169,26 +1170,26 @@ const SubscriptionsPage: React.FC = () => {
                   </MobileValue>
 
                   <MobileValue>
-                    <MobileLabel>Plan</MobileLabel>
+                    <MobileLabel>{t('admin:subscriptionsPage.plan')}</MobileLabel>
                     <PlanBadge planType={subscription.planType}>
                       {subscription.planType.charAt(0).toUpperCase() + subscription.planType.slice(1)}
                     </PlanBadge>
                   </MobileValue>
 
                   <MobileValue>
-                    <MobileLabel>Status</MobileLabel>
+                    <MobileLabel>{t('admin:subscriptionsPage.status')}</MobileLabel>
                     <StatusBadge status={subscription.status}>
                       {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
                     </StatusBadge>
                   </MobileValue>
 
                   <MobileValue>
-                    <MobileLabel>Menu Items</MobileLabel>
+                    <MobileLabel>{t('admin:subscriptionsPage.menuItems')}</MobileLabel>
                     {subscription.currentMenuItems}/{subscription.menuItemLimit === -1 ? '∞' : subscription.menuItemLimit}
                   </MobileValue>
 
                   <MobileValue className="col-fee">
-                    <MobileLabel>Monthly Fee</MobileLabel>
+                    <MobileLabel>{t('admin:subscriptionsPage.monthlyFee')}</MobileLabel>
                     {subscription.discountType !== 'none' && subscription.discountValue > 0 ? (
                       <div>
                         <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '12px'}}>RM {subscription.monthlyFee}</span>
@@ -1205,7 +1206,7 @@ const SubscriptionsPage: React.FC = () => {
                   </MobileValue>
 
                   <MobileValue>
-                    <MobileLabel>Expires In</MobileLabel>
+                    <MobileLabel>{t('admin:subscriptionsPage.expiresIn')}</MobileLabel>
                     {(() => {
                       const today = new Date();
                       const endDate = new Date(subscription.endDate);
@@ -1213,9 +1214,9 @@ const SubscriptionsPage: React.FC = () => {
                       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                       if (diffDays < 0) {
-                        return <span style={{color: '#DC2626', fontWeight: '500'}}>Expired</span>;
+                        return <span style={{color: '#DC2626', fontWeight: '500'}}>{t('admin:subscriptionsPage.expired')}</span>;
                       } else if (diffDays === 0) {
-                        return <span style={{color: '#DC2626', fontWeight: '500'}}>Today</span>;
+                        return <span style={{color: '#DC2626', fontWeight: '500'}}>{t('admin:subscriptionsPage.today')}</span>;
                       } else if (diffDays <= 7) {
                         return <span style={{color: '#F59E0B', fontWeight: '500'}}>{diffDays} days</span>;
                       } else if (diffDays <= 30) {
@@ -1227,7 +1228,7 @@ const SubscriptionsPage: React.FC = () => {
                   </MobileValue>
 
                   <MobileValue>
-                    <MobileLabel>Auto-Renew</MobileLabel>
+                    <MobileLabel>{t('admin:subscriptionsPage.autorenew')}</MobileLabel>
                     {subscription.autoRenew ? (
                       <span style={{
                         display: 'inline-flex',
@@ -1264,8 +1265,8 @@ const SubscriptionsPage: React.FC = () => {
                   <CommonActionButton onClick={() => {
                     setViewingSubscription(subscription);
                     setShowViewModal(true);
-                  }}>View</CommonActionButton>
-                  <CommonActionButton onClick={() => handleEditSubscription(subscription)}>Edit</CommonActionButton>
+                  }}>{t('admin:subscriptionsPage.view')}</CommonActionButton>
+                  <CommonActionButton onClick={() => handleEditSubscription(subscription)}>{t('admin:subscriptionsPage.edit')}</CommonActionButton>
                   <CommonIconButton
                     onClick={() => handleToggleStatus(subscription)}
                     title={subscription.status === 'active' ? 'Suspend' : (subscription.status === 'suspended' || subscription.status === 'overdue') ? 'Restore Subscription' : 'Activate'}
@@ -1285,7 +1286,7 @@ const SubscriptionsPage: React.FC = () => {
 
           {/* Add Subscription Modal */}
           {showAddModal && (
-                        <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add Subscription" footer={<><ThemedButton variant="cancel" onClick={() => setShowAddModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmit}>Add Subscription</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add Subscription" footer={<><ThemedButton variant="cancel" onClick={() => setShowAddModal(false)}>{t('admin:subscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleSubmit}>{t('admin:subscriptionsPage.addSubscription')}</ThemedButton></>}>
 
                   <FormGrid>
                     <FormGroup>
@@ -1311,10 +1312,10 @@ const SubscriptionsPage: React.FC = () => {
                           }
                         }}
                       >
-                        <option value="restaurant">Restaurant</option>
-                        <option value="owner">Restaurant Owner</option>
-                        <option value="brand">Brand Manager</option>
-                        <option value="foodcourt">Foodcourt Manager</option>
+                        <option value="restaurant">{t('admin:subscriptionsPage.restaurant')}</option>
+                        <option value="owner">{t('admin:subscriptionsPage.restaurantOwner')}</option>
+                        <option value="brand">{t('admin:subscriptionsPage.brandManager')}</option>
+                        <option value="foodcourt">{t('admin:subscriptionsPage.foodcourtManager')}</option>
                       </FilterSelect>
                     </FormGroup>
 
@@ -1485,7 +1486,7 @@ const SubscriptionsPage: React.FC = () => {
                           }
                         }}
                       >
-                        <option value="">Select Plan</option>
+                        <option value="">{t('admin:subscriptionsPage.selectPlan')}</option>
                         {availablePlans
                           .filter(p => p.plan_target === userType)
                           .map((plan) => (
@@ -1493,7 +1494,7 @@ const SubscriptionsPage: React.FC = () => {
                               {plan.display_name} - {formatPlanPrice(plan, normalizeCurrencyCode(selectedTarget?.data?.currency || 'MYR'))}
                             </option>
                           ))}
-                        <option value="others">Others</option>
+                        <option value="others">{t('admin:subscriptionsPage.others')}</option>
                       </FormSelect>
                     </FormGroup>
 
@@ -1591,8 +1592,8 @@ const SubscriptionsPage: React.FC = () => {
                         value={newSubscription.billingCycle || 'monthly'}
                         onChange={handleBillingCycleChange}
                       >
-                        <option value="monthly">Monthly</option>
-                        <option value="annual">Annual</option>
+                        <option value="monthly">{t('admin:subscriptionsPage.monthly')}</option>
+                        <option value="annual">{t('admin:subscriptionsPage.annual')}</option>
                       </FormSelect>
                     </FormGroup>
 
@@ -1662,7 +1663,7 @@ const SubscriptionsPage: React.FC = () => {
 
           {/* Success Modal */}
           {showSuccessModal && (
-            <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success!" size="small" footer={<><ThemedButton variant="primary" onClick={() => setShowSuccessModal(false)}>OK</ThemedButton></>}>
+            <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success!" size="small" footer={<><ThemedButton variant="primary" onClick={() => setShowSuccessModal(false)}>{t('admin:subscriptionsPage.ok')}</ThemedButton></>}>
               <div style={{ textAlign: 'center' }}>
                 <SuccessIcon>✓</SuccessIcon>
                 <SuccessMessage>{successMessage}</SuccessMessage>
@@ -1672,7 +1673,7 @@ const SubscriptionsPage: React.FC = () => {
 
           {/* Edit Subscription Modal - Only for Custom Subscriptions */}
           {showEditModal && editingSubscription && (
-                        <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Custom Subscription" footer={<><ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateSubscription}>Update Subscription</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Custom Subscription" footer={<><ThemedButton variant="cancel" onClick={() => setShowEditModal(false)}>{t('admin:subscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateSubscription}>{t('admin:subscriptionsPage.updateSubscription')}</ThemedButton></>}>
 
                   <FormGrid>
                     <FormGroup style={{gridColumn: '1 / -1'}}>
@@ -1710,7 +1711,7 @@ const SubscriptionsPage: React.FC = () => {
                           }
                         }}
                       >
-                        <option value="">Select Plan</option>
+                        <option value="">{t('admin:subscriptionsPage.selectPlan')}</option>
                         {availablePlans
                           .filter(p => p.plan_target === 'restaurant')
                           .map((plan) => {
@@ -1725,7 +1726,7 @@ const SubscriptionsPage: React.FC = () => {
                               </option>
                             );
                           })}
-                        <option value="others">Others</option>
+                        <option value="others">{t('admin:subscriptionsPage.others')}</option>
                       </FormSelect>
                     </FormGroup>
 
@@ -1761,11 +1762,11 @@ const SubscriptionsPage: React.FC = () => {
                         value={editingSubscription.status}
                         onChange={(e) => setEditingSubscription({...editingSubscription, status: e.target.value as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled'})}
                       >
-                        <option value="trial">Trial</option>
-                        <option value="active">Active</option>
-                        <option value="suspended">Suspended</option>
-                        <option value="expired">Expired</option>
-                        <option value="cancelled">Cancelled</option>
+                        <option value="trial">{t('admin:subscriptionsPage.trial')}</option>
+                        <option value="active">{t('admin:subscriptionsPage.active')}</option>
+                        <option value="suspended">{t('admin:subscriptionsPage.suspended')}</option>
+                        <option value="expired">{t('admin:subscriptionsPage.expired')}</option>
+                        <option value="cancelled">{t('admin:subscriptionsPage.cancelled')}</option>
                       </FormSelect>
                     </FormGroup>
 
@@ -1782,8 +1783,8 @@ const SubscriptionsPage: React.FC = () => {
                         value={editingSubscription.billingCycle || 'monthly'}
                         onChange={(e) => setEditingSubscription({...editingSubscription, billingCycle: e.target.value as 'monthly' | 'annual'})}
                       >
-                        <option value="monthly">Monthly</option>
-                        <option value="annual">Annual</option>
+                        <option value="monthly">{t('admin:subscriptionsPage.monthly')}</option>
+                        <option value="annual">{t('admin:subscriptionsPage.annual')}</option>
                       </FormSelect>
                     </FormGroup>
 
@@ -1827,14 +1828,14 @@ const SubscriptionsPage: React.FC = () => {
                     </div>
 
                     <FormGroup>
-                      <FormLabel>Discount Type</FormLabel>
+                      <FormLabel>{t('admin:subscriptionsPage.discountType')}</FormLabel>
                       <FormSelect
                         value={editingSubscription.discountType || 'none'}
                         onChange={(e) => setEditingSubscription({...editingSubscription, discountType: e.target.value as 'none' | 'percentage' | 'fixed', discountValue: e.target.value === 'none' ? 0 : editingSubscription.discountValue})}
                       >
-                        <option value="none">None</option>
+                        <option value="none">{t('admin:subscriptionsPage.none')}</option>
                         <option value="percentage">Percentage (%)</option>
-                        <option value="fixed">Fixed Amount (RM)</option>
+                        <option value="fixed">{t('admin:subscriptionsPage.fixedAmountRm')}</option>
                       </FormSelect>
                     </FormGroup>
 
@@ -1855,7 +1856,7 @@ const SubscriptionsPage: React.FC = () => {
 
                     {editingSubscription.discountType !== 'none' && (
                       <FormGroup style={{gridColumn: '1 / -1'}}>
-                        <FormLabel>Discount Reason</FormLabel>
+                        <FormLabel>{t('admin:subscriptionsPage.discountReason')}</FormLabel>
                         <FormInput
                           type="text"
                           value={editingSubscription.discountReason || ''}
@@ -1867,7 +1868,7 @@ const SubscriptionsPage: React.FC = () => {
 
                     {editingSubscription.discountType !== 'none' && editingSubscription.discountValue > 0 && (
                       <div style={{gridColumn: '1 / -1', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '12px 16px'}}>
-                        <div style={{fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '4px'}}>Discount Preview</div>
+                        <div style={{fontSize: '12px', color: '#166534', fontWeight: '600', marginBottom: '4px'}}>{t('admin:subscriptionsPage.discountPreview')}</div>
                         <div style={{fontSize: '13px', color: '#15803D'}}>
                           Monthly Fee: RM {editingSubscription.monthlyFee.toFixed(2)} →{' '}
                           <strong>
@@ -1887,23 +1888,23 @@ const SubscriptionsPage: React.FC = () => {
 
           {/* View Subscription Modal */}
           {showViewModal && viewingSubscription && (
-                        <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Subscription Details" footer={<><ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>Close</ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Subscription Details" footer={<><ThemedButton variant="primary" onClick={() => setShowViewModal(false)}>{t('admin:subscriptionsPage.close')}</ThemedButton></>}>
 
                   <div style={{display: 'grid', gap: '20px'}}>
                     {/* Restaurant Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Restaurant Information</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.restaurantInformation')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Restaurant Name</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.restaurantName')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.restaurantName}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Manager</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.manager')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.managerName}</div>
                         </div>
                         <div>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Location</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.location')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.location}</div>
                         </div>
                       </div>
@@ -1911,16 +1912,16 @@ const SubscriptionsPage: React.FC = () => {
 
                     {/* Subscription Info */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Subscription Details</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.subscriptionDetails')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Plan Type</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.planType')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.planType.charAt(0).toUpperCase() + viewingSubscription.planType.slice(1)}
                           </div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Status</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.status')}</div>
                           <div>
                             <span style={{
                               display: 'inline-block',
@@ -1936,7 +1937,7 @@ const SubscriptionsPage: React.FC = () => {
                           </div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Monthly Fee</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.monthlyFee')}</div>
                           {viewingSubscription.discountType !== 'none' && viewingSubscription.discountValue > 0 ? (
                             <div>
                               <span style={{textDecoration: 'line-through', color: '#9CA3AF', fontSize: '13px'}}>RM {viewingSubscription.monthlyFee}</span>
@@ -1955,13 +1956,13 @@ const SubscriptionsPage: React.FC = () => {
                           )}
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Billing Cycle</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.billingCycle')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.billingCycle.charAt(0).toUpperCase() + viewingSubscription.billingCycle.slice(1)}
                           </div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Auto-Renew</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.autorenew')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.autoRenew ? (
                               <span style={{color: '#15803D'}}>✓ Enabled</span>
@@ -1976,23 +1977,23 @@ const SubscriptionsPage: React.FC = () => {
                     {/* Discount Info */}
                     {viewingSubscription.discountType !== 'none' && viewingSubscription.discountValue > 0 && (
                       <div>
-                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Discount</div>
+                        <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.discount')}</div>
                         <div style={{background: '#F0FDF4', padding: '16px', borderRadius: '8px', border: '1px solid #BBF7D0'}}>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>Type</div>
+                            <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>{t('admin:subscriptionsPage.type')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>
                               {viewingSubscription.discountType === 'percentage' ? 'Percentage' : 'Fixed Amount'}
                             </div>
                           </div>
                           <div style={{marginBottom: '12px'}}>
-                            <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>Value</div>
+                            <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>{t('admin:subscriptionsPage.value')}</div>
                             <div style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>
                               {viewingSubscription.discountType === 'percentage' ? `${viewingSubscription.discountValue}%` : `RM ${viewingSubscription.discountValue.toFixed(2)}`}
                             </div>
                           </div>
                           {viewingSubscription.discountReason && (
                             <div>
-                              <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>Reason</div>
+                              <div style={{fontSize: '12px', color: '#166534', marginBottom: '4px'}}>{t('admin:subscriptionsPage.reason')}</div>
                               <div style={{fontSize: '14px', fontWeight: '500', color: '#15803D'}}>{viewingSubscription.discountReason}</div>
                             </div>
                           )}
@@ -2002,30 +2003,30 @@ const SubscriptionsPage: React.FC = () => {
 
                     {/* Dates */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Dates</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.dates')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Start Date</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.startDate')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.startDate}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>End Date</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.endDate')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.endDate}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Next Payment</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.nextPayment')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSubscription.nextPayment}</div>
                         </div>
                         <div>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Expires In</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.expiresIn')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {(() => {
                               const today = new Date();
                               const endDate = new Date(viewingSubscription.endDate);
                               const diffTime = endDate.getTime() - today.getTime();
                               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                              if (diffDays < 0) return <span style={{color: '#DC2626'}}>Expired</span>;
-                              if (diffDays === 0) return <span style={{color: '#DC2626'}}>Today</span>;
+                              if (diffDays < 0) return <span style={{color: '#DC2626'}}>{t('admin:subscriptionsPage.expired')}</span>;
+                              if (diffDays === 0) return <span style={{color: '#DC2626'}}>{t('admin:subscriptionsPage.today')}</span>;
                               if (diffDays <= 7) return <span style={{color: '#F59E0B'}}>{diffDays} days</span>;
                               if (diffDays <= 30) return <span style={{color: '#10B981'}}>{diffDays} days</span>;
                               return <span style={{color: '#6B7280'}}>{diffDays} days</span>;
@@ -2037,16 +2038,16 @@ const SubscriptionsPage: React.FC = () => {
 
                     {/* Usage */}
                     <div>
-                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>Usage</div>
+                      <div style={{fontSize: '12px', color: '#6B7280', fontWeight: '600', marginBottom: '8px', textTransform: 'uppercase'}}>{t('admin:subscriptionsPage.usage')}</div>
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         <div style={{marginBottom: '12px'}}>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Menu Items</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.menuItems')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.currentMenuItems} / {viewingSubscription.menuItemLimit === -1 ? '∞' : viewingSubscription.menuItemLimit}
                           </div>
                         </div>
                         <div>
-                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>Payment Model</div>
+                          <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('admin:subscriptionsPage.paymentModel')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
                             {viewingSubscription.paymentModel === 'restaurant' ? 'Restaurant Admin' : 'Manager'}
                           </div>
@@ -2060,7 +2061,7 @@ const SubscriptionsPage: React.FC = () => {
 
           {/* Confirm Action Modal */}
           {showConfirmModal && (
-                        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>Cancel</ThemedButton><ThemedButton variant={confirmAction === 'delete' ? 'danger' : 'primary'} onClick={handleConfirmAction} > {confirmAction === 'delete' ? 'Delete' : confirmAction === 'suspend' ? 'Suspend' : 'Activate'} </ThemedButton></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>{t('admin:subscriptionsPage.cancel')}</ThemedButton><ThemedButton variant={confirmAction === 'delete' ? 'danger' : 'primary'} onClick={handleConfirmAction} > {confirmAction === 'delete' ? 'Delete' : confirmAction === 'suspend' ? 'Suspend' : 'Activate'} </ThemedButton></>}>
 
                   <p>
                     {confirmAction === 'delete' && `Are you sure you want to delete subscription for ${selectedSubscription?.restaurantName}?`}

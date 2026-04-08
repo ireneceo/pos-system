@@ -6,6 +6,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
+import { useTranslation } from 'react-i18next';
 
 interface CurrencyRevenue {
   [currency: string]: number;
@@ -546,6 +547,7 @@ const Badge = styled.span<{ variant: string }>`
 // `;
 
 const AdminDashboard: React.FC = () => {
+  const { t } = useTranslation('admin');
   const navigate = useNavigate();
   const { operationSettings, siteTimezone } = useStore();
   const [activeTab, handleTabChange] = useTabParam<'overview' | 'performance' | 'health' | 'system'>('overview');
@@ -950,7 +952,7 @@ const AdminDashboard: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Admin Dashboard</Title>
+          <Title>{t('admin:adminDashboard.adminDashboard')}</Title>
         </Header>
 
         <Content>
@@ -976,7 +978,7 @@ const AdminDashboard: React.FC = () => {
             style={{ cursor: 'pointer' }}
             onClick={() => navigate('/pos/admin/report')}
           >
-            <DashboardStatLabel>Monthly Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('admin:adminDashboard.monthlyRevenue')}</DashboardStatLabel>
             <DashboardStatValue>
               {(() => {
                 const display = formatCurrencyDisplay(metrics.monthlyRevenue, selectedCurrency);
@@ -999,7 +1001,7 @@ const AdminDashboard: React.FC = () => {
             style={{ cursor: 'pointer' }}
             onClick={() => navigate('/pos/admin/report')}
           >
-            <DashboardStatLabel>This Year Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('admin:adminDashboard.thisYearRevenue')}</DashboardStatLabel>
             <DashboardStatValue>
               {(() => {
                 const display = formatCurrencyDisplay(metrics.yearlyRevenue, selectedCurrency);
@@ -1022,7 +1024,7 @@ const AdminDashboard: React.FC = () => {
             style={{ cursor: 'pointer' }}
             onClick={() => navigate('/pos/admin/report')}
           >
-            <DashboardStatLabel>Cumulative Revenue</DashboardStatLabel>
+            <DashboardStatLabel>{t('admin:adminDashboard.cumulativeRevenue')}</DashboardStatLabel>
             <DashboardStatValue>
               {(() => {
                 const display = formatCurrencyDisplay(metrics.cumulativeRevenue, selectedCurrency);
@@ -1045,7 +1047,7 @@ const AdminDashboard: React.FC = () => {
             style={{ cursor: 'pointer' }}
             onClick={() => navigate('/pos/admin/managers')}
           >
-            <DashboardStatLabel>Total Managers</DashboardStatLabel>
+            <DashboardStatLabel>{t('admin:adminDashboard.totalManagers')}</DashboardStatLabel>
             <DashboardStatValue>{metrics.totalManagers}</DashboardStatValue>
           </DashboardStatCard>
 
@@ -1054,7 +1056,7 @@ const AdminDashboard: React.FC = () => {
             style={{ cursor: 'pointer' }}
             onClick={() => navigate('/pos/admin/subscriptions')}
           >
-            <DashboardStatLabel>Active Subscriptions</DashboardStatLabel>
+            <DashboardStatLabel>{t('admin:adminDashboard.activeSubscriptions')}</DashboardStatLabel>
             <DashboardStatValue>{metrics.activeSubscriptions}</DashboardStatValue>
           </DashboardStatCard>
 
@@ -1063,7 +1065,7 @@ const AdminDashboard: React.FC = () => {
             style={{ cursor: 'pointer' }}
             onClick={() => navigate('/pos/admin/restaurants')}
           >
-            <DashboardStatLabel>Total Restaurants</DashboardStatLabel>
+            <DashboardStatLabel>{t('admin:adminDashboard.totalRestaurants')}</DashboardStatLabel>
             <DashboardStatValue>{metrics.totalRestaurants}</DashboardStatValue>
           </DashboardStatCard>
 
@@ -1073,7 +1075,7 @@ const AdminDashboard: React.FC = () => {
             style={{ cursor: 'pointer' }}
             onClick={() => navigate('/pos/admin/support')}
           >
-            <DashboardStatLabel>Support Tickets</DashboardStatLabel>
+            <DashboardStatLabel>{t('admin:adminDashboard.supportTickets')}</DashboardStatLabel>
             <DashboardStatValue>{metrics.supportTickets}</DashboardStatValue>
           </DashboardStatCard>
 
@@ -1082,7 +1084,7 @@ const AdminDashboard: React.FC = () => {
             style={{ cursor: 'pointer' }}
             onClick={() => navigate('/pos/admin/managers')}
           >
-            <DashboardStatLabel>Active Users</DashboardStatLabel>
+            <DashboardStatLabel>{t('admin:adminDashboard.activeUsers')}</DashboardStatLabel>
             <DashboardStatValue>{metrics.activeUsers}</DashboardStatValue>
           </DashboardStatCard>
 
@@ -1092,7 +1094,7 @@ const AdminDashboard: React.FC = () => {
         <MainGrid>
           <ChartContainer>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3>Revenue & Growth Analytics</h3>
+              <h3>{t('admin:adminDashboard.revenueGrowthAnalytics')}</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   onClick={() => setTimePeriod('week')}
@@ -1227,14 +1229,14 @@ const AdminDashboard: React.FC = () => {
                 <div style={{ textAlign: 'center', color: '#6B7280', paddingTop: '40px' }}>
                   <p>Total Revenue: {formatMultiCurrency(metrics.monthlyRevenue)}</p>
                   <p>Growth Rate: +{metrics.growthRate.toFixed(1)}% YoY</p>
-                  <p>Invoice data loading...</p>
+                  <p>{t('admin:adminDashboard.invoiceDataLoading')}</p>
                 </div>
               )}
             </div>
           </ChartContainer>
 
           <AlertsPanel>
-            <h3>Notifications</h3>
+            <h3>{t('admin:adminDashboard.notifications')}</h3>
             <AlertsList>
               {/* System Log Alerts - Critical/Error in last 24h */}
               {systemLogAlerts.total > 0 && (
@@ -1262,7 +1264,7 @@ const AdminDashboard: React.FC = () => {
               }).length > 0 && (
                 <Alert type="info" onClick={() => navigate('/pos/admin/managers')}>
                   <AlertContent>
-                    <AlertTitle type="info">New Manager Registration</AlertTitle>
+                    <AlertTitle type="info">{t('admin:adminDashboard.newManagerRegistration')}</AlertTitle>
                     <AlertDescription>{managers.filter((m: any) => {
                       try { return new Date(m.createdAt).toLocaleDateString('en-CA', { timeZone: siteTimezone }) === todayInTz; } catch { return false; }
                     }).length} new manager(s) registered today - Click to view</AlertDescription>
@@ -1274,7 +1276,7 @@ const AdminDashboard: React.FC = () => {
               {metrics.supportTickets > 0 && (
                 <Alert type="warning" onClick={() => navigate('/pos/admin/support')}>
                   <AlertContent>
-                    <AlertTitle type="warning">Support Tickets Pending</AlertTitle>
+                    <AlertTitle type="warning">{t('admin:adminDashboard.supportTicketsPending')}</AlertTitle>
                     <AlertDescription>{metrics.supportTickets} open support ticket(s) require attention - Click to view</AlertDescription>
                   </AlertContent>
                 </Alert>
@@ -1286,7 +1288,7 @@ const AdminDashboard: React.FC = () => {
               }).length > 0 && (
                 <Alert type="info" onClick={() => navigate('/pos/admin/report')}>
                   <AlertContent>
-                    <AlertTitle type="info">New Revenue Generated</AlertTitle>
+                    <AlertTitle type="info">{t('admin:adminDashboard.newRevenueGenerated')}</AlertTitle>
                     <AlertDescription>
                       {(() => {
                         const todayInvoices = invoicesData.filter((invoice: any) => {
@@ -1319,8 +1321,8 @@ const AdminDashboard: React.FC = () => {
               }).length === 0 && (
                 <Alert type="success" onClick={() => {}}>
                   <AlertContent>
-                    <AlertTitle type="success">All Clear</AlertTitle>
-                    <AlertDescription>No new activities. All systems running smoothly.</AlertDescription>
+                    <AlertTitle type="success">{t('admin:adminDashboard.allClear')}</AlertTitle>
+                    <AlertDescription>{t('admin:adminDashboard.noNewActivitiesAllSystemsRunningSmoothly')}</AlertDescription>
                   </AlertContent>
                 </Alert>
               )}
@@ -1330,27 +1332,27 @@ const AdminDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <QuickActionsSection>
-          <h3>Quick Actions</h3>
+          <h3>{t('admin:adminDashboard.quickActions')}</h3>
           <QuickActionsGrid>
             <QuickActionCard onClick={() => navigate('/pos/admin/restaurants')}>
               <div className="icon">◐</div>
-              <div className="title">Restaurants</div>
-              <div className="description">Manage all restaurants</div>
+              <div className="title">{t('admin:adminDashboard.restaurants')}</div>
+              <div className="description">{t('admin:adminDashboard.manageAllRestaurants')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/admin/invoices')}>
               <div className="icon">▦</div>
-              <div className="title">Invoices</div>
-              <div className="description">Invoice management</div>
+              <div className="title">{t('admin:adminDashboard.invoices')}</div>
+              <div className="description">{t('admin:adminDashboard.invoiceManagement')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/admin/notices')}>
               <div className="icon">◈</div>
-              <div className="title">Notices</div>
-              <div className="description">Communication hub</div>
+              <div className="title">{t('admin:adminDashboard.notices')}</div>
+              <div className="description">{t('admin:adminDashboard.communicationHub')}</div>
             </QuickActionCard>
             <QuickActionCard onClick={() => navigate('/pos/admin/report')}>
               <div className="icon">☰</div>
-              <div className="title">Report</div>
-              <div className="description">Platform analytics</div>
+              <div className="title">{t('admin:adminDashboard.report')}</div>
+              <div className="description">{t('admin:adminDashboard.platformAnalytics')}</div>
             </QuickActionCard>
           </QuickActionsGrid>
         </QuickActionsSection>
@@ -1375,13 +1377,13 @@ const AdminDashboard: React.FC = () => {
             <Table>
               <Thead>
                 <Tr>
-                  <Th>Manager Company</Th>
-                  <Th>Plan</Th>
-                  <Th>Status</Th>
-                  <Th>Restaurants</Th>
-                  <Th>Monthly Revenue</Th>
-                  <Th>Health Score</Th>
-                  <Th>Risk Level</Th>
+                  <Th>{t('admin:adminDashboard.managerCompany')}</Th>
+                  <Th>{t('admin:adminDashboard.plan')}</Th>
+                  <Th>{t('admin:adminDashboard.status')}</Th>
+                  <Th>{t('admin:adminDashboard.restaurants')}</Th>
+                  <Th>{t('admin:adminDashboard.monthlyRevenue')}</Th>
+                  <Th>{t('admin:adminDashboard.healthScore')}</Th>
+                  <Th>{t('admin:adminDashboard.riskLevel')}</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -1425,7 +1427,7 @@ const AdminDashboard: React.FC = () => {
 
         {activeTab === 'performance' && (
           <TableContainer style={{ padding: '32px' }}>
-            <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>Performance Analytics</h3>
+            <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>{t('admin:adminDashboard.performanceAnalytics')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
               <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
                 <h4 style={{ color: '#059669', marginBottom: '10px' }}>Revenue Insights ({selectedCurrency})</h4>
@@ -1434,13 +1436,13 @@ const AdminDashboard: React.FC = () => {
                 <p>• ARPU: {formatCurrency(metrics.averageRevenuePerUser, operationSettings.currency)}</p>
               </div>
               <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <h4 style={{ color: '#2563EB', marginBottom: '10px' }}>Business Overview</h4>
+                <h4 style={{ color: '#2563EB', marginBottom: '10px' }}>{t('admin:adminDashboard.businessOverview')}</h4>
                 <p>• Total managers: {metrics.totalManagers}</p>
                 <p>• Active subscriptions: {metrics.activeSubscriptions}</p>
                 <p>• Open support tickets: {metrics.supportTickets}</p>
               </div>
               <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <h4 style={{ color: '#7C3AED', marginBottom: '10px' }}>Restaurant Metrics</h4>
+                <h4 style={{ color: '#7C3AED', marginBottom: '10px' }}>{t('admin:adminDashboard.restaurantMetrics')}</h4>
                 <p>• Total restaurants: {metrics.totalRestaurants}</p>
                 <p>• This month activities: {metrics.totalTransactions}</p>
                 <p>• Cumulative revenue: {formatCurrency(getCurrencyTotal(metrics.cumulativeRevenue, selectedCurrency), selectedCurrency)}</p>
@@ -1451,10 +1453,10 @@ const AdminDashboard: React.FC = () => {
 
         {activeTab === 'health' && (
           <TableContainer style={{ padding: '32px' }}>
-            <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>Account Health Monitoring</h3>
+            <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>{t('admin:adminDashboard.accountHealthMonitoring')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div>
-                <h4>Health Score Distribution</h4>
+                <h4>{t('admin:adminDashboard.healthScoreDistribution')}</h4>
                 <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
                   <p>🟢 Healthy (80-100): {managers.filter(m => m.healthScore >= 80).length} accounts</p>
                   <p>🟡 At Risk (60-79): {managers.filter(m => m.healthScore >= 60 && m.healthScore < 80).length} accounts</p>
@@ -1462,7 +1464,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
               <div>
-                <h4>Risk Factors</h4>
+                <h4>{t('admin:adminDashboard.riskFactors')}</h4>
                 <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
                   <p>• Payment delays: Monitor automated</p>
                   <p>• Usage decline: Real-time alerts</p>
@@ -1476,17 +1478,17 @@ const AdminDashboard: React.FC = () => {
 
         {activeTab === 'system' && (
           <TableContainer style={{ padding: '32px' }}>
-            <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>System Operations</h3>
+            <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>{t('admin:adminDashboard.systemOperations')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
               <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <h4 style={{ color: '#059669' }}>Invoice Summary</h4>
+                <h4 style={{ color: '#059669' }}>{t('admin:adminDashboard.invoiceSummary')}</h4>
                 <p>• Total invoices: {invoicesData.length}</p>
                 <p>• Paid: {invoicesData.filter((i: any) => i.status === 'paid' || i.status === 'completed').length}</p>
                 <p>• Pending: {invoicesData.filter((i: any) => i.status === 'pending_payment').length}</p>
                 <p>• Overdue: {invoicesData.filter((i: any) => i.status === 'overdue').length}</p>
               </div>
               <div style={{ padding: '20px', background: '#F8FAFC', borderRadius: '12px' }}>
-                <h4 style={{ color: '#2563EB' }}>User Activity</h4>
+                <h4 style={{ color: '#2563EB' }}>{t('admin:adminDashboard.userActivity')}</h4>
                 <p>• Total managers: {metrics.totalManagers}</p>
                 <p>• Active users: {metrics.activeUsers}</p>
                 <p>• Total restaurants: {metrics.totalRestaurants}</p>

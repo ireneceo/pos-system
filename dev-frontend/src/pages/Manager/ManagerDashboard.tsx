@@ -5,6 +5,7 @@ import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription'
 import { StatsGrid, StatCard, StatLabel, StatValue } from '../../components/UI';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 // API base URL - replaced at build time
 const API_BASE = process.env.REACT_APP_API_URL || '';
@@ -249,6 +250,7 @@ const QuickActionText = styled.div`
 `;
 
 const ManagerDashboard: React.FC = () => {
+  const { t } = useTranslation('admin');
   const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const { defaultCurrency } = useBrandCurrency();
@@ -330,30 +332,30 @@ const ManagerDashboard: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Dashboard</Title>
+          <Title>{t('admin:managerDashboard.dashboard')}</Title>
         </Header>
         
         <Content>
           <StatsGrid>
           <StatCard color="#059669">
-            <StatLabel>Today's Total Sales</StatLabel>
+            <StatLabel>{t('admin:managerDashboard.todaysTotalSales')}</StatLabel>
             <StatValue>{formatCurrency(totalSales, selectedCurrency)}</StatValue>
           </StatCard>
           <StatCard color="#2563EB">
-            <StatLabel>Total Orders</StatLabel>
+            <StatLabel>{t('admin:managerDashboard.totalOrders')}</StatLabel>
             <StatValue>{totalOrders}</StatValue>
           </StatCard>
           <StatCard color="#7C3AED">
-            <StatLabel>Active Restaurants</StatLabel>
+            <StatLabel>{t('admin:managerDashboard.activeRestaurants')}</StatLabel>
             <StatValue>{activeRestaurants}/{restaurants.length}</StatValue>
           </StatCard>
           <StatCard color="#D97706">
-            <StatLabel>Total Staff</StatLabel>
+            <StatLabel>{t('admin:managerDashboard.totalStaff')}</StatLabel>
             <StatValue>{totalStaff}</StatValue>
           </StatCard>
         </StatsGrid>
 
-        <SectionTitle>Quick Actions</SectionTitle>
+        <SectionTitle>{t('admin:managerDashboard.quickActions')}</SectionTitle>
         <QuickActions>
           <QuickActionCard onClick={() => navigate('/pos/manager/reports')}>
             <QuickActionIcon>
@@ -361,7 +363,7 @@ const ManagerDashboard: React.FC = () => {
                 <path d="M9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4zm2.5 2.1h-15V5h15v14.1zm0-16.1h-15c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h15c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
               </svg>
             </QuickActionIcon>
-            <QuickActionText>View Reports</QuickActionText>
+            <QuickActionText>{t('admin:managerDashboard.viewReports')}</QuickActionText>
           </QuickActionCard>
           <QuickActionCard onClick={() => navigate('/pos/manager/invoices')}>
             <QuickActionIcon>
@@ -370,7 +372,7 @@ const ManagerDashboard: React.FC = () => {
                 <path d="M9 15h6v-1H9v1zm0-3h6v-1H9v1zm0-3h6V8H9v1z"/>
               </svg>
             </QuickActionIcon>
-            <QuickActionText>Restaurant Invoices</QuickActionText>
+            <QuickActionText>{t('admin:managerDashboard.restaurantInvoices')}</QuickActionText>
           </QuickActionCard>
           <QuickActionCard onClick={() => navigate('/pos/manager/sales')}>
             <QuickActionIcon>
@@ -378,7 +380,7 @@ const ManagerDashboard: React.FC = () => {
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1.81.45 1.61 1.67 1.61 1.16 0 1.6-.64 1.6-1.29 0-.84-.68-1.37-2.08-1.81-1.75-.55-3.28-1.3-3.28-3.4 0-1.68 1.19-2.84 2.8-3.18V5h2.67v1.61c1.73.34 2.76 1.6 2.85 3.16h-1.96c-.12-.78-.53-1.45-1.56-1.45-1.03 0-1.52.52-1.52 1.25 0 .74.66 1.21 2.02 1.63 1.88.6 3.36 1.36 3.36 3.56 0 1.84-1.21 3.05-3.08 3.33z"/>
               </svg>
             </QuickActionIcon>
-            <QuickActionText>Sales Overview</QuickActionText>
+            <QuickActionText>{t('admin:managerDashboard.salesOverview')}</QuickActionText>
           </QuickActionCard>
           <QuickActionCard onClick={() => navigate('/pos/manager/admins')}>
             <QuickActionIcon>
@@ -386,7 +388,7 @@ const ManagerDashboard: React.FC = () => {
                 <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A2.98 2.98 0 0 0 17.05 6H16c-.8 0-1.54.37-2.01.96l-.94 1.21A1 1 0 0 0 13.96 10l.79 1.04c.39.51.97.86 1.61.96h.64v10h2zM12.5 11.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5zM5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2zm2 16v-7H9V9.5a2.5 2.5 0 0 0-5 0V15h1.5v7h2zm6.5-12c.83 0 1.5-.67 1.5-1.5S14.83 8 14 8s-1.5.67-1.5 1.5.67 1.5 1.5 1.5z"/>
               </svg>
             </QuickActionIcon>
-            <QuickActionText>Restaurant Admins</QuickActionText>
+            <QuickActionText>{t('admin:managerDashboard.restaurantAdmins')}</QuickActionText>
           </QuickActionCard>
           <QuickActionCard onClick={() => navigate('/pos/manager/subscriptions')}>
             <QuickActionIcon>
@@ -394,11 +396,11 @@ const ManagerDashboard: React.FC = () => {
                 <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
               </svg>
             </QuickActionIcon>
-            <QuickActionText>Manage Subscriptions</QuickActionText>
+            <QuickActionText>{t('admin:managerDashboard.manageSubscriptions')}</QuickActionText>
           </QuickActionCard>
         </QuickActions>
 
-        <SectionTitle>Your Restaurants</SectionTitle>
+        <SectionTitle>{t('admin:managerDashboard.yourRestaurants')}</SectionTitle>
         <RestaurantGrid>
           {restaurants.map(restaurant => (
             <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id)}>
@@ -424,19 +426,19 @@ const ManagerDashboard: React.FC = () => {
                   <RestaurantDashboardStatValue>
                     {formatCurrency(restaurant.todaySales, selectedCurrency)}
                   </RestaurantDashboardStatValue>
-                  <RestaurantDashboardStatLabel>Today's Sales</RestaurantDashboardStatLabel>
+                  <RestaurantDashboardStatLabel>{t('admin:managerDashboard.todaysSales')}</RestaurantDashboardStatLabel>
                 </RestaurantStat>
                 <RestaurantStat>
                   <RestaurantDashboardStatValue>{restaurant.todayOrders}</RestaurantDashboardStatValue>
-                  <RestaurantDashboardStatLabel>Orders</RestaurantDashboardStatLabel>
+                  <RestaurantDashboardStatLabel>{t('admin:managerDashboard.orders')}</RestaurantDashboardStatLabel>
                 </RestaurantStat>
                 <RestaurantStat>
                   <RestaurantDashboardStatValue>{restaurant.staffCount}</RestaurantDashboardStatValue>
-                  <RestaurantDashboardStatLabel>Staff</RestaurantDashboardStatLabel>
+                  <RestaurantDashboardStatLabel>{t('admin:managerDashboard.staff')}</RestaurantDashboardStatLabel>
                 </RestaurantStat>
               </RestaurantStats>
 
-              <ActionButton>View Details</ActionButton>
+              <ActionButton>{t('admin:managerDashboard.viewDetails')}</ActionButton>
             </RestaurantCard>
           ))}
         </RestaurantGrid>

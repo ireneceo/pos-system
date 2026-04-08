@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -81,6 +82,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiredPermission,
   requireRestaurantMatch = false
 }) => {
+  const { t } = useTranslation('common');
   const { user, isAuthenticated, isLoading, hasPermission, canAccessRoute } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

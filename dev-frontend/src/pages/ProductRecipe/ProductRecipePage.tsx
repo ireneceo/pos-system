@@ -23,6 +23,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
+import { useTranslation } from 'react-i18next';
 
 interface ProductRecipeStatus {
   id: number;
@@ -177,6 +178,7 @@ const CostRow = styled.div`
 `;
 
 const ProductRecipePage: React.FC = () => {
+  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const { defaultCurrency } = useBrandCurrency();
@@ -429,7 +431,7 @@ const ProductRecipePage: React.FC = () => {
       <>
         <Container>
           <EmptyState>
-            <p>Restaurant not found. Please log in with a restaurant account.</p>
+            <p>{t('recipes:productRecipePage.restaurantNotFoundPleaseLogInWithARestaurantAccount')}</p>
           </EmptyState>
         </Container>
       </>
@@ -440,7 +442,7 @@ const ProductRecipePage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Product Recipes</Title>
+          <Title>{t('recipes:productRecipePage.productRecipes')}</Title>
           <ActionSection>
             <Button variant="secondary" onClick={() => window.location.href = `/restaurant/${restaurantId}/recipe-management`}>
               Manage Recipes
@@ -464,15 +466,15 @@ const ProductRecipePage: React.FC = () => {
               value={recipeFilter}
               onChange={(e) => setRecipeFilter(e.target.value)}
             >
-              <option value="all">All Products</option>
-              <option value="with">With Recipe</option>
-              <option value="without">Without Recipe</option>
+              <option value="all">{t('recipes:productRecipePage.allProducts')}</option>
+              <option value="with">{t('recipes:productRecipePage.withRecipe')}</option>
+              <option value="without">{t('recipes:productRecipePage.withoutRecipe')}</option>
             </FilterSelect>
             <FilterSelect
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
-              <option value="all">All Categories</option>
+              <option value="all">{t('recipes:productRecipePage.allCategories')}</option>
               {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
@@ -480,7 +482,7 @@ const ProductRecipePage: React.FC = () => {
           </FilterBar>
 
           {loading ? (
-            <EmptyState>Loading...</EmptyState>
+            <EmptyState>{t('recipes:productRecipePage.loading')}</EmptyState>
           ) : filteredProducts.length === 0 ? (
             <EmptyState>
               <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -493,43 +495,43 @@ const ProductRecipePage: React.FC = () => {
           ) : (
             <Table>
               <TableHeader columns="2fr 1fr 1fr 1fr 1fr 150px">
-                <span className="col-info">Product</span>
-                <span className="col-price">Price</span>
-                <span>Recipe Status</span>
-                <span className="col-cost">Ingredient Cost</span>
-                <span className="col-money">Profit Margin</span>
-                <span className="col-action">Actions</span>
+                <span className="col-info">{t('recipes:productRecipePage.product')}</span>
+                <span className="col-price">{t('recipes:productRecipePage.price')}</span>
+                <span>{t('recipes:productRecipePage.recipeStatus')}</span>
+                <span className="col-cost">{t('recipes:productRecipePage.ingredientCost')}</span>
+                <span className="col-money">{t('recipes:productRecipePage.profitMargin')}</span>
+                <span className="col-action">{t('recipes:productRecipePage.actions')}</span>
               </TableHeader>
               {filteredProducts.map(product => (
                 <TableRow key={product.id} columns="2fr 1fr 1fr 1fr 1fr 150px">
                   <MobileGrid>
                     <MobileValue className="col-info">
-                      <MobileLabel>Product</MobileLabel>
+                      <MobileLabel>{t('recipes:productRecipePage.product')}</MobileLabel>
                       <ProductInfo>
                         <ProductName>{product.name}</ProductName>
                         <ProductMeta>{product.category} {product.code && `- ${product.code}`}</ProductMeta>
                       </ProductInfo>
                     </MobileValue>
                     <MobileValue className="col-price">
-                      <MobileLabel>Price</MobileLabel>
+                      <MobileLabel>{t('recipes:productRecipePage.price')}</MobileLabel>
                       <div style={{ fontWeight: 600, color: '#0A2540' }}>
                         {formatCurrency(product.price, selectedCurrency)}
                       </div>
                     </MobileValue>
                     <MobileValue>
-                      <MobileLabel>Recipe Status</MobileLabel>
+                      <MobileLabel>{t('recipes:productRecipePage.recipeStatus')}</MobileLabel>
                       <StatusBadge hasRecipe={product.has_recipe}>
                         {product.has_recipe ? 'Linked' : 'No Recipe'}
                       </StatusBadge>
                     </MobileValue>
                     <MobileValue className="col-cost">
-                      <MobileLabel>Ingredient Cost</MobileLabel>
+                      <MobileLabel>{t('recipes:productRecipePage.ingredientCost')}</MobileLabel>
                       <div style={{ color: product.has_recipe ? '#0A2540' : '#9CA3AF' }}>
                         {product.has_recipe ? formatCurrency(product.ingredient_cost, selectedCurrency) : '-'}
                       </div>
                     </MobileValue>
                     <MobileValue className="col-money">
-                      <MobileLabel>Profit Margin</MobileLabel>
+                      <MobileLabel>{t('recipes:productRecipePage.profitMargin')}</MobileLabel>
                       {product.profit_margin ? (
                         <ProfitBadge profit={parseFloat(product.profit_margin)}>
                           {product.profit_margin}%
@@ -613,7 +615,7 @@ const ProductRecipePage: React.FC = () => {
                   if (ing) setNewUnit(ing.unit);
                 }}
               >
-                <option value="">Select Ingredient</option>
+                <option value="">{t('recipes:productRecipePage.selectIngredient')}</option>
                 {ingredients.map(ing => {
                   const costPerUnit = ing.unit_cost / (ing.base_quantity || 1);
                   return (
@@ -687,12 +689,12 @@ const ProductRecipePage: React.FC = () => {
             </InfoBox>
 
             <UIFormGroup>
-              <FormLabel>Select Recipe</FormLabel>
+              <FormLabel>{t('recipes:productRecipePage.selectRecipe')}</FormLabel>
               <FormSelect
                 value={selectedRecipeId}
                 onChange={(e) => setSelectedRecipeId(e.target.value)}
               >
-                <option value="">No Recipe</option>
+                <option value="">{t('recipes:productRecipePage.noRecipe')}</option>
                 {availableRecipes.map(recipe => (
                   <option key={recipe.id} value={recipe.id}>
                     {recipe.name} {recipe.owner_type === 'brand' ? '(Brand)' : ''} - {formatCurrency(recipe.total_ingredient_cost, selectedCurrency)}

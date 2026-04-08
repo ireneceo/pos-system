@@ -35,8 +35,11 @@ function getLogoAttachment() {
  * Clean, modern design: light header + color logo + accent on CTA only
  * @param {string} bodyContent - HTML body content
  * @param {Object} [issuerInfo] - Optional issuer branding
+ * @param {string} [lang='en'] - Language code for footer text
  */
-function emailLayout(bodyContent, issuerInfo) {
+function emailLayout(bodyContent, issuerInfo, lang) {
+  const { getEmailText } = require('./i18n');
+  const emailLang = lang || 'en';
   const brandName = issuerInfo?.name || 'PurpleHere';
   const brandColor = issuerInfo?.color || '#635BFF';
   const logoSrc = issuerInfo?.logoUrl || 'cid:purplehere-logo';
@@ -74,8 +77,8 @@ function emailLayout(bodyContent, issuerInfo) {
         <!-- Footer -->
         <tr><td style="padding:20px 32px;border-top:1px solid #EEEEF0;">
           <p style="margin:0;color:#9CA3AF;font-size:12px;line-height:1.6;text-align:center;">
-            This is an automated message from ${footerText}.<br>
-            <a href="${footerUrl}/notification-preferences" style="color:#6B7280;text-decoration:underline;">Manage notification preferences</a><br>
+            ${getEmailText(emailLang, 'footer.automated', { company: footerText })}<br>
+            <a href="${footerUrl}/notification-preferences" style="color:#6B7280;text-decoration:underline;">${getEmailText(emailLang, 'footer.managePreferences')}</a><br>
             <a href="${footerUrl}" style="color:#6B7280;text-decoration:none;">${footerDomain}</a>
           </p>
         </td></tr>

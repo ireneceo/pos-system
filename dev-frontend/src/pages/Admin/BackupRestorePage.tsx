@@ -8,6 +8,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface BackupRecord {
   id: string;
@@ -390,6 +391,7 @@ const BackupListSize = styled.div`
 `;
 
 const BackupRestorePage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [activeTab, handleTabChange] = useTabParam<'backups' | 'restore' | 'schedule'>('backups');
   const [backups, setBackups] = useState<BackupRecord[]>([]);
   const [restoreOperations, setRestoreOperations] = useState<RestoreOperation[]>([]);
@@ -522,15 +524,14 @@ const BackupRestorePage: React.FC = () => {
 
     setShowDownloadModal(false);
   };
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Backup & Restore</Title>
+          <Title>{t('admin:backupRestorePage.backupRestore')}</Title>
           <ActionSection>
-            <BaseButton variant="secondary" onClick={handleDownloadBackup}>Download Backup</BaseButton>
-            <BaseButton variant="primary" onClick={handleCreateBackup}>Create Backup</BaseButton>
+            <BaseButton variant="secondary" onClick={handleDownloadBackup}>{t('admin:backupRestorePage.downloadBackup')}</BaseButton>
+            <BaseButton variant="primary" onClick={handleCreateBackup}>{t('admin:backupRestorePage.createBackup')}</BaseButton>
           </ActionSection>
         </Header>
         <Content>
@@ -538,19 +539,19 @@ const BackupRestorePage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{backups.length}</StatValue>
-            <StatLabel>Total Backups</StatLabel>
+            <StatLabel>{t('admin:backupRestorePage.totalBackups')}</StatLabel>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{completedBackups}</StatValue>
-            <StatLabel>Successful Backups</StatLabel>
+            <StatLabel>{t('admin:backupRestorePage.successfulBackups')}</StatLabel>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{failedBackups}</StatValue>
-            <StatLabel>Failed Backups</StatLabel>
+            <StatLabel>{t('admin:backupRestorePage.failedBackups')}</StatLabel>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{formatBytes(totalBackupSize)}</StatValue>
-            <StatLabel>Total Storage Used</StatLabel>
+            <StatLabel>{t('admin:backupRestorePage.totalStorageUsed')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -570,10 +571,10 @@ const BackupRestorePage: React.FC = () => {
           {activeTab === 'backups' && (
             <>
               <SectionHeader>
-                <SectionTitle>Backup History</SectionTitle>
+                <SectionTitle>{t('admin:backupRestorePage.backupHistory')}</SectionTitle>
                 <SectionActions>
-                  <BaseButton variant="secondary" onClick={handleCleanupOldBackups}>Cleanup Old Backups</BaseButton>
-                  <BaseButton variant="primary" onClick={handleCreateBackup}>New Backup</BaseButton>
+                  <BaseButton variant="secondary" onClick={handleCleanupOldBackups}>{t('admin:backupRestorePage.cleanupOldBackups')}</BaseButton>
+                  <BaseButton variant="primary" onClick={handleCreateBackup}>{t('admin:backupRestorePage.newBackup')}</BaseButton>
                 </SectionActions>
               </SectionHeader>
               <BackupGrid>
@@ -583,19 +584,19 @@ const BackupRestorePage: React.FC = () => {
                       <BackupName>{backup.name}</BackupName>
                       <BackupMeta>
                         <MetaItem>
-                          <MetaLabel>Size</MetaLabel>
+                          <MetaLabel>{t('admin:backupRestorePage.size')}</MetaLabel>
                           <MetaValue>{formatBytes(backup.size)}</MetaValue>
                         </MetaItem>
                         <MetaItem>
-                          <MetaLabel>Duration</MetaLabel>
+                          <MetaLabel>{t('admin:backupRestorePage.duration')}</MetaLabel>
                           <MetaValue>{backup.duration > 0 ? formatDuration(backup.duration) : 'N/A'}</MetaValue>
                         </MetaItem>
                         <MetaItem>
-                          <MetaLabel>Created</MetaLabel>
+                          <MetaLabel>{t('admin:backupRestorePage.created')}</MetaLabel>
                           <MetaValue>{formatDateTime(backup.createdAt)}</MetaValue>
                         </MetaItem>
                         <MetaItem>
-                          <MetaLabel>Tables</MetaLabel>
+                          <MetaLabel>{t('admin:backupRestorePage.tables')}</MetaLabel>
                           <MetaValue>{backup.tables.length} tables</MetaValue>
                         </MetaItem>
                       </BackupMeta>
@@ -606,29 +607,29 @@ const BackupRestorePage: React.FC = () => {
                       )}
                       <BackupTags>
                         <Tag variant="type">{backup.type}</Tag>
-                        {backup.encrypted && <Tag variant="encrypted">Encrypted</Tag>}
-                        {backup.compressed && <Tag variant="compressed">Compressed</Tag>}
+                        {backup.encrypted && <Tag variant="encrypted">{t('admin:backupRestorePage.encrypted')}</Tag>}
+                        {backup.compressed && <Tag variant="compressed">{t('admin:backupRestorePage.compressed')}</Tag>}
                       </BackupTags>
                     </BackupInfo>
                     <BackupActions>
                       <StatusBadge status={backup.status}>{backup.status}</StatusBadge>
                       {backup.status === 'completed' && (
                         <>
-                          <ActionButton variant="primary">Restore</ActionButton>
-                          <ActionButton>Download</ActionButton>
-                          <ActionButton variant="danger">Delete</ActionButton>
+                          <ActionButton variant="primary">{t('admin:backupRestorePage.restore')}</ActionButton>
+                          <ActionButton>{t('admin:backupRestorePage.download')}</ActionButton>
+                          <ActionButton variant="danger">{t('admin:backupRestorePage.delete')}</ActionButton>
                         </>
                       )}
                       {backup.status === 'failed' && (
                         <>
-                          <ActionButton variant="primary">Retry</ActionButton>
-                          <ActionButton variant="danger">Delete</ActionButton>
+                          <ActionButton variant="primary">{t('admin:backupRestorePage.retry')}</ActionButton>
+                          <ActionButton variant="danger">{t('admin:backupRestorePage.delete')}</ActionButton>
                         </>
                       )}
                       {backup.status === 'scheduled' && (
                         <>
-                          <ActionButton>Edit Schedule</ActionButton>
-                          <ActionButton variant="danger">Cancel</ActionButton>
+                          <ActionButton>{t('admin:backupRestorePage.editSchedule')}</ActionButton>
+                          <ActionButton variant="danger">{t('admin:backupRestorePage.cancel')}</ActionButton>
                         </>
                       )}
                     </BackupActions>
@@ -641,7 +642,7 @@ const BackupRestorePage: React.FC = () => {
           {activeTab === 'restore' && (
             <>
               <SectionHeader>
-                <SectionTitle>Restore Operations</SectionTitle>
+                <SectionTitle>{t('admin:backupRestorePage.restoreOperations')}</SectionTitle>
               </SectionHeader>
               <RestoreProgress>
                 {restoreOperations.map(restore => (
@@ -682,9 +683,9 @@ const BackupRestorePage: React.FC = () => {
           {activeTab === 'schedule' && (
             <>
               <SectionHeader>
-                <SectionTitle>Backup Schedule</SectionTitle>
+                <SectionTitle>{t('admin:backupRestorePage.backupSchedule')}</SectionTitle>
                 <SectionActions>
-                  <BaseButton variant="primary" onClick={handleAddSchedule}>Add Schedule</BaseButton>
+                  <BaseButton variant="primary" onClick={handleAddSchedule}>{t('admin:backupRestorePage.addSchedule')}</BaseButton>
                 </SectionActions>
               </SectionHeader>
               <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280' }}>
@@ -713,11 +714,11 @@ const BackupRestorePage: React.FC = () => {
           }
         >
           <FormGroup>
-            <FormLabel>Backup Type</FormLabel>
+            <FormLabel>{t('admin:backupRestorePage.backupType')}</FormLabel>
             <StandardSelect value={backupType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBackupType(e.target.value as any)}>
-              <option value="full">Full Backup</option>
-              <option value="incremental">Incremental Backup</option>
-              <option value="differential">Differential Backup</option>
+              <option value="full">{t('admin:backupRestorePage.fullBackup')}</option>
+              <option value="incremental">{t('admin:backupRestorePage.incrementalBackup')}</option>
+              <option value="differential">{t('admin:backupRestorePage.differentialBackup')}</option>
             </StandardSelect>
             <FormHelp>
               Full: Complete database backup. Incremental: Only changes since last backup.
@@ -725,7 +726,7 @@ const BackupRestorePage: React.FC = () => {
             </FormHelp>
           </FormGroup>
           <FormGroup>
-            <FormLabel>Description (Optional)</FormLabel>
+            <FormLabel>{t('admin:backupRestorePage.descriptionOptional')}</FormLabel>
             <FormTextArea
               value={backupDescription}
               onChange={(e) => setBackupDescription(e.target.value)}
@@ -784,35 +785,35 @@ const BackupRestorePage: React.FC = () => {
           }
         >
           <FormGroup>
-            <FormLabel>Schedule Name</FormLabel>
+            <FormLabel>{t('admin:backupRestorePage.scheduleName')}</FormLabel>
             <FormInput type="text" placeholder="e.g., Daily Full Backup" />
           </FormGroup>
           <FormGroup>
-            <FormLabel>Backup Type</FormLabel>
+            <FormLabel>{t('admin:backupRestorePage.backupType')}</FormLabel>
             <StandardSelect>
-              <option value="full">Full Backup</option>
-              <option value="incremental">Incremental Backup</option>
+              <option value="full">{t('admin:backupRestorePage.fullBackup')}</option>
+              <option value="incremental">{t('admin:backupRestorePage.incrementalBackup')}</option>
             </StandardSelect>
           </FormGroup>
           <FormGroup>
-            <FormLabel>Frequency</FormLabel>
+            <FormLabel>{t('admin:backupRestorePage.frequency')}</FormLabel>
             <StandardSelect>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
+              <option value="daily">{t('admin:backupRestorePage.daily')}</option>
+              <option value="weekly">{t('admin:backupRestorePage.weekly')}</option>
+              <option value="monthly">{t('admin:backupRestorePage.monthly')}</option>
             </StandardSelect>
           </FormGroup>
           <FormGroup>
-            <FormLabel>Time</FormLabel>
+            <FormLabel>{t('admin:backupRestorePage.time')}</FormLabel>
             <FormInput type="time" defaultValue="02:00" />
           </FormGroup>
           <FormGroup>
-            <FormLabel>Retention Policy</FormLabel>
+            <FormLabel>{t('admin:backupRestorePage.retentionPolicy')}</FormLabel>
             <StandardSelect>
-              <option value="7">Keep for 7 days</option>
-              <option value="30">Keep for 30 days</option>
-              <option value="90">Keep for 90 days</option>
-              <option value="365">Keep for 1 year</option>
+              <option value="7">{t('admin:backupRestorePage.keepFor7Days')}</option>
+              <option value="30">{t('admin:backupRestorePage.keepFor30Days')}</option>
+              <option value="90">{t('admin:backupRestorePage.keepFor90Days')}</option>
+              <option value="365">{t('admin:backupRestorePage.keepFor1Year')}</option>
             </StandardSelect>
           </FormGroup>
         </Modal>

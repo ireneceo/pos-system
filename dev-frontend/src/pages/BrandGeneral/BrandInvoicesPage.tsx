@@ -34,6 +34,7 @@ import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Comm
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
+import { useTranslation } from 'react-i18next';
 
 interface Invoice {
   id: string;
@@ -590,6 +591,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
 type TabType = 'to_pay' | 'paid' | 'issued' | 'categories';
 
 const BrandInvoicesPage: React.FC = () => {
+  const { t } = useTranslation('brand');
   const { operationSettings } = useStore();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1573,7 +1575,7 @@ const BrandInvoicesPage: React.FC = () => {
                 </div>
             </div>
             <div class="invoice-title">
-                <div class="invoice-label">INVOICE</div>
+                <div class="invoice-label">{t('brand:brandInvoicesPage.invoice')}</div>
                 <div class="invoice-number">${invoice.invoiceNumber}</div>
                 <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
             </div>
@@ -1581,7 +1583,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         <div class="billing-info">
             <div class="bill-to-section">
-                <div class="section-label">Bill To</div>
+                <div class="section-label">{t('brand:brandInvoicesPage.billTo')}</div>
                 ${isReceivedInvoice ? `
                 <div class="customer-name">${companySettings?.companyName || 'Your Company'}</div>
                 ${companySettings?.address ? `<div class="customer-details">${companySettings.address}</div>` : ''}
@@ -1617,14 +1619,14 @@ const BrandInvoicesPage: React.FC = () => {
         </div>
 
         <div class="items-section">
-            <div class="section-label">Items</div>
+            <div class="section-label">{t('brand:brandInvoicesPage.items')}</div>
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th>Description</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-right">Unit Price</th>
-                        <th class="text-right">Amount</th>
+                        <th>{t('brand:brandInvoicesPage.description')}</th>
+                        <th class="text-center">{t('brand:brandInvoicesPage.qty')}</th>
+                        <th class="text-right">{t('brand:brandInvoicesPage.unitPrice')}</th>
+                        <th class="text-right">{t('brand:brandInvoicesPage.amount')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1667,7 +1669,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         ${displayCompany.bankName ? `
         <div class="bank-section">
-            <div class="bank-title">Payment Details</div>
+            <div class="bank-title">{t('brand:brandInvoicesPage.paymentDetails')}</div>
             <div class="bank-details">
                 <strong>Bank:</strong> ${displayCompany.bankName}<br>
                 <strong>Account Name:</strong> ${displayCompany.bankAccountName || '-'}<br>
@@ -1686,8 +1688,8 @@ const BrandInvoicesPage: React.FC = () => {
         ` : ''}
 
         <div class="footer">
-            <div class="footer-text">Thank you for your business!</div>
-            <div class="footer-text">This is a computer-generated invoice and does not require a signature.</div>
+            <div class="footer-text">{t('brand:brandInvoicesPage.thankYouForYourBusiness')}</div>
+            <div class="footer-text">{t('brand:brandInvoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
         </div>
     </div>
 </body>
@@ -2546,7 +2548,7 @@ const BrandInvoicesPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Invoices</Title>
+          <Title>{t('brand:brandInvoicesPage.invoices')}</Title>
           <ActionSection>
           </ActionSection>
         </Header>
@@ -2556,23 +2558,23 @@ const BrandInvoicesPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalIssuedCount}</StatValue>
-            <StatLabel>Issued</StatLabel>
-            <StatDescription>Invoices you sent</StatDescription>
+            <StatLabel>{t('brand:brandInvoicesPage.issued')}</StatLabel>
+            <StatDescription>{t('brand:brandInvoicesPage.invoicesYouSent')}</StatDescription>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{totalToPayCount}</StatValue>
-            <StatLabel>To Pay</StatLabel>
-            <StatDescription>Invoices received</StatDescription>
+            <StatLabel>{t('brand:brandInvoicesPage.toPay')}</StatLabel>
+            <StatDescription>{t('brand:brandInvoicesPage.invoicesReceived')}</StatDescription>
           </StatCard>
           <StatCard color="#F59E0B">
             <StatValue>{pendingInvoices}</StatValue>
-            <StatLabel>Pending</StatLabel>
-            <StatDescription>Awaiting payment</StatDescription>
+            <StatLabel>{t('brand:brandInvoicesPage.pending')}</StatLabel>
+            <StatDescription>{t('brand:brandInvoicesPage.awaitingPayment')}</StatDescription>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{overdueInvoices}</StatValue>
-            <StatLabel>Overdue</StatLabel>
-            <StatDescription>Requires attention</StatDescription>
+            <StatLabel>{t('brand:brandInvoicesPage.overdue')}</StatLabel>
+            <StatDescription>{t('brand:brandInvoicesPage.requiresAttention')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
@@ -2608,7 +2610,7 @@ const BrandInvoicesPage: React.FC = () => {
             />
           </DatePeriodFilter>
           <FiltersRight>
-            <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
+            <Button variant="primary" onClick={handleCreateInvoice}>{t('brand:brandInvoicesPage.createInvoice')}</Button>
           </FiltersRight>
         </FilterBarWrapper>
 
@@ -2616,15 +2618,15 @@ const BrandInvoicesPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">Customer</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.customer')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.period')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.issued')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.due')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
@@ -2634,7 +2636,7 @@ const BrandInvoicesPage: React.FC = () => {
                     <InvoiceInfo>
                       <InvoiceNumber>
                         {invoice.invoiceNumber}
-                        {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                        {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}
                       </InvoiceNumber>
                       <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                     </InvoiceInfo>
@@ -2643,7 +2645,7 @@ const BrandInvoicesPage: React.FC = () => {
                     <InvoiceInfo>
                       <InvoiceNumber>
                         {invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}
-                        {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>Non-Member</span>}
+                        {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.nonmember')}</span>}
                       </InvoiceNumber>
                       <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
                     </InvoiceInfo>
@@ -2656,17 +2658,17 @@ const BrandInvoicesPage: React.FC = () => {
                       {getStatusDisplay(getEffectiveStatus(invoice))}
                     </StatusBadge>
                     {invoice.isModified && (
-                      <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
+                      <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.modified')}</span>
                     )}
                   </DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
-                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>
                     <ActionButtons>
-                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
                       {invoice.status === 'draft' && (
                         <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>
                           <LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <line x1="22" y1="2" x2="11" y2="13"/>
@@ -2680,7 +2682,7 @@ const BrandInvoicesPage: React.FC = () => {
                       )}
                       {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
                         <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2709,7 +2711,7 @@ const BrandInvoicesPage: React.FC = () => {
                       {invoice.status === 'payment_submitted' && (
                         <>
                           {invoice.hasPaymentInfo && (
-                            <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>Confirm</LocalActionButton>
+                            <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('brand:brandInvoicesPage.confirm')}</LocalActionButton>
                           )}
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2735,7 +2737,7 @@ const BrandInvoicesPage: React.FC = () => {
                       )}
                       {invoice.status === 'overdue' && (
                         <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2797,7 +2799,7 @@ const BrandInvoicesPage: React.FC = () => {
                 <DataTableRow>
                   <DataTableCell colSpan={9}>
                     <DataTableEmpty>
-                      <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>No Invoices Found</div>
+                      <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.noInvoicesFound')}</div>
                       <div style={{ fontSize: '14px' }}>
                         {invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}
                       </div>
@@ -2831,15 +2833,15 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTable>
                 <DataTableHead>
                   <tr>
-                    <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">Issuer</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Issued</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Due</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.issuer')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.period')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.issued')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.due')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
                   </tr>
                 </DataTableHead>
                 <tbody>
@@ -2850,7 +2852,7 @@ const BrandInvoicesPage: React.FC = () => {
                           <InvoiceInfo>
                             <InvoiceNumber>
                               {invoice.invoiceNumber}
-                              {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                              {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}
                             </InvoiceNumber>
                             <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                           </InvoiceInfo>
@@ -2869,23 +2871,23 @@ const BrandInvoicesPage: React.FC = () => {
                             {getStatusDisplay(getEffectiveStatus(invoice))}
                           </StatusBadge>
                           {invoice.isModified && (
-                            <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
+                            <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.modified')}</span>
                           )}
                         </DataTableCell>
                         <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
-                        <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                        <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                         <DataTableCell data-label="" mobileFullWidth>
                           <ActionButtons>
-                            <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                            <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
 
                             {/* Pay button for pending/overdue/sent invoices (not for free) */}
                             {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
-                              <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay</LocalActionButton>
+                              <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>{t('brand:brandInvoicesPage.pay')}</LocalActionButton>
                             )}
 
                             {/* Confirm button for free invoices */}
                             {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
-                              <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</LocalActionButton>
+                              <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>{t('brand:brandInvoicesPage.confirm')}</LocalActionButton>
                             )}
 
                             {/* Download PDF */}
@@ -2920,7 +2922,7 @@ const BrandInvoicesPage: React.FC = () => {
                   ) : (
                     <DataTableRow>
                       <DataTableCell colSpan={9}>
-                        <DataTableEmpty>No invoices to pay</DataTableEmpty>
+                        <DataTableEmpty>{t('brand:brandInvoicesPage.noInvoicesToPay')}</DataTableEmpty>
                       </DataTableCell>
                     </DataTableRow>
                   )}
@@ -2950,14 +2952,14 @@ const BrandInvoicesPage: React.FC = () => {
               <DataTable>
                 <DataTableHead>
                   <tr>
-                    <DataTableHeaderCell align="left">Invoice</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">Issuer</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Period</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Paid Date</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">Amount</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">Actions</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.issuer')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.period')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.paidDate')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
                   </tr>
                 </DataTableHead>
                 <tbody>
@@ -2968,7 +2970,7 @@ const BrandInvoicesPage: React.FC = () => {
                           <InvoiceInfo>
                             <InvoiceNumber>
                               {invoice.invoiceNumber}
-                              {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                              {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}
                             </InvoiceNumber>
                             <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                           </InvoiceInfo>
@@ -2982,13 +2984,13 @@ const BrandInvoicesPage: React.FC = () => {
                         <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
                         <DataTableCell data-label="Paid" align="center" style={{ fontSize: '13px' }}>{invoice.paidDate ? formatDate(invoice.paidDate) : formatDate(invoice.issueDate)}</DataTableCell>
                         <DataTableCell data-label="Status" align="center">
-                          <StatusBadge status="paid">Paid</StatusBadge>
+                          <StatusBadge status="paid">{t('brand:brandInvoicesPage.paid')}</StatusBadge>
                         </DataTableCell>
                         <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
-                        <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                        <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                         <DataTableCell data-label="" mobileFullWidth>
                           <ActionButtons>
-                            <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                            <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
                             <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -3010,7 +3012,7 @@ const BrandInvoicesPage: React.FC = () => {
                   ) : (
                     <DataTableRow>
                       <DataTableCell colSpan={8}>
-                        <DataTableEmpty>No paid invoices yet</DataTableEmpty>
+                        <DataTableEmpty>{t('brand:brandInvoicesPage.noPaidInvoicesYet')}</DataTableEmpty>
                       </DataTableCell>
                     </DataTableRow>
                   )}
@@ -3024,7 +3026,7 @@ const BrandInvoicesPage: React.FC = () => {
           <div style={{ padding: '24px 0' }}>
             <HeaderRow>
               <div>
-                <SectionTitle>Invoice Categories</SectionTitle>
+                <SectionTitle>{t('brand:brandInvoicesPage.invoiceCategories')}</SectionTitle>
                 <p style={{ color: '#6B7280', fontSize: '14px', margin: '8px 0 0 0' }}>
                   Manage invoice categories for organizing different types of charges.
                 </p>
@@ -3040,13 +3042,13 @@ const BrandInvoicesPage: React.FC = () => {
 
             {invoiceCategories.length === 0 ? (
               <CategoryEmptyState>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>No categories yet</h4>
-                <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 16px 0' }}>Create your first invoice category to organize charges.</p>
+                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>{t('brand:brandInvoicesPage.noCategoriesYet')}</h4>
+                <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 16px 0' }}>{t('brand:brandInvoicesPage.createYourFirstInvoiceCategoryToOrganizeCharges')}</p>
                 <Button variant="primary" onClick={() => {
                   setEditingCategory(null);
                   setCategoryFormData({ name: '', code: '', description: '' });
                   setShowCategoryModal(true);
-                }}>Add Category</Button>
+                }}>{t('brand:brandInvoicesPage.addCategory')}</Button>
               </CategoryEmptyState>
             ) : (
               <CategoryGrid>
@@ -3101,7 +3103,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
+                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>{t('brand:brandInvoicesPage.cancel')}</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
 
                 <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
                   <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
@@ -3111,7 +3113,7 @@ const BrandInvoicesPage: React.FC = () => {
                 </div>
 
                 {loadingPaymentMethods ? (
-                  <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>Loading payment methods...</div>
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>{t('brand:brandInvoicesPage.loadingPaymentMethods')}</div>
                 ) : availablePaymentMethods.length === 0 ? (
                   <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
                     <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>
@@ -3119,7 +3121,7 @@ const BrandInvoicesPage: React.FC = () => {
                     </p>
                     {selectedInvoice.issuerType === 'system_admin' ? (
                       <p style={{ margin: 0, color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
-                        <strong>System Admin</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the system administrator.
+                        <strong>{t('brand:brandInvoicesPage.systemAdmin')}</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the system administrator.
                       </p>
                     ) : (
                       <>
@@ -3185,7 +3187,7 @@ const BrandInvoicesPage: React.FC = () => {
                       const m = availablePaymentMethods.find(m => m.id === 'bank_transfer');
                       return m ? (
                         <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', fontSize: '14px', lineHeight: '1.8' }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>Bank Transfer Details</h4>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.bankTransferDetails')}</h4>
                           <p style={{ margin: '0' }}><strong>Bank:</strong> {m.bankName}</p>
                           <p style={{ margin: '0' }}><strong>Account Number:</strong> {m.accountNumber}</p>
                           <p style={{ margin: '0' }}><strong>Account Name:</strong> {m.accountName}</p>
@@ -3198,7 +3200,7 @@ const BrandInvoicesPage: React.FC = () => {
                       const m = availablePaymentMethods.find(m => m.id === 'qr_payment');
                       return m ? (
                         <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>QR Payment</h4>
+                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.qrPayment')}</h4>
                           {m.qrImage && <img src={m.qrImage} alt="Payment QR Code" style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #E5E7EB', borderRadius: '8px' }} />}
                           {m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{m.qrDescription}</p>}
                         </div>
@@ -3210,20 +3212,20 @@ const BrandInvoicesPage: React.FC = () => {
                       <>
                         <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                           <span style={{ fontWeight: '600', flexShrink: 0 }}>*</span>
-                          <span>Please provide either a <strong>Transaction ID / Reference Number</strong> or upload a <strong>Payment Receipt Image</strong> to submit your payment.</span>
+                          <span>{t('brand:brandInvoicesPage.pleaseProvideEitherA')}<strong>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</strong> or upload a <strong>{t('brand:brandInvoicesPage.paymentReceiptImage')}</strong> to submit your payment.</span>
                         </div>
                         <FormGroup>
-                          <FormLabel>Transaction ID / Reference Number</FormLabel>
+                          <FormLabel>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</FormLabel>
                           <FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} />
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Payment Receipt Image</FormLabel>
+                          <FormLabel>{t('brand:brandInvoicesPage.paymentReceiptImage')}</FormLabel>
                           <div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC', cursor: 'pointer', position: 'relative' }}>
                             {paymentData.receiptImage ? (
                               <div>
                                 <img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} />
                                 <div>
-                                  <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>Remove Image</button>
+                                  <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('brand:brandInvoicesPage.removeImage')}</button>
                                 </div>
                               </div>
                             ) : (
@@ -3231,15 +3233,15 @@ const BrandInvoicesPage: React.FC = () => {
                                 <input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ display: 'none' }} />
                                 <div style={{ color: '#6B7280', fontSize: '14px' }}>
                                   <div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div>
-                                  <div>Click to upload payment receipt</div>
-                                  <div style={{ fontSize: '12px', marginTop: '4px' }}>Supports JPG, PNG (max 5MB)</div>
+                                  <div>{t('brand:brandInvoicesPage.clickToUploadPaymentReceipt')}</div>
+                                  <div style={{ fontSize: '12px', marginTop: '4px' }}>{t('brand:brandInvoicesPage.supportsJpgPngMax5mb')}</div>
                                 </div>
                               </label>
                             )}
                           </div>
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormLabel>{t('brand:brandInvoicesPage.notesOptional')}</FormLabel>
                           <FormTextarea placeholder="Any additional information about the payment..." value={paymentData.notes} onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))} />
                         </FormGroup>
                       </>
@@ -3252,7 +3254,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         {/* Legacy Category Modal - kept for compatibility */}
         {showCategoryModal && (
-                    <CommonModal isOpen={true} onClose={handleCloseCategoryModal} title={editingCategory ? 'Edit Category' : 'Add Category'} footer={<><Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>Cancel</Button><Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}> {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')} </Button></>}>
+                    <CommonModal isOpen={true} onClose={handleCloseCategoryModal} title={editingCategory ? 'Edit Category' : 'Add Category'} footer={<><Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>{t('brand:brandInvoicesPage.cancel')}</Button><Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}> {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')} </Button></>}>
 
                   <FormGroup>
                     <FormLabel>Name *</FormLabel>
@@ -3277,7 +3279,7 @@ const BrandInvoicesPage: React.FC = () => {
                     </small>
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>{t('brand:brandInvoicesPage.description')}</FormLabel>
                     <FormTextarea
                       value={categoryFormData.description}
                       onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
@@ -3444,7 +3446,7 @@ const BrandInvoicesPage: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <FormLabel>Non-Member Details</FormLabel>
+                      <FormLabel>{t('brand:brandInvoicesPage.nonmemberDetails')}</FormLabel>
                       <FormRow>
                         <FormGroup>
                           <FormLabel>Name *</FormLabel>
@@ -3457,21 +3459,21 @@ const BrandInvoicesPage: React.FC = () => {
                       </FormRow>
                       <FormRow>
                         <FormGroup>
-                          <FormLabel>Phone</FormLabel>
+                          <FormLabel>{t('brand:brandInvoicesPage.phone')}</FormLabel>
                           <FormInput type="text" value={externalPayer.phone} onChange={(e) => setExternalPayer({...externalPayer, phone: e.target.value})} placeholder="Phone number" />
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Company</FormLabel>
+                          <FormLabel>{t('brand:brandInvoicesPage.company')}</FormLabel>
                           <FormInput type="text" value={externalPayer.company} onChange={(e) => setExternalPayer({...externalPayer, company: e.target.value})} placeholder="Company name" />
                         </FormGroup>
                       </FormRow>
                       <FormRow>
                         <FormGroup>
-                          <FormLabel>Address</FormLabel>
+                          <FormLabel>{t('brand:brandInvoicesPage.address')}</FormLabel>
                           <FormInput type="text" value={externalPayer.address} onChange={(e) => setExternalPayer({...externalPayer, address: e.target.value})} placeholder="Address" />
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Tax ID</FormLabel>
+                          <FormLabel>{t('brand:brandInvoicesPage.taxId')}</FormLabel>
                           <FormInput type="text" value={externalPayer.tax_id} onChange={(e) => setExternalPayer({...externalPayer, tax_id: e.target.value})} placeholder="Tax ID" />
                         </FormGroup>
                       </FormRow>
@@ -3514,7 +3516,7 @@ const BrandInvoicesPage: React.FC = () => {
 
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Discount</FormLabel>
+                    <FormLabel>{t('brand:brandInvoicesPage.discount')}</FormLabel>
                     <FormSelect
                       value={newInvoice.discountType}
                       onChange={(e) => {
@@ -3529,9 +3531,9 @@ const BrandInvoicesPage: React.FC = () => {
                         setNewInvoice({ ...newInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : newInvoice.discountValue, tax: tax.toFixed(2), total: total.toFixed(2) });
                       }}
                     >
-                      <option value="none">No Discount</option>
+                      <option value="none">{t('brand:brandInvoicesPage.noDiscount')}</option>
                       <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed Amount</option>
+                      <option value="fixed">{t('brand:brandInvoicesPage.fixedAmount')}</option>
                     </FormSelect>
                   </FormGroup>
                   {newInvoice.discountType !== 'none' && (
@@ -3559,7 +3561,7 @@ const BrandInvoicesPage: React.FC = () => {
                   )}
                   {newInvoice.discountType !== 'none' && (
                     <FormGroup>
-                      <FormLabel>Discount Reason</FormLabel>
+                      <FormLabel>{t('brand:brandInvoicesPage.discountReason')}</FormLabel>
                       <FormInput
                         type="text"
                         value={newInvoice.discountReason}
@@ -3571,7 +3573,7 @@ const BrandInvoicesPage: React.FC = () => {
                 </FormRow>
 
                 <FormGroup>
-                  <FormLabel>Invoice Category</FormLabel>
+                  <FormLabel>{t('brand:brandInvoicesPage.invoiceCategory')}</FormLabel>
                   <FormSelect
                     value={newInvoice.invoiceCategory || 'service'}
                     onChange={(e) => setNewInvoice({...newInvoice, invoiceCategory: e.target.value})}
@@ -3584,9 +3586,9 @@ const BrandInvoicesPage: React.FC = () => {
                         ))
                     ) : (
                       <>
-                        <option value="service">Service</option>
-                        <option value="consulting">Consulting</option>
-                        <option value="others">Others</option>
+                        <option value="service">{t('brand:brandInvoicesPage.service')}</option>
+                        <option value="consulting">{t('brand:brandInvoicesPage.consulting')}</option>
+                        <option value="others">{t('brand:brandInvoicesPage.others')}</option>
                       </>
                     )}
                   </FormSelect>
@@ -3594,7 +3596,7 @@ const BrandInvoicesPage: React.FC = () => {
 
                 {/* Show item/description input for all categories */}
                 <FormGroup>
-                  <FormLabel>Item/Description</FormLabel>
+                  <FormLabel>{t('brand:brandInvoicesPage.itemdescription')}</FormLabel>
                   <FormTextarea
                     value={newInvoice.invoiceCategory === 'others' ? (newInvoice.customDescription || '') : (newInvoice.serviceDescription || '')}
                     onChange={(e) => {
@@ -3674,7 +3676,7 @@ const BrandInvoicesPage: React.FC = () => {
           } : companySettings;
 
           return (
-                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}>{t('brand:brandInvoicesPage.close')}</Button></>}>
 
                 {/* Invoice Header with Company Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
@@ -3696,13 +3698,13 @@ const BrandInvoicesPage: React.FC = () => {
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>INVOICE</div>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.invoice')}</div>
                     <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.invoiceNumber}</div>
                     <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
                       {getStatusDisplay(selectedInvoice.status)}
                     </StatusBadge>
                     {selectedInvoice.isModified && (
-                      <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px' }}>Modified</span>
+                      <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px' }}>{t('brand:brandInvoicesPage.modified')}</span>
                     )}
                   </div>
                 </div>
@@ -3711,7 +3713,7 @@ const BrandInvoicesPage: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
                   {/* Bill To - For received invoices (to_pay), show logged-in user's company (companySettings) */}
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Bill To</div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('brand:brandInvoicesPage.billTo')}</div>
                     {isReceivedInvoice ? (
                       <>
                         <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{companySettings?.companyName || 'Your Company'}</div>
@@ -3734,7 +3736,7 @@ const BrandInvoicesPage: React.FC = () => {
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.externalPayerName || selectedInvoice.customerName}</div>
-                          <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px' }}>Non-Member</span>
+                          <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px' }}>{t('brand:brandInvoicesPage.nonmember')}</span>
                         </div>
                         {selectedInvoice.externalPayerCompany && (
                           <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {selectedInvoice.externalPayerCompany}</div>
@@ -3795,14 +3797,14 @@ const BrandInvoicesPage: React.FC = () => {
 
                 {/* Items Table */}
                 <div style={{ marginBottom: '24px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>Items</div>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>{t('brand:brandInvoicesPage.items')}</div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
-                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Description</th>
-                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Qty</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Unit Price</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Amount</th>
+                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('brand:brandInvoicesPage.description')}</th>
+                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('brand:brandInvoicesPage.qty')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('brand:brandInvoicesPage.unitPrice')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('brand:brandInvoicesPage.amount')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3855,7 +3857,7 @@ const BrandInvoicesPage: React.FC = () => {
                 {/* Bank Details (if company has bank info) */}
                 {displayCompany?.bankName && (
                   <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Payment Details</div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('brand:brandInvoicesPage.paymentDetails')}</div>
                     <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
                       <div><strong>Bank:</strong> {displayCompany.bankName}</div>
                       <div><strong>Account Name:</strong> {displayCompany.bankAccountName}</div>
@@ -3876,7 +3878,7 @@ const BrandInvoicesPage: React.FC = () => {
                 {/* Modification History in View Modal */}
                 {selectedInvoice.isModified && selectedInvoice.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
                   <div style={{ marginTop: '20px', padding: '16px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>Modification History</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.modificationHistory')}</div>
                     {selectedInvoice.modificationHistory.map((mod, idx) => (
                       <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
                         <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
@@ -3899,7 +3901,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         {/* Link Account Modal */}
         {showLinkAccountModal && selectedInvoice && (
-          <CommonModal isOpen={true} onClose={() => setShowLinkAccountModal(false)} title="Link to Member Account" footer={<Button variant="secondary" onClick={() => setShowLinkAccountModal(false)}>Cancel</Button>}>
+          <CommonModal isOpen={true} onClose={() => setShowLinkAccountModal(false)} title="Link to Member Account" footer={<Button variant="secondary" onClick={() => setShowLinkAccountModal(false)}>{t('brand:brandInvoicesPage.cancel')}</Button>}>
             <FormGroup>
               <FormLabel>Search Restaurant *</FormLabel>
               <div style={{position: 'relative'}}>
@@ -3914,7 +3916,7 @@ const BrandInvoicesPage: React.FC = () => {
                 {showLinkSearchDropdown && linkSearchResults.restaurants.length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #E6EBF1', borderRadius: '8px', maxHeight: '300px', overflowY: 'auto', zIndex: 1000, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                     <div>
-                      <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>RESTAURANTS</div>
+                      <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>{t('brand:brandInvoicesPage.restaurants')}</div>
                       {linkSearchResults.restaurants.map(restaurant => (
                         <div key={restaurant.id} onClick={() => handleLinkAccount('restaurant', restaurant)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
                           <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
@@ -3937,7 +3939,7 @@ const BrandInvoicesPage: React.FC = () => {
                     <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
 
                 <FormGroup>
-                  <FormLabel>Payment Confirmation</FormLabel>
+                  <FormLabel>{t('brand:brandInvoicesPage.paymentConfirmation')}</FormLabel>
                   <InvoiceSummary>
                     <SummaryRow>
                       <span>Manager:</span>
@@ -3965,7 +3967,7 @@ const BrandInvoicesPage: React.FC = () => {
                 {/* Customer's Payment Information */}
                 {(selectedInvoice.paymentMethod || selectedInvoice.receiptUrl || selectedInvoice.transactionId) && (
                   <FormGroup>
-                    <FormLabel>Customer's Payment Information</FormLabel>
+                    <FormLabel>{t('brand:brandInvoicesPage.customersPaymentInformation')}</FormLabel>
                     <div style={{
                       background: '#EFF6FF',
                       border: '1px solid #3B82F6',
@@ -4000,7 +4002,7 @@ const BrandInvoicesPage: React.FC = () => {
                               style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }}
                               onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')}
                             />
-                            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>Click image to view full size</p>
+                            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>{t('brand:brandInvoicesPage.clickImageToViewFullSize')}</p>
                           </div>
                         </div>
                       )}
@@ -4016,14 +4018,14 @@ const BrandInvoicesPage: React.FC = () => {
                   margin: '16px 0'
                 }}>
                   <p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}>
-                    <strong>Confirm Payment Receipt</strong><br />
+                    <strong>{t('brand:brandInvoicesPage.confirmPaymentReceipt')}</strong><br />
                     Only mark this invoice as paid if you have received and verified the payment.
                     This action will update the invoice status to "Paid".
                   </p>
                 </div>
 
                 <FormGroup>
-                  <FormLabel>Status Change</FormLabel>
+                  <FormLabel>{t('brand:brandInvoicesPage.statusChange')}</FormLabel>
                   <div style={{
                     fontSize: '14px',
                     lineHeight: '1.6',
@@ -4171,7 +4173,7 @@ const BrandInvoicesPage: React.FC = () => {
 
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Amount (RM)</FormLabel>
+                    <FormLabel>{t('brand:brandInvoicesPage.amountRm')}</FormLabel>
                     <FormInput
                       type="number"
                       value={editInvoice.amount}
@@ -4194,7 +4196,7 @@ const BrandInvoicesPage: React.FC = () => {
                     />
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Due Date</FormLabel>
+                    <FormLabel>{t('brand:brandInvoicesPage.dueDate')}</FormLabel>
                     <FormInput
                       type="date"
                       value={editInvoice.dueDate}
@@ -4204,21 +4206,21 @@ const BrandInvoicesPage: React.FC = () => {
                 </FormRow>
 
                 <FormGroup>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('brand:brandInvoicesPage.status')}</FormLabel>
                   <FormSelect
                     value={editInvoice.status}
                     onChange={(e) => setEditInvoice({...editInvoice, status: e.target.value})}
                   >
-                    <option value="draft">Draft</option>
-                    <option value="pending_payment">Pending Payment</option>
-                    <option value="payment_submitted">Payment Submitted</option>
-                    <option value="paid">Paid</option>
-                    <option value="overdue">Overdue</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="draft">{t('brand:brandInvoicesPage.draft')}</option>
+                    <option value="pending_payment">{t('brand:brandInvoicesPage.pendingPayment')}</option>
+                    <option value="payment_submitted">{t('brand:brandInvoicesPage.paymentSubmitted')}</option>
+                    <option value="paid">{t('brand:brandInvoicesPage.paid')}</option>
+                    <option value="overdue">{t('brand:brandInvoicesPage.overdue')}</option>
+                    <option value="cancelled">{t('brand:brandInvoicesPage.cancelled')}</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Invoice Category</FormLabel>
+                  <FormLabel>{t('brand:brandInvoicesPage.invoiceCategory')}</FormLabel>
                   <FormSelect
                     value={editInvoice.invoiceCategory || 'service'}
                     onChange={(e) => setEditInvoice({...editInvoice, invoiceCategory: e.target.value})}
@@ -4231,9 +4233,9 @@ const BrandInvoicesPage: React.FC = () => {
                         ))
                     ) : (
                       <>
-                        <option value="service">Service</option>
-                        <option value="consulting">Consulting</option>
-                        <option value="others">Others</option>
+                        <option value="service">{t('brand:brandInvoicesPage.service')}</option>
+                        <option value="consulting">{t('brand:brandInvoicesPage.consulting')}</option>
+                        <option value="others">{t('brand:brandInvoicesPage.others')}</option>
                       </>
                     )}
                   </FormSelect>
@@ -4241,7 +4243,7 @@ const BrandInvoicesPage: React.FC = () => {
 
                 {editInvoice.invoiceCategory === 'others' && (
                   <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
+                    <FormLabel>{t('brand:brandInvoicesPage.planitem')}</FormLabel>
                     <FormTextarea
                       value={editInvoice.customDescription || ''}
                       onChange={(e) => setEditInvoice({...editInvoice, customDescription: e.target.value})}
@@ -4252,7 +4254,7 @@ const BrandInvoicesPage: React.FC = () => {
 
                 {((editInvoice.invoiceCategory || 'service') === 'service' || editInvoice.invoiceCategory === 'consulting') && (
                   <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
+                    <FormLabel>{t('brand:brandInvoicesPage.planitem')}</FormLabel>
                     <FormTextarea
                       value={editInvoice.serviceDescription || ''}
                       onChange={(e) => setEditInvoice({...editInvoice, serviceDescription: e.target.value})}
@@ -4294,7 +4296,7 @@ const BrandInvoicesPage: React.FC = () => {
 
                 {selectedInvoice?.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
                   <div style={{ marginTop: '16px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>Modification History</div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.modificationHistory')}</div>
                     {selectedInvoice.modificationHistory.map((mod, idx) => (
                       <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
                         <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
@@ -4324,7 +4326,7 @@ const BrandInvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Send Invoice</h3>
+                  }}>{t('brand:brandInvoicesPage.sendInvoice')}</h3>
                   <p style={{
                     fontSize: '14px',
                     color: '#6B7280',
@@ -4371,7 +4373,7 @@ const BrandInvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Resend Invoice</h3>
+                  }}>{t('brand:brandInvoicesPage.resendInvoice')}</h3>
                   <p style={{
                     fontSize: '14px',
                     color: '#6B7280',
@@ -4405,7 +4407,7 @@ const BrandInvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Cancel Invoice</h3>
+                  }}>{t('brand:brandInvoicesPage.cancelInvoice')}</h3>
                   <p style={{ 
                     fontSize: '14px', 
                     color: '#6B7280', 
@@ -4471,7 +4473,7 @@ const BrandInvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Delete Invoice</h3>
+                  }}>{t('brand:brandInvoicesPage.deleteInvoice')}</h3>
                   <p style={{
                     fontSize: '14px',
                     color: '#6B7280',
@@ -4490,7 +4492,7 @@ const BrandInvoicesPage: React.FC = () => {
                     <CommonModal isOpen={true} onClose={() => setShowEmailModal(false)} title="Send Invoice via Email" footer={<><Button variant="secondary" onClick={() => { setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient(''); }}> Cancel </Button><Button variant="primary" onClick={handleSendInvoiceEmail} disabled={!emailRecipient || !emailRecipient.includes('@')} > Send Email </Button></>}>
 
                 <FormGroup>
-                  <FormLabel>Invoice</FormLabel>
+                  <FormLabel>{t('brand:brandInvoicesPage.invoice')}</FormLabel>
                   <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}>
                     <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div>
                     <div style={{ fontSize: '13px', color: '#6B7280' }}>{emailInvoice.customerName}</div>

@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import BrandProductsTab from './BrandProductsTab';
 import BrandProductCategoriesTab from './BrandProductCategoriesTab';
 import BrandProductOptionsTab from './BrandProductOptionsTab';
+import { useTranslation } from 'react-i18next';
 
 interface Brand {
   id: number;
@@ -17,6 +18,7 @@ interface Brand {
 type TabType = 'products' | 'categories' | 'options';
 
 const BrandProductManagementPage: React.FC = () => {
+  const { t } = useTranslation('brand');
   const { user } = useAuth();
   const [activeTab, handleTabChange] = useTabParam<TabType>('products');
   const [productsCount, setProductsCount] = useState(0);
@@ -60,7 +62,7 @@ const BrandProductManagementPage: React.FC = () => {
       <>
         <Container>
           <Header>
-            <Title>Product Management</Title>
+            <Title>{t('brand:brandProductManagementPage.productManagement')}</Title>
           </Header>
           <Content>
             <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
@@ -76,7 +78,7 @@ const BrandProductManagementPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Product Management</Title>
+          <Title>{t('brand:brandProductManagementPage.productManagement')}</Title>
         </Header>
 
         <Content>

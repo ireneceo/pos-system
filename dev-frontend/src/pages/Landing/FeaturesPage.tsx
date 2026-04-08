@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateHowToSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ───
 interface FeatureItem {
@@ -439,10 +440,12 @@ const FeatureImageSlider: React.FC<{ images: string[]; title: string; onOpenLigh
   const [current, setCurrent] = useState(0);
 
   if (images.length === 0) {
-    return (
+  // useTranslation moved to component level
+
+  return (
       <ImageSlider>
         <SliderImageWrapper>
-          <SliderPlaceholder>Screenshot coming soon</SliderPlaceholder>
+          <SliderPlaceholder>{'Screenshot coming soon'}</SliderPlaceholder>
         </SliderImageWrapper>
       </ImageSlider>
     );
@@ -532,7 +535,7 @@ const ROLE_TABS: RoleTab[] = [
   {
     key: 'foodcourt',
     label: 'Foodcourt',
-    heading: 'Unified management for foodcourt operators',
+    heading: 'Complete management tools for food court operators',
     description: 'Oversee all tenant restaurants from one place — handle billing, manage inquiries, track real-time performance analytics, and streamline shared services effortlessly. PurpleHere simplifies the complexity of multi-tenant foodcourt operations with automated invoicing, centralized notice broadcasting, and detailed revenue breakdowns per tenant. Spend less time on admin work and more time growing your foodcourt business.',
     features: [
       { code: 'fc_dashboard', title: 'Dashboard', description: 'Foodcourt-wide overview with tenant performance summary', points: ['Tenant sales overview', 'Occupancy status', 'Revenue summary', 'Quick tenant access'], category: 'basic', images: getImages('fc_dashboard') },
@@ -555,7 +558,7 @@ const ROLE_TABS: RoleTab[] = [
   {
     key: 'owner',
     label: 'Owner',
-    heading: 'Portfolio-level oversight for multi-location restaurant owners',
+    heading: 'Financial oversight for multi-restaurant owners',
     description: 'Compare performance side by side, track financials across every location, and stay fully informed — all without interfering with day-to-day operations. PurpleHere gives restaurant owners a bird\'s-eye view of their entire portfolio with consolidated reports, invoice management, and performance benchmarking. Make data-driven decisions about your investments while your on-site teams handle the daily workflow independently.',
     features: [
       { code: 'owner_dashboard', title: 'Dashboard', description: 'Portfolio overview with multi-restaurant performance summary', points: ['All restaurants at a glance', 'Revenue summary', 'Performance overview', 'Quick navigation'], category: 'basic', images: getImages('owner_dashboard') },
@@ -572,6 +575,7 @@ const ROLE_TABS: RoleTab[] = [
 
 // ─── Main Component ───
 const FeaturesPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('restaurant');
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number; title: string } | null>(null);
@@ -615,7 +619,7 @@ const FeaturesPage: React.FC = () => {
           <FeatureImageSlider images={validImages} title={feature.title} onOpenLightbox={openLightbox} />
         ) : (
           <ImageSlider>
-            <SliderPlaceholder>Screenshot coming soon</SliderPlaceholder>
+            <SliderPlaceholder>{'Screenshot coming soon'}</SliderPlaceholder>
           </ImageSlider>
         )}
         <CardBody>
@@ -653,7 +657,7 @@ const FeaturesPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>Powerful Features for Every Need</HeroTitle>
+          <HeroTitle>{'Powerful Features for Every Need'}</HeroTitle>
           <HeroSubtitle>
             From multi-brand management to individual restaurant operations — explore all the tools that power your business.
           </HeroSubtitle>
@@ -690,12 +694,12 @@ const FeaturesPage: React.FC = () => {
           )}
 
           <CTASection>
-            <CTATitle>Ready to Transform Your Business?</CTATitle>
+            <CTATitle>{'Ready to Transform Your Business?'}</CTATitle>
             <CTASubtitle>
-              Try our demo accounts or contact us to get started with PurpleHere
+              {'Try our demo accounts or contact us to get started with PurpleHere'}
             </CTASubtitle>
             <CTAButton onClick={() => navigate('/demo')}>
-              Try Demo Now
+              {'Try Demo Now'}
             </CTAButton>
           </CTASection>
         </ContentSection>

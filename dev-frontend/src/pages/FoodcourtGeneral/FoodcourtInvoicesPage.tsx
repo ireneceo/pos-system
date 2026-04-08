@@ -32,6 +32,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
+import { useTranslation } from 'react-i18next';
 
 interface Invoice {
   id: string;
@@ -514,6 +515,7 @@ const InvoiceTableRow = styled(CommonTableRow)`
 type TabType = 'to_pay' | 'paid' | 'issued';
 
 const FoodcourtInvoicesPage: React.FC = () => {
+  const { t } = useTranslation('foodcourt');
   const { operationSettings } = useStore();
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -1453,7 +1455,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 </div>
             </div>
             <div class="invoice-title">
-                <div class="invoice-label">INVOICE</div>
+                <div class="invoice-label">{t('foodcourt:foodcourtInvoicesPage.invoice')}</div>
                 <div class="invoice-number">${invoice.invoiceNumber}</div>
                 <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
             </div>
@@ -1461,7 +1463,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         <div class="billing-info">
             <div class="bill-to-section">
-                <div class="section-label">Bill To</div>
+                <div class="section-label">{t('foodcourt:foodcourtInvoicesPage.billTo')}</div>
                 <div class="customer-name">${invoice.customerName || invoice.managerName || 'Customer'}</div>
                 ${invoice.customerAddress ? `<div class="customer-details">${invoice.customerAddress}</div>` : ''}
                 ${invoice.restaurantName ? `<div class="customer-details">Restaurant: ${invoice.restaurantName}</div>` : ''}
@@ -1489,14 +1491,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
         </div>
 
         <div class="items-section">
-            <div class="section-label">Items</div>
+            <div class="section-label">{t('foodcourt:foodcourtInvoicesPage.items')}</div>
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th>Description</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-right">Unit Price</th>
-                        <th class="text-right">Amount</th>
+                        <th>{t('foodcourt:foodcourtInvoicesPage.description')}</th>
+                        <th class="text-center">{t('foodcourt:foodcourtInvoicesPage.qty')}</th>
+                        <th class="text-right">{t('foodcourt:foodcourtInvoicesPage.unitPrice')}</th>
+                        <th class="text-right">{t('foodcourt:foodcourtInvoicesPage.amount')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1539,7 +1541,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         ${companySettings.bankName ? `
         <div class="bank-section">
-            <div class="bank-title">Payment Details</div>
+            <div class="bank-title">{t('foodcourt:foodcourtInvoicesPage.paymentDetails')}</div>
             <div class="bank-details">
                 <strong>Bank:</strong> ${companySettings.bankName}<br>
                 <strong>Account Name:</strong> ${companySettings.bankAccountName || '-'}<br>
@@ -1558,8 +1560,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
         ` : ''}
 
         <div class="footer">
-            <div class="footer-text">Thank you for your business!</div>
-            <div class="footer-text">This is a computer-generated invoice and does not require a signature.</div>
+            <div class="footer-text">{t('foodcourt:foodcourtInvoicesPage.thankYouForYourBusiness')}</div>
+            <div class="footer-text">{t('foodcourt:foodcourtInvoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
         </div>
     </div>
 </body>
@@ -2329,7 +2331,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Invoices</Title>
+          <Title>{t('foodcourt:foodcourtInvoicesPage.invoices')}</Title>
           <ActionSection>
           </ActionSection>
         </Header>
@@ -2352,23 +2354,23 @@ const FoodcourtInvoicesPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalInvoices}</StatValue>
-            <StatLabel>Total Invoices</StatLabel>
-            <StatDescription>All invoice records</StatDescription>
+            <StatLabel>{t('foodcourt:foodcourtInvoicesPage.totalInvoices')}</StatLabel>
+            <StatDescription>{t('foodcourt:foodcourtInvoicesPage.allInvoiceRecords')}</StatDescription>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{paidInvoices}</StatValue>
-            <StatLabel>Paid Invoices</StatLabel>
+            <StatLabel>{t('foodcourt:foodcourtInvoicesPage.paidInvoices')}</StatLabel>
             <StatDescription>{totalInvoices > 0 ? Math.round((paidInvoices/totalInvoices)*100) : 0}% completed</StatDescription>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{overdueInvoices}</StatValue>
-            <StatLabel>Overdue Invoices</StatLabel>
-            <StatDescription>Requires attention</StatDescription>
+            <StatLabel>{t('foodcourt:foodcourtInvoicesPage.overdueInvoices')}</StatLabel>
+            <StatDescription>{t('foodcourt:foodcourtInvoicesPage.requiresAttention')}</StatDescription>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{formatCurrency(totalRevenue)}</StatValue>
-            <StatLabel>Total Revenue</StatLabel>
-            <StatDescription>From paid invoices</StatDescription>
+            <StatLabel>{t('foodcourt:foodcourtInvoicesPage.totalRevenue')}</StatLabel>
+            <StatDescription>{t('foodcourt:foodcourtInvoicesPage.fromPaidInvoices')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
@@ -2386,115 +2388,115 @@ const FoodcourtInvoicesPage: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="pending_payment">Pending Payment</option>
-              <option value="payment_submitted">Payment Submitted</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="all">{t('foodcourt:foodcourtInvoicesPage.allStatus')}</option>
+              <option value="draft">{t('foodcourt:foodcourtInvoicesPage.draft')}</option>
+              <option value="pending_payment">{t('foodcourt:foodcourtInvoicesPage.pendingPayment')}</option>
+              <option value="payment_submitted">{t('foodcourt:foodcourtInvoicesPage.paymentSubmitted')}</option>
+              <option value="paid">{t('foodcourt:foodcourtInvoicesPage.paid')}</option>
+              <option value="overdue">{t('foodcourt:foodcourtInvoicesPage.overdue')}</option>
+              <option value="cancelled">{t('foodcourt:foodcourtInvoicesPage.cancelled')}</option>
             </FilterSelect>
             <FilterSelect value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-              <option value="all">All Types</option>
-              <option value="automatic">Automatic</option>
-              <option value="manual">Manual</option>
+              <option value="all">{t('foodcourt:foodcourtInvoicesPage.allTypes')}</option>
+              <option value="automatic">{t('foodcourt:foodcourtInvoicesPage.automatic')}</option>
+              <option value="manual">{t('foodcourt:foodcourtInvoicesPage.manual')}</option>
             </FilterSelect>
           </DatePeriodFilter>
           <FiltersRight>
-            <Button variant="primary" onClick={handleCreateInvoice}>Create Invoice</Button>
+            <Button variant="primary" onClick={handleCreateInvoice}>{t('foodcourt:foodcourtInvoicesPage.createInvoice')}</Button>
           </FiltersRight>
         </FilterBarWrapper>
 
         <Table>
           <InvoiceTableHeader columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)">
-            <span className="col-invoice">Invoice</span>
-            <span className="col-customer">Customer</span>
-            <span className="col-period">Period</span>
-            <span className="col-issued">Issued</span>
-            <span className="col-due">Due</span>
-            <span className="col-status">Status</span>
-            <span className="col-amount">Amount</span>
-            <span className="col-total">Total</span>
-            <span className="col-actions">Actions</span>
+            <span className="col-invoice">{t('foodcourt:foodcourtInvoicesPage.invoice')}</span>
+            <span className="col-customer">{t('foodcourt:foodcourtInvoicesPage.customer')}</span>
+            <span className="col-period">{t('foodcourt:foodcourtInvoicesPage.period')}</span>
+            <span className="col-issued">{t('foodcourt:foodcourtInvoicesPage.issued')}</span>
+            <span className="col-due">{t('foodcourt:foodcourtInvoicesPage.due')}</span>
+            <span className="col-status">{t('foodcourt:foodcourtInvoicesPage.status')}</span>
+            <span className="col-amount">{t('foodcourt:foodcourtInvoicesPage.amount')}</span>
+            <span className="col-total">{t('foodcourt:foodcourtInvoicesPage.total')}</span>
+            <span className="col-actions">{t('foodcourt:foodcourtInvoicesPage.actions')}</span>
           </InvoiceTableHeader>
 
           {filteredInvoices.map(invoice => (
             <InvoiceTableRow columns="1.6fr 1.3fr 1.2fr 0.9fr 0.9fr 0.7fr 0.8fr 0.8fr minmax(180px, 220px)" key={invoice.id}>
               <MobileGrid>
                 <MobileValue className="col-invoice">
-                  <MobileLabel>Invoice</MobileLabel>
+                  <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel>
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.invoiceNumber}
-                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('foodcourt:foodcourtInvoicesPage.auto')}</AutoBadge>}
                     </InvoiceNumber>
                     <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                   </InvoiceInfo>
                 </MobileValue>
 
                 <MobileValue className="col-customer">
-                  <MobileLabel>Customer</MobileLabel>
+                  <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.customer')}</MobileLabel>
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}
-                      {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>Non-Member</span>}
+                      {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('foodcourt:foodcourtInvoicesPage.nonmember')}</span>}
                     </InvoiceNumber>
                     <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
                   </InvoiceInfo>
                 </MobileValue>
 
                 <MobileValue className="col-period">
-                  <MobileLabel>Period</MobileLabel>
+                  <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.period')}</MobileLabel>
                   <div style={{ fontSize: '12px' }}>
                     {invoice.billingPeriod || '-'}
                   </div>
                 </MobileValue>
 
                 <MobileValue className="col-issued">
-                  <MobileLabel>Issued</MobileLabel>
+                  <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.issued')}</MobileLabel>
                   <div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div>
                 </MobileValue>
 
                 <MobileValue className="col-due">
-                  <MobileLabel>Due</MobileLabel>
+                  <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.due')}</MobileLabel>
                   <div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div>
                 </MobileValue>
 
                 <MobileValue className="col-status">
-                  <MobileLabel>Status</MobileLabel>
+                  <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel>
                   <div>
                     <StatusBadge status={invoice.status}>
                       {getStatusDisplay(invoice.status)}
                     </StatusBadge>
                     {invoice.isModified && (
-                      <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
+                      <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</span>
                     )}
                   </div>
                 </MobileValue>
 
                 <MobileValue className="col-amount">
-                  <MobileLabel>Amount</MobileLabel>
+                  <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel>
                   <Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount>
                 </MobileValue>
 
                 <MobileValue className="col-total">
-                  <MobileLabel>Total</MobileLabel>
-                  <Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
+                  <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel>
+                  <Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                 </MobileValue>
               </MobileGrid>
 
               <ActionButtons className="col-actions">
-                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
                       {invoice.status === 'draft' && (
                         <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
-                          <LocalActionButton onClick={() => handleSendInvoice(invoice)}>Send</LocalActionButton>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton>
+                          <LocalActionButton onClick={() => handleSendInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.send')}</LocalActionButton>
                         </>
                       )}
                       {/* 미결제 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
                         <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2525,9 +2527,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       {invoice.status === 'payment_submitted' && (
                         <>
                           {invoice.hasPaymentInfo && (
-                            <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>Confirm</LocalActionButton>
+                            <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('foodcourt:foodcourtInvoicesPage.confirm')}</LocalActionButton>
                           )}
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2554,7 +2556,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       {/* 연체 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {invoice.status === 'overdue' && (
                         <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>Edit</LocalActionButton>
+                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.edit')}</LocalActionButton>
                           <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2614,7 +2616,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
           {filteredInvoices.length === 0 && (
             <EmptyState>
-              <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>No Invoices Found</div>
+              <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('foodcourt:foodcourtInvoicesPage.noInvoicesFound')}</div>
               <div style={{ fontSize: '14px' }}>
                 {invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}
               </div>
@@ -2629,23 +2631,23 @@ const FoodcourtInvoicesPage: React.FC = () => {
             <StatsGrid>
               <StatCard color="#D97706">
                 <StatValue>{invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length}</StatValue>
-                <StatLabel>To Pay</StatLabel>
-                <StatDescription>Pending payment</StatDescription>
+                <StatLabel>{t('foodcourt:foodcourtInvoicesPage.toPay')}</StatLabel>
+                <StatDescription>{t('foodcourt:foodcourtInvoicesPage.pendingPayment')}</StatDescription>
               </StatCard>
               <StatCard color="#2563EB">
                 <StatValue>{invoicesToPay.filter(i => i.status === 'payment_submitted').length}</StatValue>
-                <StatLabel>Submitted</StatLabel>
-                <StatDescription>Awaiting confirmation</StatDescription>
+                <StatLabel>{t('foodcourt:foodcourtInvoicesPage.submitted')}</StatLabel>
+                <StatDescription>{t('foodcourt:foodcourtInvoicesPage.awaitingConfirmation')}</StatDescription>
               </StatCard>
               <StatCard color="#059669">
                 <StatValue>{invoicesToPay.filter(i => i.status === 'paid').length}</StatValue>
-                <StatLabel>Paid</StatLabel>
-                <StatDescription>Payment confirmed</StatDescription>
+                <StatLabel>{t('foodcourt:foodcourtInvoicesPage.paid')}</StatLabel>
+                <StatDescription>{t('foodcourt:foodcourtInvoicesPage.paymentConfirmed')}</StatDescription>
               </StatCard>
               <StatCard color="#DC2626">
                 <StatValue>{formatCurrency(invoicesToPay.filter(i => i.status !== 'paid' && i.status !== 'cancelled').reduce((sum, i) => sum + i.total, 0))}</StatValue>
-                <StatLabel>Outstanding</StatLabel>
-                <StatDescription>Total unpaid amount</StatDescription>
+                <StatLabel>{t('foodcourt:foodcourtInvoicesPage.outstanding')}</StatLabel>
+                <StatDescription>{t('foodcourt:foodcourtInvoicesPage.totalUnpaidAmount')}</StatDescription>
               </StatCard>
             </StatsGrid>
 
@@ -2665,15 +2667,15 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
             <Table>
               <InvoiceTableHeader columns="1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 160px)">
-                <span>Invoice</span>
-                <span>Restaurant</span>
-                <span>Period</span>
-                <span>Issued</span>
-                <span>Due</span>
-                <span>Status</span>
-                <span className="col-amount">Amount</span>
-                <span className="col-total">Total</span>
-                <span>Actions</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.invoice')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.period')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.issued')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.due')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.status')}</span>
+                <span className="col-amount">{t('foodcourt:foodcourtInvoicesPage.amount')}</span>
+                <span className="col-total">{t('foodcourt:foodcourtInvoicesPage.total')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.actions')}</span>
               </InvoiceTableHeader>
 
               {filteredInvoicesToPay.length > 0 ? (
@@ -2681,72 +2683,72 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 160px)" key={invoice.id}>
                     <MobileGrid>
                       <MobileValue className="col-invoice col-info">
-                        <MobileLabel>Invoice</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel>
                         <InvoiceInfo>
                           <InvoiceNumber>
                             {invoice.invoiceNumber}
-                            {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                            {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('foodcourt:foodcourtInvoicesPage.auto')}</AutoBadge>}
                           </InvoiceNumber>
                           <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                         </InvoiceInfo>
                       </MobileValue>
 
                       <MobileValue className="col-customer col-info">
-                        <MobileLabel>Restaurant</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</MobileLabel>
                         <InvoiceInfo>
                           <InvoiceNumber>{invoice.restaurantName || invoice.customerName || 'Unknown'}</InvoiceNumber>
                         </InvoiceInfo>
                       </MobileValue>
 
                       <MobileValue className="col-period">
-                        <MobileLabel>Period</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.period')}</MobileLabel>
                         <div style={{ fontSize: '12px' }}>
                           {invoice.billingPeriod || '-'}
                         </div>
                       </MobileValue>
 
                       <MobileValue className="col-issued">
-                        <MobileLabel>Issued</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.issued')}</MobileLabel>
                         <div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div>
                       </MobileValue>
 
                       <MobileValue className="col-due">
-                        <MobileLabel>Due</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.due')}</MobileLabel>
                         <div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div>
                       </MobileValue>
 
                       <MobileValue className="col-status">
-                        <MobileLabel>Status</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel>
                         <StatusBadge status={invoice.status}>
                           {getStatusDisplay(invoice.status)}
                         </StatusBadge>
                         {invoice.isModified && (
-                          <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>Modified</span>
+                          <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</span>
                         )}
                       </MobileValue>
 
                       <MobileValue className="col-amount">
-                        <MobileLabel>Amount</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel>
                         <Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
 
                       <MobileValue className="col-total">
-                        <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel>
+                        <Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
                     </MobileGrid>
 
                     <ActionButtons className="col-actions">
-                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
 
                       {/* Pay button for pending/overdue/sent invoices (not for free) */}
                       {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
-                        <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>Pay</LocalActionButton>
+                        <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.pay')}</LocalActionButton>
                       )}
 
                       {/* Confirm button for free invoices */}
                       {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
-                        <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>Confirm</LocalActionButton>
+                        <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.confirm')}</LocalActionButton>
                       )}
 
                       {/* Download PDF */}
@@ -2794,14 +2796,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
             <Table>
               <InvoiceTableHeader columns="1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 140px)">
-                <span>Invoice</span>
-                <span>Restaurant</span>
-                <span>Period</span>
-                <span>Paid Date</span>
-                <span>Status</span>
-                <span className="col-amount">Amount</span>
-                <span className="col-total">Total</span>
-                <span>Actions</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.invoice')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.period')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.paidDate')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.status')}</span>
+                <span className="col-amount">{t('foodcourt:foodcourtInvoicesPage.amount')}</span>
+                <span className="col-total">{t('foodcourt:foodcourtInvoicesPage.total')}</span>
+                <span>{t('foodcourt:foodcourtInvoicesPage.actions')}</span>
               </InvoiceTableHeader>
 
               {filteredPaidInvoices.length > 0 ? (
@@ -2809,53 +2811,53 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 140px)" key={invoice.id}>
                     <MobileGrid>
                       <MobileValue className="col-invoice col-info">
-                        <MobileLabel>Invoice</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel>
                         <InvoiceInfo>
                           <InvoiceNumber>
                             {invoice.invoiceNumber}
-                            {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>AUTO</AutoBadge>}
+                            {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('foodcourt:foodcourtInvoicesPage.auto')}</AutoBadge>}
                           </InvoiceNumber>
                           <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                         </InvoiceInfo>
                       </MobileValue>
 
                       <MobileValue className="col-customer col-info">
-                        <MobileLabel>Restaurant</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</MobileLabel>
                         <InvoiceInfo>
                           <InvoiceNumber>{invoice.restaurantName || invoice.customerName || 'Unknown'}</InvoiceNumber>
                         </InvoiceInfo>
                       </MobileValue>
 
                       <MobileValue className="col-period">
-                        <MobileLabel>Period</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.period')}</MobileLabel>
                         <div style={{ fontSize: '12px' }}>
                           {invoice.billingPeriod || '-'}
                         </div>
                       </MobileValue>
 
                       <MobileValue className="col-issued">
-                        <MobileLabel>Paid Date</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.paidDate')}</MobileLabel>
                         <div style={{ fontSize: '13px' }}>{invoice.paidDate ? formatDate(invoice.paidDate) : formatDate(invoice.issueDate)}</div>
                       </MobileValue>
 
                       <MobileValue className="col-status">
-                        <MobileLabel>Status</MobileLabel>
-                        <StatusBadge status="paid">Paid</StatusBadge>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel>
+                        <StatusBadge status="paid">{t('foodcourt:foodcourtInvoicesPage.paid')}</StatusBadge>
                       </MobileValue>
 
                       <MobileValue className="col-amount">
-                        <MobileLabel>Amount</MobileLabel>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel>
                         <Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
 
                       <MobileValue className="col-total">
-                        <MobileLabel>Total</MobileLabel>
-                        <Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>Free</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
+                        <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel>
+                        <Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount>
                       </MobileValue>
                     </MobileGrid>
 
                     <ActionButtons className="col-actions">
-                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>View</LocalActionButton>
+                      <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('foodcourt:foodcourtInvoicesPage.view')}</LocalActionButton>
                       <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -2882,7 +2884,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>Cancel</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
+                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>{t('foodcourt:foodcourtInvoicesPage.cancel')}</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
 
                 <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
                   <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
@@ -2892,7 +2894,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 </div>
 
                 {loadingPaymentMethods ? (
-                  <p style={{ textAlign: 'center', color: '#6B7280', padding: '16px 0' }}>Loading payment methods...</p>
+                  <p style={{ textAlign: 'center', color: '#6B7280', padding: '16px 0' }}>{t('foodcourt:foodcourtInvoicesPage.loadingPaymentMethods')}</p>
                 ) : availablePaymentMethods.length === 0 ? (
                   <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
                     <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>
@@ -2900,7 +2902,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </p>
                     {selectedInvoice.issuerType === 'system_admin' ? (
                       <p style={{ margin: 0, color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
-                        <strong>System Admin</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the system administrator.
+                        <strong>{t('foodcourt:foodcourtInvoicesPage.systemAdmin')}</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the system administrator.
                       </p>
                     ) : (
                       <>
@@ -2966,7 +2968,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       const m = availablePaymentMethods.find((m: any) => m.id === 'bank_transfer');
                       return m ? (
                         <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>
-                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1E40AF' }}>Bank Transfer Details</p>
+                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1E40AF' }}>{t('foodcourt:foodcourtInvoicesPage.bankTransferDetails')}</p>
                           <p style={{ margin: '0 0 4px 0', color: '#374151' }}>Bank: <strong>{m.bankName}</strong></p>
                           <p style={{ margin: '0 0 4px 0', color: '#374151' }}>Account: <strong>{m.accountNumber}</strong></p>
                           <p style={{ margin: '0', color: '#374151' }}>Name: <strong>{m.accountName}</strong></p>
@@ -2979,7 +2981,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       const m = availablePaymentMethods.find((m: any) => m.id === 'qr_payment');
                       return m && m.qrImage ? (
                         <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}>
-                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1E40AF' }}>Scan QR Code to Pay</p>
+                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#1E40AF' }}>{t('foodcourt:foodcourtInvoicesPage.scanQrCodeToPay')}</p>
                           <img src={m.qrImage} alt="QR Code" style={{ maxWidth: '200px', margin: '0 auto' }} />
                           {m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{m.qrDescription}</p>}
                         </div>
@@ -2991,20 +2993,20 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       <>
                         <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                           <span style={{ fontWeight: '600', flexShrink: 0 }}>*</span>
-                          <span>Please provide either a <strong>Transaction ID / Reference Number</strong> or upload a <strong>Payment Receipt Image</strong> to submit your payment.</span>
+                          <span>{t('foodcourt:foodcourtInvoicesPage.pleaseProvideEitherA')}<strong>{t('foodcourt:foodcourtInvoicesPage.transactionIdReferenceNumber')}</strong> or upload a <strong>{t('foodcourt:foodcourtInvoicesPage.paymentReceiptImage')}</strong> to submit your payment.</span>
                         </div>
                         <FormGroup>
-                          <FormLabel>Transaction ID / Reference Number</FormLabel>
+                          <FormLabel>{t('foodcourt:foodcourtInvoicesPage.transactionIdReferenceNumber')}</FormLabel>
                           <FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} />
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Payment Receipt Image</FormLabel>
+                          <FormLabel>{t('foodcourt:foodcourtInvoicesPage.paymentReceiptImage')}</FormLabel>
                           <div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC', cursor: 'pointer', position: 'relative' }}>
                             {paymentData.receiptImage ? (
                               <div>
                                 <img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} />
                                 <div>
-                                  <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>Remove Image</button>
+                                  <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('foodcourt:foodcourtInvoicesPage.removeImage')}</button>
                                 </div>
                               </div>
                             ) : (
@@ -3012,15 +3014,15 @@ const FoodcourtInvoicesPage: React.FC = () => {
                                 <input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ display: 'none' }} />
                                 <div style={{ color: '#6B7280', fontSize: '14px' }}>
                                   <div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div>
-                                  <div>Click to upload payment receipt</div>
-                                  <div style={{ fontSize: '12px', marginTop: '4px' }}>Supports JPG, PNG (max 5MB)</div>
+                                  <div>{t('foodcourt:foodcourtInvoicesPage.clickToUploadPaymentReceipt')}</div>
+                                  <div style={{ fontSize: '12px', marginTop: '4px' }}>{t('foodcourt:foodcourtInvoicesPage.supportsJpgPngMax5mb')}</div>
                                 </div>
                               </label>
                             )}
                           </div>
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormLabel>{t('foodcourt:foodcourtInvoicesPage.notesOptional')}</FormLabel>
                           <FormTextarea placeholder="Any additional information about the payment..." value={paymentData.notes} onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))} />
                         </FormGroup>
                       </>
@@ -3033,7 +3035,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* Legacy Category Modal - kept for compatibility */}
         {showCategoryModal && (
-                    <CommonModal isOpen={true} onClose={handleCloseCategoryModal} title={editingCategory ? 'Edit Category' : 'Add Category'} footer={<><Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>Cancel</Button><Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}> {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')} </Button></>}>
+                    <CommonModal isOpen={true} onClose={handleCloseCategoryModal} title={editingCategory ? 'Edit Category' : 'Add Category'} footer={<><Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>{t('foodcourt:foodcourtInvoicesPage.cancel')}</Button><Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}> {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')} </Button></>}>
 
                   <FormGroup>
                     <FormLabel>Name *</FormLabel>
@@ -3058,7 +3060,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </small>
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>{t('foodcourt:foodcourtInvoicesPage.description')}</FormLabel>
                     <FormTextarea
                       value={categoryFormData.description}
                       onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
@@ -3225,7 +3227,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <FormLabel>Non-Member Details</FormLabel>
+                      <FormLabel>{t('foodcourt:foodcourtInvoicesPage.nonmemberDetails')}</FormLabel>
                       <FormRow>
                         <FormGroup>
                           <FormLabel>Name *</FormLabel>
@@ -3238,21 +3240,21 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       </FormRow>
                       <FormRow>
                         <FormGroup>
-                          <FormLabel>Phone</FormLabel>
+                          <FormLabel>{t('foodcourt:foodcourtInvoicesPage.phone')}</FormLabel>
                           <FormInput type="text" value={externalPayer.phone} onChange={(e) => setExternalPayer({...externalPayer, phone: e.target.value})} placeholder="Phone number" />
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Company</FormLabel>
+                          <FormLabel>{t('foodcourt:foodcourtInvoicesPage.company')}</FormLabel>
                           <FormInput type="text" value={externalPayer.company} onChange={(e) => setExternalPayer({...externalPayer, company: e.target.value})} placeholder="Company name" />
                         </FormGroup>
                       </FormRow>
                       <FormRow>
                         <FormGroup>
-                          <FormLabel>Address</FormLabel>
+                          <FormLabel>{t('foodcourt:foodcourtInvoicesPage.address')}</FormLabel>
                           <FormInput type="text" value={externalPayer.address} onChange={(e) => setExternalPayer({...externalPayer, address: e.target.value})} placeholder="Address" />
                         </FormGroup>
                         <FormGroup>
-                          <FormLabel>Tax ID</FormLabel>
+                          <FormLabel>{t('foodcourt:foodcourtInvoicesPage.taxId')}</FormLabel>
                           <FormInput type="text" value={externalPayer.tax_id} onChange={(e) => setExternalPayer({...externalPayer, tax_id: e.target.value})} placeholder="Tax ID" />
                         </FormGroup>
                       </FormRow>
@@ -3294,7 +3296,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Discount</FormLabel>
+                    <FormLabel>{t('foodcourt:foodcourtInvoicesPage.discount')}</FormLabel>
                     <FormSelect
                       value={newInvoice.discountType}
                       onChange={(e) => {
@@ -3308,9 +3310,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                         setNewInvoice({ ...newInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : newInvoice.discountValue, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
                       }}
                     >
-                      <option value="none">No Discount</option>
+                      <option value="none">{t('foodcourt:foodcourtInvoicesPage.noDiscount')}</option>
                       <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">Fixed Amount</option>
+                      <option value="fixed">{t('foodcourt:foodcourtInvoicesPage.fixedAmount')}</option>
                     </FormSelect>
                   </FormGroup>
                   {newInvoice.discountType !== 'none' && (
@@ -3337,7 +3339,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   )}
                   {newInvoice.discountType !== 'none' && (
                     <FormGroup>
-                      <FormLabel>Discount Reason</FormLabel>
+                      <FormLabel>{t('foodcourt:foodcourtInvoicesPage.discountReason')}</FormLabel>
                       <FormInput
                         type="text"
                         value={newInvoice.discountReason}
@@ -3349,7 +3351,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 </FormRow>
 
                 <FormGroup>
-                  <FormLabel>Invoice Category</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtInvoicesPage.invoiceCategory')}</FormLabel>
                   <FormSelect
                     value={newInvoice.invoiceCategory || 'service'}
                     onChange={(e) => setNewInvoice({...newInvoice, invoiceCategory: e.target.value})}
@@ -3362,9 +3364,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                         ))
                     ) : (
                       <>
-                        <option value="service">Service</option>
-                        <option value="consulting">Consulting</option>
-                        <option value="others">Others</option>
+                        <option value="service">{t('foodcourt:foodcourtInvoicesPage.service')}</option>
+                        <option value="consulting">{t('foodcourt:foodcourtInvoicesPage.consulting')}</option>
+                        <option value="others">{t('foodcourt:foodcourtInvoicesPage.others')}</option>
                       </>
                     )}
                   </FormSelect>
@@ -3372,7 +3374,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 {newInvoice.invoiceCategory === 'others' && (
                   <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
+                    <FormLabel>{t('foodcourt:foodcourtInvoicesPage.planitem')}</FormLabel>
                     <FormTextarea
                       value={newInvoice.customDescription || ''}
                       onChange={(e) => setNewInvoice({...newInvoice, customDescription: e.target.value})}
@@ -3383,7 +3385,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 {((newInvoice.invoiceCategory || 'service') === 'service' || newInvoice.invoiceCategory === 'consulting') && (
                   <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
+                    <FormLabel>{t('foodcourt:foodcourtInvoicesPage.planitem')}</FormLabel>
                     <FormTextarea
                       value={newInvoice.serviceDescription || ''}
                       onChange={(e) => setNewInvoice({...newInvoice, serviceDescription: e.target.value})}
@@ -3437,7 +3439,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* View Invoice Modal */}
         {showViewModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}>{t('foodcourt:foodcourtInvoicesPage.close')}</Button></>}>
 
                 {/* Invoice Header with Company Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
@@ -3459,13 +3461,13 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>INVOICE</div>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>{t('foodcourt:foodcourtInvoicesPage.invoice')}</div>
                     <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.invoiceNumber}</div>
                     <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
                       {getStatusDisplay(selectedInvoice.status)}
                     </StatusBadge>
                     {selectedInvoice.isModified && (
-                      <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px' }}>Modified</span>
+                      <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</span>
                     )}
                   </div>
                 </div>
@@ -3474,12 +3476,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
                   {/* Bill To */}
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Bill To</div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.billTo')}</div>
                     {selectedInvoice.payerType === 'external' ? (
                       <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.externalPayerName || selectedInvoice.customerName}</div>
-                          <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px' }}>Non-Member</span>
+                          <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px' }}>{t('foodcourt:foodcourtInvoicesPage.nonmember')}</span>
                         </div>
                         {selectedInvoice.externalPayerCompany && (
                           <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {selectedInvoice.externalPayerCompany}</div>
@@ -3540,14 +3542,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 {/* Items Table */}
                 <div style={{ marginBottom: '24px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>Items</div>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.items')}</div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
-                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Description</th>
-                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Qty</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Unit Price</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>Amount</th>
+                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('foodcourt:foodcourtInvoicesPage.description')}</th>
+                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('foodcourt:foodcourtInvoicesPage.qty')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('foodcourt:foodcourtInvoicesPage.unitPrice')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('foodcourt:foodcourtInvoicesPage.amount')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3600,7 +3602,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 {/* Bank Details (if company has bank info) */}
                 {companySettings?.bankName && (
                   <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>Payment Details</div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.paymentDetails')}</div>
                     <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
                       <div><strong>Bank:</strong> {companySettings.bankName}</div>
                       <div><strong>Account Name:</strong> {companySettings.bankAccountName}</div>
@@ -3621,7 +3623,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 {/* Modification History in View Modal */}
                 {selectedInvoice.isModified && selectedInvoice.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
                   <div style={{ marginTop: '20px', padding: '16px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>Modification History</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>{t('foodcourt:foodcourtInvoicesPage.modificationHistory')}</div>
                     {selectedInvoice.modificationHistory.map((mod, idx) => (
                       <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
                         <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
@@ -3643,7 +3645,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         {/* Link Account Modal */}
         {showLinkAccountModal && selectedInvoice && (
-          <CommonModal isOpen={true} onClose={() => setShowLinkAccountModal(false)} title="Link to Member Account" footer={<Button variant="secondary" onClick={() => setShowLinkAccountModal(false)}>Cancel</Button>}>
+          <CommonModal isOpen={true} onClose={() => setShowLinkAccountModal(false)} title="Link to Member Account" footer={<Button variant="secondary" onClick={() => setShowLinkAccountModal(false)}>{t('foodcourt:foodcourtInvoicesPage.cancel')}</Button>}>
             <FormGroup>
               <FormLabel>Search Restaurant *</FormLabel>
               <div style={{position: 'relative'}}>
@@ -3658,7 +3660,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 {showLinkSearchDropdown && linkSearchResults.restaurants.length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #E6EBF1', borderRadius: '8px', maxHeight: '300px', overflowY: 'auto', zIndex: 1000, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                     <div>
-                      <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>RESTAURANTS</div>
+                      <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>{t('foodcourt:foodcourtInvoicesPage.restaurants')}</div>
                       {linkSearchResults.restaurants.map(restaurant => (
                         <div key={restaurant.id} onClick={() => handleLinkAccount('restaurant', restaurant)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
                           <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
@@ -3681,7 +3683,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
 
                 <FormGroup>
-                  <FormLabel>Payment Confirmation</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtInvoicesPage.paymentConfirmation')}</FormLabel>
                   <InvoiceSummary>
                     <SummaryRow>
                       <span>Manager:</span>
@@ -3709,7 +3711,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 {/* Customer's Payment Information */}
                 {(selectedInvoice.paymentMethod || selectedInvoice.receiptUrl || selectedInvoice.transactionId) && (
                   <FormGroup>
-                    <FormLabel>Customer's Payment Information</FormLabel>
+                    <FormLabel>{t('foodcourt:foodcourtInvoicesPage.customersPaymentInformation')}</FormLabel>
                     <div style={{
                       background: '#EFF6FF',
                       border: '1px solid #3B82F6',
@@ -3744,7 +3746,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                               style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }}
                               onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')}
                             />
-                            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>Click image to view full size</p>
+                            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>{t('foodcourt:foodcourtInvoicesPage.clickImageToViewFullSize')}</p>
                           </div>
                         </div>
                       )}
@@ -3760,14 +3762,14 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   margin: '16px 0'
                 }}>
                   <p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}>
-                    <strong>Confirm Payment Receipt</strong><br />
+                    <strong>{t('foodcourt:foodcourtInvoicesPage.confirmPaymentReceipt')}</strong><br />
                     Only mark this invoice as paid if you have received and verified the payment.
                     This action will update the invoice status to "Paid".
                   </p>
                 </div>
 
                 <FormGroup>
-                  <FormLabel>Status Change</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtInvoicesPage.statusChange')}</FormLabel>
                   <div style={{
                     fontSize: '14px',
                     lineHeight: '1.6',
@@ -3915,7 +3917,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 <FormRow>
                   <FormGroup>
-                    <FormLabel>Amount (RM)</FormLabel>
+                    <FormLabel>{t('foodcourt:foodcourtInvoicesPage.amountRm')}</FormLabel>
                     <FormInput
                       type="number"
                       value={editInvoice.amount}
@@ -3934,7 +3936,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     />
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Due Date</FormLabel>
+                    <FormLabel>{t('foodcourt:foodcourtInvoicesPage.dueDate')}</FormLabel>
                     <FormInput
                       type="date"
                       value={editInvoice.dueDate}
@@ -3944,21 +3946,21 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 </FormRow>
 
                 <FormGroup>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</FormLabel>
                   <FormSelect
                     value={editInvoice.status}
                     onChange={(e) => setEditInvoice({...editInvoice, status: e.target.value})}
                   >
-                    <option value="draft">Draft</option>
-                    <option value="pending_payment">Pending Payment</option>
-                    <option value="payment_submitted">Payment Submitted</option>
-                    <option value="paid">Paid</option>
-                    <option value="overdue">Overdue</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="draft">{t('foodcourt:foodcourtInvoicesPage.draft')}</option>
+                    <option value="pending_payment">{t('foodcourt:foodcourtInvoicesPage.pendingPayment')}</option>
+                    <option value="payment_submitted">{t('foodcourt:foodcourtInvoicesPage.paymentSubmitted')}</option>
+                    <option value="paid">{t('foodcourt:foodcourtInvoicesPage.paid')}</option>
+                    <option value="overdue">{t('foodcourt:foodcourtInvoicesPage.overdue')}</option>
+                    <option value="cancelled">{t('foodcourt:foodcourtInvoicesPage.cancelled')}</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Invoice Category</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtInvoicesPage.invoiceCategory')}</FormLabel>
                   <FormSelect
                     value={editInvoice.invoiceCategory || 'service'}
                     onChange={(e) => setEditInvoice({...editInvoice, invoiceCategory: e.target.value})}
@@ -3971,9 +3973,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
                         ))
                     ) : (
                       <>
-                        <option value="service">Service</option>
-                        <option value="consulting">Consulting</option>
-                        <option value="others">Others</option>
+                        <option value="service">{t('foodcourt:foodcourtInvoicesPage.service')}</option>
+                        <option value="consulting">{t('foodcourt:foodcourtInvoicesPage.consulting')}</option>
+                        <option value="others">{t('foodcourt:foodcourtInvoicesPage.others')}</option>
                       </>
                     )}
                   </FormSelect>
@@ -3981,7 +3983,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 {editInvoice.invoiceCategory === 'others' && (
                   <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
+                    <FormLabel>{t('foodcourt:foodcourtInvoicesPage.planitem')}</FormLabel>
                     <FormTextarea
                       value={editInvoice.customDescription || ''}
                       onChange={(e) => setEditInvoice({...editInvoice, customDescription: e.target.value})}
@@ -3992,7 +3994,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 {((editInvoice.invoiceCategory || 'service') === 'service' || editInvoice.invoiceCategory === 'consulting') && (
                   <FormGroup>
-                    <FormLabel>Plan/Item</FormLabel>
+                    <FormLabel>{t('foodcourt:foodcourtInvoicesPage.planitem')}</FormLabel>
                     <FormTextarea
                       value={editInvoice.serviceDescription || ''}
                       onChange={(e) => setEditInvoice({...editInvoice, serviceDescription: e.target.value})}
@@ -4034,7 +4036,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
                 {selectedInvoice?.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
                   <div style={{ marginTop: '16px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>Modification History</div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>{t('foodcourt:foodcourtInvoicesPage.modificationHistory')}</div>
                     {selectedInvoice.modificationHistory.map((mod, idx) => (
                       <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
                         <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
@@ -4064,7 +4066,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Send Invoice to Manager</h3>
+                  }}>{t('foodcourt:foodcourtInvoicesPage.sendInvoiceToManager')}</h3>
                   <p style={{ 
                     fontSize: '14px', 
                     color: '#6B7280', 
@@ -4111,7 +4113,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Resend Invoice</h3>
+                  }}>{t('foodcourt:foodcourtInvoicesPage.resendInvoice')}</h3>
                   <p style={{ 
                     fontSize: '14px', 
                     color: '#6B7280', 
@@ -4145,7 +4147,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Cancel Invoice</h3>
+                  }}>{t('foodcourt:foodcourtInvoicesPage.cancelInvoice')}</h3>
                   <p style={{ 
                     fontSize: '14px', 
                     color: '#6B7280', 
@@ -4211,7 +4213,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     fontWeight: '600',
                     color: '#0A2540',
                     marginBottom: '12px'
-                  }}>Delete Invoice</h3>
+                  }}>{t('foodcourt:foodcourtInvoicesPage.deleteInvoice')}</h3>
                   <p style={{
                     fontSize: '14px',
                     color: '#6B7280',
@@ -4230,7 +4232,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                     <CommonModal isOpen={true} onClose={() => setShowEmailModal(false)} title="Send Invoice via Email" footer={<><Button variant="secondary" onClick={() => { setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient(''); }}> Cancel </Button><Button variant="primary" onClick={handleSendInvoiceEmail} disabled={!emailRecipient || !emailRecipient.includes('@')} > Send Email </Button></>}>
 
                 <FormGroup>
-                  <FormLabel>Invoice</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</FormLabel>
                   <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}>
                     <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div>
                     <div style={{ fontSize: '13px', color: '#6B7280' }}>{emailInvoice.customerName}</div>

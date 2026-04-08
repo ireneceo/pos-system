@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -162,8 +163,8 @@ const CTAButton = styled.button`
 `;
 
 const AboutPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
-
   return (
     <LandingLayout>
       <SEOHead
@@ -174,17 +175,17 @@ const AboutPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>About PurpleHere</HeroTitle>
+          <HeroTitle>{t('landing:aboutPage.aboutPurplehere')}</HeroTitle>
           <HeroSubtitle>
-            Where Innovation Meets Food Business
+            {t('landing:aboutPage.whereInnovationMeetsFoodBusiness')}
           </HeroSubtitle>
         </HeroSection>
 
         <ContentSection>
           <Section>
-            <SectionTitle>Our Story</SectionTitle>
+            <SectionTitle>{t('landing:aboutPage.ourStory')}</SectionTitle>
             <Paragraph>
-              <strong>Like a Purple Cow, Standing Out Through Creative Innovation</strong>
+              <strong>{t('landing:aboutPage.likeAPurpleCowStandingOutThroughCreativeInnovation')}</strong>
             </Paragraph>
             <Paragraph>
               PurpleHere is inspired by Seth Godin's "Purple Cow" - a remarkable solution that stands out
@@ -199,7 +200,7 @@ const AboutPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Our Vision</SectionTitle>
+            <SectionTitle>{t('landing:aboutPage.ourVision')}</SectionTitle>
             <Paragraph>
               <strong>"Not Just Another POS, But a Creative Unified Platform"</strong>
             </Paragraph>
@@ -211,33 +212,33 @@ const AboutPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Why PurpleHere?</SectionTitle>
+            <SectionTitle>{t('landing:aboutPage.whyPurplehere')}</SectionTitle>
             <List>
               <ListItem>
-                <strong>Innovative Thinking:</strong> Stand out with a remarkable, differentiated solution
+                <strong>{t('landing:aboutPage.innovativeThinking')}</strong> Stand out with a remarkable, differentiated solution
                 that breaks industry stereotypes
               </ListItem>
               <ListItem>
-                <strong>Unified Platform:</strong> Manage all outlets, data, and features from a single
+                <strong>{t('landing:aboutPage.unifiedPlatform')}</strong> Manage all outlets, data, and features from a single
                 centralized system
               </ListItem>
               <ListItem>
-                <strong>Real-time Insights:</strong> Monitor and analyze orders, sales, and inventory
+                <strong>{t('landing:aboutPage.realtimeInsights')}</strong> Monitor and analyze orders, sales, and inventory
                 across all locations in real-time
               </ListItem>
               <ListItem>
-                <strong>Mobile Ordering:</strong> QR code-based mobile ordering enhances both customer
+                <strong>{t('landing:aboutPage.mobileOrdering')}</strong> QR code-based mobile ordering enhances both customer
                 convenience and operational efficiency
               </ListItem>
               <ListItem>
-                <strong>Cloud-Based:</strong> Access your system anytime, anywhere with cloud technology
+                <strong>{t('landing:aboutPage.cloudbased')}</strong> Access your system anytime, anywhere with cloud technology
                 enabling remote management
               </ListItem>
             </List>
           </Section>
 
           <Section>
-            <SectionTitle>Our Technology</SectionTitle>
+            <SectionTitle>{t('landing:aboutPage.ourTechnology')}</SectionTitle>
             <Paragraph>
               Built on modern web technologies and cloud infrastructure, we deliver a stable and scalable
               system. Our React-based intuitive UI and real-time Socket.IO communication provide a fast
@@ -250,9 +251,9 @@ const AboutPage: React.FC = () => {
           </Section>
 
           <CTASection>
-            <CTATitle>Experience the Difference, Start Today</CTATitle>
+            <CTATitle>{t('landing:aboutPage.experienceTheDifferenceStartToday')}</CTATitle>
             <CTAButton onClick={() => navigate('/features')}>
-              Explore Features
+              {t('landing:aboutPage.exploreFeatures')}
             </CTAButton>
           </CTASection>
         </ContentSection>

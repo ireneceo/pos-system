@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
+import { useTranslation } from 'react-i18next';
 
 interface OperationTicket {
   id: number;
@@ -452,6 +453,7 @@ const DetailDescription = styled.div`
 `;
 
 const OwnerOperationInquiryPage: React.FC = () => {
+  const { t } = useTranslation('owner');
   const { user } = useAuth();
   const [tickets, setTickets] = useState<OperationTicket[]>([]);
   const [ownedRestaurants, setOwnedRestaurants] = useState<OwnedRestaurant[]>([]);
@@ -633,60 +635,60 @@ const OwnerOperationInquiryPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Operation Inquiry</Title>
+          <Title>{t('owner:ownerOperationInquiryPage.operationInquiry')}</Title>
           <ActionSection>
-            <Button variant="primary" onClick={() => setShowCreateModal(true)}>New Inquiry</Button>
+            <Button variant="primary" onClick={() => setShowCreateModal(true)}>{t('owner:ownerOperationInquiryPage.newInquiry')}</Button>
           </ActionSection>
         </Header>
         <Content>
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{tickets.length}</StatValue>
-              <StatLabel>Total Inquiries</StatLabel>
+              <StatLabel>{t('owner:ownerOperationInquiryPage.totalInquiries')}</StatLabel>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{openTickets}</StatValue>
-              <StatLabel>Open</StatLabel>
+              <StatLabel>{t('owner:ownerOperationInquiryPage.open')}</StatLabel>
             </StatCard>
             <StatCard color="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
-              <StatLabel>In Progress</StatLabel>
+              <StatLabel>{t('owner:ownerOperationInquiryPage.inProgress')}</StatLabel>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
-              <StatLabel>Resolved</StatLabel>
+              <StatLabel>{t('owner:ownerOperationInquiryPage.resolved')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
           <FiltersContainer>
             <Select value={filterRestaurant} onChange={(e) => setFilterRestaurant(e.target.value)}>
-              <option value="all">All Restaurants</option>
+              <option value="all">{t('owner:ownerOperationInquiryPage.allRestaurants')}</option>
               {ownedRestaurants.map(r => (
                 <option key={r.id} value={String(r.id)}>{r.name}</option>
               ))}
             </Select>
             <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in-progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option value="all">{t('owner:ownerOperationInquiryPage.allStatus')}</option>
+              <option value="open">{t('owner:ownerOperationInquiryPage.open')}</option>
+              <option value="in-progress">{t('owner:ownerOperationInquiryPage.inProgress')}</option>
+              <option value="resolved">{t('owner:ownerOperationInquiryPage.resolved')}</option>
+              <option value="closed">{t('owner:ownerOperationInquiryPage.closed')}</option>
             </Select>
             <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-              <option value="all">All Priority</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all">{t('owner:ownerOperationInquiryPage.allPriority')}</option>
+              <option value="urgent">{t('owner:ownerOperationInquiryPage.urgent')}</option>
+              <option value="high">{t('owner:ownerOperationInquiryPage.high')}</option>
+              <option value="medium">{t('owner:ownerOperationInquiryPage.medium')}</option>
+              <option value="low">{t('owner:ownerOperationInquiryPage.low')}</option>
             </Select>
             <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="all">All Categories</option>
-              <option value="schedule">Schedule</option>
-              <option value="inventory">Inventory</option>
-              <option value="staff">Staff</option>
-              <option value="menu">Menu</option>
-              <option value="customer">Customer</option>
-              <option value="other">Other</option>
+              <option value="all">{t('owner:ownerOperationInquiryPage.allCategories')}</option>
+              <option value="schedule">{t('owner:ownerOperationInquiryPage.schedule')}</option>
+              <option value="inventory">{t('owner:ownerOperationInquiryPage.inventory')}</option>
+              <option value="staff">{t('owner:ownerOperationInquiryPage.staff')}</option>
+              <option value="menu">{t('owner:ownerOperationInquiryPage.menu')}</option>
+              <option value="customer">{t('owner:ownerOperationInquiryPage.customer')}</option>
+              <option value="other">{t('owner:ownerOperationInquiryPage.other')}</option>
             </Select>
             <SearchInput
               placeholder="Search inquiries..."
@@ -717,11 +719,11 @@ const OwnerOperationInquiryPage: React.FC = () => {
 
                 <TicketMeta>
                   <MetaItem>
-                    <MetaLabel>Created</MetaLabel>
+                    <MetaLabel>{t('owner:ownerOperationInquiryPage.created')}</MetaLabel>
                     <MetaValue>{formatDateTime(ticket.createdAt)}</MetaValue>
                   </MetaItem>
                   <MetaItem>
-                    <MetaLabel>Category</MetaLabel>
+                    <MetaLabel>{t('owner:ownerOperationInquiryPage.category')}</MetaLabel>
                     <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category}</MetaValue>
                   </MetaItem>
                   {unreadCounts[String(ticket.id)] && (
@@ -740,7 +742,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
 
             {filteredTickets.length === 0 && (
               <EmptyState>
-                <h3>No operation inquiries</h3>
+                <h3>{t('owner:ownerOperationInquiryPage.noOperationInquiries')}</h3>
                 <p>Operation inquiries from your restaurants will appear here. You can also create new inquiries.</p>
               </EmptyState>
             )}
@@ -748,7 +750,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
 
           {/* Create Modal */}
           {showCreateModal && (
-            <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create Operation Inquiry" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button><Button variant="primary" onClick={handleSubmitTicket} disabled={!newTicket.restaurantId || !newTicket.subject.trim() || !newTicket.description.trim()}>Submit Inquiry</Button></>}>
+            <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create Operation Inquiry" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('owner:ownerOperationInquiryPage.cancel')}</Button><Button variant="primary" onClick={handleSubmitTicket} disabled={!newTicket.restaurantId || !newTicket.subject.trim() || !newTicket.description.trim()}>{t('owner:ownerOperationInquiryPage.submitInquiry')}</Button></>}>
                   <FormGroup>
                     <FormLabel>Restaurant *</FormLabel>
                     <FormSelect
@@ -756,7 +758,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
                       onChange={(e) => setNewTicket({...newTicket, restaurantId: e.target.value})}
                       required
                     >
-                      <option value="">Select Restaurant</option>
+                      <option value="">{t('owner:ownerOperationInquiryPage.selectRestaurant')}</option>
                       {ownedRestaurants.map(r => (
                         <option key={r.id} value={String(r.id)}>{r.name}</option>
                       ))}
@@ -783,7 +785,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
                     />
                   </FormGroup>
                   <FormGroup>
-                    <FormLabel>Attachments</FormLabel>
+                    <FormLabel>{t('owner:ownerOperationInquiryPage.attachments')}</FormLabel>
                     <FileUpload
                       files={newAttachments}
                       onChange={setNewAttachments}
@@ -792,29 +794,29 @@ const OwnerOperationInquiryPage: React.FC = () => {
                   </FormGroup>
                   <FormRow>
                     <FormGroup>
-                      <FormLabel>Priority</FormLabel>
+                      <FormLabel>{t('owner:ownerOperationInquiryPage.priority')}</FormLabel>
                       <FormSelect
                         value={newTicket.priority}
                         onChange={(e) => setNewTicket({...newTicket, priority: e.target.value as OperationTicket['priority']})}
                       >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
+                        <option value="low">{t('owner:ownerOperationInquiryPage.low')}</option>
+                        <option value="medium">{t('owner:ownerOperationInquiryPage.medium')}</option>
+                        <option value="high">{t('owner:ownerOperationInquiryPage.high')}</option>
+                        <option value="urgent">{t('owner:ownerOperationInquiryPage.urgent')}</option>
                       </FormSelect>
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Category</FormLabel>
+                      <FormLabel>{t('owner:ownerOperationInquiryPage.category')}</FormLabel>
                       <FormSelect
                         value={newTicket.category}
                         onChange={(e) => setNewTicket({...newTicket, category: e.target.value as OperationTicket['category']})}
                       >
-                        <option value="schedule">Schedule</option>
-                        <option value="inventory">Inventory</option>
-                        <option value="staff">Staff</option>
-                        <option value="menu">Menu</option>
-                        <option value="customer">Customer</option>
-                        <option value="other">Other</option>
+                        <option value="schedule">{t('owner:ownerOperationInquiryPage.schedule')}</option>
+                        <option value="inventory">{t('owner:ownerOperationInquiryPage.inventory')}</option>
+                        <option value="staff">{t('owner:ownerOperationInquiryPage.staff')}</option>
+                        <option value="menu">{t('owner:ownerOperationInquiryPage.menu')}</option>
+                        <option value="customer">{t('owner:ownerOperationInquiryPage.customer')}</option>
+                        <option value="other">{t('owner:ownerOperationInquiryPage.other')}</option>
                       </FormSelect>
                     </FormGroup>
                   </FormRow>
@@ -823,7 +825,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
 
           {/* Detail Modal */}
           {selectedTicket && (
-            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={<><Button variant="secondary" onClick={() => setSelectedTicket(null)}>Close</Button></>}>
+            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={<><Button variant="secondary" onClick={() => setSelectedTicket(null)}>{t('owner:ownerOperationInquiryPage.close')}</Button></>}>
                   <InfoBox>
                     <InfoRow>
                       <InfoLabel>Subject:</InfoLabel>
@@ -851,7 +853,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
                     </InfoRow>
                   </InfoBox>
 
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('owner:ownerOperationInquiryPage.description')}</FormLabel>
                   <DetailDescription>{selectedTicket.description}</DetailDescription>
 
                   {selectedTicket?.attachments && selectedTicket.attachments.length > 0 && (
@@ -859,17 +861,17 @@ const OwnerOperationInquiryPage: React.FC = () => {
                   )}
 
                   <FormGroup>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel>{t('owner:ownerOperationInquiryPage.status')}</FormLabel>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <FormSelect
                         value={detailStatus}
                         onChange={(e) => setDetailStatus(e.target.value as OperationTicket['status'])}
                         style={{ flex: 1 }}
                       >
-                        <option value="open">Open</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="closed">Closed</option>
+                        <option value="open">{t('owner:ownerOperationInquiryPage.open')}</option>
+                        <option value="in-progress">{t('owner:ownerOperationInquiryPage.inProgress')}</option>
+                        <option value="resolved">{t('owner:ownerOperationInquiryPage.resolved')}</option>
+                        <option value="closed">{t('owner:ownerOperationInquiryPage.closed')}</option>
                       </FormSelect>
                       {detailStatus !== selectedTicket.status && (
                         <Button variant="primary" onClick={handleStatusChange} style={{ padding: '10px 16px', fontSize: '13px' }}>

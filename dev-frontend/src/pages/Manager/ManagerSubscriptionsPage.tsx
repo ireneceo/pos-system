@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 interface Subscription {
   id: string;
@@ -358,6 +359,7 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'danger' }>`
 `;
 
 const ManagerSubscriptionsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const { defaultCurrency } = useBrandCurrency();
@@ -502,10 +504,10 @@ const ManagerSubscriptionsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Subscriptions</Title>
+          <Title>{t('admin:managerSubscriptionsPage.subscriptions')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportData}>Export Report</Button>
-            <Button variant="primary" onClick={handleBulkBilling}>Manage Billing</Button>
+            <Button variant="secondary" onClick={handleExportData}>{t('admin:managerSubscriptionsPage.exportReport')}</Button>
+            <Button variant="primary" onClick={handleBulkBilling}>{t('admin:managerSubscriptionsPage.manageBilling')}</Button>
           </ActionSection>
         </Header>
         
@@ -513,19 +515,19 @@ const ManagerSubscriptionsPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{subscriptions.length}</StatValue>
-              <StatLabel>Total Subscriptions</StatLabel>
+              <StatLabel>{t('admin:managerSubscriptionsPage.totalSubscriptions')}</StatLabel>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{activeSubscriptions}</StatValue>
-              <StatLabel>Active Subscriptions</StatLabel>
+              <StatLabel>{t('admin:managerSubscriptionsPage.activeSubscriptions')}</StatLabel>
             </StatCard>
             <StatCard color="#DC2626">
               <StatValue>{inactiveSubscriptions}</StatValue>
-              <StatLabel>Non-Active Subscriptions</StatLabel>
+              <StatLabel>{t('admin:managerSubscriptionsPage.nonactiveSubscriptions')}</StatLabel>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>{formatCurrency(totalMonthlyFee, selectedCurrency)}</StatValue>
-              <StatLabel>Monthly Fees</StatLabel>
+              <StatLabel>{t('admin:managerSubscriptionsPage.monthlyFees')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -551,9 +553,9 @@ const ManagerSubscriptionsPage: React.FC = () => {
                   </StatusSection>
 
                   <UsageSection>
-                    <SectionTitle>Current Usage</SectionTitle>
+                    <SectionTitle>{t('admin:managerSubscriptionsPage.currentUsage')}</SectionTitle>
                     <UsageItem>
-                      <UsageLabel>Menu Items</UsageLabel>
+                      <UsageLabel>{t('admin:managerSubscriptionsPage.menuItems')}</UsageLabel>
                       <UsageValue warning={getUsagePercentage(subscription.usage.currentMenuItems, subscription.usage.menuItemLimit) >= 80}>
                         {formatUsage(subscription.usage.currentMenuItems, subscription.usage.menuItemLimit)}
                       </UsageValue>
@@ -568,14 +570,14 @@ const ManagerSubscriptionsPage: React.FC = () => {
                     )}
 
                     <UsageItem style={{ marginTop: '12px' }}>
-                      <UsageLabel>Monthly Transactions</UsageLabel>
+                      <UsageLabel>{t('admin:managerSubscriptionsPage.monthlyTransactions')}</UsageLabel>
                       <UsageValue>
                         {subscription.usage.monthlyTransactions.toLocaleString()}
                       </UsageValue>
                     </UsageItem>
 
                     <UsageItem style={{ marginTop: '12px' }}>
-                      <UsageLabel>Storage</UsageLabel>
+                      <UsageLabel>{t('admin:managerSubscriptionsPage.storage')}</UsageLabel>
                       <UsageValue warning={getUsagePercentage(subscription.usage.storageUsed, subscription.usage.storageLimit) >= 80}>
                         {subscription.usage.storageLimit === -1 ? `${subscription.usage.storageUsed}GB` : `${subscription.usage.storageUsed}GB / ${subscription.usage.storageLimit}GB`}
                       </UsageValue>
@@ -591,7 +593,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                   </UsageSection>
 
                   <FeaturesSection>
-                    <SectionTitle>Plan Features</SectionTitle>
+                    <SectionTitle>{t('admin:managerSubscriptionsPage.planFeatures')}</SectionTitle>
                     <FeaturesList>
                       {subscription.features.map((feature, index) => (
                         <FeatureItem key={index}>{feature}</FeatureItem>

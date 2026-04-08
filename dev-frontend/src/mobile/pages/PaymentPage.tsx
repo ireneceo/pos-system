@@ -9,6 +9,7 @@ import CustomerModal from '../../components/Customer/CustomerModal';
 import api from '../services/api';
 import { formatCurrency } from '../../utils/currency';
 import PhoneInput from '../components/common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   padding-bottom: 100px;
@@ -509,6 +510,7 @@ const validateCouponAPI = async (code: string, restaurantId: number, orderAmount
 };
 
 const PaymentPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { cartItems, cartTotal, clearCart, setCurrentOrder, currentStore, setCurrentStore, currency } = useMobileOrder();

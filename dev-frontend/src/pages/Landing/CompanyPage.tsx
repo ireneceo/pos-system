@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -176,6 +177,7 @@ const ServiceDescription = styled.p`
 `;
 
 const CompanyPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   return (
     <LandingLayout>
       <SEOHead
@@ -186,28 +188,28 @@ const CompanyPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>About Our Company</HeroTitle>
+          <HeroTitle>{t('landing:companyPage.aboutOurCompany')}</HeroTitle>
           <HeroSubtitle>
-            Technology commercialization through expert consulting and operational support
+            {t('landing:companyPage.technologyCommercializationThroughExpert')}
           </HeroSubtitle>
         </HeroSection>
 
         <ContentSection>
           <Section>
-            <SectionTitle>Company Information</SectionTitle>
-            <CompanyName>GIT CONSULTING SDN. BHD.</CompanyName>
+            <SectionTitle>{t('landing:companyPage.companyInformation')}</SectionTitle>
+            <CompanyName>{t('landing:companyPage.gitConsultingSdnBhd')}</CompanyName>
             <Paragraph>
               An official corporation registered in Malaysia, providing technology commercialization
               through technical advice, consulting, and operational support services.
             </Paragraph>
             <AddressBlock>
               <AddressText>
-                P-02-06A, Tropicana Avenue, Persiaran Tropicana<br />
-                Tropicana Golf & Country Resort<br />
+                {t('landing:companyPage.p0206aTropicanaAvenuePersiaranTropicana')}<br />
+                {t('landing:companyPage.tropicanaGolfCountryResort')}<br />
                 47410, Petaling Jaya, Selangor, Malaysia
               </AddressText>
               <ContactItem>
-                <ContactLabel>Email:</ContactLabel>
+                <ContactLabel>{t('landing:companyPage.email')}</ContactLabel>
                 <ContactLink href="mailto:help@gitconsulting.group">
                   help@gitconsulting.group
                 </ContactLink>
@@ -216,7 +218,7 @@ const CompanyPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Our Expertise</SectionTitle>
+            <SectionTitle>{t('landing:companyPage.ourExpertise')}</SectionTitle>
             <Paragraph>
               We bridge the gap between traditional business consulting and technical implementation.
               While general consulting firms often lack technical expertise and focus solely on
@@ -226,24 +228,24 @@ const CompanyPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Core Services</SectionTitle>
+            <SectionTitle>{t('landing:companyPage.coreServices')}</SectionTitle>
             <ServiceGrid>
               <ServiceCard>
-                <ServiceTitle>Consulting</ServiceTitle>
+                <ServiceTitle>{t('landing:companyPage.consulting')}</ServiceTitle>
                 <ServiceDescription>
                   IT consulting, startup guidance, management consulting, overseas expansion,
                   and business modeling expertise
                 </ServiceDescription>
               </ServiceCard>
               <ServiceCard>
-                <ServiceTitle>Technical Support</ServiceTitle>
+                <ServiceTitle>{t('landing:companyPage.technicalSupport')}</ServiceTitle>
                 <ServiceDescription>
                   Expert matching, continuous technical analysis, and high-quality reporting
                   for technology projects
                 </ServiceDescription>
               </ServiceCard>
               <ServiceCard>
-                <ServiceTitle>Business Services</ServiceTitle>
+                <ServiceTitle>{t('landing:companyPage.businessServices')}</ServiceTitle>
                 <ServiceDescription>
                   Branding, marketing, design, website development, and comprehensive startup
                   support services
@@ -253,7 +255,7 @@ const CompanyPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Our Approach</SectionTitle>
+            <SectionTitle>{t('landing:companyPage.ourApproach')}</SectionTitle>
             <Paragraph>
               We provide end-to-end support combining strategic consulting with hands-on technical
               implementation. Our team of experts delivers continuous technical analysis, expert

@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -249,6 +250,7 @@ const DEMO_ACCOUNTS = {
 };
 
 const DemoPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const { login } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
@@ -307,9 +309,9 @@ const DemoPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>Try PurpleHere POS</HeroTitle>
+          <HeroTitle>{t('landing:demoPage.tryPurpleherePos')}</HeroTitle>
           <HeroSubtitle>
-            Experience our system with demo accounts. No signup required.
+            {t('landing:demoPage.experienceOurSystemWithDemoAccountsNoSig')}
           </HeroSubtitle>
         </HeroSection>
 
@@ -319,7 +321,7 @@ const DemoPage: React.FC = () => {
           <DemoGrid>
             <DemoCard>
               <CardIcon>{DEMO_ACCOUNTS.brand_general.icon}</CardIcon>
-              <CardTitle>Brand General</CardTitle>
+              <CardTitle>{t('landing:demoPage.brandGeneral')}</CardTitle>
               <CardDescription>
                 {DEMO_ACCOUNTS.brand_general.description}
               </CardDescription>
@@ -339,7 +341,7 @@ const DemoPage: React.FC = () => {
 
             <DemoCard>
               <CardIcon>{DEMO_ACCOUNTS.restaurant_admin.icon}</CardIcon>
-              <CardTitle>Restaurant Admin</CardTitle>
+              <CardTitle>{t('landing:demoPage.restaurantAdmin')}</CardTitle>
               <CardDescription>
                 {DEMO_ACCOUNTS.restaurant_admin.description}
               </CardDescription>
@@ -359,7 +361,7 @@ const DemoPage: React.FC = () => {
           </DemoGrid>
 
           <NoticeBox>
-            <NoticeTitle>Demo Account Notice</NoticeTitle>
+            <NoticeTitle>{t('landing:demoPage.demoAccountNotice')}</NoticeTitle>
             <NoticeText>
               Demo accounts are reset daily at midnight (site timezone).
               Any changes you make will be restored to the default state.
@@ -368,12 +370,12 @@ const DemoPage: React.FC = () => {
         </ContentSection>
 
         <CTASection>
-          <CTATitle>Want your own account?</CTATitle>
+          <CTATitle>{t('landing:demoPage.wantYourOwnAccount')}</CTATitle>
           <CTASubtitle>
-            Contact our sales team to set up your personalized account.
+            {t('landing:demoPage.contactOurSalesTeamToSetUpYourPersonaliz')}
           </CTASubtitle>
           <CTAButton onClick={() => navigate('/contact')}>
-            Contact Us
+            {t('landing:demoPage.contactUs')}
           </CTAButton>
         </CTASection>
       </PageContainer>

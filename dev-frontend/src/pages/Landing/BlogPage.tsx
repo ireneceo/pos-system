@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateItemListSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 interface BlogCategory {
   id: number;
@@ -278,6 +279,7 @@ const LoadingSpinner = styled.div`
 `;
 
 const BlogPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [categories, setCategories] = useState<BlogCategory[]>([]);
@@ -359,7 +361,6 @@ const BlogPage: React.FC = () => {
     setActiveCategory(slug);
     setPagination(prev => ({ ...prev, page: 1 }));
   };
-
   return (
     <LandingLayout>
       <SEOHead
@@ -371,9 +372,9 @@ const BlogPage: React.FC = () => {
       />
       <PageContainer>
         <HeroSection>
-          <HeroTitle>Blog</HeroTitle>
+          <HeroTitle>{t('landing:blogPage.blog')}</HeroTitle>
           <HeroSubtitle>
-            Stay updated with the latest news and tips for PurpleHere POS
+            {t('landing:blogPage.stayUpdatedWithTheLatestNewsAndTipsForPu')}
           </HeroSubtitle>
         </HeroSection>
 
@@ -398,11 +399,11 @@ const BlogPage: React.FC = () => {
 
           <BlogGrid>
             {loading ? (
-              <LoadingSpinner>Loading...</LoadingSpinner>
+              <LoadingSpinner>{t('landing:blogPage.loading')}</LoadingSpinner>
             ) : posts.length === 0 ? (
               <EmptyState>
-                <h3>No posts found</h3>
-                <p>Check back later for new content</p>
+                <h3>{t('landing:blogPage.noPostsFound')}</h3>
+                <p>{t('landing:blogPage.checkBackLaterForNewContent')}</p>
               </EmptyState>
             ) : (
               posts.map(post => (
@@ -426,7 +427,7 @@ const BlogPage: React.FC = () => {
                       {post.excerpt || post.content.substring(0, 150).replace(/<[^>]*>/g, '')}...
                     </BlogExcerpt>
                     <ReadMoreLink>
-                      Read more
+                      {t('landing:blogPage.readMore')}
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>

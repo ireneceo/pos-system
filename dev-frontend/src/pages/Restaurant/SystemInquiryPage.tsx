@@ -5,6 +5,7 @@ import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
+import { useTranslation } from 'react-i18next';
 
 interface SupportTicket {
   id: string;
@@ -421,6 +422,7 @@ const FormTextArea = styled.textarea`
 `;
 
 const SupportTicketsPage: React.FC = () => {
+  const { t } = useTranslation('settings');
   const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -629,54 +631,54 @@ const SupportTicketsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>System Inquiry</Title>
+          <Title>{t('settings:systemInquiryPage.systemInquiry')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportReports}>Export</Button>
-            <Button variant="primary" onClick={handleCreateTicket}>Create Ticket</Button>
+            <Button variant="secondary" onClick={handleExportReports}>{t('settings:systemInquiryPage.export')}</Button>
+            <Button variant="primary" onClick={handleCreateTicket}>{t('settings:systemInquiryPage.createTicket')}</Button>
           </ActionSection>
         </Header>
         <Content>
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{totalTickets}</StatValue>
-              <StatLabel>Total Tickets</StatLabel>
+              <StatLabel>{t('settings:systemInquiryPage.totalTickets')}</StatLabel>
             </StatCard>
             <StatCard color="#D97706">
               <StatValue>{openTickets}</StatValue>
-              <StatLabel>Open Tickets</StatLabel>
+              <StatLabel>{t('settings:systemInquiryPage.openTickets')}</StatLabel>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{inProgressTickets}</StatValue>
-              <StatLabel>In Progress</StatLabel>
+              <StatLabel>{t('settings:systemInquiryPage.inProgress')}</StatLabel>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>{resolvedTickets}</StatValue>
-              <StatLabel>Resolved</StatLabel>
+              <StatLabel>{t('settings:systemInquiryPage.resolved')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
           <FiltersContainer>
             <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in-progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option value="all">{t('settings:systemInquiryPage.allStatus')}</option>
+              <option value="open">{t('settings:systemInquiryPage.open')}</option>
+              <option value="in-progress">{t('settings:systemInquiryPage.inProgress')}</option>
+              <option value="resolved">{t('settings:systemInquiryPage.resolved')}</option>
+              <option value="closed">{t('settings:systemInquiryPage.closed')}</option>
             </Select>
             <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-              <option value="all">All Priority</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all">{t('settings:systemInquiryPage.allPriority')}</option>
+              <option value="urgent">{t('settings:systemInquiryPage.urgent')}</option>
+              <option value="high">{t('settings:systemInquiryPage.high')}</option>
+              <option value="medium">{t('settings:systemInquiryPage.medium')}</option>
+              <option value="low">{t('settings:systemInquiryPage.low')}</option>
             </Select>
             <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="all">All Categories</option>
-              <option value="technical">Technical</option>
-              <option value="billing">Billing</option>
-              <option value="feature-request">Feature Request</option>
-              <option value="bug-report">Bug Report</option>
-              <option value="general">General</option>
+              <option value="all">{t('settings:systemInquiryPage.allCategories')}</option>
+              <option value="technical">{t('settings:systemInquiryPage.technical')}</option>
+              <option value="billing">{t('settings:systemInquiryPage.billing')}</option>
+              <option value="feature-request">{t('settings:systemInquiryPage.featureRequest')}</option>
+              <option value="bug-report">{t('settings:systemInquiryPage.bugReport')}</option>
+              <option value="general">{t('settings:systemInquiryPage.general')}</option>
             </Select>
             <SearchInput
               placeholder="Search tickets..."
@@ -711,11 +713,11 @@ const SupportTicketsPage: React.FC = () => {
 
                 <TicketMeta>
                   <MetaItem>
-                    <MetaLabel>Created</MetaLabel>
+                    <MetaLabel>{t('settings:systemInquiryPage.created')}</MetaLabel>
                     <MetaValue>{formatDateTime(ticket.createdAt)}</MetaValue>
                   </MetaItem>
                   <MetaItem>
-                    <MetaLabel>Category</MetaLabel>
+                    <MetaLabel>{t('settings:systemInquiryPage.category')}</MetaLabel>
                     <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category.replace('-', ' ')}</MetaValue>
                   </MetaItem>
                   {unreadCounts[ticket.id] && (
@@ -742,7 +744,7 @@ const SupportTicketsPage: React.FC = () => {
                 color: '#6B7280',
                 gridColumn: '1 / -1'
               }}>
-                <h3 style={{ color: '#374151', marginBottom: '8px' }}>No tickets yet</h3>
+                <h3 style={{ color: '#374151', marginBottom: '8px' }}>{t('settings:systemInquiryPage.noTicketsYet')}</h3>
                 <p>Click "Create Ticket" to submit your first support ticket to system administrator.</p>
               </div>
             )}
@@ -790,7 +792,7 @@ const SupportTicketsPage: React.FC = () => {
                     />
                   </FormGroup>
                   <div>
-                    <FormLabel>Attachments</FormLabel>
+                    <FormLabel>{t('settings:systemInquiryPage.attachments')}</FormLabel>
                     <FileUpload
                       files={newAttachments}
                       onChange={setNewAttachments}
@@ -799,28 +801,28 @@ const SupportTicketsPage: React.FC = () => {
                   </div>
                   <FormRow>
                     <FormGroup>
-                      <FormLabel>Priority</FormLabel>
+                      <FormLabel>{t('settings:systemInquiryPage.priority')}</FormLabel>
                       <FormSelect
                         value={newTicket.priority}
                         onChange={(e) => setNewTicket({...newTicket, priority: e.target.value as SupportTicket['priority']})}
                       >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
+                        <option value="low">{t('settings:systemInquiryPage.low')}</option>
+                        <option value="medium">{t('settings:systemInquiryPage.medium')}</option>
+                        <option value="high">{t('settings:systemInquiryPage.high')}</option>
+                        <option value="urgent">{t('settings:systemInquiryPage.urgent')}</option>
                       </FormSelect>
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Category</FormLabel>
+                      <FormLabel>{t('settings:systemInquiryPage.category')}</FormLabel>
                       <FormSelect
                         value={newTicket.category}
                         onChange={(e) => setNewTicket({...newTicket, category: e.target.value as SupportTicket['category']})}
                       >
-                        <option value="general">General</option>
-                        <option value="technical">Technical</option>
-                        <option value="billing">Billing</option>
-                        <option value="feature-request">Feature Request</option>
-                        <option value="bug-report">Bug Report</option>
+                        <option value="general">{t('settings:systemInquiryPage.general')}</option>
+                        <option value="technical">{t('settings:systemInquiryPage.technical')}</option>
+                        <option value="billing">{t('settings:systemInquiryPage.billing')}</option>
+                        <option value="feature-request">{t('settings:systemInquiryPage.featureRequest')}</option>
+                        <option value="bug-report">{t('settings:systemInquiryPage.bugReport')}</option>
                       </FormSelect>
                     </FormGroup>
                   </FormRow>
@@ -842,22 +844,22 @@ const SupportTicketsPage: React.FC = () => {
                   <div style={{ display: 'grid', gap: '20px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
-                        <FormLabel>Ticket Number</FormLabel>
+                        <FormLabel>{t('settings:systemInquiryPage.ticketNumber')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: '600' }}>
                           {selectedTicket.ticketNumber}
                         </div>
                       </div>
                       <div>
-                        <FormLabel>Status</FormLabel>
+                        <FormLabel>{t('settings:systemInquiryPage.status')}</FormLabel>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <FormSelect value={detailStatus} onChange={(e) => setDetailStatus(e.target.value as SupportTicket['status'])} style={{ flex: 1 }}>
-                            <option value="open">Open</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
-                            <option value="closed">Closed</option>
+                            <option value="open">{t('settings:systemInquiryPage.open')}</option>
+                            <option value="in-progress">{t('settings:systemInquiryPage.inProgress')}</option>
+                            <option value="resolved">{t('settings:systemInquiryPage.resolved')}</option>
+                            <option value="closed">{t('settings:systemInquiryPage.closed')}</option>
                           </FormSelect>
                           {detailStatus !== selectedTicket.status && (
-                            <Button variant="primary" onClick={handleStatusChange} style={{ padding: '10px 20px' }}>Save</Button>
+                            <Button variant="primary" onClick={handleStatusChange} style={{ padding: '10px 20px' }}>{t('settings:systemInquiryPage.save')}</Button>
                           )}
                         </div>
                       </div>
@@ -865,7 +867,7 @@ const SupportTicketsPage: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
-                        <FormLabel>Priority</FormLabel>
+                        <FormLabel>{t('settings:systemInquiryPage.priority')}</FormLabel>
                         <div style={{ padding: '8px 0' }}>
                           <PriorityBadge priority={selectedTicket.priority}>
                             {selectedTicket.priority}
@@ -873,7 +875,7 @@ const SupportTicketsPage: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                        <FormLabel>Category</FormLabel>
+                        <FormLabel>{t('settings:systemInquiryPage.category')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#374151', textTransform: 'capitalize' }}>
                           {selectedTicket.category.replace('-', ' ')}
                         </div>
@@ -881,7 +883,7 @@ const SupportTicketsPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <FormLabel>Customer Information</FormLabel>
+                      <FormLabel>{t('settings:systemInquiryPage.customerInformation')}</FormLabel>
                       <div style={{ padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
                         <div style={{ marginBottom: '4px', color: '#0A2540', fontWeight: '600' }}>
                           {selectedTicket.customerName}
@@ -896,14 +898,14 @@ const SupportTicketsPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <FormLabel>Subject</FormLabel>
+                      <FormLabel>{t('settings:systemInquiryPage.subject')}</FormLabel>
                       <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: '600' }}>
                         {selectedTicket.subject}
                       </div>
                     </div>
 
                     <div>
-                      <FormLabel>Description</FormLabel>
+                      <FormLabel>{t('settings:systemInquiryPage.description')}</FormLabel>
                       <div style={{
                         padding: '12px',
                         backgroundColor: '#F8FAFC',
@@ -924,13 +926,13 @@ const SupportTicketsPage: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
-                        <FormLabel>Created At</FormLabel>
+                        <FormLabel>{t('settings:systemInquiryPage.createdAt')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#6B7280' }}>
                           {selectedTicket.createdAt}
                         </div>
                       </div>
                       <div>
-                        <FormLabel>Last Updated</FormLabel>
+                        <FormLabel>{t('settings:systemInquiryPage.lastUpdated')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#6B7280' }}>
                           {selectedTicket.updatedAt}
                         </div>

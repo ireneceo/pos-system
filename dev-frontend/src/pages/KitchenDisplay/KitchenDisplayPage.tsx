@@ -8,6 +8,7 @@ import { useStore } from '../../contexts/StoreContext';
 import PageHeader from '../../components/Common/PageHeader';
 import { formatTime } from '../../utils/timezone';
 import { printKitchenTicketViaRawBT, getPrinterSettings as getBillPrinterSettings } from '../../utils/billPrint';
+import { useTranslation } from 'react-i18next';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -572,6 +573,7 @@ const LiveClock: React.FC<{ operationSettings: any }> = React.memo(({ operationS
 });
 
 const KitchenDisplayPage: React.FC = () => {
+  const { t } = useTranslation('kitchen');
   const { user } = useAuth();
   const { menuItems, categories } = useMenu();
   const { getStoreInfo, operationSettings: storeOpSettings } = useStore();
@@ -1499,7 +1501,7 @@ const KitchenDisplayPage: React.FC = () => {
                order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
             </OrderNumber>
             {order.orderType === 'takeaway' && (
-              <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>
+              <OrderTypeBadge>{t('kitchen:kitchenDisplayPage.takeaway')}</OrderTypeBadge>
             )}
             {order.orderType === 'pickup' && (
               <OrderTypeBadge variant="pickup">
@@ -1507,7 +1509,7 @@ const KitchenDisplayPage: React.FC = () => {
               </OrderTypeBadge>
             )}
             {order.orderType === 'delivery' && (
-              <OrderTypeBadge variant="delivery">DELIVERY</OrderTypeBadge>
+              <OrderTypeBadge variant="delivery">{t('kitchen:kitchenDisplayPage.delivery')}</OrderTypeBadge>
             )}
           </OrderLeft>
           <OrderRight>
@@ -2277,13 +2279,13 @@ const KitchenDisplayPage: React.FC = () => {
                 {order.tableNumber ? `T${order.tableNumber.replace(/^T/i, '')}` :
                  order.pagerNumber ? `P${order.pagerNumber}` : `#${order.pickupNumber}`}
               </OrderNumber>
-              {order.orderType === 'takeaway' && <OrderTypeBadge>TAKEAWAY</OrderTypeBadge>}
+              {order.orderType === 'takeaway' && <OrderTypeBadge>{t('kitchen:kitchenDisplayPage.takeaway')}</OrderTypeBadge>}
               {order.orderType === 'pickup' && (
                 <OrderTypeBadge variant="pickup">
                   PICKUP {order.scheduledPickupTime ? formatPickupTimeRange(order.scheduledPickupTime) : 'ASAP'}
                 </OrderTypeBadge>
               )}
-              {order.orderType === 'delivery' && <OrderTypeBadge variant="delivery">DELIVERY</OrderTypeBadge>}
+              {order.orderType === 'delivery' && <OrderTypeBadge variant="delivery">{t('kitchen:kitchenDisplayPage.delivery')}</OrderTypeBadge>}
             </OrderLeft>
             <OrderRight>
               <OrderId>{order.orderNumber}</OrderId>
@@ -2395,7 +2397,7 @@ const KitchenDisplayPage: React.FC = () => {
           {/* Serve All (아이템 2개 이상 + 모든 아이템 ready일 때만) */}
           {waitingCount === 0 && visibleItems.length > 1 && visibleItems.some(i => i.status === 'ready') && (
             <ActionRow>
-              <ActionBtn color="#10B981" onClick={() => markAllServed(order.id)}>Serve All</ActionBtn>
+              <ActionBtn color="#10B981" onClick={() => markAllServed(order.id)}>{t('kitchen:kitchenDisplayPage.serveAll')}</ActionBtn>
             </ActionRow>
           )}
         </OrderCard>
@@ -2423,12 +2425,12 @@ const KitchenDisplayPage: React.FC = () => {
             </a>
           )}
           <ViewToggle>
-            <ViewToggleBtn active={viewMode === 'order'} onClick={() => { setViewMode('order'); localStorage.setItem('kitchenDisplayViewMode', 'order'); }}>Order</ViewToggleBtn>
-            <ViewToggleBtn active={viewMode === 'item'} onClick={() => { setViewMode('item'); localStorage.setItem('kitchenDisplayViewMode', 'item'); }}>Item</ViewToggleBtn>
+            <ViewToggleBtn active={viewMode === 'order'} onClick={() => { setViewMode('order'); localStorage.setItem('kitchenDisplayViewMode', 'order'); }}>{t('kitchen:kitchenDisplayPage.order')}</ViewToggleBtn>
+            <ViewToggleBtn active={viewMode === 'item'} onClick={() => { setViewMode('item'); localStorage.setItem('kitchenDisplayViewMode', 'item'); }}>{t('kitchen:kitchenDisplayPage.item')}</ViewToggleBtn>
           </ViewToggle>
           {kitchenStations.length > 0 && (
             <ViewToggle>
-              <ViewToggleBtn active={selectedStation === 'all'} onClick={() => { setSelectedStation('all'); setSearchParams({}); }}>All</ViewToggleBtn>
+              <ViewToggleBtn active={selectedStation === 'all'} onClick={() => { setSelectedStation('all'); setSearchParams({}); }}>{t('kitchen:kitchenDisplayPage.all')}</ViewToggleBtn>
               {kitchenStations.map((s, idx) => (
                 <ViewToggleBtn key={s.id} active={selectedStation === s.id} onClick={() => { setSelectedStation(s.id); setSearchParams({ station: String(idx + 1) }); }}>{s.name}</ViewToggleBtn>
               ))}
@@ -2467,12 +2469,12 @@ const KitchenDisplayPage: React.FC = () => {
         <Column>
           <ColumnHeader status="pending">
             <ColumnTitleGroup>
-              <ColumnTitle status="pending">Pending</ColumnTitle>
+              <ColumnTitle status="pending">{t('kitchen:kitchenDisplayPage.pending')}</ColumnTitle>
             </ColumnTitleGroup>
             <ColumnCount color="#F59E0B">
               {viewMode === 'order'
-                ? <><CountNumber>{counts.pending}</CountNumber><CountLabel>Orders</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getOrderItemCount('pending')}</CountNumber><CountLabel>Items</CountLabel></>
-                : <><CountNumber>{getItemViewPendingGroups().length}</CountNumber><CountLabel>Menus</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getItemStatusCount('pending')}</CountNumber><CountLabel>Items</CountLabel></>
+                ? <><CountNumber>{counts.pending}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.orders')}</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getOrderItemCount('pending')}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.items')}</CountLabel></>
+                : <><CountNumber>{getItemViewPendingGroups().length}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.menus')}</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getItemStatusCount('pending')}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.items')}</CountLabel></>
               }
             </ColumnCount>
           </ColumnHeader>
@@ -2488,12 +2490,12 @@ const KitchenDisplayPage: React.FC = () => {
         <Column>
           <ColumnHeader status="preparing">
             <ColumnTitleGroup>
-              <ColumnTitle status="preparing">Preparing</ColumnTitle>
+              <ColumnTitle status="preparing">{t('kitchen:kitchenDisplayPage.preparing')}</ColumnTitle>
             </ColumnTitleGroup>
             <ColumnCount color="#3B82F6">
               {viewMode === 'order'
-                ? <><CountNumber>{counts.preparing}</CountNumber><CountLabel>Orders</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getOrderItemCount('preparing')}</CountNumber><CountLabel>Items</CountLabel></>
-                : <><CountNumber>{getItemStatusCount('preparing')}</CountNumber><CountLabel>Menus</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getItemStatusCount('preparing')}</CountNumber><CountLabel>Items</CountLabel></>
+                ? <><CountNumber>{counts.preparing}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.orders')}</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getOrderItemCount('preparing')}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.items')}</CountLabel></>
+                : <><CountNumber>{getItemStatusCount('preparing')}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.menus')}</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getItemStatusCount('preparing')}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.items')}</CountLabel></>
               }
             </ColumnCount>
           </ColumnHeader>
@@ -2509,12 +2511,12 @@ const KitchenDisplayPage: React.FC = () => {
         <Column>
           <ColumnHeader status="ready">
             <ColumnTitleGroup>
-              <ColumnTitle status="ready">Ready</ColumnTitle>
+              <ColumnTitle status="ready">{t('kitchen:kitchenDisplayPage.ready')}</ColumnTitle>
             </ColumnTitleGroup>
             <ColumnCount color="#10B981">
               {viewMode === 'order'
-                ? <><CountNumber>{counts.ready}</CountNumber><CountLabel>Orders</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getOrderItemCount('ready')}</CountNumber><CountLabel>Items</CountLabel></>
-                : <><CountNumber>{getItemViewReadyOrders().length}</CountNumber><CountLabel>Orders</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getItemStatusCount('ready')}</CountNumber><CountLabel>Items</CountLabel></>
+                ? <><CountNumber>{counts.ready}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.orders')}</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getOrderItemCount('ready')}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.items')}</CountLabel></>
+                : <><CountNumber>{getItemViewReadyOrders().length}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.orders')}</CountLabel><span style={{ margin: '0 2px', opacity: 0.4 }}>/</span><CountNumber>{getItemStatusCount('ready')}</CountNumber><CountLabel>{t('kitchen:kitchenDisplayPage.items')}</CountLabel></>
               }
             </ColumnCount>
           </ColumnHeader>

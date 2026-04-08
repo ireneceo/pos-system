@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { io, Socket } from 'socket.io-client';
 import { getTodayInTimezone, getRestaurantTimezone } from '../../utils/timezone';
+import { useTranslation } from 'react-i18next';
 
 interface DbOrder {
   id: number;
@@ -236,6 +237,7 @@ const NoOrdersMessage = styled.div`
 `;
 
 const CustomerDisplayPage: React.FC = () => {
+  const { t } = useTranslation('pos');
   const { user } = useAuth();
   const { operationSettings } = useStore();
   const [dbOrders, setDbOrders] = useState<DbOrder[]>([]);
@@ -440,8 +442,8 @@ const CustomerDisplayPage: React.FC = () => {
       <Header>
         <div style={{ minWidth: 180 }} />
         <HeaderCenter>
-          <Title>Order Status</Title>
-          <Subtitle>Please check your pickup number</Subtitle>
+          <Title>{t('pos:customerDisplayPage.orderStatus')}</Title>
+          <Subtitle>{t('pos:customerDisplayPage.pleaseCheckYourPickupNumber')}</Subtitle>
         </HeaderCenter>
         <HeaderRight>
           <CurrentDate>{currentDateTime.date}</CurrentDate>
@@ -490,7 +492,7 @@ const CustomerDisplayPage: React.FC = () => {
               </EstimatedTime>
 
               <ItemsList>
-                <ItemsTitle>Order Items</ItemsTitle>
+                <ItemsTitle>{t('pos:customerDisplayPage.orderItems')}</ItemsTitle>
                 {order.items.map((item, index) => (
                   <Item key={index}>
                     <span>{item.name}</span>

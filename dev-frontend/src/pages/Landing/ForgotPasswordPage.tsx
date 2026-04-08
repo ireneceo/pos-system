@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Helmet } from 'react-helmet-async';
 import { LandingLayout } from '../../components/Landing';
+import { useTranslation } from 'react-i18next';
 
 const ForgotPasswordPage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,16 +41,15 @@ const ForgotPasswordPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
-
   return (
     <LandingLayout>
       <Helmet>
-        <title>Forgot Password - PurpleHere</title>
+        <title>{t('landing:forgotPasswordPage.forgotPasswordPurplehere')}</title>
       </Helmet>
 
       <HeroSection>
-        <HeroTitle>Reset Your Password</HeroTitle>
-        <HeroSubtitle>We'll send you a link to reset your password</HeroSubtitle>
+        <HeroTitle>{t('landing:forgotPasswordPage.resetYourPassword')}</HeroTitle>
+        <HeroSubtitle>{t('landing:forgotPasswordPage.wellSendYouALinkToResetYourPassword')}</HeroSubtitle>
       </HeroSection>
 
       <ContentSection>
@@ -61,19 +62,19 @@ const ForgotPasswordPage: React.FC = () => {
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
               </SuccessIcon>
-              <SuccessTitle>Check your email</SuccessTitle>
+              <SuccessTitle>{t('landing:forgotPasswordPage.checkYourEmail')}</SuccessTitle>
               <SuccessDescription>
-                If an account exists for <strong>{email}</strong>, we've sent a password reset link.
+                {t('landing:forgotPasswordPage.ifAnAccountExistsFor')}<strong>{email}</strong>, we've sent a password reset link.
                 The link expires in 60 minutes.
               </SuccessDescription>
               <SuccessHint>
-                Didn't receive the email? Check your spam folder or try again.
+                {t('landing:forgotPasswordPage.didntReceiveTheEmailCheckYourSpamFolderO')}
               </SuccessHint>
               <ButtonRow>
                 <SecondaryButton onClick={() => { setIsSent(false); setEmail(''); }}>
-                  Try another email
+                  {t('landing:forgotPasswordPage.tryAnotherEmail')}
                 </SecondaryButton>
-                <PrimaryLink to="/pos">Back to Sign In</PrimaryLink>
+                <PrimaryLink to="/pos">{t('landing:forgotPasswordPage.backToSignIn')}</PrimaryLink>
               </ButtonRow>
             </SuccessState>
           ) : (
@@ -84,16 +85,16 @@ const ForgotPasswordPage: React.FC = () => {
                   <polyline points="3 7 12 13 21 7" />
                 </svg>
               </CardIcon>
-              <CardTitle>Forgot your password?</CardTitle>
+              <CardTitle>{t('landing:forgotPasswordPage.forgotYourPassword')}</CardTitle>
               <CardDescription>
-                Enter the email address associated with your account and we'll send you a link to reset your password.
+                {t('landing:forgotPasswordPage.enterTheEmailAddressAssociatedWithYourAc')}
               </CardDescription>
 
               {error && <ErrorMessage>{error}</ErrorMessage>}
 
               <Form onSubmit={handleSubmit}>
                 <FormGroup>
-                  <FormLabel>Email address</FormLabel>
+                  <FormLabel>{t('landing:forgotPasswordPage.emailAddress')}</FormLabel>
                   <FormInput
                     type="email"
                     value={email}
@@ -112,7 +113,7 @@ const ForgotPasswordPage: React.FC = () => {
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M15 18l-6-6 6-6" />
                   </svg>
-                  Back to Sign In
+                  {t('landing:forgotPasswordPage.backToSignIn')}
                 </Link>
               </BackLink>
             </>

@@ -4,6 +4,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { Modal as CommonModal } from '../../components/UI';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
+import { useTranslation } from 'react-i18next';
 
 interface ContactInquiry {
   id: number;
@@ -475,6 +476,7 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
 `;
 
 const ContactInquiriesPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [inquiries, setInquiries] = useState<ContactInquiry[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, new: 0, in_progress: 0, resolved: 0 });
   const [loading, setLoading] = useState(true);
@@ -532,7 +534,9 @@ const ContactInquiriesPage: React.FC = () => {
   // 10초 polling
   useEffect(() => {
     const interval = setInterval(() => loadData(true), 10000);
-    return () => clearInterval(interval);
+  // useTranslation moved to component level
+
+  return () => clearInterval(interval);
   }, [loadData]);
 
   const openDetail = (inquiry: ContactInquiry) => {
@@ -681,26 +685,26 @@ const ContactInquiriesPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Contact Inquiries</Title>
+          <Title>{t('admin:contactInquiriesPage.contactInquiries')}</Title>
         </Header>
 
         <Content>
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{stats.total}</StatValue>
-              <StatLabel>Total Inquiries</StatLabel>
+              <StatLabel>{t('admin:contactInquiriesPage.totalInquiries')}</StatLabel>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{stats.new}</StatValue>
-              <StatLabel>New</StatLabel>
+              <StatLabel>{t('admin:contactInquiriesPage.new')}</StatLabel>
             </StatCard>
             <StatCard color="#3B82F6">
               <StatValue>{stats.in_progress}</StatValue>
-              <StatLabel>In Progress</StatLabel>
+              <StatLabel>{t('admin:contactInquiriesPage.inProgress')}</StatLabel>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{stats.resolved}</StatValue>
-              <StatLabel>Resolved</StatLabel>
+              <StatLabel>{t('admin:contactInquiriesPage.resolved')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -720,15 +724,15 @@ const ContactInquiriesPage: React.FC = () => {
             >
               {activeTab === 'active' ? (
                 <>
-                  <option value="all">All Status</option>
-                  <option value="new">New</option>
-                  <option value="in_progress">In Progress</option>
+                  <option value="all">{t('admin:contactInquiriesPage.allStatus')}</option>
+                  <option value="new">{t('admin:contactInquiriesPage.new')}</option>
+                  <option value="in_progress">{t('admin:contactInquiriesPage.inProgress')}</option>
                 </>
               ) : (
                 <>
-                  <option value="all">All Status</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
+                  <option value="all">{t('admin:contactInquiriesPage.allStatus')}</option>
+                  <option value="resolved">{t('admin:contactInquiriesPage.resolved')}</option>
+                  <option value="closed">{t('admin:contactInquiriesPage.closed')}</option>
                 </>
               )}
             </FilterSelect>
@@ -740,9 +744,9 @@ const ContactInquiriesPage: React.FC = () => {
           </FilterBar>
 
           {loading ? (
-            <EmptyState>Loading...</EmptyState>
+            <EmptyState>{t('admin:contactInquiriesPage.loading')}</EmptyState>
           ) : filteredInquiries.length === 0 ? (
-            <EmptyState>No inquiries found</EmptyState>
+            <EmptyState>{t('admin:contactInquiriesPage.noInquiriesFound')}</EmptyState>
           ) : (
             <InquiryGrid>
               {filteredInquiries.map((inquiry) => (
@@ -774,7 +778,7 @@ const ContactInquiriesPage: React.FC = () => {
                         </InquiryTypeBadge>
                       )}
                       {inquiry.reply_message && (
-                        <RepliedBadge>Replied</RepliedBadge>
+                        <RepliedBadge>{t('admin:contactInquiriesPage.replied')}</RepliedBadge>
                       )}
                       {activeTab === 'active' && (
                         <CloseInquiryButton onClick={(e) => handleCloseInquiry(inquiry.id, e)}>
@@ -795,28 +799,28 @@ const ContactInquiriesPage: React.FC = () => {
 
                 <DetailGrid>
                   <DetailItem>
-                    <DetailItemLabel>Name</DetailItemLabel>
+                    <DetailItemLabel>{t('admin:contactInquiriesPage.name')}</DetailItemLabel>
                     <DetailItemValue>{selectedInquiry.name}</DetailItemValue>
                   </DetailItem>
                   <DetailItem>
-                    <DetailItemLabel>Email</DetailItemLabel>
+                    <DetailItemLabel>{t('admin:contactInquiriesPage.email')}</DetailItemLabel>
                     <DetailItemValue>{selectedInquiry.email}</DetailItemValue>
                   </DetailItem>
                   {selectedInquiry.company_name && (
                     <DetailItem>
-                      <DetailItemLabel>Company</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:contactInquiriesPage.company')}</DetailItemLabel>
                       <DetailItemValue>{selectedInquiry.company_name}</DetailItemValue>
                     </DetailItem>
                   )}
                   {selectedInquiry.phone && (
                     <DetailItem>
-                      <DetailItemLabel>Phone</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:contactInquiriesPage.phone')}</DetailItemLabel>
                       <DetailItemValue>{selectedInquiry.phone}</DetailItemValue>
                     </DetailItem>
                   )}
                   {selectedInquiry.inquiry_type && (
                     <DetailItem>
-                      <DetailItemLabel>Type</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:contactInquiriesPage.type')}</DetailItemLabel>
                       <DetailItemValue>
                         <InquiryTypeBadge type={selectedInquiry.inquiry_type} style={{ marginLeft: 0 }}>
                           {formatInquiryType(selectedInquiry.inquiry_type)}
@@ -826,7 +830,7 @@ const ContactInquiriesPage: React.FC = () => {
                   )}
                   {selectedInquiry.interested_plan && (
                     <DetailItem>
-                      <DetailItemLabel>Interested Plan</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:contactInquiriesPage.interestedPlan')}</DetailItemLabel>
                       <DetailItemValue>
                         <PlanBadge style={{ marginLeft: 0 }}>{formatPlan(selectedInquiry.interested_plan)}</PlanBadge>
                       </DetailItemValue>
@@ -834,32 +838,32 @@ const ContactInquiriesPage: React.FC = () => {
                   )}
                   {selectedInquiry.preferred_username && (
                     <DetailItem>
-                      <DetailItemLabel>Preferred Username</DetailItemLabel>
+                      <DetailItemLabel>{t('admin:contactInquiriesPage.preferredUsername')}</DetailItemLabel>
                       <DetailItemValue><strong>{selectedInquiry.preferred_username}</strong></DetailItemValue>
                     </DetailItem>
                   )}
                   <DetailItem>
-                    <DetailItemLabel>Status</DetailItemLabel>
+                    <DetailItemLabel>{t('admin:contactInquiriesPage.status')}</DetailItemLabel>
                     <DetailItemValue>
                       <StatusSelect
                         value={detailStatus}
                         onChange={(e) => handleStatusChange(e.target.value)}
                       >
-                        <option value="new">New</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="closed">Closed</option>
+                        <option value="new">{t('admin:contactInquiriesPage.new')}</option>
+                        <option value="in_progress">{t('admin:contactInquiriesPage.inProgress')}</option>
+                        <option value="resolved">{t('admin:contactInquiriesPage.resolved')}</option>
+                        <option value="closed">{t('admin:contactInquiriesPage.closed')}</option>
                       </StatusSelect>
                     </DetailItemValue>
                   </DetailItem>
                   <DetailItem>
-                    <DetailItemLabel>Received</DetailItemLabel>
+                    <DetailItemLabel>{t('admin:contactInquiriesPage.received')}</DetailItemLabel>
                     <DetailItemValue>{formatDate(selectedInquiry.createdAt)}</DetailItemValue>
                   </DetailItem>
                 </DetailGrid>
 
                 <FormGroup>
-                  <FormLabel>Message</FormLabel>
+                  <FormLabel>{t('admin:contactInquiriesPage.message')}</FormLabel>
                   <InquiryMessage style={{ margin: 0 }}>
                     {selectedInquiry.message}
                   </InquiryMessage>
@@ -885,14 +889,14 @@ const ContactInquiriesPage: React.FC = () => {
                     <CommonModal isOpen={true} onClose={() => setShowReplyModal(false)} title={`Reply to ${selectedInquiry.name}`} footer={<><ActionButton onClick={() => setShowReplyModal(false)}> Cancel </ActionButton><ActionButton variant="primary" onClick={submitReply} disabled={submitting || !replyMessage.trim()} > {submitting ? 'Sending...' : (sendEmail ? 'Send Reply & Email' : 'Save Reply')} </ActionButton></>}>
 
                 <FormGroup>
-                  <FormLabel>Original Message</FormLabel>
+                  <FormLabel>{t('admin:contactInquiriesPage.originalMessage')}</FormLabel>
                   <InquiryMessage style={{ margin: 0 }}>
                     {selectedInquiry.message}
                   </InquiryMessage>
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Your Reply</FormLabel>
+                  <FormLabel>{t('admin:contactInquiriesPage.yourReply')}</FormLabel>
                   <FormTextArea
                     value={replyMessage}
                     onChange={(e) => setReplyMessage(e.target.value)}

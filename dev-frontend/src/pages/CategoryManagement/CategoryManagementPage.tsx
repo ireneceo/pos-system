@@ -5,6 +5,7 @@ import { useMenu } from '../../contexts/MenuContext';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal, ModalButton } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -319,6 +320,7 @@ interface Category {
 }
 
 const CategoryManagementPage: React.FC = () => {
+  const { t } = useTranslation('menu');
   const { categories, menuItems, addCategory, updateCategory, deleteCategory, reorderCategories } = useMenu();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -481,7 +483,7 @@ const CategoryManagementPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <HeaderTitle>Categories</HeaderTitle>
+          <HeaderTitle>{'Categories'}</HeaderTitle>
           <HeaderActions>
           <Button onClick={() => handleOpenModal()}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -496,7 +498,7 @@ const CategoryManagementPage: React.FC = () => {
         {categoriesWithCount.length === 0 ? (
           <EmptyState>
           <EmptyIcon>📂</EmptyIcon>
-          <EmptyTitle>No categories yet</EmptyTitle>
+          <EmptyTitle>{'No categories yet'}</EmptyTitle>
           <EmptyDescription>
             Create your first category to organize your menu items
           </EmptyDescription>
@@ -520,7 +522,7 @@ const CategoryManagementPage: React.FC = () => {
               <CategoryInfo>
                 <CategoryName>
                   {category.name}
-                  {category.isActive === false && <StatusBadge active={false}>Inactive</StatusBadge>}
+                  {category.isActive === false && <StatusBadge active={false}>{'Inactive'}</StatusBadge>}
                 </CategoryName>
                 <CategoryMeta>
                   <span>{category.itemCount || 0} items</span>
@@ -571,7 +573,7 @@ const CategoryManagementPage: React.FC = () => {
         }
       >
         <FormGroup>
-          <Label>Category Name</Label>
+          <Label>{'Category Name'}</Label>
           <Input
             type="text"
             value={formData.name}
@@ -582,7 +584,7 @@ const CategoryManagementPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <Label>Icon</Label>
+          <Label>{'Icon'}</Label>
           <EmojiPicker>
             {emojiOptions.map(emoji => (
               <EmojiOption

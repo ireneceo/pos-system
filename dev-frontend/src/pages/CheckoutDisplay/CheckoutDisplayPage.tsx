@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
 import { formatCurrency } from '../../utils/currency';
 import { COUNTRIES, formatPhoneNumber } from '../../utils/phoneUtils';
+import { useTranslation } from 'react-i18next';
 
 const fadeIn = keyframes`from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}`;
 
@@ -100,6 +101,7 @@ interface CartData { restaurantId: number; items: CartItem[]; subtotal: number; 
 interface CustomerInfo { id: number; name: string; phone: string; points: number; tier: string; totalOrders: number; }
 
 const CheckoutDisplayPage: React.FC = () => {
+  const { t } = useTranslation('pos');
   const { restaurantId } = useParams<{ restaurantId: string }>();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('MY');
@@ -141,7 +143,9 @@ const CheckoutDisplayPage: React.FC = () => {
       setCart(null);
       setTimeout(() => { setShowThankYou(false); setCompletedOrder(null); setPhoneNumber(''); setCustomer(null); setCustomerStatus('idle'); setShowRegister(false); setRegisterName(''); }, 5000);
     });
-    return () => { socket.disconnect(); };
+  // useTranslation moved to component level
+
+  return () => { socket.disconnect(); };
   }, [restaurantId]);
 
   const selectedCountry = COUNTRIES.find(c => c.code === countryCode) || COUNTRIES[0];
@@ -209,7 +213,7 @@ const CheckoutDisplayPage: React.FC = () => {
         </Header>
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
           <div style={{ fontSize: '48px' }}>✓</div>
-          <div style={{ fontSize: '28px', fontWeight: 300, color: '#10B981' }}>Thank You!</div>
+          <div style={{ fontSize: '28px', fontWeight: 300, color: '#10B981' }}>{t('pos:checkoutDisplayPage.thankYou')}</div>
           <div style={{ fontSize: '16px', color: '#6B7C93' }}>Order {completedOrder.orderNumber}</div>
           <div style={{ fontSize: '24px', fontWeight: 700, color: '#0A2540', marginTop: '8px' }}>{formatCurrency(completedOrder.total, completedOrder.currency)}</div>
           {customer && <div style={{ fontSize: '14px', color: '#635BFF', marginTop: '4px' }}>⭐ Points earned</div>}
@@ -244,26 +248,26 @@ const CheckoutDisplayPage: React.FC = () => {
               <div style={{ fontSize: '15px', fontWeight: 600, color: '#065F46' }}>{customer.name}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
                 <div>
-                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>Points</div>
+                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>{t('pos:checkoutDisplayPage.points')}</div>
                   <div style={{ fontSize: '18px', fontWeight: 700, color: '#635BFF' }}>{customer.points.toLocaleString()}</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>Tier</div>
+                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>{t('pos:checkoutDisplayPage.tier')}</div>
                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.tier}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>Orders</div>
+                  <div style={{ fontSize: '11px', color: '#6B7C93' }}>{t('pos:checkoutDisplayPage.orders')}</div>
                   <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540' }}>{customer.totalOrders}</div>
                 </div>
               </div>
             </div>
           )}
           {customerStatus === 'searching' && (
-            <div style={{ textAlign: 'center', color: '#6B7C93', fontSize: '14px', padding: '12px 0' }}>Checking...</div>
+            <div style={{ textAlign: 'center', color: '#6B7C93', fontSize: '14px', padding: '12px 0' }}>{t('pos:checkoutDisplayPage.checking')}</div>
           )}
           {customerStatus === 'not_found' && !showRegister && (
             <div style={{ padding: '12px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: '8px', marginBottom: '12px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 500, color: '#92400E', marginBottom: '8px' }}>No account found</div>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: '#92400E', marginBottom: '8px' }}>{t('pos:checkoutDisplayPage.noAccountFound')}</div>
               <button onClick={() => setShowRegister(true)} style={{ padding: '10px', fontSize: '13px', fontWeight: 600, width: '100%', border: 'none', borderRadius: '6px', background: '#F59E0B', color: 'white', cursor: 'pointer' }}>
                 Register for Points
               </button>
@@ -284,12 +288,12 @@ const CheckoutDisplayPage: React.FC = () => {
             <>
               <KeypadGrid>
                 {['1','2','3','4','5','6','7','8','9'].map(k => <Key key={k} onClick={() => handleKeyPress(k)}>{k}</Key>)}
-                <Key onClick={handleClear} style={{ fontSize: '13px', color: '#6B7C93' }}>Clear</Key>
+                <Key onClick={handleClear} style={{ fontSize: '13px', color: '#6B7C93' }}>{t('pos:checkoutDisplayPage.clear')}</Key>
                 <Key onClick={() => handleKeyPress('0')}>0</Key>
                 <Key onClick={handleBackspace} style={{ fontSize: '16px' }}>⌫</Key>
               </KeypadGrid>
               {(() => { const d = phoneNumber.startsWith('0') ? phoneNumber.length - 1 : phoneNumber.length; const ok = d >= selectedCountry.minLength; return (
-              <button onClick={handlePhoneSubmit} disabled={!ok} style={{ width: '100%', marginTop: '10px', padding: '14px', fontSize: '15px', fontWeight: 600, border: 'none', borderRadius: '8px', background: '#635BFF', color: 'white', cursor: 'pointer', opacity: ok ? 1 : 0.5 }}>Done</button>
+              <button onClick={handlePhoneSubmit} disabled={!ok} style={{ width: '100%', marginTop: '10px', padding: '14px', fontSize: '15px', fontWeight: 600, border: 'none', borderRadius: '8px', background: '#635BFF', color: 'white', cursor: 'pointer', opacity: ok ? 1 : 0.5 }}>{t('pos:checkoutDisplayPage.done')}</button>
               ); })()}
             </>
           )}
@@ -305,7 +309,7 @@ const CheckoutDisplayPage: React.FC = () => {
         <RightPanel>
           {hasItems ? (
             <>
-              <h3 style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Your Order</h3>
+              <h3 style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('pos:checkoutDisplayPage.yourOrder')}</h3>
               <div style={{ flex: 1, overflow: 'auto' }}>
                 {cart!.items.map((item, i) => (
                   <ItemRow key={i}>
@@ -318,19 +322,19 @@ const CheckoutDisplayPage: React.FC = () => {
                 ))}
               </div>
               <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '14px', marginTop: '12px' }}>
-                {cart!.subtotal !== cart!.total && <SummaryRow><span>Subtotal</span><span>{formatCurrency(cart!.subtotal, currency)}</span></SummaryRow>}
+                {cart!.subtotal !== cart!.total && <SummaryRow><span>{t('pos:checkoutDisplayPage.subtotal')}</span><span>{formatCurrency(cart!.subtotal, currency)}</span></SummaryRow>}
                 {cart!.tax > 0 && <SummaryRow><span>Tax ({cart!.taxRate}%)</span><span>{formatCurrency(cart!.tax, currency)}</span></SummaryRow>}
                 {cart!.serviceCharge > 0 && <SummaryRow><span>Service ({cart!.serviceChargeRate}%)</span><span>{formatCurrency(cart!.serviceCharge, currency)}</span></SummaryRow>}
-                {cart!.discount > 0 && <SummaryRow><span>Discount</span><span style={{ color: '#10B981' }}>-{formatCurrency(cart!.discount, currency)}</span></SummaryRow>}
+                {cart!.discount > 0 && <SummaryRow><span>{t('pos:checkoutDisplayPage.discount')}</span><span style={{ color: '#10B981' }}>-{formatCurrency(cart!.discount, currency)}</span></SummaryRow>}
                 <div style={{ borderTop: '1px solid #E6EBF1', margin: '6px 0' }} />
-                <SummaryRow bold><span>Total</span><span>{formatCurrency(cart!.total, currency)}</span></SummaryRow>
+                <SummaryRow bold><span>{t('pos:checkoutDisplayPage.total')}</span><span>{formatCurrency(cart!.total, currency)}</span></SummaryRow>
               </div>
             </>
           ) : (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
               <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.3 }}>🛒</div>
-              <div style={{ fontSize: '16px' }}>Waiting for order...</div>
-              <div style={{ fontSize: '13px', marginTop: '4px' }}>Items will appear here as the cashier adds them</div>
+              <div style={{ fontSize: '16px' }}>{t('pos:checkoutDisplayPage.waitingForOrder')}</div>
+              <div style={{ fontSize: '13px', marginTop: '4px' }}>{t('pos:checkoutDisplayPage.itemsWillAppearHereAsTheCashierAddsThem')}</div>
             </div>
           )}
         </RightPanel>

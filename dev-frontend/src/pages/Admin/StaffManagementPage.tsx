@@ -31,6 +31,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 // Auth header helper for API calls
 const getAuthHeaders = () => {
@@ -378,6 +379,7 @@ const ErrorMessage = styled.div`
 `;
 
 const AdminStaffManagementPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const auth = useAuth();
   const { operationSettings } = useStore();
@@ -1338,9 +1340,9 @@ const AdminStaffManagementPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Staff Management</Title>
+          <Title>{t('admin:staffManagementPage.staffManagement')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportData}>Export</Button>
+            <Button variant="secondary" onClick={handleExportData}>{t('admin:staffManagementPage.export')}</Button>
             <Button variant="primary" onClick={handleAddStaff}>
               Add Staff
             </Button>
@@ -1351,23 +1353,23 @@ const AdminStaffManagementPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{stats.total}</StatValue>
-              <StatLabel>Total Staff</StatLabel>
-              <StatDescription>Across entire system</StatDescription>
+              <StatLabel>{t('admin:staffManagementPage.totalStaff')}</StatLabel>
+              <StatDescription>{t('admin:staffManagementPage.acrossEntireSystem')}</StatDescription>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{stats.managers}</StatValue>
-              <StatLabel>Managers</StatLabel>
+              <StatLabel>{t('admin:staffManagementPage.managers')}</StatLabel>
               <StatDescription>4 manager roles</StatDescription>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>{stats.active}</StatValue>
-              <StatLabel>Active Staff</StatLabel>
+              <StatLabel>{t('admin:staffManagementPage.activeStaff')}</StatLabel>
               <StatDescription>{Math.round((stats.active/stats.total)*100)}% of total</StatDescription>
             </StatCard>
             <StatCard color="#D97706">
               <StatValue>{formatCurrency(stats.totalSalary, operationSettings.currency)}</StatValue>
-              <StatLabel>Monthly Payroll</StatLabel>
-              <StatDescription>All staff combined</StatDescription>
+              <StatLabel>{t('admin:staffManagementPage.monthlyPayroll')}</StatLabel>
+              <StatDescription>{t('admin:staffManagementPage.allStaffCombined')}</StatDescription>
             </StatCard>
           </StatsGrid>
 
@@ -1394,7 +1396,7 @@ const AdminStaffManagementPage: React.FC = () => {
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
             >
-              <option value="all">All Roles</option>
+              <option value="all">{t('admin:staffManagementPage.allRoles')}</option>
               {roles.map(role => (
                 <option key={role} value={role}>{role}</option>
               ))}
@@ -1404,9 +1406,9 @@ const AdminStaffManagementPage: React.FC = () => {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">{t('admin:staffManagementPage.allStatus')}</option>
+              <option value="active">{t('admin:staffManagementPage.active')}</option>
+              <option value="inactive">{t('admin:staffManagementPage.inactive')}</option>
             </FilterSelect>
 
             <FilterSelect
@@ -1414,7 +1416,7 @@ const AdminStaffManagementPage: React.FC = () => {
               onChange={(e) => setRestaurantFilter(e.target.value)}
               style={{ display: activeTab === 'all' || activeTab === 'Restaurant Admin' || activeTab === 'Staff' ? 'block' : 'none' }}
             >
-              <option value="all">All Restaurants</option>
+              <option value="all">{t('admin:staffManagementPage.allRestaurants')}</option>
               {uniqueRestaurants.map(rest => (
                 <option key={rest.id} value={rest.id}>{rest.name}</option>
               ))}
@@ -1430,13 +1432,13 @@ const AdminStaffManagementPage: React.FC = () => {
 
           <Table>
             <StaffTableHeader columns="2fr 2fr 1.2fr 1.2fr 0.8fr 1fr 200px">
-              <span className="col-info">Staff Member</span>
-              <span className="col-info">Company & Location</span>
-              <span>Role</span>
-              <span>Department</span>
-              <span>Status</span>
-              <span className="col-salary">Salary</span>
-              <span className="col-action">Actions</span>
+              <span className="col-info">{t('admin:staffManagementPage.staffMember')}</span>
+              <span className="col-info">{t('admin:staffManagementPage.companyLocation')}</span>
+              <span>{t('admin:staffManagementPage.role')}</span>
+              <span>{t('admin:staffManagementPage.department')}</span>
+              <span>{t('admin:staffManagementPage.status')}</span>
+              <span className="col-salary">{t('admin:staffManagementPage.salary')}</span>
+              <span className="col-action">{t('admin:staffManagementPage.actions')}</span>
             </StaffTableHeader>
 
             {filteredStaff.length === 0 ? (
@@ -1456,14 +1458,14 @@ const AdminStaffManagementPage: React.FC = () => {
                       {getInitials(staff.name)}
                     </StaffAvatar>
                     <StaffDetails>
-                      <StaffName>{staff.name}{staff.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>DEMO</span>}{staff.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>TEST</span>}</StaffName>
+                      <StaffName>{staff.name}{staff.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:staffManagementPage.demo')}</span>}{staff.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:staffManagementPage.test')}</span>}</StaffName>
                       <StaffEmail>{staff.username} • {staff.email}</StaffEmail>
                     </StaffDetails>
                   </StaffInfo>
 
                   <MobileGrid>
                     <MobileValue>
-                      <MobileLabel>Company & Location</MobileLabel>
+                      <MobileLabel>{t('admin:staffManagementPage.companyLocation')}</MobileLabel>
                       <div style={{ fontSize: '13px', fontWeight: '600', color: '#0A2540', marginBottom: '2px' }}>
                         {staff.companyName}
                       </div>
@@ -1473,28 +1475,28 @@ const AdminStaffManagementPage: React.FC = () => {
                     </MobileValue>
 
                     <MobileValue>
-                      <MobileLabel>Role</MobileLabel>
+                      <MobileLabel>{t('admin:staffManagementPage.role')}</MobileLabel>
                       <RoleBadge role={staff.role}>
                         {staff.role}
                       </RoleBadge>
                     </MobileValue>
 
                     <MobileValue>
-                      <MobileLabel>Department</MobileLabel>
+                      <MobileLabel>{t('admin:staffManagementPage.department')}</MobileLabel>
                       <div style={{ fontSize: '13px', color: '#6B7280' }}>
                         {staff.department}
                       </div>
                     </MobileValue>
 
                     <MobileValue>
-                      <MobileLabel>Status</MobileLabel>
+                      <MobileLabel>{t('admin:staffManagementPage.status')}</MobileLabel>
                       <StatusBadge status={staff.status}>
                         {staff.status === 'active' ? 'Active' : 'Inactive'}
                       </StatusBadge>
                     </MobileValue>
 
                     <MobileValue className="col-salary">
-                      <MobileLabel>Salary</MobileLabel>
+                      <MobileLabel>{t('admin:staffManagementPage.salary')}</MobileLabel>
                       <div style={{ fontSize: '13px', color: '#374151', fontWeight: '600' }}>
                         {staff.salary ? formatCurrency(staff.salary, operationSettings.currency) : 'N/A'}
                       </div>
@@ -1533,7 +1535,7 @@ const AdminStaffManagementPage: React.FC = () => {
         </Content>
         
         {showAddModal && (
-        <CommonModal isOpen={true} onClose={handleCloseModal} title="Add Staff" footer={<><Button variant="secondary" onClick={handleCloseModal}>Cancel</Button><Button variant="primary" onClick={handleSubmitStaff}>Add Staff</Button></>}>
+        <CommonModal isOpen={true} onClose={handleCloseModal} title="Add Staff" footer={<><Button variant="secondary" onClick={handleCloseModal}>{t('admin:staffManagementPage.cancel')}</Button><Button variant="primary" onClick={handleSubmitStaff}>{t('admin:staffManagementPage.addStaff')}</Button></>}>
             
             <FormGrid>
               <FormGroup>
@@ -1542,14 +1544,14 @@ const AdminStaffManagementPage: React.FC = () => {
                   value={newStaff.role}
                   onChange={(e) => handleInputChange('role', e.target.value)}
                 >
-                  <option value="">Select Role</option>
-                  <option value="Staff">Staff</option>
-                  <option value="Restaurant Admin">Restaurant Admin</option>
-                  <option value="Foodcourt Manager">Foodcourt Manager</option>
-                  <option value="Foodcourt General">Foodcourt General</option>
-                  <option value="Brand Manager">Brand Manager</option>
-                  <option value="Brand General">Brand General</option>
-                  <option value="System Admin">System Admin</option>
+                  <option value="">{t('admin:staffManagementPage.selectRole')}</option>
+                  <option value="Staff">{t('admin:staffManagementPage.staff')}</option>
+                  <option value="Restaurant Admin">{t('admin:staffManagementPage.restaurantAdmin')}</option>
+                  <option value="Foodcourt Manager">{t('admin:staffManagementPage.foodcourtManager')}</option>
+                  <option value="Foodcourt General">{t('admin:staffManagementPage.foodcourtGeneral')}</option>
+                  <option value="Brand Manager">{t('admin:staffManagementPage.brandManager')}</option>
+                  <option value="Brand General">{t('admin:staffManagementPage.brandGeneral')}</option>
+                  <option value="System Admin">{t('admin:staffManagementPage.systemAdmin')}</option>
                 </Select>
               </FormGroup>
 
@@ -1610,7 +1612,7 @@ const AdminStaffManagementPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Phone</Label>
+                <Label>{t('admin:staffManagementPage.phone')}</Label>
                 <PhoneInput
                   value={newStaff.phone}
                   onChange={(value) => handleInputChange('phone', value)}
@@ -1623,7 +1625,7 @@ const AdminStaffManagementPage: React.FC = () => {
                 newStaff.role === 'brand_manager' ||
                 newStaff.role === 'brand_general') && (
                 <FormGroup>
-                  <Label>Company Name</Label>
+                  <Label>{t('admin:staffManagementPage.companyName')}</Label>
                   <Input
                     type="text"
                     value={newStaff.companyName || ''}
@@ -1676,7 +1678,7 @@ const AdminStaffManagementPage: React.FC = () => {
               {/* System Admin Role - Company Name */}
               {newStaff.role === 'System Admin' && (
                 <FormGroup>
-                  <Label>Company Name</Label>
+                  <Label>{t('admin:staffManagementPage.companyName')}</Label>
                   <Input
                     type="text"
                     value={newStaff.companyName || ''}
@@ -1687,7 +1689,7 @@ const AdminStaffManagementPage: React.FC = () => {
               )}
 
               <FormGroup>
-                <Label>Department</Label>
+                <Label>{t('admin:staffManagementPage.department')}</Label>
                 <Input
                   type="text"
                   value={newStaff.department}
@@ -1699,7 +1701,7 @@ const AdminStaffManagementPage: React.FC = () => {
               {/* PIN Code - only for Restaurant Admin & Staff */}
               {(newStaff.role === 'Restaurant Admin' || newStaff.role === 'Staff') && (
                 <FormGroup>
-                  <Label>PIN Code (4 digits)</Label>
+                  <Label>{t('admin:staffManagementPage.pinCode4Digits')}</Label>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -1720,7 +1722,7 @@ const AdminStaffManagementPage: React.FC = () => {
               )}
 
               <FormGroup>
-                <Label>Monthly Salary (RM)</Label>
+                <Label>{t('admin:staffManagementPage.monthlySalaryRm')}</Label>
                 <Input
                   type="number"
                   value={newStaff.salary}
@@ -1739,7 +1741,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
         {/* Edit Staff Modal */}
         {showEditModal && (
-        <CommonModal isOpen={true} onClose={handleCloseEditModal} title="Edit Staff Member" footer={<><Button variant="secondary" onClick={handleCloseEditModal}>Cancel</Button><Button variant="primary" onClick={handleUpdateStaff}>Update Staff</Button></>}>
+        <CommonModal isOpen={true} onClose={handleCloseEditModal} title="Edit Staff Member" footer={<><Button variant="secondary" onClick={handleCloseEditModal}>{t('admin:staffManagementPage.cancel')}</Button><Button variant="primary" onClick={handleUpdateStaff}>{t('admin:staffManagementPage.updateStaff')}</Button></>}>
             
             {editingStaff && (
               <>
@@ -1750,20 +1752,20 @@ const AdminStaffManagementPage: React.FC = () => {
                       value={editingStaff.role}
                       onChange={(e) => setEditingStaff({...editingStaff, role: e.target.value})}
                     >
-                      <option value="">Select Role</option>
-                      <option value="Staff">Staff</option>
-                      <option value="Restaurant Admin">Restaurant Admin</option>
-                      <option value="Foodcourt Manager">Foodcourt Manager</option>
-                      <option value="Foodcourt General">Foodcourt General</option>
-                      <option value="Brand Manager">Brand Manager</option>
-                      <option value="Brand General">Brand General</option>
-                      <option value="System Admin">System Admin</option>
+                      <option value="">{t('admin:staffManagementPage.selectRole')}</option>
+                      <option value="Staff">{t('admin:staffManagementPage.staff')}</option>
+                      <option value="Restaurant Admin">{t('admin:staffManagementPage.restaurantAdmin')}</option>
+                      <option value="Foodcourt Manager">{t('admin:staffManagementPage.foodcourtManager')}</option>
+                      <option value="Foodcourt General">{t('admin:staffManagementPage.foodcourtGeneral')}</option>
+                      <option value="Brand Manager">{t('admin:staffManagementPage.brandManager')}</option>
+                      <option value="Brand General">{t('admin:staffManagementPage.brandGeneral')}</option>
+                      <option value="System Admin">{t('admin:staffManagementPage.systemAdmin')}</option>
                     </Select>
                   </FormGroup>
 
 
                   <FormGroup>
-                    <Label>Staff ID (Username)</Label>
+                    <Label>{t('admin:staffManagementPage.staffIdUsername')}</Label>
                     <Input
                       type="text"
                       value={editingStaff.username}
@@ -1794,7 +1796,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   </FormGroup>
 
                   <FormGroup>
-                    <Label>Phone</Label>
+                    <Label>{t('admin:staffManagementPage.phone')}</Label>
                     <PhoneInput
                       value={editingStaff.phone}
                       onChange={(value) => setEditingStaff({...editingStaff, phone: value})}
@@ -1804,7 +1806,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   {/* Manager Role - Company Name */}
                   {editingStaff.role === 'Manager' && (
                     <FormGroup>
-                      <Label>Company Name</Label>
+                      <Label>{t('admin:staffManagementPage.companyName')}</Label>
                       <Input
                         type="text"
                         value={editingStaff.companyName || ''}
@@ -1817,7 +1819,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   {/* Restaurant Admin & Staff Role - Restaurant Selection */}
                   {(editingStaff.role === 'Restaurant Admin' || editingStaff.role === 'Staff') && (
                     <FormGroup style={{ position: 'relative' }}>
-                      <Label>Restaurant</Label>
+                      <Label>{t('admin:staffManagementPage.restaurant')}</Label>
                       <RestaurantSearchInput
                         type="text"
                         value={editRestaurantSearchQuery}
@@ -1857,7 +1859,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   {/* System Admin Role - Company Name */}
                   {editingStaff.role === 'System Admin' && (
                     <FormGroup>
-                      <Label>Company Name</Label>
+                      <Label>{t('admin:staffManagementPage.companyName')}</Label>
                       <Input
                         type="text"
                         value={editingStaff.companyName || ''}
@@ -1868,7 +1870,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   )}
 
                   <FormGroup>
-                    <Label>Department</Label>
+                    <Label>{t('admin:staffManagementPage.department')}</Label>
                     <Input
                       type="text"
                       value={editingStaff.department}
@@ -1880,7 +1882,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   {/* PIN Code - only for Restaurant Admin & Staff */}
                   {(editingStaff.role === 'Restaurant Admin' || editingStaff.role === 'Staff') && (
                     <FormGroup>
-                      <Label>PIN Code (4 digits)</Label>
+                      <Label>{t('admin:staffManagementPage.pinCode4Digits')}</Label>
                       <Input
                         type="text"
                         inputMode="numeric"
@@ -1901,7 +1903,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   )}
 
                   <FormGroup>
-                    <Label>Monthly Salary (RM)</Label>
+                    <Label>{t('admin:staffManagementPage.monthlySalaryRm')}</Label>
                     <Input
                       type="number"
                       value={editingStaff.salary?.toString() || ''}
@@ -1918,7 +1920,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
         {/* Permissions Modal */}
         {showPermissionsModal && (
-        <CommonModal isOpen={true} onClose={handleClosePermissionsModal} title="Permission Management" footer={<><Button variant="secondary" onClick={handleClosePermissionsModal}>Cancel</Button><Button variant="primary" onClick={handleUpdatePermissions}>Change Role</Button></>}>
+        <CommonModal isOpen={true} onClose={handleClosePermissionsModal} title="Permission Management" footer={<><Button variant="secondary" onClick={handleClosePermissionsModal}>{t('admin:staffManagementPage.cancel')}</Button><Button variant="primary" onClick={handleUpdatePermissions}>{t('admin:staffManagementPage.changeRole')}</Button></>}>
             
             {viewingPermissions && (
               <>
@@ -2025,7 +2027,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && deletingStaff && (
-        <CommonModal isOpen={true} onClose={cancelDelete} title="Delete Staff" footer={<><Button variant="secondary" onClick={cancelDelete}>Cancel</Button><Button variant="primary" onClick={confirmDelete} style={{ backgroundColor: '#DC2626', borderColor: '#EF4444' }}>Delete</Button></>}>
+        <CommonModal isOpen={true} onClose={cancelDelete} title="Delete Staff" footer={<><Button variant="secondary" onClick={cancelDelete}>{t('admin:staffManagementPage.cancel')}</Button><Button variant="primary" onClick={confirmDelete} style={{ backgroundColor: '#DC2626', borderColor: '#EF4444' }}>{t('admin:staffManagementPage.delete')}</Button></>}>
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                     <StaffAvatar role={deletingStaff.role}>
@@ -2062,7 +2064,7 @@ const AdminStaffManagementPage: React.FC = () => {
                           <div>• Activity logs will be preserved (user reference cleared)</div>
                         </>
                       )}
-                      <div style={{ marginTop: '8px', fontWeight: '600' }}>This action cannot be undone.</div>
+                      <div style={{ marginTop: '8px', fontWeight: '600' }}>{t('admin:staffManagementPage.thisActionCannotBeUndone')}</div>
                     </div>
                   </div>
                 </div>
@@ -2071,7 +2073,7 @@ const AdminStaffManagementPage: React.FC = () => {
 
         {/* Confirm Action Modal */}
         {showConfirmModal && selectedStaff && (
-        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><Button variant="secondary" onClick={() => setShowConfirmModal(false)}>Cancel</Button><Button variant="primary" onClick={handleConfirmAction}>{confirmAction === 'toggle' ? 'Confirm' : 'Reset Password'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><Button variant="secondary" onClick={() => setShowConfirmModal(false)}>{t('admin:staffManagementPage.cancel')}</Button><Button variant="primary" onClick={handleConfirmAction}>{confirmAction === 'toggle' ? 'Confirm' : 'Reset Password'}</Button></>}>
                   <div style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                       <StaffAvatar role={selectedStaff.role}>
@@ -2105,18 +2107,18 @@ const AdminStaffManagementPage: React.FC = () => {
         {showSuccessModal && (
         <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Password Generated" size="small" footer={<>
           {successPassword && <Button variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</Button>}
-          <Button variant="primary" onClick={() => setShowSuccessModal(false)}>Done</Button>
+          <Button variant="primary" onClick={() => setShowSuccessModal(false)}>{t('admin:staffManagementPage.done')}</Button>
         </>}>
           <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
             {successMessage} Please share this password securely. They should change it after first login.
           </div>
           {successPassword && (
             <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>Temporary Password</div>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:staffManagementPage.temporaryPassword')}</div>
               <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
             </div>
           )}
-          <div style={{ fontSize: '12px', color: '#DC2626' }}>This password will not be shown again. Please copy it now.</div>
+          <div style={{ fontSize: '12px', color: '#DC2626' }}>{t('admin:staffManagementPage.thisPasswordWillNotBeShownAgainPleaseCopyItNow')}</div>
         </CommonModal>
         )}
       </Container>

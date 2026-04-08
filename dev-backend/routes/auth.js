@@ -147,6 +147,7 @@ router.get('/me', async (req, res, next) => {
       manager_id: user.manager_id,
       brand_id: user.brand_id,
       foodcourt_id: user.foodcourt_id,
+      preferred_language: user.preferred_language || 'en',
       permissions
     };
 

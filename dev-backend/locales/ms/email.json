@@ -1,0 +1,63 @@
+{
+  "footer": {
+    "automated": "Ini adalah mesej automatik daripada {{company}}.",
+    "managePreferences": "Urus tetapan pemberitahuan",
+    "unsubscribe": "Nyahlanggan"
+  },
+  "notice": {
+    "subject": "Notis Baharu: {{title}}",
+    "heading": "Notis Baharu",
+    "body": "Satu notis baharu telah disiarkan.",
+    "postedBy": "Disiarkan oleh",
+    "priority": "Keutamaan",
+    "date": "Tarikh",
+    "viewButton": "Lihat Notis"
+  },
+  "comment": {
+    "subject": "Komen Baharu pada: {{title}}",
+    "heading": "Komen Baharu",
+    "commentedOn": "{{name}} mengulas pada {{title}}.",
+    "viewButton": "Lihat & Balas"
+  },
+  "invoice": {
+    "subject": "Invois {{number}} — {{restaurant}}",
+    "heading": "Invois Baharu",
+    "restaurant": "Restoran",
+    "invoiceNumber": "Nombor Invois",
+    "period": "Tempoh",
+    "dueDate": "Tarikh Akhir",
+    "amount": "Jumlah Perlu Dibayar",
+    "viewButton": "Lihat Invois",
+    "body": "Satu invois baharu telah dijana untuk restoran anda."
+  },
+  "welcome": {
+    "subject": "Selamat Datang ke {{platform}}",
+    "heading": "Selamat Datang!",
+    "body": "Akaun anda telah berjaya dicipta.",
+    "loginButton": "Log Masuk ke Papan Pemuka",
+    "credentials": "Maklumat log masuk anda",
+    "email": "E-mel",
+    "password": "Kata Laluan Sementara"
+  },
+  "passwordReset": {
+    "subject": "Permintaan Tetapan Semula Kata Laluan",
+    "heading": "Tetapan Semula Kata Laluan",
+    "body": "Anda telah meminta tetapan semula kata laluan. Klik butang di bawah untuk menetapkan kata laluan baharu.",
+    "resetButton": "Tetapkan Semula Kata Laluan",
+    "expiry": "Pautan ini akan tamat tempoh dalam {{hours}} jam.",
+    "ignore": "Jika anda tidak membuat permintaan ini, sila abaikan e-mel ini."
+  },
+  "emailVerification": {
+    "subject": "Sahkan Alamat E-mel Anda",
+    "heading": "Pengesahan E-mel",
+    "body": "Sila sahkan alamat e-mel anda dengan mengklik butang di bawah.",
+    "verifyButton": "Sahkan E-mel",
+    "expiry": "Pautan ini akan tamat tempoh dalam {{hours}} jam."
+  },
+  "ticket": {
+    "subject": "Kemas Kini Tiket Sokongan: {{title}}",
+    "heading": "Kemas Kini Tiket",
+    "status": "Status",
+    "viewButton": "Lihat Tiket"
+  }
+}

@@ -4,6 +4,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
 import { Modal } from '../../components/UI/Modal';
+import { useTranslation } from 'react-i18next';
 
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
@@ -258,6 +259,7 @@ interface Props {
 }
 
 const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
+  const { t } = useTranslation('brand');
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -421,8 +423,10 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
   );
 
   if (loading) {
-    return <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>Loading...</div>;
+    return <div style={{ padding: '40px', textAlign: 'center', color: '#6B7280' }}>{'Loading...'}</div>;
   }
+
+  // useTranslation moved to component level
 
   return (
     <>
@@ -442,7 +446,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
 
       {filteredGroups.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No option groups yet</EmptyTitle>
+          <EmptyTitle>{'No option groups yet'}</EmptyTitle>
           <EmptyDescription>
             Create option groups to add customizable options to your products
           </EmptyDescription>
@@ -504,7 +508,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
         title={editingGroup ? 'Edit Option Group' : 'New Option Group'}
       >
         <FormGroup>
-          <Label>Group Name</Label>
+          <Label>{'Group Name'}</Label>
           <Input
             type="text"
             value={formData.name}
@@ -527,7 +531,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
         </FormGroup>
 
         <FormGroup>
-          <Label>Options</Label>
+          <Label>{'Options'}</Label>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
             <Input
               type="text"
@@ -554,7 +558,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
               onChange={(e) => setNewOption({ ...newOption, ingredient_id: e.target.value ? Number(e.target.value) : null })}
               style={{ flex: 2, padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '13px', color: newOption.ingredient_id ? '#0A2540' : '#9CA3AF' }}
             >
-              <option value="">Linked ingredient (optional)</option>
+              <option value="">{'Linked ingredient (optional)'}</option>
               {productIngredients.map(ing => (
                 <option key={ing.id} value={ing.id}>{ing.name} ({ing.unit})</option>
               ))}
@@ -589,7 +593,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
         </FormGroup>
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <Button type="button" variant="secondary" onClick={handleCloseModal}>Cancel</Button>
+          <Button type="button" variant="secondary" onClick={handleCloseModal}>{'Cancel'}</Button>
           <Button type="button" onClick={handleSave} disabled={!formData.name.trim() || formData.options.length === 0}>
             {editingGroup ? 'Update' : 'Create'}
           </Button>
@@ -602,10 +606,10 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
         onClose={() => setIsDeleteModalOpen(false)}
         title="Delete Option Group"
       >
-        <p>Are you sure you want to delete this option group? This action cannot be undone.</p>
+        <p>{'Are you sure you want to delete this option group? This action cannot be undone.'}</p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
-          <Button type="button" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
-          <Button type="button" variant="danger" onClick={handleConfirmDelete}>Delete</Button>
+          <Button type="button" variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>{'Cancel'}</Button>
+          <Button type="button" variant="danger" onClick={handleConfirmDelete}>{'Delete'}</Button>
         </div>
       </Modal>
     </>

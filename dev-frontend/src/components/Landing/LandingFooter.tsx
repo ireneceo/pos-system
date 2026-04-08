@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 
 const Footer = styled.footer`
   background: #0A2540;
@@ -146,6 +147,7 @@ const LegalLink = styled.button`
 `;
 
 const LandingFooter: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
   const [contactInfo, setContactInfo] = useState({
@@ -182,29 +184,29 @@ const LandingFooter: React.FC = () => {
           </FooterSection>
 
           <FooterSection>
-            <SectionTitle>Product</SectionTitle>
+            <SectionTitle>{t('footer.product')}</SectionTitle>
             <LinkList>
-              <li><FooterLink onClick={() => navigate('/features')}>Features</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/pricing')}>Pricing</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/demo')}>Demo</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/features')}>{t('nav.features')}</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/pricing')}>{t('nav.pricing')}</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/demo')}>{t('footer.demo')}</FooterLink></li>
             </LinkList>
           </FooterSection>
 
           <FooterSection>
-            <SectionTitle>Info</SectionTitle>
+            <SectionTitle>{t('footer.info')}</SectionTitle>
             <LinkList>
-              <li><FooterLink onClick={() => navigate('/about')}>About Us</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/faq')}>FAQ</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/blog')}>Blog</FooterLink></li>
-              <li><FooterLink onClick={() => navigate('/contact')}>Contact</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/about')}>{t('nav.about')}</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/faq')}>{t('nav.faq')}</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/blog')}>{t('nav.blog')}</FooterLink></li>
+              <li><FooterLink onClick={() => navigate('/contact')}>{t('nav.contact')}</FooterLink></li>
             </LinkList>
           </FooterSection>
 
           <FooterSection>
-            <SectionTitle>Company</SectionTitle>
+            <SectionTitle>{t('footer.company')}</SectionTitle>
             <ContactInfo>
               <ContactItem>
-                <ContactLabel>Name</ContactLabel>
+                <ContactLabel>{t('footer.companyName')}</ContactLabel>
                 <span>GIT CONSULTING SDN. BHD.</span>
               </ContactItem>
               <ContactItem>
@@ -212,13 +214,13 @@ const LandingFooter: React.FC = () => {
                 <span>202201012250(1457947-A)</span>
               </ContactItem>
               <ContactItem>
-                <ContactLabel>Web</ContactLabel>
+                <ContactLabel>{t('footer.web')}</ContactLabel>
                 <ContactLink href="https://gitconsulting.group" target="_blank" rel="noopener noreferrer">
                   https://gitconsulting.group
                 </ContactLink>
               </ContactItem>
               <ContactItem>
-                <ContactLabel>E-mail</ContactLabel>
+                <ContactLabel>{t('footer.email')}</ContactLabel>
                 <ContactLink href="mailto:help@gitconsulting.group">
                   help@gitconsulting.group
                 </ContactLink>
@@ -231,11 +233,11 @@ const LandingFooter: React.FC = () => {
 
         <BottomSection>
           <Copyright>
-            &copy; {currentYear} PurpleHere. All rights reserved.
+            &copy; {currentYear} PurpleHere. {t('footer.allRightsReserved')}
           </Copyright>
           <LegalLinks>
-            <LegalLink onClick={() => navigate('/privacy')}>Privacy Policy</LegalLink>
-            <LegalLink onClick={() => navigate('/terms')}>Terms of Service</LegalLink>
+            <LegalLink onClick={() => navigate('/privacy')}>{t('footer.privacyPolicy')}</LegalLink>
+            <LegalLink onClick={() => navigate('/terms')}>{t('footer.termsOfService')}</LegalLink>
           </LegalLinks>
         </BottomSection>
       </FooterContent>

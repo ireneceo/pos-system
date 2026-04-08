@@ -4,6 +4,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
+import { useTranslation } from 'react-i18next';
 
 interface SupportTicket {
   id: string;
@@ -381,6 +382,7 @@ const FormTextArea = styled.textarea`
 
 
 const OwnerSystemInquiryPage: React.FC = () => {
+  const { t } = useTranslation('owner');
   const { user } = useAuth();
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [ownedRestaurants, setOwnedRestaurants] = useState<OwnedRestaurant[]>([]);
@@ -546,59 +548,59 @@ const OwnerSystemInquiryPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>System Inquiry</Title>
+          <Title>{t('owner:ownerSystemInquiryPage.systemInquiry')}</Title>
           <ActionSection>
-            <Button variant="primary" onClick={() => setShowCreateModal(true)}>New Inquiry</Button>
+            <Button variant="primary" onClick={() => setShowCreateModal(true)}>{t('owner:ownerSystemInquiryPage.newInquiry')}</Button>
           </ActionSection>
         </Header>
         <Content>
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{tickets.length}</StatValue>
-              <StatLabel>Total Inquiries</StatLabel>
+              <StatLabel>{t('owner:ownerSystemInquiryPage.totalInquiries')}</StatLabel>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{openTickets}</StatValue>
-              <StatLabel>Open</StatLabel>
+              <StatLabel>{t('owner:ownerSystemInquiryPage.open')}</StatLabel>
             </StatCard>
             <StatCard color="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
-              <StatLabel>In Progress</StatLabel>
+              <StatLabel>{t('owner:ownerSystemInquiryPage.inProgress')}</StatLabel>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
-              <StatLabel>Resolved</StatLabel>
+              <StatLabel>{t('owner:ownerSystemInquiryPage.resolved')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
           <FiltersContainer>
             <Select value={filterRestaurant} onChange={(e) => setFilterRestaurant(e.target.value)}>
-              <option value="all">All Restaurants</option>
+              <option value="all">{t('owner:ownerSystemInquiryPage.allRestaurants')}</option>
               {ownedRestaurants.map(r => (
                 <option key={r.id} value={String(r.id)}>{r.name}</option>
               ))}
             </Select>
             <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="open">Open</option>
-              <option value="in-progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-              <option value="closed">Closed</option>
+              <option value="all">{t('owner:ownerSystemInquiryPage.allStatus')}</option>
+              <option value="open">{t('owner:ownerSystemInquiryPage.open')}</option>
+              <option value="in-progress">{t('owner:ownerSystemInquiryPage.inProgress')}</option>
+              <option value="resolved">{t('owner:ownerSystemInquiryPage.resolved')}</option>
+              <option value="closed">{t('owner:ownerSystemInquiryPage.closed')}</option>
             </Select>
             <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
-              <option value="all">All Priority</option>
-              <option value="urgent">Urgent</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
+              <option value="all">{t('owner:ownerSystemInquiryPage.allPriority')}</option>
+              <option value="urgent">{t('owner:ownerSystemInquiryPage.urgent')}</option>
+              <option value="high">{t('owner:ownerSystemInquiryPage.high')}</option>
+              <option value="medium">{t('owner:ownerSystemInquiryPage.medium')}</option>
+              <option value="low">{t('owner:ownerSystemInquiryPage.low')}</option>
             </Select>
             <Select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="all">All Categories</option>
-              <option value="technical">Technical</option>
-              <option value="billing">Billing</option>
-              <option value="feature-request">Feature Request</option>
-              <option value="bug-report">Bug Report</option>
-              <option value="general">General</option>
+              <option value="all">{t('owner:ownerSystemInquiryPage.allCategories')}</option>
+              <option value="technical">{t('owner:ownerSystemInquiryPage.technical')}</option>
+              <option value="billing">{t('owner:ownerSystemInquiryPage.billing')}</option>
+              <option value="feature-request">{t('owner:ownerSystemInquiryPage.featureRequest')}</option>
+              <option value="bug-report">{t('owner:ownerSystemInquiryPage.bugReport')}</option>
+              <option value="general">{t('owner:ownerSystemInquiryPage.general')}</option>
             </Select>
             <SearchInput
               placeholder="Search inquiries..."
@@ -631,15 +633,15 @@ const OwnerSystemInquiryPage: React.FC = () => {
 
                 <TicketMeta>
                   <MetaItem>
-                    <MetaLabel>Created</MetaLabel>
+                    <MetaLabel>{t('owner:ownerSystemInquiryPage.created')}</MetaLabel>
                     <MetaValue>{formatDateTime(ticket.createdAt)}</MetaValue>
                   </MetaItem>
                   <MetaItem>
-                    <MetaLabel>Category</MetaLabel>
+                    <MetaLabel>{t('owner:ownerSystemInquiryPage.category')}</MetaLabel>
                     <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category.replace('-', ' ')}</MetaValue>
                   </MetaItem>
                   <MetaItem>
-                    <MetaLabel>Restaurant</MetaLabel>
+                    <MetaLabel>{t('owner:ownerSystemInquiryPage.restaurant')}</MetaLabel>
                     <MetaValue>{getRestaurantName(ticket.restaurantId) || ticket.restaurantName || '-'}</MetaValue>
                   </MetaItem>
                   {unreadCounts[ticket.id] && (
@@ -660,7 +662,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
 
             {filteredTickets.length === 0 && (
               <EmptyState>
-                <h3>No inquiries yet</h3>
+                <h3>{t('owner:ownerSystemInquiryPage.noInquiriesYet')}</h3>
                 <p>Click "New Inquiry" to submit a system inquiry for your restaurants.</p>
               </EmptyState>
             )}
@@ -674,7 +676,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
               title="Create System Inquiry"
               footer={
                 <>
-                  <Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+                  <Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('owner:ownerSystemInquiryPage.cancel')}</Button>
                   <Button
                     variant="primary"
                     onClick={handleSubmitTicket}
@@ -692,7 +694,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
                       onChange={(e) => setNewTicket({...newTicket, restaurantId: e.target.value})}
                       required
                     >
-                      <option value="">Select Restaurant</option>
+                      <option value="">{t('owner:ownerSystemInquiryPage.selectRestaurant')}</option>
                       {ownedRestaurants.map(r => (
                         <option key={r.id} value={String(r.id)}>{r.name}</option>
                       ))}
@@ -720,28 +722,28 @@ const OwnerSystemInquiryPage: React.FC = () => {
                   </FormGroup>
                   <FormRow>
                     <FormGroup>
-                      <FormLabel>Priority</FormLabel>
+                      <FormLabel>{t('owner:ownerSystemInquiryPage.priority')}</FormLabel>
                       <FormSelect
                         value={newTicket.priority}
                         onChange={(e) => setNewTicket({...newTicket, priority: e.target.value as SupportTicket['priority']})}
                       >
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
+                        <option value="low">{t('owner:ownerSystemInquiryPage.low')}</option>
+                        <option value="medium">{t('owner:ownerSystemInquiryPage.medium')}</option>
+                        <option value="high">{t('owner:ownerSystemInquiryPage.high')}</option>
+                        <option value="urgent">{t('owner:ownerSystemInquiryPage.urgent')}</option>
                       </FormSelect>
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Category</FormLabel>
+                      <FormLabel>{t('owner:ownerSystemInquiryPage.category')}</FormLabel>
                       <FormSelect
                         value={newTicket.category}
                         onChange={(e) => setNewTicket({...newTicket, category: e.target.value as SupportTicket['category']})}
                       >
-                        <option value="general">General</option>
-                        <option value="technical">Technical</option>
-                        <option value="billing">Billing</option>
-                        <option value="feature-request">Feature Request</option>
-                        <option value="bug-report">Bug Report</option>
+                        <option value="general">{t('owner:ownerSystemInquiryPage.general')}</option>
+                        <option value="technical">{t('owner:ownerSystemInquiryPage.technical')}</option>
+                        <option value="billing">{t('owner:ownerSystemInquiryPage.billing')}</option>
+                        <option value="feature-request">{t('owner:ownerSystemInquiryPage.featureRequest')}</option>
+                        <option value="bug-report">{t('owner:ownerSystemInquiryPage.bugReport')}</option>
                       </FormSelect>
                     </FormGroup>
                   </FormRow>
@@ -755,28 +757,28 @@ const OwnerSystemInquiryPage: React.FC = () => {
               onClose={() => setShowViewModal(false)}
               title="Inquiry Details"
               footer={
-                <Button variant="secondary" onClick={() => setShowViewModal(false)}>Close</Button>
+                <Button variant="secondary" onClick={() => setShowViewModal(false)}>{t('owner:ownerSystemInquiryPage.close')}</Button>
               }
             >
                   <div style={{ display: 'grid', gap: '20px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
-                        <FormLabel>Ticket Number</FormLabel>
+                        <FormLabel>{t('owner:ownerSystemInquiryPage.ticketNumber')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: '600' }}>
                           {selectedTicket.ticketNumber}
                         </div>
                       </div>
                       <div>
-                        <FormLabel>Status</FormLabel>
+                        <FormLabel>{t('owner:ownerSystemInquiryPage.status')}</FormLabel>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <FormSelect value={detailStatus} onChange={(e) => setDetailStatus(e.target.value as SupportTicket['status'])} style={{ flex: 1 }}>
-                            <option value="open">Open</option>
-                            <option value="in-progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
-                            <option value="closed">Closed</option>
+                            <option value="open">{t('owner:ownerSystemInquiryPage.open')}</option>
+                            <option value="in-progress">{t('owner:ownerSystemInquiryPage.inProgress')}</option>
+                            <option value="resolved">{t('owner:ownerSystemInquiryPage.resolved')}</option>
+                            <option value="closed">{t('owner:ownerSystemInquiryPage.closed')}</option>
                           </FormSelect>
                           {detailStatus !== selectedTicket.status && (
-                            <Button variant="primary" onClick={handleStatusChange} style={{ padding: '10px 20px' }}>Save</Button>
+                            <Button variant="primary" onClick={handleStatusChange} style={{ padding: '10px 20px' }}>{t('owner:ownerSystemInquiryPage.save')}</Button>
                           )}
                         </div>
                       </div>
@@ -784,13 +786,13 @@ const OwnerSystemInquiryPage: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
-                        <FormLabel>Priority</FormLabel>
+                        <FormLabel>{t('owner:ownerSystemInquiryPage.priority')}</FormLabel>
                         <div style={{ padding: '8px 0' }}>
                           <PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge>
                         </div>
                       </div>
                       <div>
-                        <FormLabel>Restaurant</FormLabel>
+                        <FormLabel>{t('owner:ownerSystemInquiryPage.restaurant')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#374151' }}>
                           {getRestaurantName(selectedTicket.restaurantId) || selectedTicket.restaurantName || '-'}
                         </div>
@@ -798,14 +800,14 @@ const OwnerSystemInquiryPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <FormLabel>Subject</FormLabel>
+                      <FormLabel>{t('owner:ownerSystemInquiryPage.subject')}</FormLabel>
                       <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: '600' }}>
                         {selectedTicket.subject}
                       </div>
                     </div>
 
                     <div>
-                      <FormLabel>Description</FormLabel>
+                      <FormLabel>{t('owner:ownerSystemInquiryPage.description')}</FormLabel>
                       <div style={{
                         padding: '12px', backgroundColor: '#F8FAFC', borderRadius: '8px',
                         border: '1px solid #E6EBF1', minHeight: '80px', whiteSpace: 'pre-wrap',
@@ -817,11 +819,11 @@ const OwnerSystemInquiryPage: React.FC = () => {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
-                        <FormLabel>Created</FormLabel>
+                        <FormLabel>{t('owner:ownerSystemInquiryPage.created')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#6B7280' }}>{formatDateTime(selectedTicket.createdAt)}</div>
                       </div>
                       <div>
-                        <FormLabel>Category</FormLabel>
+                        <FormLabel>{t('owner:ownerSystemInquiryPage.category')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#374151', textTransform: 'capitalize' }}>
                           {selectedTicket.category.replace('-', ' ')}
                         </div>

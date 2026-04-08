@@ -12,6 +12,7 @@ import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
 import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '../../utils/unitConversion';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface ProductRecipesTabProps {
   onCountChange?: (count: number) => void;
@@ -806,6 +807,7 @@ const ViewTotalRow = styled.div`
 `;
 
 const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, categoryRefreshKey }) => {
+  const { t } = useTranslation('brand');
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -1165,7 +1167,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
   });
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>;
+    return <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{'Loading...'}</div>;
   }
 
   return (
@@ -1182,7 +1184,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="all">All Categories</option>
+            <option value="all">{'All Categories'}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
             ))}
@@ -1205,7 +1207,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
       {filteredRecipes.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No recipes found</EmptyTitle>
+          <EmptyTitle>{'No recipes found'}</EmptyTitle>
           <EmptyDescription>
             Create product recipes to track ingredient costs and manage production.
           </EmptyDescription>
@@ -1237,11 +1239,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
               <RecipeCosts>
                 <CostItem>
-                  <CostLabel>Ingredient Cost</CostLabel>
+                  <CostLabel>{'Ingredient Cost'}</CostLabel>
                   <CostValue>{formatCurrency(recipe.total_ingredient_cost || 0, selectedCurrency)}</CostValue>
                 </CostItem>
                 <CostItem>
-                  <CostLabel>Suggested Price</CostLabel>
+                  <CostLabel>{'Suggested Price'}</CostLabel>
                   <CostValue>
                     {recipe.suggested_price
                       ? formatCurrency(recipe.suggested_price, selectedCurrency)
@@ -1356,25 +1358,25 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
             {/* Cost & Time Info */}
             <ViewSection>
-              <ViewSectionTitle>Cost & Time</ViewSectionTitle>
+              <ViewSectionTitle>{'Cost & Time'}</ViewSectionTitle>
               <ViewGrid>
                 <ViewGridItem>
-                  <ViewGridLabel>Ingredient Cost</ViewGridLabel>
+                  <ViewGridLabel>{'Ingredient Cost'}</ViewGridLabel>
                   <ViewGridValue>{formatCurrency(Number(editingRecipe.total_ingredient_cost || 0), selectedCurrency)}</ViewGridValue>
                 </ViewGridItem>
                 <ViewGridItem>
-                  <ViewGridLabel>Suggested Price</ViewGridLabel>
+                  <ViewGridLabel>{'Suggested Price'}</ViewGridLabel>
                   <ViewGridValue>{formatCurrency(Number(formData.suggested_price || 0), selectedCurrency)}</ViewGridValue>
                 </ViewGridItem>
                 {formData.prep_time && (
                   <ViewGridItem>
-                    <ViewGridLabel>Prep Time</ViewGridLabel>
+                    <ViewGridLabel>{'Prep Time'}</ViewGridLabel>
                     <ViewGridValue>{formData.prep_time} min</ViewGridValue>
                   </ViewGridItem>
                 )}
                 {formData.cook_time && (
                   <ViewGridItem>
-                    <ViewGridLabel>Cook Time</ViewGridLabel>
+                    <ViewGridLabel>{'Cook Time'}</ViewGridLabel>
                     <ViewGridValue>{formData.cook_time} min</ViewGridValue>
                   </ViewGridItem>
                 )}
@@ -1384,7 +1386,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             {/* Yield */}
             {(formData.yield_amount && formData.yield_amount !== '1') && (
               <ViewSection>
-                <ViewSectionTitle>Yield</ViewSectionTitle>
+                <ViewSectionTitle>{'Yield'}</ViewSectionTitle>
                 <div style={{ fontSize: '15px', color: '#374151' }}>
                   {formData.yield_amount} {STANDARD_UNITS.find(u => u.value === formData.yield_unit)?.label || formData.yield_unit}
                   <span style={{ marginLeft: '16px', color: '#6B7280', fontSize: '13px' }}>
@@ -1408,10 +1410,10 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                 <ViewIngredientTable>
                   <thead>
                     <tr>
-                      <th>Ingredient</th>
-                      <th>Quantity</th>
-                      <th>Unit Cost</th>
-                      <th>Subtotal</th>
+                      <th>{'Ingredient'}</th>
+                      <th>{'Quantity'}</th>
+                      <th>{'Unit Cost'}</th>
+                      <th>{'Subtotal'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1432,7 +1434,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
                   </tbody>
                 </ViewIngredientTable>
                 <ViewTotalRow>
-                  <span>Total Ingredient Cost</span>
+                  <span>{'Total Ingredient Cost'}</span>
                   <span>{formatCurrency(calculateTotalCost(), selectedCurrency)}</span>
                 </ViewTotalRow>
               </ViewSection>
@@ -1441,7 +1443,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             {/* Recipe Summary */}
             {(formData.instructions_summary) && (
               <ViewSection>
-                <ViewSectionTitle>Recipe Summary</ViewSectionTitle>
+                <ViewSectionTitle>{'Recipe Summary'}</ViewSectionTitle>
                 <ViewInstructions>{formData.instructions_summary}</ViewInstructions>
               </ViewSection>
             )}
@@ -1449,7 +1451,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             {/* Detailed Instructions */}
             {formData.instructions_detail && (
               <ViewSection>
-                <ViewSectionTitle>Detailed Instructions</ViewSectionTitle>
+                <ViewSectionTitle>{'Detailed Instructions'}</ViewSectionTitle>
                 <ViewInstructions>{formData.instructions_detail}</ViewInstructions>
               </ViewSection>
             )}
@@ -1495,12 +1497,12 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         </UIFormGroup>
 
         <UIFormGroup>
-          <FormLabel>Category</FormLabel>
+          <FormLabel>{'Category'}</FormLabel>
           <FormSelect
             value={formData.category_id}
             onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
           >
-            <option value="">Select Category</option>
+            <option value="">{'Select Category'}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.emoji} {cat.name}</option>
             ))}
@@ -1508,7 +1510,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         </UIFormGroup>
 
         <UIFormGroup>
-          <FormLabel>Emoji Icon</FormLabel>
+          <FormLabel>{'Emoji Icon'}</FormLabel>
           <EmojiPicker>
             {emojiOptions.map((emoji) => (
               <EmojiOption
@@ -1524,7 +1526,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         </UIFormGroup>
 
         <UIFormGroup>
-          <FormLabel>Recipe Image</FormLabel>
+          <FormLabel>{'Recipe Image'}</FormLabel>
           <ImageUploadDropzone
             value={formData.image}
             onChange={(value) => setFormData({ ...formData, image: value })}
@@ -1533,7 +1535,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         </UIFormGroup>
 
         <UIFormGroup>
-          <FormLabel>Description</FormLabel>
+          <FormLabel>{'Description'}</FormLabel>
           <FormTextArea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1544,7 +1546,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
           <UIFormGroup>
-            <FormLabel>Prep Time (min)</FormLabel>
+            <FormLabel>{'Prep Time (min)'}</FormLabel>
             <FormInput
               type="number"
               min="0"
@@ -1553,7 +1555,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
             />
           </UIFormGroup>
           <UIFormGroup>
-            <FormLabel>Cook Time (min)</FormLabel>
+            <FormLabel>{'Cook Time (min)'}</FormLabel>
             <FormInput
               type="number"
               min="0"
@@ -1574,7 +1576,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         </div>
 
         <UIFormGroup>
-          <FormLabel>Recipe Summary</FormLabel>
+          <FormLabel>{'Recipe Summary'}</FormLabel>
           <FormTextArea
             value={formData.instructions_summary}
             onChange={(e) => setFormData({ ...formData, instructions_summary: e.target.value })}
@@ -1584,7 +1586,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         </UIFormGroup>
 
         <UIFormGroup>
-          <FormLabel>Detailed Instructions</FormLabel>
+          <FormLabel>{'Detailed Instructions'}</FormLabel>
           <FormTextArea
             value={formData.instructions_detail}
             onChange={(e) => setFormData({ ...formData, instructions_detail: e.target.value })}
@@ -1597,7 +1599,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         </UIFormGroup>
 
         {/* Yield Section */}
-        <SectionTitle>Yield (Production Amount)</SectionTitle>
+        <SectionTitle>{'Yield (Production Amount)'}</SectionTitle>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
           <UIFormGroup>
             <FormLabel>Yield Amount *</FormLabel>
@@ -1624,7 +1626,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         </div>
 
         {/* Ingredients Section */}
-        <SectionTitle>Ingredients</SectionTitle>
+        <SectionTitle>{'Ingredients'}</SectionTitle>
 
         <AddButton onClick={addIngredientRow}>
           Add Ingredient
@@ -1633,10 +1635,10 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         {formIngredients.length > 0 && (
           <IngredientsList>
             <IngredientHeaderRow>
-              <span>Ingredient</span>
-              <span>Quantity</span>
-              <span>Unit</span>
-              <span>Notes</span>
+              <span>{'Ingredient'}</span>
+              <span>{'Quantity'}</span>
+              <span>{'Unit'}</span>
+              <span>{'Notes'}</span>
               <span></span>
             </IngredientHeaderRow>
 
@@ -1682,7 +1684,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         )}
 
         <CostSummary>
-          <CostSummaryLabel>Total Ingredient Cost</CostSummaryLabel>
+          <CostSummaryLabel>{'Total Ingredient Cost'}</CostSummaryLabel>
           <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency)}</CostSummaryValue>
         </CostSummary>
         <CostSummary style={{ marginTop: '8px' }}>
@@ -1745,7 +1747,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               {/* Ingredients with Quantities */}
               {recipeModalData.recipeIngredients && recipeModalData.recipeIngredients.length > 0 && (
                 <RecipeSection>
-                  <RecipeSectionTitle>Ingredients</RecipeSectionTitle>
+                  <RecipeSectionTitle>{'Ingredients'}</RecipeSectionTitle>
                   <RecipeIngredientList>
                     {recipeModalData.recipeIngredients.map((ri, idx) => (
                       <RecipeIngredientItem key={idx}>
@@ -1760,7 +1762,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               {/* Recipe Summary */}
               {recipeModalData.instructions_summary && (
                 <RecipeSection>
-                  <RecipeSectionTitle>Summary</RecipeSectionTitle>
+                  <RecipeSectionTitle>{'Summary'}</RecipeSectionTitle>
                   <RecipeSummaryText>
                     {recipeModalData.instructions_summary}
                   </RecipeSummaryText>
@@ -1770,7 +1772,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               {/* Detailed Instructions */}
               {recipeModalData.instructions_detail && (
                 <RecipeSection>
-                  <RecipeSectionTitle>Detailed Instructions</RecipeSectionTitle>
+                  <RecipeSectionTitle>{'Detailed Instructions'}</RecipeSectionTitle>
                   <RecipeDetailText>
                     {recipeModalData.instructions_detail}
                   </RecipeDetailText>
@@ -1780,7 +1782,7 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
               {/* Connected Products */}
               {linkedProducts[recipeModalData.id] && linkedProducts[recipeModalData.id].length > 0 && (
                 <RecipeSection>
-                  <RecipeSectionTitle>Connected Products</RecipeSectionTitle>
+                  <RecipeSectionTitle>{'Connected Products'}</RecipeSectionTitle>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {linkedProducts[recipeModalData.id].map((name, i) => (
                       <span key={i} style={{ fontSize: '13px', background: '#ECFDF5', color: '#059669', padding: '4px 12px', borderRadius: '6px', fontWeight: 500 }}>

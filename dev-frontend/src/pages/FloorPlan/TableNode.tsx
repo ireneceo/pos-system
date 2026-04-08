@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { FloorTable, FixtureType, TableStatus, TableStatusInfo, STATUS_COLORS, ORDER_STATUS_COLORS } from './types';
+import { useTranslation } from 'react-i18next';
 
 interface TableNodeProps {
   table: FloorTable;
@@ -179,6 +180,8 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
   const isNarrowCounter = fixtureType === 'counter' && table.width < table.height;
   const isStaffMeal = !isEditing && statusInfo?.paymentMethod === 'staffMeal';
 
+  const { t } = useTranslation('floorplan');
+
   return (
     <NodeWrapper
       $x={table.x} $y={table.y}
@@ -195,7 +198,7 @@ const TableNode: React.FC<TableNodeProps> = React.memo(({
       onTouchStart={handleTouchStart}
       style={fixtureStyle}
     >
-      {isStaffMeal && <StaffMealBadge>STAFF</StaffMealBadge>}
+      {isStaffMeal && <StaffMealBadge>{'STAFF'}</StaffMealBadge>}
       {!isFixture && statusInfo?.orderCount && statusInfo.orderCount > 1 && (
         <MultiOrderBadge>{statusInfo.orderCount}</MultiOrderBadge>
       )}

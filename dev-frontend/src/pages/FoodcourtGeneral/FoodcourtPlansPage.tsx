@@ -17,6 +17,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 // ============================================
 // Types
@@ -436,6 +437,7 @@ const REVENUE_BASE_LABELS: Record<string, string> = {
 // ============================================
 
 const FoodcourtPlansPage: React.FC = () => {
+  const { t } = useTranslation('foodcourt');
   const { user } = useAuth();
 
   const [plans, setPlans] = useState<EntityPlan[]>([]);
@@ -893,21 +895,21 @@ const FoodcourtPlansPage: React.FC = () => {
     setFormData: React.Dispatch<React.SetStateAction<typeof createFormData>>
   ) => (
     <>
-      <SectionDivider>Charge Type</SectionDivider>
+      <SectionDivider>{t('foodcourt:foodcourtPlansPage.chargeType')}</SectionDivider>
       <FormGroup>
         <FormLabel>Charge Type *</FormLabel>
         <FormSelect
           value={formData.charge_type}
           onChange={(e) => setFormData(prev => ({...prev, charge_type: e.target.value as 'fixed' | 'percentage'}))}
         >
-          <option value="fixed">Fixed Amount (Currency Pricing)</option>
+          <option value="fixed">{t('foodcourt:foodcourtPlansPage.fixedAmountCurrencyPricing')}</option>
           <option value="percentage">% of Revenue</option>
         </FormSelect>
       </FormGroup>
 
       {formData.charge_type === 'fixed' ? (
         <FormGroup>
-          <FormLabel>Pricing by Currency</FormLabel>
+          <FormLabel>{t('foodcourt:foodcourtPlansPage.pricingByCurrency')}</FormLabel>
           <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
             {supportedCurrencies.map(code => {
               const config = currencyConfig[code];
@@ -918,7 +920,7 @@ const FoodcourtPlansPage: React.FC = () => {
                   </div>
                   <PricingRow>
                     <FormGroup style={{ marginBottom: 0 }}>
-                      <FormLabel style={{ fontSize: '12px' }}>Monthly</FormLabel>
+                      <FormLabel style={{ fontSize: '12px' }}>{t('foodcourt:foodcourtPlansPage.monthly')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="0"
@@ -933,7 +935,7 @@ const FoodcourtPlansPage: React.FC = () => {
                       />
                     </FormGroup>
                     <FormGroup style={{ marginBottom: 0 }}>
-                      <FormLabel style={{ fontSize: '12px' }}>Annual</FormLabel>
+                      <FormLabel style={{ fontSize: '12px' }}>{t('foodcourt:foodcourtPlansPage.annual')}</FormLabel>
                       <FormInput
                         type="number"
                         placeholder="0"
@@ -971,21 +973,21 @@ const FoodcourtPlansPage: React.FC = () => {
             />
           </FormGroup>
           <FormGroup>
-            <FormLabel>Revenue Base Period</FormLabel>
+            <FormLabel>{t('foodcourt:foodcourtPlansPage.revenueBasePeriod')}</FormLabel>
             <FormSelect
               value={formData.revenue_base}
               onChange={(e) => setFormData(prev => ({...prev, revenue_base: e.target.value as any}))}
             >
-              <option value="previous_month">Previous Month</option>
-              <option value="previous_year">Previous Year</option>
-              <option value="up_to_billing_day">Up to Billing Day</option>
+              <option value="previous_month">{t('foodcourt:foodcourtPlansPage.previousMonth')}</option>
+              <option value="previous_year">{t('foodcourt:foodcourtPlansPage.previousYear')}</option>
+              <option value="up_to_billing_day">{t('foodcourt:foodcourtPlansPage.upToBillingDay')}</option>
             </FormSelect>
           </FormGroup>
         </>
       )}
 
       <FormGroup>
-        <FormLabel>Billing Day (1-28)</FormLabel>
+        <FormLabel>{t('foodcourt:foodcourtPlansPage.billingDay128')}</FormLabel>
         <FormInput
           type="number"
           min="1"
@@ -1009,9 +1011,9 @@ const FoodcourtPlansPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Foodcourt Plans</Title>
+          <Title>{t('foodcourt:foodcourtPlansPage.foodcourtPlans')}</Title>
           <ActionSection>
-            <Button variant="primary" onClick={handleCreatePlan}>Create Plan</Button>
+            <Button variant="primary" onClick={handleCreatePlan}>{t('foodcourt:foodcourtPlansPage.createPlan')}</Button>
           </ActionSection>
         </Header>
         <Content>
@@ -1019,23 +1021,23 @@ const FoodcourtPlansPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{plans.length}</StatValue>
-            <StatLabel>Total Plans</StatLabel>
+            <StatLabel>{t('foodcourt:foodcourtPlansPage.totalPlans')}</StatLabel>
             <StatDescription>{activePlans} active</StatDescription>
           </StatCard>
           <StatCard color="#10B981">
             <StatValue>{activePlans}</StatValue>
-            <StatLabel>Active Plans</StatLabel>
+            <StatLabel>{t('foodcourt:foodcourtPlansPage.activePlans')}</StatLabel>
             <StatDescription>{plans.length > 0 ? Math.round((activePlans/plans.length)*100) : 0}% available</StatDescription>
           </StatCard>
           <StatCard color="#F59E0B">
             <StatValue>{totalSubscriptions}</StatValue>
-            <StatLabel>Total Tenants</StatLabel>
-            <StatDescription>Across all plans</StatDescription>
+            <StatLabel>{t('foodcourt:foodcourtPlansPage.totalTenants')}</StatLabel>
+            <StatDescription>{t('foodcourt:foodcourtPlansPage.acrossAllPlans')}</StatDescription>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{formatCurrency(monthlyRevenue, displayCurrency)}</StatValue>
-            <StatLabel>Fixed Monthly Revenue</StatLabel>
-            <StatDescription>From fixed-type plans</StatDescription>
+            <StatLabel>{t('foodcourt:foodcourtPlansPage.fixedMonthlyRevenue')}</StatLabel>
+            <StatDescription>{t('foodcourt:foodcourtPlansPage.fromFixedtypePlans')}</StatDescription>
           </StatCard>
         </StatsGrid>
 
@@ -1050,9 +1052,9 @@ const FoodcourtPlansPage: React.FC = () => {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
           >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
+            <option value="all">{t('foodcourt:foodcourtPlansPage.allStatus')}</option>
+            <option value="active">{t('foodcourt:foodcourtPlansPage.active')}</option>
+            <option value="inactive">{t('foodcourt:foodcourtPlansPage.inactive')}</option>
           </FilterSelect>
           <FilterSelect
             value={displayCurrency}
@@ -1067,7 +1069,7 @@ const FoodcourtPlansPage: React.FC = () => {
         </FilterBar>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#6B7280' }}>Loading plans...</div>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#6B7280' }}>{t('foodcourt:foodcourtPlansPage.loadingPlans')}</div>
         ) : filteredPlans.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#6B7280' }}>
             {plans.length === 0 ? 'No plans created yet. Click "Create Plan" to get started.' : 'No plans match your filters.'}
@@ -1110,11 +1112,11 @@ const FoodcourtPlansPage: React.FC = () => {
                             )}
                           </AnnualPrice>
                         )}
-                        <PricingNote>Billed monthly or annually</PricingNote>
+                        <PricingNote>{t('foodcourt:foodcourtPlansPage.billedMonthlyOrAnnually')}</PricingNote>
                       </>
                     ) : (
                       <>
-                        <MonthlyPrice style={{color: '#F59E0B'}}>Price Not Set</MonthlyPrice>
+                        <MonthlyPrice style={{color: '#F59E0B'}}>{t('foodcourt:foodcourtPlansPage.priceNotSet')}</MonthlyPrice>
                         <PricingNote style={{color: '#F59E0B'}}>Set {displayCurrency} price in "Prices"</PricingNote>
                       </>
                     )}
@@ -1124,15 +1126,15 @@ const FoodcourtPlansPage: React.FC = () => {
                 {/* Billing Info */}
                 <FoodcourtChargesSection>
                   <FoodcourtChargeItem>
-                    <span style={{color: '#1E40AF', fontWeight: 500}}>Billing Day</span>
+                    <span style={{color: '#1E40AF', fontWeight: 500}}>{t('foodcourt:foodcourtPlansPage.billingDay')}</span>
                     <span style={{color: '#0A2540', fontWeight: 600}}>
                       {plan.billing_day ? `Every ${plan.billing_day}${plan.billing_day === 1 ? 'st' : plan.billing_day === 2 ? 'nd' : plan.billing_day === 3 ? 'rd' : 'th'}` : 'Subscription Start'}
                     </span>
                   </FoodcourtChargeItem>
                   {plan.auto_generate && (
                     <FoodcourtChargeItem style={{marginTop: 4}}>
-                      <span style={{color: '#1E40AF', fontWeight: 500}}>Auto-invoice</span>
-                      <span style={{color: '#059669', fontWeight: 600}}>Enabled</span>
+                      <span style={{color: '#1E40AF', fontWeight: 500}}>{t('foodcourt:foodcourtPlansPage.autoinvoice')}</span>
+                      <span style={{color: '#059669', fontWeight: 600}}>{t('foodcourt:foodcourtPlansPage.enabled')}</span>
                     </FoodcourtChargeItem>
                   )}
                 </FoodcourtChargesSection>
@@ -1148,7 +1150,7 @@ const FoodcourtPlansPage: React.FC = () => {
                 <PlanStats>
                   <StatItem>
                     <StatNumber>{getSubscriptionCount(plan)}</StatNumber>
-                    <StatDesc>Tenants</StatDesc>
+                    <StatDesc>{t('foodcourt:foodcourtPlansPage.tenants')}</StatDesc>
                   </StatItem>
                   <StatItem>
                     <StatNumber>
@@ -1162,11 +1164,11 @@ const FoodcourtPlansPage: React.FC = () => {
                 </PlanStats>
 
                 <ActionButtons>
-                  <PlanButton variant="primary" onClick={() => handleEditPlan(plan)}>Edit</PlanButton>
+                  <PlanButton variant="primary" onClick={() => handleEditPlan(plan)}>{t('foodcourt:foodcourtPlansPage.edit')}</PlanButton>
                   {plan.charge_type === 'fixed' && (
-                    <PlanButton variant="secondary" onClick={() => handlePlanPrices(plan)}>Prices</PlanButton>
+                    <PlanButton variant="secondary" onClick={() => handlePlanPrices(plan)}>{t('foodcourt:foodcourtPlansPage.prices')}</PlanButton>
                   )}
-                  <PlanButton variant="secondary" onClick={() => handleViewDetails(plan)}>View</PlanButton>
+                  <PlanButton variant="secondary" onClick={() => handleViewDetails(plan)}>{t('foodcourt:foodcourtPlansPage.view')}</PlanButton>
                 </ActionButtons>
               </PlanCard>
             ))}
@@ -1175,7 +1177,7 @@ const FoodcourtPlansPage: React.FC = () => {
 
         {/* Create Plan Modal */}
         {showCreateModal && (
-                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancel</Button><Button variant="primary" onClick={createPlan}>Create Plan</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowCreateModal(false)} title="Create New Plan" footer={<><Button variant="secondary" onClick={() => setShowCreateModal(false)}>{t('foodcourt:foodcourtPlansPage.cancel')}</Button><Button variant="primary" onClick={createPlan}>{t('foodcourt:foodcourtPlansPage.createPlan')}</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Name *</FormLabel>
@@ -1187,7 +1189,7 @@ const FoodcourtPlansPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtPlansPage.description')}</FormLabel>
                   <FormTextArea
                     placeholder="Enter plan description..."
                     rows={3}
@@ -1199,7 +1201,7 @@ const FoodcourtPlansPage: React.FC = () => {
                 {renderChargeTypeFields(createFormData, setCreateFormData)}
 
                 <FormGroup>
-                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtPlansPage.featuresOnePerLine')}</FormLabel>
                   <FormTextArea
                     placeholder="Enter features, one per line..."
                     rows={4}
@@ -1212,17 +1214,17 @@ const FoodcourtPlansPage: React.FC = () => {
                   <CheckboxItem>
                     <input type="checkbox" id="create-auto-generate" checked={createFormData.auto_generate}
                       onChange={(e) => setCreateFormData(prev => ({...prev, auto_generate: e.target.checked}))} />
-                    <label htmlFor="create-auto-generate">Auto-generate invoices</label>
+                    <label htmlFor="create-auto-generate">{t('foodcourt:foodcourtPlansPage.autogenerateInvoices')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input type="checkbox" id="create-popular" checked={createFormData.is_popular}
                       onChange={(e) => setCreateFormData(prev => ({...prev, is_popular: e.target.checked}))} />
-                    <label htmlFor="create-popular">Mark as Most Popular</label>
+                    <label htmlFor="create-popular">{t('foodcourt:foodcourtPlansPage.markAsMostPopular')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input type="checkbox" id="create-active" checked={createFormData.is_active}
                       onChange={(e) => setCreateFormData(prev => ({...prev, is_active: e.target.checked}))} />
-                    <label htmlFor="create-active">Set as Active</label>
+                    <label htmlFor="create-active">{t('foodcourt:foodcourtPlansPage.setAsActive')}</label>
                   </CheckboxItem>
                 </CheckboxGroup>
               
@@ -1231,7 +1233,7 @@ const FoodcourtPlansPage: React.FC = () => {
 
         {/* Edit Plan Modal */}
         {showEditModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Plan: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}>Cancel</Button><Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>Delete</Button><Button variant="primary" onClick={updatePlan}>Save Changes</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Plan: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}>{t('foodcourt:foodcourtPlansPage.cancel')}</Button><Button variant="danger" onClick={() => deletePlan(selectedPlan.id)}>{t('foodcourt:foodcourtPlansPage.delete')}</Button><Button variant="primary" onClick={updatePlan}>{t('foodcourt:foodcourtPlansPage.saveChanges')}</Button></>}>
 
                 <FormGroup>
                   <FormLabel>Plan Name *</FormLabel>
@@ -1242,7 +1244,7 @@ const FoodcourtPlansPage: React.FC = () => {
                   />
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtPlansPage.description')}</FormLabel>
                   <FormTextArea
                     rows={3}
                     value={editFormData.description}
@@ -1253,7 +1255,7 @@ const FoodcourtPlansPage: React.FC = () => {
                 {renderChargeTypeFields(editFormData, setEditFormData)}
 
                 <FormGroup>
-                  <FormLabel>Features (one per line)</FormLabel>
+                  <FormLabel>{t('foodcourt:foodcourtPlansPage.featuresOnePerLine')}</FormLabel>
                   <FormTextArea
                     rows={4}
                     value={editFormData.features}
@@ -1265,17 +1267,17 @@ const FoodcourtPlansPage: React.FC = () => {
                   <CheckboxItem>
                     <input type="checkbox" id="edit-auto-generate" checked={editFormData.auto_generate}
                       onChange={(e) => setEditFormData(prev => ({...prev, auto_generate: e.target.checked}))} />
-                    <label htmlFor="edit-auto-generate">Auto-generate invoices</label>
+                    <label htmlFor="edit-auto-generate">{t('foodcourt:foodcourtPlansPage.autogenerateInvoices')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input type="checkbox" id="edit-popular" checked={editFormData.is_popular}
                       onChange={(e) => setEditFormData(prev => ({...prev, is_popular: e.target.checked}))} />
-                    <label htmlFor="edit-popular">Mark as Most Popular</label>
+                    <label htmlFor="edit-popular">{t('foodcourt:foodcourtPlansPage.markAsMostPopular')}</label>
                   </CheckboxItem>
                   <CheckboxItem>
                     <input type="checkbox" id="edit-active" checked={editFormData.is_active}
                       onChange={(e) => setEditFormData(prev => ({...prev, is_active: e.target.checked}))} />
-                    <label htmlFor="edit-active">Set as Active</label>
+                    <label htmlFor="edit-active">{t('foodcourt:foodcourtPlansPage.setAsActive')}</label>
                   </CheckboxItem>
                 </CheckboxGroup>
               
@@ -1284,46 +1286,46 @@ const FoodcourtPlansPage: React.FC = () => {
 
         {/* View Details Modal */}
         {showDetailsModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title={`Plan Details: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>Close</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowDetailsModal(false)} title={`Plan Details: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowDetailsModal(false)}>{t('foodcourt:foodcourtPlansPage.close')}</Button></>}>
 
                 <DetailSection>
-                  <h4>Plan Info</h4>
+                  <h4>{t('foodcourt:foodcourtPlansPage.planInfo')}</h4>
                   <DetailRow>
-                    <DetailLabel>Plan ID</DetailLabel>
+                    <DetailLabel>{t('foodcourt:foodcourtPlansPage.planId')}</DetailLabel>
                     <DetailValue>{selectedPlan.id}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Name</DetailLabel>
+                    <DetailLabel>{t('foodcourt:foodcourtPlansPage.name')}</DetailLabel>
                     <DetailValue>{selectedPlan.name}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Status</DetailLabel>
+                    <DetailLabel>{t('foodcourt:foodcourtPlansPage.status')}</DetailLabel>
                     <StatusBadge isActive={selectedPlan.is_active}>
                       {selectedPlan.is_active ? 'Active' : 'Inactive'}
                     </StatusBadge>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Charge Type</DetailLabel>
+                    <DetailLabel>{t('foodcourt:foodcourtPlansPage.chargeType')}</DetailLabel>
                     <ChargeTypeBadge chargeType={selectedPlan.charge_type || 'fixed'}>
                       {selectedPlan.charge_type === 'percentage' ? '% Revenue' : 'Fixed'}
                     </ChargeTypeBadge>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Popular Plan</DetailLabel>
+                    <DetailLabel>{t('foodcourt:foodcourtPlansPage.popularPlan')}</DetailLabel>
                     <DetailValue>{selectedPlan.is_popular ? 'Yes' : 'No'}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
                 <DetailSection>
-                  <h4>Billing</h4>
+                  <h4>{t('foodcourt:foodcourtPlansPage.billing')}</h4>
                   {selectedPlan.charge_type === 'percentage' ? (
                     <>
                       <DetailRow>
-                        <DetailLabel>Revenue Percentage</DetailLabel>
+                        <DetailLabel>{t('foodcourt:foodcourtPlansPage.revenuePercentage')}</DetailLabel>
                         <DetailValue>{parseFloat(selectedPlan.percentage_value || '0')}%</DetailValue>
                       </DetailRow>
                       <DetailRow>
-                        <DetailLabel>Revenue Base</DetailLabel>
+                        <DetailLabel>{t('foodcourt:foodcourtPlansPage.revenueBase')}</DetailLabel>
                         <DetailValue>{REVENUE_BASE_LABELS[selectedPlan.revenue_base] || selectedPlan.revenue_base}</DetailValue>
                       </DetailRow>
                     </>
@@ -1341,12 +1343,12 @@ const FoodcourtPlansPage: React.FC = () => {
                               {currencyConfig[code]?.symbol || code} {code}
                             </div>
                             <DetailRow>
-                              <DetailLabel>Monthly</DetailLabel>
+                              <DetailLabel>{t('foodcourt:foodcourtPlansPage.monthly')}</DetailLabel>
                               <DetailValue>{formatCurrency(monthly, code)}</DetailValue>
                             </DetailRow>
                             {annual > 0 && (
                               <DetailRow>
-                                <DetailLabel>Annual</DetailLabel>
+                                <DetailLabel>{t('foodcourt:foodcourtPlansPage.annual')}</DetailLabel>
                                 <DetailValue>{formatCurrency(annual, code)}</DetailValue>
                               </DetailRow>
                             )}
@@ -1356,30 +1358,30 @@ const FoodcourtPlansPage: React.FC = () => {
                     </>
                   )}
                   <DetailRow>
-                    <DetailLabel>Billing Day</DetailLabel>
+                    <DetailLabel>{t('foodcourt:foodcourtPlansPage.billingDay')}</DetailLabel>
                     <DetailValue>{selectedPlan.billing_day ? `Every ${selectedPlan.billing_day}th` : 'Subscription Start Date'}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Auto-generate Invoices</DetailLabel>
+                    <DetailLabel>{t('foodcourt:foodcourtPlansPage.autogenerateInvoices')}</DetailLabel>
                     <DetailValue>{selectedPlan.auto_generate ? 'Yes' : 'No'}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
                 <DetailSection>
-                  <h4>Statistics</h4>
+                  <h4>{t('foodcourt:foodcourtPlansPage.statistics')}</h4>
                   <DetailRow>
-                    <DetailLabel>Current Tenants</DetailLabel>
+                    <DetailLabel>{t('foodcourt:foodcourtPlansPage.currentTenants')}</DetailLabel>
                     <DetailValue>{getSubscriptionCount(selectedPlan)}</DetailValue>
                   </DetailRow>
                   <DetailRow>
-                    <DetailLabel>Created Date</DetailLabel>
+                    <DetailLabel>{t('foodcourt:foodcourtPlansPage.createdDate')}</DetailLabel>
                     <DetailValue>{new Date(selectedPlan.createdAt).toLocaleDateString()}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
                 {Array.isArray(selectedPlan.features) && selectedPlan.features.length > 0 && (
                   <DetailSection>
-                    <h4>Features</h4>
+                    <h4>{t('foodcourt:foodcourtPlansPage.features')}</h4>
                     <FeaturesList>
                       {selectedPlan.features.map((feature, index) => (
                         <FeatureItem key={index}>{feature}</FeatureItem>
@@ -1405,7 +1407,7 @@ const FoodcourtPlansPage: React.FC = () => {
                       ))}
                     </RestaurantList>
                   ) : (
-                    <p style={{color: '#6B7280', fontSize: '14px'}}>No tenants assigned to this plan.</p>
+                    <p style={{color: '#6B7280', fontSize: '14px'}}>{t('foodcourt:foodcourtPlansPage.noTenantsAssignedToThisPlan')}</p>
                   )}
                   <Button variant="secondary" style={{marginTop: '12px', width: '100%'}} onClick={() => handleManageRestaurants(selectedPlan)}>
                     Manage Tenant Assignments
@@ -1417,7 +1419,7 @@ const FoodcourtPlansPage: React.FC = () => {
 
         {/* Plan Prices Modal (Fixed type only) */}
         {showPricesModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowPricesModal(false)} title={`Set Prices for ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowPricesModal(false)}>Cancel</Button><Button variant="primary" onClick={savePlanPrices}>Save Prices</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowPricesModal(false)} title={`Set Prices for ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowPricesModal(false)}>{t('foodcourt:foodcourtPlansPage.cancel')}</Button><Button variant="primary" onClick={savePlanPrices}>{t('foodcourt:foodcourtPlansPage.savePrices')}</Button></>}>
 
                 <p style={{ marginBottom: '20px', color: '#6B7280', fontSize: '14px' }}>
                   Configure pricing for each supported currency.
@@ -1433,13 +1435,13 @@ const FoodcourtPlansPage: React.FC = () => {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                           <div>
-                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>Monthly Price</label>
+                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>{t('foodcourt:foodcourtPlansPage.monthlyPrice')}</label>
                             <input type="number" value={editingPlanPrices[code]?.monthly || ''} onChange={(e) => setEditingPlanPrices({
                               ...editingPlanPrices, [code]: { ...editingPlanPrices[code], monthly: e.target.value }
                             })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' as const }} placeholder="0.00" />
                           </div>
                           <div>
-                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>Annual Price</label>
+                            <label style={{ fontSize: '13px', color: '#6B7280', display: 'block', marginBottom: '4px' }}>{t('foodcourt:foodcourtPlansPage.annualPrice')}</label>
                             <input type="number" value={editingPlanPrices[code]?.annual || ''} onChange={(e) => setEditingPlanPrices({
                               ...editingPlanPrices, [code]: { ...editingPlanPrices[code], annual: e.target.value }
                             })} style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' as const }} placeholder="0.00" />
@@ -1455,7 +1457,7 @@ const FoodcourtPlansPage: React.FC = () => {
 
         {/* Restaurant Assignment Modal */}
         {showRestaurantModal && selectedPlan && (
-                    <CommonModal isOpen={true} onClose={() => setShowRestaurantModal(false)} title={`Manage Tenants: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowRestaurantModal(false)}>Close</Button></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowRestaurantModal(false)} title={`Manage Tenants: ${selectedPlan.name}`} footer={<><Button variant="secondary" onClick={() => setShowRestaurantModal(false)}>{t('foodcourt:foodcourtPlansPage.close')}</Button></>}>
 
                 <p style={{ marginBottom: '16px', color: '#6B7280', fontSize: '14px' }}>
                   Assign or remove tenants from this plan.
@@ -1470,15 +1472,15 @@ const FoodcourtPlansPage: React.FC = () => {
                           <div style={{fontSize: '12px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
                         </div>
                         {isAssigned ? (
-                          <Button variant="danger-outline" onClick={() => removeRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>Remove</Button>
+                          <Button variant="danger-outline" onClick={() => removeRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>{t('foodcourt:foodcourtPlansPage.remove')}</Button>
                         ) : (
-                          <Button variant="primary" onClick={() => assignRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>Assign</Button>
+                          <Button variant="primary" onClick={() => assignRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>{t('foodcourt:foodcourtPlansPage.assign')}</Button>
                         )}
                       </RestaurantItem>
                     );
                   })}
                   {foodcourtRestaurants.length === 0 && (
-                    <div style={{padding: '20px', textAlign: 'center', color: '#6B7280'}}>No tenants found in your foodcourt.</div>
+                    <div style={{padding: '20px', textAlign: 'center', color: '#6B7280'}}>{t('foodcourt:foodcourtPlansPage.noTenantsFoundInYourFoodcourt')}</div>
                   )}
                 </RestaurantList>
               

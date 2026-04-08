@@ -9,6 +9,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 interface IngredientsTabProps {
   brandId: number | null;
@@ -468,6 +469,7 @@ const HeaderSection = styled.div`
 `;
 
 const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
+  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -1028,11 +1030,11 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
       {loading ? (
         <EmptyState>
-          <EmptyTitle>Loading...</EmptyTitle>
+          <EmptyTitle>{'Loading...'}</EmptyTitle>
         </EmptyState>
       ) : filteredIngredients.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No ingredients found</EmptyTitle>
+          <EmptyTitle>{'No ingredients found'}</EmptyTitle>
           <EmptyDescription>
             {searchTerm || selectedCategory !== 'all'
               ? 'Try adjusting your filters'
@@ -1073,7 +1075,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   </IngredientName>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     {isRestaurantAdmin && ingredient.owner_type === 'brand' && (
-                      <BrandBadge>Brand</BrandBadge>
+                      <BrandBadge>{'Brand'}</BrandBadge>
                     )}
                     <IngredientCategoryBadge>
                       {ingredient.ingredientCategory?.emoji} {ingredient.ingredientCategory?.name || 'Uncategorized'}
@@ -1088,7 +1090,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   <>
                     <CostOverrideSection>
                       <CostRow>
-                        <CostLabel type="brand">Brand Cost</CostLabel>
+                        <CostLabel type="brand">{'Brand Cost'}</CostLabel>
                         <CostValue type="brand">{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}/{ingredient.unit}</CostValue>
                       </CostRow>
 
@@ -1096,7 +1098,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         /* 인라인 편집 모드 */
                         <div style={{ marginTop: 6 }}>
                           <CostRow>
-                            <CostLabel type="my">My Cost</CostLabel>
+                            <CostLabel type="my">{'My Cost'}</CostLabel>
                             <CostEditInline>
                               <CostInput
                                 type="number"
@@ -1144,7 +1146,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                       ) : (
                         /* My Cost 미설정 */
                         <CostRow style={{ marginTop: 4 }}>
-                          <CostLabel type="my">My Cost</CostLabel>
+                          <CostLabel type="my">{'My Cost'}</CostLabel>
                           <SetCostButton onClick={(e) => {
                             e.stopPropagation();
                             setEditingCostId(ingredient.id);
@@ -1157,7 +1159,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                       )}
 
                       <CostRow style={{ marginTop: 6, borderTop: '1px solid #DBEAFE', paddingTop: 6 }}>
-                        <CostLabel type="applied">Applied</CostLabel>
+                        <CostLabel type="applied">{'Applied'}</CostLabel>
                         <CostValue type="applied">
                           {formatCurrency(Number(ingredient.effective_cost ?? ingredient.unit_cost), selectedCurrency)}/{ingredient.unit} {ingredient.restaurant_cost !== null && ingredient.restaurant_cost !== undefined ? '✓' : ''}
                         </CostValue>
@@ -1172,23 +1174,23 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 ) : (
                   /* 브랜드 관리자 or 레스토랑 자체 재료: 기존 방식 */
                   <InfoRow>
-                    <InfoLabel>Unit Cost</InfoLabel>
+                    <InfoLabel>{'Unit Cost'}</InfoLabel>
                     <InfoValue>{formatCurrency(Number(ingredient.unit_cost), selectedCurrency)}</InfoValue>
                   </InfoRow>
                 )}
                 <InfoRow>
-                  <InfoLabel>Base Qty / Unit</InfoLabel>
+                  <InfoLabel>{'Base Qty / Unit'}</InfoLabel>
                   <InfoValue>{Number(ingredient.base_quantity || 1)} {ingredient.unit}</InfoValue>
                 </InfoRow>
                 {(ingredient.supplier?.name || ingredient.supplier_name) && (
                   <InfoRow>
-                    <InfoLabel>Supplier</InfoLabel>
+                    <InfoLabel>{'Supplier'}</InfoLabel>
                     <InfoValue>{ingredient.supplier?.name || ingredient.supplier_name}</InfoValue>
                   </InfoRow>
                 )}
                 {ingredient.code && (
                   <InfoRow>
-                    <InfoLabel>Code</InfoLabel>
+                    <InfoLabel>{'Code'}</InfoLabel>
                     <InfoValue>{ingredient.code}</InfoValue>
                   </InfoRow>
                 )}
@@ -1196,7 +1198,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               {/* Track Stock 토글 - Restaurant Admin만 표시 (브랜드 재료도 재고 연동은 가능) */}
               {isRestaurantAdmin && (
                 <TrackStockRow>
-                  <TrackStockLabel>Track in Inventory</TrackStockLabel>
+                  <TrackStockLabel>{'Track in Inventory'}</TrackStockLabel>
                   <ToggleSwitch>
                     <ToggleInput
                       type="checkbox"
@@ -1240,7 +1242,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       >
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <UIFormGroup>
-            <FormLabel>Image</FormLabel>
+            <FormLabel>{'Image'}</FormLabel>
             <input
               type="file"
               accept="image/*"
@@ -1254,7 +1256,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               {formData.image_url ? (
                 <img src={formData.image_url} alt="Ingredient" />
               ) : (
-                <ImagePlaceholder>Click to upload image</ImagePlaceholder>
+                <ImagePlaceholder>{'Click to upload image'}</ImagePlaceholder>
               )}
             </ImagePreview>
           </UIFormGroup>
@@ -1271,7 +1273,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Code</FormLabel>
+              <FormLabel>{'Code'}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.code}
@@ -1289,7 +1291,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 onChange={(e) => setFormData({ ...formData, ingredient_category_id: e.target.value })}
                 required
               >
-                <option value="">Select category...</option>
+                <option value="">{'Select category...'}</option>
                 {ingredientCategories.map(cat => (
                   <option key={cat.id} value={cat.id}>
                     {cat.emoji} {cat.name}
@@ -1298,7 +1300,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               </FormSelect>
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Supplier</FormLabel>
+              <FormLabel>{'Supplier'}</FormLabel>
               <SearchableSelect
                 options={suppliers.map(s => ({
                   value: s.id,
@@ -1333,7 +1335,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                 required
               >
-                <option value="">Select unit...</option>
+                <option value="">{'Select unit...'}</option>
                 <option value="kg">kg</option>
                 <option value="g">g</option>
                 <option value="L">L</option>
@@ -1359,7 +1361,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>Minimum Stock</FormLabel>
+              <FormLabel>{'Minimum Stock'}</FormLabel>
               <FormInput
                 type="number"
                 value={formData.min_stock}
@@ -1405,13 +1407,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           {/* Badges */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
             {isRestaurantAdmin && detailIngredient.owner_type === 'brand' && (
-              <span style={{ fontSize: '11px', fontWeight: 600, color: '#92400E', background: '#FEF3C7', padding: '3px 8px', borderRadius: '4px' }}>Brand</span>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#92400E', background: '#FEF3C7', padding: '3px 8px', borderRadius: '4px' }}>{'Brand'}</span>
             )}
             <span style={{ fontSize: '11px', fontWeight: 600, color: '#635BFF', background: '#F0F4FF', padding: '3px 8px', borderRadius: '4px' }}>
               {detailIngredient.ingredientCategory?.emoji} {detailIngredient.ingredientCategory?.name || 'Uncategorized'}
             </span>
             {detailIngredient.track_stock && (
-              <span style={{ fontSize: '11px', fontWeight: 500, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: '4px' }}>Tracking</span>
+              <span style={{ fontSize: '11px', fontWeight: 500, color: '#059669', background: '#ECFDF5', padding: '3px 8px', borderRadius: '4px' }}>{'Tracking'}</span>
             )}
             {detailIngredient.code && (
               <span style={{ fontSize: '11px', fontWeight: 500, color: '#6B7280', background: '#F3F4F6', padding: '3px 8px', borderRadius: '4px' }}>{detailIngredient.code}</span>
@@ -1443,17 +1445,17 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           {/* Base Qty / Stock / Min Stock - 3 columns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Base Qty</div>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>{'Base Qty'}</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{Number(detailIngredient.base_quantity || 1)} {detailIngredient.unit}</div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Current Stock</div>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>{'Current Stock'}</div>
               <div style={{ fontSize: '14px', fontWeight: 600, color: detailIngredient.track_stock && Number(detailIngredient.current_stock || 0) <= Number(detailIngredient.min_stock || 0) ? '#EF4444' : '#0A2540' }}>
                 {detailIngredient.track_stock ? `${Number(detailIngredient.current_stock || 0).toFixed(1)} ${detailIngredient.unit}` : '-'}
               </div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>Min Stock</div>
+              <div style={{ fontSize: '11px', color: '#6B7280', marginBottom: '3px' }}>{'Min Stock'}</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{detailIngredient.track_stock ? `${Number(detailIngredient.min_stock || 0)} ${detailIngredient.unit}` : '-'}</div>
             </div>
           </div>
@@ -1467,20 +1469,20 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
           {/* Connected recipes/menus */}
           <div style={{ padding: '12px', background: '#F0F4FF', borderRadius: '8px', border: '1px solid #DBEAFE', marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1E40AF', marginBottom: '8px' }}>Used In</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1E40AF', marginBottom: '8px' }}>{'Used In'}</div>
             {linkedItems.recipes.length === 0 && linkedItems.products.length === 0 ? (
-              <div style={{ fontSize: '13px', color: '#6B7280' }}>Not linked to any recipe or menu yet.</div>
+              <div style={{ fontSize: '13px', color: '#6B7280' }}>{'Not linked to any recipe or menu yet.'}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {linkedItems.recipes.map((r: any) => (
                   <div key={'r' + r.id} style={{ fontSize: '13px', color: '#1E40AF' }}>
-                    <span style={{ fontSize: '11px', background: '#EFF6FF', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>Recipe</span>
+                    <span style={{ fontSize: '11px', background: '#EFF6FF', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>{'Recipe'}</span>
                     {r.name}
                   </div>
                 ))}
                 {linkedItems.products.map((p: any) => (
                   <div key={'p' + p.id} style={{ fontSize: '13px', color: '#059669' }}>
-                    <span style={{ fontSize: '11px', background: '#ECFDF5', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>Menu</span>
+                    <span style={{ fontSize: '11px', background: '#ECFDF5', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>{'Menu'}</span>
                     {p.name}
                   </div>
                 ))}

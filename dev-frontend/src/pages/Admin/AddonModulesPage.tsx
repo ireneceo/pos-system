@@ -9,6 +9,7 @@ import {
   Button
 , Modal as CommonModal } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface AddonModule {
   id: number;
@@ -351,6 +352,7 @@ const SearchInput = styled.input`
 `;
 
 const AddonModulesPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [modules, setModules] = useState<AddonModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -533,12 +535,11 @@ const AddonModulesPage: React.FC = () => {
   const formatPrice = (price: number) => {
     return price === 0 ? 'Free' : `RM ${price.toFixed(2)}`;
   };
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Addon Modules</Title>
+          <Title>{'Addon Modules'}</Title>
           <ActionSection>
             <Button variant="primary" onClick={openCreateModal}>
               Create Module
@@ -549,19 +550,19 @@ const AddonModulesPage: React.FC = () => {
           <StatsGrid>
             <StatCard>
               <StatValue>{modules.length}</StatValue>
-              <StatLabel>Total Modules</StatLabel>
+              <StatLabel>{'Total Modules'}</StatLabel>
             </StatCard>
             <StatCard>
               <StatValue>{activeModules}</StatValue>
-              <StatLabel>Active Modules</StatLabel>
+              <StatLabel>{'Active Modules'}</StatLabel>
             </StatCard>
             <StatCard>
               <StatValue>{basicModules}</StatValue>
-              <StatLabel>Basic Modules</StatLabel>
+              <StatLabel>{'Basic Modules'}</StatLabel>
             </StatCard>
             <StatCard>
               <StatValue>{advancedModules}</StatValue>
-              <StatLabel>Advanced Modules</StatLabel>
+              <StatLabel>{'Advanced Modules'}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -577,27 +578,27 @@ const AddonModulesPage: React.FC = () => {
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
-              <option value="all">All Categories</option>
-              <option value="basic">Basic</option>
-              <option value="advanced">Advanced</option>
+              <option value="all">{'All Categories'}</option>
+              <option value="basic">{'Basic'}</option>
+              <option value="advanced">{'Advanced'}</option>
             </FilterSelect>
             <FilterSelect
               value={targetFilter}
               onChange={(e) => setTargetFilter(e.target.value)}
             >
-              <option value="all">All Targets</option>
-              <option value="restaurant">Restaurant</option>
-              <option value="brand">Brand</option>
-              <option value="foodcourt">Foodcourt</option>
-              <option value="owner">Owner</option>
+              <option value="all">{'All Targets'}</option>
+              <option value="restaurant">{'Restaurant'}</option>
+              <option value="brand">{'Brand'}</option>
+              <option value="foodcourt">{'Foodcourt'}</option>
+              <option value="owner">{'Owner'}</option>
             </FilterSelect>
             <FilterSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">{'All Status'}</option>
+              <option value="active">{'Active'}</option>
+              <option value="inactive">{'Inactive'}</option>
             </FilterSelect>
             <SearchInput
               type="text"
@@ -635,11 +636,11 @@ const AddonModulesPage: React.FC = () => {
 
                   <PricingInfo>
                     <PriceItem>
-                      <PriceLabel>Monthly</PriceLabel>
+                      <PriceLabel>{'Monthly'}</PriceLabel>
                       <PriceValue>{formatPrice(module.base_price_monthly)}</PriceValue>
                     </PriceItem>
                     <PriceItem>
-                      <PriceLabel>Annual</PriceLabel>
+                      <PriceLabel>{'Annual'}</PriceLabel>
                       <PriceValue>{formatPrice(module.base_price_annual)}</PriceValue>
                     </PriceItem>
                   </PricingInfo>
@@ -673,7 +674,7 @@ const AddonModulesPage: React.FC = () => {
 
           {/* Create/Edit Modal */}
           {showModal && (
-                        <CommonModal isOpen={true} onClose={() => setShowModal(false)} title={editingModule ? 'Edit Module' : 'Create New Module'} footer={<><Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button><Button variant="primary" onClick={saveModule}> {editingModule ? 'Update' : 'Create'} </Button></>}>
+                        <CommonModal isOpen={true} onClose={() => setShowModal(false)} title={editingModule ? 'Edit Module' : 'Create New Module'} footer={<><Button variant="secondary" onClick={() => setShowModal(false)}>{'Cancel'}</Button><Button variant="primary" onClick={saveModule}> {editingModule ? 'Update' : 'Create'} </Button></>}>
 
                   <FormRow>
                     <FormGroup>
@@ -698,7 +699,7 @@ const AddonModulesPage: React.FC = () => {
                   </FormRow>
 
                   <FormGroup>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>{'Description'}</FormLabel>
                     <FormTextArea
                       rows={3}
                       value={formData.description}
@@ -709,33 +710,33 @@ const AddonModulesPage: React.FC = () => {
 
                   <FormRow>
                     <FormGroup>
-                      <FormLabel>Category</FormLabel>
+                      <FormLabel>{'Category'}</FormLabel>
                       <FormSelect
                         value={formData.category}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
                       >
-                        <option value="basic">Basic</option>
-                        <option value="advanced">Advanced</option>
+                        <option value="basic">{'Basic'}</option>
+                        <option value="advanced">{'Advanced'}</option>
                       </FormSelect>
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Target User Type</FormLabel>
+                      <FormLabel>{'Target User Type'}</FormLabel>
                       <FormSelect
                         value={formData.target_user_type}
                         onChange={(e) => setFormData({ ...formData, target_user_type: e.target.value as any })}
                       >
-                        <option value="all">All</option>
-                        <option value="restaurant">Restaurant</option>
-                        <option value="brand">Brand</option>
-                        <option value="foodcourt">Foodcourt</option>
-                        <option value="owner">Owner</option>
+                        <option value="all">{'All'}</option>
+                        <option value="restaurant">{'Restaurant'}</option>
+                        <option value="brand">{'Brand'}</option>
+                        <option value="foodcourt">{'Foodcourt'}</option>
+                        <option value="owner">{'Owner'}</option>
                       </FormSelect>
                     </FormGroup>
                   </FormRow>
 
                   <FormRow>
                     <FormGroup>
-                      <FormLabel>Monthly Price (RM)</FormLabel>
+                      <FormLabel>{'Monthly Price (RM)'}</FormLabel>
                       <FormInput
                         type="number"
                         value={formData.base_price_monthly}
@@ -744,7 +745,7 @@ const AddonModulesPage: React.FC = () => {
                       />
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Annual Price (RM)</FormLabel>
+                      <FormLabel>{'Annual Price (RM)'}</FormLabel>
                       <FormInput
                         type="number"
                         value={formData.base_price_annual}
@@ -755,7 +756,7 @@ const AddonModulesPage: React.FC = () => {
                   </FormRow>
 
                   <FormGroup>
-                    <FormLabel>Features (one per line)</FormLabel>
+                    <FormLabel>{'Features (one per line)'}</FormLabel>
                     <FormTextArea
                       rows={4}
                       value={formData.features}
@@ -766,7 +767,7 @@ const AddonModulesPage: React.FC = () => {
 
                   <FormRow>
                     <FormGroup>
-                      <FormLabel>Dependencies (comma-separated codes)</FormLabel>
+                      <FormLabel>{'Dependencies (comma-separated codes)'}</FormLabel>
                       <FormInput
                         type="text"
                         value={formData.dependencies}
@@ -775,7 +776,7 @@ const AddonModulesPage: React.FC = () => {
                       />
                     </FormGroup>
                     <FormGroup>
-                      <FormLabel>Sort Order</FormLabel>
+                      <FormLabel>{'Sort Order'}</FormLabel>
                       <FormInput
                         type="number"
                         value={formData.sort_order}
@@ -792,7 +793,7 @@ const AddonModulesPage: React.FC = () => {
                       checked={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                     />
-                    <label htmlFor="is_active">Active</label>
+                    <label htmlFor="is_active">{'Active'}</label>
                   </CheckboxItem>
                 
             </CommonModal>

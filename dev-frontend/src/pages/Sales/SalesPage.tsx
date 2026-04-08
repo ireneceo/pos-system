@@ -9,6 +9,7 @@ import { formatPaymentDisplay } from '../../constants';
 import { getTodayInTimezone, getDateInTimezone } from '../../utils/timezone';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
+import { useTranslation } from 'react-i18next';
 
 // 매출 데이터 타입 정의
 interface SalesTransaction {
@@ -589,6 +590,7 @@ const PageInfo = styled.span`
 `;
 
 const SalesPage: React.FC = () => {
+  const { t } = useTranslation('reports');
   const { currentStaff, isLoggedIn } = useStaff();
   const { orders } = useOrders();
   const { operationSettings, paymentSettings } = useStore();
@@ -1173,7 +1175,7 @@ const SalesPage: React.FC = () => {
 </head>
 <body>
     <div class="header">
-        <div class="title">Sales Report</div>
+        <div class="title">{t('reports:salesPage.salesReport')}</div>
         <div class="subtitle">Generated on ${new Date().toLocaleDateString('en-US', { 
           year: 'numeric', 
           month: 'long', 
@@ -1185,65 +1187,65 @@ const SalesPage: React.FC = () => {
     </div>
 
     <div class="section">
-        <div class="section-title">Summary</div>
+        <div class="section-title">{t('reports:salesPage.summary')}</div>
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value">RM ${totalSales.toFixed(2)}</div>
-                <div class="stat-label">Total Sales</div>
+                <div class="stat-label">{t('reports:salesPage.totalSales')}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">${totalTransactions}</div>
-                <div class="stat-label">Total Transactions</div>
+                <div class="stat-label">{t('reports:salesPage.totalTransactions')}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">RM ${(totalSales / totalTransactions || 0).toFixed(2)}</div>
-                <div class="stat-label">Average Order Value</div>
+                <div class="stat-label">{t('reports:salesPage.averageOrderValue')}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">${((statusBreakdown.completed / totalTransactions) * 100).toFixed(1)}%</div>
-                <div class="stat-label">Success Rate</div>
+                <div class="stat-label">{t('reports:salesPage.successRate')}</div>
             </div>
         </div>
     </div>
 
     <div class="section">
-        <div class="section-title">Payment Method Breakdown</div>
+        <div class="section-title">{t('reports:salesPage.paymentMethodBreakdown')}</div>
         <div class="breakdown">
             <div class="breakdown-item">
-                <span class="breakdown-label">Cash</span>
+                <span class="breakdown-label">{t('reports:salesPage.cash')}</span>
                 <span class="breakdown-value">RM ${paymentMethodBreakdown.cash.toFixed(2)} (${((paymentMethodBreakdown.cash / totalSales) * 100).toFixed(1)}%)</span>
             </div>
             <div class="breakdown-item">
-                <span class="breakdown-label">Card</span>
+                <span class="breakdown-label">{t('reports:salesPage.card')}</span>
                 <span class="breakdown-value">RM ${paymentMethodBreakdown.card.toFixed(2)} (${((paymentMethodBreakdown.card / totalSales) * 100).toFixed(1)}%)</span>
             </div>
             <div class="breakdown-item">
-                <span class="breakdown-label">Digital Wallet</span>
+                <span class="breakdown-label">{t('reports:salesPage.digitalWallet')}</span>
                 <span class="breakdown-value">RM ${paymentMethodBreakdown.digital_wallet.toFixed(2)} (${((paymentMethodBreakdown.digital_wallet / totalSales) * 100).toFixed(1)}%)</span>
             </div>
             <div class="breakdown-item">
-                <span class="breakdown-label">Points</span>
+                <span class="breakdown-label">{t('reports:salesPage.points')}</span>
                 <span class="breakdown-value">RM ${paymentMethodBreakdown.points.toFixed(2)} (${((paymentMethodBreakdown.points / totalSales) * 100).toFixed(1)}%)</span>
             </div>
         </div>
     </div>
 
     <div class="section">
-        <div class="section-title">Customer Type Analysis</div>
+        <div class="section-title">{t('reports:salesPage.customerTypeAnalysis')}</div>
         <div class="breakdown">
             <div class="breakdown-item">
-                <span class="breakdown-label">Members</span>
+                <span class="breakdown-label">{t('reports:salesPage.members')}</span>
                 <span class="breakdown-value">RM ${customerTypeBreakdown.member.toFixed(2)} (${((customerTypeBreakdown.member / totalSales) * 100).toFixed(1)}%)</span>
             </div>
             <div class="breakdown-item">
-                <span class="breakdown-label">Guests</span>
+                <span class="breakdown-label">{t('reports:salesPage.guests')}</span>
                 <span class="breakdown-value">RM ${customerTypeBreakdown.guest.toFixed(2)} (${((customerTypeBreakdown.guest / totalSales) * 100).toFixed(1)}%)</span>
             </div>
         </div>
     </div>
 
     <div class="section">
-        <div class="section-title">Top Performing Staff</div>
+        <div class="section-title">{t('reports:salesPage.topPerformingStaff')}</div>
         <div class="breakdown">
             ${topStaff.map(([name, sales]) => `
                 <div class="breakdown-item">
@@ -1255,7 +1257,7 @@ const SalesPage: React.FC = () => {
     </div>
 
     <div class="footer">
-        <p>Generated by Purple Here POS</p>
+        <p>{t('reports:salesPage.generatedByPurpleHerePos')}</p>
         <p>🤖 Generated with Claude Code</p>
     </div>
 </body>
@@ -1309,29 +1311,29 @@ const SalesPage: React.FC = () => {
     </div>
 
     <div class="section">
-        <div class="section-title">Overall Summary</div>
+        <div class="section-title">{t('reports:salesPage.overallSummary')}</div>
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value">${aggregateData.length}</div>
-                <div class="stat-label">Total Periods</div>
+                <div class="stat-label">{t('reports:salesPage.totalPeriods')}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">RM ${totalSales.toFixed(2)}</div>
-                <div class="stat-label">Total Sales</div>
+                <div class="stat-label">{t('reports:salesPage.totalSales')}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">${totalTransactions.toLocaleString()}</div>
-                <div class="stat-label">Total Transactions</div>
+                <div class="stat-label">{t('reports:salesPage.totalTransactions')}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value">${avgGrowth.toFixed(1)}%</div>
-                <div class="stat-label">Average Growth</div>
+                <div class="stat-label">{t('reports:salesPage.averageGrowth')}</div>
             </div>
         </div>
     </div>
 
     <div class="section">
-        <div class="section-title">Performance Highlights</div>
+        <div class="section-title">{t('reports:salesPage.performanceHighlights')}</div>
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value">RM ${bestPeriod.totalSales.toFixed(2)}</div>
@@ -1345,15 +1347,15 @@ const SalesPage: React.FC = () => {
     </div>
 
     <div class="section">
-        <div class="section-title">Detailed Breakdown</div>
+        <div class="section-title">{t('reports:salesPage.detailedBreakdown')}</div>
         <table class="period-table">
             <thead>
                 <tr>
-                    <th>Period</th>
-                    <th>Total Sales</th>
-                    <th>Transactions</th>
-                    <th>Avg Order Value</th>
-                    <th>Growth Rate</th>
+                    <th>{t('reports:salesPage.period')}</th>
+                    <th>{t('reports:salesPage.totalSales')}</th>
+                    <th>{t('reports:salesPage.transactions')}</th>
+                    <th>{t('reports:salesPage.avgOrderValue')}</th>
+                    <th>{t('reports:salesPage.growthRate')}</th>
                 </tr>
             </thead>
             <tbody>
@@ -1373,7 +1375,7 @@ const SalesPage: React.FC = () => {
     </div>
 
     <div class="footer">
-        <p>Generated by Purple Here POS</p>
+        <p>{t('reports:salesPage.generatedByPurpleHerePos')}</p>
         <p>🤖 Generated with Claude Code</p>
     </div>
 </body>
@@ -1416,7 +1418,7 @@ const SalesPage: React.FC = () => {
     <>
       <SalesContainer>
         <Header>
-          <HeaderTitle>Sales Management</HeaderTitle>
+          <HeaderTitle>{t('reports:salesPage.salesManagement')}</HeaderTitle>
           <HeaderActions>
             <Button variant="secondary" onClick={downloadCSV}>
               Export CSV
@@ -1475,23 +1477,23 @@ const SalesPage: React.FC = () => {
             <>
               <FiltersRow>
             <FilterGroup>
-              <FilterLabel>Time Period</FilterLabel>
+              <FilterLabel>{t('reports:salesPage.timePeriod')}</FilterLabel>
               <FilterSelect 
                 value={dateFilter} 
                 onChange={(e) => setDateFilter(e.target.value)}
               >
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="this_week">This Week</option>
-                <option value="this_month">This Month</option>
-                <option value="custom">Custom Range</option>
+                <option value="today">{t('reports:salesPage.today')}</option>
+                <option value="yesterday">{t('reports:salesPage.yesterday')}</option>
+                <option value="this_week">{t('reports:salesPage.thisWeek')}</option>
+                <option value="this_month">{t('reports:salesPage.thisMonth')}</option>
+                <option value="custom">{t('reports:salesPage.customRange')}</option>
               </FilterSelect>
             </FilterGroup>
             
             {dateFilter === 'custom' && (
               <>
                 <FilterGroup>
-                  <FilterLabel>Start Date</FilterLabel>
+                  <FilterLabel>{t('reports:salesPage.startDate')}</FilterLabel>
                   <DateInput
                     type="date"
                     value={startDate}
@@ -1499,7 +1501,7 @@ const SalesPage: React.FC = () => {
                   />
                 </FilterGroup>
                 <FilterGroup>
-                  <FilterLabel>End Date</FilterLabel>
+                  <FilterLabel>{t('reports:salesPage.endDate')}</FilterLabel>
                   <DateInput
                     type="date"
                     value={endDate}
@@ -1510,29 +1512,29 @@ const SalesPage: React.FC = () => {
             )}
             
             <FilterGroup>
-              <FilterLabel>Payment Method</FilterLabel>
+              <FilterLabel>{t('reports:salesPage.paymentMethod')}</FilterLabel>
               <FilterSelect 
                 value={paymentFilter} 
                 onChange={(e) => setPaymentFilter(e.target.value)}
               >
-                <option value="all">All Methods</option>
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="digital_wallet">Digital Wallet</option>
-                <option value="points">Points</option>
+                <option value="all">{t('reports:salesPage.allMethods')}</option>
+                <option value="cash">{t('reports:salesPage.cash')}</option>
+                <option value="card">{t('reports:salesPage.card')}</option>
+                <option value="digital_wallet">{t('reports:salesPage.digitalWallet')}</option>
+                <option value="points">{t('reports:salesPage.points')}</option>
               </FilterSelect>
             </FilterGroup>
             
             <FilterGroup>
-              <FilterLabel>Status</FilterLabel>
+              <FilterLabel>{t('reports:salesPage.status')}</FilterLabel>
               <FilterSelect 
                 value={statusFilter} 
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
-                <option value="all">All Status</option>
-                <option value="completed">Completed</option>
-                <option value="refunded">Refunded</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="all">{t('reports:salesPage.allStatus')}</option>
+                <option value="completed">{t('reports:salesPage.completed')}</option>
+                <option value="refunded">{t('reports:salesPage.refunded')}</option>
+                <option value="cancelled">{t('reports:salesPage.cancelled')}</option>
               </FilterSelect>
             </FilterGroup>
           </FiltersRow>
@@ -1540,24 +1542,24 @@ const SalesPage: React.FC = () => {
           {summary && (
             <StatsRow>
               <StatCard color="#059669">
-                <StatLabel>Total Sales</StatLabel>
+                <StatLabel>{t('reports:salesPage.totalSales')}</StatLabel>
                 <StatValue>{formatCurrency(summary.totalSales, operationSettings.currency)}</StatValue>
                 <StatDescription>{summary.totalTransactions} transactions</StatDescription>
               </StatCard>
               <StatCard color="#2563EB">
-                <StatLabel>Average Order</StatLabel>
+                <StatLabel>{t('reports:salesPage.averageOrder')}</StatLabel>
                 <StatValue>{formatCurrency(summary.averageOrderValue, operationSettings.currency)}</StatValue>
                 <StatDescription>+12.5% vs last period</StatDescription>
               </StatCard>
               <StatCard color="#DC2626">
-                <StatLabel>Total Tax</StatLabel>
+                <StatLabel>{t('reports:salesPage.totalTax')}</StatLabel>
                 <StatValue>{formatCurrency(summary.totalTax, operationSettings.currency)}</StatValue>
-                <StatDescription>GST collected</StatDescription>
+                <StatDescription>{t('reports:salesPage.gstCollected')}</StatDescription>
               </StatCard>
               <StatCard color="#7C3AED">
-                <StatLabel>Total Discounts</StatLabel>
+                <StatLabel>{t('reports:salesPage.totalDiscounts')}</StatLabel>
                 <StatValue>{formatCurrency(summary.totalDiscount, operationSettings.currency)}</StatValue>
-                <StatDescription>Promotions applied</StatDescription>
+                <StatDescription>{t('reports:salesPage.promotionsApplied')}</StatDescription>
               </StatCard>
             </StatsRow>
           )}
@@ -1565,13 +1567,13 @@ const SalesPage: React.FC = () => {
           <TableContainer>
             <TableHeader>
               <span>Order #</span>
-              <span>Date & Time</span>
-              <span>Customer</span>
-              <span>Staff</span>
-              <span>Subtotal</span>
-              <span>Total</span>
-              <span>Payment</span>
-              <span>Status</span>
+              <span>{t('reports:salesPage.dateTime')}</span>
+              <span>{t('reports:salesPage.customer')}</span>
+              <span>{t('reports:salesPage.staff')}</span>
+              <span>{t('reports:salesPage.subtotal')}</span>
+              <span>{t('reports:salesPage.total')}</span>
+              <span>{t('reports:salesPage.payment')}</span>
+              <span>{t('reports:salesPage.status')}</span>
             </TableHeader>
             
             {filteredTransactions.length === 0 ? (
@@ -1671,7 +1673,7 @@ const SalesPage: React.FC = () => {
                 <FiltersRow>
                   {viewMode === 'yearly' && (
                     <FilterGroup>
-                      <FilterLabel>Year Range</FilterLabel>
+                      <FilterLabel>{t('reports:salesPage.yearRange')}</FilterLabel>
                       <FilterSelect 
                         value={yearFilter} 
                         onChange={(e) => setYearFilter(e.target.value)}
@@ -1680,14 +1682,14 @@ const SalesPage: React.FC = () => {
                         <option value="2023">2023</option>
                         <option value="2022">2022</option>
                         <option value="2021">2021</option>
-                        <option value="all">All Years</option>
+                        <option value="all">{t('reports:salesPage.allYears')}</option>
                       </FilterSelect>
                     </FilterGroup>
                   )}
                   
                   {viewMode === 'monthly' && (
                     <FilterGroup>
-                      <FilterLabel>Select Year</FilterLabel>
+                      <FilterLabel>{t('reports:salesPage.selectYear')}</FilterLabel>
                       <FilterSelect 
                         value={monthFilter.split('-')[0]} 
                         onChange={(e) => setMonthFilter(e.target.value + '-01')}
@@ -1703,7 +1705,7 @@ const SalesPage: React.FC = () => {
                   {viewMode === 'daily' && (
                     <>
                       <FilterGroup>
-                        <FilterLabel>Select Month</FilterLabel>
+                        <FilterLabel>{t('reports:salesPage.selectMonth')}</FilterLabel>
                         <DateInput
                           type="month"
                           value={weekFilter || monthFilter}
@@ -1711,7 +1713,7 @@ const SalesPage: React.FC = () => {
                         />
                       </FilterGroup>
                       <FilterGroup>
-                        <FilterLabel>Page Size</FilterLabel>
+                        <FilterLabel>{t('reports:salesPage.pageSize')}</FilterLabel>
                         <FilterSelect 
                           value={pageSize.toString()} 
                           onChange={(e) => setPageSize(parseInt(e.target.value))}
@@ -1799,15 +1801,15 @@ const SalesPage: React.FC = () => {
                       Total {detailView.type === 'year' ? 'Months' : detailView.type === 'month' ? 'Days' : viewMode === 'yearly' ? 'Years' : viewMode === 'monthly' ? 'Months' : 'Days'}
                     </StatLabel>
                     <StatValue>{aggregateData.length}</StatValue>
-                    <StatDescription>Reporting Period</StatDescription>
+                    <StatDescription>{t('reports:salesPage.reportingPeriod')}</StatDescription>
                   </StatCard>
                   <StatCard color="#635BFF">
-                    <StatLabel>Total Sales</StatLabel>
+                    <StatLabel>{t('reports:salesPage.totalSales')}</StatLabel>
                     <StatValue>{formatCurrency(aggregateData.reduce((sum, item) => sum + item.totalSales, 0), operationSettings.currency)}</StatValue>
-                    <StatDescription>Cumulative Amount</StatDescription>
+                    <StatDescription>{t('reports:salesPage.cumulativeAmount')}</StatDescription>
                   </StatCard>
                   <StatCard color="#635BFF">
-                    <StatLabel>Average Sales</StatLabel>
+                    <StatLabel>{t('reports:salesPage.averageSales')}</StatLabel>
                     <StatValue>
                       {formatCurrency(
                         aggregateData.length > 0
@@ -1816,10 +1818,10 @@ const SalesPage: React.FC = () => {
                         operationSettings.currency
                       )}
                     </StatValue>
-                    <StatDescription>Per Period Average</StatDescription>
+                    <StatDescription>{t('reports:salesPage.perPeriodAverage')}</StatDescription>
                   </StatCard>
                   <StatCard color="#635BFF">
-                    <StatLabel>Highest Sales</StatLabel>
+                    <StatLabel>{t('reports:salesPage.highestSales')}</StatLabel>
                     <StatValue>
                       {formatCurrency(
                         aggregateData.length > 0
@@ -1828,7 +1830,7 @@ const SalesPage: React.FC = () => {
                         operationSettings.currency
                       )}
                     </StatValue>
-                    <StatDescription>Peak Record</StatDescription>
+                    <StatDescription>{t('reports:salesPage.peakRecord')}</StatDescription>
                   </StatCard>
                 </StatsRow>
               )}
@@ -1853,13 +1855,13 @@ const SalesPage: React.FC = () => {
                   <TableContainer style={{ border: 'none', borderRadius: '0' }}>
                     <TableHeader>
                       <span>Order #</span>
-                      <span>Time</span>
-                      <span>Customer</span>
-                      <span>Staff</span>
-                      <span>Subtotal</span>
-                      <span>Total</span>
-                      <span>Payment</span>
-                      <span>Status</span>
+                      <span>{t('reports:salesPage.time')}</span>
+                      <span>{t('reports:salesPage.customer')}</span>
+                      <span>{t('reports:salesPage.staff')}</span>
+                      <span>{t('reports:salesPage.subtotal')}</span>
+                      <span>{t('reports:salesPage.total')}</span>
+                      <span>{t('reports:salesPage.payment')}</span>
+                      <span>{t('reports:salesPage.status')}</span>
                     </TableHeader>
                     
                     {detailTransactions.length === 0 ? (
@@ -1947,12 +1949,12 @@ const SalesPage: React.FC = () => {
               {detailView.type !== 'day' && (
                 <TableContainer>
                   <TableHeader>
-                    <span>Period</span>
-                    <span>Total Sales</span>
-                    <span>Transactions</span>
-                    <span>Avg Order Value</span>
-                    <span>Growth Rate</span>
-                    <span>Sales Rank</span>
+                    <span>{t('reports:salesPage.period')}</span>
+                    <span>{t('reports:salesPage.totalSales')}</span>
+                    <span>{t('reports:salesPage.transactions')}</span>
+                    <span>{t('reports:salesPage.avgOrderValue')}</span>
+                    <span>{t('reports:salesPage.growthRate')}</span>
+                    <span>{t('reports:salesPage.salesRank')}</span>
                     <span></span>
                     <span></span>
                   </TableHeader>
@@ -1989,7 +1991,7 @@ const SalesPage: React.FC = () => {
                                 {aggregate.growth > 0 ? '+' : ''}{aggregate.growth.toFixed(1)}%
                               </GrowthBadge>
                             ) : (
-                              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>N/A</span>
+                              <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('reports:salesPage.na')}</span>
                             )}
                           </div>
                           

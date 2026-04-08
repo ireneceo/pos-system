@@ -6,6 +6,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 interface Manager {
   id: string;
@@ -337,6 +338,7 @@ const AlwaysOnBadge = styled.span`
 `;
 
 const BrandStaffPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const { user } = useAuth();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -588,7 +590,7 @@ const BrandStaffPage: React.FC = () => {
     onChange: (updated: string[]) => void
   ) => (
     <div style={{ marginTop: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
-      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>Menu Access</div>
+      <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '4px' }}>{t('common:brandStaffPage.menuAccess')}</div>
       <div style={{ fontSize: '12px', color: '#6B7C93', marginBottom: '12px' }}>
         Select which menu sections this manager can access:
       </div>
@@ -621,7 +623,7 @@ const BrandStaffPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Managers</Title>
+        <Title>{t('common:brandStaffPage.managers')}</Title>
         {isGeneral && (
           <ActionSection>
             <Button variant="primary" onClick={handleOpenAddModal}>
@@ -635,11 +637,11 @@ const BrandStaffPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#7C3AED">
             <StatValue>{stats.total}</StatValue>
-            <StatLabel>Total Managers</StatLabel>
+            <StatLabel>{t('common:brandStaffPage.totalManagers')}</StatLabel>
           </StatCard>
           <StatCard color="#059669">
             <StatValue>{stats.active}</StatValue>
-            <StatLabel>Active</StatLabel>
+            <StatLabel>{t('common:brandStaffPage.active')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -667,12 +669,12 @@ const BrandStaffPage: React.FC = () => {
             <Table>
               <TableHead>
                 <tr>
-                  <th>Manager</th>
-                  <th>Phone</th>
-                  <th>Permissions</th>
-                  <th>Joined</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>{t('common:brandStaffPage.manager')}</th>
+                  <th>{t('common:brandStaffPage.phone')}</th>
+                  <th>{t('common:brandStaffPage.permissions')}</th>
+                  <th>{t('common:brandStaffPage.joined')}</th>
+                  <th>{t('common:brandStaffPage.status')}</th>
+                  <th>{t('common:brandStaffPage.actions')}</th>
                 </tr>
               </TableHead>
               <tbody>
@@ -692,7 +694,7 @@ const BrandStaffPage: React.FC = () => {
                     <TableCell data-label="Permissions">
                       <PermissionTags>
                         {manager.permissions.length === 0 ? (
-                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>No permissions</span>
+                          <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('common:brandStaffPage.noPermissions')}</span>
                         ) : (
                           manager.permissions.map(p => (
                             <PermissionTag key={p}>
@@ -748,8 +750,8 @@ const BrandStaffPage: React.FC = () => {
         size="large"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={() => { setShowAddModal(false); setFormError(''); }}>Cancel</ModalButton>
-            <ModalButton variant="primary" onClick={handleSubmitManager}>Add Manager</ModalButton>
+            <ModalButton variant="secondary" onClick={() => { setShowAddModal(false); setFormError(''); }}>{t('common:brandStaffPage.cancel')}</ModalButton>
+            <ModalButton variant="primary" onClick={handleSubmitManager}>{t('common:brandStaffPage.addManager')}</ModalButton>
           </>
         }
       >
@@ -791,7 +793,7 @@ const BrandStaffPage: React.FC = () => {
             />
           </FormGroup>
           <FormGroup>
-            <FormLabel>Phone</FormLabel>
+            <FormLabel>{t('common:brandStaffPage.phone')}</FormLabel>
             <PhoneInput
               value={newManager.phone}
               onChange={(value) => setNewManager(prev => ({ ...prev, phone: value }))}
@@ -817,8 +819,8 @@ const BrandStaffPage: React.FC = () => {
         size="large"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={() => { setShowEditModal(false); setEditingManager(null); setFormError(''); }}>Cancel</ModalButton>
-            <ModalButton variant="primary" onClick={handleUpdateManager}>Update Manager</ModalButton>
+            <ModalButton variant="secondary" onClick={() => { setShowEditModal(false); setEditingManager(null); setFormError(''); }}>{t('common:brandStaffPage.cancel')}</ModalButton>
+            <ModalButton variant="primary" onClick={handleUpdateManager}>{t('common:brandStaffPage.updateManager')}</ModalButton>
           </>
         }
       >
@@ -826,7 +828,7 @@ const BrandStaffPage: React.FC = () => {
           <>
             <FormRow>
               <FormGroup>
-                <FormLabel>Username</FormLabel>
+                <FormLabel>{t('common:brandStaffPage.username')}</FormLabel>
                 <FormInput
                   type="text"
                   value={editForm.username}
@@ -859,7 +861,7 @@ const BrandStaffPage: React.FC = () => {
                 />
               </FormGroup>
               <FormGroup>
-                <FormLabel>Phone</FormLabel>
+                <FormLabel>{t('common:brandStaffPage.phone')}</FormLabel>
                 <PhoneInput
                   value={editForm.phone}
                   onChange={(value) => setEditForm(prev => ({ ...prev, phone: value }))}
@@ -941,8 +943,8 @@ const BrandStaffPage: React.FC = () => {
         size="small"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</ModalButton>
-            <ModalButton variant="primary" onClick={executeDelete}>Delete</ModalButton>
+            <ModalButton variant="secondary" onClick={() => setDeleteTarget(null)}>{t('common:brandStaffPage.cancel')}</ModalButton>
+            <ModalButton variant="primary" onClick={executeDelete}>{t('common:brandStaffPage.delete')}</ModalButton>
           </>
         }
       >
@@ -961,7 +963,7 @@ const BrandStaffPage: React.FC = () => {
         title="Notice"
         size="small"
         footer={
-          <ModalButton variant="primary" onClick={() => setErrorMessage('')}>OK</ModalButton>
+          <ModalButton variant="primary" onClick={() => setErrorMessage('')}>{t('common:brandStaffPage.ok')}</ModalButton>
         }
       >
         <div style={{ fontSize: '14px', color: '#374151' }}>
@@ -977,8 +979,8 @@ const BrandStaffPage: React.FC = () => {
         size="small"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={() => setResetPasswordTarget(null)}>Cancel</ModalButton>
-            <ModalButton variant="primary" onClick={executeResetPassword}>Reset</ModalButton>
+            <ModalButton variant="secondary" onClick={() => setResetPasswordTarget(null)}>{t('common:brandStaffPage.cancel')}</ModalButton>
+            <ModalButton variant="primary" onClick={executeResetPassword}>{t('common:brandStaffPage.reset')}</ModalButton>
           </>
         }
       >

@@ -16,6 +16,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface StockTakeItem {
   id: number;
@@ -291,6 +292,7 @@ const CategoryHeader = styled.tr`
 `;
 
 const StockTakePage: React.FC = () => {
+  const { t } = useTranslation('inventory');
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const { defaultCurrency } = useBrandCurrency();
@@ -514,8 +516,8 @@ const StockTakePage: React.FC = () => {
       <>
         <Container>
           <EmptyState>
-            <EmptyTitle>Access Denied</EmptyTitle>
-            <EmptyDescription>Please log in with a restaurant account.</EmptyDescription>
+            <EmptyTitle>{t('inventory:stockTakePage.accessDenied')}</EmptyTitle>
+            <EmptyDescription>{t('inventory:stockTakePage.pleaseLogInWithARestaurantAccount')}</EmptyDescription>
           </EmptyState>
         </Container>
       </>
@@ -527,10 +529,10 @@ const StockTakePage: React.FC = () => {
       <>
         <Container>
           <Header>
-            <Title>Stock Take</Title>
+            <Title>{t('inventory:stockTakePage.stockTake')}</Title>
           </Header>
           <EmptyState>
-            <EmptyDescription>Loading...</EmptyDescription>
+            <EmptyDescription>{t('inventory:stockTakePage.loading')}</EmptyDescription>
           </EmptyState>
         </Container>
       </>
@@ -541,7 +543,7 @@ const StockTakePage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Stock Take</Title>
+          <Title>{t('inventory:stockTakePage.stockTake')}</Title>
           <ActionSection>
             <Button
               variant="secondary"
@@ -556,11 +558,11 @@ const StockTakePage: React.FC = () => {
           {currentStockTake ? (
             <>
               <GuideBox>
-                <GuideTitle>How to Complete Stock Take</GuideTitle>
+                <GuideTitle>{t('inventory:stockTakePage.howToCompleteStockTake')}</GuideTitle>
                 <GuideList>
-                  <GuideStep>Physically count each ingredient in your inventory</GuideStep>
+                  <GuideStep>{t('inventory:stockTakePage.physicallyCountEachIngredientInYourInventory')}</GuideStep>
                   <GuideStep>Enter the actual quantity in the "Actual Stock" column</GuideStep>
-                  <GuideStep>If there's a variance, select a reason from the dropdown</GuideStep>
+                  <GuideStep>{t('inventory:stockTakePage.ifTheresAVarianceSelectAReasonFromTheDropdown')}</GuideStep>
                   <GuideStep>Click "Save Progress" to save your work and continue later</GuideStep>
                   <GuideStep>When all items are counted, click "Complete Stock Take" to finalize</GuideStep>
                 </GuideList>
@@ -581,12 +583,12 @@ const StockTakePage: React.FC = () => {
             <StockTable>
               <thead>
                 <tr>
-                  <th>Ingredient</th>
-                  <th>Unit</th>
-                  <th>Theoretical Stock</th>
-                  <th>Actual Stock</th>
-                  <th>Variance</th>
-                  <th>Reason</th>
+                  <th>{t('inventory:stockTakePage.ingredient')}</th>
+                  <th>{t('inventory:stockTakePage.unit')}</th>
+                  <th>{t('inventory:stockTakePage.theoreticalStock')}</th>
+                  <th>{t('inventory:stockTakePage.actualStock')}</th>
+                  <th>{t('inventory:stockTakePage.variance')}</th>
+                  <th>{t('inventory:stockTakePage.reason')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -627,13 +629,13 @@ const StockTakePage: React.FC = () => {
                               value={item.variance_reason || ''}
                               onChange={(e) => handleItemChange(item.id, 'variance_reason', e.target.value || null)}
                             >
-                              <option value="">Select...</option>
-                              <option value="waste">Waste</option>
-                              <option value="breakage">Breakage</option>
-                              <option value="recipe_variance">Recipe Variance</option>
-                              <option value="unrecorded">Unrecorded Use</option>
-                              <option value="measurement">Measurement Error</option>
-                              <option value="other">Other</option>
+                              <option value="">{t('inventory:stockTakePage.select')}</option>
+                              <option value="waste">{t('inventory:stockTakePage.waste')}</option>
+                              <option value="breakage">{t('inventory:stockTakePage.breakage')}</option>
+                              <option value="recipe_variance">{t('inventory:stockTakePage.recipeVariance')}</option>
+                              <option value="unrecorded">{t('inventory:stockTakePage.unrecordedUse')}</option>
+                              <option value="measurement">{t('inventory:stockTakePage.measurementError')}</option>
+                              <option value="other">{t('inventory:stockTakePage.other')}</option>
                             </ReasonSelect>
                           )}
                         </td>
@@ -646,15 +648,15 @@ const StockTakePage: React.FC = () => {
 
             <SummaryCard>
               <SummaryItem>
-                <SummaryLabel>Items Counted</SummaryLabel>
+                <SummaryLabel>{t('inventory:stockTakePage.itemsCounted')}</SummaryLabel>
                 <SummaryValue>{countedItems} / {totalItems}</SummaryValue>
               </SummaryItem>
               <SummaryItem>
-                <SummaryLabel>Items with Variance</SummaryLabel>
+                <SummaryLabel>{t('inventory:stockTakePage.itemsWithVariance')}</SummaryLabel>
                 <SummaryValue color="#D97706">{itemsWithVariance}</SummaryValue>
               </SummaryItem>
               <SummaryItem>
-                <SummaryLabel>Total Loss Value</SummaryLabel>
+                <SummaryLabel>{t('inventory:stockTakePage.totalLossValue')}</SummaryLabel>
                 <SummaryValue color={totalVariance < 0 ? '#DC2626' : '#059669'}>
                   {formatCurrency(Math.abs(totalVariance), selectedCurrency)}
                 </SummaryValue>
@@ -676,17 +678,17 @@ const StockTakePage: React.FC = () => {
         ) : (
           <>
             <GuideBox>
-              <GuideTitle>What is Stock Take?</GuideTitle>
+              <GuideTitle>{t('inventory:stockTakePage.whatIsStockTake')}</GuideTitle>
               <GuideList>
-                <GuideStep>Stock Take is a process of physically counting all ingredients in your inventory</GuideStep>
-                <GuideStep>It helps identify discrepancies between system records and actual stock</GuideStep>
-                <GuideStep>Regular stock takes help reduce loss and improve inventory accuracy</GuideStep>
-                <GuideStep>We recommend doing a stock take at least once a week</GuideStep>
+                <GuideStep>{t('inventory:stockTakePage.stockTakeIsAProcessOfPhysicallyCountingAllIngredientsInYourInventory')}</GuideStep>
+                <GuideStep>{t('inventory:stockTakePage.itHelpsIdentifyDiscrepanciesBetweenSystemRecordsAndActualStock')}</GuideStep>
+                <GuideStep>{t('inventory:stockTakePage.regularStockTakesHelpReduceLossAndImproveInventoryAccuracy')}</GuideStep>
+                <GuideStep>{t('inventory:stockTakePage.weRecommendDoingAStockTakeAtLeastOnceAWeek')}</GuideStep>
               </GuideList>
             </GuideBox>
 
             <EmptyState>
-              <EmptyTitle>Ready to Start?</EmptyTitle>
+              <EmptyTitle>{t('inventory:stockTakePage.readyToStart')}</EmptyTitle>
               <EmptyDescription>
                 Click the button below to begin counting your inventory.
                 You can save your progress and continue later if needed.
@@ -699,7 +701,7 @@ const StockTakePage: React.FC = () => {
 
             {stockTakeHistory.length > 0 && (
               <>
-                <Title style={{ fontSize: '18px', marginTop: '48px' }}>Previous Stock Takes</Title>
+                <Title style={{ fontSize: '18px', marginTop: '48px' }}>{t('inventory:stockTakePage.previousStockTakes')}</Title>
                 <HistoryList>
                   {stockTakeHistory.filter(st => st.status !== 'in_progress').map(st => (
                     <HistoryCard key={st.id} status={st.status}>

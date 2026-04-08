@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import { BaseButton } from '../../components/UI';
 import SEOHead, { generateOrganizationSchema, generateSoftwareSchema, generateWebSiteSchema, generateLocalBusinessSchema } from '../../components/Common/SEOHead';
+import { useTranslation } from 'react-i18next';
 
 const PageContainer = styled.div`
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -170,6 +171,7 @@ const FeatureDescription = styled.p`
 `;
 
 const HomePage: React.FC = () => {
+  const { t } = useTranslation('landing');
   const navigate = useNavigate();
 
   const jsonLdData = [
@@ -178,7 +180,6 @@ const HomePage: React.FC = () => {
     generateWebSiteSchema(),
     generateLocalBusinessSchema()
   ];
-
   return (
     <LandingLayout>
       <SEOHead
@@ -191,16 +192,14 @@ const HomePage: React.FC = () => {
       />
       <PageContainer>
         <Hero>
-          <Title>Smart Store Management Starts Here</Title>
-          <Subtitle>
-            Efficiently manage your food courts, brands, and restaurants with Purple Here POS System
-          </Subtitle>
+          <Title dangerouslySetInnerHTML={{ __html: t('landing:homePage.heroTitle') }} />
+          <Subtitle dangerouslySetInnerHTML={{ __html: t('landing:homePage.heroSubtitle') }} />
           <ButtonGroup>
             <PrimaryButton onClick={() => navigate('/demo')}>
-              Try Demo
+              {t('landing:homePage.tryDemo')}
             </PrimaryButton>
             <SecondaryButton onClick={() => navigate('/pricing')}>
-              View Pricing
+              {t('landing:homePage.viewPricing')}
             </SecondaryButton>
           </ButtonGroup>
         </Hero>
@@ -212,25 +211,25 @@ const HomePage: React.FC = () => {
         <Features>
           <FeatureCard>
             <FeatureIcon aria-hidden="true">◎</FeatureIcon>
-            <FeatureTitle>Restaurant Management</FeatureTitle>
+            <FeatureTitle>{t('landing:homePage.feature1Title')}</FeatureTitle>
             <FeatureDescription>
-              Efficiently manage your restaurant and monitor operations in real-time
+              {t('landing:homePage.feature1Desc')}
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
             <FeatureIcon aria-hidden="true">☰</FeatureIcon>
-            <FeatureTitle>Brand Integration</FeatureTitle>
+            <FeatureTitle>{t('landing:homePage.feature2Title')}</FeatureTitle>
             <FeatureDescription>
-              View data from all branches at a glance and analyze performance
+              {t('landing:homePage.feature2Desc')}
             </FeatureDescription>
           </FeatureCard>
 
           <FeatureCard>
             <FeatureIcon aria-hidden="true">◈</FeatureIcon>
-            <FeatureTitle>Easy Order & Payment</FeatureTitle>
+            <FeatureTitle>{t('landing:homePage.feature3Title')}</FeatureTitle>
             <FeatureDescription>
-              Handle everything from mobile orders to POS payments conveniently
+              {t('landing:homePage.feature3Desc')}
             </FeatureDescription>
           </FeatureCard>
         </Features>

@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-07
+> **최종 업데이트:** 2026-04-08
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -58,7 +58,44 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
-## 🚀 다음 1: Franchise & Tenancy Management (계약 관리)
+## 🚀 다음 1: Internationalization — i18n (다국어 시스템)
+
+> **설계 문서:** `docs/INTERNATIONALIZATION_SYSTEM.md`
+> **규모:** 중 (기능 변경 없음, 전체 UI 텍스트 래핑 + 번역)
+> **최우선 순위 이유:** 이후 모든 개발이 처음부터 다국어로 작성되어 이중 작업 방지
+
+### 개요
+- 4개 언어: English, 한국어, 中文 (简体), Bahasa Melayu
+- UI 텍스트 + 이메일만 번역 (사용자 입력 데이터는 원본 유지)
+- 용어집(Glossary) 기반 번역 + 자동 검증 시스템
+- 검증 통과 못하면 빌드 실패 → 품질 문제 배포 불가
+
+### 품질 관리 체계 (3중 방어)
+- **용어집** (`glossary.json`): 모든 번역의 단일 기준
+- **검증 스크립트** (`verify-translations.js`): 누락, 빈값, 용어집 위반, interpolation 불일치 감지
+- **ESLint** (`eslint-plugin-i18next`): 하드코딩 텍스트 작성 시 즉시 경고
+
+### 작업 목록
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 1 | i18n 인프라 세팅 (react-i18next, i18n.ts, App.tsx) | |
+| 2 | 용어집 + 검증 스크립트 + ESLint 설정 | |
+| 3 | User 모델 preferred_language + 언어 변경 API | |
+| 4 | 영어 번역 파일 원본 (전체 UI 텍스트 추출 → en/*.json) | |
+| 5 | 한국어 번역 파일 (ko/*.json) | |
+| 6 | 중국어 번역 파일 (zh/*.json) | |
+| 7 | 말레이어 번역 파일 (ms/*.json) | |
+| 8 | 공통 컴포넌트 t() 래핑 (ConfirmDialog, Layout 등) | |
+| 9 | 전체 페이지 컴포넌트 t() 래핑 (46개 디렉토리) | |
+| 10 | 언어 선택 UI (Login, Profile, POS Terminal, Landing GNB) | |
+| 11 | AuthContext 언어 동기화 (로그인 시 i18n.changeLanguage) | |
+| 12 | 이메일 템플릿 다국어 (백엔드 locales + 템플릿 함수) | |
+| 13 | 날짜/통화 로컬라이즈 (date-fns locale, Intl.NumberFormat) | |
+| 14 | 검증 + 빌드 + 테스트 | |
+
+---
+
+## 🚀 다음 2: Franchise & Tenancy Management (계약 관리)
 
 > **설계 문서:** `docs/CONTRACT_MANAGEMENT_SYSTEM.md`
 > **규모:** 대 (신규 시스템, DB 변경 포함)
@@ -100,7 +137,7 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
-## 🚀 다음 2: Brand Franchise Map & Foodcourt Floor Plan
+## 🚀 다음 3: Brand Franchise Map & Foodcourt Floor Plan
 
 > **설계 문서:** `docs/ENTITY_FLOOR_PLAN_SYSTEM.md`
 > **규모:** 중대 (신규 페이지, 모델 필드 추가)
@@ -131,7 +168,7 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
-## 🚀 다음 3: 리퍼럴 시스템 (Refer & Earn)
+## 🚀 다음 4: 리퍼럴 시스템 (Refer & Earn)
 
 > **설계 문서:** `docs/REFERRAL_SYSTEM.md`
 > **규모:** 대 (신규 시스템, DB 변경 포함)
@@ -181,40 +218,49 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
-## 🚀 다음 4~7: Supply Chain System (공급망 관리)
+## 🚀 다음 5~8: Supply Chain System (공급망 관리)
 
 > **총괄 문서:** `docs/SUPPLY_CHAIN_SYSTEM_OVERVIEW.md`
 > **규모:** 초대 (4개 순차 설계, 전체 B2B 조달 시스템)
 
-### 다음 4: Seller Product & Inventory System
+### 다음 5: Seller Product & Inventory System
 > **설계 문서:** 작성 예정
 - Supplier Admin 대시보드 구축 (Products, Inventory, Company Info, Profile)
 - Foodcourt General Products + Inventory 추가
 - System Admin 식자재/소모품 판매 확장
 - 의존성: 없음
 
-### 다음 5: Supplier Contract System
+### 다음 6: Supplier Contract System
 > **설계 문서:** 작성 예정
 - Supplier Directory (구매자가 공급업체 검색)
 - 계약 신청 → 검토 → 승인 흐름
 - 고객별 결제 조건 설정 (Immediate / Monthly SOA)
-- 의존성: 다음 4
+- 의존성: 다음 5
 
-### 다음 6: Purchase Order & Receiving
+### 다음 7: Purchase Order & Receiving
 > **설계 문서:** 작성 예정
 - Ingredient ↔ Seller Product 연결
 - PO 생성/라이프사이클 (Draft → Received)
 - 입고 → InventoryBatch → 재고 반영
 - 기존 PETTY_CASH_AND_PURCHASE_ORDER_SYSTEM.md PO 부분 흡수
-- 의존성: 다음 5
+- 의존성: 다음 6
 
-### 다음 7: Seller Order Management & Trade Invoice
+### 다음 8: Seller Order Management & Trade Invoice
 > **설계 문서:** 작성 예정
 - 각 판매자 LiveOrders 스타일 주문 관리 (역할별 구체화)
 - Trade Invoice 자동 발행 (건별)
 - SOA (월간 통합 안내서) + [Pay All] 결제
 - Invoice.issuer_type에 'supplier' 추가
-- 의존성: 다음 6
+- 의존성: 다음 7
+
+---
+
+## ✅ 완료: i18n 기획설계 완성 (2026-04-08)
+
+### 완료된 설계 문서
+| # | 문서 | 내용 | 상태 |
+|---|------|------|:----:|
+| 9 | docs/INTERNATIONALIZATION_SYSTEM.md | 다국어 시스템 (EN/KO/ZH/MS, 용어집+검증 자동화) | ✅ 확정 |
 
 ---
 

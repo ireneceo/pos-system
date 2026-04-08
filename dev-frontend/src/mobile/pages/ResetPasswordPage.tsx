@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import MobileAlertModal from '../components/common/MobileAlertModal';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -184,6 +185,7 @@ const ErrorMessage = styled.p`
 `;
 
 const ResetPasswordPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();

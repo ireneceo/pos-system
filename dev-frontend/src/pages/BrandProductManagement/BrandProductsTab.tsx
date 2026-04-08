@@ -7,6 +7,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import { useTranslation } from 'react-i18next';
 
 interface Brand {
   id: number;
@@ -343,6 +344,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   categoryRefreshKey,
   optionRefreshKey
 }) => {
+  const { t } = useTranslation('brand');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
@@ -768,7 +770,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   });
 
   if (loading) {
-    return (
+  // useTranslation moved to component level
+
+  return (
       <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
         Loading products...
       </div>
@@ -789,7 +793,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="all">All Categories</option>
+            <option value="all">{'All Categories'}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id.toString()}>
                 {cat.emoji} {cat.name}
@@ -800,7 +804,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             value={brandFilter}
             onChange={(e) => setBrandFilter(e.target.value)}
           >
-            <option value="all">All Brands</option>
+            <option value="all">{'All Brands'}</option>
             {brands.map(brand => (
               <option key={brand.id} value={brand.id.toString()}>
                 {brand.name}
@@ -824,7 +828,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               : 'Start by adding your first product.'}
           </EmptyDescription>
           {!searchTerm && categoryFilter === 'all' && brandFilter === 'all' && (
-            <ThemedButton onClick={() => handleOpenModal()}>Add Product</ThemedButton>
+            <ThemedButton onClick={() => handleOpenModal()}>{'Add Product'}</ThemedButton>
           )}
         </EmptyState>
       ) : (
@@ -842,7 +846,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 <ProductInfo>
                   <ProductName>
                     {product.name}
-                    {product.is_set_menu && <SetBadge>SET</SetBadge>}
+                    {product.is_set_menu && <SetBadge>{'SET'}</SetBadge>}
                   </ProductName>
                   {product.sku && <ProductSku>SKU: {product.sku}</ProductSku>}
                   {product.category && (
@@ -860,17 +864,17 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
               <ProductDetails>
                 <DetailRow>
-                  <DetailLabel>Unit Price</DetailLabel>
+                  <DetailLabel>{'Unit Price'}</DetailLabel>
                   <PriceValue>RM {(Number(product.unit_price) || 0).toFixed(2)}</PriceValue>
                 </DetailRow>
                 {product.unit && (
                   <DetailRow>
-                    <DetailLabel>Unit</DetailLabel>
+                    <DetailLabel>{'Unit'}</DetailLabel>
                     <DetailValue>{product.unit}</DetailValue>
                   </DetailRow>
                 )}
                 <DetailRow>
-                  <DetailLabel>Min Order</DetailLabel>
+                  <DetailLabel>{'Min Order'}</DetailLabel>
                   <DetailValue>{product.min_order_quantity}</DetailValue>
                 </DetailRow>
               </ProductDetails>
@@ -933,7 +937,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               </UIFormGroup>
 
               <UIFormGroup>
-                <FormLabel>SKU</FormLabel>
+                <FormLabel>{'SKU'}</FormLabel>
                 <FormInput
                   type="text"
                   value={formData.sku}
@@ -944,12 +948,12 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             </div>
 
             <UIFormGroup>
-              <FormLabel>Category</FormLabel>
+              <FormLabel>{'Category'}</FormLabel>
               <FormSelect
                 value={formData.category_id}
                 onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
               >
-                <option value="">No category</option>
+                <option value="">{'No category'}</option>
                 {categories.map(cat => (
                   <option key={cat.id} value={cat.id.toString()}>
                     {cat.emoji} {cat.name}
@@ -959,7 +963,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{'Description'}</FormLabel>
               <FormTextArea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1002,7 +1006,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                   required
                 >
-                  <option value="">Select unit</option>
+                  <option value="">{'Select unit'}</option>
                   {unitOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
@@ -1010,7 +1014,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               </UIFormGroup>
 
               <UIFormGroup>
-                <FormLabel>Min Order Qty</FormLabel>
+                <FormLabel>{'Min Order Qty'}</FormLabel>
                 <FormInput
                   type="number"
                   min="1"
@@ -1021,7 +1025,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             </div>
 
             <UIFormGroup>
-              <FormLabel>Product Image</FormLabel>
+              <FormLabel>{'Product Image'}</FormLabel>
               <ImageUploadDropzone
                 value={formData.image_url}
                 onChange={(url) => setFormData({ ...formData, image_url: url || '' })}
@@ -1089,7 +1093,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             )}
 
             <UIFormGroup>
-              <FormLabel>Linked Brands</FormLabel>
+              <FormLabel>{'Linked Brands'}</FormLabel>
               <CheckboxGroup>
                 {brands.map(brand => (
                   <CheckboxItem key={brand.id}>
@@ -1105,7 +1109,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Option Groups</FormLabel>
+              <FormLabel>{'Option Groups'}</FormLabel>
               {optionGroups.length > 0 ? (
                 <CheckboxGroup>
                   {optionGroups.map(og => (
@@ -1128,7 +1132,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
             {directIngredients.length === 0 && (
               <UIFormGroup>
-                <FormLabel>Linked Product Recipe</FormLabel>
+                <FormLabel>{'Linked Product Recipe'}</FormLabel>
                 <SearchableSelect
                   options={productRecipes.filter(r => !r.name?.endsWith('(auto)')).map(recipe => ({
                     value: recipe.id,

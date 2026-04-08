@@ -11,6 +11,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getPlanPrice, formatPlanPrice, normalizeCurrencyCode } from '../../utils/currency';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { useTranslation } from 'react-i18next';
 
 interface Restaurant extends Omit<BaseRestaurant, 'status'> {
   status: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled';
@@ -504,6 +505,7 @@ const ClearButton = styled.button`
 `;
 
 const ManagerRestaurantsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1194,10 +1196,10 @@ const ManagerRestaurantsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Restaurants</Title>
+          <Title>{t('admin:restaurantsPage.restaurants')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportData}>Export Data</Button>
-            <Button variant="primary" onClick={handleAddRestaurant}>Add Restaurant</Button>
+            <Button variant="secondary" onClick={handleExportData}>{t('admin:restaurantsPage.exportData')}</Button>
+            <Button variant="primary" onClick={handleAddRestaurant}>{t('admin:restaurantsPage.addRestaurant')}</Button>
           </ActionSection>
         </Header>
         
@@ -1205,22 +1207,22 @@ const ManagerRestaurantsPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{totalRestaurants}</StatValue>
-              <StatLabel>Total Restaurants</StatLabel>
+              <StatLabel>{t('admin:restaurantsPage.totalRestaurants')}</StatLabel>
               <StatTrend trend="up">+1 this month</StatTrend>
             </StatCard>
             <StatCard color="#2563EB">
               <StatValue>{activeRestaurants}</StatValue>
-              <StatLabel>Active Restaurants</StatLabel>
+              <StatLabel>{t('admin:restaurantsPage.activeRestaurants')}</StatLabel>
               <StatTrend trend="up">{Math.round((activeRestaurants/totalRestaurants)*100)}% operational</StatTrend>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatValue>{formatCurrency(totalSales, selectedCurrency)}</StatValue>
-              <StatLabel>Today's Total Sales</StatLabel>
+              <StatLabel>{t('admin:restaurantsPage.todaysTotalSales')}</StatLabel>
               <StatTrend trend="up">+24% vs yesterday</StatTrend>
             </StatCard>
             <StatCard color="#DC2626">
               <StatValue>{totalOrders}</StatValue>
-              <StatLabel>Today's Orders</StatLabel>
+              <StatLabel>{t('admin:restaurantsPage.todaysOrders')}</StatLabel>
               <StatTrend trend="up">+18% vs yesterday</StatTrend>
             </StatCard>
           </StatsGrid>
@@ -1252,8 +1254,8 @@ const ManagerRestaurantsPage: React.FC = () => {
                   setShowFilterBrandDropdown(false);
                   navigate('/pos/manager/restaurants', { replace: true });
                 }}>
-                  <ItemName>All Brands</ItemName>
-                  <ItemDetails>Show all restaurants</ItemDetails>
+                  <ItemName>{t('admin:restaurantsPage.allBrands')}</ItemName>
+                  <ItemDetails>{t('admin:restaurantsPage.showAllRestaurants')}</ItemDetails>
                 </DropdownItem>
                 {filteredFilterBrands.map(brand => (
                   <DropdownItem
@@ -1267,12 +1269,12 @@ const ManagerRestaurantsPage: React.FC = () => {
               </DropdownMenu>
             </DropdownContainer>
             <PageFilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="trial">Trial</option>
-              <option value="expired">Expired</option>
-              <option value="suspended">Suspended</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="all">{t('admin:restaurantsPage.allStatus')}</option>
+              <option value="active">{t('admin:restaurantsPage.active')}</option>
+              <option value="trial">{t('admin:restaurantsPage.trial')}</option>
+              <option value="expired">{t('admin:restaurantsPage.expired')}</option>
+              <option value="suspended">{t('admin:restaurantsPage.suspended')}</option>
+              <option value="cancelled">{t('admin:restaurantsPage.cancelled')}</option>
             </PageFilterSelect>
             <PageSearchInput
               placeholder="Search restaurants..."
@@ -1314,22 +1316,22 @@ const ManagerRestaurantsPage: React.FC = () => {
                 <MetricsGrid>
                   <Metric>
                     <MetricValue>{formatCurrency(restaurant.todaySales, selectedCurrency)}</MetricValue>
-                    <MetricLabel>Today's Sales</MetricLabel>
+                    <MetricLabel>{t('admin:restaurantsPage.todaysSales')}</MetricLabel>
                   </Metric>
                   <Metric>
                     <MetricValue>{restaurant.todayOrders}</MetricValue>
-                    <MetricLabel>Orders</MetricLabel>
+                    <MetricLabel>{t('admin:restaurantsPage.orders')}</MetricLabel>
                   </Metric>
                   <Metric>
                     <MetricValue>{restaurant.staffCount}</MetricValue>
-                    <MetricLabel>Staff</MetricLabel>
+                    <MetricLabel>{t('admin:restaurantsPage.staff')}</MetricLabel>
                   </Metric>
                 </MetricsGrid>
 
                 <ActionButtons>
-                  <ActionButton onClick={(e) => handleEditRestaurant(e, restaurant)}>Edit</ActionButton>
-                  <ActionButton onClick={(e) => handleViewReports(e, restaurant)}>View Reports</ActionButton>
-                  <ActionButton onClick={(e) => handleDeleteRestaurant(e, restaurant)} style={{ color: '#DC2626', borderColor: '#FEE2E2' }}>Delete</ActionButton>
+                  <ActionButton onClick={(e) => handleEditRestaurant(e, restaurant)}>{t('admin:restaurantsPage.edit')}</ActionButton>
+                  <ActionButton onClick={(e) => handleViewReports(e, restaurant)}>{t('admin:restaurantsPage.viewReports')}</ActionButton>
+                  <ActionButton onClick={(e) => handleDeleteRestaurant(e, restaurant)} style={{ color: '#DC2626', borderColor: '#FEE2E2' }}>{t('admin:restaurantsPage.delete')}</ActionButton>
                 </ActionButtons>
               </RestaurantCard>
             ))}
@@ -1339,7 +1341,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
       {/* Add Restaurant Modal */}
       {showAddModal && (
-                <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add New Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowAddModal(false); setFormError(''); }}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitNewRestaurant}>Add Restaurant</ThemedButton></>}>
+                <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add New Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowAddModal(false); setFormError(''); }}>{t('admin:restaurantsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitNewRestaurant}>{t('admin:restaurantsPage.addRestaurant')}</ThemedButton></>}>
 
               <FormGrid>
                 <FormGroup style={{gridColumn: '1 / -1'}}>
@@ -1367,7 +1369,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       <input type="radio" name="adminActionMgr" checked={adminAction === 'create'}
                         onChange={() => { setAdminAction('create'); setSelectedAdmin(null); }}
                         style={{ accentColor: '#635BFF' }} />
-                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Create New Account</span>
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.createNewAccount')}</span>
                     </label>
                     <label style={{
                       display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
@@ -1378,7 +1380,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       <input type="radio" name="adminActionMgr" checked={adminAction === 'assign'}
                         onChange={() => { setAdminAction('assign'); setNewAdminData({ fullName: '', email: '', username: '', phone: '' }); }}
                         style={{ accentColor: '#635BFF' }} />
-                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>Select Existing User</span>
+                      <span style={{fontSize: '14px', fontWeight: '500', color: '#374151'}}>{t('admin:restaurantsPage.selectExistingUser')}</span>
                     </label>
                   </div>
                 </div>
@@ -1404,7 +1406,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                         onChange={(e) => setNewAdminData({...newAdminData, username: e.target.value})} />
                     </FormGroup>
                     <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Admin Phone</FormLabel>
+                      <FormLabel>{t('admin:restaurantsPage.adminPhone')}</FormLabel>
                       <PhoneInput
                         value={newAdminData.phone}
                         onChange={(value) => setNewAdminData({...newAdminData, phone: value})}
@@ -1414,7 +1416,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </>
                 ) : (
                   <FormGroup style={{ position: 'relative', gridColumn: '1 / -1', zIndex: 100 }}>
-                    <FormLabel>Search and select an existing user</FormLabel>
+                    <FormLabel>{t('admin:restaurantsPage.searchAndSelectAnExistingUser')}</FormLabel>
                     <DropdownContainer>
                       <DropdownInput type="text" placeholder="Type to search by name, email, or username..."
                         value={adminSearchQuery}
@@ -1502,7 +1504,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>City</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.city')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., Kuala Lumpur"
@@ -1512,7 +1514,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>State / Province</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.stateProvince')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., Wilayah Persekutuan"
@@ -1522,7 +1524,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Postal Code</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.postalCode')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., 50000"
@@ -1532,7 +1534,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Cuisine Type</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.cuisineType')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., Malaysian, Chinese, Italian"
@@ -1542,7 +1544,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Business Registration No.</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.businessRegistrationNo')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., 202401012345"
@@ -1552,7 +1554,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Tax ID / GST No.</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.taxIdGstNo')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., MY1234567890"
@@ -1605,8 +1607,8 @@ const ManagerRestaurantsPage: React.FC = () => {
                       });
                     }}
                   >
-                    <option value="monthly">Monthly</option>
-                    <option value="annual">Annual</option>
+                    <option value="monthly">{t('admin:restaurantsPage.monthly')}</option>
+                    <option value="annual">{t('admin:restaurantsPage.annual')}</option>
                   </FormSelect>
                 </FormGroup>
 
@@ -1616,8 +1618,8 @@ const ManagerRestaurantsPage: React.FC = () => {
                     value={newRestaurant.paymentModel}
                     onChange={(e) => setNewRestaurant({...newRestaurant, paymentModel: e.target.value as 'manager' | 'restaurant'})}
                   >
-                    <option value="manager">Manager Pays</option>
-                    <option value="restaurant">Restaurant Pays</option>
+                    <option value="manager">{t('admin:restaurantsPage.managerPays')}</option>
+                    <option value="restaurant">{t('admin:restaurantsPage.restaurantPays')}</option>
                   </FormSelect>
                 </FormGroup>
 
@@ -1671,7 +1673,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
       {/* Edit Restaurant Modal */}
       {showEditModal && (
-                <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowEditModal(false); setFormError(''); }}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateRestaurant}>Update Restaurant</ThemedButton></>}>
+                <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowEditModal(false); setFormError(''); }}>{t('admin:restaurantsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateRestaurant}>{t('admin:restaurantsPage.updateRestaurant')}</ThemedButton></>}>
 
               <FormGrid>
                 <FormGroup style={{gridColumn: '1 / -1'}}>
@@ -1727,7 +1729,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>City</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.city')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., Kuala Lumpur"
@@ -1737,7 +1739,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>State / Province</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.stateProvince')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., Wilayah Persekutuan"
@@ -1747,7 +1749,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Postal Code</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.postalCode')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., 50000"
@@ -1757,7 +1759,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Cuisine Type</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.cuisineType')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., Malaysian, Chinese, Italian"
@@ -1767,7 +1769,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Business Registration No.</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.businessRegistrationNo')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., 202401012345"
@@ -1777,7 +1779,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Tax ID / GST No.</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.taxIdGstNo')}</FormLabel>
                   <FormInput
                     type="text"
                     placeholder="e.g., MY1234567890"
@@ -1830,8 +1832,8 @@ const ManagerRestaurantsPage: React.FC = () => {
                       });
                     }}
                   >
-                    <option value="monthly">Monthly</option>
-                    <option value="annual">Annual</option>
+                    <option value="monthly">{t('admin:restaurantsPage.monthly')}</option>
+                    <option value="annual">{t('admin:restaurantsPage.annual')}</option>
                   </FormSelect>
                 </FormGroup>
 
@@ -1841,8 +1843,8 @@ const ManagerRestaurantsPage: React.FC = () => {
                     value={newRestaurant.paymentModel}
                     onChange={(e) => setNewRestaurant({...newRestaurant, paymentModel: e.target.value as 'manager' | 'restaurant'})}
                   >
-                    <option value="manager">Manager Pays</option>
-                    <option value="restaurant">Restaurant Pays</option>
+                    <option value="manager">{t('admin:restaurantsPage.managerPays')}</option>
+                    <option value="restaurant">{t('admin:restaurantsPage.restaurantPays')}</option>
                   </FormSelect>
                 </FormGroup>
 
@@ -1896,7 +1898,7 @@ const ManagerRestaurantsPage: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && restaurantToDelete && (
-                <CommonModal isOpen={true} onClose={() => setShowDeleteModal(false)} title="Delete Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => setShowDeleteModal(false)}>Cancel</ThemedButton><ThemedButton variant="primary" onClick={confirmDeleteRestaurant} style={{ background: '#EF4444' }} > Delete Restaurant </ThemedButton></>}>
+                <CommonModal isOpen={true} onClose={() => setShowDeleteModal(false)} title="Delete Restaurant" footer={<><ThemedButton variant="cancel" onClick={() => setShowDeleteModal(false)}>{t('admin:restaurantsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={confirmDeleteRestaurant} style={{ background: '#EF4444' }} > Delete Restaurant </ThemedButton></>}>
 
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <div style={{
@@ -1923,7 +1925,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     <div>• All invoices and payment records</div>
                     <div>• Staff accounts linked to this restaurant</div>
                     <div>• Kitchen stations and floor plans</div>
-                    <div style={{ marginTop: '8px', fontWeight: '600' }}>This action cannot be undone.</div>
+                    <div style={{ marginTop: '8px', fontWeight: '600' }}>{t('admin:restaurantsPage.thisActionCannotBeUndone')}</div>
                   </div>
                 </div>
               </div>
@@ -1934,18 +1936,18 @@ const ManagerRestaurantsPage: React.FC = () => {
       {showSuccessModal && (
         <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Password Generated" size="small" footer={<>
           {successPassword && <ThemedButton variant="secondary" onClick={() => { navigator.clipboard.writeText(successPassword); setPasswordCopied(true); setTimeout(() => setPasswordCopied(false), 2000); }}>{passwordCopied ? 'Copied!' : 'Copy Password'}</ThemedButton>}
-          <ThemedButton onClick={() => setShowSuccessModal(false)}>Done</ThemedButton>
+          <ThemedButton onClick={() => setShowSuccessModal(false)}>{t('admin:restaurantsPage.done')}</ThemedButton>
         </>}>
           <div style={{ marginBottom: '20px', fontSize: '14px', color: '#6B7280' }}>
             {successMessage} Please share this password securely. They should change it after first login.
           </div>
           {successPassword && (
             <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: '8px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>Temporary Password</div>
+              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px', fontWeight: 600 }}>{t('admin:restaurantsPage.temporaryPassword')}</div>
               <div style={{ fontSize: '18px', fontWeight: 700, color: '#0A2540', fontFamily: 'monospace', letterSpacing: '1px', userSelect: 'all' as const }}>{successPassword}</div>
             </div>
           )}
-          <div style={{ fontSize: '12px', color: '#DC2626' }}>This password will not be shown again. Please copy it now.</div>
+          <div style={{ fontSize: '12px', color: '#DC2626' }}>{t('admin:restaurantsPage.thisPasswordWillNotBeShownAgainPleaseCopyItNow')}</div>
         </CommonModal>
       )}
     </>

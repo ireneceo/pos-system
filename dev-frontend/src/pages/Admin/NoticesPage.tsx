@@ -22,6 +22,7 @@ import {
   StatLabel
 } from '../../components/UI/StatCard';
 import { Modal as CommonModal } from '../../components/UI';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // TypeScript Interfaces
@@ -474,6 +475,7 @@ const ViewModalActions = styled.div`
 // ============================================================================
 
 const NoticesPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   // Data states
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -763,7 +765,7 @@ const NoticesPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>Notices</Title>
+        <Title>{t('admin:noticesPage.notices')}</Title>
         <ActionSection>
           <Button variant="primary" onClick={() => setShowSendModal(true)}>
             New Notice
@@ -776,19 +778,19 @@ const NoticesPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#635BFF">
             <StatValue>{totalSent}</StatValue>
-            <StatLabel>Total Sent</StatLabel>
+            <StatLabel>{t('admin:noticesPage.totalSent')}</StatLabel>
           </StatCard>
           <StatCard color="#10B981">
             <StatValue>{thisMonth}</StatValue>
-            <StatLabel>This Month</StatLabel>
+            <StatLabel>{t('admin:noticesPage.thisMonth')}</StatLabel>
           </StatCard>
           <StatCard color="#F59E0B">
             <StatValue>{importantCount}</StatValue>
-            <StatLabel>Important</StatLabel>
+            <StatLabel>{t('admin:noticesPage.important')}</StatLabel>
           </StatCard>
           <StatCard color="#EF4444">
             <StatValue>{urgentCount}</StatValue>
-            <StatLabel>Urgent</StatLabel>
+            <StatLabel>{t('admin:noticesPage.urgent')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -821,17 +823,17 @@ const NoticesPage: React.FC = () => {
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
           >
-            <option value="all">All Priorities</option>
-            <option value="normal">Normal</option>
-            <option value="important">Important</option>
-            <option value="urgent">Urgent</option>
+            <option value="all">{t('admin:noticesPage.allPriorities')}</option>
+            <option value="normal">{t('admin:noticesPage.normal')}</option>
+            <option value="important">{t('admin:noticesPage.important')}</option>
+            <option value="urgent">{t('admin:noticesPage.urgent')}</option>
           </FilterSelect>
           <FilterSelect
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
           >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
+            <option value="newest">{t('admin:noticesPage.newestFirst')}</option>
+            <option value="oldest">{t('admin:noticesPage.oldestFirst')}</option>
           </FilterSelect>
           <SearchInput
             type="text"
@@ -844,7 +846,7 @@ const NoticesPage: React.FC = () => {
         {/* Notices List */}
         {filteredNotices.length === 0 ? (
           <EmptyState>
-            <h3>No Notices Found</h3>
+            <h3>{t('admin:noticesPage.noNoticesFound')}</h3>
             <p>
               {notices.length === 0
                 ? 'Create your first notice by clicking "New Notice" above.'
@@ -861,7 +863,7 @@ const NoticesPage: React.FC = () => {
                   </NoticeCardInfo>
                   <NoticeCardBadges>
                     {notice.category === 'guide' && (
-                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>Guide</span>
+                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{t('admin:noticesPage.guide')}</span>
                     )}
                     <PriorityBadge priority={notice.priority}>
                       {notice.priority}
@@ -905,9 +907,9 @@ const NoticesPage: React.FC = () => {
       {/* Send Notice Modal */}
       {/* ====================================================================== */}
       {showSendModal && (
-        <CommonModal isOpen={true} onClose={() => { setShowSendModal(false); resetNewNoticeForm(); }} title="New Notice" maxWidth="720px" footer={<><Button variant="secondary" onClick={() => { setShowSendModal(false); resetNewNoticeForm(); }}>Cancel</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim()}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => { setShowSendModal(false); resetNewNoticeForm(); }} title="New Notice" maxWidth="720px" footer={<><Button variant="secondary" onClick={() => { setShowSendModal(false); resetNewNoticeForm(); }}>{t('admin:noticesPage.cancel')}</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim()}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
               <FormGroup>
-                <FormLabel>Target Type</FormLabel>
+                <FormLabel>{t('admin:noticesPage.targetType')}</FormLabel>
                 <FormSelect
                   value={newNotice.target_type}
                   onChange={(e) => setNewNotice(prev => ({
@@ -917,16 +919,16 @@ const NoticesPage: React.FC = () => {
                     restaurant_ids: []
                   }))}
                 >
-                  <option value="all">All Users</option>
-                  <option value="role">By Role</option>
-                  <option value="restaurant">Select Restaurants</option>
+                  <option value="all">{t('admin:noticesPage.allUsers')}</option>
+                  <option value="role">{t('admin:noticesPage.byRole')}</option>
+                  <option value="restaurant">{t('admin:noticesPage.selectRestaurants')}</option>
                 </FormSelect>
               </FormGroup>
 
               {/* By Role: multi-checkboxes */}
               {newNotice.target_type === 'role' && (
                 <FormGroup>
-                  <FormLabel>Select Roles</FormLabel>
+                  <FormLabel>{t('admin:noticesPage.selectRoles')}</FormLabel>
                   <CheckboxGroup>
                     {roleOptions.map(role => (
                       <CheckboxLabel key={role}>
@@ -945,7 +947,7 @@ const NoticesPage: React.FC = () => {
               {/* Select Restaurants: searchable list */}
               {newNotice.target_type === 'restaurant' && (
                 <FormGroup>
-                  <FormLabel>Select Restaurants</FormLabel>
+                  <FormLabel>{t('admin:noticesPage.selectRestaurants')}</FormLabel>
                   <RestaurantSearchInput
                     type="text"
                     placeholder="Search restaurants..."
@@ -984,7 +986,7 @@ const NoticesPage: React.FC = () => {
               )}
 
               <FormGroup>
-                <FormLabel>Title</FormLabel>
+                <FormLabel>{t('admin:noticesPage.title')}</FormLabel>
                 <FormInput
                   type="text"
                   placeholder="Enter notice title"
@@ -994,7 +996,7 @@ const NoticesPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Content</FormLabel>
+                <FormLabel>{t('admin:noticesPage.content')}</FormLabel>
                 <FormTextArea
                   placeholder="Enter notice content..."
                   value={newNotice.content}
@@ -1003,7 +1005,7 @@ const NoticesPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Attachments</FormLabel>
+                <FormLabel>{t('admin:noticesPage.attachments')}</FormLabel>
                 <FileUpload
                   files={newAttachments}
                   onChange={setNewAttachments}
@@ -1013,24 +1015,24 @@ const NoticesPage: React.FC = () => {
 
               <div style={{ display: 'flex', gap: '16px' }}>
                 <FormGroup style={{ flex: 1 }}>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>{t('admin:noticesPage.category')}</FormLabel>
                   <FormSelect
                     value={newNotice.category}
                     onChange={(e) => setNewNotice(prev => ({ ...prev, category: e.target.value }))}
                   >
-                    <option value="general">General</option>
-                    <option value="guide">Guide</option>
+                    <option value="general">{t('admin:noticesPage.general')}</option>
+                    <option value="guide">{t('admin:noticesPage.guide')}</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup style={{ flex: 1 }}>
-                  <FormLabel>Priority</FormLabel>
+                  <FormLabel>{t('admin:noticesPage.priority')}</FormLabel>
                   <FormSelect
                     value={newNotice.priority}
                     onChange={(e) => setNewNotice(prev => ({ ...prev, priority: e.target.value }))}
                   >
-                    <option value="normal">Normal</option>
-                    <option value="important">Important</option>
-                    <option value="urgent">Urgent</option>
+                    <option value="normal">{t('admin:noticesPage.normal')}</option>
+                    <option value="important">{t('admin:noticesPage.important')}</option>
+                    <option value="urgent">{t('admin:noticesPage.urgent')}</option>
                   </FormSelect>
                 </FormGroup>
               </div>
@@ -1048,7 +1050,7 @@ const NoticesPage: React.FC = () => {
           footer={
             isEditing ? (
               <>
-                <Button variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button>
+                <Button variant="secondary" onClick={() => setIsEditing(false)}>{t('admin:noticesPage.cancel')}</Button>
                 <Button variant="primary" onClick={async () => {
                   try {
                     const res = await fetch(`/api/notices/${selectedNotice.id}`, {
@@ -1062,7 +1064,7 @@ const NoticesPage: React.FC = () => {
                       fetchNotices();
                     }
                   } catch (e) { console.error(e); }
-                }}>Save</Button>
+                }}>{t('admin:noticesPage.save')}</Button>
               </>
             ) : (
               <>
@@ -1070,10 +1072,10 @@ const NoticesPage: React.FC = () => {
                   <Button variant="primary" onClick={() => {
                     setEditForm({ title: selectedNotice.title, content: selectedNotice.content, priority: selectedNotice.priority });
                     setIsEditing(true);
-                  }}>Edit</Button>
+                  }}>{t('admin:noticesPage.edit')}</Button>
                 )}
-                <DeleteButton onClick={() => handleDeleteNotice(selectedNotice.id)}>Delete Notice</DeleteButton>
-                <Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>Close</Button>
+                <DeleteButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('admin:noticesPage.deleteNotice')}</DeleteButton>
+                <Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>{t('admin:noticesPage.close')}</Button>
               </>
             )
           }
@@ -1081,11 +1083,11 @@ const NoticesPage: React.FC = () => {
           {isEditing ? (
             <ViewSection>
               <FormGroup>
-                <FormLabel>Title</FormLabel>
+                <FormLabel>{t('admin:noticesPage.title')}</FormLabel>
                 <FormInput value={editForm.title} onChange={(e: any) => setEditForm({ ...editForm, title: e.target.value })} />
               </FormGroup>
               <FormGroup>
-                <FormLabel>Content</FormLabel>
+                <FormLabel>{t('admin:noticesPage.content')}</FormLabel>
                 <textarea
                   value={editForm.content}
                   onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
@@ -1093,15 +1095,15 @@ const NoticesPage: React.FC = () => {
                 />
               </FormGroup>
               <FormGroup>
-                <FormLabel>Priority</FormLabel>
+                <FormLabel>{t('admin:noticesPage.priority')}</FormLabel>
                 <select
                   value={editForm.priority}
                   onChange={(e) => setEditForm({ ...editForm, priority: e.target.value as 'normal' | 'important' | 'urgent' })}
                   style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E6EBF1', fontSize: '14px' }}
                 >
-                  <option value="normal">Normal</option>
-                  <option value="important">Important</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="normal">{t('admin:noticesPage.normal')}</option>
+                  <option value="important">{t('admin:noticesPage.important')}</option>
+                  <option value="urgent">{t('admin:noticesPage.urgent')}</option>
                 </select>
               </FormGroup>
             </ViewSection>
@@ -1147,7 +1149,7 @@ const NoticesPage: React.FC = () => {
                     ))}
                   </RecipientsList>
                 ) : (
-                  <div style={{ fontSize: '14px', color: '#9CA3AF' }}>No recipients data available</div>
+                  <div style={{ fontSize: '14px', color: '#9CA3AF' }}>{t('admin:noticesPage.noRecipientsDataAvailable')}</div>
                 )}
               </ViewSection>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
+import { useTranslation } from 'react-i18next';
 
 interface CurrencyConfig {
   [code: string]: {
@@ -178,6 +179,7 @@ const TIMEZONE_OPTIONS = [
 ];
 
 const SiteSettingsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [settings, setSettings] = useState<SiteSettings>({
     site_name: '',
     favicon_url: '',
@@ -371,14 +373,16 @@ const SiteSettingsPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
+  // useTranslation moved to component level
+
+  return (
       <>
         <Container>
           <Header>
-            <Title>Site Settings</Title>
+            <Title>{t('admin:siteSettingsPage.siteSettings')}</Title>
           </Header>
           <Content>
-            <p>Loading...</p>
+            <p>{t('admin:siteSettingsPage.loading')}</p>
           </Content>
         </Container>
       </>
@@ -389,17 +393,17 @@ const SiteSettingsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Site Settings</Title>
+          <Title>{t('admin:siteSettingsPage.siteSettings')}</Title>
         </Header>
         <Content>
           <Form onSubmit={(e) => e.preventDefault()}>
             {/* Basic Settings */}
             <Section>
-              <SectionTitle>Basic Settings</SectionTitle>
+              <SectionTitle>{t('admin:siteSettingsPage.basicSettings')}</SectionTitle>
 
               <FormRow>
                 <FormGroup>
-                  <Label htmlFor="site_name">Site Name</Label>
+                  <Label htmlFor="site_name">{t('admin:siteSettingsPage.siteName')}</Label>
                   <AutoSaveField onSave={saveSettings}>
                     <Input
                       type="text"
@@ -410,13 +414,13 @@ const SiteSettingsPage: React.FC = () => {
                       placeholder="Purple Here POS"
                     />
                   </AutoSaveField>
-                  <HelpText>The name of your site/solution</HelpText>
+                  <HelpText>{t('admin:siteSettingsPage.theNameOfYourSitesolution')}</HelpText>
                 </FormGroup>
               </FormRow>
 
               <FormRow>
                 <FormGroup>
-                  <Label>Favicon</Label>
+                  <Label>{t('admin:siteSettingsPage.favicon')}</Label>
                   <AutoSaveField ref={faviconAutoSaveRef} onSave={saveSettings} type="image">
                     <LogoUpload
                       isDragging={isDraggingFavicon}
@@ -450,7 +454,7 @@ const SiteSettingsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <Label>Brand Logo</Label>
+                  <Label>{t('admin:siteSettingsPage.brandLogo')}</Label>
                   <AutoSaveField ref={brandLogoAutoSaveRef} onSave={saveSettings} type="image">
                     <LogoUpload
                       isDragging={isDraggingLogo}
@@ -480,18 +484,18 @@ const SiteSettingsPage: React.FC = () => {
                     style={{ display: 'none' }}
                     onChange={(e) => handleImageUpload(e, 'brand_logo', brandLogoAutoSaveRef)}
                   />
-                  <HelpText>Will appear in sidebar and login page</HelpText>
+                  <HelpText>{t('admin:siteSettingsPage.willAppearInSidebarAndLoginPage')}</HelpText>
                 </FormGroup>
               </FormRow>
             </Section>
 
             {/* System Timezone */}
             <Section>
-              <SectionTitle>System Timezone</SectionTitle>
+              <SectionTitle>{t('admin:siteSettingsPage.systemTimezone')}</SectionTitle>
 
               <FormRow>
                 <FormGroup>
-                  <Label htmlFor="timezone">Timezone</Label>
+                  <Label htmlFor="timezone">{t('admin:siteSettingsPage.timezone')}</Label>
                   <AutoSaveField onSave={saveSettings} type="select">
                     <select
                       id="timezone"
@@ -523,10 +527,10 @@ const SiteSettingsPage: React.FC = () => {
 
             {/* SEO Settings */}
             <Section>
-              <SectionTitle>SEO Settings</SectionTitle>
+              <SectionTitle>{t('admin:siteSettingsPage.seoSettings')}</SectionTitle>
 
               <FormGroup>
-                <Label htmlFor="seo_title">SEO Title</Label>
+                <Label htmlFor="seo_title">{t('admin:siteSettingsPage.seoTitle')}</Label>
                 <AutoSaveField onSave={saveSettings}>
                   <Input
                     type="text"
@@ -538,11 +542,11 @@ const SiteSettingsPage: React.FC = () => {
                     maxLength={60}
                   />
                 </AutoSaveField>
-                <HelpText>Page title for search engines (50-60 characters recommended)</HelpText>
+                <HelpText>{t('admin:siteSettingsPage.pageTitleForSearchEngines5060CharactersRecommended')}</HelpText>
               </FormGroup>
 
               <FormGroup>
-                <Label htmlFor="seo_description">SEO Description</Label>
+                <Label htmlFor="seo_description">{t('admin:siteSettingsPage.seoDescription')}</Label>
                 <AutoSaveField onSave={saveSettings}>
                   <TextArea
                     id="seo_description"
@@ -553,11 +557,11 @@ const SiteSettingsPage: React.FC = () => {
                     maxLength={160}
                   />
                 </AutoSaveField>
-                <HelpText>Meta description for search engines (150-160 characters recommended)</HelpText>
+                <HelpText>{t('admin:siteSettingsPage.metaDescriptionForSearchEngines150160CharactersRecommended')}</HelpText>
               </FormGroup>
 
               <FormGroup>
-                <Label htmlFor="seo_keywords">SEO Keywords</Label>
+                <Label htmlFor="seo_keywords">{t('admin:siteSettingsPage.seoKeywords')}</Label>
                 <AutoSaveField onSave={saveSettings}>
                   <Input
                     type="text"
@@ -568,11 +572,11 @@ const SiteSettingsPage: React.FC = () => {
                     placeholder="restaurant pos, food ordering, restaurant management, pos system"
                   />
                 </AutoSaveField>
-                <HelpText>Comma-separated keywords for search engines</HelpText>
+                <HelpText>{t('admin:siteSettingsPage.commaseparatedKeywordsForSearchEngines')}</HelpText>
               </FormGroup>
 
               <FormGroup>
-                <Label>Open Graph Image</Label>
+                <Label>{t('admin:siteSettingsPage.openGraphImage')}</Label>
                 <AutoSaveField ref={ogImageAutoSaveRef} onSave={saveSettings} type="image">
                   <LogoUpload
                     isDragging={isDraggingOG}
@@ -602,7 +606,7 @@ const SiteSettingsPage: React.FC = () => {
                   style={{ display: 'none' }}
                   onChange={(e) => handleImageUpload(e, 'og_image_url', ogImageAutoSaveRef)}
                 />
-                <HelpText>Image for social media sharing (1200x630 px recommended)</HelpText>
+                <HelpText>{t('admin:siteSettingsPage.imageForSocialMediaSharing1200x630PxRecommended')}</HelpText>
               </FormGroup>
             </Section>
 

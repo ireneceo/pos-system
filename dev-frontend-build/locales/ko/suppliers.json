@@ -1,0 +1,23 @@
+{
+  "suppliersPage.view": "보기",
+  "suppliersPage.edit": "수정",
+  "suppliersPage.suppliers": "공급업체",
+  "suppliersPage.brandSuppliersReadOnly": "브랜드 공급업체 (읽기 전용)",
+  "suppliersPage.noSuppliersYet": "아직 공급업체 없음",
+  "suppliersPage.noSuppliersFound": "공급업체가 없습니다",
+  "suppliersPage.mySuppliers": "내 공급업체",
+  "suppliersPage.cancel": "취소",
+  "suppliersPage.code": "코드",
+  "suppliersPage.contactPerson": "담당자",
+  "suppliersPage.phone": "전화번호",
+  "suppliersPage.email": "이메일",
+  "suppliersPage.businessNumber": "사업자번호",
+  "suppliersPage.address": "주소",
+  "suppliersPage.paymentTerms": "결제 조건",
+  "suppliersPage.bankName": "은행명",
+  "suppliersPage.bankAccount": "은행 계좌",
+  "suppliersPage.notes": "메모",
+  "suppliersPage.close": "닫기",
+  "suppliersPage.supplierName": "공급업체 이름",
+  "suppliersPage.status": "상태"
+}

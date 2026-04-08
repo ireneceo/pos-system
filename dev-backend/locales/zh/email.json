@@ -1,0 +1,63 @@
+{
+  "footer": {
+    "automated": "这是来自 {{company}} 的自动消息。",
+    "managePreferences": "管理通知设置",
+    "unsubscribe": "退订"
+  },
+  "notice": {
+    "subject": "新公告：{{title}}",
+    "heading": "新公告",
+    "body": "发布了一条新公告。",
+    "postedBy": "发布者",
+    "priority": "优先级",
+    "date": "日期",
+    "viewButton": "查看公告"
+  },
+  "comment": {
+    "subject": "新评论：{{title}}",
+    "heading": "新评论",
+    "commentedOn": "{{name}} 评论了 {{title}}。",
+    "viewButton": "查看并回复"
+  },
+  "invoice": {
+    "subject": "发票 {{number}} — {{restaurant}}",
+    "heading": "新发票",
+    "restaurant": "餐厅",
+    "invoiceNumber": "发票编号",
+    "period": "期间",
+    "dueDate": "到期日",
+    "amount": "应付金额",
+    "viewButton": "查看发票",
+    "body": "您的餐厅已生成一张新发票。"
+  },
+  "welcome": {
+    "subject": "欢迎使用 {{platform}}",
+    "heading": "欢迎！",
+    "body": "您的账户已成功创建。",
+    "loginButton": "登录仪表盘",
+    "credentials": "您的登录信息",
+    "email": "邮箱",
+    "password": "临时密码"
+  },
+  "passwordReset": {
+    "subject": "密码重置请求",
+    "heading": "密码重置",
+    "body": "您请求了密码重置。请点击下方按钮设置新密码。",
+    "resetButton": "重置密码",
+    "expiry": "此链接将在 {{hours}} 小时后过期。",
+    "ignore": "如果您没有发起此请求，请忽略此邮件。"
+  },
+  "emailVerification": {
+    "subject": "验证您的邮箱地址",
+    "heading": "邮箱验证",
+    "body": "请点击下方按钮验证您的邮箱地址。",
+    "verifyButton": "验证邮箱",
+    "expiry": "此链接将在 {{hours}} 小时后过期。"
+  },
+  "ticket": {
+    "subject": "支持工单更新：{{title}}",
+    "heading": "工单更新",
+    "status": "状态",
+    "viewButton": "查看工单"
+  }
+}

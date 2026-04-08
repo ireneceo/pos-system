@@ -1,0 +1,18 @@
+{
+  "invoiceSettingsPage.monthlyFeeRm": "월 요금 (RM)",
+  "invoiceSettingsPage.annualFeeRm": "연회비 (RM)",
+  "invoiceSettingsPage.fixedRental": "고정 임대료",
+  "invoiceSettingsPage.revenueShare": "매출 분배",
+  "invoiceSettingsPage.fixedAmountRm": "고정 금액 (RM)",
+  "invoiceSettingsPage.calculationExample": "계산 예시",
+  "invoiceSettingsPage.exampleMonthlyRevenueRm": "월 매출 예시 (RM)",
+  "invoiceSettingsPage.managementFees": "관리비",
+  "invoiceSettingsPage.rm": "RM",
+  "invoiceSettingsPage.monthlyInvoiceTotal": "월간 인보이스 합계",
+  "invoiceSettingsPage.invoiceSettings": "인보이스 설정",
+  "invoiceSettingsPage.invoiceConfiguration": "인보이스 설정",
+  "invoiceSettingsPage.invoicePrefix": "인보이스 접두사",
+  "invoiceSettingsPage.startingNumber": "시작 번호",
+  "invoiceSettingsPage.paymentTermsDays": "결제 조건 (일)",
+  "invoiceSettingsPage.automationSettings": "자동화 설정"
+}

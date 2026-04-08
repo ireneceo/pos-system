@@ -21,6 +21,7 @@ import {
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { useTranslation } from 'react-i18next';
 
 // Styled Components
 const Container = styled.div`
@@ -717,6 +718,7 @@ interface Recipe {
 }
 
 const MenuManagementPage: React.FC = () => {
+  const { t } = useTranslation('menu');
   const { categories, menuItems, optionGroups, updateMenuItem, addMenuItem, removeMenuItem, toggleItemSoldOut } = useMenu();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -1201,10 +1203,10 @@ const MenuManagementPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <HeaderTitle>Menu</HeaderTitle>
+          <HeaderTitle>{t('menu:menuManagementPage.menu')}</HeaderTitle>
           <HeaderActions>
-            <UIButton variant="secondary" onClick={handleAddSetMenu}>Create Set Menu</UIButton>
-            <UIButton variant="primary" onClick={handleAddItem}>Add New Item</UIButton>
+            <UIButton variant="secondary" onClick={handleAddSetMenu}>{t('menu:menuManagementPage.createSetMenu')}</UIButton>
+            <UIButton variant="primary" onClick={handleAddItem}>{t('menu:menuManagementPage.addNewItem')}</UIButton>
           </HeaderActions>
         </Header>
 
@@ -1232,7 +1234,7 @@ const MenuManagementPage: React.FC = () => {
           {searchQuery && filteredItems.length > 0 && (
             <SearchResultInfo>
               <span>Found {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} matching "{searchQuery}"</span>
-              <UIButton variant="secondary" onClick={() => setSearchQuery('')}>Clear Search</UIButton>
+              <UIButton variant="secondary" onClick={() => setSearchQuery('')}>{t('menu:menuManagementPage.clearSearch')}</UIButton>
             </SearchResultInfo>
           )}
 
@@ -1275,8 +1277,8 @@ const MenuManagementPage: React.FC = () => {
               {(useProgressive ? filteredItems.slice(0, visibleCount) : filteredItems).map(item => (
               <MenuCard key={item.id} soldOut={item.soldOut} inactive={item.is_active === false}>
                 <MenuImage>
-                  {item.is_set_menu && <SetBadge>SET</SetBadge>}
-                  {item.is_featured && <SetBadge style={{ background: '#635BFF', left: item.is_set_menu ? '52px' : '8px' }}>FEATURED</SetBadge>}
+                  {item.is_set_menu && <SetBadge>{t('menu:menuManagementPage.set')}</SetBadge>}
+                  {item.is_featured && <SetBadge style={{ background: '#635BFF', left: item.is_set_menu ? '52px' : '8px' }}>{t('menu:menuManagementPage.featured')}</SetBadge>}
                   {item.image && item.image.trim() !== '' ? (
                     <img
                       src={item.image}
@@ -1402,7 +1404,7 @@ const MenuManagementPage: React.FC = () => {
 
             <AddCard onClick={handleAddItem}>
               <AddIcon>+</AddIcon>
-              <AddText>Add New Menu Item</AddText>
+              <AddText>{t('menu:menuManagementPage.addNewMenuItem')}</AddText>
             </AddCard>
 
             {/* Progressive loading trigger - only show when using progressive rendering */}
@@ -1431,7 +1433,7 @@ const MenuManagementPage: React.FC = () => {
           }
         >
           <UIFormGroup>
-            <FormLabel>Item Code</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.itemCode')}</FormLabel>
             <FormInput
               type="text"
               value={formData.code || ''}
@@ -1485,13 +1487,13 @@ const MenuManagementPage: React.FC = () => {
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input type="checkbox" checked={formData.is_featured || false}
                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
-              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>Featured Item</span>
-              <span style={{ fontSize: '12px', color: '#6B7C93' }}>Show in mobile Featured tab</span>
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
+              <span style={{ fontSize: '12px', color: '#6B7C93' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
             </label>
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Emoji Icon</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.emojiIcon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions['other'].map((emoji: string) => (
                 <EmojiOption
@@ -1506,7 +1508,7 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Description</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.description')}</FormLabel>
             <FormTextArea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1524,7 +1526,7 @@ const MenuManagementPage: React.FC = () => {
           />
 
           <UIFormGroup style={{ marginTop: '24px' }}>
-            <FormLabel>Linked Recipe</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.linkedRecipe')}</FormLabel>
             <SearchableSelect
               options={recipes.map(recipe => ({
                 value: recipe.id,
@@ -1584,7 +1586,7 @@ const MenuManagementPage: React.FC = () => {
                   }
                 }}
               >
-                <option value="">Select option group to add...</option>
+                <option value="">{t('menu:menuManagementPage.selectOptionGroupToAdd')}</option>
                 {optionGroups
                   .filter(group => !selectedOptionGroups.includes(group.id))
                   .map(group => (
@@ -1637,7 +1639,7 @@ const MenuManagementPage: React.FC = () => {
           }
         >
           <UIFormGroup>
-            <FormLabel>Item Code</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.itemCode')}</FormLabel>
             <FormInput
               type="text"
               value={formData.code || ''}
@@ -1691,13 +1693,13 @@ const MenuManagementPage: React.FC = () => {
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input type="checkbox" checked={formData.is_featured || false}
                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
-              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>Featured Item</span>
-              <span style={{ fontSize: '12px', color: '#6B7C93' }}>Show in mobile Featured tab</span>
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
+              <span style={{ fontSize: '12px', color: '#6B7C93' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
             </label>
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Emoji Icon</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.emojiIcon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions['other'].map((emoji: string) => (
                 <EmojiOption
@@ -1712,7 +1714,7 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Description</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.description')}</FormLabel>
             <FormTextArea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1730,7 +1732,7 @@ const MenuManagementPage: React.FC = () => {
           />
 
           <UIFormGroup style={{ marginTop: '24px' }}>
-            <FormLabel>Linked Recipe</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.linkedRecipe')}</FormLabel>
             <SearchableSelect
               options={recipes.map(recipe => ({
                 value: recipe.id,
@@ -1790,7 +1792,7 @@ const MenuManagementPage: React.FC = () => {
                   }
                 }}
               >
-                <option value="">Select option group to add...</option>
+                <option value="">{t('menu:menuManagementPage.selectOptionGroupToAdd')}</option>
                 {optionGroups
                   .filter(group => !selectedOptionGroups.includes(group.id))
                   .map(group => (
@@ -1851,7 +1853,7 @@ const MenuManagementPage: React.FC = () => {
           }
         >
           <UIFormGroup>
-            <FormLabel>Item Code</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.itemCode')}</FormLabel>
             <FormInput
               type="text"
               value={formData.code || ''}
@@ -1905,13 +1907,13 @@ const MenuManagementPage: React.FC = () => {
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input type="checkbox" checked={formData.is_featured || false}
                 onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
-              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>Featured Item</span>
-              <span style={{ fontSize: '12px', color: '#6B7C93' }}>Show in mobile Featured tab</span>
+              <span style={{ fontSize: '14px', color: '#0A2540', fontWeight: 500 }}>{t('menu:menuManagementPage.featuredItem')}</span>
+              <span style={{ fontSize: '12px', color: '#6B7C93' }}>{t('menu:menuManagementPage.showInMobileFeaturedTab')}</span>
             </label>
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Emoji Icon</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.emojiIcon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions['other'].map((emoji: string) => (
                 <EmojiOption
@@ -1926,7 +1928,7 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Description</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.description')}</FormLabel>
             <FormTextArea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -1941,7 +1943,7 @@ const MenuManagementPage: React.FC = () => {
           />
 
           <UIFormGroup>
-            <FormLabel>Display Order (for sorting set menus)</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.displayOrderForSortingSetMenus')}</FormLabel>
             <FormInput
               type="number"
               value={formData.set_display_order || 0}
@@ -1985,7 +1987,7 @@ const MenuManagementPage: React.FC = () => {
               </SetItemsList>
             )}
             <div style={{ marginTop: '12px' }}>
-              <FormLabel>Available Menu Items (select items to add to set)</FormLabel>
+              <FormLabel>{t('menu:menuManagementPage.availableMenuItemsSelectItemsToAddToSet')}</FormLabel>
               <FormInput
                 type="text"
                 value={setMenuSearchQuery}
@@ -2038,7 +2040,7 @@ const MenuManagementPage: React.FC = () => {
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Set Menu Options (options for entire set)</FormLabel>
+            <FormLabel>{t('menu:menuManagementPage.setMenuOptionsOptionsForEntireSet')}</FormLabel>
             <CheckboxGroup>
               {optionGroups.map(group => (
                 <CheckboxLabel key={group.id}>

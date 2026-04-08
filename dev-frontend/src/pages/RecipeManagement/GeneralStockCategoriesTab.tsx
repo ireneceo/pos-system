@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 interface GeneralStockCategoriesTabProps {
   isBrandGeneralMode?: boolean;  // Brand General uses company-wide API (authenticated user)
@@ -232,6 +233,7 @@ const BrandCategoriesHeader = styled.div`
 `;
 
 const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ isBrandGeneralMode, restaurantId: propsRestaurantId, onCountChange, onCategoryChange }) => {
+  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const effectiveRestaurantId = propsRestaurantId || user?.restaurant_id || (user as any)?.restaurantId;
   const [categories, setCategories] = useState<Category[]>([]);
@@ -514,7 +516,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
         <CategoryInfo>
           <CategoryName>
             {category.name}
-            {readOnly && <ReadOnlyBadge>Brand</ReadOnlyBadge>}
+            {readOnly && <ReadOnlyBadge>{t('recipes:generalStockCategoriesTab.brand')}</ReadOnlyBadge>}
           </CategoryName>
           <CategoryMeta>
             <span>{category.stock_count || 0} items</span>
@@ -544,7 +546,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
   if (loading) {
     return (
       <Container>
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>Loading...</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>{t('recipes:generalStockCategoriesTab.loading')}</div>
       </Container>
     );
   }
@@ -552,7 +554,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
   return (
     <Container>
       <HeaderRow>
-        <SectionTitle>General Stock Categories</SectionTitle>
+        <SectionTitle>{t('recipes:generalStockCategoriesTab.generalStockCategories')}</SectionTitle>
         <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
           Add Category
         </ThemedButton>
@@ -571,7 +573,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
 
       {categories.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>No general stock categories yet</EmptyTitle>
+          <EmptyTitle>{t('recipes:generalStockCategoriesTab.noGeneralStockCategoriesYet')}</EmptyTitle>
           <EmptyDescription>
             Create categories to organize your general stock items (packaging, cleaning supplies, etc.)
           </EmptyDescription>
@@ -592,7 +594,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
         size="medium"
         footer={
           <>
-            <ModalButton variant="secondary" onClick={handleCloseModal}>Cancel</ModalButton>
+            <ModalButton variant="secondary" onClick={handleCloseModal}>{t('recipes:generalStockCategoriesTab.cancel')}</ModalButton>
             <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim()}>
               {editingCategory ? 'Update' : 'Create'}
             </ModalButton>
@@ -613,7 +615,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Icon</FormLabel>
+            <FormLabel>{t('recipes:generalStockCategoriesTab.icon')}</FormLabel>
             <EmojiPicker>
               {emojiOptions.map(emoji => (
                 <EmojiOption
@@ -629,7 +631,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
           </UIFormGroup>
 
           <UIFormGroup>
-            <FormLabel>Description</FormLabel>
+            <FormLabel>{t('recipes:generalStockCategoriesTab.description')}</FormLabel>
             <FormTextArea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}

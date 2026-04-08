@@ -4,6 +4,7 @@ import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import { useTranslation } from 'react-i18next';
 
 interface OperationSettings {
   openingTime: string;
@@ -172,6 +173,7 @@ const Select = styled.select`
 `;
 
 const BrandCompanyInfoPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     companyName: '',
     registrationNo: '',
@@ -279,20 +281,19 @@ const BrandCompanyInfoPage: React.FC = () => {
       throw new Error('Failed to save');
     }
   };
-
   return (
     <>
       <Container>
         <Header>
-          <Title>Company Information</Title>
+          <Title>{t('common:brandCompanyInfoPage.companyInformation')}</Title>
         </Header>
 
         <Content>
           <Section>
-            <SectionTitle>Basic Information</SectionTitle>
+            <SectionTitle>{t('common:brandCompanyInfoPage.basicInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Company Name <span>*</span></Label>
+                <Label>{t('common:brandCompanyInfoPage.companyName')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -304,7 +305,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Registration No.</Label>
+                <Label>{t('common:brandCompanyInfoPage.registrationNo')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -316,7 +317,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Trade Name</Label>
+                <Label>{t('common:brandCompanyInfoPage.tradeName')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -328,7 +329,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Tax No. (SST/GST)</Label>
+                <Label>{t('common:brandCompanyInfoPage.taxNoSstgst')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -342,10 +343,10 @@ const BrandCompanyInfoPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Address</SectionTitle>
+            <SectionTitle>{t('common:brandCompanyInfoPage.address')}</SectionTitle>
             <FormGrid>
               <FormGroup fullWidth>
-                <Label>Street Address <span>*</span></Label>
+                <Label>{t('common:brandCompanyInfoPage.streetAddress')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -357,7 +358,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>City</Label>
+                <Label>{t('common:brandCompanyInfoPage.city')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -369,7 +370,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>State</Label>
+                <Label>{t('common:brandCompanyInfoPage.state')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -381,7 +382,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Postal Code</Label>
+                <Label>{t('common:brandCompanyInfoPage.postalCode')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="text"
@@ -393,7 +394,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Country <span>*</span></Label>
+                <Label>{t('common:brandCompanyInfoPage.country')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave} type="select">
                   <Select
                     value={companyInfo.country}
@@ -411,10 +412,10 @@ const BrandCompanyInfoPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Contact Information</SectionTitle>
+            <SectionTitle>{t('common:brandCompanyInfoPage.contactInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Phone <span>*</span></Label>
+                <Label>{t('common:brandCompanyInfoPage.phone')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <PhoneInput
                     value={companyInfo.phone}
@@ -425,7 +426,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Email <span>*</span></Label>
+                <Label>{t('common:brandCompanyInfoPage.email')}<span>*</span></Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="email"
@@ -437,7 +438,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Website</Label>
+                <Label>{t('common:brandCompanyInfoPage.website')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="url"
@@ -451,10 +452,10 @@ const BrandCompanyInfoPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Operation Settings</SectionTitle>
+            <SectionTitle>{t('common:brandCompanyInfoPage.operationSettings')}</SectionTitle>
             <FormGrid>
               <FormGroup>
-                <Label>Opening Time</Label>
+                <Label>{t('common:brandCompanyInfoPage.openingTime')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="time"
@@ -465,7 +466,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Closing Time</Label>
+                <Label>{t('common:brandCompanyInfoPage.closingTime')}</Label>
                 <AutoSaveField onSave={handleSave}>
                   <Input
                     type="time"
@@ -476,7 +477,7 @@ const BrandCompanyInfoPage: React.FC = () => {
               </FormGroup>
 
               <FormGroup>
-                <Label>Timezone</Label>
+                <Label>{t('common:brandCompanyInfoPage.timezone')}</Label>
                 <AutoSaveField onSave={handleSave} type="select">
                   <Select
                     value={companyInfo.operationSettings.timeZone}
@@ -494,7 +495,7 @@ const BrandCompanyInfoPage: React.FC = () => {
           </Section>
 
           <Section>
-            <SectionTitle>Company Logo</SectionTitle>
+            <SectionTitle>{t('common:brandCompanyInfoPage.companyLogo')}</SectionTitle>
             <AutoSaveField onSave={handleSave} type="image">
               <ImageUploadDropzone
                 value={companyInfo.logoUrl}

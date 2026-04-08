@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import i18n from '../i18n';
 
 export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Owner' | 'Restaurant Admin' | 'Staff' | 'Supplier Admin';
 
@@ -20,6 +21,7 @@ export interface User {
   company_name?: string;
   restaurant_name?: string;
   department?: string;
+  preferred_language?: string;
 }
 
 interface AuthContextType {
@@ -30,6 +32,7 @@ interface AuthContextType {
   logout: () => void;
   switchUser: (token: string, userData: SwitchUserData) => void;
   updateUser: (userData: Partial<User>) => void;
+  updateLanguage: (language: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
   canAccessRoute: (route: string) => boolean;
 }
@@ -382,9 +385,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               foodcourt_id: apiUser.foodcourt_id || null,
               permissions: userPermissions,
               restaurantStatus: apiUser.restaurantStatus,
-              restaurantName: apiUser.restaurantName
+              restaurantName: apiUser.restaurantName,
+              preferred_language: apiUser.preferred_language || 'en'
             };
             setUser(userData);
+            if (apiUser.preferred_language && apiUser.preferred_language !== i18n.language) {
+              i18n.changeLanguage(apiUser.preferred_language);
+            }
           }
         } else {
           // Token invalid or expired
@@ -455,12 +462,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             foodcourt_id: apiUser.foodcourt_id || null,
             permissions: loginPermissions,
             restaurantStatus: restaurantStatus,
-            restaurantName: restaurantName
+            restaurantName: restaurantName,
+            preferred_language: apiUser.preferred_language || 'en'
           };
 
           setUser(userData);
           // JWT 토큰 저장
           localStorage.setItem('auth_token', result.data.token);
+          // i18n 언어 동기화
+          if (apiUser.preferred_language) {
+            i18n.changeLanguage(apiUser.preferred_language);
+          }
 
           return true;
         }
@@ -597,6 +609,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // localStorage 제거 - 메모리 상태만 업데이트
   };
 
+  const updateLanguage = async (language: string) => {
+    await i18n.changeLanguage(language);
+    localStorage.setItem('i18nextLng', language);
+    if (user) {
+      setUser({ ...user, preferred_language: language });
+    }
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      try {
+        await fetch('/api/users/language', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ language })
+        });
+      } catch (error) { /* best-effort */ }
+    }
+  };
+
   const hasPermission = (permission: string): boolean => {
     if (!user) return false;
     return user.permissions?.includes(permission) || false;
@@ -628,6 +658,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     switchUser,
     updateUser,
+    updateLanguage,
     hasPermission,
     canAccessRoute
   };

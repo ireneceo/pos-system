@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 
 // Types
 interface CalendarPickerProps {
@@ -50,6 +51,7 @@ const CalendarPicker: React.FC<CalendarPickerProps> = ({
   onClose,
   isOpen
 }) => {
+  const { t } = useTranslation('common');
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());

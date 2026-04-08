@@ -7,6 +7,7 @@ import { API_BASE_URL } from '../../config/api';
 import { formatCurrency, getPlanPrice, formatPlanPrice, normalizeCurrencyCode } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import ConfirmModal from '../../components/ConfirmModal';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -447,6 +448,7 @@ const PlanFeatures = styled.ul`
 
 
 const ManagerSubscriptionsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const { user } = useAuth();
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
   const { defaultCurrency } = useBrandCurrency();
@@ -796,10 +798,10 @@ const ManagerSubscriptionsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>Subscriptions</Title>
+          <Title>{t('admin:subscriptionsPage.subscriptions')}</Title>
           <ActionSection>
-            <Button variant="secondary" onClick={handleExportData}>Export Data</Button>
-            <Button variant="primary" onClick={() => setShowAddModal(true)}>Add Subscription</Button>
+            <Button variant="secondary" onClick={handleExportData}>{t('admin:subscriptionsPage.exportData')}</Button>
+            <Button variant="primary" onClick={() => setShowAddModal(true)}>{t('admin:subscriptionsPage.addSubscription')}</Button>
           </ActionSection>
         </Header>
 
@@ -807,23 +809,23 @@ const ManagerSubscriptionsPage: React.FC = () => {
           <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{subscriptions.length}</StatValue>
-            <StatLabel>Total Restaurants</StatLabel>
-            <StatTrend positive>Under your management</StatTrend>
+            <StatLabel>{t('admin:subscriptionsPage.totalRestaurants')}</StatLabel>
+            <StatTrend positive>{t('admin:subscriptionsPage.underYourManagement')}</StatTrend>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{activeSubscriptions}</StatValue>
-            <StatLabel>Active Subscriptions</StatLabel>
+            <StatLabel>{t('admin:subscriptionsPage.activeSubscriptions')}</StatLabel>
             <StatTrend positive>{Math.round((activeSubscriptions/subscriptions.length)*100)}% operational</StatTrend>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{formatCurrency(totalMonthlyFees)}</StatValue>
-            <StatLabel>Your Monthly Payment</StatLabel>
-            <StatTrend positive>Manager-paid restaurants only</StatTrend>
+            <StatLabel>{t('admin:subscriptionsPage.yourMonthlyPayment')}</StatLabel>
+            <StatTrend positive>{t('admin:subscriptionsPage.managerpaidRestaurantsOnly')}</StatTrend>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{selfPayingRestaurants}</StatValue>
-            <StatLabel>Self-Paying Restaurants</StatLabel>
-            <StatTrend positive>Direct billing to restaurant</StatTrend>
+            <StatLabel>{t('admin:subscriptionsPage.selfpayingRestaurants')}</StatLabel>
+            <StatTrend positive>{t('admin:subscriptionsPage.directBillingToRestaurant')}</StatTrend>
           </StatCard>
         </StatsGrid>
 
@@ -885,11 +887,11 @@ const ManagerSubscriptionsPage: React.FC = () => {
 
               <DateInfo>
                 <DateItem>
-                  <DateLabel>Start Date</DateLabel>
+                  <DateLabel>{t('admin:subscriptionsPage.startDate')}</DateLabel>
                   <DateValue>{subscription.startDate}</DateValue>
                 </DateItem>
                 <DateItem>
-                  <DateLabel>Next Payment</DateLabel>
+                  <DateLabel>{t('admin:subscriptionsPage.nextPayment')}</DateLabel>
                   <DateValue>{subscription.nextPayment}</DateValue>
                 </DateItem>
               </DateInfo>
@@ -930,16 +932,16 @@ const ManagerSubscriptionsPage: React.FC = () => {
 
       {/* Add Subscription Modal */}
       {showAddModal && (
-        <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add New Subscription" footer={<><Button variant="secondary" onClick={() => setShowAddModal(false)}>Cancel</Button><Button variant="primary" onClick={handleAddSubscription}>Add Subscription</Button></>}>
-          <ModalSubtitle style={{ marginBottom: '20px' }}>Connect a restaurant to a subscription plan</ModalSubtitle>
+        <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add New Subscription" footer={<><Button variant="secondary" onClick={() => setShowAddModal(false)}>{t('admin:subscriptionsPage.cancel')}</Button><Button variant="primary" onClick={handleAddSubscription}>{t('admin:subscriptionsPage.addSubscription')}</Button></>}>
+          <ModalSubtitle style={{ marginBottom: '20px' }}>{t('admin:subscriptionsPage.connectARestaurantToASubscriptionPlan')}</ModalSubtitle>
 
           <FormGroup>
-            <FormLabel>Select Restaurant</FormLabel>
+            <FormLabel>{t('admin:subscriptionsPage.selectRestaurant')}</FormLabel>
             <Select 
               value={selectedRestaurant} 
               onChange={(e) => setSelectedRestaurant(e.target.value)}
             >
-              <option value="">Choose a restaurant...</option>
+              <option value="">{t('admin:subscriptionsPage.chooseARestaurant')}</option>
               {availableRestaurants.map(restaurant => (
                 <option key={restaurant.id} value={restaurant.id}>
                   {restaurant.name} - {restaurant.location}
@@ -949,7 +951,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
           </FormGroup>
 
           <FormGroup>
-            <FormLabel>Select Plan</FormLabel>
+            <FormLabel>{t('admin:subscriptionsPage.selectPlan')}</FormLabel>
             <RadioGroup>
               {availablePlans.filter((p: any) => p.plan_target === 'restaurant' && p.is_active).map((plan: any) => (
                 <PlanCard
@@ -972,7 +974,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
           </FormGroup>
 
           <FormGroup>
-            <FormLabel>Billing Cycle</FormLabel>
+            <FormLabel>{t('admin:subscriptionsPage.billingCycle')}</FormLabel>
             <RadioGroup>
               <RadioLabel>
                 <RadioInput 
@@ -996,7 +998,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
           </FormGroup>
 
           <FormGroup>
-            <FormLabel>Payment Model</FormLabel>
+            <FormLabel>{t('admin:subscriptionsPage.paymentModel')}</FormLabel>
             <RadioGroup>
               <RadioLabel>
                 <RadioInput 
@@ -1024,13 +1026,13 @@ const ManagerSubscriptionsPage: React.FC = () => {
 
       {/* Upgrade/Downgrade Plan Modal */}
       {showUpgradeModal && (
-        <CommonModal isOpen={true} onClose={() => setShowUpgradeModal(false)} title="Change Subscription Plan" footer={<><Button variant="secondary" onClick={() => setShowUpgradeModal(false)}>Cancel</Button><Button variant="primary" onClick={handleConfirmUpgrade} disabled={selectedSubscription?.planType === selectedPlan}>Confirm Change</Button></>}>
+        <CommonModal isOpen={true} onClose={() => setShowUpgradeModal(false)} title="Change Subscription Plan" footer={<><Button variant="secondary" onClick={() => setShowUpgradeModal(false)}>{t('admin:subscriptionsPage.cancel')}</Button><Button variant="primary" onClick={handleConfirmUpgrade} disabled={selectedSubscription?.planType === selectedPlan}>{t('admin:subscriptionsPage.confirmChange')}</Button></>}>
           <ModalSubtitle style={{ marginBottom: '20px' }}>
             {selectedSubscription?.restaurantName} - Current: {selectedSubscription?.planType}
           </ModalSubtitle>
 
           <FormGroup>
-            <FormLabel>Select New Plan</FormLabel>
+            <FormLabel>{t('admin:subscriptionsPage.selectNewPlan')}</FormLabel>
             <RadioGroup>
               {availablePlans.filter((p: any) => p.plan_target === 'restaurant' && p.is_active).map((plan: any) => (
                 <PlanCard
