@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import { io, Socket } from 'socket.io-client';
@@ -957,6 +957,7 @@ interface CompanyInfo {
   phone: string;
   email: string;
   taxNo?: string;
+  slug?: string;
 }
 
 const LiveOrdersPage: React.FC = () => {
@@ -996,6 +997,7 @@ const LiveOrdersPage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [totalCount, setTotalCount] = useState(0);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
+  const [receiptSettings, setReceiptSettings] = useState<{ receiptLogo: string; footerMessage: string; showMembership: boolean; customQrImage: string; customQrText: string; customQrPosition: string }>({ receiptLogo: '', footerMessage: '', showMembership: false, customQrImage: '', customQrText: '', customQrPosition: 'back' });
   const [paymentMethods, setPaymentMethods] = useState<any>(null);
   const [timeDisplayKey, setTimeDisplayKey] = useState(0); // Time display update key
   const [audioEnabled, setAudioEnabled] = useState(() => localStorage.getItem('sound_enabled') !== 'false');
@@ -1491,8 +1493,15 @@ const LiveOrdersPage: React.FC = () => {
             postcode: data.postal_code || '',
             phone: data.phone || '',
             email: data.email || '',
-            taxNo: data.tax_id || ''
+            taxNo: data.tax_id || '',
+            slug: data.slug || ''
           });
+
+          // Load receipt settings from printer_settings
+          const ps = data.printer_settings;
+          if (ps?.receiptSettings) {
+            setReceiptSettings(prev => ({ ...prev, ...ps.receiptSettings }));
+          }
 
           // Load payment methods from restaurant settings
           if (data.payment_settings) {
@@ -3942,6 +3951,9 @@ const LiveOrdersPage: React.FC = () => {
         {selectedOrder && ReactDOM.createPortal(
           <BillPrintContainer id="bill-print-content">
             <BillHeader>
+              {receiptSettings.receiptLogo && (
+                <img src={receiptSettings.receiptLogo} alt="Logo" style={{ maxWidth: '160px', maxHeight: '50px', marginBottom: '8px', filter: 'grayscale(100%)' }} />
+              )}
               <BillTitle>{companyInfo?.companyName || 'Restaurant'}</BillTitle>
               {companyInfo && (
                 <>

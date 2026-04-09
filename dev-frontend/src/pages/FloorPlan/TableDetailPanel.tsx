@@ -983,10 +983,14 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         const QRCode = (await import('qrcode')).default;
         const canvas = document.createElement('canvas');
         await QRCode.toCanvas(canvas, qrData.qr_url, { width: 200, margin: 2 });
-        await printTableQR(tableNumber, canvas, storeName);
+        const printed = await printTableQR(tableNumber, canvas, storeName, qrData.expires_at, timezone);
+        if (!printed) {
+          window.alert('Print failed. Please allow pop-ups for this site and try again.');
+        }
       }
     } catch (err) {
       console.error('Failed to print QR:', err);
+      window.alert('Failed to print QR. Please try again.');
     }
     setQrLoading(false);
   };

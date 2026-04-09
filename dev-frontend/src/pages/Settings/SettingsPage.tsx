@@ -657,6 +657,13 @@ const SettingsPage: React.FC = () => {
   const receiptMembershipToggleRef = useRef<AutoSaveHandle>(null);
   const membershipActiveToggleRef = useRef<AutoSaveHandle>(null);
   const qrPositionRef = useRef<AutoSaveHandle>(null);
+  const qrModeRef = useRef<AutoSaveHandle>(null);
+  const qrModeSessionRef = useRef<AutoSaveHandle>(null);
+  const receiptLogoRef = useRef<AutoSaveHandle>(null);
+  const customQrImageRef = useRef<AutoSaveHandle>(null);
+  const ewalletQrRef = useRef<AutoSaveHandle>(null);
+  const companyLogoRef = useRef<AutoSaveHandle>(null);
+  const storeLogoRef = useRef<AutoSaveHandle>(null);
   const kitchenAssignmentRefs = useRef<Map<string, AutoSaveHandle>>(new Map());
   const [deleteStationConfirm, setDeleteStationConfirm] = useState<{ isOpen: boolean; stationId: number | null; stationName: string }>({ isOpen: false, stationId: null, stationName: '' });
 
@@ -2066,10 +2073,10 @@ const SettingsPage: React.FC = () => {
                   {/* E-Wallet Settings - QR Code Image */}
                   {key === 'ewallet' && method.enabled && (
                     <div style={{ borderTop: '1px solid #E6EBF1', paddingTop: '16px' }}>
-                      <AutoSaveField onSave={handleSave} type="image">
+                      <AutoSaveField ref={ewalletQrRef} onSave={handleSave} type="image">
                         <ImageUploadDropzone
                           value={method.qrImage || ''}
-                          onChange={(base64) => handlePaymentSettingChange(key, 'qrImage', base64)}
+                          onChange={(base64) => { handlePaymentSettingChange(key, 'qrImage', base64); ewalletQrRef.current?.triggerSave(); }}
                           label="E-Wallet QR Code"
                           helpText="Upload your e-wallet QR code image for customers to scan and make payment (TNG, GrabPay, Boost, etc.)"
                           changeButtonText="Change QR Code"
@@ -2238,10 +2245,10 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
 
-                <AutoSaveField onSave={handleSave} type="image">
+                <AutoSaveField ref={companyLogoRef} onSave={handleSave} type="image">
                 <ImageUploadDropzone
                   value={companySettings.logo}
-                  onChange={(base64) => setCompanySettings(prev => ({ ...prev, logo: base64 }))}
+                  onChange={(base64) => { setCompanySettings(prev => ({ ...prev, logo: base64 })); companyLogoRef.current?.triggerSave(); }}
                   label="Company Logo"
                   helpText="Upload your company logo for branding and official documents"
                   changeButtonText="Change Logo"
@@ -2640,9 +2647,9 @@ const SettingsPage: React.FC = () => {
                   </AutoSaveField>
                 </FormGroup>
 
-                <AutoSaveField onSave={handleSave} type="image">
+                <AutoSaveField ref={storeLogoRef} onSave={handleSave} type="image">
                   <ImageUploadDropzone value={storeSettings.logo}
-                    onChange={(base64) => setStoreSettings(prev => ({ ...prev, logo: base64 }))}
+                    onChange={(base64) => { setStoreSettings(prev => ({ ...prev, logo: base64 })); storeLogoRef.current?.triggerSave(); }}
                     label="Brand Logo"
                     helpText="Upload your restaurant's brand logo for use in mobile orders and customer displays"
                     changeButtonText="Change Logo" removeButtonText="Remove Logo" imageAltText="Brand Logo" />
@@ -3297,20 +3304,24 @@ const SettingsPage: React.FC = () => {
                 <FormGroup>
                   <Label>{t('settings:settingsPage.qrCodeMode')}</Label>
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'static' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'static' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="qrMode" value="static" checked={tableSettings.qrMode === 'static'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'static'}); handleSave(); }} />
+                    <AutoSaveField ref={qrModeRef} onSave={handleSave} type="toggle" style={{ flex: 1 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'static' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'static' ? '#F0F0FF' : 'white' }}>
+                      <input type="radio" name="qrMode" value="static" checked={tableSettings.qrMode === 'static'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'static'}); qrModeRef.current?.triggerSave(); }} />
                       <div>
                         <div style={{ fontWeight: 500 }}>{t('settings:settingsPage.static')}</div>
                         <div style={{ fontSize: '12px', color: '#6B7280' }}>{t('settings:settingsPage.permanentQrNoExpiration')}</div>
                       </div>
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'session' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'session' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="qrMode" value="session" checked={tableSettings.qrMode === 'session'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'session'}); handleSave(); }} />
+                    </AutoSaveField>
+                    <AutoSaveField ref={qrModeSessionRef} onSave={handleSave} type="toggle" style={{ flex: 1 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', border: '1px solid ' + (tableSettings.qrMode === 'session' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: tableSettings.qrMode === 'session' ? '#F0F0FF' : 'white' }}>
+                      <input type="radio" name="qrMode" value="session" checked={tableSettings.qrMode === 'session'} onChange={() => { setTableSettings({...tableSettings, qrMode: 'session'}); qrModeSessionRef.current?.triggerSave(); }} />
                       <div>
                         <div style={{ fontWeight: 500 }}>{t('settings:settingsPage.session')}</div>
                         <div style={{ fontSize: '12px', color: '#6B7280' }}>{t('settings:settingsPage.expiringQrGeneratedPerVisit')}</div>
                       </div>
                     </label>
+                    </AutoSaveField>
                   </div>
                 </FormGroup>
 
@@ -4291,10 +4302,10 @@ QZ Tray (installed on this device)
                   {/* Left column: Logo + Footer + Membership */}
                   <div className="receipt-col-left" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingRight: '24px' }}>
                     {/* Receipt Logo */}
-                    <AutoSaveField onSave={handleSave} type="image">
+                    <AutoSaveField ref={receiptLogoRef} onSave={handleSave} type="image">
                     <ImageUploadDropzone
                       value={receiptSettings.receiptLogo}
-                      onChange={(value) => setReceiptSettings(prev => ({ ...prev, receiptLogo: value }))}
+                      onChange={(value) => { setReceiptSettings(prev => ({ ...prev, receiptLogo: value })); receiptLogoRef.current?.triggerSave(); }}
                       label="Receipt Logo (B&W)"
                       helpText="Printed at the top of receipt"
                     />
@@ -4333,10 +4344,10 @@ QZ Tray (installed on this device)
 
                   {/* Right column: Custom QR / Promotion */}
                   <div className="receipt-col-right" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingLeft: '24px' }}>
-                    <AutoSaveField onSave={handleSave} type="image">
+                    <AutoSaveField ref={customQrImageRef} onSave={handleSave} type="image">
                     <ImageUploadDropzone
                       value={receiptSettings.customQrImage}
-                      onChange={(value) => setReceiptSettings(prev => ({ ...prev, customQrImage: value }))}
+                      onChange={(value) => { setReceiptSettings(prev => ({ ...prev, customQrImage: value })); customQrImageRef.current?.triggerSave(); }}
                       label="Custom QR / Promotion"
                       helpText="Print your own QR or promo image on receipt"
                     />

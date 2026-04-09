@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-08 (세션 2)
+> **최종 업데이트:** 2026-04-09
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
@@ -92,6 +92,41 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 | 12 | 이메일 템플릿 다국어 (백엔드 locales + 템플릿 함수) | ✅ |
 | 13 | 날짜/통화 로컬라이즈 (date-fns locale, Intl.NumberFormat) | ✅ |
 | 14 | 검증 + 빌드 + 테스트 | ✅ |
+
+---
+
+## 🚀 다음 1.5: 타임존 전체 적용 (긴급)
+
+> **규모:** 중대 (81곳 수정, 유틸 함수 신규)
+> **선행 조건:** 없음 (독립 작업)
+> **관련 규칙:** CLAUDE.md 타임존 규칙, UI_DESIGN_GUIDE.md
+
+### 문제
+- 프론트엔드 81곳에서 `toLocaleString` 등을 타임존 없이 사용 → 브라우저 로컬 시간 표시
+- 레스토랑마다 다른 타임존 설정 (Asia/Seoul, Asia/Kuala_Lumpur 등)이 무시됨
+- 영수증, 인보이스, 매출리포트, POS 등 모든 시간이 부정확
+
+### 구현 계획
+
+| # | 작업 | 영향 범위 | 상태 |
+|---|------|----------|:----:|
+| 1 | `utils/dateFormat.ts` 유틸 함수 작성 | 신규 파일 | |
+|   | - `formatDateTime(date, tz)` → 날짜+시간 | | |
+|   | - `formatDate(date, tz)` → 날짜만 | | |
+|   | - `formatTime(date, tz)` → 시간만 | | |
+|   | - `getStoreTimezone()` → StoreContext에서 타임존 가져오기 | | |
+| 2 | `billPrint.js` 전체 수정 (11곳) | 영수증/키친티켓/정산 | |
+| 3 | 인보이스 관련 수정 (18곳) | InvoiceList, InvoiceDetail, InvoicePayment 등 | |
+| 4 | 매출/리포트 수정 (11곳) | SalesPage, ReportsPage, DailySettlement | |
+| 5 | POS 수정 (4곳) | POSTerminalPage | |
+| 6 | 대시보드/디스플레이 수정 (6곳) | Dashboard, CustomerDisplay | |
+| 7 | 관리자 페이지 수정 (30+곳) | SystemLogs, Inquiry, Notices, Subscriptions | |
+| 8 | 검증: 역할별 타임존 확인 (Seoul vs KL) | | |
+
+### 참조
+- 타임존 소스: `operationSettings.timeZone` (StoreContext)
+- `getStoreInfo().timeZone`으로 모든 페이지에서 접근 가능
+- 기존 올바른 구현 예시: `utils/orderUtils.ts:34`, `DailySettlementPrint.tsx:725`
 
 ---
 
@@ -252,6 +287,35 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 - SOA (월간 통합 안내서) + [Pay All] 결제
 - Invoice.issuer_type에 'supplier' 추가
 - 의존성: 다음 7
+
+---
+
+## ✅ 완료: v3.12 인쇄/설정/StoreContext 안정화 + 배포 (2026-04-09)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 프린터 설정 저장 | store.js allowedFields에 printer_settings 추가 | ✅ |
+| StoreContext 아키텍처 | AuthProvider > StoreProvider 구조 변경 + URL 레스토랑 감지 | ✅ |
+| 영수증 인쇄 전면 개선 | 로고/멤버십QR/커스텀QR/푸터 모든 기기 정상 출력 | ✅ |
+| 멤버십 QR | 로컬 생성 + /mobile/{slug}/account 링크 + URL 텍스트 삭제 | ✅ |
+| getStoreInfo() 통합 | receiptSettings/slug/membershipQR/timeZone 포함 | ✅ |
+| AutoSaveField 패턴 | 이미지/라디오 패턴 가이드 + QR Mode 적용 | ✅ |
+| FloorPlan Print QR | 브라우저 모드 적용 + 레이아웃 + 시간/만료 + 타임존 | ✅ |
+| CLAUDE.md | 타임존 규칙 추가 | ✅ |
+| UI_DESIGN_GUIDE.md | AutoSaveField 필수 규칙(12.4) 추가 | ✅ |
+
+### 주요 수정 파일
+- `dev-backend/routes/store.js` — printer_settings allowedFields
+- `dev-frontend/src/contexts/StoreContext.tsx` — 아키텍처 전면 개편
+- `dev-frontend/src/contexts/AuthContext.tsx` — auth-ready 이벤트
+- `dev-frontend/src/App.tsx` — Provider 순서 변경
+- `dev-frontend/src/utils/billPrint.js` — QR 로컬 생성, 인쇄 설정 통합
+- `dev-frontend/src/pages/LiveOrders/LiveOrdersPage.tsx` — 빌프린트 로고/QR
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` — AutoSaveField 적용
+- `dev-frontend/src/pages/FloorPlan/TableDetailPanel.tsx` — Print QR 개선
+- `dev-frontend/src/pages/BillPrint/BillPrintPage.tsx` — QR URL 수정
 
 ---
 

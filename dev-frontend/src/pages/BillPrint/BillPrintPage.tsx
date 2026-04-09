@@ -268,6 +268,7 @@ const BillPrintPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [receiptSettings, setReceiptSettings] = useState({ receiptLogo: '', footerMessage: 'Thank you for dining with us!', showMembership: true } as any);
+  const [restaurantSlug, setRestaurantSlug] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
 
   // Load receipt settings
@@ -279,6 +280,7 @@ const BillPrintPage: React.FC = () => {
         const res = await fetch(`/api/restaurants/${user.restaurantId}`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();
+          if (data.slug) setRestaurantSlug(data.slug);
           const ps = data.printer_settings || data.data?.printer_settings;
           if (ps?.receiptSettings) {
             const rs = { ...ps.receiptSettings };
@@ -297,12 +299,12 @@ const BillPrintPage: React.FC = () => {
 
   // Generate QR code
   useEffect(() => {
-    if (!receiptSettings.showMembership || !user?.restaurantId) return;
-    const mobileUrl = `https://purplehere.com/m/${user.restaurantId}`;
+    if (!receiptSettings.showMembership || !restaurantSlug) return;
+    const mobileUrl = `https://purplehere.com/mobile/${restaurantSlug}/account`;
     QRCode.toDataURL(mobileUrl, { width: 120, margin: 1, color: { dark: '#000', light: '#FFF' } })
       .then((url: string) => setQrDataUrl(url))
       .catch(() => {});
-  }, [receiptSettings.showMembership, user?.restaurantId]);
+  }, [receiptSettings.showMembership, restaurantSlug]);
 
   const handleSearch = () => {
     const order = orders.find(o =>
@@ -480,9 +482,6 @@ const BillPrintPage: React.FC = () => {
               <ReceiptQrSection>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#0A2540', marginBottom: '6px' }}>{t('pos:billPrintPage.orderOnlineEarnPoints')}</div>
                 <img src={qrDataUrl} alt="QR Code" style={{ width: '100px', height: '100px' }} />
-                <div style={{ fontSize: '10px', color: '#9CA3AF', marginTop: '4px' }}>
-                  purplehere.com/m/{user?.restaurantId}
-                </div>
               </ReceiptQrSection>
             )}
 

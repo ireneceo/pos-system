@@ -423,11 +423,34 @@ import AutoSaveField from '../../components/Common/AutoSaveField';
   </AutoSaveField>
 </Toggle>
 
-// Image
-<AutoSaveField onSave={handleSave} type="image">
-  <ImageUploadDropzone value={...} onChange={...} />
+// Image — ref + 수동 triggerSave 필수
+<AutoSaveField ref={imageRef} onSave={handleSave} type="image">
+  <ImageUploadDropzone value={...} onChange={(v) => { setState(v); imageRef.current?.triggerSave(); }} />
 </AutoSaveField>
+
+// Radio 버튼 — 각 옵션을 개별 AutoSaveField로 감싸기
+<div style={{ display: 'flex', gap: '12px' }}>
+  <AutoSaveField ref={optionARef} onSave={handleSave} type="toggle" style={{ flex: 1 }}>
+    <label>
+      <input type="radio" checked={value === 'a'} onChange={() => { setState('a'); optionARef.current?.triggerSave(); }} />
+      Option A
+    </label>
+  </AutoSaveField>
+  <AutoSaveField ref={optionBRef} onSave={handleSave} type="toggle" style={{ flex: 1 }}>
+    <label>
+      <input type="radio" checked={value === 'b'} onChange={() => { setState('b'); optionBRef.current?.triggerSave(); }} />
+      Option B
+    </label>
+  </AutoSaveField>
+</div>
 ```
+
+### 12.4 필수 규칙
+- **모든 설정 입력은 반드시 AutoSaveField로 감싸야 한다** (예외 없음)
+- **커스텀 컴포넌트** (ImageUploadDropzone, 라디오, 커스텀 셀렉트)는 ref + 수동 triggerSave 필수
+- **네이티브 input/select**는 AutoSaveField가 onChange를 자동 감지하므로 ref 불필요
+- **라디오/체크박스**: 클릭한 항목에 저장 아이콘이 나오도록 각각 개별 AutoSaveField
+- **handleSave() 직접 호출 금지** — 항상 AutoSaveField의 triggerSave()를 통해야 함 (stale state 방지)
 
 ### 12.2 타입별 배지 위치
 | type | 위치 | debounce |

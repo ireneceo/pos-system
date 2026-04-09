@@ -394,6 +394,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (apiUser.preferred_language && apiUser.preferred_language !== i18n.language) {
               i18n.changeLanguage(apiUser.preferred_language);
             }
+            // StoreContext에 인증 완료 알림
+            window.dispatchEvent(new Event('auth-ready'));
           }
         } else {
           // Token invalid or expired
@@ -475,6 +477,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (apiUser.preferred_language) {
             i18n.changeLanguage(apiUser.preferred_language);
           }
+
 
           return true;
         }
@@ -597,6 +600,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     localStorage.setItem('auth_token', token);
     setUser(newUser);
+    // StoreContext에 인증 완료 알림
+    window.dispatchEvent(new Event('auth-ready'));
   };
 
   const updateUser = (userData: Partial<User>) => {

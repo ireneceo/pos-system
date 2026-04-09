@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[2890],{2890:(o,e,n)=>{n.r(e),n.d(e,{default:()=>P});var t=n(9950),r=n(4752),i=n(2853),s=n(1367),a=n(6038),c=n(3705),l=n(2488),d=n(8409),u=n(4414);const p=(0,r.Ay)(d.A0)`
+"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[2890],{509:(o,e,n)=>{n.r(e),n.d(e,{default:()=>P});var t=n(9950),r=n(4752),i=n(2853),s=n(1367),a=n(6038),c=n(3705),l=n(2488),d=n(8409),u=n(4414);const p=(0,r.Ay)(d.A0)`
   @media (max-width: 1400px) {
     & > span:nth-child(5),
     & > span:nth-child(6),

@@ -151,6 +151,21 @@ res.status(500).json({ success: false, message: 'Internal server error' });
 - **컴포넌트 파일**: 800줄 이상이면 하위 컴포넌트 분리 검토
 - 새로 만드는 파일은 처음부터 적절히 분리
 
+### 타임존 규칙 (절대 준수!)
+- **브라우저 로컬 시간 사용 금지** — 모든 날짜/시간 표시는 레스토랑 설정 타임존 기준
+- **`toLocaleString`, `toLocaleDateString`, `toLocaleTimeString` 사용 시 반드시 `{ timeZone }` 옵션 포함**
+- 타임존 소스: `operationSettings.timeZone` (StoreContext) 또는 `getStoreInfo().timeZone`
+- **유틸 함수**: `formatDateTime()`, `formatDate()`, `formatTime()` (utils/dateFormat.ts) 사용 권장
+- 새 코드에서 `new Date().toLocaleString()` (타임존 없이) 작성하면 즉시 수정
+
+```javascript
+// ❌ 금지 — 브라우저 로컬 시간 사용
+date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' });
+
+// ✅ 올바름 — 레스토랑 타임존 사용
+date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone: storeInfo.timeZone });
+```
+
 ### 백엔드 엔트리 포인트
 - **PM2 실행 파일: `server.js`만 사용** (app.js는 제거됨)
 - 라우트 등록, 미들웨어, 스케줄러 모두 server.js에서 관리

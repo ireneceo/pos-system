@@ -7,6 +7,7 @@
  * 3. QZ Tray (Network) - ESC/POS via QZ Tray to LAN network printers
  */
 import qz from 'qz-tray';
+import QRCode from 'qrcode';
 
 // ============================================
 // ESC/POS Command Definitions
@@ -539,14 +540,22 @@ function getReceiptSettings() {
 
 export function generateHTMLBill(orderData, storeInfo) {
   const receiptCfg = getReceiptSettings();
-  // Migrate legacy fields
-  const showMembership = receiptCfg.showMembership !== undefined ? receiptCfg.showMembership : (receiptCfg.showQrCode !== false || receiptCfg.showPointsInfo !== false);
-  // Merge receipt settings: storeInfo overrides take precedence over localStorage
+  // Merge: storeInfo (from React state) > receiptCfg (from localStorage) > defaults
+  const showMembership = storeInfo.showMembership !== undefined ? storeInfo.showMembership : (receiptCfg.showMembership !== undefined ? receiptCfg.showMembership : false);
   const receiptLogo = storeInfo.receiptLogo || receiptCfg.receiptLogo || '';
   const footerMsg = storeInfo.footerMessage || receiptCfg.footerMessage || 'Thank you for your purchase!';
-  const customQrImage = receiptCfg.customQrImage || '';
-  const customQrText = receiptCfg.customQrText || '';
-  const customQrPosition = receiptCfg.customQrPosition || 'back';
+  const customQrImage = storeInfo.customQrImage || receiptCfg.customQrImage || '';
+  const customQrText = storeInfo.customQrText || receiptCfg.customQrText || '';
+  const customQrPosition = storeInfo.customQrPosition || receiptCfg.customQrPosition || 'back';
+
+  // Use pre-generated QR data URL from storeInfo (generated in React component)
+  const membershipQrDataUrl = storeInfo.membershipQrDataUrl || receiptCfg.membershipQrDataUrl || '';
+  let customQrDataUrl = '';
+  if (customQrImage && customQrImage.startsWith('/uploads/')) {
+    customQrDataUrl = window.location.origin + customQrImage;
+  } else if (customQrImage) {
+    customQrDataUrl = customQrImage;
+  }
   const currencySymbol = getCurrencySymbol(orderData.currency);
   const dateStr = orderData.date.toLocaleDateString('en-MY');
   const timeStr = orderData.date.toLocaleTimeString('en-MY', {
@@ -695,18 +704,17 @@ export function generateHTMLBill(orderData, storeInfo) {
         </tr>
       </table>
 
-      ${showMembership ? `
+      ${showMembership && membershipQrDataUrl ? `
       <div style="text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #000;">
         <div style="font-size: 13px; font-weight: 700; margin-bottom: 6px;">Order online & earn points!</div>
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent('https://purplehere.com/m/' + (storeInfo.restaurantId || ''))}" style="width: 80px; height: 80px;" />
-        <div style="font-size: 9px; color: #666; margin-top: 4px;">purplehere.com/m/${storeInfo.restaurantId || ''}</div>
+        <img src="${membershipQrDataUrl}" style="width: 80px; height: 80px;" />
       </div>
       ` : ''}
 
-      ${customQrImage ? `
+      ${customQrDataUrl ? `
       <div style="text-align: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #000;">
         ${customQrText && customQrPosition === 'front' ? `<div style="font-size: 13px; font-weight: 700; margin-bottom: 6px;">${customQrText}</div>` : ''}
-        <img src="${customQrImage.startsWith('/uploads/') ? (window.location.origin + customQrImage) : customQrImage}" style="width: 80px; height: 80px;" />
+        <img src="${customQrDataUrl}" style="width: 80px; height: 80px;" />
         ${customQrText && customQrPosition === 'back' ? `<div style="font-size: 13px; font-weight: 700; margin-top: 6px;">${customQrText}</div>` : ''}
       </div>
       ` : ''}
@@ -1984,7 +1992,29 @@ export function generateKitchenTicketPreview(orderData, storeInfo) {
  * @param {HTMLCanvasElement} qrCanvas - QR code canvas element
  * @param {string} storeName - Restaurant name
  */
-export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant') {
+export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restaurant', expiresAt = null, timezone = null) {
+  const tzOpt = timezone ? { timeZone: timezone } : {};
+  const now = new Date();
+  const printedTime = now.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', ...tzOpt });
+  const expiryTime = expiresAt ? new Date(expiresAt).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', ...tzOpt }) : '';
+  const timeInfo = `<div class="time-info">Printed: ${printedTime}</div>` +
+    (expiryTime ? `<div class="time-info">Orders accepted until ${expiryTime}</div>` : '');
+
+  // Browser print mode: respect user's printer setting (same as printBillViaRawBT)
+  if (shouldUseBrowserPrint() && qrCanvas) {
+    const htmlContent = `<html><head><title>Table ${tableNumber} QR Code</title>
+      <style>@page{size:80mm auto;margin:0}
+      body{display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0;padding:8px 0;font-family:Arial,sans-serif;text-align:center}
+      .store-name{font-size:14px;font-weight:bold;margin-bottom:2px}.table-number{font-size:24px;font-weight:bold;margin:2px 0}
+      .qr-container{margin:4px 0}.instruction{font-size:13px;font-weight:600;color:#000;margin-top:2px}
+      .time-info{font-size:11px;color:#000;margin-top:1px}
+      @media print{html,body{height:auto}}</style></head>
+      <body><div class="store-name">${storeName}</div><div class="table-number">${tableNumber}</div>
+      <div class="qr-container"><img src="${qrCanvas.toDataURL('image/png')}" width="140" height="140" /></div>
+      <div class="instruction">Scan to order</div>${timeInfo}</body></html>`;
+    return printHTMLContent(htmlContent, 'Table QR');
+  }
+
   // QZ Tray mode: send ESC/POS text (QR image not supported in ESC/POS text mode)
   if (shouldUseQZTray()) {
     const settings = getPrinterSettings();
@@ -2082,32 +2112,22 @@ export async function printTableQR(tableNumber, qrCanvas, storeName = 'Restauran
           <head>
             <title>Table ${tableNumber} QR Code</title>
             <style>
-              body {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-                margin: 0;
-                font-family: Arial, sans-serif;
-                text-align: center;
-              }
-              .store-name { font-size: 18px; font-weight: bold; margin-bottom: 10px; }
-              .table-number { font-size: 32px; font-weight: bold; margin: 15px 0; }
-              .qr-container { margin: 20px 0; }
-              .instruction { font-size: 14px; color: #666; margin-top: 15px; }
-              @media print {
-                body { height: auto; padding: 20px; }
-              }
+              @page { size: 80mm auto; margin: 0; }
+              body { display:flex; flex-direction:column; align-items:center; justify-content:center; margin:0; padding:8px 0; font-family:Arial,sans-serif; text-align:center; }
+              .store-name { font-size:14px; font-weight:bold; margin-bottom:2px; }
+              .table-number { font-size:24px; font-weight:bold; margin:2px 0; }
+              .qr-container { margin:4px 0; }
+              .instruction { font-size:13px; font-weight:600; color:#000; margin-top:2px; }
+              .time-info { font-size:11px; color:#000; margin-top:1px; }
+              @media print { html,body { height:auto; } }
             </style>
           </head>
           <body>
             <div class="store-name">${storeName}</div>
             <div class="table-number">${tableNumber}</div>
-            <div class="qr-container">
-              <img src="${qrCanvas.toDataURL('image/png')}" width="200" height="200" />
-            </div>
+            <div class="qr-container"><img src="${qrCanvas.toDataURL('image/png')}" width="140" height="140" /></div>
             <div class="instruction">Scan to order</div>
+            ${timeInfo}
           </body>
         </html>
       `);

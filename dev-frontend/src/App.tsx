@@ -326,11 +326,11 @@ function App() {
   return (
     <ThemeProvider>
       <SiteSettingsProvider>
-        <StoreProvider>
           <CustomerProvider>
             <OrderProvider>
               <Router>
                 <AuthProvider>
+                <StoreProvider>
                   <StaffProvider>
                     <MenuProvider>
                       <PaymentStatusProvider>
@@ -1028,11 +1028,11 @@ function App() {
                       </PaymentStatusProvider>
                     </MenuProvider>
                   </StaffProvider>
+                </StoreProvider>
                 </AuthProvider>
               </Router>
             </OrderProvider>
           </CustomerProvider>
-        </StoreProvider>
       </SiteSettingsProvider>
     </ThemeProvider>
   );
