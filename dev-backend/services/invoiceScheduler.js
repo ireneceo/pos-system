@@ -46,7 +46,7 @@ class InvoiceScheduler {
       }
     });
 
-    console.log('✅ Invoice scheduler started - runs daily at 2 AM (POS subscriptions + entity plan invoices)');
+    console.log('✓ Invoice scheduler started - runs daily at 2 AM (POS subscriptions + entity plan invoices)');
   }
 
   /**
@@ -127,17 +127,17 @@ class InvoiceScheduler {
           result.generated++;
 
         } catch (error) {
-          console.error(`❌ Error processing restaurant ${restaurant.name} (ID: ${restaurant.id}):`, error.message);
+          console.error(`✗ Error processing restaurant ${restaurant.name} (ID: ${restaurant.id}):`, error.message);
           await systemLogger.error('payment', 'invoice-scheduler', `Subscription invoice error: ${restaurant.name}`, { restaurantId: restaurant.id, error: error.message });
           result.errors++;
         }
       }
 
-      console.log(`✅ [INVOICE SCHEDULER] Subscription - Generated: ${result.generated}, Skipped: ${result.skipped}, Errors: ${result.errors}`);
+      console.log(`✓ [INVOICE SCHEDULER] Subscription - Generated: ${result.generated}, Skipped: ${result.skipped}, Errors: ${result.errors}`);
       return result;
 
     } catch (error) {
-      console.error('❌ [INVOICE SCHEDULER] Error in generateSubscriptionInvoices:', error);
+      console.error('✗ [INVOICE SCHEDULER] Error in generateSubscriptionInvoices:', error);
       await systemLogger.critical('payment', 'invoice-scheduler', 'Subscription invoice generation failed', { error: error.message });
       return result;
     }
@@ -309,7 +309,7 @@ class InvoiceScheduler {
       total_amount: discountedAmount
     });
 
-    console.log(`✅ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}`);
+    console.log(`✓ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}`);
 
     // Send email notification (non-blocking)
     this.sendInvoiceEmail(invoice, restaurant, 'system_admin', null, invoiceNumber);
@@ -536,23 +536,23 @@ class InvoiceScheduler {
             await InvoiceItem.bulkCreate(invoiceItems);
 
             result.generated++;
-            console.log(`✅ [ENTITY PLAN] ${invoiceNumber} for ${restaurant.name} - ${invoiceCurrency} ${finalTotalAmount.toFixed(2)} (billing_day: ${effectiveBillingDay})`);
+            console.log(`✓ [ENTITY PLAN] ${invoiceNumber} for ${restaurant.name} - ${invoiceCurrency} ${finalTotalAmount.toFixed(2)} (billing_day: ${effectiveBillingDay})`);
 
             // Send email notification (non-blocking)
             this.sendInvoiceEmail(invoice, restaurant, plan.entity_type, plan.entity_id, invoiceNumber);
 
           } catch (error) {
-            console.error(`❌ [ENTITY PLAN] Error for restaurant ${pr.restaurant?.name}:`, error.message);
+            console.error(`✗ [ENTITY PLAN] Error for restaurant ${pr.restaurant?.name}:`, error.message);
             await systemLogger.error('payment', 'invoice-scheduler', `Entity plan invoice error: ${pr.restaurant?.name}`, { restaurantId: pr.restaurant?.id, planId: plan.id, error: error.message });
             result.errors++;
           }
         }
       }
 
-      console.log(`✅ [ENTITY PLAN SCHEDULER] Complete - Generated: ${result.generated}, Skipped: ${result.skipped}, Errors: ${result.errors}`);
+      console.log(`✓ [ENTITY PLAN SCHEDULER] Complete - Generated: ${result.generated}, Skipped: ${result.skipped}, Errors: ${result.errors}`);
       return result;
     } catch (error) {
-      console.error('❌ [ENTITY PLAN SCHEDULER] Error:', error);
+      console.error('✗ [ENTITY PLAN SCHEDULER] Error:', error);
       await systemLogger.critical('payment', 'invoice-scheduler', 'Entity plan invoice generation failed', { error: error.message });
       return result;
     }
@@ -724,18 +724,18 @@ class InvoiceScheduler {
           });
 
           result.generated++;
-          console.log(`✅ [ENTITY SUB] ${invoiceNumber} for ${name} - ${currency} ${planAmount.toFixed(2)}`);
+          console.log(`✓ [ENTITY SUB] ${invoiceNumber} for ${name} - ${currency} ${planAmount.toFixed(2)}`);
 
         } catch (error) {
-          console.error(`❌ [ENTITY SUB] Error for ${name}:`, error.message);
+          console.error(`✗ [ENTITY SUB] Error for ${name}:`, error.message);
           result.errors++;
         }
       }
 
-      console.log(`✅ [ENTITY SUB SCHEDULER] Complete - Generated: ${result.generated}, Skipped: ${result.skipped}, Errors: ${result.errors}`);
+      console.log(`✓ [ENTITY SUB SCHEDULER] Complete - Generated: ${result.generated}, Skipped: ${result.skipped}, Errors: ${result.errors}`);
       return result;
     } catch (error) {
-      console.error('❌ [ENTITY SUB SCHEDULER] Error:', error);
+      console.error('✗ [ENTITY SUB SCHEDULER] Error:', error);
       return result;
     }
   }
@@ -1150,7 +1150,7 @@ class InvoiceScheduler {
       item_type: 'subscription'
     });
 
-    console.log(`✅ Entity subscription invoice created: ${invoiceNumber} (${currency} ${planAmount})`);
+    console.log(`✓ Entity subscription invoice created: ${invoiceNumber} (${currency} ${planAmount})`);
     return invoice;
   }
 
@@ -1240,10 +1240,10 @@ class InvoiceScheduler {
             description: `Scheduled plan change applied: ${oldPlan} → ${updateData.plan_type}`
           });
 
-          console.log(`✅ [PENDING] Restaurant "${restaurant.name}": ${oldPlan} → ${updateData.plan_type}`);
+          console.log(`✓ [PENDING] Restaurant "${restaurant.name}": ${oldPlan} → ${updateData.plan_type}`);
           result.applied++;
         } catch (error) {
-          console.error(`❌ [PENDING] Error applying change for restaurant ${restaurant.name}:`, error.message);
+          console.error(`✗ [PENDING] Error applying change for restaurant ${restaurant.name}:`, error.message);
           result.errors++;
         }
       }
@@ -1302,17 +1302,17 @@ class InvoiceScheduler {
             description: `Scheduled plan change applied: ${oldPlan} → ${updateData.plan_type}`
           });
 
-          console.log(`✅ [PENDING] User "${user.full_name}" (${user.role}): ${oldPlan} → ${updateData.plan_type}`);
+          console.log(`✓ [PENDING] User "${user.full_name}" (${user.role}): ${oldPlan} → ${updateData.plan_type}`);
           result.applied++;
         } catch (error) {
-          console.error(`❌ [PENDING] Error applying change for user ${user.full_name}:`, error.message);
+          console.error(`✗ [PENDING] Error applying change for user ${user.full_name}:`, error.message);
           result.errors++;
         }
       }
 
       console.log(`📊 [PENDING CHANGES] Applied: ${result.applied}, Errors: ${result.errors}`);
     } catch (error) {
-      console.error('❌ [PENDING CHANGES] Fatal error:', error.message);
+      console.error('✗ [PENDING CHANGES] Fatal error:', error.message);
       result.errors++;
     }
     return result;

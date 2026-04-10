@@ -8,6 +8,7 @@ import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface OperationTicket {
   id: number;
   ticketNumber: string;
@@ -492,7 +493,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
 
   const fetchOwnedRestaurants = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/owner/restaurants', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -508,7 +509,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
 
   const fetchTickets = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/operation-tickets?userId=${user?.id}&userRole=Restaurant Owner`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -526,7 +527,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
   const fetchUnreadCounts = async (ticketList: OperationTicket[]) => {
     if (ticketList.length === 0) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const ids = ticketList.map(t => t.id).join(',');
       const res = await fetch(`/api/comments/unread-counts?entity_type=operation_ticket&entity_ids=${ids}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -570,7 +571,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
     const selectedRestaurant = ownedRestaurants.find(r => r.id === parseInt(newTicket.restaurantId));
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const ticketData = {
         restaurantId: parseInt(newTicket.restaurantId),
         restaurantName: selectedRestaurant?.name || '',
@@ -608,7 +609,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
     if (!selectedTicket || detailStatus === selectedTicket.status) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/operation-tickets/${selectedTicket.id}`, {
         method: 'PUT',
         headers: {

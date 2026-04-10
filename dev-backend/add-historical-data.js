@@ -44,7 +44,7 @@ async function addHistoricalData() {
         created_by: 2
       }
     ]);
-    console.log(`✅ Added ${additionalRestaurants.length} more restaurants`);
+    console.log(`✓ Added ${additionalRestaurants.length} more restaurants`);
 
     // Add historical invoices (2023-2024)
     console.log('📄 Adding historical invoices...');
@@ -158,7 +158,7 @@ async function addHistoricalData() {
         issued_at: new Date('2024-02-01')
       }
     ]);
-    console.log(`✅ Added ${historicalInvoices.length} historical invoices`);
+    console.log(`✓ Added ${historicalInvoices.length} historical invoices`);
 
     // Add corresponding invoice items
     console.log('📝 Adding historical invoice items...');
@@ -230,7 +230,7 @@ async function addHistoricalData() {
         total_amount: 316.94
       }
     ]);
-    console.log(`✅ Added ${historicalItems.length} historical invoice items`);
+    console.log(`✓ Added ${historicalItems.length} historical invoice items`);
 
     // Add more order history
     console.log('🛍️ Adding historical orders...');
@@ -286,7 +286,7 @@ async function addHistoricalData() {
         order_date: new Date('2024-02-05')
       }
     ]);
-    console.log(`✅ Added ${historicalOrders.length} historical orders`);
+    console.log(`✓ Added ${historicalOrders.length} historical orders`);
 
     console.log('🎉 Historical data added successfully!');
     
@@ -305,7 +305,7 @@ async function addHistoricalData() {
     console.log(`Orders: ${totalOrders}`);
 
   } catch (error) {
-    console.error('❌ Error adding historical data:', error);
+    console.error('✗ Error adding historical data:', error);
   } finally {
     await database.sequelize.close();
   }

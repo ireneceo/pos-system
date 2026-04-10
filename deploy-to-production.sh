@@ -244,9 +244,9 @@ if echo "$SYNC_OUTPUT" | grep -q "⚠️"; then
     echo "$SYNC_OUTPUT" | grep "⚠️" | head -10
 fi
 
-if echo "$SYNC_OUTPUT" | grep -q "❌ Unable to sync"; then
+if echo "$SYNC_OUTPUT" | grep -q "✗ Unable to sync"; then
     warn "Database sync failed! Check manually:"
-    echo "$SYNC_OUTPUT" | grep "❌"
+    echo "$SYNC_OUTPUT" | grep "✗"
 fi
 
 # 9a. Run data migration (if exists)

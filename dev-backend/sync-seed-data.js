@@ -81,7 +81,7 @@ async function exportSeedData() {
         key_column: config.key_column,
         data: cleaned
       };
-      console.log(`✅ ${config.table}: ${cleaned.length} records exported`);
+      console.log(`✓ ${config.table}: ${cleaned.length} records exported`);
     } catch (err) {
       console.log(`⚠️  ${config.table}: table not found or error (${err.message})`);
       result[config.table] = { key_column: config.key_column, data: [] };
@@ -215,7 +215,7 @@ async function importSeedData() {
       }
     }
 
-    console.log(`✅ ${tableName}: ${inserted} inserted, ${updated} updated (total: ${data.length})`);
+    console.log(`✓ ${tableName}: ${inserted} inserted, ${updated} updated (total: ${data.length})`);
     totalInserted += inserted;
     totalUpdated += updated;
   }

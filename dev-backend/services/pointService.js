@@ -154,7 +154,7 @@ async function earnPointsForOrder(restaurantId, customerId, orderId, orderAmount
 
     await t.commit();
 
-    console.log(`✅ [POINTS] Earned ${earnedPoints} points for customer ${customerId}, order ${orderId}`);
+    console.log(`✓ [POINTS] Earned ${earnedPoints} points for customer ${customerId}, order ${orderId}`);
 
     return {
       success: true,
@@ -165,7 +165,7 @@ async function earnPointsForOrder(restaurantId, customerId, orderId, orderAmount
     };
   } catch (error) {
     await t.rollback();
-    console.error('❌ [POINTS] Error earning points:', error);
+    console.error('✗ [POINTS] Error earning points:', error);
     return { success: false, error: error.message };
   }
 }
@@ -242,7 +242,7 @@ async function usePointsForOrder(restaurantId, customerId, orderId, pointsToUse)
 
     await t.commit();
 
-    console.log(`✅ [POINTS] Used ${pointsToUse} points for customer ${customerId}, order ${orderId}`);
+    console.log(`✓ [POINTS] Used ${pointsToUse} points for customer ${customerId}, order ${orderId}`);
 
     return {
       success: true,
@@ -252,7 +252,7 @@ async function usePointsForOrder(restaurantId, customerId, orderId, pointsToUse)
     };
   } catch (error) {
     await t.rollback();
-    console.error('❌ [POINTS] Error using points:', error);
+    console.error('✗ [POINTS] Error using points:', error);
     return { success: false, error: error.message };
   }
 }
@@ -362,7 +362,7 @@ async function refundPointsForOrder(restaurantId, customerId, orderId) {
 
     await t.commit();
 
-    console.log(`✅ [POINTS] Refunded points for customer ${customerId}, order ${orderId}`);
+    console.log(`✓ [POINTS] Refunded points for customer ${customerId}, order ${orderId}`);
 
     return {
       success: true,
@@ -371,7 +371,7 @@ async function refundPointsForOrder(restaurantId, customerId, orderId) {
     };
   } catch (error) {
     await t.rollback();
-    console.error('❌ [POINTS] Error refunding points:', error);
+    console.error('✗ [POINTS] Error refunding points:', error);
     return { success: false, error: error.message };
   }
 }
@@ -445,7 +445,7 @@ async function grantWelcomePoints(restaurantId, customerId) {
 
     await t.commit();
 
-    console.log(`✅ [POINTS] Granted ${settings.welcome_points} welcome points to customer ${customerId}`);
+    console.log(`✓ [POINTS] Granted ${settings.welcome_points} welcome points to customer ${customerId}`);
 
     return {
       success: true,
@@ -454,7 +454,7 @@ async function grantWelcomePoints(restaurantId, customerId) {
     };
   } catch (error) {
     await t.rollback();
-    console.error('❌ [POINTS] Error granting welcome points:', error);
+    console.error('✗ [POINTS] Error granting welcome points:', error);
     return { success: false, error: error.message };
   }
 }

@@ -2,6 +2,7 @@ import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface ImageUploadDropzoneProps {
   value: string;
   onChange: (imageUrl: string) => void;
@@ -192,7 +193,7 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
    */
   const uploadImageToServer = async (base64Image: string): Promise<string | null> => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}/api/upload/image`, {
         method: 'POST',
         headers: {

@@ -41,7 +41,7 @@ PROD_BACKEND="$PROJECT_DIR/production-backend"
 PROD_FRONTEND="$PROJECT_DIR/production-frontend"
 
 if [ ! -d "${BACKUP_DIR}" ]; then
-    echo -e "${RED}❌ 에러: 백업 디렉토리를 찾을 수 없습니다: ${BACKUP_DIR}${NC}"
+    echo -e "${RED}✗ 에러: 백업 디렉토리를 찾을 수 없습니다: ${BACKUP_DIR}${NC}"
     echo ""
     echo -e "${BLUE}📦 사용 가능한 백업:${NC}"
     ls -lt /var/www/backups/ 2>/dev/null | head -10 || echo "백업이 없습니다."
@@ -144,7 +144,7 @@ if [ -f "$DB_BACKUP_FILE" ]; then
             DB_PASS=$DB_PASSWORD
             DB_NAME=$DB_NAME
         else
-            echo -e "${RED}   ❌ .env 파일을 찾을 수 없습니다.${NC}"
+            echo -e "${RED}   ✗ .env 파일을 찾을 수 없습니다.${NC}"
             exit 1
         fi
 
@@ -152,9 +152,9 @@ if [ -f "$DB_BACKUP_FILE" ]; then
         gunzip < $DB_BACKUP_FILE | mysql -u $DB_USER -p$DB_PASS $DB_NAME
 
         if [ $? -eq 0 ]; then
-            echo -e "${GREEN}   ✅ 데이터베이스 롤백 완료${NC}"
+            echo -e "${GREEN}   ✓ 데이터베이스 롤백 완료${NC}"
         else
-            echo -e "${RED}   ❌ 데이터베이스 롤백 실패!${NC}"
+            echo -e "${RED}   ✗ 데이터베이스 롤백 실패!${NC}"
             exit 1
         fi
     else
@@ -173,7 +173,7 @@ if [ -d "/var/cache/nginx" ]; then
     rm -rf /var/cache/nginx/*
 fi
 systemctl reload nginx
-echo -e "${GREEN}   ✅ Nginx 재시작 완료${NC}"
+echo -e "${GREEN}   ✓ Nginx 재시작 완료${NC}"
 
 # ==============================================
 # Step 5: Post-rollback Verification

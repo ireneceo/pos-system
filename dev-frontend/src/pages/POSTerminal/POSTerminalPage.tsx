@@ -23,6 +23,7 @@ import { getCurrencySymbol } from '../../utils/currency';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 const POSContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FAFBFC;
@@ -1329,7 +1330,7 @@ const POSTerminalPage: React.FC = () => {
     const loadMembershipSettings = async () => {
       if (user?.restaurantId) {
         try {
-          const token = localStorage.getItem('auth_token');
+          const token = getAuthToken();
           const response = await fetch(`/api/membership/settings/${user.restaurantId}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
           });
@@ -1354,7 +1355,7 @@ const POSTerminalPage: React.FC = () => {
     const loadCustomerPoints = async () => {
       if (user?.restaurantId && selectedCustomerForOrder?.id) {
         try {
-          const token = localStorage.getItem('auth_token');
+          const token = getAuthToken();
           const response = await fetch(`/api/membership/customer/${user.restaurantId}/${selectedCustomerForOrder.id}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
           });
@@ -1627,7 +1628,7 @@ const POSTerminalPage: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
           code: couponCode.toUpperCase(),

@@ -13,6 +13,7 @@ import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Restaurant extends Omit<BaseRestaurant, 'status'> {
   status: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled';
   cuisine: string;
@@ -610,7 +611,7 @@ const ManagerRestaurantsPage: React.FC = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch('/api/brands', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -660,7 +661,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       try {
         if (!user) return;
 
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch(`/api/restaurants`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -787,7 +788,7 @@ const ManagerRestaurantsPage: React.FC = () => {
     setAdminSearchQuery(query);
     setShowAdminDropdown(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/users/available-admins?q=${encodeURIComponent(query)}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -874,7 +875,7 @@ const ManagerRestaurantsPage: React.FC = () => {
         restaurantData.adminUserId = parseInt(selectedAdmin.id.toString());
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/restaurants', {
         method: 'POST',
         headers: {
@@ -896,7 +897,7 @@ const ManagerRestaurantsPage: React.FC = () => {
         }
         
         // Refresh the restaurants list using same API as initial load
-        const token2 = localStorage.getItem('auth_token');
+        const token2 = getAuthToken();
         const fetchResponse = await fetch(`/api/restaurants`, {
           headers: { 'Authorization': `Bearer ${token2}` }
         });
@@ -1061,7 +1062,7 @@ const ManagerRestaurantsPage: React.FC = () => {
     setFormError('');
     if (editingRestaurant) {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const updateData: any = {
           name: newRestaurant.name,
           email: newRestaurant.email,
@@ -1162,7 +1163,7 @@ const ManagerRestaurantsPage: React.FC = () => {
     if (!restaurantToDelete) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/restaurants/${restaurantToDelete.id}`, {
         method: 'DELETE',
         headers: {

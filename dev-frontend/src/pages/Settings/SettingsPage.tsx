@@ -18,6 +18,7 @@ import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTr
 import { getCurrencySymbol } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // 스타일 컴포넌트
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -974,7 +975,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     const fetchSupportedCurrencies = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch('/api/currencies/supported', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -1220,7 +1221,7 @@ const SettingsPage: React.FC = () => {
 
       setPrinterSettingsLoading(true);
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1307,7 +1308,7 @@ const SettingsPage: React.FC = () => {
     if (!user?.restaurantId) return;
     setKitchenStationsLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const authHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
       const [stationsRes, categoriesRes, productsRes, restaurantRes] = await Promise.all([
@@ -1357,7 +1358,7 @@ const SettingsPage: React.FC = () => {
 
       setLoadingMembership(true);
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch(`/api/membership/settings/${user.restaurantId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -1768,7 +1769,7 @@ const SettingsPage: React.FC = () => {
           roundingApplyTo: currencySettings.roundingApplyTo
         });
 
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         console.log('🔑 Auth token length:', token?.length || 0);
         console.log('👤 User restaurantId:', user.restaurantId);
         console.log('📡 Sending PUT request to:', `/api/store/settings?restaurantId=${user.restaurantId}`);
@@ -1869,7 +1870,7 @@ const SettingsPage: React.FC = () => {
     if (!user?.restaurantId) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/membership/settings/${user.restaurantId}`, {
         method: 'PUT',
         headers: {
@@ -4434,7 +4435,7 @@ QZ Tray (installed on this device)
                     { key: 'menu_item', label: 'By Menu Item', desc: 'Assign each menu item individually. More precise but requires manual assignment for new items.' },
                   ] as const).map(opt => (
                     <AutoSaveField key={opt.key} ref={(h: AutoSaveHandle | null) => { if (h) kitchenAssignmentRefs.current.set(opt.key, h); }} onSave={async () => {
-                      const token = localStorage.getItem('auth_token');
+                      const token = getAuthToken();
                       const res = await fetch(`/api/restaurants/${user?.restaurantId}`, {
                         method: 'PUT',
                         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -4604,7 +4605,7 @@ QZ Tray (installed on this device)
                   const id = deleteStationConfirm.stationId;
                   setDeleteStationConfirm({ isOpen: false, stationId: null, stationName: '' });
                   if (!id) return;
-                  const token = localStorage.getItem('auth_token');
+                  const token = getAuthToken();
                   await fetch(`/api/kitchen-stations/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
@@ -4634,7 +4635,7 @@ QZ Tray (installed on this device)
                         onClick={async () => {
                           setStationSaving(true);
                           try {
-                            const token = localStorage.getItem('auth_token');
+                            const token = getAuthToken();
                             const authHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
                             if (editingStation) {

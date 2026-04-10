@@ -81,10 +81,10 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
     console.log('📝 Request body:', req.body);
 
     const plan = await PlanTemplate.create(req.body);
-    console.log('✅ Plan created successfully:', plan);
+    console.log('✓ Plan created successfully:', plan);
     res.status(201).json(plan);
   } catch (error) {
-    console.error('❌ Error creating plan:', error);
+    console.error('✗ Error creating plan:', error);
     console.error('Error details:', error.message);
 
     // Handle unique constraint violation

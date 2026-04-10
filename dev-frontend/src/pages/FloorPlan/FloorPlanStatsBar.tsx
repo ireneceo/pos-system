@@ -4,6 +4,7 @@ import { FloorTable, TableStatus, TableStatusInfo, STATUS_COLORS, STATUS_LABELS 
 import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface FloorPlanStatsBarProps {
   tables: FloorTable[];
   tableStatuses: Record<string, TableStatusInfo>;
@@ -123,7 +124,7 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const today = new Date().toISOString().split('T')[0];
 
         // Fetch order counts
@@ -189,7 +190,7 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
     // Load threshold from restaurant settings
     const loadThreshold = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const res = await fetch(`/api/restaurants/${restaurantId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -224,7 +225,7 @@ const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStat
     if (thresholdSaveRef.current) clearTimeout(thresholdSaveRef.current);
     thresholdSaveRef.current = setTimeout(async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         // Fetch current operation_settings first
         const res = await fetch(`/api/restaurants/${restaurantId}`, {
           headers: { 'Authorization': `Bearer ${token}` }

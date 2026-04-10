@@ -12,6 +12,7 @@ import styled from 'styled-components';
 import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 
+import { getAuthToken } from '../../utils/auth';
 const OrderSummary = styled.div`
   background: linear-gradient(to bottom, #F8FAFC, #F1F5F9);
   border-radius: 12px;
@@ -209,7 +210,7 @@ const PointsDiscount = styled.div`
 
 // Helper function to get fetch options with auth token
 const getFetchOptionsForModal = (options: RequestInit = {}): RequestInit => {
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   return {
     ...options,
     credentials: 'include',

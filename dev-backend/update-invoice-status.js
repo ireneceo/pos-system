@@ -22,7 +22,7 @@ async function updateInvoiceStatus() {
       "ALTER TABLE invoices MODIFY COLUMN status ENUM('draft', 'pending_payment', 'payment_submitted', 'paid', 'overdue', 'cancelled') DEFAULT 'draft'"
     );
 
-    console.log('✅ Invoice status updated successfully');
+    console.log('✓ Invoice status updated successfully');
 
     // Show current status distribution
     const [statusCount] = await database.sequelize.query(
@@ -36,7 +36,7 @@ async function updateInvoiceStatus() {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error updating invoice status:', error);
+    console.error('✗ Error updating invoice status:', error);
     process.exit(1);
   }
 }

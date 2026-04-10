@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface CurrencyConfig {
   [code: string]: {
     symbol: string;
@@ -348,7 +349,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers = { 'Authorization': `Bearer ${token}` };
 
       // Fetch currency config (global), system supported currencies, and foodcourt-specific payment settings
@@ -431,7 +432,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
     if (!foodcourtId) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/foodcourts/${foodcourtId}/payment-settings`, {
         method: 'PUT',
         headers: {
@@ -554,7 +555,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
     if (!foodcourtId) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/foodcourts/${foodcourtId}/payment-settings`, {
         method: 'PUT',
         headers: {

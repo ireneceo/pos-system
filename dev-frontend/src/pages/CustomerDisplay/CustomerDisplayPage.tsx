@@ -7,6 +7,7 @@ import { io, Socket } from 'socket.io-client';
 import { getTodayInTimezone, getRestaurantTimezone } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface DbOrder {
   id: number;
   restaurant_id: number;
@@ -279,7 +280,7 @@ const CustomerDisplayPage: React.FC = () => {
     if (!user?.restaurantId) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const fetchOptions = {
         credentials: 'include' as RequestCredentials,
         headers: {

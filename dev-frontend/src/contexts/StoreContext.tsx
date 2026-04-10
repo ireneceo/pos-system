@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useAuth } from './AuthContext';
 import QRCode from 'qrcode';
 
+import { getAuthToken } from '../utils/auth';
 interface StoreSettings {
   name: string;
   businessRegistration: string;
@@ -159,7 +160,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
   // DB에서 설정 로드 (auth-ready 이벤트에서도 재호출)
   const loadSettingsFromDB = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) return;
 
       // Try to get restaurant_id from URL first

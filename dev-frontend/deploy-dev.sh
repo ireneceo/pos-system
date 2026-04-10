@@ -63,12 +63,12 @@ BUILD_TIME=$((BUILD_END - BUILD_START))
 
 # 2. 빌드 확인
 if [ ! -f "$BUILD_DIR/index.html" ]; then
-    echo -e "${RED}❌ 빌드 실패: index.html을 찾을 수 없습니다${NC}"
+    echo -e "${RED}✗ 빌드 실패: index.html을 찾을 수 없습니다${NC}"
     exit 1
 fi
 
 # 3. 빌드 파일 정보 출력
-echo -e "\n${GREEN}✅ 빌드 완료! (${BUILD_TIME}초)${NC}"
+echo -e "\n${GREEN}✓ 빌드 완료! (${BUILD_TIME}초)${NC}"
 echo -e "${BLUE}📁 빌드된 파일:${NC}"
 ls -lh "$BUILD_DIR/index.html" | awk '{print "   index.html (" $5 ")"}'
 if [ -d "$BUILD_DIR/static/js" ]; then
@@ -89,13 +89,13 @@ sudo rm -rf "$DEPLOY_DIR/static"
 echo -e "\n${YELLOW}📦 nginx 배포 폴더로 복사 중...${NC}"
 if sudo cp -r "$BUILD_DIR"/* "$DEPLOY_DIR"/; then
     sudo chown -R root:root "$DEPLOY_DIR"
-    echo -e "${GREEN}✅ $DEPLOY_DIR 로 복사 완료${NC}"
+    echo -e "${GREEN}✓ $DEPLOY_DIR 로 복사 완료${NC}"
 else
-    echo -e "${RED}❌ 배포 폴더 복사 실패${NC}"
+    echo -e "${RED}✗ 배포 폴더 복사 실패${NC}"
     exit 1
 fi
 
-echo -e "\n${GREEN}✅ 배포 완료!${NC}"
+echo -e "\n${GREEN}✓ 배포 완료!${NC}"
 echo -e "${BLUE}📂 빌드 위치: $BUILD_DIR${NC}"
 echo -e "${BLUE}📂 배포 위치: $DEPLOY_DIR${NC}"
 echo -e "${BLUE}🌐 웹사이트: https://dev.purplehere.com${NC}"

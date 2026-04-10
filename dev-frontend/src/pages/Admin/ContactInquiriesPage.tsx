@@ -6,6 +6,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface ContactInquiry {
   id: number;
   name: string;
@@ -501,7 +502,7 @@ const ContactInquiriesPage: React.FC = () => {
   const loadData = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
 
@@ -549,7 +550,7 @@ const ContactInquiriesPage: React.FC = () => {
     if (!selectedInquiry) return;
     setDetailStatus(newStatus);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/public/admin/inquiries/${selectedInquiry.id}`, {
         method: 'PATCH',
         headers: {
@@ -580,7 +581,7 @@ const ContactInquiriesPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/public/admin/inquiries/${selectedInquiry.id}/reply`, {
         method: 'POST',
         headers: {
@@ -608,7 +609,7 @@ const ContactInquiriesPage: React.FC = () => {
   const deleteInquiry = async () => {
     if (!selectedInquiry) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       await fetch(`/api/public/admin/inquiries/${selectedInquiry.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -624,7 +625,7 @@ const ContactInquiriesPage: React.FC = () => {
   const handleCloseInquiry = async (inquiryId: number, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/public/admin/inquiries/${inquiryId}`, {
         method: 'PATCH',
         headers: {

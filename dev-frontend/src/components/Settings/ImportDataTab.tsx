@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 
+import { getAuthToken } from '../../utils/auth';
 const Card = styled.div`
   background: white;
   border-radius: 8px;
@@ -39,7 +40,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
   // Load stats + history + menu list
   useEffect(() => {
     if (!restaurantId) return;
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     const headers = { 'Authorization': `Bearer ${token}` };
 
     fetch(`/api/import/stats?restaurant_id=${restaurantId}`, { headers })
@@ -67,7 +68,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
     formData.append('type', 'orders');
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch('/api/import/preview', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -99,7 +100,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
     formData.append('format', preview?.format || 'summary');
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch('/api/import/execute-orders', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -126,7 +127,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
     if (!result?.batchId || Object.keys(matchMap).length === 0) return;
     setApplyingMatch(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch('/api/import/apply-matching', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -149,7 +150,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
   const handleUndo = async (batchId: string) => {
     if (!window.confirm('Undo this import? All imported orders will be deleted.')) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch(`/api/import/undo/${batchId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

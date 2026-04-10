@@ -6,6 +6,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface OperationSettings {
   openingTime: string;
   closingTime: string;
@@ -201,7 +202,7 @@ const BrandCompanyInfoPage: React.FC = () => {
 
   const fetchCompanyInfo = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       // Brand의 company info는 brand 테이블에서 가져옴
       const response = await fetch('/api/brands/company-info', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -252,7 +253,7 @@ const BrandCompanyInfoPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     const response = await fetch('/api/brands/company-info', {
       method: 'PUT',
       headers: {

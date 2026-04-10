@@ -158,7 +158,7 @@ function printDiffs(diffs) {
   }
 
   if (!hasIssues) {
-    console.log('✅ Schemas are identical. No migration needed.');
+    console.log('✓ Schemas are identical. No migration needed.');
   } else {
     console.log('───────────────────────────────────────────');
     console.log(`Total: ${diffs.newTables.length} new tables, ${diffs.newColumns.length} new columns, ${diffs.droppedColumns.length} extra prod columns, ${diffs.typeChanges.length} type changes`);
@@ -179,13 +179,13 @@ async function main() {
       const outIdx = args.indexOf('--out');
       if (outIdx >= 0 && args[outIdx + 1]) {
         fs.writeFileSync(args[outIdx + 1], JSON.stringify(schema));
-        console.log(`✅ Schema exported to ${args[outIdx + 1]} (${Object.keys(schema).length} tables)`);
+        console.log(`✓ Schema exported to ${args[outIdx + 1]} (${Object.keys(schema).length} tables)`);
       } else {
         process.stdout.write(JSON.stringify(schema));
       }
       process.exit(0);
     } catch (e) {
-      console.error('❌ Export failed:', e.message);
+      console.error('✗ Export failed:', e.message);
       process.exit(2);
     }
   }

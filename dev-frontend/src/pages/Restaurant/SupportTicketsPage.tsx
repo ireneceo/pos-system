@@ -10,6 +10,7 @@ import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface SupportTicket {
   id: string;
   ticketNumber: string;
@@ -406,7 +407,7 @@ const SupportTicketsPage: React.FC = () => {
   const fetchUnreadCounts = async (ticketList: SupportTicket[]) => {
     if (ticketList.length === 0) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const ids = ticketList.map(t => t.id).join(',');
       const res = await fetch(`/api/comments/unread-counts?entity_type=support_ticket&entity_ids=${ids}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -425,7 +426,7 @@ const SupportTicketsPage: React.FC = () => {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch('/api/support-tickets', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -539,7 +540,7 @@ const SupportTicketsPage: React.FC = () => {
         attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/support-tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

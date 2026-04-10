@@ -11,6 +11,7 @@ import { formatPaymentDisplay } from '../../constants';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
   const date = new Date(dateString);
@@ -276,7 +277,7 @@ const BillPrintPage: React.FC = () => {
     const loadReceiptSettings = async () => {
       if (!user?.restaurantId) return;
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const res = await fetch(`/api/restaurants/${user.restaurantId}`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();

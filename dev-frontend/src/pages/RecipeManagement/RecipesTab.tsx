@@ -13,6 +13,7 @@ import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '../../utils/unitConversion';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface RecipesTabProps {
   brandId: number | null;
   restaurantId?: number | null;
@@ -831,7 +832,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const isBrandRecipeView = isRestaurantAdmin && selectedRecipe?.owner_type === 'brand';
 
   // Helper to get auth token
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   // Parallel fetch all data for performance
   useEffect(() => {
@@ -967,7 +968,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
       if (!url) return;
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -995,7 +996,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const fetchRecipes = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       // Brand General/Manager
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
@@ -1212,7 +1213,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         }
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(url, {
         method,
         headers: {

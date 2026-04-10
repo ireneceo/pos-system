@@ -28,9 +28,9 @@ const syncDatabase = async () => {
     // alter: false로 설정하여 기존 테이블 구조를 변경하지 않음 (중복 인덱스 방지)
     // 스키마 변경이 필요한 경우 별도의 마이그레이션 스크립트 사용
     await sequelize.sync({ alter: false });
-    console.log('✅ 모든 모델이 동기화되었습니다.');
+    console.log('✓ 모든 모델이 동기화되었습니다.');
   } catch (error) {
-    console.error('❌ 데이터베이스 동기화 실패:', error);
+    console.error('✗ 데이터베이스 동기화 실패:', error);
     throw error;
   }
 };

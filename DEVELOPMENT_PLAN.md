@@ -1,8 +1,66 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-10 (오후 — 추가 버그 수정 운영 배포)
+> **최종 업데이트:** 2026-04-10 (저녁 — Phase C 진행: C-1/C-2 운영, C-3/C-4/C-5 개발 완료)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: Phase C 진행 (2026-04-10 저녁)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| C-1 운영 배포 | 토큰 키 단일 진입점 (utils/auth.ts, 133 파일 codemod) | ✓ |
+| C-2 운영 배포 | CustomerContext 하드코딩 fallback 제거 | ✓ |
+| C-3 개발 완료 | Fetch 인터셉터 단일화 — `utils/httpClient.ts` 추출, index.tsx/AuthContext 정리 | ✓ |
+| C-4 개발 완료 | CustomerContext 내부 분할 — `useMobileCustomerState` + `usePosCustomersState` + composite (공개 API 불변) | ✓ |
+| C-4 추가 수정 | 모바일 세션 **레스토랑별 격리** — per-slug localStorage 키, SPA nav 감지, 레거시 정리 | ✓ |
+| C-5 개발 완료 | 백엔드 5개 거대 라우트 파일 → 16개로 분할 (customers/mobile/orders/restaurants/invoices) | ✓ |
+| 보조 | 63개 백엔드/셸 스크립트 ✅/❌ → ✓/✗ 일괄 치환 | ✓ |
+| 회귀 수정 | mobile-public.js `Order` import 누락 → 수정 (popular/:slug 500→200) | ✓ |
+
+### C-5 분할 결과
+
+| 원본 파일 | 줄수 | 분할 결과 |
+|-----------|------|-----------|
+| customers.js | 1263 | barrel 16 + self 223 + admin 320 + auth 608 |
+| mobile.js | 1304 | barrel 16 + helpers 163 + public 602 + orders 565 |
+| orders.js | 2140 | barrel 17 + crud 1501 + views 469 + payment 231 |
+| restaurants.js | 2204 | barrel 18 + subscription 461 + crud 1648 + ingredients 152 |
+| invoices.js | 3170 | barrel 20 + helpers 418 + main 2327 + payment 527 |
+
+### 검증
+- 빌드: main.790aac97.js 64초, 신규 warning 0
+- health-check: 39/39 통과 (2회 회귀 발생 → 즉시 수정: mobile-helpers TableQRSession 중복, orders-payment isPaymentAllowed 누락, mobile-public Order 누락)
+- 분할 라우트 추가 실호출: 53/53 (health 39 + 추가 14)
+- 역할별 플로우: System Admin 8/8 + 모바일 downtown-pizza 6/6 + demo-korean-bbq 2/2
+- SPA 라우팅: 10개 경로 전부 200
+- 번들 마커: `mobile_customer:`, `mobile_token:`, `locationchange`, `__httpClientInstalled`, `auth_token` 포함, 구 마커 0
+
+### 수정된 파일
+- `dev-frontend/src/utils/httpClient.ts` (신규)
+- `dev-frontend/src/index.tsx` (인터셉터 단일화)
+- `dev-frontend/src/contexts/CustomerContext.tsx` (composite로 재작성)
+- `dev-frontend/src/contexts/customer/types.ts` (신규)
+- `dev-frontend/src/contexts/customer/useMobileCustomerState.ts` (신규, per-slug scope + SPA nav)
+- `dev-frontend/src/contexts/customer/usePosCustomersState.ts` (신규)
+- `dev-frontend/src/mobile/utils/mobileApi.ts` (per-slug 토큰 키)
+- `dev-backend/routes/customers.js` + `customers-{auth,admin,self}.js`
+- `dev-backend/routes/mobile.js` + `mobile-{helpers,public,orders}.js`
+- `dev-backend/routes/orders.js` + `orders-{crud,views,payment}.js`
+- `dev-backend/routes/restaurants.js` + `restaurants-{crud,subscription,ingredients}.js`
+- `dev-backend/routes/invoices.js` + `invoices-{helpers,main,payment}.js`
+- `dev-backend/scripts/health-check.js` + 62개 백엔드/셸 스크립트 (이모지 치환)
+
+### 운영 배포 대기분
+- Phase C-3/C-4/C-5 일괄 + 이모지 치환 → 다음 `/배포` 명령 시 한 번에 동기화
+
+### 미완 (다음 세션 권장)
+- **C-6**: 프론트 거대 컴포넌트 5개 분할 (LiveOrdersPage 4458, InventoryManager 3141, BrandInvoicesPage 4566, PaymentPage 2597, InvoicesPage 4205 — 총 19,000줄). 각 컴포넌트당 별도 세션 권장 (브라우저 수동 검증 필수)
+
+---
 
 ---
 
@@ -18,7 +76,7 @@ Irene 우려 — "기능 개발하면서 기존 기능이 망가지는 패턴이
 | **D-1** | Sentry 도입 (프론트 + 백엔드) | ✅ 운영 배포 완료 |
 | **D-2** | health-check 스크립트 (39 tests) | ✅ 운영 배포 완료 |
 | **B** | 깨진 기능 복구 4건 (포인트 UI, activityLogs, NotificationSettings, 인쇄 이중 트리거) | ✅ 운영 배포 완료 |
-| **C** | 구조 개선 (httpClient, Context 분리, 거대 파일 분할) | 🔜 다음 세션 |
+| **C** | 구조 개선 (httpClient, Context 분리, 거대 파일 분할) | 🔄 C-1/C-2 운영, C-3/C-4/C-5 개발 완료, C-6 대기 |
 
 **순서**: A → D → B → C
 **이유**: D(안전망) 깔고 B/C 진행 — 안전망 없는 리팩토링은 또 깨짐

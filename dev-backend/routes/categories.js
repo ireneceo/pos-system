@@ -195,14 +195,14 @@ router.put('/reorder', async (req, res) => {
       })
     );
 
-    console.log('✅ Category order updated successfully');
+    console.log('✓ Category order updated successfully');
 
     res.json({
       success: true,
       message: 'Category order updated successfully'
     });
   } catch (error) {
-    console.error('❌ Reorder error:', error);
+    console.error('✗ Reorder error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

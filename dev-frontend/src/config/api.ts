@@ -1,3 +1,4 @@
+import { getAuthToken } from '../utils/auth';
 // API Configuration - Environment variable is replaced at build time
 // process.env.REACT_APP_API_URL will be replaced by webpack with actual value
 export const getApiBaseUrl = (): string => {
@@ -12,7 +13,7 @@ export const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const url = API_BASE_URL ? `${API_BASE_URL}${endpoint}` : endpoint;
 
   // JWT 토큰 자동 추가
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
 
   const defaultOptions: RequestInit = {

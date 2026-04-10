@@ -12,6 +12,7 @@ import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ─── Styled Components ───
 
 const PageContainer = styled.div`
@@ -244,7 +245,7 @@ const FloorPlanPage: React.FC = () => {
   // Fetch table statuses
   const fetchStatuses = useCallback(async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch(`/api/restaurants/${restaurantId}/table-status`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -266,7 +267,7 @@ const FloorPlanPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const res = await fetch(`/api/restaurants/${restaurantId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -306,7 +307,7 @@ const FloorPlanPage: React.FC = () => {
     // Membership settings (like LiveOrders)
     const loadMembership = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const res = await fetch(`/api/membership/settings/${restaurantId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -410,7 +411,7 @@ const FloorPlanPage: React.FC = () => {
   // Status change handler
   const handleStatusChange = async (orderId: number, newStatus: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
@@ -481,7 +482,7 @@ const FloorPlanPage: React.FC = () => {
     if (!statusInfo?.orderId) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const updatePayload: any = {
         payment_status: 'completed',
         payment_method: method,
@@ -538,7 +539,7 @@ const FloorPlanPage: React.FC = () => {
   // Clear table — completed 주문의 table_number를 null로 설정하여 테이블 비움
   const handleClearTable = async (orderId: number) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -555,7 +556,7 @@ const FloorPlanPage: React.FC = () => {
   const handleClearAllCompleted = async () => {
     if (!selectedTable) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const completedOrders = selectedOrders.filter(o => o.orderStatus === 'completed');
       await Promise.all(completedOrders.map(o =>
         fetch(`/api/orders/${o.orderId}`, {

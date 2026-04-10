@@ -31,6 +31,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useStore } from '../../contexts/StoreContext';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Manager {
   id: string;
   managerId: string;
@@ -219,7 +220,7 @@ const FormTextarea = styled.textarea`
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   return {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})

@@ -26,6 +26,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { getPlanPrice, formatPlanPrice, normalizeCurrencyCode, formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface RestaurantSubscription {
   id: string;
   restaurantId: string;
@@ -333,7 +334,7 @@ const SubscriptionsPage: React.FC = () => {
 
   const fetchSubscriptions = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers: any = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -476,7 +477,7 @@ const SubscriptionsPage: React.FC = () => {
 
   const fetchAvailableData = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
 
       const restaurantsResponse = await fetch('/api/restaurants', { headers });
@@ -770,7 +771,7 @@ const SubscriptionsPage: React.FC = () => {
       };
 
       // Update entity subscription data based on target type
-      const authToken = localStorage.getItem('auth_token');
+      const authToken = getAuthToken();
       const authHeaders = {
         'Content-Type': 'application/json',
         ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
@@ -839,7 +840,7 @@ const SubscriptionsPage: React.FC = () => {
       }
 
       // Create invoice via API
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const invoiceResponse = await fetch('/api/invoices', {
         method: 'POST',
         headers: {
@@ -895,7 +896,7 @@ const SubscriptionsPage: React.FC = () => {
 
       console.log('📤 Sending update data:', updateData);
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
@@ -957,7 +958,7 @@ const SubscriptionsPage: React.FC = () => {
     if (!selectedSubscription || !confirmAction) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})

@@ -11,6 +11,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Category {
@@ -708,7 +709,7 @@ const formatPrice = (value: number, currency: string): string => {
   return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-const getToken = () => localStorage.getItem('auth_token');
+const getToken = () => getAuthToken();
 
 // ─── Main Page Component ─────────────────────────────────────────────────────
 

@@ -8,6 +8,7 @@ import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface RecipeCategoriesTabProps {
   brandId: number | null;
   restaurantId?: number | null;
@@ -267,7 +268,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
   const isItemReadOnly = (item: Category) => isRestaurantAdmin && item.owner_type === 'brand';
 
   // Helper to get auth token
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   // Parallel fetch all data
   useEffect(() => {
@@ -369,7 +370,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
     if (!formData.name.trim()) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
       const method = editingCategory ? 'PUT' : 'POST';
 
@@ -422,7 +423,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
     if (!categoryToDelete) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
 
       if (isBrandUser && brandId) {
@@ -468,7 +469,7 @@ const RecipeCategoriesTab: React.FC<RecipeCategoriesTabProps> = ({ brandId, rest
     }));
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
 
       if (isBrandUser && brandId) {

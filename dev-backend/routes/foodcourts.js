@@ -134,7 +134,7 @@ router.put('/company-info', authenticateToken, async (req, res) => {
     }
 
     await foodcourt.update(updateData);
-    console.log(`✅ Foodcourt company info updated: ${foodcourt.name}`);
+    console.log(`✓ Foodcourt company info updated: ${foodcourt.name}`);
 
     res.json({ success: true, message: 'Company info updated successfully' });
   } catch (error) {
@@ -205,7 +205,7 @@ router.post('/', authenticateToken, requireRole('Foodcourt General', 'System Adm
       status: status || 'active'
     });
 
-    console.log(`✅ Foodcourt created: ${foodcourt.name} (ID: ${foodcourt.id})`);
+    console.log(`✓ Foodcourt created: ${foodcourt.name} (ID: ${foodcourt.id})`);
 
     // Fetch with associations
     const createdFoodcourt = await Foodcourt.findByPk(foodcourt.id, {
@@ -267,7 +267,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       status: status || foodcourt.status
     });
 
-    console.log(`✅ Foodcourt updated: ${foodcourt.name}`);
+    console.log(`✓ Foodcourt updated: ${foodcourt.name}`);
 
     // Fetch with associations
     const updatedFoodcourt = await Foodcourt.findByPk(id, {
@@ -356,7 +356,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 
     await foodcourt.destroy();
-    console.log(`✅ Foodcourt deleted: ${foodcourt.name}`);
+    console.log(`✓ Foodcourt deleted: ${foodcourt.name}`);
 
     res.json({ message: 'Foodcourt deleted successfully' });
   } catch (error) {
@@ -458,7 +458,7 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
     }
 
     await foodcourt.save();
-    console.log(`✅ Foodcourt payment settings updated: ${foodcourt.name}`);
+    console.log(`✓ Foodcourt payment settings updated: ${foodcourt.name}`);
 
     res.json({
       success: true,
@@ -555,7 +555,7 @@ router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), 
     }
 
     await foodcourt.save();
-    console.log(`✅ Foodcourt subscription updated: ${foodcourt.name}`);
+    console.log(`✓ Foodcourt subscription updated: ${foodcourt.name}`);
 
     res.json({
       success: true,

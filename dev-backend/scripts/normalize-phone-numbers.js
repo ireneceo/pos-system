@@ -149,7 +149,7 @@ async function updateTable(tableName, idColumn = 'id') {
     }
   }
 
-  console.log(`   ✅ 업데이트: ${updated}개, 변경없음: ${skipped}개`);
+  console.log(`   ✓ 업데이트: ${updated}개, 변경없음: ${skipped}개`);
   return { updated, skipped };
 }
 
@@ -160,7 +160,7 @@ async function main() {
 
   try {
     await sequelize.authenticate();
-    console.log('✅ 데이터베이스 연결 성공\n');
+    console.log('✓ 데이터베이스 연결 성공\n');
 
     // 각 테이블 처리
     const results = {
@@ -177,10 +177,10 @@ async function main() {
       console.log(`   ${table}: ${result.updated}개 업데이트`);
       totalUpdated += result.updated;
     }
-    console.log(`\n✅ 총 ${totalUpdated}개 전화번호 정규화 완료`);
+    console.log(`\n✓ 총 ${totalUpdated}개 전화번호 정규화 완료`);
 
   } catch (error) {
-    console.error('❌ 오류 발생:', error.message);
+    console.error('✗ 오류 발생:', error.message);
     process.exit(1);
   } finally {
     await sequelize.close();

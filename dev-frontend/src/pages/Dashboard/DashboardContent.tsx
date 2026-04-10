@@ -7,6 +7,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
 // ============================================================================
@@ -400,7 +401,7 @@ const DashboardContent: React.FC = () => {
   useEffect(() => {
     const fetchBadges = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         if (!token) return;
         const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) {
@@ -415,7 +416,7 @@ const DashboardContent: React.FC = () => {
   React.useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const headers = { 'Authorization': `Bearer ${token}` };
 
         const [managersResponse, restaurantsResponse, staffResponse, invoicesResponse, ordersResponse, ticketsResponse] = await Promise.all([

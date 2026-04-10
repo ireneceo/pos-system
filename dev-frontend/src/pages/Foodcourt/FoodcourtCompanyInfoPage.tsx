@@ -6,6 +6,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface OperationSettings {
   openingTime: string;
   closingTime: string;
@@ -207,7 +208,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
 
   const fetchCompanyInfo = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       // Foodcourt의 company info는 foodcourt 엔드포인트에서 가져옴
       const response = await fetch('/api/foodcourts/company-info', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -261,7 +262,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     const response = await fetch('/api/foodcourts/company-info', {
       method: 'PUT',
       headers: {

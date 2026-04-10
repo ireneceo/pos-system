@@ -9,6 +9,7 @@ import { formatCurrency } from '../../utils/currency';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface OrderOverlayProps {
   isOpen: boolean;
   onClose: () => void;
@@ -770,7 +771,7 @@ const OrderOverlay: React.FC<OrderOverlayProps> = ({
     setSubmitting(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const items = cart.map(item => ({
         name: item.menuItem.name,
         quantity: item.quantity,

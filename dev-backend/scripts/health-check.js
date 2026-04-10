@@ -114,7 +114,7 @@ function test(category, name, fn) {
 // ============================================
 async function setup() {
   if (!process.env.JWT_SECRET) {
-    console.error(c.red('❌ JWT_SECRET 환경변수가 없습니다. dev-backend/.env 확인 필요.'));
+    console.error(c.red('✗ JWT_SECRET 환경변수가 없습니다. dev-backend/.env 확인 필요.'));
     process.exit(1);
   }
 
@@ -132,7 +132,7 @@ async function setup() {
     const rc = await RestaurantCustomer.findOne({ where: { customer_id: member.id } });
     restId = rc ? rc.restaurant_id : 1;
   } catch (e) {
-    console.error(c.red(`❌ DB 조회 실패: ${e.message}`));
+    console.error(c.red(`✗ DB 조회 실패: ${e.message}`));
     console.error(c.gray('   백엔드가 실행 중이고 DB 접근 가능한지 확인하세요.'));
     process.exit(1);
   }
@@ -144,7 +144,7 @@ async function setup() {
     const { signCustomerToken } = require('../utils/customerJwt');
     customerToken = signCustomerToken(member);
   } catch (e) {
-    console.error(c.red(`❌ Customer JWT 발급 실패: ${e.message}`));
+    console.error(c.red(`✗ Customer JWT 발급 실패: ${e.message}`));
     process.exit(1);
   }
 
@@ -327,12 +327,12 @@ async function runTests(allTests, category) {
 
       if (ok) {
         totalPass++;
-        if (!opts.quiet) console.log(`  ${c.green('✅')} ${t.name}`);
+        if (!opts.quiet) console.log(`  ${c.green('✓')} ${t.name}`);
       } else {
         totalFail++;
         const msg = err ? `${t.name} (예외: ${err.message})` : t.name;
         failures.push(`[${cat}] ${msg}`);
-        console.log(`  ${c.red('❌')} ${t.name}${err ? c.gray(' (' + err.message + ')') : ''}`);
+        console.log(`  ${c.red('✗')} ${t.name}${err ? c.gray(' (' + err.message + ')') : ''}`);
       }
     }
   }
@@ -341,9 +341,9 @@ async function runTests(allTests, category) {
   console.log('\n' + '─'.repeat(60));
   const total = totalPass + totalFail;
   if (totalFail === 0) {
-    console.log(c.green(c.bold(`✅ 모든 테스트 통과 (${totalPass}/${total})`)));
+    console.log(c.green(c.bold(`✓ 모든 테스트 통과 (${totalPass}/${total})`)));
   } else {
-    console.log(c.red(c.bold(`❌ ${totalFail}건 실패 / ${totalPass}건 통과 / 총 ${total}건`)));
+    console.log(c.red(c.bold(`✗ ${totalFail}건 실패 / ${totalPass}건 통과 / 총 ${total}건`)));
     console.log('\n' + c.red('실패 목록:'));
     failures.forEach((f) => console.log(c.red('  - ' + f)));
   }
@@ -363,7 +363,7 @@ async function runTests(allTests, category) {
   // 백엔드 살아있는지 먼저 ping
   const ping = await request('GET', '/health');
   if (ping.status === 0) {
-    console.error(c.red(`❌ 백엔드 응답 없음 (${opts.host})`));
+    console.error(c.red(`✗ 백엔드 응답 없음 (${opts.host})`));
     console.error(c.gray('   pm2 status로 dev-backend 확인하세요.'));
     process.exit(1);
   }
@@ -379,7 +379,7 @@ async function runTests(allTests, category) {
   const allPass = await runTests(tests, opts.category);
   process.exit(allPass ? 0 : 1);
 })().catch((e) => {
-  console.error(c.red('\n❌ Health check 실행 중 에러:'), e.message);
+  console.error(c.red('\n✗ Health check 실행 중 에러:'), e.message);
   console.error(c.gray(e.stack));
   process.exit(1);
 });

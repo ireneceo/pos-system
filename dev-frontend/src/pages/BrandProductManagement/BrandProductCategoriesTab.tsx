@@ -7,6 +7,7 @@ import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface BrandProductCategoriesTabProps {
   onCountChange: (count: number) => void;
   onCategoryChange?: () => void;
@@ -206,7 +207,7 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
     '🍰', '🧁', '🍪', '🍩', '🍫', '🍬', '🍭', '🧇', '🥐', '🍞'
   ];
 
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   const fetchCategories = useCallback(async () => {
     try {

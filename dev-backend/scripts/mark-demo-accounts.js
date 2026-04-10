@@ -119,11 +119,11 @@ async function main() {
     `);
     console.log(`  Foodcourts: ${fcCounts[0].real_count || 0} real, ${fcCounts[0].demo_count || 0} demo, ${fcCounts[0].test_count || 0} test`);
 
-    console.log('\n✅ Demo marking complete');
+    console.log('\n✓ Demo marking complete');
     await seq.close();
     process.exit(0);
   } catch (err) {
-    console.error('❌ Demo marking failed:', err.message);
+    console.error('✗ Demo marking failed:', err.message);
     await seq.close();
     process.exit(1);
   }

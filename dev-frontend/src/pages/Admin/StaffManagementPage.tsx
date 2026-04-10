@@ -33,9 +33,10 @@ import { useStore } from '../../contexts/StoreContext';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // Auth header helper for API calls
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   return {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})

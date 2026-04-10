@@ -3,6 +3,7 @@ import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import styled from 'styled-components';
 import axios from 'axios';
 
+import { getAuthToken } from '../../utils/auth';
 const API_BASE = process.env.REACT_APP_API_URL || '';
 
 interface PayPalPaymentFormProps {
@@ -20,7 +21,7 @@ const PayPalPaymentForm: React.FC<PayPalPaymentFormProps> = ({ invoiceId, onSucc
   useEffect(() => {
     const initPayment = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await axios.post(
           `${API_BASE}/api/invoices/${invoiceId}/create-paypal-order`,
           {},
@@ -63,7 +64,7 @@ const PayPalPaymentForm: React.FC<PayPalPaymentFormProps> = ({ invoiceId, onSucc
           createOrder={async () => orderId}
           onApprove={async (data) => {
             try {
-              const token = localStorage.getItem('auth_token');
+              const token = getAuthToken();
               const captureResponse = await axios.post(
                 `${API_BASE}/api/invoices/${invoiceId}/capture-paypal-order`,
                 { orderId: data.orderID },

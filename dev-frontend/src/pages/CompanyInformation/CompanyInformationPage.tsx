@@ -7,6 +7,7 @@ import { COUNTRIES } from '../../constants/countries';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface CompanyInfo {
   id: string;
   companyName: string;
@@ -225,7 +226,7 @@ const CompanyInformationPage: React.FC = () => {
 
   const loadCompanyInfo = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (user?.restaurantId) {
         const response = await fetch(`/api/restaurants/${user.restaurantId}`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -272,7 +273,7 @@ const CompanyInformationPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!user?.restaurantId) return;
 
     const response = await fetch(`/api/restaurants/${user.restaurantId}`, {

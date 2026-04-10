@@ -1,3 +1,4 @@
+import { getAuthToken } from './auth';
 // 결제 상태 체크 유틸리티
 
 export interface PendingPlanChange {
@@ -32,7 +33,7 @@ export interface OverdueInvoice {
 
 // 실제 API에서 결제 상태를 가져오는 함수
 export const fetchPaymentStatus = async (): Promise<PaymentStatus> => {
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   if (!token) {
     return getDefaultStatus();
   }

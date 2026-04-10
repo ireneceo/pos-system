@@ -6,6 +6,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface CurrencyConfig {
   [code: string]: {
     symbol: string;
@@ -368,7 +369,7 @@ const PaymentSettingsPage: React.FC = () => {
 
   const loadAllSettings = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const [configRes, supportedRes, paymentRes, countryConfigRes, supportedCountriesRes] = await Promise.all([
@@ -454,7 +455,7 @@ const PaymentSettingsPage: React.FC = () => {
 
   const updateSupportedCountries = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/currencies/countries/supported', {
         method: 'PUT',
         headers: {
@@ -476,7 +477,7 @@ const PaymentSettingsPage: React.FC = () => {
   // Currency functions
   const updateDefaultCurrency = async (currency: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/currencies/default', {
         method: 'PUT',
         headers: {
@@ -496,7 +497,7 @@ const PaymentSettingsPage: React.FC = () => {
 
   const updateSupportedCurrencies = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/currencies/supported', {
         method: 'PUT',
         headers: {
@@ -615,7 +616,7 @@ const PaymentSettingsPage: React.FC = () => {
 
   const savePaymentSettings = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/admin/payment-settings', {
         method: 'POST',
         headers: {

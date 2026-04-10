@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 
+import { getAuthToken } from '../utils/auth';
 // 스탭 타입 정의
 export interface Staff {
   id: string;
@@ -100,7 +101,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Helper function to get fetch options with credentials
   const getFetchOptions = (options: RequestInit = {}): RequestInit => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     return {
       ...options,
       credentials: 'include', // 쿠키를 포함하여 요청
@@ -178,7 +179,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const loadInitialData = async () => {
     try {
       // DB에서 스탭 목록 가져오기
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/staff', {
         credentials: 'include',
         headers: {

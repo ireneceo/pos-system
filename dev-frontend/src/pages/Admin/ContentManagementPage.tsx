@@ -24,6 +24,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface ContentCategory {
   id: number;
   type: 'blog' | 'faq';
@@ -286,7 +287,7 @@ const ContentManagementPage: React.FC = () => {
     setLoading(true);
     const type = getContentType();
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const [categoriesRes, contentsRes] = await Promise.all([
@@ -319,7 +320,7 @@ const ContentManagementPage: React.FC = () => {
     if (!editingCategory?.name) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const isNew = !editingCategory.id;
       const type = getContentType();
 
@@ -362,7 +363,7 @@ const ContentManagementPage: React.FC = () => {
       message: 'Are you sure you want to delete this category? This action cannot be undone.',
       onConfirm: async () => {
         try {
-          const token = localStorage.getItem('auth_token');
+          const token = getAuthToken();
           const response = await fetch(`/api/contents/categories/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -391,7 +392,7 @@ const ContentManagementPage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const isNew = !editingContent.id;
       const type = getContentType();
 
@@ -440,7 +441,7 @@ const ContentManagementPage: React.FC = () => {
       message: 'Are you sure you want to delete this content? This action cannot be undone.',
       onConfirm: async () => {
         try {
-          const token = localStorage.getItem('auth_token');
+          const token = getAuthToken();
           await fetch(`/api/contents/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -458,7 +459,7 @@ const ContentManagementPage: React.FC = () => {
 
   const handleTogglePublish = async (item: ContentItem) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const newStatus = item.status === 'published' ? 'draft' : 'published';
 
       await fetch(`/api/contents/${item.id}/${newStatus === 'published' ? 'publish' : 'unpublish'}`, {

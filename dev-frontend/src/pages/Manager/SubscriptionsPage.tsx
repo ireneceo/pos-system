@@ -9,6 +9,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 const Container = styled.div`
   min-height: 100vh;
   background: #FAFBFC;
@@ -740,7 +741,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
     const backendModel = newModel === 'manager' ? 'brand_manager' : 'restaurant';
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       // 1. Update restaurant payment_model
       const response = await fetch(`${API_BASE_URL}/api/restaurants/${restaurantId}`, {

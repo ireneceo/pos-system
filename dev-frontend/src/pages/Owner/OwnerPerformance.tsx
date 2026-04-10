@@ -19,6 +19,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import { useTranslation } from 'react-i18next';
 
 
+import { getAuthToken } from '../../utils/auth';
 const SortRow = styled.div`
   display: flex;
   gap: 8px;
@@ -264,7 +265,7 @@ const OwnerPerformance: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       const response = await fetch('/api/owner/restaurants', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -296,7 +297,7 @@ const OwnerPerformance: React.FC = () => {
   const fetchOrdersData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       if (restaurants.length === 0) {
         setOrders([]);

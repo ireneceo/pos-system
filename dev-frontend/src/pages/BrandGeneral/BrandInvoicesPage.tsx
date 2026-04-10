@@ -36,6 +36,7 @@ import html2canvas from 'html2canvas';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Invoice {
   id: string;
   invoiceNumber: string;
@@ -743,7 +744,7 @@ const BrandInvoicesPage: React.FC = () => {
   // Fetch invoices from API
   const fetchInvoices = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       console.log('🔐 [INVOICES] Token present:', !!token);
       console.log('🔐 [INVOICES] Token first 50 chars:', token ? token.substring(0, 50) + '...' : 'NULL');
 
@@ -782,7 +783,7 @@ const BrandInvoicesPage: React.FC = () => {
   const fetchInvoicesToPay = async () => {
     console.log('[BrandInvoices] fetchInvoicesToPay called');
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) {
         console.log('[BrandInvoices] No token found');
         setInvoicesToPay([]);
@@ -815,7 +816,7 @@ const BrandInvoicesPage: React.FC = () => {
 
   const fetchPaidInvoices = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) { setPaidInvoicesList([]); return; }
 
       const response = await fetch('/api/invoices/to-pay?status=paid', {
@@ -845,7 +846,7 @@ const BrandInvoicesPage: React.FC = () => {
     setIsSubmittingPayment(true);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/submit-payment`, {
         method: 'POST',
         headers: {
@@ -892,7 +893,7 @@ const BrandInvoicesPage: React.FC = () => {
       } else if (issuerType === 'foodcourt' && issuerId) {
         url = `/api/foodcourts/${issuerId}/payment-settings/available/${currency}`;
       }
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -917,7 +918,7 @@ const BrandInvoicesPage: React.FC = () => {
   // Open payment submit modal
   const handleConfirmFreeInvoice = async (invoice: Invoice) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${invoice.id}/status`, {
         method: 'PATCH',
         headers: {
@@ -1021,7 +1022,7 @@ const BrandInvoicesPage: React.FC = () => {
   // Fetch invoice categories from API
   const fetchInvoiceCategories = useCallback(async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/invoices/categories/all', {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -1041,7 +1042,7 @@ const BrandInvoicesPage: React.FC = () => {
     if (!user?.brand_id) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${user.brand_id}/payment-settings`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1076,7 +1077,7 @@ const BrandInvoicesPage: React.FC = () => {
     if (!categoryToDelete) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/categories/${categoryToDelete.id}?force=true`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -1135,7 +1136,7 @@ const BrandInvoicesPage: React.FC = () => {
 
   const fetchManagers = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -1204,7 +1205,7 @@ const BrandInvoicesPage: React.FC = () => {
 
   const fetchRestaurants = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/restaurants', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1312,7 +1313,7 @@ const BrandInvoicesPage: React.FC = () => {
 
   const checkBrandPaymentMethods = async (currency: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const brandId = user?.brand_id;
       if (!brandId) return;
       const response = await fetch(`/api/brands/${brandId}/payment-settings/available/${currency}`, {
@@ -1373,7 +1374,7 @@ const BrandInvoicesPage: React.FC = () => {
   const fetchCompanySettings = async () => {
     try {
       // Brand General/Manager: 자신의 브랜드 회사정보를 사용
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const brandResponse = await fetch('/api/brands/company-info', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1849,7 +1850,7 @@ const BrandInvoicesPage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${emailInvoice.id}/send-email`, {
         method: 'POST',
         headers: {
@@ -2076,7 +2077,7 @@ const BrandInvoicesPage: React.FC = () => {
   const handleLinkAccount = async (targetType: 'restaurant' | 'manager', targetData: Restaurant | Manager) => {
     if (!selectedInvoice) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const linkData: any = { payer_type: 'restaurant' };
       if (targetType === 'restaurant') {
         linkData.restaurant_id = (targetData as Restaurant).id;
@@ -2169,7 +2170,7 @@ const BrandInvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
         method: 'PATCH',
         headers: {
@@ -2206,7 +2207,7 @@ const BrandInvoicesPage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
         method: 'PUT',
         headers: {
@@ -2405,7 +2406,7 @@ const BrandInvoicesPage: React.FC = () => {
         total_amount: amount
       }];
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/invoices', {
         method: 'POST',
         headers: {
@@ -2442,7 +2443,7 @@ const BrandInvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
         method: 'PATCH',
         headers: {
@@ -2487,7 +2488,7 @@ const BrandInvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
         method: 'PATCH',
         headers: {
@@ -2519,7 +2520,7 @@ const BrandInvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
         method: 'DELETE',
         headers: {

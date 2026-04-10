@@ -42,9 +42,9 @@ mysqldump -u $DB_USER -p$DB_PASS \
 # 백업 성공 여부 확인
 if [ $? -eq 0 ] && [ -s $BACKUP_FILE ]; then
     BACKUP_SIZE=$(du -h $BACKUP_FILE | cut -f1)
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - ✅ Backup successful: $BACKUP_FILE ($BACKUP_SIZE)" >> $LOG_FILE
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - ✓ Backup successful: $BACKUP_FILE ($BACKUP_SIZE)" >> $LOG_FILE
 else
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - ❌ Backup failed!" >> $LOG_FILE
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - ✗ Backup failed!" >> $LOG_FILE
     exit 1
 fi
 
@@ -63,7 +63,7 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Dev DB backup completed!" >> $LOG_FILE
 CROSS_BACKUP_DIR="irene@87.106.78.146:/home/irene/backups/cross-backup/dev"
 scp -o ConnectTimeout=10 -q $BACKUP_FILE $CROSS_BACKUP_DIR/ 2>/dev/null
 if [ $? -eq 0 ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - ✅ Cross-backup sent to production server" >> $LOG_FILE
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - ✓ Cross-backup sent to production server" >> $LOG_FILE
 else
     echo "$(date '+%Y-%m-%d %H:%M:%S') - ⚠️ Cross-backup to production server failed" >> $LOG_FILE
 fi

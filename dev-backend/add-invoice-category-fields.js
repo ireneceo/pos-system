@@ -13,7 +13,7 @@ async function addInvoiceCategoryFields() {
       defaultValue: 'subscription',
       comment: 'Invoice category type'
     });
-    console.log('✅ invoice_category 필드 추가 완료');
+    console.log('✓ invoice_category 필드 추가 완료');
 
     // custom_description 필드 추가 (others 선택시 사용)
     await queryInterface.addColumn('invoices', 'custom_description', {
@@ -21,7 +21,7 @@ async function addInvoiceCategoryFields() {
       allowNull: true,
       comment: 'Custom description for others category'
     });
-    console.log('✅ custom_description 필드 추가 완료');
+    console.log('✓ custom_description 필드 추가 완료');
 
     // service_description 필드 추가 (서비스/컨설팅 상세 설명)
     await queryInterface.addColumn('invoices', 'service_description', {
@@ -29,12 +29,12 @@ async function addInvoiceCategoryFields() {
       allowNull: true,
       comment: 'Detailed service or consulting description'
     });
-    console.log('✅ service_description 필드 추가 완료');
+    console.log('✓ service_description 필드 추가 완료');
 
-    console.log('✅ 모든 카테고리 필드 추가 완료!');
+    console.log('✓ 모든 카테고리 필드 추가 완료!');
 
   } catch (error) {
-    console.error('❌ 에러 발생:', error);
+    console.error('✗ 에러 발생:', error);
   } finally {
     await database.sequelize.close();
   }

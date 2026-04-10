@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+import { getAuthToken } from '../utils/auth';
 export interface OrderItem {
   id: string;
   menuItem: {
@@ -70,7 +71,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
 
   // Helper function to get fetch options with credentials
   const getFetchOptions = (options: RequestInit = {}): RequestInit => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     return {
       ...options,
       credentials: 'include', // 쿠키를 포함하여 요청
@@ -87,7 +88,7 @@ export const OrderProvider: React.FC<OrderProviderProps> = ({ children }) => {
     const loadOrders = async () => {
       try {
         // Skip API calls if no auth token (user not logged in)
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         if (!token) {
           return;
         }

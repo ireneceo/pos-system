@@ -16,7 +16,7 @@ async function fixEmptyStatus() {
       await database.sequelize.query(
         "UPDATE invoices SET status = 'pending_payment' WHERE status = '' OR status IS NULL"
       );
-      console.log('✅ Updated empty statuses to pending_payment');
+      console.log('✓ Updated empty statuses to pending_payment');
     }
 
     // Show current status distribution
@@ -31,7 +31,7 @@ async function fixEmptyStatus() {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error fixing invoice status:', error);
+    console.error('✗ Error fixing invoice status:', error);
     process.exit(1);
   }
 }

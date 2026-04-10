@@ -20,6 +20,7 @@ import { formatCurrency as formatCurrencyUtil, getCurrencySymbol } from '../../u
 import { useTranslation } from 'react-i18next';
 
 
+import { getAuthToken } from '../../utils/auth';
 const FilterControlsWrapper = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -396,7 +397,7 @@ const BrandPerformance: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       // Fetch brands and restaurants in parallel
       const [brandsResponse, restaurantsResponse] = await Promise.all([
@@ -452,7 +453,7 @@ const BrandPerformance: React.FC = () => {
   const fetchOrdersData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       if (restaurants.length === 0) {
         setOrders([]);

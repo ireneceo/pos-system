@@ -8,6 +8,7 @@ import BrandProductCategoriesTab from './BrandProductCategoriesTab';
 import BrandProductOptionsTab from './BrandProductOptionsTab';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Brand {
   id: number;
   name: string;
@@ -39,7 +40,7 @@ const BrandProductManagementPage: React.FC = () => {
 
   const fetchBrands = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/brands', {
         headers: {
           'Authorization': `Bearer ${token}`

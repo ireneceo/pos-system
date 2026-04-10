@@ -10,6 +10,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface ProductIngredientsTabProps {
   onCountChange?: (count: number) => void;
   categoryRefreshKey?: number;
@@ -671,7 +672,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountCh
               setDetailIngredient(ingredient);
               setShowDetailModal(true);
               setLinkedItems({ recipes: [], products: [] });
-              const token = localStorage.getItem('auth_token');
+              const token = getAuthToken();
               fetch(`/api/product-ingredients/${ingredient.id}/usage`, {
                 headers: { 'Authorization': `Bearer ${token}` }
               }).then(r => r.json()).then(data => {

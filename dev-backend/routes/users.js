@@ -114,10 +114,10 @@ router.get('/', authenticateToken, requireRole('System Admin'), async (req, res)
       return u;
     });
 
-    console.log(`✅ Found ${usersWithoutPassword.length} users with role: ${req.query.role || 'all'}`);
+    console.log(`✓ Found ${usersWithoutPassword.length} users with role: ${req.query.role || 'all'}`);
     res.json({ success: true, data: usersWithoutPassword });
   } catch (error) {
-    console.error('❌ Error fetching users:', error);
+    console.error('✗ Error fetching users:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -379,7 +379,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
     // Brand General / Foodcourt General: 유저만 생성
     // Brand/Foodcourt 엔티티는 본인이 로그인 후 직접 추가 (Brand Management / Foodcourt Management 페이지)
 
-    console.log('✅ User created successfully:', user.id, user.username);
+    console.log('✓ User created successfully:', user.id, user.username);
 
     logActivity(req, {
       action_type: 'create',
@@ -398,7 +398,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
     }
     res.status(201).json(response);
   } catch (error) {
-    console.error('❌ Error creating user:', error);
+    console.error('✗ Error creating user:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -416,7 +416,7 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    console.log('✅ User found:', user.username, user.email);
+    console.log('✓ User found:', user.username, user.email);
 
     const { password, first_name, last_name, ...updateData } = req.body;
 
@@ -496,13 +496,13 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
       restaurant_id: user.restaurant_id
     });
 
-    console.log('✅ User updated successfully');
+    console.log('✓ User updated successfully');
 
     // Return user without password
     const { password: _, ...userWithoutPassword } = user.toJSON();
     res.json({ success: true, data: userWithoutPassword });
   } catch (error) {
-    console.error('❌ Error updating user:', error);
+    console.error('✗ Error updating user:', error);
     // Duplicate entry 에러를 사용자 친화적 메시지로 변환
     if (error.original && error.original.code === 'ER_DUP_ENTRY') {
       const match = error.original.message.match(/Duplicate entry '(.+?)' for key '(.+?)'/);

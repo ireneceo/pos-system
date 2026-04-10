@@ -9,6 +9,7 @@ import { Modal, ModalButton } from '../../components/UI/Modal';
 import { getActionGuide } from '../../utils/logActionGuides';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface SystemLog {
   id: string;
   timestamp: string;
@@ -633,7 +634,7 @@ const SystemLogsPage: React.FC = () => {
   const [checkNowLoading, setCheckNowLoading] = useState(false);
   const [checkNowCooldown, setCheckNowCooldown] = useState(0);
 
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchLogs = useCallback(async () => {

@@ -108,7 +108,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
     console.log('🎯 Target Restaurant ID:', restaurantId);
 
     if (!restaurantId) {
-      console.error('❌ No restaurant ID provided');
+      console.error('✗ No restaurant ID provided');
       return res.status(400).json({
         success: false,
         error: 'Restaurant ID is required'
@@ -120,7 +120,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
     if (req.user.role !== 'System Admin') {
       if (req.user.role === 'Restaurant Admin' || req.user.role === 'Staff') {
         if (parseInt(req.user.restaurant_id) !== parseInt(restaurantId)) {
-          console.error('❌ Access denied: User restaurant_id does not match target');
+          console.error('✗ Access denied: User restaurant_id does not match target');
           return res.status(403).json({
             success: false,
             error: 'Access denied to this restaurant'
@@ -128,7 +128,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
         }
       }
     }
-    console.log('✅ Access control passed');
+    console.log('✓ Access control passed');
 
     // Validate currency against system-allowed currencies
     if (req.body.currency) {
@@ -154,14 +154,14 @@ router.put('/settings', authenticateToken, async (req, res) => {
     const restaurant = await Restaurant.findByPk(restaurantId);
 
     if (!restaurant) {
-      console.error('❌ Restaurant not found:', restaurantId);
+      console.error('✗ Restaurant not found:', restaurantId);
       return res.status(404).json({
         success: false,
         error: 'Restaurant not found'
       });
     }
 
-    console.log('✅ Restaurant found:', restaurant.name);
+    console.log('✓ Restaurant found:', restaurant.name);
 
     // Update allowed fields
     const allowedFields = [
@@ -250,7 +250,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
       // Update operation_settings with synced values
       restaurant.operation_settings = opSettings;
-      console.log('✅ Synced currency settings in operation_settings:', {
+      console.log('✓ Synced currency settings in operation_settings:', {
         currency: opSettings.currency,
         cashRounding: opSettings.cashRounding,
         roundingApplyTo: opSettings.roundingApplyTo
@@ -259,7 +259,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
     console.log('💾 Saving to database...');
     await restaurant.save();
-    console.log('✅ Settings saved successfully!');
+    console.log('✓ Settings saved successfully!');
 
     const changedFields = allowedFields.filter(f => req.body[f] !== undefined).join(', ');
     logActivity(req, {
@@ -277,7 +277,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
       message: 'Settings updated successfully'
     });
   } catch (error) {
-    console.error('❌ [STORE UPDATE ERROR]:', error.message);
+    console.error('✗ [STORE UPDATE ERROR]:', error.message);
     console.error('Stack:', error.stack);
     res.status(500).json({
       success: false,

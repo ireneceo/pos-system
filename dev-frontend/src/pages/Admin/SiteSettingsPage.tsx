@@ -4,6 +4,7 @@ import { Container, Header, Title, Content } from '../../components/UI/PageCompo
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface CurrencyConfig {
   [code: string]: {
     symbol: string;
@@ -270,7 +271,7 @@ const SiteSettingsPage: React.FC = () => {
   const saveSettings = async () => {
     setErrorMessage('');
 
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     const response = await fetch('/api/site-settings', {
       method: 'PUT',
       headers: {

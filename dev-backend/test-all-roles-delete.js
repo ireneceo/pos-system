@@ -31,7 +31,7 @@ async function run() {
   const pw = await bcrypt.hash('TestPass123!', 10);
   const ts = Date.now();
   let pass = 0, fail = 0;
-  function ok(n, v) { if (v) { pass++; console.log('  ✅ ' + n); } else { fail++; console.log('  ❌ ' + n); } }
+  function ok(n, v) { if (v) { pass++; console.log('  ✓ ' + n); } else { fail++; console.log('  ✗ ' + n); } }
 
   // ============================================================
   // T1: Staff (Admin/StaffManagementPage → DELETE /api/users/:id)

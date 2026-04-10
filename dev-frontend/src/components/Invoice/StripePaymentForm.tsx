@@ -4,6 +4,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import styled from 'styled-components';
 import axios from 'axios';
 
+import { getAuthToken } from '../../utils/auth';
 const API_BASE = process.env.REACT_APP_API_URL || '';
 
 interface StripePaymentFormProps {
@@ -67,7 +68,7 @@ const StripePaymentForm: React.FC<StripePaymentFormProps> = ({ invoiceId, onSucc
   useEffect(() => {
     const initPayment = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await axios.post(
           `${API_BASE}/api/invoices/${invoiceId}/create-payment-intent`,
           {},

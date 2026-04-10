@@ -9,6 +9,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Staff {
   id: number;
   username: string;
@@ -418,7 +419,7 @@ const ManagerAdminManagementPage: React.FC = () => {
   const [successPassword, setSuccessPassword] = useState('');
   const [passwordCopied, setPasswordCopied] = useState(false);
 
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   const fetchData = useCallback(async () => {
     try {

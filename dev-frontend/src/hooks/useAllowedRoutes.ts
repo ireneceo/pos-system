@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 
+import { getAuthToken } from '../utils/auth';
 interface AllowedRoutesResponse {
   entity_id?: number;
   restaurant_id?: number;
@@ -48,7 +49,7 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
     const fetchAllowedRoutes = async () => {
       // Determine API URL based on role
       let apiUrl: string | null = null;
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
 

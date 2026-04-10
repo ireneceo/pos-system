@@ -35,7 +35,7 @@ async function checkSpecificInvoice() {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error checking invoice:', error);
+    console.error('✗ Error checking invoice:', error);
     process.exit(1);
   }
 }

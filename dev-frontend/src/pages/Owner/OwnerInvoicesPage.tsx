@@ -31,6 +31,7 @@ import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface AdditionalCharge {
   name: string;
   rate: number;
@@ -363,7 +364,7 @@ const OwnerInvoicesPage: React.FC = () => {
   // Fetch all invoices
   const fetchAllInvoices = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) return;
 
       const params = new URLSearchParams();
@@ -394,7 +395,7 @@ const OwnerInvoicesPage: React.FC = () => {
   // Fetch invoices to pay
   const fetchInvoicesToPay = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) {
         setInvoicesToPay([]);
         return;
@@ -434,7 +435,7 @@ const OwnerInvoicesPage: React.FC = () => {
       } else if (issuerType === 'foodcourt' && issuerId) {
         url = `/api/foodcourts/${issuerId}/payment-settings/available/${currency}`;
       }
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -465,7 +466,7 @@ const OwnerInvoicesPage: React.FC = () => {
     setPaymentSubmitError('');
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/submit-payment`, {
         method: 'POST',
         headers: {
@@ -578,7 +579,7 @@ const OwnerInvoicesPage: React.FC = () => {
 
   const handleConfirmFreeInvoice = async (invoice: Invoice) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${invoice.id}/status`, {
         method: 'PATCH',
         headers: {

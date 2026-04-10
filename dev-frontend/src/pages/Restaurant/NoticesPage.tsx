@@ -12,6 +12,7 @@ import { linkifyText } from '../../utils/linkify';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ============================================================================
 // TypeScript Interfaces
 // ============================================================================
@@ -373,7 +374,7 @@ const NoticesPage: React.FC = () => {
   const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
   const { user } = useAuth();
 
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
 
   // Fetch unread comment counts
   const fetchUnreadCounts = async (noticeList: any[]) => {

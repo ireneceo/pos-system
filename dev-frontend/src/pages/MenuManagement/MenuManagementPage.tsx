@@ -23,6 +23,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // Styled Components
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -778,7 +779,7 @@ const MenuManagementPage: React.FC = () => {
   React.useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
 
         // Get restaurantId from URL path (e.g., /restaurant/5/menu)
         const pathParts = window.location.pathname.split('/');
@@ -1061,7 +1062,7 @@ const MenuManagementPage: React.FC = () => {
       const restaurantIndex = pathParts.indexOf('restaurant');
       const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : '';
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/menu/product/${item.id}/copy?restaurantId=${restaurantId}`, {
         method: 'POST',
         headers: {
@@ -1090,7 +1091,7 @@ const MenuManagementPage: React.FC = () => {
       const restaurantIndex = pathParts.indexOf('restaurant');
       const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : '';
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/menu/product/${item.id}/toggle-active?restaurantId=${restaurantId}`, {
         method: 'PUT',
         headers: {

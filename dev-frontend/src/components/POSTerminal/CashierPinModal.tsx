@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 
+import { getAuthToken } from '../../utils/auth';
 interface PinVerifyResult {
   data: { id: number; name: string; role: string; department: string };
   token: string;
@@ -158,7 +159,7 @@ const CashierPinModal: React.FC<CashierPinModalProps> = ({ show, onClose, onVeri
     setIsVerifying(true);
     setError('');
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/staff/verify-pin', {
         method: 'POST',
         headers: {

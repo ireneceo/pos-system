@@ -4,8 +4,8 @@
 // 직접 실행 방지로 포트 충돌 문제를 영구적으로 해결합니다.
 // ============================================
 if (process.env.pm_id === undefined) {
-  console.error('❌ ERROR: This server must be run through PM2!');
-  console.error('❌ Direct execution is not allowed to prevent port conflicts.');
+  console.error('✗ ERROR: This server must be run through PM2!');
+  console.error('✗ Direct execution is not allowed to prevent port conflicts.');
   console.error('');
   console.error('📌 Correct usage:');
   console.error('   pm2 start ecosystem.config.js --only dev-backend');
@@ -21,8 +21,8 @@ if (process.env.pm_id === undefined) {
 // root로 실행하면 PM2(irene)와 포트 충돌이 발생합니다.
 // ============================================
 if (process.getuid && process.getuid() === 0) {
-  console.error('❌ ERROR: Do NOT run this server as root!');
-  console.error('❌ Running as root causes port conflicts with PM2 (irene user).');
+  console.error('✗ ERROR: Do NOT run this server as root!');
+  console.error('✗ Running as root causes port conflicts with PM2 (irene user).');
   console.error('');
   console.error('📌 Correct usage:');
   console.error('   pm2 start ecosystem.config.js --only dev-backend');
@@ -431,7 +431,7 @@ const allowedOrigins = [
 // FRONTEND_URL 환경변수가 설정되어 있으면 추가 (Plesk 등)
 if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
   allowedOrigins.push(process.env.FRONTEND_URL);
-  console.log(`✅ CORS: FRONTEND_URL 추가 - ${process.env.FRONTEND_URL}`);
+  console.log(`✓ CORS: FRONTEND_URL 추가 - ${process.env.FRONTEND_URL}`);
 }
 
 // Codespace 환경 감지 및 허용
@@ -665,7 +665,7 @@ async function startServer() {
       syncDatabase(),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Database sync timeout after 10s')), 10000))
     ]);
-    console.log('✅ Database synchronized successfully');
+    console.log('✓ Database synchronized successfully');
   } catch (error) {
     console.error('⚠️  Database sync failed, but continuing to start server:', error.message);
     console.log('📝 Note: Database sync error is expected due to MySQL key limit issue or network timeout');
@@ -674,7 +674,7 @@ async function startServer() {
   try {
     // Initialize Socket.IO
     const io = initSocketServer(server);
-    console.log('✅ Socket.IO initialized');
+    console.log('✓ Socket.IO initialized');
 
     // Make io available globally for routes
     app.set('io', io);
@@ -690,23 +690,23 @@ async function startServer() {
 
     // 포트 충돌 체크 - PM2 환경에서는 더 유연하게 처리
     server.listen(PORT, '0.0.0.0', () => {
-      console.log(`✅ Server is running on port ${PORT}`);
-      console.log(`✅ Server bound to 0.0.0.0:${PORT} (accessible from all IPs)`);
-      console.log('✅ Invoice scheduler is running');
-      console.log('✅ Subscription scheduler is running');
-      console.log('✅ Socket.IO is running on all namespaces');
-      console.log(`✅ Health check: http://localhost:${PORT}/api/health`);
+      console.log(`✓ Server is running on port ${PORT}`);
+      console.log(`✓ Server bound to 0.0.0.0:${PORT} (accessible from all IPs)`);
+      console.log('✓ Invoice scheduler is running');
+      console.log('✓ Subscription scheduler is running');
+      console.log('✓ Socket.IO is running on all namespaces');
+      console.log(`✓ Health check: http://localhost:${PORT}/api/health`);
     });
 
     // Handle port conflicts gracefully
     server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
         console.error(`⚠️  Port ${PORT} is already in use.`);
-        console.error('❌ Another process is using this port. Please check with: lsof -i :' + PORT);
+        console.error('✗ Another process is using this port. Please check with: lsof -i :' + PORT);
         // Don't auto-restart to avoid infinite loop - manual intervention needed
         process.exit(1);
       } else {
-        console.error('❌ Server error:', error);
+        console.error('✗ Server error:', error);
         process.exit(1);
       }
     });

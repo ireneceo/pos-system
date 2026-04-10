@@ -9,6 +9,7 @@ import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Restaurant {
   id: string;
   name: string;
@@ -534,7 +535,7 @@ const OwnerRestaurantsPage: React.FC = () => {
 
   const fetchRestaurants = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/owner/restaurants', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -616,7 +617,7 @@ const OwnerRestaurantsPage: React.FC = () => {
     setAdminSearchQuery(query);
     setShowAdminDropdown(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/users/available-admins?q=${encodeURIComponent(query)}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -687,7 +688,7 @@ const OwnerRestaurantsPage: React.FC = () => {
         restaurantData.adminUserId = parseInt(selectedAdmin.id.toString());
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/restaurants', {
         method: 'POST',
         headers: {
@@ -791,7 +792,7 @@ const OwnerRestaurantsPage: React.FC = () => {
     if (!editingRestaurant) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const updateData: any = {
         name: newRestaurant.name,
         email: newRestaurant.email,
@@ -838,7 +839,7 @@ const OwnerRestaurantsPage: React.FC = () => {
     if (!restaurantToDelete) return;
     try {
       // First unclaim the restaurant
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       await fetch(`/api/owner/restaurants/${restaurantToDelete.id}/unclaim`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

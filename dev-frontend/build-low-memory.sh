@@ -37,9 +37,9 @@ pm2 restart all
 
 if [ $BUILD_EXIT_CODE -eq 0 ]; then
     echo ""
-    echo "✅ Build completed successfully!"
+    echo "✓ Build completed successfully!"
 else
     echo ""
-    echo "❌ Build failed with exit code $BUILD_EXIT_CODE"
+    echo "✗ Build failed with exit code $BUILD_EXIT_CODE"
     exit $BUILD_EXIT_CODE
 fi

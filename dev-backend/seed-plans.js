@@ -90,13 +90,13 @@ const seedPlans = async () => {
       await PlanTemplate.upsert(plan, {
         conflictFields: ['name']
       });
-      console.log(`✅ Seeded plan: ${plan.display_name}`);
+      console.log(`✓ Seeded plan: ${plan.display_name}`);
     }
 
-    console.log('✅ All plans seeded successfully');
+    console.log('✓ All plans seeded successfully');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error seeding plans:', error);
+    console.error('✗ Error seeding plans:', error);
     process.exit(1);
   }
 };

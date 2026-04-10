@@ -5,6 +5,7 @@ import { FloorPlanData, FloorTable, DEFAULT_FLOOR_PLAN, TABLE_SHAPES, FIXTURE_PR
 import FloorPlanCanvas from './FloorPlanCanvas';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ─── Styled Components ───
 
 const PageContainer = styled.div`
@@ -283,7 +284,7 @@ const FloorPlanEditor: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const res = await fetch(`/api/restaurants/${restaurantId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -324,7 +325,7 @@ const FloorPlanEditor: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch(`/api/restaurants/${restaurantId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

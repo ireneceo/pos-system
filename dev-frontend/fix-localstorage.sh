@@ -22,8 +22,8 @@ find /workspaces/pos-system/frontend/src -name "*.bak" | while IFS= read -r bakf
   # localStorage.clear() 라인 제거
   sed -i '/localStorage\.clear/d' "$origfile"
 
-  echo "  ✅ Fixed"
+  echo "  ✓ Fixed"
 done
 
 echo ""
-echo "✅ localStorage completely removed!"
+echo "✓ localStorage completely removed!"

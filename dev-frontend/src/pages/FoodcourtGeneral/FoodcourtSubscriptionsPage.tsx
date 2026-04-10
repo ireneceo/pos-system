@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { getAuthToken } from '../../utils/auth';
 import {
   Container,
   Header,
@@ -282,7 +283,7 @@ const LoadingSpinner = styled.div`
 const FoodcourtSubscriptionsPage: React.FC = () => {
   const { t } = useTranslation('foodcourt');
   const { user } = useAuth();
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   const foodcourtId = user?.foodcourt_id || null;
   const currency = 'MYR';
 

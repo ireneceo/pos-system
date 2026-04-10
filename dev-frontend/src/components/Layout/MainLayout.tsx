@@ -12,6 +12,7 @@ import LanguageSelector from '../Common/LanguageSelector';
 import { useTranslation } from 'react-i18next';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
+import { getAuthToken } from '../../utils/auth';
 const LayoutContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FAFBFC;
@@ -560,7 +561,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   const fetchBadgeCounts = useCallback(async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) return;
       const res = await fetch('/api/badge-counts', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -1581,7 +1582,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   console.log('Fetching restaurant:', restaurantId);
 
                   try {
-                    const token = localStorage.getItem('auth_token');
+                    const token = getAuthToken();
                     const response = await fetch(`/api/restaurants/${restaurantId}`, {
                       credentials: 'include',
                       headers: {

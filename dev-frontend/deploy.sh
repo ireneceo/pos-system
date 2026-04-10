@@ -17,7 +17,7 @@ mkdir -p "$DEPLOY_DIR"
 
 # 2. 빌드 디렉토리 확인
 if [ ! -f "$BUILD_DIR/index.html" ]; then
-    echo "❌ 빌드 파일을 찾을 수 없습니다: $BUILD_DIR/index.html"
+    echo "✗ 빌드 파일을 찾을 수 없습니다: $BUILD_DIR/index.html"
     echo "   먼저 'npm run build'를 실행하세요."
     exit 1
 fi
@@ -72,7 +72,7 @@ fi
 # 6. 배포 확인
 if [ -f "$DEPLOY_DIR/index.html" ] && [ -d "$DEPLOY_DIR/static" ]; then
     echo ""
-    echo "✅ 배포 완료!"
+    echo "✓ 배포 완료!"
     if [ -d "$DEPLOY_DIR/static/js" ]; then
         echo "📁 배포된 파일:"
         MAIN_JS=$(ls "$DEPLOY_DIR/static/js/main."*.js 2>/dev/null | head -1)
@@ -85,7 +85,7 @@ if [ -f "$DEPLOY_DIR/index.html" ] && [ -d "$DEPLOY_DIR/static" ]; then
     echo "🌐 웹사이트: https://orderhere.wor-pro.com"
     echo "💡 브라우저에서 강력 새로고침 (Ctrl+Shift+R)을 사용하세요."
 else
-    echo "❌ 배포 실패: httpdocs/frontend/에 파일이 없습니다"
+    echo "✗ 배포 실패: httpdocs/frontend/에 파일이 없습니다"
     exit 1
 fi
 

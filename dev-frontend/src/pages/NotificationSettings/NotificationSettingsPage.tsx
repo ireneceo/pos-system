@@ -9,6 +9,7 @@ import ImportDataTab from '../../components/Settings/ImportDataTab';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FAFBFC;
@@ -436,7 +437,7 @@ const NotificationSettingsPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       if (response.ok) {
         const data = await response.json();
@@ -463,7 +464,7 @@ const NotificationSettingsPage: React.FC = () => {
     setPrefsLoading(true);
     try {
       const response = await fetch('/api/notification-settings/preferences', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('auth_token')}` }
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       if (response.ok) {
         const data = await response.json();
@@ -505,7 +506,7 @@ const NotificationSettingsPage: React.FC = () => {
   };
 
   const handleSmtpSave = async () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token) throw new Error('No authentication token found. Please log in again.');
     const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
       method: 'POST',
@@ -523,7 +524,7 @@ const NotificationSettingsPage: React.FC = () => {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        'Authorization': `Bearer ${getAuthToken()}`
       },
       body: JSON.stringify({ preferences: preferencesRef.current })
     });
@@ -553,7 +554,7 @@ const NotificationSettingsPage: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({ testEmail: testEmailAddress })
       });

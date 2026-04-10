@@ -7,6 +7,7 @@ import { Modal as UIModal, ModalButton } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FAFBFC;
@@ -458,7 +459,7 @@ const CategoryManagementPage: React.FC = () => {
       const restaurantIndex = pathParts.indexOf('restaurant');
       const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : null;
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/categories/id/${category.id}/toggle-active?restaurantId=${restaurantId}`, {
         method: 'PUT',
         headers: {

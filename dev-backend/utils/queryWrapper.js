@@ -62,7 +62,7 @@ const executeQuery = async (queryFn, options = {}) => {
         try {
           await currentTransaction.rollback();
         } catch (rollbackError) {
-          console.error('❌ 트랜잭션 롤백 실패:', rollbackError.message);
+          console.error('✗ 트랜잭션 롤백 실패:', rollbackError.message);
         }
         currentTransaction = null;
       }

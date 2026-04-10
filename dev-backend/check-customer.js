@@ -13,12 +13,12 @@ const { Customer, RestaurantCustomer } = require('./models');
     });
 
     if (!customer) {
-      console.log('❌ Customer NOT FOUND in database');
+      console.log('✗ Customer NOT FOUND in database');
       console.log('   This phone number has not been registered yet.\n');
       process.exit(0);
     }
 
-    console.log('✅ Customer FOUND:');
+    console.log('✓ Customer FOUND:');
     console.log(`   ID: ${customer.id}`);
     console.log(`   Name: ${customer.name}`);
     console.log(`   Phone: ${customer.phone}`);
@@ -35,7 +35,7 @@ const { Customer, RestaurantCustomer } = require('./models');
     });
 
     if (relation) {
-      console.log('\n✅ Restaurant Relationship FOUND:');
+      console.log('\n✓ Restaurant Relationship FOUND:');
       console.log(`   Points: ${relation.points}`);
       console.log(`   Total Orders: ${relation.total_orders}`);
       console.log(`   Total Spent: RM ${relation.total_spent}`);
@@ -54,7 +54,7 @@ const { Customer, RestaurantCustomer } = require('./models');
         first_order_at: new Date()
       });
 
-      console.log('   ✅ Relationship created!');
+      console.log('   ✓ Relationship created!');
     }
 
     // Test password if exists
@@ -68,7 +68,7 @@ const { Customer, RestaurantCustomer } = require('./models');
       for (const testPwd of testPasswords) {
         const isMatch = await bcrypt.compare(testPwd, customer.password_hash);
         if (isMatch) {
-          console.log(`   ✅ Password matched: "${testPwd}"`);
+          console.log(`   ✓ Password matched: "${testPwd}"`);
           break;
         }
       }
@@ -80,7 +80,7 @@ const { Customer, RestaurantCustomer } = require('./models');
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('✗ Error:', error.message);
     process.exit(1);
   }
 })();

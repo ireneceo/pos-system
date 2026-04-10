@@ -434,7 +434,7 @@ async function seedDemoData() {
       await Brand.destroy({ where: { id: existingDemoBrand.id }, transaction: t });
     }
 
-    console.log('✅ [DEMO SEED] Existing demo data cleaned');
+    console.log('✓ [DEMO SEED] Existing demo data cleaned');
 
     // ========================================
     // STEP 2: Hash password
@@ -474,7 +474,7 @@ async function seedDemoData() {
       }, { transaction: t });
     }
 
-    console.log(`✅ [DEMO SEED] Demo users: Brand(id:${demoBrandUser.id}), Restaurant(id:${demoRestaurantUser.id})`);
+    console.log(`✓ [DEMO SEED] Demo users: Brand(id:${demoBrandUser.id}), Restaurant(id:${demoRestaurantUser.id})`);
 
     // ========================================
     // STEP 4: Create demo brand
@@ -529,7 +529,7 @@ async function seedDemoData() {
 
     await demoBrandUser.update({ brand_id: demoBrand.id }, { transaction: t });
 
-    console.log(`✅ [DEMO SEED] Demo brand: ${demoBrand.name} (id:${demoBrand.id})`);
+    console.log(`✓ [DEMO SEED] Demo brand: ${demoBrand.name} (id:${demoBrand.id})`);
 
     // ========================================
     // STEP 5: Create demo restaurants
@@ -607,7 +607,7 @@ async function seedDemoData() {
       { restaurant_id: restaurant2.id, manager_id: demoBrandUser.id, is_primary: true, relationship_type: 'oversight' }
     ], { transaction: t });
 
-    console.log(`✅ [DEMO SEED] Restaurants: ${restaurant1.name} (id:${restaurant1.id}), ${restaurant2.name} (id:${restaurant2.id})`);
+    console.log(`✓ [DEMO SEED] Restaurants: ${restaurant1.name} (id:${restaurant1.id}), ${restaurant2.name} (id:${restaurant2.id})`);
 
     // ========================================
     // STEP 6: Brand subscription plans (EntityPlan)
@@ -694,7 +694,7 @@ async function seedDemoData() {
       { entity_plan_id: plan2.id, restaurant_id: restaurant2.id, activation_date: '2025-06-01', is_active: true, discount_type: 'percentage', discount_value: 10, discount_reason: 'New outlet promotion' }
     ], { transaction: t });
 
-    console.log('✅ [DEMO SEED] Brand plans created: 3 (2 assigned to restaurants)');
+    console.log('✓ [DEMO SEED] Brand plans created: 3 (2 assigned to restaurants)');
 
     // ========================================
     // STEP 7: Invoice settings per restaurant
@@ -728,7 +728,7 @@ async function seedDemoData() {
       }
     ], { transaction: t });
 
-    console.log('✅ [DEMO SEED] Invoice settings created: 2');
+    console.log('✓ [DEMO SEED] Invoice settings created: 2');
 
     // ========================================
     // STEP 8: Create categories & products
@@ -792,7 +792,7 @@ async function seedDemoData() {
       { name: 'Coca-Cola', price: 3.50, category: r2CatMap['Drinks'], restaurant_id: restaurant2.id, is_active: true }
     ], { transaction: t });
 
-    console.log('✅ [DEMO SEED] Menu categories & products created');
+    console.log('✓ [DEMO SEED] Menu categories & products created');
 
     // ========================================
     // STEP 9: Create orders (date-sensitive → also reset daily)
@@ -803,7 +803,7 @@ async function seedDemoData() {
     await Order.bulkCreate(r1Orders, { transaction: t });
     await Order.bulkCreate(r2Orders, { transaction: t });
 
-    console.log(`✅ [DEMO SEED] Orders: R1(${r1Orders.length}), R2(${r2Orders.length})`);
+    console.log(`✓ [DEMO SEED] Orders: R1(${r1Orders.length}), R2(${r2Orders.length})`);
 
     // ========================================
     // STEP 10: Create invoices (date-sensitive → also reset daily)
@@ -816,7 +816,7 @@ async function seedDemoData() {
     const invoices = generateInvoices(restaurant1.id, restaurant2.id, demoBrand.id, demoBrandUser.id, systemAdminId);
     await Invoice.bulkCreate(invoices, { transaction: t });
 
-    console.log(`✅ [DEMO SEED] Invoices: ${invoices.length}`);
+    console.log(`✓ [DEMO SEED] Invoices: ${invoices.length}`);
 
     // ========================================
     // STEP 11: Create notices
@@ -871,7 +871,7 @@ async function seedDemoData() {
       { notice_id: notice3.id, restaurant_id: restaurant2.id }
     ], { transaction: t });
 
-    console.log('✅ [DEMO SEED] Notices: 3');
+    console.log('✓ [DEMO SEED] Notices: 3');
 
     // ========================================
     // STEP 12: Create tickets
@@ -963,7 +963,7 @@ async function seedDemoData() {
       }
     ], { transaction: t });
 
-    console.log('✅ [DEMO SEED] Tickets: 3 support + 2 operation');
+    console.log('✓ [DEMO SEED] Tickets: 3 support + 2 operation');
 
     // ========================================
     // STEP 13: Create customers
@@ -992,7 +992,7 @@ async function seedDemoData() {
       { transaction: t }
     );
 
-    console.log(`✅ [DEMO SEED] Customers: ${customers.length}`);
+    console.log(`✓ [DEMO SEED] Customers: ${customers.length}`);
 
     // ========================================
     // STEP 14: Create coupons
@@ -1051,7 +1051,7 @@ async function seedDemoData() {
       }
     ], { transaction: t });
 
-    console.log('✅ [DEMO SEED] Coupons: 3');
+    console.log('✓ [DEMO SEED] Coupons: 3');
 
     // ========================================
     // STEP 15: Create suppliers
@@ -1082,7 +1082,7 @@ async function seedDemoData() {
       }
     ], { transaction: t });
 
-    console.log(`✅ [DEMO SEED] Suppliers: ${suppliers.length}`);
+    console.log(`✓ [DEMO SEED] Suppliers: ${suppliers.length}`);
 
     // ========================================
     // STEP 16: Create ingredients & recipes
@@ -1195,7 +1195,7 @@ async function seedDemoData() {
       { recipe_id: recipes[3].id, ingredient_id: ingMap['Sesame Oil'], quantity: 0.01, unit: 'L', cost: 0.35 }
     ], { transaction: t });
 
-    console.log(`✅ [DEMO SEED] Recipes: ${recipes.length}, Ingredients: ${ingredients.length}`);
+    console.log(`✓ [DEMO SEED] Recipes: ${recipes.length}, Ingredients: ${ingredients.length}`);
 
     // ========================================
     // COMMIT
@@ -1219,7 +1219,7 @@ async function seedDemoData() {
 
   } catch (error) {
     await t.rollback();
-    console.error('❌ [DEMO SEED] Failed:', error.message);
+    console.error('✗ [DEMO SEED] Failed:', error.message);
     console.error(error.stack);
     process.exit(1);
   }
@@ -1295,11 +1295,11 @@ async function resetDemoOrders() {
 
     await t.commit();
 
-    console.log(`✅ [DEMO RESET] Done! Deleted ${deletedOrders} orders + ${deletedInvoices} invoices → Created ${r1Orders.length + r2Orders.length} orders + ${invoices.length} invoices`);
+    console.log(`✓ [DEMO RESET] Done! Deleted ${deletedOrders} orders + ${deletedInvoices} invoices → Created ${r1Orders.length + r2Orders.length} orders + ${invoices.length} invoices`);
 
   } catch (error) {
     await t.rollback();
-    console.error('❌ [DEMO RESET] Failed:', error.message);
+    console.error('✗ [DEMO RESET] Failed:', error.message);
     console.error(error.stack);
     throw error;
   }

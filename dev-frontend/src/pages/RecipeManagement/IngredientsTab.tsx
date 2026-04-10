@@ -11,6 +11,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface IngredientsTabProps {
   brandId: number | null;
   restaurantId?: number | null;
@@ -525,7 +526,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const isItemReadOnly = (item: Ingredient) => isRestaurantAdmin && item.owner_type === 'brand';
 
   // Helper to get auth token
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   // Parallel fetch all data for performance
   useEffect(() => {
@@ -888,7 +889,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         }
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(url, {
         method,
         headers: {
@@ -935,7 +936,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         url = `/api/restaurants/${effectiveRestaurantId}/ingredients/${ingredient.id}`;
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       // 필요한 필드만 전송 (관계 객체 제외)
       const response = await fetch(url, {
         method: 'PUT',
@@ -1056,7 +1057,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               setDetailIngredient(ingredient);
               setShowDetailModal(true);
               setLinkedItems({ recipes: [], products: [] });
-              const token = localStorage.getItem('auth_token');
+              const token = getAuthToken();
               fetch(`/api/restaurants/${effectiveRestaurantId}/ingredients/${ingredient.id}/usage`, {
                 headers: { 'Authorization': `Bearer ${token}` }
               }).then(r => r.json()).then(data => {

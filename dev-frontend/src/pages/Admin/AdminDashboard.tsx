@@ -8,6 +8,7 @@ import { formatCurrency } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface CurrencyRevenue {
   [currency: string]: number;
 }
@@ -586,7 +587,7 @@ const AdminDashboard: React.FC = () => {
     const fetchData = async () => {
       try {
 
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const headers = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`

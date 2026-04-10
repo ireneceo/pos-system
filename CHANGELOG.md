@@ -6,6 +6,19 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-10 (저녁 — Phase C 구조 개선)
+- refactor(C-3): Fetch 인터셉터 단일화 — `utils/httpClient.ts` 추출, `index.tsx` 시작 시 1회만 설치. `AuthContext`의 이중 fetch 패치 제거 → StrictMode/HMR 인터셉터 누락/중복 위험 해소
+- refactor(C-4): `CustomerContext` 내부 분할 — `useMobileCustomerState` + `usePosCustomersState` + composite provider. 공개 API 불변으로 10개 consumer 수정 없음
+- fix(C-4): 모바일 로그인 세션이 레스토랑 간 공유되던 버그 — localStorage 키를 slug별로 분리 (`mobile_customer:<slug>`, `mobile_token:<slug>`). SPA 네비게이션 시 `history.pushState` 패치로 `locationchange` 이벤트 발생 → 즉시 상태 재로드. 레거시(스코프 없는) 세션은 첫 로드 시 자동 정리
+- refactor(C-5): 백엔드 5개 거대 라우트 파일 → 16개로 기능별 분할
+  - `routes/customers.js` 1263 → barrel + self/admin/auth 3개
+  - `routes/mobile.js` 1304 → barrel + helpers + public/orders 2개
+  - `routes/orders.js` 2140 → barrel + crud/views/payment 3개
+  - `routes/restaurants.js` 2204 → barrel + subscription/crud/ingredients 3개
+  - `routes/invoices.js` 3170 → barrel + helpers + main/payment 2개 (routes/owner.js 호환 위해 getIssuerCompanyInfo/getPayerCompanyInfo 배럴 re-export)
+- fix: `mobile-public.js`에서 `Order` import 누락 → `GET /popular/:slug` 500 에러 수정 (분할 회귀)
+- chore: 63개 백엔드/셸 스크립트의 상태 이모지 ✅/❌ → 텍스트 문자 ✓/✗ 일괄 치환 (터미널 가독성)
+
 ### 🐛 추가 버그 수정 (2026-04-10 오후)
 - fix: 모바일 메뉴 로딩 속도 개선 — `MenuPage.tsx` init 흐름 개편. 백그라운드 `limit=500` 전체 메뉴 호출 제거, 검색용 전체 메뉴는 검색창 포커스/입력 시 lazy load. 첫 호출 `limit=1`로 카테고리만 빠르게 받기
 - fix: 모바일 AccountPage My Coupons에 본인 것이 아닌 매장 전체 공개 쿠폰까지 모두 표시되던 버그 — `routes/coupons.js` 응답을 `myCoupons`(명시적 타겟)/`promotions`(전체공개)/`available`(호환) 3개로 분리. AccountPage는 `myCoupons`만 표시

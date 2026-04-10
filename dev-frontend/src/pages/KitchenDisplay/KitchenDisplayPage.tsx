@@ -10,6 +10,7 @@ import { formatTime } from '../../utils/timezone';
 import { printKitchenTicketViaRawBT, getPrinterSettings as getBillPrinterSettings } from '../../utils/billPrint';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
   const date = new Date(dateString);
@@ -683,7 +684,7 @@ const KitchenDisplayPage: React.FC = () => {
 
   // ─── API helper ───
   const apiHeaders = () => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     return { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
   };
 
@@ -1852,7 +1853,7 @@ const KitchenDisplayPage: React.FC = () => {
       orderItemMap.get(s.orderId)!.add(s.itemId);
     });
 
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
 
     // 주문별 업데이트 데이터 준비
     const updates = Array.from(orderItemMap.entries()).map(([orderId, itemIds]) => {

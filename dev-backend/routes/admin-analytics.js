@@ -298,7 +298,7 @@ router.get('/managers', authenticateToken, requireManagerRole, async (req, res) 
     });
 
   } catch (error) {
-    console.error('❌ Error fetching managers:', error);
+    console.error('✗ Error fetching managers:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch managers',

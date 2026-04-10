@@ -5,6 +5,7 @@ import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { setAuthToken } from '../../utils/auth';
 
 const PageContainer = styled.div`
   background: #FAFBFC;
@@ -276,7 +277,7 @@ const DemoPage: React.FC = () => {
 
       if (response.ok && data.success && data.data && data.data.token) {
         // Store token and user info
-        localStorage.setItem('auth_token', data.data.token);
+        setAuthToken(data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
 
         // Call login from AuthContext

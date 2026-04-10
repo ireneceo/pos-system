@@ -26,11 +26,11 @@ class DemoResetScheduler {
         const { resetDemoOrders } = require('../seed-demo-data');
         await resetDemoOrders();
 
-        console.log('✅ [DEMO RESET] Orders & invoices reset completed');
+        console.log('✓ [DEMO RESET] Orders & invoices reset completed');
         await systemLogger.info('system', 'demo-reset', 'Daily demo orders/invoices reset completed');
 
       } catch (error) {
-        console.error('❌ [DEMO RESET] Failed:', error.message);
+        console.error('✗ [DEMO RESET] Failed:', error.message);
         await systemLogger.error('system', 'demo-reset', `Demo data reset failed: ${error.message}`);
       }
     });

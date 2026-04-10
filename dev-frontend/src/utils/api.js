@@ -1,4 +1,5 @@
 import { API_URL } from '../config/environment';
+import { getAuthToken } from './auth';
 
 /**
  * API 헬퍼 함수들
@@ -9,7 +10,7 @@ export async function fetchAPI(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
 
   // localStorage에서 토큰 가져오기
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
 
   const defaultOptions = {
     credentials: 'include', // 쿠키를 포함하여 요청 (httpOnly 쿠키 사용)

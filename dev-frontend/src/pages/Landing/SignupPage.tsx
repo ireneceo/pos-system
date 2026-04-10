@@ -5,6 +5,7 @@ import { Helmet } from 'react-helmet-async';
 import { LandingLayout } from '../../components/Landing';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
+import { setAuthToken } from '../../utils/auth';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface Plan {
@@ -439,7 +440,7 @@ const SignupPage: React.FC = () => {
 
       // Fallback: auto-login if token returned (for backward compat)
       if (result.data?.token) {
-        localStorage.setItem('auth_token', result.data.token);
+        setAuthToken(result.data.token);
         const user = result.data.user;
         if (user.role === 'Restaurant Admin' && user.restaurant_id) {
           navigate(`/restaurant/${user.restaurant_id}/dashboard`, { replace: true });

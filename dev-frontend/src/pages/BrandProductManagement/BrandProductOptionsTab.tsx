@@ -7,6 +7,7 @@ import { Modal } from '../../components/UI/Modal';
 import { useTranslation } from 'react-i18next';
 
 
+import { getAuthToken } from '../../utils/auth';
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   padding: 10px 20px;
   border-radius: 8px;
@@ -277,7 +278,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
 
   const fetchOptionGroups = useCallback(async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/brand-product-option-groups', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -299,7 +300,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
   useEffect(() => {
     fetchOptionGroups();
     // Fetch product ingredients
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => setProductIngredients((data.data || data || []).map((pi: any) => ({ id: pi.id, name: pi.name, unit: pi.unit, unit_cost: Number(pi.unit_cost || 0) }))))
@@ -361,7 +362,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
     if (!formData.name.trim() || formData.options.length === 0) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const url = editingGroup
         ? `/api/brand-product-option-groups/${editingGroup.id}`
         : '/api/brand-product-option-groups';
@@ -398,7 +399,7 @@ const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
     if (!deletingGroupId) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brand-product-option-groups/${deletingGroupId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

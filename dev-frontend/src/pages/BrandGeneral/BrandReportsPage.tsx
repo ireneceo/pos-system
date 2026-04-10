@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { getAuthToken } from '../../utils/auth';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -396,7 +397,7 @@ const BrandReportsPage: React.FC = () => {
   useEffect(() => {
     const fetchBrandsAndRestaurants = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
 
         // Fetch brands
         const brandsResponse = await fetch('/api/brands', {
@@ -465,7 +466,7 @@ const BrandReportsPage: React.FC = () => {
 
       setLoading(true);
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
 
         // Get restaurant IDs that this user has access to
         const allowedRestaurantIds = restaurants.map(r => r.id);

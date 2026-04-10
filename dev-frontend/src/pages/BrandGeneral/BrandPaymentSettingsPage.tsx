@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface CurrencyConfig {
   [code: string]: {
     symbol: string;
@@ -348,7 +349,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers = { 'Authorization': `Bearer ${token}` };
 
       // Fetch currency config (global), system supported currencies, and brand-specific payment settings
@@ -433,7 +434,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
     if (!brandId) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${brandId}/payment-settings`, {
         method: 'PUT',
         headers: {
@@ -556,7 +557,7 @@ const BrandPaymentSettingsPage: React.FC = () => {
     if (!brandId) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${brandId}/payment-settings`, {
         method: 'PUT',
         headers: {

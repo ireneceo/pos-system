@@ -10,6 +10,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface SupportTicket {
   id: string;
   ticketNumber: string;
@@ -379,7 +380,7 @@ const SystemInquiryPage: React.FC = () => {
 
   const fetchTickets = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/support-tickets?customerId=${currentUserId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -399,7 +400,7 @@ const SystemInquiryPage: React.FC = () => {
   const fetchUnreadCounts = async (ticketList: SupportTicket[]) => {
     if (ticketList.length === 0) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const ids = ticketList.map(t => t.id).join(',');
       const res = await fetch(`/api/comments/unread-counts?entity_type=support_ticket&entity_ids=${ids}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -450,7 +451,7 @@ const SystemInquiryPage: React.FC = () => {
   const handleStatusChange = async () => {
     if (!selectedTicket) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -480,7 +481,7 @@ const SystemInquiryPage: React.FC = () => {
         attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/support-tickets', {
         method: 'POST',
         headers: {
@@ -607,7 +608,7 @@ const SystemInquiryPage: React.FC = () => {
                         e.stopPropagation();
                         (async () => {
                           try {
-                            const token = localStorage.getItem('auth_token');
+                            const token = getAuthToken();
                             const response = await fetch(`/api/support-tickets/${ticket.id}`, {
                               method: 'PUT',
                               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

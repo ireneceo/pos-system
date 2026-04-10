@@ -18,6 +18,7 @@ import { formatCurrency } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface CurrencyPrice {
   monthly: number;
   annual: number;
@@ -565,7 +566,7 @@ const PlansPage: React.FC = () => {
   });
 
   const getAuthHeaders = (): HeadersInit => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   };
 
@@ -609,7 +610,7 @@ const PlansPage: React.FC = () => {
 
   const fetchPlanPrices = async (planId: string) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const numericId = planId.replace('plan-', '');
       const response = await fetch(`/api/currencies/plans/${numericId}/prices`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -642,7 +643,7 @@ const PlansPage: React.FC = () => {
   const savePlanPrices = async () => {
     if (!selectedPlan) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const numericId = selectedPlan.id.replace('plan-', '');
       const prices = Object.entries(editingPlanPrices).map(([currency, values]) => ({
         currency,
@@ -718,7 +719,7 @@ const PlansPage: React.FC = () => {
       if (!response.ok) throw new Error('Failed to fetch plans');
 
       const data = await response.json();
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       // Transform API data to match frontend interface
       const transformedPlans: Plan[] = await Promise.all(data.map(async (plan: any) => {
@@ -847,7 +848,7 @@ const PlansPage: React.FC = () => {
 
       // Save currency prices for the new plan
       if (createFormData.currency_prices && Object.keys(createFormData.currency_prices).length > 0) {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const prices = Object.entries(createFormData.currency_prices).map(([currency, values]) => ({
           currency,
           monthly_price: parseFloat(values.monthly) || 0,
@@ -943,7 +944,7 @@ const PlansPage: React.FC = () => {
 
       // Save currency prices
       if (editFormData.currency_prices && Object.keys(editFormData.currency_prices).length > 0) {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const prices = Object.entries(editFormData.currency_prices).map(([currency, values]) => ({
           currency,
           monthly_price: parseFloat(values.monthly) || 0,
@@ -979,7 +980,7 @@ const PlansPage: React.FC = () => {
     if (!deletingPlanId) return;
     setShowDeleteConfirm(false);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const numericId = deletingPlanId.replace('plan-', '');
       const response = await fetch(`/api/plans/${numericId}`, {
         method: 'DELETE',
@@ -1169,7 +1170,7 @@ const PlansPage: React.FC = () => {
     // Load existing currency prices for this plan
     let currencyPricesData: {[currency: string]: {monthly: string; annual: string}} = {};
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const numericId = plan.id.replace('plan-', '');
       const response = await fetch(`/api/currencies/plans/${numericId}/prices`, {
         headers: { 'Authorization': `Bearer ${token}` }

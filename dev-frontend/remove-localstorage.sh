@@ -21,12 +21,12 @@ for file in "${CONTEXT_FILES[@]}"; do
     sed -i 's/localStorage\.setItem(/\/\/ localStorage.setItem(/g' "$file"
     sed -i 's/localStorage\.removeItem(/\/\/ localStorage.removeItem(/g' "$file"
 
-    echo "✅ Processed: $file"
+    echo "✓ Processed: $file"
   else
-    echo "❌ File not found: $file"
+    echo "✗ File not found: $file"
   fi
 done
 
 echo ""
-echo "✅ localStorage removal complete!"
+echo "✓ localStorage removal complete!"
 echo "Backup files created with .bak extension"

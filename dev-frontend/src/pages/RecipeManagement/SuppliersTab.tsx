@@ -8,6 +8,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface SuppliersTabProps {
   brandId: number | null;
   restaurantId?: number | null;
@@ -225,7 +226,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({ brandId, restaurantId: prop
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
   const isItemReadOnly = (item: Supplier) => isRestaurantAdmin && item.owner_type === 'brand';
 
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   useEffect(() => {
     const fetchAllData = async () => {

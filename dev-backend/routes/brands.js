@@ -107,7 +107,7 @@ router.put('/company-info', authenticateToken, async (req, res) => {
     };
 
     await brand.update(updateData);
-    console.log(`✅ Brand company info updated: ${brand.name}`);
+    console.log(`✓ Brand company info updated: ${brand.name}`);
 
     res.json({ success: true, message: 'Company info updated successfully' });
   } catch (error) {
@@ -220,7 +220,7 @@ router.post('/', authenticateToken, requireRole('Brand General', 'System Admin')
       status: status || 'active'
     });
 
-    console.log(`✅ Brand created: ${brand.name} (ID: ${brand.id})`);
+    console.log(`✓ Brand created: ${brand.name} (ID: ${brand.id})`);
 
     // Fetch with associations
     const createdBrand = await Brand.findByPk(brand.id, {
@@ -282,7 +282,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       status: status || brand.status
     });
 
-    console.log(`✅ Brand updated: ${brand.name}`);
+    console.log(`✓ Brand updated: ${brand.name}`);
 
     // Fetch with associations
     const updatedBrand = await Brand.findByPk(id, {
@@ -371,7 +371,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     }
 
     await brand.destroy();
-    console.log(`✅ Brand deleted: ${brand.name}`);
+    console.log(`✓ Brand deleted: ${brand.name}`);
 
     res.json({ message: 'Brand deleted successfully' });
   } catch (error) {
@@ -473,7 +473,7 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
     }
 
     await brand.save();
-    console.log(`✅ Brand payment settings updated: ${brand.name}`);
+    console.log(`✓ Brand payment settings updated: ${brand.name}`);
 
     res.json({
       success: true,
@@ -571,7 +571,7 @@ router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), 
     }
 
     await brand.save();
-    console.log(`✅ Brand subscription updated: ${brand.name}`);
+    console.log(`✓ Brand subscription updated: ${brand.name}`);
 
     res.json({
       success: true,

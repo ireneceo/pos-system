@@ -8,6 +8,7 @@ import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface GeneralStockCategoriesTabProps {
   isBrandGeneralMode?: boolean;  // Brand General uses company-wide API (authenticated user)
   restaurantId?: number | null;
@@ -268,7 +269,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
   const isItemReadOnly = (item: Category) => isRestaurantAdmin && item.owner_type === 'brand';
 
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -371,7 +372,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
     if (!formData.name.trim()) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
       const method = editingCategory ? 'PUT' : 'POST';
 
@@ -425,7 +426,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
     if (!categoryToDelete) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
 
       if (isBrandGeneralMode || isBrandUser) {
@@ -472,7 +473,7 @@ const GeneralStockCategoriesTab: React.FC<GeneralStockCategoriesTabProps> = ({ i
     }));
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
 
       if (isBrandGeneralMode || isBrandUser) {

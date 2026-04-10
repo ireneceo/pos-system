@@ -23,6 +23,7 @@ import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { COUNTRIES } from '../../constants/countries';
 import { useTranslation } from 'react-i18next';
+import { getAuthToken } from '../../utils/auth';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
 
 interface Restaurant {
@@ -729,7 +730,7 @@ const RestaurantsPage: React.FC = () => {
 
   const fetchBrands = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/brands', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -768,7 +769,7 @@ const RestaurantsPage: React.FC = () => {
 
   const fetchRestaurants = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
 
       const [restaurantsResponse, managersResponse] = await Promise.all([
@@ -941,7 +942,7 @@ const RestaurantsPage: React.FC = () => {
     setAdminSearchQuery(query);
     setShowAdminDropdown(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/users/available-admins?q=${encodeURIComponent(query)}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -965,7 +966,7 @@ const RestaurantsPage: React.FC = () => {
     setEditAdminSearchQuery(query);
     setShowEditAdminDropdown(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/users/available-admins?q=${encodeURIComponent(query)}`, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
@@ -1183,7 +1184,7 @@ const RestaurantsPage: React.FC = () => {
       console.log('📤 Sending restaurant data:', restaurantData);
 
       // Use direct fetch with Authorization header
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/restaurants', {
         method: 'POST',
         headers: {
@@ -1237,7 +1238,7 @@ const RestaurantsPage: React.FC = () => {
 
   const handleRestoreSubscription = async (restaurant: Restaurant) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/restaurants/${restaurant.id}/restore-subscription`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -1259,7 +1260,7 @@ const RestaurantsPage: React.FC = () => {
 
       console.log(`🔄 Toggling restaurant ${restaurant.id} status from ${restaurant.status} to ${newStatus}`);
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/restaurants/${restaurant.id}`, {
         method: 'PUT',
         headers: {
@@ -1356,7 +1357,7 @@ const RestaurantsPage: React.FC = () => {
       console.log('📤 Sending restaurant update data:', updateData);
 
       // Use direct fetch with Authorization header
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/restaurants/${editingRestaurant.id}`, {
         method: 'PUT',
         headers: {
@@ -1410,7 +1411,7 @@ const RestaurantsPage: React.FC = () => {
     if (!deletingRestaurant) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/restaurants/${deletingRestaurant.id}`, {
         method: 'DELETE',
         headers: {

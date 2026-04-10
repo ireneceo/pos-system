@@ -27,6 +27,7 @@ import DatePeriodFilter, { PeriodType, DateRange, calculatePeriodDateRange } fro
 import ContractPipeline from './ContractPipeline';
 import ContractDetail from './ContractDetail';
 
+import { getAuthToken } from '../../utils/auth';
 interface ContractManagementPageProps {
   entityType: 'brand' | 'foodcourt';
   pageTitle: string;
@@ -140,7 +141,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
   const fetchContracts = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const params = new URLSearchParams();
       if (stageFilter) params.set('stage', stageFilter);
       if (debouncedSearch) params.set('search', debouncedSearch);
@@ -177,7 +178,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
 
   const handleCreateProposal = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch('/api/contracts', {
         method: 'POST',
         headers: {

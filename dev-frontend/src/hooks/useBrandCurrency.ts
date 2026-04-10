@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { CurrencyData, CURRENCY_CONFIG } from '../utils/currency';
 
+import { getAuthToken } from '../utils/auth';
 interface BrandCurrencyData {
   defaultCurrency: string;
   supportedCurrencies: string[];
@@ -41,7 +42,7 @@ export const useBrandCurrency = (): BrandCurrencyData => {
       }
 
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch(`/api/restaurants/${restaurantId}`, {
           headers: {
             'Authorization': `Bearer ${token}`,

@@ -12,6 +12,7 @@ import { useStore } from '../../contexts/StoreContext';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // Styled Components (AnalyticsPage 패턴)
 const ReportsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -271,7 +272,7 @@ const ReportsPage: React.FC = () => {
   // Fetch supported currencies and set default to highest-revenue
   useEffect(() => {
     const init = async () => {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers: Record<string, string> = token ? { 'Authorization': `Bearer ${token}` } : {};
 
       // Fetch supported currencies
@@ -332,7 +333,7 @@ const ReportsPage: React.FC = () => {
   }, [activePeriod, isCustomDateRange, dateRange]);
 
   const fetchApi = useCallback(async (endpoint: string, params = '') => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     const sep = params ? '?' + params : '';
     const currParam = currency ? (sep ? `&currency=${currency}` : `?currency=${currency}`) : '';
     const response = await fetch(`/api/admin-reports/${endpoint}${sep}${currParam}`, {

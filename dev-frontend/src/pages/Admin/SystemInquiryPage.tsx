@@ -8,6 +8,7 @@ import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { Modal as CommonModal } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
+import { getAuthToken } from '../../utils/auth';
 import {
   Container,
   Header,
@@ -413,7 +414,7 @@ const SystemInquiryPage: React.FC = () => {
   const fetchUnreadCounts = async (ticketList: SupportTicket[]) => {
     if (ticketList.length === 0) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const ids = ticketList.map(t => t.id).join(',');
       const res = await fetch(`/api/comments/unread-counts?entity_type=support_ticket&entity_ids=${ids}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -432,7 +433,7 @@ const SystemInquiryPage: React.FC = () => {
   useEffect(() => {
     const fetchTickets = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch('/api/support-tickets', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -450,7 +451,7 @@ const SystemInquiryPage: React.FC = () => {
     // Fetch all users for user search dropdown
     const fetchUsers = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch('/api/users', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -588,7 +589,7 @@ const SystemInquiryPage: React.FC = () => {
         attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/support-tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -632,7 +633,7 @@ const SystemInquiryPage: React.FC = () => {
     if (!selectedTicket) return;
     setDetailStatus(newStatus);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -769,7 +770,7 @@ const SystemInquiryPage: React.FC = () => {
                         e.stopPropagation();
                         (async () => {
                           try {
-                            const token = localStorage.getItem('auth_token');
+                            const token = getAuthToken();
                             const response = await fetch(`/api/support-tickets/${ticket.id}`, {
                               method: 'PUT',
                               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

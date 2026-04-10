@@ -34,6 +34,7 @@ import html2canvas from 'html2canvas';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface AdditionalCharge {
   name: string;
   rate: number;
@@ -336,7 +337,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   // Fetch all invoices for this restaurant
   const fetchAllInvoices = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       // Use restaurantId from StoreContext, or fall back to user's restaurant_id for Restaurant Admin
       const targetRestaurantId = restaurantId || user?.restaurant_id;
       if (!token || !targetRestaurantId) return;
@@ -398,7 +399,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   // Fetch invoices to pay
   const fetchInvoicesToPay = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) {
         setInvoicesToPay([]);
         return;
@@ -427,7 +428,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   const fetchCompanySettings = async () => {
     if (!restaurantId) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/restaurants/${restaurantId}/company-info`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -487,7 +488,7 @@ const RestaurantInvoicesPage: React.FC = () => {
       } else if (issuerType === 'foodcourt' && issuerId) {
         url = `/api/foodcourts/${issuerId}/payment-settings/available/${currency}`;
       }
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -519,7 +520,7 @@ const RestaurantInvoicesPage: React.FC = () => {
     setPaymentSubmitError('');
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/submit-payment`, {
         method: 'POST',
         headers: {
@@ -645,7 +646,7 @@ const RestaurantInvoicesPage: React.FC = () => {
     if (confirmingInvoiceId) return;
     setConfirmingInvoiceId(invoice.id);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${invoice.id}/status`, {
         method: 'PATCH',
         headers: {

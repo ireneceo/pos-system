@@ -76,11 +76,11 @@ async function setupManagerUsers() {
   try {
     console.log('🔗 데이터베이스 연결 중...');
     await sequelize.authenticate();
-    console.log('✅ 데이터베이스 연결 성공');
+    console.log('✓ 데이터베이스 연결 성공');
 
     console.log('🗂️  데이터베이스 동기화 중...');
     await sequelize.sync();
-    console.log('✅ 데이터베이스 동기화 완료');
+    console.log('✓ 데이터베이스 동기화 완료');
 
     console.log('👥 매니저 사용자 생성 시작...\n');
 
@@ -113,9 +113,9 @@ async function setupManagerUsers() {
 
           if (needsUpdate) {
             await existingUser.update(updateData);
-            console.log(`✅ 사용자 업데이트 완료: ${userData.email}`);
+            console.log(`✓ 사용자 업데이트 완료: ${userData.email}`);
           } else {
-            console.log(`✅ 사용자 정보 이미 최신: ${userData.email}`);
+            console.log(`✓ 사용자 정보 이미 최신: ${userData.email}`);
           }
           continue;
         }
@@ -129,10 +129,10 @@ async function setupManagerUsers() {
           password: hashedPassword
         });
 
-        console.log(`✅ 사용자 생성 완료: ${userData.email} (ID: ${newUser.id})`);
+        console.log(`✓ 사용자 생성 완료: ${userData.email} (ID: ${newUser.id})`);
 
       } catch (userError) {
-        console.error(`❌ 사용자 처리 실패 (${userData.email}):`, userError.message);
+        console.error(`✗ 사용자 처리 실패 (${userData.email}):`, userError.message);
       }
     }
 
@@ -147,7 +147,7 @@ async function setupManagerUsers() {
     console.log('==================================\n');
 
   } catch (error) {
-    console.error('❌ 매니저 사용자 설정 실패:', error);
+    console.error('✗ 매니저 사용자 설정 실패:', error);
     process.exit(1);
   } finally {
     process.exit(0);

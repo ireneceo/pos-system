@@ -8,13 +8,13 @@ async function fixInvoiceStatusEnum() {
     await database.sequelize.query(
       "UPDATE invoices SET status = 'pending_payment' WHERE status = 'sent'"
     );
-    console.log('✅ Updated existing "sent" status to "pending_payment"');
+    console.log('✓ Updated existing "sent" status to "pending_payment"');
 
     // Drop and recreate the enum with correct values
     await database.sequelize.query(
       "ALTER TABLE invoices MODIFY COLUMN status ENUM('draft', 'pending_payment', 'payment_submitted', 'paid', 'overdue', 'cancelled') DEFAULT 'draft'"
     );
-    console.log('✅ Updated invoice status enum with correct values');
+    console.log('✓ Updated invoice status enum with correct values');
 
     // Verify the change
     const [results] = await database.sequelize.query(
@@ -30,7 +30,7 @@ async function fixInvoiceStatusEnum() {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error fixing invoice status enum:', error);
+    console.error('✗ Error fixing invoice status enum:', error);
     process.exit(1);
   }
 }

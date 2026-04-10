@@ -37,9 +37,9 @@ pm2 restart all 2>/dev/null || true
 
 if [ $INSTALL_EXIT_CODE -eq 0 ]; then
     echo ""
-    echo "✅ npm install completed successfully!"
+    echo "✓ npm install completed successfully!"
 else
     echo ""
-    echo "❌ npm install failed with exit code $INSTALL_EXIT_CODE"
+    echo "✗ npm install failed with exit code $INSTALL_EXIT_CODE"
     exit $INSTALL_EXIT_CODE
 fi

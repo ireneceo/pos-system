@@ -9,6 +9,7 @@ import ProductIngredientsTab from './ProductIngredientsTab';
 import ProductIngredientCategoriesTab from './ProductIngredientCategoriesTab';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 const HeaderActions = styled.div`
   display: flex;
   gap: 12px;
@@ -49,7 +50,7 @@ const BrandIngredientsPage: React.FC = () => {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch('/api/brands', {
           headers: { 'Authorization': `Bearer ${token}` }
         });

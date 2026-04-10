@@ -11,14 +11,14 @@ const { Customer } = require('./models');
     const customer = await Customer.findOne({ where: { phone } });
 
     if (!customer) {
-      console.log('❌ Customer not found');
+      console.log('✗ Customer not found');
       process.exit(1);
     }
 
     const password_hash = await bcrypt.hash(newPassword, 10);
     await customer.update({ password_hash });
 
-    console.log('✅ Password reset successfully!');
+    console.log('✓ Password reset successfully!');
     console.log(`\n📋 New Login Credentials:`);
     console.log(`   Phone: ${phone}`);
     console.log(`   Password: ${newPassword}`);
@@ -26,7 +26,7 @@ const { Customer } = require('./models');
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('✗ Error:', error.message);
     process.exit(1);
   }
 })();

@@ -15,6 +15,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { Modal as CommonModal } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ============================================================================
 // Interfaces
 // ============================================================================
@@ -466,7 +467,7 @@ const NoticesPage: React.FC = () => {
   const [deletingNoticeId, setDeletingNoticeId] = useState<number | null>(null);
 
   const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -477,7 +478,7 @@ const NoticesPage: React.FC = () => {
   const fetchUnreadCounts = async (noticeList: any[]) => {
     if (noticeList.length === 0) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const ids = noticeList.map((n: any) => n.id).join(',');
       const res = await fetch(`/api/comments/unread-counts?entity_type=notice&entity_ids=${ids}`, {
         headers: { 'Authorization': `Bearer ${token}` }

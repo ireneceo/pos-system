@@ -9,11 +9,23 @@
  *      const res = await mobileFetch('/api/customers/stats/123');
  */
 
-const MOBILE_TOKEN_KEY = 'mobile_token';
+// 모바일 토큰은 레스토랑 slug별로 스코프 분리
+// - /mobile/:slug 경로: 'mobile_token:<slug>'
+// - 그 외: 'mobile_token' (하위 호환, 실제로는 모바일 페이지에서만 호출됨)
+function getCurrentMobileSlug(): string | null {
+  if (typeof window === 'undefined') return null;
+  const m = window.location.pathname.match(/\/mobile\/([^/]+)/);
+  return m ? m[1] : null;
+}
+
+function mobileTokenKey(): string {
+  const slug = getCurrentMobileSlug();
+  return slug ? `mobile_token:${slug}` : 'mobile_token';
+}
 
 export function getMobileToken(): string | null {
   try {
-    return localStorage.getItem(MOBILE_TOKEN_KEY);
+    return localStorage.getItem(mobileTokenKey());
   } catch {
     return null;
   }
@@ -21,7 +33,7 @@ export function getMobileToken(): string | null {
 
 export function setMobileToken(token: string): void {
   try {
-    localStorage.setItem(MOBILE_TOKEN_KEY, token);
+    localStorage.setItem(mobileTokenKey(), token);
   } catch {
     /* ignore */
   }
@@ -29,7 +41,7 @@ export function setMobileToken(token: string): void {
 
 export function clearMobileToken(): void {
   try {
-    localStorage.removeItem(MOBILE_TOKEN_KEY);
+    localStorage.removeItem(mobileTokenKey());
   } catch {
     /* ignore */
   }

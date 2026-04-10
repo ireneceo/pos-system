@@ -13,6 +13,7 @@ import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PageHeader from '../../components/Common/PageHeader';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // 스타일 컴포넌트
 const CustomersContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -447,7 +448,7 @@ const CustomersPage: React.FC = () => {
     setCustomerCoupons(null);
     setLoadingCoupons(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch(`/api/coupons/customer/${customer.id}?restaurant_id=${restaurantId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });

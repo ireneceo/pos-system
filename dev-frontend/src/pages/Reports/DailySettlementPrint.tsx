@@ -8,6 +8,7 @@ import { getPaymentMethodLabel } from '../../constants';
 import { printSettlementReport } from '../../utils/billPrint';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ─── Types ───────────────────────────────────────────────────────
 
 interface DailySettlementPrintProps {
@@ -428,7 +429,7 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
   const fetchData = useCallback(async (date: string) => {
     if (!user?.restaurantId) return;
 
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token) return;
 
     setLoading(true);

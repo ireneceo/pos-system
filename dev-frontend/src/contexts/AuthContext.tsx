@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import i18n from '../i18n';
 
+import { getAuthToken, setAuthToken, clearAuthToken } from '../utils/auth';
+import { setOn401Handler } from '../utils/httpClient';
 export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Owner' | 'Restaurant Admin' | 'Staff' | 'Supplier Admin';
 
 export interface User {
@@ -355,7 +357,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // JWT 토큰 확인
     const checkSession = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
 
         if (!token) {
           setIsLoading(false);
@@ -409,11 +411,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } else {
           // Token invalid or expired
 
-          localStorage.removeItem('auth_token');
+          clearAuthToken();
         }
       } catch (error) {
 
-        localStorage.removeItem('auth_token');
+        clearAuthToken();
       }
       setIsLoading(false);
     };
@@ -481,7 +483,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           setUser(userData);
           // JWT 토큰 저장
-          localStorage.setItem('auth_token', result.data.token);
+          setAuthToken(result.data.token);
           // i18n 언어 동기화
           if (apiUser.preferred_language) {
             i18n.changeLanguage(apiUser.preferred_language);
@@ -521,9 +523,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Use original fetch to avoid interceptor loop
-      const originalFetch = (window as any).__originalFetch || window.fetch;
-      await originalFetch('/api/auth/logout', {
+      // /api/auth/logout은 httpClient의 POS_BYPASS_PATHS에 포함되어 토큰 주입/401 처리 모두 건너뜀
+      await window.fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });
@@ -539,7 +540,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     setUser(null);
     // JWT 토큰 제거
-    localStorage.removeItem('auth_token');
+    clearAuthToken();
     localStorage.removeItem('user');
     // Sentry user context 정리
     Sentry.setUser(null);
@@ -555,73 +556,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Keep ref updated for use in fetch interceptor
   logoutRef.current = logout;
 
-  // 글로벌 fetch 인터셉터 (POS 관리자 전용)
-  // - /api/* 요청에 auth_token 자동 주입
-  // - 401 응답 시 POS 관리자 자동 로그아웃
-  //
-  // 모바일 고객 API는 분리된 publicPaths로 우회 + mobile_token 별도 사용
-  // (mobileFetch 헬퍼 사용 시 mobile_token 자동 주입)
+  // 401 자동 로그아웃 핸들러를 httpClient 인터셉터에 등록
+  // (fetch 패치 자체는 index.tsx에서 installFetchInterceptor()로 1회만 설치됨)
   useEffect(() => {
-    if ((window as any).__fetchInterceptorInstalled) return;
-    (window as any).__fetchInterceptorInstalled = true;
-
-    const originalFetch = window.fetch.bind(window);
-    (window as any).__originalFetch = originalFetch;
-
-    // POS 관리자 토큰 주입을 건너뛸 경로 (모바일 고객 API + 공개 API)
-    const POS_BYPASS_PATHS = [
-      '/api/auth/login',
-      '/api/auth/register',
-      '/api/auth/signup',
-      '/api/public/',
-      '/api/customers/auth',
-      '/api/customers/register',
-      '/api/customers/forgot-password',
-      '/api/customers/reset-password',
-      '/api/customers/find-email',
-      '/api/customers/verify-reset-token',
-      '/api/mobile/',
-      '/api/membership/settings/',  // 공개 멤버십 설정
-      '/api/restaurants/slug/'       // 공개 슬러그 조회
-    ];
-
-    window.fetch = async (...args: Parameters<typeof fetch>) => {
-      const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request)?.url || '';
-      const isBypass = POS_BYPASS_PATHS.some(p => url.includes(p));
-
-      if (url.includes('/api/') && !isBypass) {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          const init = args[1] || {};
-          const headers = new Headers(init.headers || {});
-          if (!headers.has('Authorization')) {
-            headers.set('Authorization', `Bearer ${token}`);
-          }
-          args[1] = { ...init, headers };
-        }
-      }
-
-      const response = await originalFetch(...args);
-
-      // 401 자동 로그아웃 — POS 관리자 API에만 적용
-      // 모바일 고객 API의 401은 mobileFetch가 mobile_token을 정리함
-      if (response.status === 401 && !isBypass && localStorage.getItem('auth_token')) {
-        // 그러나 customer/* 또는 membership/* 요청은 POS 관리자 세션을 건드리지 않음
-        const isCustomerOrMembership = url.includes('/api/customers/') || url.includes('/api/membership/');
-        if (!isCustomerOrMembership) {
-          console.log('[Auth] 401 auto-logout. URL:', url);
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user');
-          if (logoutRef.current) logoutRef.current();
-        }
-      }
-
-      return response;
-    };
-
+    setOn401Handler(() => {
+      if (logoutRef.current) logoutRef.current();
+    });
     return () => {
-      window.fetch = originalFetch;
-      (window as any).__fetchInterceptorInstalled = false;
+      setOn401Handler(null);
     };
   }, []);
 
@@ -640,7 +582,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       permissions: userData.permissions || [],
     };
 
-    localStorage.setItem('auth_token', token);
+    setAuthToken(token);
     setUser(newUser);
     // Sentry user context 갱신
     Sentry.setUser({
@@ -672,7 +614,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (user) {
       setUser({ ...user, preferred_language: language });
     }
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (token) {
       try {
         await fetch('/api/users/language', {

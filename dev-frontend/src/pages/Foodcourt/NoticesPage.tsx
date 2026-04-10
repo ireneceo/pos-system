@@ -14,6 +14,7 @@ import { linkifyText } from '../../utils/linkify';
 import { Modal as CommonModal } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ============================================================================
 // TypeScript Interfaces
 // ============================================================================
@@ -472,7 +473,7 @@ const NoticesPage: React.FC = () => {
   const [unreadCounts, setUnreadCounts] = useState<Record<string, { total_comments: number; unread_count: number }>>({});
   const [newAttachments, setNewAttachments] = useState<AttachmentFile[]>([]);
 
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   const headers = {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
@@ -482,7 +483,7 @@ const NoticesPage: React.FC = () => {
   const fetchUnreadCounts = async (noticeList: any[]) => {
     if (noticeList.length === 0) return;
     try {
-      const tkn = localStorage.getItem('auth_token');
+      const tkn = getAuthToken();
       const ids = noticeList.map((n: any) => n.id).join(',');
       const res = await fetch(`/api/comments/unread-counts?entity_type=notice&entity_ids=${ids}`, {
         headers: { 'Authorization': `Bearer ${tkn}` }

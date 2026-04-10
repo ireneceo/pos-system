@@ -33,7 +33,7 @@ async function createRealisticData() {
       menu_item_limit: 200,
       staff_limit: 15
     });
-    console.log(`✅ Created K-DINE restaurant (ID: ${kdineRestaurant.id})`);
+    console.log(`✓ Created K-DINE restaurant (ID: ${kdineRestaurant.id})`);
 
     // 2. 추가 레스토랑들 생성
     console.log('🏪 Creating additional restaurants...');
@@ -91,7 +91,7 @@ async function createRealisticData() {
       staff_limit: -1
     });
 
-    console.log('✅ Created additional restaurants');
+    console.log('✓ Created additional restaurants');
 
     // 3. 사용자들의 restaurant_id 업데이트
     console.log('👥 Updating user restaurant associations...');
@@ -106,7 +106,7 @@ async function createRealisticData() {
     await User.update({ restaurant_id: kueyTeowRestaurant.id }, { where: { id: 4 } }); // admin@kueyteow.com
     await User.update({ restaurant_id: koreanBBQRestaurant.id }, { where: { id: 5 } }); // admin@koreanbbq.com
 
-    console.log('✅ Updated user restaurant associations');
+    console.log('✓ Updated user restaurant associations');
 
     // 4. K-DINE 메뉴 아이템 생성
     console.log('🍽️ Creating K-DINE menu items...');
@@ -218,7 +218,7 @@ async function createRealisticData() {
       await Order.create(order);
     }
 
-    console.log('✅ Created sample orders');
+    console.log('✓ Created sample orders');
 
     console.log('🎉 Realistic POS data creation completed!');
     console.log('\n📊 Summary:');
@@ -237,15 +237,15 @@ async function createRealisticData() {
     console.log('- admin@kueyteow.com / admin123 (Kuey Teow Admin)');
 
   } catch (error) {
-    console.error('❌ Error creating realistic data:', error);
+    console.error('✗ Error creating realistic data:', error);
   }
 }
 
 // 실행
 createRealisticData().then(() => {
-  console.log('✅ Data creation script completed');
+  console.log('✓ Data creation script completed');
   process.exit(0);
 }).catch(error => {
-  console.error('❌ Script failed:', error);
+  console.error('✗ Script failed:', error);
   process.exit(1);
 });

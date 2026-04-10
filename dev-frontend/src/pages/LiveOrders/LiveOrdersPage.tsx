@@ -28,6 +28,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import DailySettlementPrint from '../Reports/DailySettlementPrint';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
   const date = new Date(dateString);
@@ -66,7 +67,7 @@ const getProofHistory = (proof: any): any[] => {
 
 // Helper function to get fetch options with auth token
 const getFetchOptions = (options: RequestInit = {}): RequestInit => {
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   return {
     ...options,
     credentials: 'include',
@@ -1353,7 +1354,7 @@ const LiveOrdersPage: React.FC = () => {
     // 메뉴 데이터 로드 (카테고리 매칭용)
     let menuCategoryMap: Record<string, string> = {};
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const menuRes = await fetch(`/api/menu?restaurant_id=${user?.restaurantId}&excludeImage=true`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -2903,7 +2904,7 @@ const LiveOrdersPage: React.FC = () => {
                     const val = parseInt(e.target.value) || 0;
                     setSalesThreshold(val);
                     // Save to server
-                    const token = localStorage.getItem('auth_token');
+                    const token = getAuthToken();
                     fetch(`/api/restaurants/${user?.restaurantId}`, { headers: { Authorization: `Bearer ${token}` } })
                       .then(r => r.json()).then(data => {
                         const rest = data.data || data;

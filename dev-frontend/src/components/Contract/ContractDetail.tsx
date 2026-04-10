@@ -6,6 +6,7 @@ import AutoSaveField from '../Common/AutoSaveField';
 import CommentSection from '../Common/CommentSection';
 import { useAuth } from '../../contexts/AuthContext';
 
+import { getAuthToken } from '../../utils/auth';
 interface ContractDetailProps {
   contractId: number;
   entityType: 'brand' | 'foodcourt';
@@ -282,7 +283,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
   const [searchingRestaurant, setSearchingRestaurant] = useState(false);
   const searchTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const getToken = () => localStorage.getItem('auth_token');
+  const getToken = () => getAuthToken();
   const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
   const fetchContract = useCallback(async () => {

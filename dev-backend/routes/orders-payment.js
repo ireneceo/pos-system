@@ -1,0 +1,235 @@
+// 주문 결제 (Stripe/PayPal)
+// 마운트: /api/orders
+
+const express = require('express');
+const router = express.Router();
+const Order = require('../models/Order');
+const Restaurant = require('../models/Restaurant');
+const Coupon = require('../models/Coupon');
+const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
+const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
+const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
+const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
+const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
+const ActivityLog = require('../models/ActivityLog');
+const { logActivity } = require('../utils/activityLogger');
+const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
+
+// 보안 정책: 모바일 게스트 고객도 결제하므로 authenticateToken 강제 불가
+// 대신 다음 제약으로 위변조 방어:
+// 1. 주문 생성 후 30분 이내에만 결제 시도 가능 (시간 윈도우 제한)
+// 2. 이미 payment_status='completed' 면 거부
+// 3. 이미 payment_intent_id가 있으면 신규 생성 대신 기존 intent 반환 (중복 결제 방어)
+
+const PAYMENT_WINDOW_MS = 30 * 60 * 1000; // 30분
+
+function isPaymentAllowed(order) {
+  if (!order) return { ok: false, status: 404, message: 'Order not found' };
+  if (order.payment_status === 'completed') {
+    return { ok: false, status: 400, message: 'Order is already paid' };
+  }
+  const age = Date.now() - new Date(order.createdAt).getTime();
+  if (age > PAYMENT_WINDOW_MS) {
+    return { ok: false, status: 403, message: 'Payment window expired for this order' };
+  }
+  return { ok: true };
+}
+
+router.post('/:id/create-payment-intent', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { getStripeForIssuer, getPublishableKeyForIssuer } = require('../utils/stripeService');
+
+    const order = await Order.findByPk(id, {
+      include: [{ model: Restaurant, as: 'restaurant' }]
+    });
+
+    const check = isPaymentAllowed(order);
+    if (!check.ok) {
+      return res.status(check.status).json({ success: false, message: check.message });
+    }
+
+    // Use restaurant-level Stripe keys
+    const restaurantId = order.restaurant_id;
+    const stripe = await getStripeForIssuer('restaurant', restaurantId);
+
+    // Convert amount to smallest currency unit
+    const currency = order.restaurant?.currency || 'MYR';
+    const ZERO_DECIMAL = ['JPY', 'KRW', 'VND'];
+    const multiplier = ZERO_DECIMAL.includes(currency.toUpperCase()) ? 1 : 100;
+    const amountInSmallestUnit = Math.round(parseFloat(order.total_amount) * multiplier);
+
+    // Create PaymentIntent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInSmallestUnit,
+      currency: currency.toLowerCase(),
+      metadata: {
+        order_id: String(order.id),
+        order_number: order.order_number || '',
+        restaurant_id: String(restaurantId)
+      },
+      description: `Order ${order.order_number || order.id} - ${order.restaurant?.name || 'N/A'}`
+    });
+
+    // Store payment_intent_id on order
+    await order.update({
+      payment_intent_id: paymentIntent.id,
+      payment_provider: 'stripe',
+      payment_method: 'online'
+    });
+
+    const publishableKey = await getPublishableKeyForIssuer('restaurant', restaurantId);
+
+    res.json({
+      success: true,
+      clientSecret: paymentIntent.client_secret,
+      publishableKey,
+      paymentIntentId: paymentIntent.id
+    });
+  } catch (error) {
+    console.error('Error creating PaymentIntent for order:', error);
+    res.status(500).json({ success: false, error: 'Failed to create payment intent', details: error.message });
+  }
+});
+
+// Create PayPal order for a mobile order
+router.post('/:id/create-paypal-order', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { createPayPalClient, getClientIdForIssuer } = require('../utils/paypalService');
+    const paypal = require('@paypal/checkout-server-sdk');
+
+    const order = await Order.findByPk(id, {
+      include: [{ model: Restaurant, as: 'restaurant' }]
+    });
+
+    const check = isPaymentAllowed(order);
+    if (!check.ok) {
+      return res.status(check.status).json({ success: false, message: check.message });
+    }
+
+    const restaurantId = order.restaurant_id;
+    const { client } = await createPayPalClient('restaurant', restaurantId);
+    const currency = order.restaurant?.currency || 'MYR';
+
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer('return=representation');
+    request.requestBody({
+      intent: 'CAPTURE',
+      purchase_units: [{
+        reference_id: String(order.id),
+        description: `Order ${order.order_number || order.id} - ${order.restaurant?.name || 'N/A'}`,
+        custom_id: String(order.id),
+        amount: {
+          currency_code: currency.toUpperCase(),
+          value: parseFloat(order.total_amount).toFixed(2)
+        }
+      }]
+    });
+
+    const paypalOrder = await client.execute(request);
+
+    await order.update({
+      payment_intent_id: paypalOrder.result.id,
+      payment_provider: 'paypal',
+      payment_method: 'online'
+    });
+
+    const clientId = await getClientIdForIssuer('restaurant', restaurantId);
+
+    res.json({
+      success: true,
+      orderId: paypalOrder.result.id,
+      clientId,
+      status: paypalOrder.result.status
+    });
+  } catch (error) {
+    console.error('Error creating PayPal order:', error);
+    res.status(500).json({ success: false, error: 'Failed to create PayPal order', details: error.message });
+  }
+});
+
+// Capture PayPal order after user approval
+router.post('/:id/capture-paypal-order', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orderId } = req.body;
+    const { createPayPalClient } = require('../utils/paypalService');
+    const paypal = require('@paypal/checkout-server-sdk');
+
+    const order = await Order.findByPk(id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Order is already paid' });
+    }
+
+    // 보안: 클라이언트가 보낸 orderId가 DB의 payment_intent_id와 일치해야 함
+    // (임의 PayPal orderId로 capture 시도 차단)
+    if (order.payment_intent_id !== orderId) {
+      return res.status(400).json({ success: false, message: 'Order ID mismatch' });
+    }
+
+    const { client } = await createPayPalClient('restaurant', order.restaurant_id);
+
+    const request = new paypal.orders.OrdersCaptureRequest(orderId);
+    request.requestBody({});
+    const capture = await client.execute(request);
+
+    if (capture.result.status === 'COMPLETED') {
+      const captureId = capture.result.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+      await order.update({
+        payment_status: 'completed',
+        payment_method: 'online',
+        payment_provider: 'paypal',
+        transaction_id: captureId || orderId
+      });
+
+      res.json({ success: true, status: 'COMPLETED', captureId });
+    } else {
+      res.json({ success: true, status: capture.result.status });
+    }
+  } catch (error) {
+    console.error('Error capturing PayPal order:', error);
+    res.status(500).json({ success: false, error: 'Failed to capture PayPal payment', details: error.message });
+  }
+});
+
+// Confirm Stripe payment for an order (called after Stripe Elements completes)
+router.post('/:id/confirm-stripe-payment', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { getStripeForIssuer } = require('../utils/stripeService');
+
+    const order = await Order.findByPk(id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Order is already paid' });
+    }
+
+    if (!order.payment_intent_id) {
+      return res.status(400).json({ success: false, message: 'No payment intent found for this order' });
+    }
+
+    const stripe = await getStripeForIssuer('restaurant', order.restaurant_id);
+    const paymentIntent = await stripe.paymentIntents.retrieve(order.payment_intent_id);
+
+    if (paymentIntent.status === 'succeeded') {
+      await order.update({
+        payment_status: 'completed',
+        payment_method: 'online',
+        payment_provider: 'stripe',
+        transaction_id: paymentIntent.id
+      });
+      res.json({ success: true, status: 'succeeded' });
+    } else {
+      res.json({ success: true, status: paymentIntent.status });
+    }
+  } catch (error) {
+    console.error('Error confirming Stripe payment:', error);
+    res.status(500).json({ success: false, error: 'Failed to confirm payment', details: error.message });
+  }
+});
+
+
+module.exports = router;

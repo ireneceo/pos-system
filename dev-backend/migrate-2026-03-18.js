@@ -22,20 +22,20 @@ async function migrate() {
     );
     if (cols[0]?.IS_NULLABLE === 'NO') {
       await sequelize.query("ALTER TABLE activity_logs MODIFY COLUMN restaurant_id INT NULL");
-      console.log('✅ activity_logs.restaurant_id → NULL 허용');
+      console.log('✓ activity_logs.restaurant_id → NULL 허용');
     } else {
-      console.log('✅ activity_logs.restaurant_id 이미 NULL 허용');
+      console.log('✓ activity_logs.restaurant_id 이미 NULL 허용');
     }
   } catch (e) {
-    console.error('❌ activity_logs ALTER 실패:', e.message);
+    console.error('✗ activity_logs ALTER 실패:', e.message);
   }
 
   // 2. restaurants.currency RM → MYR
   try {
     const [result] = await sequelize.query("UPDATE restaurants SET currency='MYR' WHERE currency='RM'");
-    console.log(`✅ restaurants.currency RM→MYR: ${result.affectedRows || 0}개 변경`);
+    console.log(`✓ restaurants.currency RM→MYR: ${result.affectedRows || 0}개 변경`);
   } catch (e) {
-    console.error('❌ currency 변경 실패:', e.message);
+    console.error('✗ currency 변경 실패:', e.message);
   }
 
   // 3. addon_modules 추가 (멱등)
@@ -52,16 +52,16 @@ async function migrate() {
         { replacements: [m.code], type: QueryTypes.SELECT }
       );
       if (existing.length > 0) {
-        console.log(`✅ ${m.code} 이미 존재`);
+        console.log(`✓ ${m.code} 이미 존재`);
         continue;
       }
       await sequelize.query(
         "INSERT INTO addon_modules (module_code, name, description, category, target_user_type, base_price_monthly, base_price_annual, ui_routes, features, is_active, sort_order, created_at, updated_at) VALUES (?, 'Change History', 'View change history and activity logs', 'advanced', ?, 0, 0, ?, ?, true, ?, NOW(), NOW())",
         { replacements: [m.code, m.target, JSON.stringify([m.routes]), JSON.stringify(['Activity log viewing']), m.target === 'brand' ? 11 : m.target === 'foodcourt' ? 10 : 7] }
       );
-      console.log(`✅ ${m.code} 추가 완료`);
+      console.log(`✓ ${m.code} 추가 완료`);
     } catch (e) {
-      console.error(`❌ ${m.code} 추가 실패:`, e.message);
+      console.error(`✗ ${m.code} 추가 실패:`, e.message);
     }
   }
 
@@ -91,10 +91,10 @@ async function migrate() {
         "UPDATE plan_templates SET included_modules=? WHERE id=?",
         { replacements: [JSON.stringify(mods), plan.id] }
       );
-      console.log(`✅ 플랜 ${plan.name} → ${targetCode} 추가`);
+      console.log(`✓ 플랜 ${plan.name} → ${targetCode} 추가`);
     }
   } catch (e) {
-    console.error('❌ 플랜 모듈 추가 실패:', e.message);
+    console.error('✗ 플랜 모듈 추가 실패:', e.message);
   }
 
   // 5. sort_order 정리
@@ -105,9 +105,9 @@ async function migrate() {
     await sequelize.query("UPDATE addon_modules SET sort_order=10 WHERE module_code='fc_activity_logs'");
     // Owner: inquiry 뒤 (6 다음)
     await sequelize.query("UPDATE addon_modules SET sort_order=7 WHERE module_code='owner_activity_logs'");
-    console.log('✅ sort_order 정리 완료');
+    console.log('✓ sort_order 정리 완료');
   } catch (e) {
-    console.error('❌ sort_order 정리 실패:', e.message);
+    console.error('✗ sort_order 정리 실패:', e.message);
   }
 
   console.log('\n🎉 Migration 완료!');

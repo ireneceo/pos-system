@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { getAuthToken } from '../../utils/auth';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -370,7 +371,7 @@ const OwnerReportsPage: React.FC = () => {
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch('/api/owner/restaurants', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -422,7 +423,7 @@ const OwnerReportsPage: React.FC = () => {
 
       setLoading(true);
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const allowedRestaurantIds = restaurants.map(r => r.id);
 
         let ordersUrl = '/api/orders?limit=5000';

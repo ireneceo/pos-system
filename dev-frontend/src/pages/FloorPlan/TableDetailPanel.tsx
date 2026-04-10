@@ -9,6 +9,7 @@ import OptionModal from '../../components/POSTerminal/OptionModal';
 import { Modal, ModalButton } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // Helper: payment_proof 호환 — { current, history } 구조 또는 기존 단일 객체 모두 지원
 const getProofCurrent = (proof: any): any => {
   if (!proof) return null;
@@ -535,7 +536,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const fetchQRStatus = useCallback(async () => {
     if (!restaurantId || !tableNumber) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch(`/api/restaurants/${restaurantId}/tables/${tableNumber}/qr`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -578,7 +579,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   const fetchMenuForAddItems = useCallback(async () => {
     if (!restaurantId) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers = { 'Authorization': `Bearer ${token}` };
       const itemRes = await fetch(`/api/menu?restaurantId=${restaurantId}`, { headers });
       if (itemRes.ok) {
@@ -643,7 +644,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     if (!statusInfo?.orderId || addItemsCart.length === 0) return;
     try {
       setIsAddingItems(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const mergeItems = addItemsCart.map(item => ({
         menu_item_id: item.menuItemId, menu_item_name: item.name, name: item.name,
         quantity: item.quantity, price: item.price, unitPrice: item.unitPrice || item.price,
@@ -722,7 +723,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         return item;
       });
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const res = await fetch(`/api/orders/${statusInfo.orderId}/items`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -752,7 +753,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
       onConfirm: async () => {
         setConfirmModal(null);
         try {
-          const token = localStorage.getItem('auth_token');
+          const token = getAuthToken();
           const res = await fetch(`/api/orders/${statusInfo.orderId}/items/${itemIndex}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
@@ -772,7 +773,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         setConfirmModal(null);
         setLoading(true);
         try {
-          const token = localStorage.getItem('auth_token');
+          const token = getAuthToken();
           await fetch(`/api/orders/${statusInfo.orderId}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -792,7 +793,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     if (!prevStatus) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       await fetch(`/api/orders/${statusInfo.orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -814,7 +815,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     if (!statusInfo?.orderId) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       await fetch(`/api/orders/${statusInfo.orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -838,7 +839,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     if (!statusInfo?.orderId) return;
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       await fetch(`/api/orders/${statusInfo.orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -958,7 +959,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     if (qrLoading) return;
     setQrLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let qrData = qrSession;
 
       if (!qrData) {
@@ -999,7 +1000,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
     if (qrLoading) return;
     setQrLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       await fetch(`/api/restaurants/${restaurantId}/tables/${tableNumber}/qr`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

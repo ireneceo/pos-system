@@ -11,7 +11,7 @@ if (process.env.CODESPACES === 'true' || process.env.CODESPACE_NAME) {
 
 // 환경 변수에서 직접 가져오기 (필수)
 if (!process.env.DB_HOST || !process.env.DB_NAME || !process.env.DB_USER || !process.env.DB_PASSWORD) {
-  console.error('❌ 필수 환경변수가 설정되지 않았습니다!');
+  console.error('✗ 필수 환경변수가 설정되지 않았습니다!');
   console.error('   필요한 변수: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD');
   console.error('   .env 파일을 확인하세요.');
   process.exit(1);
@@ -117,9 +117,9 @@ const testConnection = async (retry = false) => {
     connectionAttempts = 0;
     
     if (retry) {
-      console.log('✅ MySQL 데이터베이스 재연결 성공!');
+      console.log('✓ MySQL 데이터베이스 재연결 성공!');
     } else {
-      console.log('✅ MySQL 데이터베이스 연결 성공!');
+      console.log('✓ MySQL 데이터베이스 연결 성공!');
     }
     
     // 연결 상태 확인 (프로덕션에서는 로깅 안 함)
@@ -145,7 +145,7 @@ const testConnection = async (retry = false) => {
     isConnected = false;
     connectionAttempts++;
     
-    console.error(`❌ MySQL 연결 실패 (시도 ${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS}):`, error.message);
+    console.error(`✗ MySQL 연결 실패 (시도 ${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS}):`, error.message);
     console.error('   연결 시도 정보:');
     console.error(`   Host: ${dbConfig.host}:${dbConfig.port}`);
     console.error(`   Database: ${dbConfig.database}`);
@@ -188,7 +188,7 @@ if (process.env.NODE_ENV === 'production') {
       isConnected = false;
       await testConnection(true);
     } else if (connected && !isConnected) {
-      console.log('✅ DB 연결이 복구되었습니다.');
+      console.log('✓ DB 연결이 복구되었습니다.');
       isConnected = true;
     }
   }, 5 * 60 * 1000); // 5분마다
@@ -237,7 +237,7 @@ process.on('SIGTERM', async () => {
     clearTimeout(reconnectTimer);
   }
   await sequelize.close();
-  console.log('✅ 데이터베이스 연결이 종료되었습니다.');
+  console.log('✓ 데이터베이스 연결이 종료되었습니다.');
 });
 
 process.on('SIGINT', async () => {
@@ -246,7 +246,7 @@ process.on('SIGINT', async () => {
     clearTimeout(reconnectTimer);
   }
   await sequelize.close();
-  console.log('✅ 데이터베이스 연결이 종료되었습니다.');
+  console.log('✓ 데이터베이스 연결이 종료되었습니다.');
 });
 
 // 초기 연결 테스트

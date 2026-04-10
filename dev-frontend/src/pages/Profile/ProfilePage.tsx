@@ -11,6 +11,7 @@ import SubscriptionTab from './SubscriptionTab';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // 스타일 컴포넌트
 const ProfileContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -328,7 +329,7 @@ const ProfilePage: React.FC = () => {
           console.log('🔄 Fetching user from API, ID:', authUser.id);
 
           // Use exact same pattern as AdminDashboard
-          const token = localStorage.getItem('auth_token');
+          const token = getAuthToken();
           const userResponse = await fetch(`/api/users/${authUser.id}`, {
             headers: {
               'Authorization': `Bearer ${token}`
@@ -477,7 +478,7 @@ const ProfilePage: React.FC = () => {
       setSavedSuccessfully(false);
 
       if (dbUser && authUser?.id) {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const response = await fetch(`/api/users/${authUser.id}`, {
           method: 'PUT',
           headers: {
@@ -655,7 +656,7 @@ const ProfilePage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/users/${currentUser?.id}/password`, {
         method: 'PATCH',
         headers: {

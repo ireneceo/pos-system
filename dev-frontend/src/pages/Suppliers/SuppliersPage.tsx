@@ -9,6 +9,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Brand {
   id: number;
   name: string;
@@ -341,7 +342,7 @@ const SuppliersPage: React.FC = () => {
   const isRestaurantAdmin = user?.role === 'Restaurant Admin';
   const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
 
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   // Fetch brands for Brand General/Manager
   useEffect(() => {
@@ -571,7 +572,7 @@ const SuppliersPage: React.FC = () => {
 
   const handleToggleActive = async (supplier: Supplier) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
       if (isBrandUser) {
         url = `/api/suppliers/${supplier.id}`;

@@ -27,7 +27,7 @@ async function debugAutoInvoices() {
       await database.sequelize.query(
         "DELETE FROM invoices WHERE invoice_number LIKE 'INV-202509%'"
       );
-      console.log('✅ Auto-generated invoices deleted');
+      console.log('✓ Auto-generated invoices deleted');
     }
 
     // Show remaining invoices
@@ -43,7 +43,7 @@ async function debugAutoInvoices() {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error debugging auto invoices:', error);
+    console.error('✗ Error debugging auto invoices:', error);
     process.exit(1);
   }
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SetupItem } from '../components/Common/SetupGuide';
 
+import { getAuthToken } from '../utils/auth';
 interface UseSetupStatusParams {
   role: string;
   restaurantId?: string | number | null;
@@ -39,7 +40,7 @@ interface RestaurantSettingsData {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;

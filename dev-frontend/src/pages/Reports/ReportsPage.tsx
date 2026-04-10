@@ -18,6 +18,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import DailySettlementPrint from './DailySettlementPrint';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // 스타일 컴포넌트
 const ReportsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -410,7 +411,7 @@ const ReportsPage: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) {
         console.error('❌ No auth token found');
         setLoading(false);
@@ -466,7 +467,7 @@ const ReportsPage: React.FC = () => {
   const fetchReportsSummary = useCallback(async () => {
     if (!user?.restaurantId) return;
 
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     if (!token) return;
 
     setOrdersLoading(true);

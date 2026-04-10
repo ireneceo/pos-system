@@ -6,7 +6,7 @@ async function seedAuthUsers() {
   try {
     // Test connection
     await sequelize.authenticate();
-    console.log('✅ Database connection established successfully.');
+    console.log('✓ Database connection established successfully.');
 
     // AuthContext에서 사용하는 테스트 계정들
     const testAccounts = [
@@ -92,16 +92,16 @@ async function seedAuthUsers() {
           department: account.department
         });
 
-        console.log(`✅ Created user: ${account.email} (${account.role})`);
+        console.log(`✓ Created user: ${account.email} (${account.role})`);
       } else {
         console.log(`👍 User already exists: ${account.email}`);
       }
     }
 
-    console.log('✅ All auth users have been seeded successfully.');
+    console.log('✓ All auth users have been seeded successfully.');
 
   } catch (error) {
-    console.error('❌ Error seeding auth users:', error);
+    console.error('✗ Error seeding auth users:', error);
   } finally {
     await sequelize.close();
   }

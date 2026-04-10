@@ -5,6 +5,7 @@ import { useMenu } from '../../contexts/MenuContext';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 const Container = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FAFBFC;
@@ -384,7 +385,7 @@ const OptionManagementPage: React.FC = () => {
   React.useEffect(() => {
     const fetchIngredients = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const pathParts = window.location.pathname.split('/');
         const ridIdx = pathParts.indexOf('restaurant');
         const rid = ridIdx >= 0 ? pathParts[ridIdx + 1] : null;

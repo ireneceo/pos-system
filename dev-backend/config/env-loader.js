@@ -10,7 +10,7 @@ function loadEnvironmentConfig() {
 
   if (fs.existsSync(envPath)) {
     require('dotenv').config({ path: envPath });
-    console.log('✅ 환경 파일 로드: .env');
+    console.log('✓ 환경 파일 로드: .env');
   } else {
     console.warn('⚠️ .env 파일을 찾을 수 없습니다.');
   }

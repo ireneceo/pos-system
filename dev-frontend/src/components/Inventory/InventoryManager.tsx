@@ -32,6 +32,7 @@ import GeneralStockCategoriesTab from '../../pages/RecipeManagement/GeneralStock
 import ImageUploadDropzone from '../Common/ImageUploadDropzone';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // Props interface for shared component
 export interface InventoryManagerProps {
   mode: 'restaurant' | 'brand';
@@ -678,7 +679,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   }, [defaultCurrency]);
 
   // Helper to get auth token
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   // Helper for authenticated fetch
   const authFetch = useCallback(async (url: string, options: RequestInit = {}) => {
@@ -3011,7 +3012,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ restaurantId, i
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         // Brand General mode uses company-wide API, Restaurant mode uses restaurant API
         const endpoint = isBrandGeneralMode
           ? '/api/general-stock/transactions?limit=50'

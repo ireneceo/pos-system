@@ -12,6 +12,7 @@ import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface DashboardData {
   restaurant: {
     id: string | number;
@@ -495,7 +496,7 @@ const RestaurantDashboard: React.FC = () => {
   useEffect(() => {
     const fetchBadges = async () => {
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         if (!token) return;
         const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) {
@@ -521,7 +522,7 @@ const RestaurantDashboard: React.FC = () => {
 
       try {
         // Get authentication token
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         if (!token) {
           console.error('❌ No auth token found');
           setLoading(false);
@@ -576,7 +577,7 @@ const RestaurantDashboard: React.FC = () => {
 
       try {
         // Get authentication token
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         if (!token) {
           console.error('❌ No auth token found for sales chart');
           return;
@@ -922,7 +923,7 @@ const RestaurantDashboard: React.FC = () => {
                 if (isRouteAllowed(`/mobile/:slug/menu`))
                   systemItems.push({ icon: '◯', title: t('common:nav.mobileOrder'), desc: t('settings:restaurantDashboard.customerOrdering'), onClick: async () => {
                     try {
-                      const token = localStorage.getItem('auth_token');
+                      const token = getAuthToken();
                       const res = await fetch(`/api/restaurants/${restaurantId}`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
                       if (res.ok) { const d = await res.json(); window.open(`/mobile/${(d.data || d).slug || `restaurant-${restaurantId}`}`, '_blank'); }
                       else window.open(`/mobile/restaurant-${restaurantId}`, '_blank');

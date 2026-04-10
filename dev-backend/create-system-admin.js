@@ -12,7 +12,7 @@ async function createSystemAdmin() {
     });
     
     if (existingAdmin) {
-      console.log('✅ 시스템 관리자 계정이 이미 존재합니다.');
+      console.log('✓ 시스템 관리자 계정이 이미 존재합니다.');
       console.log('이메일:', existingAdmin.email);
       console.log('역할:', existingAdmin.role);
       return;
@@ -35,7 +35,7 @@ async function createSystemAdmin() {
       address: 'Seoul, South Korea'
     });
     
-    console.log('✅ 시스템 관리자 계정이 생성되었습니다!');
+    console.log('✓ 시스템 관리자 계정이 생성되었습니다!');
     console.log('==========================================');
     console.log('이메일: sysadmin@orderhere.kr');
     console.log('비밀번호: sysadmin123!');
@@ -44,7 +44,7 @@ async function createSystemAdmin() {
     console.log('==========================================');
     
   } catch (error) {
-    console.error('❌ 시스템 관리자 계정 생성 실패:', error.message);
+    console.error('✗ 시스템 관리자 계정 생성 실패:', error.message);
   }
 }
 

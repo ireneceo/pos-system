@@ -8,6 +8,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Staff {
   id: string;
   username: string;
@@ -428,7 +429,7 @@ const StaffPage: React.FC = () => {
   const fetchStaff = useCallback(async () => {
     try {
       const restaurantId = user?.restaurantId;
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const usersResponse = await fetch('/api/users', { headers });
@@ -559,7 +560,7 @@ const StaffPage: React.FC = () => {
         permissions: newStaff.role === 'Staff' ? newStaff.permissions : []
       };
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -649,7 +650,7 @@ const StaffPage: React.FC = () => {
         updateData.permissions = editForm.permissions;
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/users/${editingStaff.id}`, {
         method: 'PUT',
         headers: {
@@ -680,7 +681,7 @@ const StaffPage: React.FC = () => {
     setResetPasswordTarget(null);
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/users/${staff.id}/reset-password`, {
         method: 'POST',
         headers: {

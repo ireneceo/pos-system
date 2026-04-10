@@ -34,7 +34,7 @@ async function fixRestaurantSlugs() {
     });
 
     if (restaurants.length === 0) {
-      console.log('✅ No restaurants with NULL slugs found. All good!');
+      console.log('✓ No restaurants with NULL slugs found. All good!');
       return;
     }
 
@@ -70,10 +70,10 @@ async function fixRestaurantSlugs() {
         newSlug: slug
       });
 
-      console.log(`   ✅ ID ${restaurant.id}: "${restaurant.name}" → slug: "${slug}"`);
+      console.log(`   ✓ ID ${restaurant.id}: "${restaurant.name}" → slug: "${slug}"`);
     }
 
-    console.log('\n✅ All restaurant slugs have been generated successfully!\n');
+    console.log('\n✓ All restaurant slugs have been generated successfully!\n');
     console.log('📊 Summary:');
     console.log(`   - Total updated: ${updates.length}`);
     console.log(`   - Mobile order URLs are now available at: ${process.env.SITE_URL}/mobile/:slug/menu`);
@@ -84,7 +84,7 @@ async function fixRestaurantSlugs() {
     });
 
   } catch (error) {
-    console.error('❌ Error fixing restaurant slugs:', error);
+    console.error('✗ Error fixing restaurant slugs:', error);
     throw error;
   } finally {
     await sequelize.close();
@@ -95,11 +95,11 @@ async function fixRestaurantSlugs() {
 if (require.main === module) {
   fixRestaurantSlugs()
     .then(() => {
-      console.log('\n✅ Script completed successfully!');
+      console.log('\n✓ Script completed successfully!');
       process.exit(0);
     })
     .catch(error => {
-      console.error('\n❌ Script failed:', error);
+      console.error('\n✗ Script failed:', error);
       process.exit(1);
     });
 }

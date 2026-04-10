@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
 // ============================================================================
@@ -427,7 +428,7 @@ const BrandGeneralDashboard: React.FC = () => {
 
   const fetchBadgeCounts = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) return;
       const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) {
@@ -443,13 +444,13 @@ const BrandGeneralDashboard: React.FC = () => {
   }, [chartPeriod, brandId]);
 
   const getHeaders = () => ({
-    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+    'Authorization': `Bearer ${getAuthToken()}`,
     'Content-Type': 'application/json'
   });
 
   const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) return;
       setLoading(true);
       const headers = getHeaders();
@@ -559,7 +560,7 @@ const BrandGeneralDashboard: React.FC = () => {
 
   const fetchTrendData = async (bId: number) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) return;
       const headers = getHeaders();
       const res = await fetch(`/api/brands/${bId}/sales-trend?period=${chartPeriod}`, { headers });

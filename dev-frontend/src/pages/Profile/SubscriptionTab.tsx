@@ -5,6 +5,7 @@ import { Modal, ModalButton } from '../../components/UI/Modal';
 import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ============================================================
 // Types
 // ============================================================
@@ -461,7 +462,7 @@ const SubscriptionTab: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [exceededLimits, setExceededLimits] = useState<string[]>([]);
 
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
 
   const fetchMyPlan = useCallback(async () => {
     try {

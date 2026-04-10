@@ -37,7 +37,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
     res.json({ success: true, data: coupons });
   } catch (error) {
-    console.error('❌ [COUPONS] Error fetching coupons:', error);
+    console.error('✗ [COUPONS] Error fetching coupons:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -140,7 +140,7 @@ router.get('/customer/:customerId', authenticateAdminOrCustomerSelf, async (req,
 
     res.json({ success: true, data: { available, myCoupons, promotions, history } });
   } catch (error) {
-    console.error('❌ [COUPONS] Error fetching customer coupons:', error);
+    console.error('✗ [COUPONS] Error fetching customer coupons:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -343,7 +343,7 @@ router.post('/validate', optionalAuthenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ [COUPONS] Error validating coupon:', error);
+    console.error('✗ [COUPONS] Error validating coupon:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -359,7 +359,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
     res.json({ success: true, data: coupon });
   } catch (error) {
-    console.error('❌ [COUPONS] Error fetching coupon:', error);
+    console.error('✗ [COUPONS] Error fetching coupon:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -432,10 +432,10 @@ router.post('/', authenticateToken, async (req, res) => {
       target_loyalty_tiers: target_type === 'tiers' ? target_loyalty_tiers : null
     });
 
-    console.log(`✅ [COUPONS] Created coupon ${coupon.code} for restaurant ${finalRestaurantId}`);
+    console.log(`✓ [COUPONS] Created coupon ${coupon.code} for restaurant ${finalRestaurantId}`);
     res.status(201).json({ success: true, data: coupon });
   } catch (error) {
-    console.error('❌ [COUPONS] Error creating coupon:', error);
+    console.error('✗ [COUPONS] Error creating coupon:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -507,10 +507,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
       target_loyalty_tiers: target_type !== undefined ? (finalTargetType === 'tiers' ? target_loyalty_tiers : null) : coupon.target_loyalty_tiers
     });
 
-    console.log(`✅ [COUPONS] Updated coupon ${coupon.code}`);
+    console.log(`✓ [COUPONS] Updated coupon ${coupon.code}`);
     res.json({ success: true, data: coupon });
   } catch (error) {
-    console.error('❌ [COUPONS] Error updating coupon:', error);
+    console.error('✗ [COUPONS] Error updating coupon:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -526,10 +526,10 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     await coupon.destroy();
 
-    console.log(`✅ [COUPONS] Deleted coupon ${coupon.code}`);
+    console.log(`✓ [COUPONS] Deleted coupon ${coupon.code}`);
     res.json({ success: true, message: 'Coupon deleted successfully' });
   } catch (error) {
-    console.error('❌ [COUPONS] Error deleting coupon:', error);
+    console.error('✗ [COUPONS] Error deleting coupon:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -548,10 +548,10 @@ router.post('/:id/use', authenticateToken, async (req, res) => {
       usage_count: coupon.usage_count + 1
     });
 
-    console.log(`✅ [COUPONS] Incremented usage count for coupon ${coupon.code} to ${coupon.usage_count}`);
+    console.log(`✓ [COUPONS] Incremented usage count for coupon ${coupon.code} to ${coupon.usage_count}`);
     res.json({ success: true, data: coupon });
   } catch (error) {
-    console.error('❌ [COUPONS] Error incrementing usage:', error);
+    console.error('✗ [COUPONS] Error incrementing usage:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

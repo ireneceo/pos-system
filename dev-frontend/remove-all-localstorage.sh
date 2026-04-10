@@ -19,13 +19,13 @@ find /workspaces/pos-system/frontend/src -name "*.tsx" -o -name "*.ts" | while I
       sed -i 's/localStorage\.removeItem(/\/\/ localStorage.removeItem(/g' "$file"
       sed -i 's/localStorage\.clear(/\/\/ localStorage.clear(/g' "$file"
 
-      echo "  ✅ Processed"
+      echo "  ✓ Processed"
     fi
   fi
 done
 
 echo ""
-echo "✅ All localStorage usage has been commented out!"
+echo "✓ All localStorage usage has been commented out!"
 echo "📦 Backup files created with .bak extension"
 echo ""
 echo "🔍 Summary:"

@@ -22,6 +22,7 @@ import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Ingredient {
   id: number;
   brand_id: number | null;
@@ -265,7 +266,7 @@ const IngredientsPage: React.FC = () => {
         url = `/api/restaurants/${user?.restaurant_id}/ingredients/${deletingIngredientId}`;
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(url, {
         method: 'DELETE',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}

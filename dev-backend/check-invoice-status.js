@@ -26,7 +26,7 @@ async function checkInvoiceStatus() {
 
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error checking invoice status:', error);
+    console.error('✗ Error checking invoice status:', error);
     process.exit(1);
   }
 }

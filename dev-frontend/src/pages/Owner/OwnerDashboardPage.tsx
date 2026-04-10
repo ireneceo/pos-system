@@ -8,6 +8,7 @@ import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
 // ============================================================================
@@ -456,7 +457,7 @@ const OwnerDashboardPage: React.FC = () => {
 
   const fetchBadgeCounts = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       if (!token) return;
       const res = await fetch('/api/badge-counts', { headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) {
@@ -472,7 +473,7 @@ const OwnerDashboardPage: React.FC = () => {
   }, [chartPeriod]);
 
   const getHeaders = () => ({
-    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+    'Authorization': `Bearer ${getAuthToken()}`,
     'Content-Type': 'application/json'
   });
 

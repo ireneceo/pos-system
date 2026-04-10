@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import ConfirmModal from '../../components/ConfirmModal';
+import { getAuthToken } from '../../utils/auth';
 import {
   DataTableContainer,
   DataTable,
@@ -697,7 +698,7 @@ const ManagerInvoicesPage: React.FC = () => {
       } else if (issuerType === 'foodcourt' && issuerId) {
         url = `/api/foodcourts/${issuerId}/payment-settings/available/${currency}`;
       }
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -720,7 +721,7 @@ const ManagerInvoicesPage: React.FC = () => {
 
   const handleConfirmFreeInvoice = async (invoice: Invoice) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${invoice.id}/status`, {
         method: 'PATCH',
         headers: {
@@ -781,7 +782,7 @@ const ManagerInvoicesPage: React.FC = () => {
     if (!selectedInvoice) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/submit-payment`, {
         method: 'POST',
         headers: {

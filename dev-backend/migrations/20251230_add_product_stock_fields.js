@@ -74,7 +74,7 @@ module.exports = {
       });
     }
 
-    console.log('✅ Product stock fields migration completed');
+    console.log('✓ Product stock fields migration completed');
   },
 
   down: async (queryInterface) => {

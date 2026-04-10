@@ -8,6 +8,7 @@ import { FilterBar, SearchInput } from '../../components/Common/FilterComponents
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Manager {
   id: string;
   username: string;
@@ -386,7 +387,7 @@ const BrandStaffPage: React.FC = () => {
   const fetchManagers = useCallback(async () => {
     if (!brandId) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${brandId}/staff`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -449,7 +450,7 @@ const BrandStaffPage: React.FC = () => {
     if (!newManager.email.trim()) { setFormError('Email is required.'); return; }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${brandId}/staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -499,7 +500,7 @@ const BrandStaffPage: React.FC = () => {
     if (!editForm.email.trim()) { setFormError('Email is required.'); return; }
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       const response = await fetch(`/api/brands/${brandId}/staff/${editingManager.id}`, {
         method: 'PUT',
@@ -541,7 +542,7 @@ const BrandStaffPage: React.FC = () => {
   const executeDelete = async () => {
     if (!deleteTarget) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${brandId}/staff/${deleteTarget.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -563,7 +564,7 @@ const BrandStaffPage: React.FC = () => {
   const executeResetPassword = async () => {
     if (!resetPasswordTarget) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${brandId}/staff/${resetPasswordTarget.id}/reset-password`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }

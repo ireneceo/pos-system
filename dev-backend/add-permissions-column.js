@@ -3,7 +3,7 @@ const { sequelize } = require('./config/database');
 async function addPermissionsColumn() {
   try {
     await sequelize.authenticate();
-    console.log('✅ Database connection established');
+    console.log('✓ Database connection established');
 
     // Check if permissions column exists
     const [results] = await sequelize.query("SHOW COLUMNS FROM users LIKE 'permissions'");
@@ -11,9 +11,9 @@ async function addPermissionsColumn() {
     if (results.length === 0) {
       console.log('📝 Adding permissions column...');
       await sequelize.query("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'");
-      console.log('✅ Permissions column added successfully');
+      console.log('✓ Permissions column added successfully');
     } else {
-      console.log('✅ Permissions column already exists');
+      console.log('✓ Permissions column already exists');
       console.log('Current column info:', results[0]);
     }
 
@@ -25,9 +25,9 @@ async function addPermissionsColumn() {
     });
 
     await sequelize.close();
-    console.log('✅ Database connection closed');
+    console.log('✓ Database connection closed');
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('✗ Error:', error.message);
     process.exit(1);
   }
 }

@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 
+import { getAuthToken } from '../../utils/auth';
 const ActivityList = styled.div`
   background: white;
   border-radius: 12px;
@@ -161,7 +162,7 @@ const ActivityHistoryPage: React.FC = () => {
       if (dateRange.start) params.append('start_date', dateRange.start);
       if (dateRange.end) params.append('end_date', dateRange.end);
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       // Restaurant Admin/Staff: query by restaurant_id, others: query by user_id
       const apiPath = restId
         ? `/api/activity-logs/restaurant/${restId}`

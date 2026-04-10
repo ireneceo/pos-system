@@ -19,6 +19,7 @@ import { formatCurrency } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ============================================
 // Types
 // ============================================
@@ -485,7 +486,7 @@ const BrandPlansPage: React.FC = () => {
   const fetchPlans = useCallback(async (bId: number) => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${bId}/plans`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -532,7 +533,7 @@ const BrandPlansPage: React.FC = () => {
 
   const fetchBrandRestaurants = async (bId: number) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${bId}/restaurants`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -547,7 +548,7 @@ const BrandPlansPage: React.FC = () => {
 
   const fetchPlanPrices = async (bId: number, planId: number) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${bId}/plans/${planId}/prices`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -586,7 +587,7 @@ const BrandPlansPage: React.FC = () => {
   const createPlan = async () => {
     if (!brandId) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       const planData: any = {
         name: createFormData.name,
@@ -633,7 +634,7 @@ const BrandPlansPage: React.FC = () => {
   const updatePlan = async () => {
     if (!brandId || !selectedPlan) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       const planData: any = {
         name: editFormData.name,
@@ -692,7 +693,7 @@ const BrandPlansPage: React.FC = () => {
     if (!brandId || !deletingPlanId) return;
     setShowDeleteConfirm(false);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${brandId}/plans/${deletingPlanId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -710,7 +711,7 @@ const BrandPlansPage: React.FC = () => {
   const savePlanPrices = async () => {
     if (!brandId || !selectedPlan) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const prices = Object.fromEntries(
         Object.entries(editingPlanPrices).map(([currency, values]) => [
           currency, { monthly_price: parseFloat(values.monthly) || 0, annual_price: parseFloat(values.annual) || 0 }
@@ -733,7 +734,7 @@ const BrandPlansPage: React.FC = () => {
   const assignRestaurant = async (restaurantId: number) => {
     if (!brandId || !selectedPlan) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${brandId}/plans/${selectedPlan.id}/restaurants`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -757,7 +758,7 @@ const BrandPlansPage: React.FC = () => {
   const removeRestaurant = async (restaurantId: number) => {
     if (!brandId || !selectedPlan) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${brandId}/plans/${selectedPlan.id}/restaurants/${restaurantId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

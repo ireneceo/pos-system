@@ -45,7 +45,7 @@ const dbHealthCheck = async (req, res, next) => {
       const reconnected = await Promise.race([reconnectPromise, timeoutPromise]);
 
       if (!reconnected) {
-        console.error('❌ DB 재연결 실패. 요청을 처리할 수 없습니다.');
+        console.error('✗ DB 재연결 실패. 요청을 처리할 수 없습니다.');
         return res.status(503).json({
           success: false,
           error: {
@@ -56,7 +56,7 @@ const dbHealthCheck = async (req, res, next) => {
         });
       }
 
-      console.log('✅ DB 연결이 복구되었습니다.');
+      console.log('✓ DB 연결이 복구되었습니다.');
     }
   } catch (error) {
     console.error('🔴 DB Health Check 에러:', error.message);

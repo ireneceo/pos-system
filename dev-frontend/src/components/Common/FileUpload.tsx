@@ -1,6 +1,7 @@
 import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import styled from 'styled-components';
 
+import { getAuthToken } from '../../utils/auth';
 export interface AttachmentFile {
   url: string;
   originalName: string;
@@ -175,7 +176,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       const formData = new FormData();
       toUpload.forEach(file => formData.append('files', file));
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/upload/files', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -196,7 +197,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const handleRemove = async (index: number) => {
     const file = files[index];
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       await fetch('/api/upload/file', {
         method: 'DELETE',
         headers: {

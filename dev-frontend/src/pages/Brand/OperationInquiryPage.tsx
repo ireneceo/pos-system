@@ -8,6 +8,7 @@ import CommentSection from '../../components/Common/CommentSection';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface OperationTicket {
   id: string;
   ticketNumber: string;
@@ -470,7 +471,7 @@ const OperationInquiryPage: React.FC = () => {
 
   const fetchTickets = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/operation-tickets?userId=${currentUserId}&userRole=${currentUserRole}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -489,7 +490,7 @@ const OperationInquiryPage: React.FC = () => {
   const fetchUnreadCounts = async (ticketList: OperationTicket[]) => {
     if (ticketList.length === 0) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const ids = ticketList.map(t => t.id).join(',');
       const res = await fetch(`/api/comments/unread-counts?entity_type=operation_ticket&entity_ids=${ids}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -543,7 +544,7 @@ const OperationInquiryPage: React.FC = () => {
     if (!selectedTicket || detailStatus === selectedTicket.status) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/operation-tickets/${selectedTicket.id}`, {
         method: 'PUT',
         headers: {
@@ -663,7 +664,7 @@ const OperationInquiryPage: React.FC = () => {
                         e.stopPropagation();
                         (async () => {
                           try {
-                            const token = localStorage.getItem('auth_token');
+                            const token = getAuthToken();
                             const response = await fetch(`/api/operation-tickets/${ticket.id}`, {
                               method: 'PATCH',
                               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

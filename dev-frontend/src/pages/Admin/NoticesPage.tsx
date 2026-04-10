@@ -24,6 +24,7 @@ import {
 import { Modal as CommonModal } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ============================================================================
 // TypeScript Interfaces
 // ============================================================================
@@ -508,7 +509,7 @@ const NoticesPage: React.FC = () => {
   const [newAttachments, setNewAttachments] = useState<AttachmentFile[]>([]);
 
   const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
@@ -519,7 +520,7 @@ const NoticesPage: React.FC = () => {
   const fetchUnreadCounts = async (noticeList: any[]) => {
     if (noticeList.length === 0) return;
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const ids = noticeList.map((n: any) => n.id).join(',');
       const res = await fetch(`/api/comments/unread-counts?entity_type=notice&entity_ids=${ids}`, {
         headers: { 'Authorization': `Bearer ${token}` }

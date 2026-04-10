@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import Tabs from '../UI/Tabs';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 const ContentCard = styled.div`
   background: white;
   border-radius: 12px;
@@ -196,7 +197,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ entityType,
     try {
       const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         }
       });
 
@@ -220,7 +221,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ entityType,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify(settings)
       });
@@ -246,7 +247,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ entityType,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({ testEmail })
       });

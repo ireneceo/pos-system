@@ -224,9 +224,9 @@ if (dupeCount === 0) {
 console.log('\n=== Summary ===');
 console.log(`Errors: ${errors}, Warnings: ${warnings}, Info: ${infos}`);
 if (errors > 0) {
-  console.log('\x1b[31m❌ Verification FAILED\x1b[0m');
+  console.log('\x1b[31m✗ Verification FAILED\x1b[0m');
   process.exit(1);
 } else {
-  console.log('\x1b[32m✅ Verification passed\x1b[0m');
+  console.log('\x1b[32m✓ Verification passed\x1b[0m');
   process.exit(0);
 }

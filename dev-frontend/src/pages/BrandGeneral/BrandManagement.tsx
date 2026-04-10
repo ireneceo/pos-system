@@ -27,6 +27,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // Page-specific styled components
 const StatusBadge = styled.span<{ status: string }>`
   display: inline-block;
@@ -187,7 +188,7 @@ const BrandManagement: React.FC = () => {
   const fetchBrands = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/brands', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -261,7 +262,7 @@ const BrandManagement: React.FC = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       if (isEditing && selectedBrand) {
         const response = await fetch(`/api/brands/${selectedBrand.id}`, {
@@ -311,7 +312,7 @@ const BrandManagement: React.FC = () => {
     if (!selectedBrand) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/brands/${selectedBrand.id}`, {
         method: 'DELETE',
         headers: {

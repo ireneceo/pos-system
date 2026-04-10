@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 
+import { getAuthToken } from '../utils/auth';
 export interface SetMenuItem {
   menuItemId: number;
   name: string;
@@ -139,7 +140,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
 
   // Helper function to get fetch options with credentials
   const getFetchOptions = (options: RequestInit = {}): RequestInit => {
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     return {
       ...options,
       credentials: 'include',
@@ -155,7 +156,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
   const loadMenuFromAPI = useCallback(async () => {
     try {
       // Skip API calls if no auth token (except for mobile pages which use slug-based API)
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const isMobilePage = window.location.pathname.includes('/mobile/');
 
       if (!token && !isMobilePage) {
@@ -794,7 +795,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
         return;
       }
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       const payload = { categories: newCategories };
 

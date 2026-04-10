@@ -6,6 +6,7 @@ import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { getAuthToken } from '../../utils/auth';
 import {
   Container,
   Header,
@@ -285,7 +286,7 @@ const BrandSubscriptionsPage: React.FC = () => {
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const currency = defaultCurrency || 'MYR';
-  const token = localStorage.getItem('auth_token');
+  const token = getAuthToken();
   const brandId = user?.brand_id || null;
 
   const [subscriptions, setSubscriptions] = useState<BrandSubscription[]>([]);

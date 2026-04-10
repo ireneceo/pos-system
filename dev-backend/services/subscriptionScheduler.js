@@ -36,7 +36,7 @@ class SubscriptionScheduler {
     });
 
     this.jobs.set('subscription-check', job);
-    console.log('✅ Subscription scheduler started - runs daily at 3 AM to check subscription statuses');
+    console.log('✓ Subscription scheduler started - runs daily at 3 AM to check subscription statuses');
 
     // Also run immediately on startup (optional - for testing)
     // this.processAllSubscriptions();
@@ -63,7 +63,7 @@ class SubscriptionScheduler {
       const entityResults = await this.processEntitySubscriptions();
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`✅ [SUBSCRIPTION SCHEDULER] Completed in ${duration}s`);
+      console.log(`✓ [SUBSCRIPTION SCHEDULER] Completed in ${duration}s`);
       console.log(`   - Trial expired: ${trialResults.updated} restaurants`);
       console.log(`   - Grace period expired: ${graceResults.updated} restaurants`);
       console.log(`   - Overdue payments: ${paymentResults.updated} restaurants`);
@@ -78,7 +78,7 @@ class SubscriptionScheduler {
       };
 
     } catch (error) {
-      console.error('❌ [SUBSCRIPTION SCHEDULER] Error processing subscriptions:', error);
+      console.error('✗ [SUBSCRIPTION SCHEDULER] Error processing subscriptions:', error);
       return { success: false, error: error.message };
     }
   }
@@ -118,7 +118,7 @@ class SubscriptionScheduler {
               status: 'active',
               trial_end_date: null
             });
-            console.log(`✅ ${restaurant.name}: Trial -> Active (payment found)`);
+            console.log(`✓ ${restaurant.name}: Trial -> Active (payment found)`);
           } else {
             // No payment, transition to Overdue with grace period
             await restaurant.update({
@@ -133,14 +133,14 @@ class SubscriptionScheduler {
           }
           updated++;
         } catch (error) {
-          console.error(`❌ Error processing trial expiry for ${restaurant.name}:`, error.message);
+          console.error(`✗ Error processing trial expiry for ${restaurant.name}:`, error.message);
         }
       }
 
       return { updated, total: expiredTrials.length };
 
     } catch (error) {
-      console.error('❌ Error in processTrialExpiry:', error);
+      console.error('✗ Error in processTrialExpiry:', error);
       return { updated: 0, error: error.message };
     }
   }
@@ -184,7 +184,7 @@ class SubscriptionScheduler {
               status: 'active',
               grace_period_start: null
             });
-            console.log(`✅ ${restaurant.name}: Overdue -> Active (payment found)`);
+            console.log(`✓ ${restaurant.name}: Overdue -> Active (payment found)`);
           } else {
             // Grace period expired, suspend access + cancel pending plan changes
             const suspendData = { status: 'suspended' };
@@ -205,14 +205,14 @@ class SubscriptionScheduler {
           }
           updated++;
         } catch (error) {
-          console.error(`❌ Error processing grace period expiry for ${restaurant.name}:`, error.message);
+          console.error(`✗ Error processing grace period expiry for ${restaurant.name}:`, error.message);
         }
       }
 
       return { updated, total: expiredGracePeriods.length };
 
     } catch (error) {
-      console.error('❌ Error in processGracePeriodExpiry:', error);
+      console.error('✗ Error in processGracePeriodExpiry:', error);
       return { updated: 0, error: error.message };
     }
   }
@@ -273,14 +273,14 @@ class SubscriptionScheduler {
             updated++;
           }
         } catch (error) {
-          console.error(`❌ Error checking overdue payments for ${restaurant.name}:`, error.message);
+          console.error(`✗ Error checking overdue payments for ${restaurant.name}:`, error.message);
         }
       }
 
       return { updated };
 
     } catch (error) {
-      console.error('❌ Error in processOverduePayments:', error);
+      console.error('✗ Error in processOverduePayments:', error);
       return { updated: 0, error: error.message };
     }
   }
@@ -326,7 +326,7 @@ class SubscriptionScheduler {
             const hasPaid = await this.hasEntityPaidInvoice(entity.id, entityType);
             if (hasPaid) {
               await entity.update({ subscription_status: 'active', trial_end_date: null });
-              console.log(`✅ ${entityType} ${entity.name || entity.username}: Trial -> Active`);
+              console.log(`✓ ${entityType} ${entity.name || entity.username}: Trial -> Active`);
             } else {
               await entity.update({ subscription_status: 'overdue', grace_period_start: today });
               console.log(`⚠️ ${entityType} ${entity.name || entity.username}: Trial -> Overdue`);
@@ -336,7 +336,7 @@ class SubscriptionScheduler {
             const hasPaid = await this.hasEntityPaidInvoice(entity.id, entityType);
             if (hasPaid) {
               await entity.update({ subscription_status: 'active', grace_period_start: null });
-              console.log(`✅ ${entityType} ${entity.name || entity.username}: Overdue -> Active`);
+              console.log(`✓ ${entityType} ${entity.name || entity.username}: Overdue -> Active`);
             } else {
               const suspendData = { subscription_status: 'suspended' };
               if (entity.pending_plan_type) {
@@ -353,7 +353,7 @@ class SubscriptionScheduler {
             updated++;
           }
         } catch (e) {
-          console.error(`❌ Error processing ${entityType} ${entity.id}:`, e.message);
+          console.error(`✗ Error processing ${entityType} ${entity.id}:`, e.message);
         }
       }
     };
@@ -375,7 +375,7 @@ class SubscriptionScheduler {
       }
 
     } catch (e) {
-      console.error('❌ Error in processEntitySubscriptions:', e.message);
+      console.error('✗ Error in processEntitySubscriptions:', e.message);
     }
 
     return { updated };
@@ -426,12 +426,12 @@ class SubscriptionScheduler {
         last_payment_date: new Date()
       });
 
-      console.log(`✅ Subscription restored for ${restaurant.name}: ${restaurant.status} -> Active`);
+      console.log(`✓ Subscription restored for ${restaurant.name}: ${restaurant.status} -> Active`);
 
       return { success: true, previousStatus: restaurant.status };
 
     } catch (error) {
-      console.error('❌ Error restoring subscription:', error);
+      console.error('✗ Error restoring subscription:', error);
       return { success: false, error: error.message };
     }
   }
@@ -457,7 +457,7 @@ class SubscriptionScheduler {
         subscription_start: today
       });
 
-      console.log(`✅ Trial started for ${restaurant.name}: ends on ${trialEndDate.toISOString().split('T')[0]}`);
+      console.log(`✓ Trial started for ${restaurant.name}: ends on ${trialEndDate.toISOString().split('T')[0]}`);
 
       // Generate first subscription invoice immediately so user can pay during trial
       try {
@@ -482,7 +482,7 @@ class SubscriptionScheduler {
       };
 
     } catch (error) {
-      console.error('❌ Error starting trial:', error);
+      console.error('✗ Error starting trial:', error);
       return { success: false, error: error.message };
     }
   }
@@ -550,7 +550,7 @@ class SubscriptionScheduler {
       return { success: true, ...status };
 
     } catch (error) {
-      console.error('❌ Error getting subscription status:', error);
+      console.error('✗ Error getting subscription status:', error);
       return { success: false, error: error.message };
     }
   }

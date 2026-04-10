@@ -9,6 +9,7 @@ import PageHeader from '../../components/Common/PageHeader';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // 스타일 컴포넌트
 const CouponsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -456,7 +457,7 @@ const CouponsPage: React.FC = () => {
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/coupons?restaurantId=${restaurantId}`,
         {
@@ -483,7 +484,7 @@ const CouponsPage: React.FC = () => {
     if (!restaurantId) return;
     try {
       setLoadingCustomers(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/customers/${restaurantId}`,
         { headers: { 'Authorization': `Bearer ${token}` } }
@@ -565,7 +566,7 @@ const CouponsPage: React.FC = () => {
     try {
       setSaving(true);
       setFormError(null);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       const payload: any = {
         restaurant_id: restaurantId,
@@ -616,7 +617,7 @@ const CouponsPage: React.FC = () => {
 
   const handleToggleStatus = async (coupon: Coupon) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/coupons/${coupon.id}`,
         {
@@ -647,7 +648,7 @@ const CouponsPage: React.FC = () => {
     if (!deletingCoupon) return;
     setShowDeleteConfirm(false);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(
         `${process.env.REACT_APP_API_URL}/api/coupons/${deletingCoupon.id}`,
         {

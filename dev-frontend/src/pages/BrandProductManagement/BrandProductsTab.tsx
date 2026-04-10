@@ -9,6 +9,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface Brand {
   id: number;
   name: string;
@@ -394,7 +395,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
     { value: 'bottle', label: 'bottle' }
   ];
 
-  const getToken = useCallback(() => localStorage.getItem('auth_token'), []);
+  const getToken = useCallback(() => getAuthToken(), []);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -467,7 +468,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       await Promise.all([fetchProducts(), fetchCategories(), fetchOptionGroups(), fetchProductRecipes()]);
       // Fetch product ingredients for direct linking
       try {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         const piRes = await fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } });
         if (piRes.ok) {
           const piData = await piRes.json();
@@ -515,7 +516,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
       });
       // Load directIngredients from auto recipe
       if (product.product_recipe_id && product.productRecipe?.name?.endsWith('(auto)')) {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         fetch(`/api/product-recipes/${product.product_recipe_id}`, { headers: { 'Authorization': `Bearer ${token}` } })
           .then(r => r.json())
           .then(data => {

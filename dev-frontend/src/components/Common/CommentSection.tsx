@@ -4,6 +4,7 @@ import AttachmentList from './AttachmentList';
 import { linkifyText } from '../../utils/linkify';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface AttachmentFile {
   url: string;
   originalName: string;
@@ -293,7 +294,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
 
   const fetchComments = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/comments/${entityType}/${entityId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -308,7 +309,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
 
   const markAsRead = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       await fetch('/api/comments/mark-read', {
         method: 'POST',
         headers: {
@@ -348,7 +349,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
       const formData = new FormData();
       toUpload.forEach(file => formData.append('files', file));
 
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/upload/files', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -371,7 +372,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
 
   const removePendingFile = (index: number) => {
     const file = pendingFiles[index];
-    const token = localStorage.getItem('auth_token');
+    const token = getAuthToken();
     fetch('/api/upload/file', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -388,7 +389,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
 
     setSubmitting(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch('/api/comments', {
         method: 'POST',
         headers: {
@@ -418,7 +419,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
 
   const handleDelete = async (commentId: number) => {
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       const response = await fetch(`/api/comments/${commentId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

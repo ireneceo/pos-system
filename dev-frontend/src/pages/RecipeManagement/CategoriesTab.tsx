@@ -8,6 +8,7 @@ import { OrderControls } from '../../components/UI';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 interface CategoriesTabProps {
   brandId: number | null;
   restaurantId?: number | null;
@@ -278,7 +279,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
 
       if (isBrandUser && brandId) {
         // Brand: 브랜드 카테고리 조회
@@ -368,7 +369,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
     if (!formData.name.trim()) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
       const method = editingCategory ? 'PUT' : 'POST';
 
@@ -422,7 +423,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
     if (!categoryToDelete) return;
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
 
       if (isBrandUser && brandId) {
@@ -470,7 +471,7 @@ const CategoriesTab: React.FC<CategoriesTabProps> = ({ brandId, restaurantId, on
     }));
 
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = getAuthToken();
       let url = '';
 
       if (isBrandUser && brandId) {

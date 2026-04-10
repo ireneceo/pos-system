@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/react';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { getApiBaseUrl } from './config/api';
+import { installFetchInterceptor } from './utils/httpClient';
 
 // ============================================
 // Sentry 초기화 (가장 먼저 실행 — 다른 코드의 에러를 캐치하기 위해)
@@ -86,28 +86,8 @@ if (sentryEnvironment !== 'local') {
   console.log(`[Sentry] Initialized — environment: ${sentryEnvironment}`);
 }
 
-// Auto-detect environment and override fetch for API calls
-const originalFetch = window.fetch;
-const API_BASE_URL = getApiBaseUrl();
-
-window.fetch = (url: string | URL | Request, init?: RequestInit) => {
-  // Convert URL to string if needed
-  const urlString = typeof url === 'string' ? url : url.toString();
-
-  // If it's an API call and we have a base URL, prepend it
-  if (urlString.startsWith('/api/') && API_BASE_URL) {
-    const fullUrl = `${API_BASE_URL}${urlString}`;
-    return originalFetch(fullUrl, init);
-  }
-
-  // If it's an API call but API_BASE_URL is empty (like in Codespaces), use relative path
-  if (urlString.startsWith('/api/')) {
-    return originalFetch(url, init);
-  }
-
-  // For all other calls, use original fetch
-  return originalFetch(url, init);
-};
+// 단일 fetch 인터셉터 설치 (API_BASE_URL 프리픽스 + POS 토큰 주입 + 401 자동 로그아웃)
+installFetchInterceptor();
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

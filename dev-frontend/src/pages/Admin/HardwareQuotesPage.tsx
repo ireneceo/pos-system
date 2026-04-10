@@ -10,6 +10,7 @@ import CommentSection from '../../components/Common/CommentSection';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
+import { getAuthToken } from '../../utils/auth';
 // ─── Types ───────────────────────────────────────────────────────
 
 interface AddonItem {
@@ -612,7 +613,7 @@ const HardwareQuotesPage: React.FC = () => {
   const [proceeding, setProceeding] = useState(false);
   const [proceedResult, setProceedResult] = useState<{ hardware_invoice?: string; subscription_invoice?: string } | null>(null);
 
-  const getToken = () => localStorage.getItem('auth_token');
+  const getToken = () => getAuthToken();
 
   const loadData = useCallback(async (silent = false) => {
     try {
