@@ -272,12 +272,12 @@ const QRPaymentPage: React.FC = () => {
   React.useEffect(() => {
     const loadQRCode = async () => {
       try {
-        if (!currentStore?.id) {
-          console.warn('⚠️ No currentStore.id available, cannot load QR code');
+        if (!currentStore?.slug) {
+          console.warn('⚠️ No currentStore.slug available, cannot load QR code');
           return;
         }
 
-        const response = await fetch(`/api/restaurants/${currentStore.id}`);
+        const response = await fetch(`/api/restaurants/slug/${currentStore.slug}`);
         if (response.ok) {
           const data = await response.json();
           const restaurant = data.data || data;

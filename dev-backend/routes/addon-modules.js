@@ -3,8 +3,8 @@ const router = express.Router();
 const AddonModule = require('../models/AddonModule');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
-// Get all addon modules
-router.get('/', async (req, res) => {
+// Get all addon modules (인증 필수)
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { active_only } = req.query;
 
@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get addon module by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const module = await AddonModule.findByPk(req.params.id);
 
@@ -42,7 +42,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Get addon module by code
-router.get('/code/:code', async (req, res) => {
+router.get('/code/:code', authenticateToken, async (req, res) => {
   try {
     const module = await AddonModule.findOne({
       where: { module_code: req.params.code }

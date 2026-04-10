@@ -2862,6 +2862,7 @@ const POSTerminalPage: React.FC = () => {
         customerPoints={customerPoints}
         customerTier={customerTier}
         membershipSettings={membershipSettings}
+        selectedCustomerId={selectedCustomerForOrder?.id}
       />
       
       {selectedMenuItem && (

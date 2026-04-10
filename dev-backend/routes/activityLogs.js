@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ActivityLog = require('../models/ActivityLog');
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 

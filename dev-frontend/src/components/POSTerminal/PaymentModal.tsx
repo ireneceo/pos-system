@@ -244,6 +244,9 @@ interface PaymentModalProps {
   customerPoints?: number;    // Direct value (used by POS Terminal)
   customerTier?: string;      // Direct value (used by POS Terminal)
   membershipSettings?: any;   // Direct value or will be fetched if restaurantId provided
+  // POS Terminal 모드: 회원이 선택됐는지 표시 (자체 fetch는 트리거 안 함)
+  // 이 값이 truthy면 포인트 섹션을 항상 표시 (0 pts여도 안내 보임)
+  selectedCustomerId?: number;
   onPointsChange?: (pointsUsed: number, discount: number) => void;
 }
 
@@ -269,6 +272,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   customerPoints: propCustomerPoints = 0,
   customerTier: propCustomerTier = 'Bronze',
   membershipSettings: propMembershipSettings,
+  selectedCustomerId,
   onPointsChange
 }) => {
   const { operationSettings } = useStore();
@@ -556,7 +560,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           </PointsHeader>
         </PointsSection>
       )}
-      {!isLoadingPoints && membershipSettings?.is_active && customerPoints > 0 && (
+      {!isLoadingPoints && membershipSettings?.is_active && (customerPoints > 0 || selectedCustomerId || customerId) && (
         <PointsSection>
           {/* Points Info Header */}
           <PointsHeader>
@@ -648,7 +652,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       )}
 
       {/* Points earning preview - only show for logged-in customers with 0 points (not for guests) */}
-      {!isLoadingPoints && membershipSettings?.is_active && customerId && customerPoints === 0 && membershipSettings?.points_per_currency && (
+      {!isLoadingPoints && membershipSettings?.is_active && (customerId || selectedCustomerId) && customerPoints === 0 && membershipSettings?.points_per_currency && (
         <div style={{
           marginBottom: '16px',
           padding: '12px',

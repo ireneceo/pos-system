@@ -468,10 +468,15 @@ const MenuPage: React.FC = () => {
       if (!slug) return;
       setIsLoading(true);
       try {
-        // 레스토랑 정보 + 카테고리 목록 (첫 카테고리 아이템 포함)
-        const [storeRes, menuRes] = await Promise.all([
+        // ────────────────────────────────────────────
+        // 1단계: 카테고리 목록 + 첫 카테고리 아이템만 빠르게 로드
+        // - store 정보 (작음)
+        // - menu 첫 호출은 limit=1로 매우 작게 (categories만 필요)
+        // - 첫 카테고리 결정 후 해당 카테고리 fetch
+        // ────────────────────────────────────────────
+        const [storeRes, catsRes] = await Promise.all([
           fetch(`/api/restaurants/slug/${slug}`),
-          fetch(`/api/mobile/menu/${slug}?page=1&limit=${ITEMS_PER_PAGE}`)
+          fetch(`/api/mobile/menu/${slug}?page=1&limit=1`)  // categories만 필요, items 1개만
         ]);
 
         if (storeRes.ok) {
@@ -486,16 +491,21 @@ const MenuPage: React.FC = () => {
         }
 
         let firstCatId = '';
-        if (menuRes.ok) {
-          const r = await menuRes.json();
+        if (catsRes.ok) {
+          const r = await catsRes.json();
           if (r.success && r.data) {
             const cats = r.data.categories || [];
             setCategories(cats);
 
+            // mobile_settings는 첫 호출에서 받아서 즉시 적용 (Featured/Popular 탭 표시 결정용)
+            if (r.data.mobile_settings) {
+              setMobileSettings(r.data.mobile_settings);
+            }
+
             if (cats.length > 0) {
               firstCatId = cats[0].id.toString();
               setSelectedCategory(cats[0].id);
-              // 첫 카테고리 아이템만 먼저 표시
+              // 첫 카테고리 아이템만 fetch
               const firstCatRes = await fetch(`/api/mobile/menu/${slug}?page=1&limit=${ITEMS_PER_PAGE}&categoryId=${firstCatId}`);
               if (firstCatRes.ok) {
                 const cr = await firstCatRes.json();
@@ -509,23 +519,15 @@ const MenuPage: React.FC = () => {
 
         setIsLoading(false);
 
-        // 백그라운드에서 전체 메뉴 로드 (검색용) + Featured/Popular
-        const [allRes, featRes, popRes] = await Promise.all([
-          fetch(`/api/mobile/menu/${slug}?page=1&limit=500`),
+        // ────────────────────────────────────────────
+        // 2단계 (백그라운드): Featured/Popular만
+        // - 검색용 전체 메뉴(allMenuItems)는 사용자가 검색창 누를 때 lazy load
+        // - limit=500 같은 무거운 호출 제거 → 초기 로딩 속도 대폭 개선
+        // ────────────────────────────────────────────
+        const [featRes, popRes] = await Promise.all([
           fetch(`/api/mobile/featured/${slug}`),
           fetch(`/api/mobile/popular/${slug}`)
         ]);
-
-        if (allRes.ok) {
-          const r = await allRes.json();
-          if (r.success && r.data) {
-            setAllMenuItems(transformItems(r.data.items || []));
-            // mobile_settings from menu API
-            if (r.data.mobile_settings) {
-              setMobileSettings(r.data.mobile_settings);
-            }
-          }
-        }
 
         // Featured items
         if (featRes.ok) {
@@ -552,6 +554,20 @@ const MenuPage: React.FC = () => {
     };
     init();
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 검색용 전체 메뉴 lazy load — 검색창에 처음 포커스/입력 시 한 번만
+  const loadAllMenuItemsForSearch = useCallback(async () => {
+    if (!slug || allMenuItems.length > 0) return;
+    try {
+      const res = await fetch(`/api/mobile/menu/${slug}?page=1&limit=500`);
+      if (res.ok) {
+        const r = await res.json();
+        if (r.success && r.data) {
+          setAllMenuItems(transformItems(r.data.items || []));
+        }
+      }
+    } catch { /* silent */ }
+  }, [slug, allMenuItems.length, transformItems]);
 
   // Determine if Featured tab should show
   useEffect(() => {
@@ -726,7 +742,11 @@ const MenuPage: React.FC = () => {
             type="text"
             placeholder="Search menu items..."
             value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onFocus={loadAllMenuItemsForSearch}
+            onChange={(e) => {
+              loadAllMenuItemsForSearch();
+              handleSearchChange(e.target.value);
+            }}
           />
           {searchQuery && (
             <ClearSearchBtn onClick={handleClearSearch} title="Clear search">

@@ -48,6 +48,32 @@ node test-xxx.js    # Login → API 호출 → 검증 → 원복
 rm test-xxx.js      # 반드시 삭제
 ```
 
+### Health Check (필수 — 모든 검증 마지막 단계)
+
+**개발 완료 후 반드시 실행. 실패 시 "완료" 보고 금지.**
+
+```bash
+cd /var/www/dev-backend
+node scripts/health-check.js              # 전체 (37+ 테스트)
+node scripts/health-check.js --category=security  # 보안만
+node scripts/health-check.js --category=auth      # 인증만
+node scripts/health-check.js --quiet              # 실패만 출력
+```
+
+**5개 카테고리 자동 검증**:
+- `auth` — POS Admin JWT, Customer JWT, cross-access
+- `security` — 익명 차단 (9건), IDOR 방어 (3건), token 격리
+- `pos` — POS 핵심 API 10개 (orders, menu, invoices, dashboard 등)
+- `mobile` — 모바일 공개 + customer self-service (8건)
+- `payment` — 결제 라우트 위변조 방어 (3건)
+
+**Exit code**: 0 = 모두 통과, 1 = 하나라도 실패 (CI/스크립트 통합 가능)
+
+**언제 실행?**
+- 모든 검증 단계의 마지막에 실행 (코드 변경이 기존 기능을 깨지 않았는지 확인)
+- 운영 배포 전 반드시 실행
+- 새 라우트 추가 시 health-check.js에도 해당 케이스 추가 (영구 안전망 강화)
+
 **규모별 검증 범위:**
 - **소**: 해당 API 1~2개 실호출 검증
 - **중**: 해당 기능 전체 API 흐름 (생성→조회→수정→재조회) + 연관 페이지

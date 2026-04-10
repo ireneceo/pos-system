@@ -3,9 +3,48 @@ const router = express.Router();
 const { MembershipSettings, PointTransaction, RestaurantCustomer, Customer } = require('../models');
 const { sequelize } = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
+const { authenticateCustomer } = require('../middleware/customerAuth');
 
-// All routes require authentication
-router.use(authenticateToken);
+// ========================================
+// 보안 정책 (라우트별 명시)
+// ========================================
+// 1. GET /settings/:rid           → 공개 (모바일 결제에서 멤버십 정책 확인 필요)
+// 2. GET /customer/:rid/:cid       → Customer self OR Admin
+// 3. GET /points/history/:rid/:cid → Customer self OR Admin
+// 4. GET /tier/info/:rid/:cid      → Customer self OR Admin
+// 5. POST /points/calculate-discount → 공개 (단순 계산)
+// 6. 그 외 (POST/PUT, 포인트 적립/사용/조정 등) → POS Admin (authenticateToken)
+
+// Customer 본인 또는 Admin 둘 다 허용 미들웨어
+async function customerSelfOrAdmin(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+
+  // customer token 시도
+  try {
+    const { verifyCustomerToken } = require('../utils/customerJwt');
+    const decoded = verifyCustomerToken(token);
+    if (decoded.type === 'customer') {
+      const targetCid = parseInt(req.params.customerId);
+      if (parseInt(decoded.customerId) !== targetCid) {
+        return res.status(403).json({ success: false, message: 'Access denied' });
+      }
+      const customer = await Customer.findByPk(decoded.customerId);
+      if (!customer) {
+        return res.status(401).json({ success: false, message: 'Customer not found' });
+      }
+      req.customer = { id: customer.id, phone: customer.phone, email: customer.email };
+      return next();
+    }
+  } catch (e) {
+    // customer token 아님 → admin 시도
+  }
+
+  return authenticateToken(req, res, next);
+}
 
 // ========================================
 // 멤버십 설정 조회/수정
@@ -13,7 +52,7 @@ router.use(authenticateToken);
 
 /**
  * GET /api/membership/settings/:restaurantId
- * 레스토랑의 멤버십 설정 조회
+ * 레스토랑의 멤버십 설정 조회 (공개 — 모바일 결제에서 사용)
  */
 router.get('/settings/:restaurantId', async (req, res) => {
   try {
@@ -47,7 +86,7 @@ router.get('/settings/:restaurantId', async (req, res) => {
  * PUT /api/membership/settings/:restaurantId
  * 레스토랑의 멤버십 설정 수정
  */
-router.put('/settings/:restaurantId', async (req, res) => {
+router.put('/settings/:restaurantId', authenticateToken, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const updateData = req.body;
@@ -88,7 +127,7 @@ router.put('/settings/:restaurantId', async (req, res) => {
  * GET /api/membership/customer/:restaurantId/:customerId
  * 고객의 멤버십 정보 (포인트, 등급 등) 조회
  */
-router.get('/customer/:restaurantId/:customerId', async (req, res) => {
+router.get('/customer/:restaurantId/:customerId', customerSelfOrAdmin, async (req, res) => {
   try {
     const { restaurantId, customerId } = req.params;
 
@@ -153,7 +192,7 @@ router.get('/customer/:restaurantId/:customerId', async (req, res) => {
  * - amount: 결제 금액 (필수) - 포인트 계산용
  * - description: 설명 (선택)
  */
-router.post('/points/earn', async (req, res) => {
+router.post('/points/earn', authenticateToken, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
@@ -272,7 +311,7 @@ router.post('/points/earn', async (req, res) => {
  * - points: 사용할 포인트 (필수)
  * - description: 설명 (선택)
  */
-router.post('/points/use', async (req, res) => {
+router.post('/points/use', authenticateToken, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
@@ -377,7 +416,7 @@ router.post('/points/use', async (req, res) => {
  * POST /api/membership/points/refund
  * 포인트 환불 (주문 취소 시)
  */
-router.post('/points/refund', async (req, res) => {
+router.post('/points/refund', authenticateToken, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
@@ -446,7 +485,7 @@ router.post('/points/refund', async (req, res) => {
  * POST /api/membership/points/adjust
  * 포인트 수동 조정 (관리자용)
  */
-router.post('/points/adjust', async (req, res) => {
+router.post('/points/adjust', authenticateToken, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
@@ -525,7 +564,7 @@ router.post('/points/adjust', async (req, res) => {
  * POST /api/membership/points/welcome
  * 환영 포인트 지급
  */
-router.post('/points/welcome', async (req, res) => {
+router.post('/points/welcome', authenticateToken, async (req, res) => {
   const t = await sequelize.transaction();
 
   try {
@@ -632,7 +671,7 @@ router.post('/points/welcome', async (req, res) => {
  * GET /api/membership/points/history/:restaurantId/:customerId
  * 고객의 포인트 거래 내역 조회
  */
-router.get('/points/history/:restaurantId/:customerId', async (req, res) => {
+router.get('/points/history/:restaurantId/:customerId', customerSelfOrAdmin, async (req, res) => {
   try {
     const { restaurantId, customerId } = req.params;
     const { type, limit = 50, offset = 0 } = req.query;
@@ -679,7 +718,7 @@ router.get('/points/history/:restaurantId/:customerId', async (req, res) => {
  * POST /api/membership/tier/update/:restaurantId/:customerId
  * 고객 등급 재계산 및 업데이트
  */
-router.post('/tier/update/:restaurantId/:customerId', async (req, res) => {
+router.post('/tier/update/:restaurantId/:customerId', authenticateToken, async (req, res) => {
   try {
     const { restaurantId, customerId } = req.params;
 
@@ -743,7 +782,7 @@ router.post('/tier/update/:restaurantId/:customerId', async (req, res) => {
  * GET /api/membership/tier/info/:restaurantId/:customerId
  * 고객 등급 정보 조회 (다음 등급까지 남은 금액 등)
  */
-router.get('/tier/info/:restaurantId/:customerId', async (req, res) => {
+router.get('/tier/info/:restaurantId/:customerId', customerSelfOrAdmin, async (req, res) => {
   try {
     const { restaurantId, customerId } = req.params;
 
@@ -878,7 +917,7 @@ router.get('/tier/info/:restaurantId/:customerId', async (req, res) => {
  * - order_total: 주문 총액
  * - points_to_use: 사용하려는 포인트 (선택)
  */
-router.post('/points/calculate-discount', async (req, res) => {
+router.post('/points/calculate-discount', async (req, res) => {  // 공개: 단순 계산
   try {
     const { restaurant_id, customer_id, order_total, points_to_use } = req.body;
 

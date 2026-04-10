@@ -207,7 +207,7 @@ const DeliveryAddressPage: React.FC = () => {
           return;
         }
 
-        const response = await fetch(`/api/restaurants/${currentStore.id}`);
+        const response = await fetch(`/api/restaurants/slug/${currentStore.slug}`);
         if (response.ok) {
           const data = await response.json();
           const restaurant = data.data || data;

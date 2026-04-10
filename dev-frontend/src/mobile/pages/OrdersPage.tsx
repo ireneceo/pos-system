@@ -6,6 +6,7 @@ import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
+import { mobileFetch } from '../utils/mobileApi';
 
 const OrdersContainer = styled.div`
   display: flex;
@@ -234,7 +235,7 @@ const OrdersPage: React.FC = () => {
       if (currentCustomer && currentCustomer.id) {
         console.log('🔄 Loading orders for logged-in customer:', currentCustomer.id, 'restaurant:', currentStore.id);
 
-        const response = await fetch(`/api/customers/${currentCustomer.id}/orders?restaurant_id=${currentStore.id}&limit=100`);
+        const response = await mobileFetch(`/api/customers/${currentCustomer.id}/orders?restaurant_id=${currentStore.id}&limit=100`);
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data) {

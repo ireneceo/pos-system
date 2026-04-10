@@ -9,6 +9,7 @@ import CustomerModal from '../../components/Customer/CustomerModal';
 import api from '../services/api';
 import { formatCurrency } from '../../utils/currency';
 import PhoneInput from '../components/common/PhoneInput';
+import { mobileFetch } from '../utils/mobileApi';
 import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
@@ -605,7 +606,7 @@ const PaymentPage: React.FC = () => {
 
         // Load customer points if logged in
         if (currentCustomer?.id) {
-          const customerResponse = await fetch(`/api/membership/customer/${currentStore.id}/${currentCustomer.id}`);
+          const customerResponse = await mobileFetch(`/api/membership/customer/${currentStore.id}/${currentCustomer.id}`);
           if (customerResponse.ok) {
             const customerData = await customerResponse.json();
             if (customerData.success && customerData.data) {
@@ -890,8 +891,8 @@ const PaymentPage: React.FC = () => {
           return;
         }
 
-        console.log('💳 Loading payment settings for restaurant ID:', currentStore.id);
-        const response = await fetch(`/api/restaurants/${currentStore.id}`);
+        console.log('💳 Loading payment settings for restaurant slug:', currentStore.slug);
+        const response = await fetch(`/api/restaurants/slug/${currentStore.slug}`);
         if (response.ok) {
           const data = await response.json();
           const restaurant = data.data || data;
@@ -923,8 +924,8 @@ const PaymentPage: React.FC = () => {
           return;
         }
 
-        console.log('🍽️ Loading table settings for restaurant ID:', currentStore.id);
-        const response = await fetch(`/api/restaurants/${currentStore.id}`);
+        console.log('🍽️ Loading table settings for restaurant slug:', currentStore.slug);
+        const response = await fetch(`/api/restaurants/slug/${currentStore.slug}`);
         if (response.ok) {
           const data = await response.json();
           const restaurant = data.data || data;
@@ -1817,15 +1818,17 @@ const PaymentPage: React.FC = () => {
           {/* Guest Form - Inline */}
           {showGuestForm && activeCustomerTab === 'guest' && (
             <div style={{ marginTop: '16px' }}>
-              {/* Registration checkbox */}
-              <QuickOrderCheckbox>
-                <input
-                  type="checkbox"
-                  checked={showRegisterForm}
-                  onChange={(e) => setShowRegisterForm(e.target.checked)}
-                />
-                <span>Register as a Member (Earn points & benefits)</span>
-              </QuickOrderCheckbox>
+              {/* Registration checkbox - 멤버십 활성 시에만 노출 */}
+              {membershipSettings?.is_active && (
+                <QuickOrderCheckbox>
+                  <input
+                    type="checkbox"
+                    checked={showRegisterForm}
+                    onChange={(e) => setShowRegisterForm(e.target.checked)}
+                  />
+                  <span>Register as a Member (Earn points & benefits)</span>
+                </QuickOrderCheckbox>
+              )}
 
               <FormGroup>
                 <Label>Name *</Label>

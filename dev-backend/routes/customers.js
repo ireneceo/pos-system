@@ -8,6 +8,19 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const emailService = require('../utils/emailService');
 const { emailLayout, getLogoAttachment } = require('../utils/emailTemplates');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+const { signCustomerToken } = require('../utils/customerJwt');
+const { authenticateCustomer, requireCustomerSelf, authenticateAdminOrCustomerSelf } = require('../middleware/customerAuth');
+
+// ========================================
+// 보안 정책 (라우트별)
+// ========================================
+// 1. 공개: /auth, /register, /find-email, /forgot-password, /reset-password, /verify-reset-token
+// 2. POS Admin: /:rid (목록), /:rid/:cid, POST /:rid/:cid/points, DELETE /:cid → authenticateToken + checkRestaurantAccess
+// 3. Customer self: /stats/:cid, /:cid/orders, /:cid/password → authenticateCustomer + requireCustomerSelf
+// 4. Admin or Customer self: PUT /:cid (정보 수정) → authenticateAdminOrCustomerSelf
+//
+// 라우트별로 명시적으로 미들웨어를 부착 (router.use 일괄 적용 안 함 — 정책 혼재 방지)
 
 // ========================================
 // 고객 인증 (이메일 또는 전화번호)
@@ -116,13 +129,17 @@ router.post('/auth', async (req, res) => {
       };
     }
 
-    // 4. 고객 정보 반환 (비밀번호 제외)
+    // 4. 고객 JWT 발급 (모바일 self-service API 인증용)
+    const customerToken = signCustomerToken(customer);
+
+    // 5. 고객 정보 반환 (비밀번호 제외)
     const customerData = {
       id: customer.id,
       phone: customer.phone,
       name: customer.name,
       email: customer.email,
       type: customer.type,
+      token: customerToken,
       // 레스토랑별 정보 포함
       points: restaurantInfo?.points || 0,
       totalOrders: restaurantInfo?.totalOrders || 0,
@@ -303,12 +320,16 @@ router.post('/register', async (req, res) => {
       };
     }
 
+    // 모바일 자동 로그인용 JWT 발급
+    const customerToken = signCustomerToken(customer);
+
     const customerData = {
       id: customer.id,
       phone: customer.phone,
       name: customer.name,
       email: customer.email,
       type: customer.type,
+      token: customerToken,
       // 레스토랑별 정보 포함
       points: restaurantInfo?.points || 0,
       totalOrders: restaurantInfo?.totalOrders || 0,
@@ -385,7 +406,7 @@ router.get('/verify-reset-token', async (req, res) => {
  * GET /api/customers/phone/:phone
  * 전화번호로 고객 조회 (모든 레스토랑 관계 포함)
  */
-router.get('/phone/:phone', async (req, res) => {
+router.get('/phone/:phone', authenticateToken, async (req, res) => {
   try {
     const { phone } = req.params;
 
@@ -451,7 +472,7 @@ router.get('/phone/:phone', async (req, res) => {
  * GET /api/customers/stats/:customerId
  * 고객 통계 조회
  */
-router.get('/stats/:customerId', async (req, res) => {
+router.get('/stats/:customerId', authenticateAdminOrCustomerSelf, async (req, res) => {
   try {
     const { customerId } = req.params;
     const { restaurant_id } = req.query;
@@ -514,7 +535,7 @@ router.get('/stats/:customerId', async (req, res) => {
  * - restaurant_id: 레스토랑 ID (선택, 없으면 전체)
  * - limit: 최대 조회 개수 (기본 50)
  */
-router.get('/:customerId/orders', async (req, res) => {
+router.get('/:customerId/orders', authenticateAdminOrCustomerSelf, async (req, res) => {
   try {
     const { customerId } = req.params;
     const { restaurant_id, limit = 50 } = req.query;
@@ -575,7 +596,7 @@ router.get('/:customerId/orders', async (req, res) => {
  * GET /api/customers/:restaurantId
  * 레스토랑의 고객 목록 조회
  */
-router.get('/:restaurantId', async (req, res) => {
+router.get('/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { search, tier, type } = req.query;
@@ -687,7 +708,7 @@ router.get('/:restaurantId', async (req, res) => {
  * GET /api/customers/:restaurantId/:customerId
  * 특정 고객의 레스토랑별 상세 정보 조회
  */
-router.get('/:restaurantId/:customerId', async (req, res) => {
+router.get('/:restaurantId/:customerId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, customerId } = req.params;
 
@@ -744,7 +765,7 @@ router.get('/:restaurantId/:customerId', async (req, res) => {
  * PUT /api/customers/:customerId
  * 고객 정보 업데이트
  */
-router.put('/:customerId', async (req, res) => {
+router.put('/:customerId', authenticateAdminOrCustomerSelf, async (req, res) => {
   try {
     const { customerId } = req.params;
     const { name, email } = req.body;
@@ -790,7 +811,7 @@ router.put('/:customerId', async (req, res) => {
  * - points: 포인트 (양수=적립, 음수=사용)
  * - reason: 사유
  */
-router.post('/:restaurantId/:customerId/points', async (req, res) => {
+router.post('/:restaurantId/:customerId/points', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, customerId } = req.params;
     const { points, reason } = req.body;
@@ -843,7 +864,7 @@ router.post('/:restaurantId/:customerId/points', async (req, res) => {
  * DELETE /api/customers/:customerId
  * 고객 삭제
  */
-router.delete('/:customerId', async (req, res) => {
+router.delete('/:customerId', authenticateToken, async (req, res) => {
   try {
     const { customerId } = req.params;
 
@@ -884,7 +905,7 @@ router.delete('/:customerId', async (req, res) => {
  * PUT /api/customers/:customerId/password
  * 비밀번호 변경 (로그인 상태에서)
  */
-router.put('/:customerId/password', async (req, res) => {
+router.put('/:customerId/password', authenticateCustomer, requireCustomerSelf('customerId'), async (req, res) => {
   try {
     const { customerId } = req.params;
     const { currentPassword, newPassword } = req.body;

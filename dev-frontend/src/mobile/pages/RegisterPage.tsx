@@ -6,6 +6,7 @@ import MobileAlertModal from '../components/common/MobileAlertModal';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import PhoneInput from '../components/common/PhoneInput';
+import { setMobileToken } from '../utils/mobileApi';
 
 const ContentWrapper = styled.div`
   padding: 20px 0;
@@ -305,6 +306,10 @@ const RegisterPage: React.FC = () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
+        // 모바일 고객 JWT 저장 (자가서비스 API 인증용)
+        if (result.data.token) {
+          setMobileToken(result.data.token);
+        }
         // Registration successful - auto login
         loginCustomer(result.data);
         setAlertModal({

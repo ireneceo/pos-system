@@ -1,8 +1,83 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-09
+> **최종 업데이트:** 2026-04-10 (오후 — 추가 버그 수정 운영 배포)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## 🛡 보안 정석화 작업 (2026-04-10)
+
+### 배경
+Irene 우려 — "기능 개발하면서 기존 기능이 망가지는 패턴이 반복됨"
+
+### 4단계 정석 계획
+| Phase | 내용 | 상태 |
+|-------|------|------|
+| **A** | 보안 패치 + 모바일 고객 JWT 시스템 | ✅ 운영 배포 완료 (2026-04-10) |
+| **D-1** | Sentry 도입 (프론트 + 백엔드) | ✅ 운영 배포 완료 |
+| **D-2** | health-check 스크립트 (39 tests) | ✅ 운영 배포 완료 |
+| **B** | 깨진 기능 복구 4건 (포인트 UI, activityLogs, NotificationSettings, 인쇄 이중 트리거) | ✅ 운영 배포 완료 |
+| **C** | 구조 개선 (httpClient, Context 분리, 거대 파일 분할) | 🔜 다음 세션 |
+
+**순서**: A → D → B → C
+**이유**: D(안전망) 깔고 B/C 진행 — 안전망 없는 리팩토링은 또 깨짐
+
+### 완료 사항 (2026-04-10)
+
+**Phase A — 보안 패치 + 모바일 고객 JWT**
+- 백엔드 7개 라우트 보안 패치 (customers/membership/restaurants/orders/inventory/addon-modules/mobile)
+- 모바일 고객 JWT 인프라 신규: `utils/customerJwt.js`, `middleware/customerAuth.js`
+- 프론트엔드: `mobile/utils/mobileApi.ts` 신규, 모바일 페이지 7개 적용
+- 익명 고객 DB 덤프/IDOR/결제 위변조 차단
+
+**Phase D-1 — Sentry**
+- `@sentry/react`, `@sentry/node` 설치
+- 프론트 4곳에 user context 동기화 (login/checkSession/logout/switchUser)
+- 백엔드 admin/customer 미들웨어 user context 자동 첨부
+- environment 자동 감지 + component 태그로 분리
+- 민감정보 자동 마스킹
+
+**Phase D-2 — health-check 스크립트**
+- `dev-backend/scripts/health-check.js` 신규
+- 5개 카테고리 / 39개 자동 테스트
+- CLAUDE.md에 검증 마지막 단계로 필수 실행 규칙 추가
+
+**Phase B — 깨진 기능 복구 4건**
+- B-1: Activity Log Stats 500 → 200 (sequelize 구조분해 import)
+- B-2: NotificationSettings dead token 키 (`'token'` → `'auth_token'`)
+- B-3: POS 결제 모달 포인트 사용 UI 표시 (selectedCustomerId prop 추가)
+- B-4: 인쇄 다이얼로그 이중 트리거 ("취소해도 또 뜸" 증상)
+
+### 운영 배포 결과 (2026-04-10)
+
+**1차 배포 — 08:24 (보안 정석화)**
+- 운영 health-check: **39/39 통과**
+- 외부 도메인 페이지: 4/4 (200)
+- 보안 검증: 익명 차단 (401), 모바일 slug 정상 (200)
+- 백업: `/var/www/backups/20260410_082227`
+
+**2차 배포 — 09:32 (추가 버그 수정 4건)**
+- 모바일 메뉴 로딩 속도 개선 — `MenuPage.tsx` `limit=500` 백그라운드 호출 제거, 검색 lazy load
+- 모바일 AccountPage My Coupons 필터링 — 본인 명시 타겟만 표시 (myCoupons / promotions 분리)
+- 모바일 멤버십 비활성 매장 points UI 숨김 — `pointsEnabled` 기본값 false, PaymentPage Register 체크박스 조건부
+- `routes/coupons.js` dual auth — Admin 또는 customer 본인 (IDOR 방어)
+- 운영 health-check: **39/39 통과**
+- 백업: `/var/www/backups/20260410_093107`
+- 버전: v3.12 유지 (보안/안정화 작업이라 버전 미증가)
+
+### Phase C 다음 세션 인계
+**상세 가이드는 `/var/www/.claude/session-state.md` 참조** — 6개 작업 (C-1 ~ C-6) 위험도 순으로 정리됨
+
+권장 작업 순서:
+1. **C-1**: 토큰 키 단일 진입점 (`utils/auth.ts`) — 30분, 안전
+2. **C-2**: `restaurantId = 1` 하드코딩 fallback 제거 — 10분
+3. **C-3**: Fetch 인터셉터 단일화 (`httpClient.ts` 추출) — 1~2시간
+4. **C-4**: CustomerContext 모바일/POS 분리 — 2~3시간
+5. **C-5**: 거대 라우트 파일 분할 (5개 파일)
+6. **C-6**: 거대 프론트 컴포넌트 분할 (5개 컴포넌트)
+
+각 작업 후 health-check 실행 + 큰 변경은 Sentry로 안정성 확인 후 다음 단계.
 
 ---
 

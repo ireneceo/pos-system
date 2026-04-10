@@ -7,6 +7,7 @@ import { useCustomer, Customer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import PhoneInput from '../components/common/PhoneInput';
 import { useTranslation } from 'react-i18next';
+import { setMobileToken } from '../utils/mobileApi';
 
 const ContentWrapper = styled.div`
   padding: 20px 0;
@@ -238,12 +239,16 @@ const LoginPage: React.FC = () => {
       const response = await fetch('/api/customers/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password })
+        body: JSON.stringify({ identifier, password, restaurantId: currentStore?.id })
       });
 
       const result = await response.json();
 
       if (response.ok && result.success) {
+        // 모바일 고객 JWT 저장 (자가서비스 API 인증용)
+        if (result.data.token) {
+          setMobileToken(result.data.token);
+        }
         // Login successful - set customer data directly
         const customerData: Customer = {
           id: result.data.id.toString(),

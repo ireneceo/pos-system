@@ -1922,6 +1922,25 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
 // ============================================================
 // Online Payment Routes (Stripe / PayPal) for Mobile Orders
 // ============================================================
+// 보안 정책: 모바일 게스트 고객도 결제하므로 authenticateToken 강제 불가
+// 대신 다음 제약으로 위변조 방어:
+// 1. 주문 생성 후 30분 이내에만 결제 시도 가능 (시간 윈도우 제한)
+// 2. 이미 payment_status='completed' 면 거부
+// 3. 이미 payment_intent_id가 있으면 신규 생성 대신 기존 intent 반환 (중복 결제 방어)
+
+const PAYMENT_WINDOW_MS = 30 * 60 * 1000; // 30분
+
+function isPaymentAllowed(order) {
+  if (!order) return { ok: false, status: 404, message: 'Order not found' };
+  if (order.payment_status === 'completed') {
+    return { ok: false, status: 400, message: 'Order is already paid' };
+  }
+  const age = Date.now() - new Date(order.createdAt).getTime();
+  if (age > PAYMENT_WINDOW_MS) {
+    return { ok: false, status: 403, message: 'Payment window expired for this order' };
+  }
+  return { ok: true };
+}
 
 // Create Stripe PaymentIntent for an order
 router.post('/:id/create-payment-intent', async (req, res) => {
@@ -1933,9 +1952,9 @@ router.post('/:id/create-payment-intent', async (req, res) => {
       include: [{ model: Restaurant, as: 'restaurant' }]
     });
 
-    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
-    if (order.payment_status === 'completed') {
-      return res.status(400).json({ success: false, error: 'Order is already paid' });
+    const check = isPaymentAllowed(order);
+    if (!check.ok) {
+      return res.status(check.status).json({ success: false, message: check.message });
     }
 
     // Use restaurant-level Stripe keys
@@ -1992,9 +2011,9 @@ router.post('/:id/create-paypal-order', async (req, res) => {
       include: [{ model: Restaurant, as: 'restaurant' }]
     });
 
-    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
-    if (order.payment_status === 'completed') {
-      return res.status(400).json({ success: false, error: 'Order is already paid' });
+    const check = isPaymentAllowed(order);
+    if (!check.ok) {
+      return res.status(check.status).json({ success: false, message: check.message });
     }
 
     const restaurantId = order.restaurant_id;
@@ -2047,10 +2066,15 @@ router.post('/:id/capture-paypal-order', async (req, res) => {
     const paypal = require('@paypal/checkout-server-sdk');
 
     const order = await Order.findByPk(id);
-    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Order is already paid' });
+    }
 
+    // 보안: 클라이언트가 보낸 orderId가 DB의 payment_intent_id와 일치해야 함
+    // (임의 PayPal orderId로 capture 시도 차단)
     if (order.payment_intent_id !== orderId) {
-      return res.status(400).json({ success: false, error: 'Order ID mismatch' });
+      return res.status(400).json({ success: false, message: 'Order ID mismatch' });
     }
 
     const { client } = await createPayPalClient('restaurant', order.restaurant_id);
@@ -2085,10 +2109,13 @@ router.post('/:id/confirm-stripe-payment', async (req, res) => {
     const { getStripeForIssuer } = require('../utils/stripeService');
 
     const order = await Order.findByPk(id);
-    if (!order) return res.status(404).json({ success: false, error: 'Order not found' });
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.payment_status === 'completed') {
+      return res.status(400).json({ success: false, message: 'Order is already paid' });
+    }
 
     if (!order.payment_intent_id) {
-      return res.status(400).json({ success: false, error: 'No payment intent found for this order' });
+      return res.status(400).json({ success: false, message: 'No payment intent found for this order' });
     }
 
     const stripe = await getStripeForIssuer('restaurant', order.restaurant_id);

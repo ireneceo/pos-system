@@ -14,11 +14,15 @@ async function getRestaurantCostMap(restaurantId) {
   costs.forEach(c => { map[c.ingredient_id] = parseFloat(c.unit_cost); });
   return map;
 }
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { deleteOldImages } = require('../utils/imageProcessor');
 
 // Apply auth middleware to all routes
 router.use(authenticateToken);
+
+// 보안: 모든 라우트가 :restaurantId 파라미터를 가지므로 IDOR 방어를 위해
+// :restaurantId 패턴에 checkRestaurantAccess 일괄 적용
+router.use('/:restaurantId', checkRestaurantAccess);
 
 // ============================================
 // 재고 현황 APIs

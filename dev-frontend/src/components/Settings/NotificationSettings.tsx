@@ -196,7 +196,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ entityType,
     try {
       const response = await fetch(`/api/notification-settings/${entityType}/${entityId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
 
@@ -220,7 +220,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ entityType,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify(settings)
       });
@@ -246,7 +246,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ entityType,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         },
         body: JSON.stringify({ testEmail })
       });

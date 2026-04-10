@@ -7,6 +7,7 @@ import { useCustomer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
+import { mobileFetch } from '../utils/mobileApi';
 
 const Container = styled.div`
   padding: 0 0 24px;
@@ -346,7 +347,9 @@ const AccountPage: React.FC = () => {
     points: number;
   }>({ totalOrders: 0, totalSpent: 0, points: 0 });
 
-  const [pointsEnabled, setPointsEnabled] = useState<boolean>(true);
+  // 기본값 false — membership/settings 로드 후 is_active=true일 때만 활성화
+  // (잠깐 보였다 사라지는 깜빡임 방지)
+  const [pointsEnabled, setPointsEnabled] = useState<boolean>(false);
   const [myCoupons, setMyCoupons] = useState<any[]>([]);
 
   // Load restaurant data from slug on mount
@@ -402,7 +405,7 @@ const AccountPage: React.FC = () => {
     const loadCustomerStats = async () => {
       if (currentCustomer && currentStore) {
         try {
-          const response = await fetch(`/api/customers/stats/${currentCustomer.id}?restaurant_id=${currentStore.id}`);
+          const response = await mobileFetch(`/api/customers/stats/${currentCustomer.id}?restaurant_id=${currentStore.id}`);
           if (response.ok) {
             const result = await response.json();
             if (result.success && result.data) {
@@ -422,14 +425,16 @@ const AccountPage: React.FC = () => {
   }, [currentCustomer, currentStore]);
 
   // Load available coupons
+  // My Coupons는 "내가 명시적으로 타겟된" 쿠폰만 (target_type='customers' 또는 'tiers')
+  // 매장 전체 공개 쿠폰(target_type='all')은 promotions로 분리 — 결제 시 자동 적용
   useEffect(() => {
     const loadCoupons = async () => {
       if (currentCustomer && currentStore) {
         try {
-          const res = await fetch(`/api/coupons/customer/${currentCustomer.id}?restaurant_id=${currentStore.id}`);
+          const res = await mobileFetch(`/api/coupons/customer/${currentCustomer.id}?restaurant_id=${currentStore.id}`);
           if (res.ok) {
             const result = await res.json();
-            if (result.success) setMyCoupons(result.data?.available || []);
+            if (result.success) setMyCoupons(result.data?.myCoupons || []);
           }
         } catch { /* silent */ }
       }
@@ -469,9 +474,8 @@ const AccountPage: React.FC = () => {
     setIsChangingPassword(true);
 
     try {
-      const response = await fetch(`/api/customers/${currentCustomer?.id}/password`, {
+      const response = await mobileFetch(`/api/customers/${currentCustomer?.id}/password`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentPassword,
           newPassword

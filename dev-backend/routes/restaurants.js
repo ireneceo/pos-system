@@ -367,7 +367,7 @@ router.get('/', optionalAuth, async (req, res) => {
 });
 
 // Get restaurants for a specific manager
-router.get('/manager/:managerId', async (req, res) => {
+router.get('/manager/:managerId', authenticateToken, async (req, res) => {
   try {
     const { managerId } = req.params;
 
@@ -456,43 +456,27 @@ router.get('/manager/:managerId', async (req, res) => {
 
 // Get restaurant details
 // Get restaurant by slug
+// 공개 라우트 - 모바일 고객이 slug로 레스토랑 정보 조회
+// 보안: 민감정보(business_registration, tax_id, bank_account_name 등 일부)는 응답에 포함되지만
+// 결제 흐름에 필요. manager 개인정보(email/phone)는 제외.
 router.get('/slug/:slug', async (req, res) => {
   try {
     const restaurant = await Restaurant.findOne({
-      where: { slug: req.params.slug },
-      include: [{
-        model: User,
-        as: 'managers',
-        attributes: ['id', 'full_name', 'username', 'email', 'role', 'company_name', 'phone'],
-        through: { attributes: ['is_primary'] }
-      }]
+      where: { slug: req.params.slug }
     });
 
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, message: 'Restaurant not found' });
     }
 
-    // Transform restaurant data to include managers array
     const restaurantData = restaurant.toJSON();
-    const managers = restaurantData.managers || [];
+    // 민감정보 마스킹: manager 정보는 제외
+    delete restaurantData.admin_id;
 
-    const response = {
-      ...restaurantData,
-      managers: managers.map(m => ({
-        id: m.id.toString(),
-        name: m.full_name || m.username,
-        email: m.email,
-        role: m.role,
-        company: m.company_name || '',
-        phone: m.phone || '',
-        isPrimary: m.RestaurantManager?.is_primary || false
-      }))
-    };
-
-    res.json({ success: true, data: response });
+    res.json({ success: true, data: restaurantData });
   } catch (error) {
     console.error('Error fetching restaurant by slug:', error);
-    res.status(500).json({ error: 'Failed to fetch restaurant details' });
+    res.status(500).json({ success: false, message: 'Failed to fetch restaurant details' });
   }
 });
 
@@ -617,7 +601,8 @@ router.get('/:id/table-status', authenticateToken, async (req, res) => {
 });
 
 // Get restaurant company info (for invoices) - MUST be before /:id route
-router.get('/:id/company-info', async (req, res) => {
+// 보안: 사업자등록번호, 은행계좌 등 민감정보 → 인증 + 레스토랑 접근권한 필수
+router.get('/:id/company-info', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const restaurant = await Restaurant.findByPk(req.params.id, {
       attributes: [
@@ -661,7 +646,7 @@ router.get('/:id/company-info', async (req, res) => {
 });
 
 // Get restaurant details
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', authenticateToken, async (req, res, next) => {
   // Guard: skip non-numeric IDs so concrete routes below (e.g. /subscriptions/manager/:id, /available/:id) can match
   if (isNaN(req.params.id)) return next('route');
   try {
@@ -1959,7 +1944,7 @@ router.get('/available/:managerId', authenticateToken, async (req, res) => {
 });
 
 // Get categories for a specific restaurant
-router.get('/:id/categories', async (req, res) => {
+router.get('/:id/categories', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -2010,7 +1995,7 @@ router.get('/:id/categories', async (req, res) => {
 });
 
 // Get allowed routes for a restaurant based on their plan
-router.get('/:id/allowed-routes', async (req, res) => {
+router.get('/:id/allowed-routes', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 

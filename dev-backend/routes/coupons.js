@@ -5,6 +5,7 @@ const RestaurantCustomer = require('../models/RestaurantCustomer');
 const Order = require('../models/Order');
 const { Op } = require('sequelize');
 const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
+const { authenticateAdminOrCustomerSelf } = require('../middleware/customerAuth');
 
 // Get all coupons for a restaurant
 router.get('/', authenticateToken, async (req, res) => {
@@ -43,7 +44,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
 // Get customer's available coupons + usage history
 // GET /api/coupons/customer/:customerId?restaurant_id=X
-router.get('/customer/:customerId', authenticateToken, async (req, res) => {
+router.get('/customer/:customerId', authenticateAdminOrCustomerSelf, async (req, res) => {
   try {
     const { customerId } = req.params;
     const restaurantId = req.query.restaurant_id || req.query.restaurantId;
@@ -87,32 +88,46 @@ router.get('/customer/:customerId', authenticateToken, async (req, res) => {
       if (code) usageCountMap[code] = (usageCountMap[code] || 0) + 1;
     });
 
-    // 사용 가능 쿠폰 필터링
-    const available = allCoupons.filter(c => {
-      // 유효기간 만료 체크
+    // 공통 필터: 유효기간/한도 체크
+    const passesBasicFilter = (c) => {
       if (c.valid_until && new Date(c.valid_until) < now) return false;
-      // 전체 사용한도
       if (c.usage_limit !== null && c.usage_count >= c.usage_limit) return false;
-      // 1인당 사용한도
       const myUsage = usageCountMap[c.code] || 0;
       if (c.per_user_limit !== null && myUsage >= c.per_user_limit) return false;
-      // 타겟 매칭
-      if (c.target_type === 'customers' && c.target_customer_ids) {
-        if (!c.target_customer_ids.includes(parseInt(customerId))) return false;
-      }
-      if (c.target_type === 'tiers' && c.target_loyalty_tiers) {
-        if (!c.target_loyalty_tiers.includes(customerTier)) return false;
-      }
       return true;
-    }).map(c => ({
+    };
+
+    const formatCoupon = (c) => ({
       id: c.id, code: c.code, name: c.name, type: c.type,
       value: parseFloat(c.value), min_order: parseFloat(c.min_order || 0),
       max_discount: c.max_discount ? parseFloat(c.max_discount) : null,
       valid_until: c.valid_until,
       per_user_limit: c.per_user_limit,
       my_usage: usageCountMap[c.code] || 0,
-      applicable_order_types: c.applicable_order_types
-    }));
+      applicable_order_types: c.applicable_order_types,
+      target_type: c.target_type
+    });
+
+    // myCoupons: 명시적으로 이 고객에게 발급된 쿠폰만 (개인 타겟 또는 본인 티어 타겟)
+    const myCoupons = allCoupons.filter(c => {
+      if (!passesBasicFilter(c)) return false;
+      if (c.target_type === 'customers' && c.target_customer_ids) {
+        return c.target_customer_ids.includes(parseInt(customerId));
+      }
+      if (c.target_type === 'tiers' && c.target_loyalty_tiers) {
+        return c.target_loyalty_tiers.includes(customerTier);
+      }
+      return false; // target_type='all' 또는 null은 myCoupons 아님
+    }).map(formatCoupon);
+
+    // promotions: 매장 전체 공개 쿠폰 (target_type='all' 또는 null)
+    const promotions = allCoupons.filter(c => {
+      if (!passesBasicFilter(c)) return false;
+      return c.target_type === 'all' || c.target_type === null || !c.target_type;
+    }).map(formatCoupon);
+
+    // available: 결제 시 사용 가능한 모든 쿠폰 (myCoupons + promotions, 호환성 유지)
+    const available = [...myCoupons, ...promotions];
 
     // 사용 이력
     const history = usedOrders.map(o => ({
@@ -123,7 +138,7 @@ router.get('/customer/:customerId', authenticateToken, async (req, res) => {
       used_at: o.createdAt
     }));
 
-    res.json({ success: true, data: { available, history } });
+    res.json({ success: true, data: { available, myCoupons, promotions, history } });
   } catch (error) {
     console.error('❌ [COUPONS] Error fetching customer coupons:', error);
     res.status(500).json({ success: false, message: error.message });

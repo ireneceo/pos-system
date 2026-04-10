@@ -886,11 +886,20 @@ router.post('/order', async (req, res) => {
 });
 
 // Get all orders (for live order display)
+// 보안: restaurant_id 필수 (없으면 전체 시스템 주문 덤프 가능)
 router.get('/orders', async (req, res) => {
   try {
-    const { status, limit = 50 } = req.query;
-    
-    let whereCondition = {};
+    const { status, limit = 50, restaurant_id, restaurantId } = req.query;
+    const targetRestaurantId = restaurant_id || restaurantId;
+
+    if (!targetRestaurantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'restaurant_id query parameter is required'
+      });
+    }
+
+    let whereCondition = { restaurant_id: parseInt(targetRestaurantId) };
     if (status) {
       if (status.includes(',')) {
         whereCondition.status = { [Op.in]: status.split(',') };
@@ -898,7 +907,7 @@ router.get('/orders', async (req, res) => {
         whereCondition.status = status;
       }
     }
-    
+
     const orders = await Order.findAll({
       where: whereCondition,
       order: [['createdAt', 'DESC']],

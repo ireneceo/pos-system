@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[6312],{6312:(e,r,n)=>{n.r(r),n.d(r,{default:()=>ne});var t=n(9950),s=n(4492),i=n(4752),a=n(8409),o=n(6038),d=n(1095),l=n(294),c=n(3245),p=n(158),h=n(3440),u=n(2174),x=n(3588),g=n(7621),v=n(5297),y=n(2528),m=n(5651),w=n(1367),f=n(5030),b=n(4414);const j=i.Ay.div`
+"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[6312],{6312:(e,r,n)=>{n.r(r),n.d(r,{default:()=>ne});var t=n(9950),s=n(4492),i=n(4752),a=n(8409),o=n(6038),d=n(1095),l=n(294),c=n(3245),p=n(158),h=n(3440),u=n(2174),x=n(3588),g=n(7621),v=n(5297),y=n(7766),m=n(5651),w=n(1367),f=n(5030),b=n(4414);const j=i.Ay.div`
   min-height: 100vh;
 `,F=i.Ay.div`
   background: white;

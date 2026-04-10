@@ -327,6 +327,8 @@ export const CustomerProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const logoutCustomer = () => {
     setCurrentCustomer(null);
     setGuestInfo(null);
+    // 모바일 고객 JWT도 함께 정리
+    try { localStorage.removeItem('mobile_token'); } catch { /* ignore */ }
   };
 
   const updateCustomer = async (customerId: string, updates: Partial<Customer>): Promise<Customer> => {

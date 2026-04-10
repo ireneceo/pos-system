@@ -940,9 +940,17 @@ function generateHTMLAdditionalItemsTicket(orderData, storeInfo) {
 
 /**
  * Print HTML content via browser print dialog (for PC)
+ *
+ * 버그 이력 (2026-04-10):
+ *   기존 코드는 iframe.onload 핸들러에서 print() 호출 → onload가 두 번 트리거되어
+ *   ("about:blank" 로드 + doc.write 로드) print 다이얼로그가 2번 뜸.
+ *   사용자가 첫 번째 다이얼로그를 취소하면 두 번째가 즉시 표시되어
+ *   "취소해도 또 뜬다" 증상 발생.
+ *
+ * 해결: onload 핸들러 사용하지 않고 doc.close() 직후 setTimeout으로만 print 호출.
+ *      hasPrinted flag로 이중 호출 보장.
  */
 export function printHTMLContent(htmlContent, title) {
-  // Use hidden iframe to print without opening a new window
   const iframe = document.createElement('iframe');
   iframe.style.position = 'fixed';
   iframe.style.right = '0';
@@ -950,31 +958,37 @@ export function printHTMLContent(htmlContent, title) {
   iframe.style.width = '0';
   iframe.style.height = '0';
   iframe.style.border = 'none';
-
-  // Set onload BEFORE appending to DOM to avoid race condition
-  iframe.onload = function() {
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.print();
-      } catch (e) {
-        console.error('Print failed:', e);
-      }
-      // Clean up iframe after printing
-      setTimeout(() => {
-        if (iframe.parentNode) {
-          document.body.removeChild(iframe);
-        }
-      }, 2000);
-    }, 300);
-  };
+  // onload 사용 금지 — 이중 트리거 원인. doc.close() 후 직접 호출 방식 사용.
 
   document.body.appendChild(iframe);
 
+  // doc.write로 콘텐츠 주입
   const iframeDoc = iframe.contentWindow || iframe.contentDocument;
   const doc = iframeDoc.document || iframeDoc;
   doc.open();
   doc.write(htmlContent);
   doc.close();
+
+  let hasPrinted = false;
+  const triggerPrint = () => {
+    if (hasPrinted) return;
+    hasPrinted = true;
+    try {
+      iframe.contentWindow.focus(); // 일부 브라우저에서 다이얼로그 포커스 보장
+      iframe.contentWindow.print();
+    } catch (e) {
+      console.error('Print failed:', e);
+    }
+    // 인쇄 다이얼로그 닫힌 후 iframe 정리
+    setTimeout(() => {
+      if (iframe.parentNode) {
+        document.body.removeChild(iframe);
+      }
+    }, 2000);
+  };
+
+  // doc.close() 후 약간의 지연 — 콘텐츠 렌더링 + 이미지 로드 여유
+  setTimeout(triggerPrint, 300);
 
   return true;
 }

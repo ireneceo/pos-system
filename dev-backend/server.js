@@ -36,6 +36,65 @@ if (process.getuid && process.getuid() === 0) {
 const loadEnvironmentConfig = require('./config/env-loader');
 loadEnvironmentConfig();
 
+// ============================================
+// Sentry 초기화 (다른 require보다 먼저 — 자동 instrumentation을 위해)
+// ============================================
+const Sentry = require('@sentry/node');
+const SENTRY_DSN = process.env.SENTRY_DSN || 'https://ed2a54d6e74db63ffb9e3da5dad5d888@o4511194201391104.ingest.us.sentry.io/4511194295042048';
+
+// 환경 자동 감지
+const sentryEnvironment =
+  process.env.SENTRY_ENVIRONMENT ||
+  (process.env.NODE_ENV === 'production' ? 'production' : 'development');
+
+Sentry.init({
+  dsn: SENTRY_DSN,
+  environment: sentryEnvironment,
+
+  // 프론트엔드/백엔드 구분 (같은 Sentry 프로젝트 공유)
+  initialScope: {
+    tags: { component: 'backend' }
+  },
+
+  // PII (IP 주소 등) 자동 수집
+  sendDefaultPii: true,
+
+  // 성능 추적: 운영 10%, 개발 100%
+  tracesSampleRate: sentryEnvironment === 'production' ? 0.1 : 1.0,
+
+  // 민감 정보 필터링
+  beforeSend(event, hint) {
+    // request body의 비밀번호/토큰 마스킹
+    if (event.request?.data) {
+      const data = event.request.data;
+      ['password', 'currentPassword', 'newPassword', 'token', 'auth_token', 'mobile_token', 'cardNumber', 'cvv', 'password_hash'].forEach(key => {
+        if (data[key]) data[key] = '[REDACTED]';
+      });
+    }
+    // Authorization 헤더 마스킹
+    if (event.request?.headers?.authorization) {
+      event.request.headers.authorization = '[REDACTED]';
+    }
+    if (event.request?.headers?.Authorization) {
+      event.request.headers.Authorization = '[REDACTED]';
+    }
+    // cookie 헤더 마스킹
+    if (event.request?.headers?.cookie) {
+      event.request.headers.cookie = '[REDACTED]';
+    }
+    return event;
+  },
+
+  // 무시할 에러 (예상되는 클라이언트 에러)
+  ignoreErrors: [
+    'ECONNRESET',
+    'EPIPE',
+    'Client network socket disconnected',
+  ],
+});
+
+console.log(`[Sentry] Initialized — environment: ${sentryEnvironment}, component: backend`);
+
 const express = require('express');
 const http = require('http');
 const fs = require('fs');
@@ -588,6 +647,10 @@ app.post('/api/deploy', authenticateToken, requireRole('System Admin'), (req, re
     });
   });
 });
+
+// Sentry 에러 핸들러 (글로벌 errorHandler 직전, 모든 라우트 뒤)
+// 모든 5xx 에러를 자동으로 Sentry에 전송
+Sentry.setupExpressErrorHandler(app);
 
 // Global error handler (must be last middleware)
 app.use(errorHandler);

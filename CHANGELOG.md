@@ -6,6 +6,43 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 🐛 추가 버그 수정 (2026-04-10 오후)
+- fix: 모바일 메뉴 로딩 속도 개선 — `MenuPage.tsx` init 흐름 개편. 백그라운드 `limit=500` 전체 메뉴 호출 제거, 검색용 전체 메뉴는 검색창 포커스/입력 시 lazy load. 첫 호출 `limit=1`로 카테고리만 빠르게 받기
+- fix: 모바일 AccountPage My Coupons에 본인 것이 아닌 매장 전체 공개 쿠폰까지 모두 표시되던 버그 — `routes/coupons.js` 응답을 `myCoupons`(명시적 타겟)/`promotions`(전체공개)/`available`(호환) 3개로 분리. AccountPage는 `myCoupons`만 표시
+- fix: 모바일 멤버십 비활성 매장에서 points UI 숨김 — `AccountPage` `pointsEnabled` 기본값 `false`로 변경 (깜빡임 방지), `PaymentPage` 비회원 결제 폼의 "Register as a Member" 체크박스를 `membershipSettings?.is_active` 조건부로 변경
+- fix: `routes/coupons.js GET /customer/:customerId` dual auth 적용 — POS Admin 또는 모바일 customer 본인 (IDOR 방어 포함)
+
+### 🛡 보안 정석화 (Phase A)
+- 익명 고객 DB 덤프/삭제/비밀번호 변경 차단 (`routes/customers.js` 라우트별 인증 정책)
+- 모바일 주문 IDOR 차단 (`routes/mobile.js` GET /orders restaurant_id 필수)
+- 결제 라우트 위변조 방어 — 30분 시간 윈도우 + 중복결제 방지 + PayPal orderId 검증 (`routes/orders.js`)
+- inventory IDOR 차단 (`routes/inventory-routes.js` checkRestaurantAccess 적용)
+- 사업자등록번호/은행계좌 무인증 노출 차단 (`routes/restaurants.js`)
+- addon-modules GET 인증 추가
+- 모바일 고객 JWT 시스템 신규 — `utils/customerJwt.js`, `middleware/customerAuth.js`
+- POST /customers/auth, /register이 customer 토큰 발급
+- 모바일 자가서비스 라우트 IDOR 방어 (`requireCustomerSelf`)
+- 모바일 페이지에 `mobileFetch` 헬퍼 + `mobile_token` 분리 저장
+- POS 관리자와 모바일 고객 세션 완전 분리
+
+### 🔧 안정화 인프라 (Phase D)
+- Sentry 에러 추적 도입 (프론트엔드 + 백엔드)
+- 환경 자동 감지 (production/development), component 태그로 프론트/백 구분
+- AuthContext 4곳에 user context 동기화 (login/checkSession/logout/switchUser)
+- 백엔드 admin/customer 미들웨어 user context 자동 첨부
+- 민감정보 자동 마스킹 (password, token, Authorization, cookie)
+- ErrorBoundary 폴백 UI ("Try again" 버튼)
+- Health-check 스크립트 신규 (`dev-backend/scripts/health-check.js`)
+- 5개 카테고리 / 39개 자동 테스트 (auth/security/pos/mobile/payment)
+- CLI 옵션 (--category, --quiet, --host, --verbose)
+- CLAUDE.md에 검증 단계 마지막에 health-check 필수 실행 규칙 추가
+
+### 🐛 깨진 기능 복구 (Phase B)
+- fix: Activity Log Stats 500 에러 — `routes/activityLogs.js` sequelize 구조분해 import 누락 수정
+- fix: NotificationSettings 잘못된 token 키 (`'token'` → `'auth_token'`) 3곳
+- fix: POS 결제 모달 포인트 사용 UI 미노출 — PaymentModal에 `selectedCustomerId` prop 추가, 회원 선택 시 0 pts여도 적립 안내 표시
+- fix: **인쇄 다이얼로그 이중 트리거** — `printHTMLContent`의 `iframe.onload`가 두 번 트리거되어 print 다이얼로그가 2번 큐잉되던 문제. 취소 시 두 번째가 즉시 표시되어 "취소해도 또 뜬다" 증상. doc.close() 직후 setTimeout 단일 호출 + hasPrinted flag로 해결. POS 결제/Bill/Kitchen/Settlement/Table QR 등 8개 인쇄 흐름 전체 영향.
+
 ---
 
 ## [v3.12] — 2026-04-09 배포
