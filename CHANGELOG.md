@@ -6,6 +6,17 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+## [v3.13] — 2026-04-11 배포
+
+### notices 데모/테스트 제외 + admin 하드웨어 max_quantity 무제한 + /packages Quote 모달 수정 + External QR + inventory adjust fix
+
+- fix(notices): 관리자 공지 이메일 발송 시 `is_demo=true`/`is_test=true` 계정 제외. broadcast 4개 target(all/role/brand/foodcourt)의 recipient 생성 로직에서 User/Restaurant 양쪽 필터. `select_restaurants`(명시 선택)는 관리자 의도 존중 — `routes/notices.js`
+- fix(admin/system-products): Hardware Package 편집 모달의 addon Max 입력 필드에서 `0`(무제한) 설정 불가하던 버그. (1) loader `|| 1`이 기존 `max_quantity=0` 값을 로드 시 1로 변조하던 핵심 버그를 `?? 0`으로 수정, (2) 신규 addon 기본값 `1 → 0`, (3) input `min="1" → "0"`, `|| 1 → || 0`, (4) `(0 = unlimited)` 힌트 문구 추가 — `SystemProductManagementPage.tsx`
+- chore(db): 운영 DB `system_product_addons.max_quantity=1`인 108건을 `0`(무제한)으로 일괄 UPDATE. 12건(max_quantity=5)은 유지. 백업 `/var/www/backups/system_product_addons_20260411_175650.sql`. 운영 /packages 에서 Additional Equipment 1개만 추가되던 증상 해소
+- feat(packages): Request a Quote 모달 Quote Summary에 소프트웨어 구독 라인 신규. 플랜명 + 청구주기 (monthly/annual) + 가격 + "Billed separately from hardware (recurring invoice)" 안내. 하드웨어 총액은 one-time 그대로, 구독은 dashed divider 아래 별도 섹션. 체크박스 해제/플랜/가격 없을 때 숨김 가드 — `PackagesPage.tsx` + `locales/{en,ko,zh,ms}/landing.json` (2 keys × 4 lang)
+- fix(packages): Request a Quote 모달 레이아웃/z-index 수정. (1) z-index `200 → 10000` — Landing 헤더(1000) 뒤로 숨던 문제, (2) ModalContent `max-height: calc(100vh - 40px)` + flex column, (3) ModalTitle `flex-shrink:0` 상단 고정, (4) ModalForm `overflow-y: auto` 중앙만 스크롤, (5) ModalButtonRow `position: sticky; bottom:0` 하단 고정, (6) 모바일(≤640px) 풀스크린. 타이틀/버튼이 스크롤로 사라지던 문제 해소
+- fix(admin/payment-settings): `GET/POST /api/admin/payment-settings` 응답을 `{success, data}` 표준으로 래핑. 에러 응답도 `{success:false, message}`로 정규화. 프론트에 legacy flat/새 래핑 둘 다 수용하는 defensive 언랩 — `admin-payment-settings.js`, `Admin/PaymentSettingsPage.tsx`
+
 ### 2026-04-11 (External QR + inventory adjust fix + hydration 검증 자동화)
 - feat(settings): External QR 카드 신규 — Operations 탭에 커스텀 이름 QR 생성 섹션 추가. 파트너 가게, 호텔 로비, 사무실 등 외부 지점에 주는 QR. 이름(최대 20자) 입력 → SVG/PNG/Print/삭제. 손님이 스캔 시 모바일 메뉴 진입, 주문의 `table_number` 컬럼에 이름 그대로 저장(내부 테이블 QR과 동일 경로). 저장 위치: `table_settings.externalQRs: string[]` — DB 마이그레이션/백엔드 변경 0건
 - fix(settings): External QR 카드 좌우 풀폭 — `gridColumn: 1 / -1`로 2열 SettingsGrid에서 한 행 통째 사용. 생성된 QR들은 `TablesGrid auto-fill minmax(180px, 1fr)`로 가로 wrap

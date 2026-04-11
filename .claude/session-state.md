@@ -1,7 +1,21 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-11 (payment-settings 응답 형식 표준화 추가)
-**현재 버전:** v3.12 (내부 수정만 이번 세션 — 버전 미증가)
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-04-11 18:32 (v3.13 운영 배포 완료)
+**현재 버전:** v3.13
+**작업 상태:** 완료 — 운영 배포 성공
+
+### 운영 배포 결과 (2026-04-11 18:32)
+- commit `94a0bcfd` — notices/addon/packages/payment-settings 수정 일괄
+- `main.cf7275d4.js` 운영 반영
+- smoke: 10/10 passed
+- 백업: `/var/www/backups/20260411_183058`
+- 포함 내역:
+  - notices 데모/테스트 계정 제외 필터
+  - admin 하드웨어 Package addon max_quantity=0(무제한) UI 허용 + loader 버그 수정
+  - 운영 DB `system_product_addons.max_quantity` 108건 1→0 (18:00 이미 수행)
+  - /packages Quote Summary 소프트웨어 구독 라인 + 4개 언어 i18n
+  - /packages Request a Quote 모달 z-index + 레이아웃 수정
+  - admin payment-settings 응답 형식 표준화
+  - (이전 대기분) External QR, inventory adjust, Phase C-6 파일럿 등
 
 ### 진행 중인 작업
 - 없음
