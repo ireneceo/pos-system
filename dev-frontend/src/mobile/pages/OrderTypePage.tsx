@@ -318,7 +318,7 @@ const OrderTypePage: React.FC = () => {
           textAlign: 'center',
           border: '1px solid #C7D2FE'
         }}>
-          Table {tableFromQR}
+          {tableFromQR}
         </div>
       )}
 

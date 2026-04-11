@@ -3535,7 +3535,7 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
 
               {/* External QR — custom-named QR codes for partner shops, hotel lobbies, etc. */}
-              <SettingsCard>
+              <SettingsCard style={{ gridColumn: '1 / -1' }}>
                 <CardTitle>External QR</CardTitle>
                 <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
                   Create QR codes with custom names (e.g. "Cafe Maru", "Lobby") for partner locations.
