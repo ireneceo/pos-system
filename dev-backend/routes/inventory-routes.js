@@ -409,12 +409,15 @@ router.post('/:restaurantId/inventory/waste', async (req, res) => {
 });
 
 // POST /api/restaurants/:restaurantId/inventory/adjust - 수동 조정
+// Accepts either:
+//   { ingredient_id, quantity }       — incremental delta (legacy)
+//   { ingredient_id, new_quantity }   — absolute target value (used by inline edit)
 router.post('/:restaurantId/inventory/adjust', async (req, res) => {
   const transaction = await database.sequelize.transaction();
 
   try {
     const { restaurantId } = req.params;
-    const { ingredient_id, quantity, notes } = req.body;
+    const { ingredient_id, quantity, new_quantity, notes, reason } = req.body;
     const userId = req.user.id;
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
@@ -423,9 +426,19 @@ router.post('/:restaurantId/inventory/adjust', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Ingredient not found' });
     }
 
-    const adjustQty = parseFloat(quantity) || 0; // Can be positive or negative
     const currentStock = parseFloat(ingredient.current_stock) || 0;
-    const newStock = Math.max(0, currentStock + adjustQty);
+    let newStock;
+    let adjustQty;
+
+    if (new_quantity !== undefined && new_quantity !== null && new_quantity !== '') {
+      // Absolute mode — set stock to exact value
+      newStock = Math.max(0, parseFloat(new_quantity) || 0);
+      adjustQty = newStock - currentStock;
+    } else {
+      // Incremental mode — add delta to current
+      adjustQty = parseFloat(quantity) || 0;
+      newStock = Math.max(0, currentStock + adjustQty);
+    }
 
     // Update ingredient stock
     await Ingredient.update(
@@ -441,7 +454,7 @@ router.post('/:restaurantId/inventory/adjust', async (req, res) => {
       quantity_change: adjustQty,
       unit: ingredient.unit,
       stock_after: newStock,
-      notes: notes || 'Manual adjustment',
+      notes: notes || reason || 'Manual adjustment',
       created_by: userId
     }, { transaction });
 
