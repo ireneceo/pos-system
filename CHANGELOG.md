@@ -6,6 +6,16 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-11 (Phase C-6 + UX 정리 + repo hygiene)
+- refactor(C-6): `components/Inventory/InventoryManager.tsx` 3141줄 → 26개 파일로 분할 (types/styles/utils + 11 hooks + 3 sections + 9 modals + 슬림 main 340줄). 공개 API 불변(`<InventoryManager mode restaurantId />`) — 2개 consumer 무수정. 패턴: hook = state+API capsule, mode 분기는 hook 내부에만, Add+Edit는 mode prop으로 통합
+- fix(Inventory): 대시보드 카드 5 → 4 (Expiring Soon 제거 — 아래 Expiring Items 섹션과 중복)
+- fix(Inventory): 9개 모달 모두 표준 `Modal footer={...}` prop 사용 → ButtonGroup이 body 안에 있어 본문 길어지면 사라지던 문제 해결, sticky footer + border-top
+- fix(Inventory): 테이블 반응형 정렬 깨짐 — `& > div:nth-child(N)`은 MobileGrid의 `display: contents` 때문에 grandchildren에 도달 못 함. 클래스 기반(`.col-min`, `.col-cost`, `.col-supplier`, `.col-last`) 셀렉터로 교체. 1280px 미만에서 5컬럼으로 줄이고 Actions 컬럼 폭 160px → 260px로 4개 액션 버튼이 한 줄에 나란히
+- fix(Inventory): 버튼에서 `+` prefix 제거 (Receive Stock / Record Waste / Add General Stock)
+- fix(StatsGrid): 15개 페이지의 로컬 StatsGrid styled-component 표준화. 모두 `repeat(4,1fr) → ≤1024px repeat(2,1fr) → ≤768px repeat(2,1fr)` 패턴. 이전엔 12개가 `auto-fit minmax(200px,1fr)`로 모바일에서 1열로 무너지거나, AddonModulesPage는 ≤640px에서 명시적 1열이었음. 영향 페이지: Admin/{AddonModules,ContactInquiries,HardwareQuotes,RestaurantSubscriptions}, Brand/Foodcourt/Owner/Manager/Restaurant 5종 OperationInquiry, Manager/{Invoices,ManagerPromotions,ManagerSubscriptions,Sales,Subscriptions}, Owner/Notices
+- chore(repo): `dev-frontend/public/static/`(4 파일) + `dev-frontend/nginx-build/`(138 파일) git untrack — Auto-commit이 잡아간 옛 빌드 산출물. CRA가 `public/`을 빌드에 그대로 복사하기 때문에 매 빌드마다 옛 main.js 해시가 함께 들어와 brower cache miss 시 ChunkLoadError 유발했음. 이제 단일 main.js만 출력
+- chore(repo): `dev-frontend-build/` (495 파일) git untrack — 로컬 nginx 서빙 디렉토리. 매 빌드마다 거대 diff를 생성하던 hygiene 이슈. 디렉토리는 디스크에 남아 nginx 서빙 정상
+
 ### 2026-04-10 (저녁 — Phase C 구조 개선)
 - refactor(C-3): Fetch 인터셉터 단일화 — `utils/httpClient.ts` 추출, `index.tsx` 시작 시 1회만 설치. `AuthContext`의 이중 fetch 패치 제거 → StrictMode/HMR 인터셉터 누락/중복 위험 해소
 - refactor(C-4): `CustomerContext` 내부 분할 — `useMobileCustomerState` + `usePosCustomersState` + composite provider. 공개 API 불변으로 10개 consumer 수정 없음
