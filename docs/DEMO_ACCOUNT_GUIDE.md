@@ -32,13 +32,19 @@
 | `brands` | BOOLEAN DEFAULT false | BOOLEAN DEFAULT false | 브랜드 |
 | `foodcourts` | BOOLEAN DEFAULT false | BOOLEAN DEFAULT false | 푸드코트 |
 
-### 보호 규칙 (2026-04-03 확장)
+### 보호 규칙 (2026-04-03 확장, 2026-04-11 업데이트)
 
 | 보호 | is_demo | is_test |
 |------|:---:|:---:|
 | 프로필/비밀번호 변경 차단 (demoProtection 미들웨어) | ✅ | ✅ |
 | 비밀번호 리셋 API 차단 (reset-password) | ✅ | ✅ |
 | 매일 리셋 (demoResetScheduler) | ✅ | ❌ |
+| 관리자 공지 이메일 발송 제외 (2026-04-11) | ✅ | ✅ |
+
+**관리자 공지 이메일 제외 상세** (`routes/notices.js`):
+- broadcast 4개 target (`all`/`role`/`brand`/`foodcourt`)의 recipient 생성 시 User/Restaurant 양쪽에서 `is_demo=false, is_test=false` 필터 적용
+- `select_restaurants`(명시 선택)는 관리자가 의도적으로 데모를 고를 수 있도록 필터 적용하지 않음
+- Role=Restaurant Admin/Staff의 경우 소속 레스토랑이 데모면 해당 유저도 제외
 
 ### 필터링 범위
 

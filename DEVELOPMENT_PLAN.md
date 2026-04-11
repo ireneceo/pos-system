@@ -1,8 +1,32 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-11 (Phase C-6 파일럿 + UX 정리 + External QR + hydration 검증 스크립트)
+> **최종 업데이트:** 2026-04-11 (v3.13 운영 배포 — notices 데모 제외 + admin 하드웨어 max_quantity + /packages Quote 모달)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: v3.13 운영 배포 (2026-04-11)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| notices 데모/테스트 제외 | 관리자 공지 이메일 발송 시 `is_demo`/`is_test` 계정 제외. broadcast 4개 target(all/role/brand/foodcourt) 필터 적용. `select_restaurants`는 의도 존중하여 그대로 | ✓ |
+| admin 하드웨어 max_quantity 무제한 UI | Hardware Package 편집 모달에서 `max_quantity=0`(무제한) 설정 불가하던 버그. loader `\|\| 1` → `?? 0`, 신규 기본 0, input min=0, `(0 = unlimited)` 힌트 | ✓ |
+| 운영 DB max_quantity UPDATE | `system_product_addons.max_quantity=1`인 108건을 0(무제한)으로 일괄 UPDATE (`/var/www/backups/system_product_addons_20260411_175650.sql` 백업) | ✓ |
+| /packages Quote Summary 구독 라인 | Request a Quote 모달 하단에 소프트웨어 구독 플랜/청구주기/가격 + "Billed separately" 안내. 4개 언어 i18n (en/ko/zh/ms) | ✓ |
+| /packages Request a Quote 모달 레이아웃 | z-index `200 → 10000` (Landing 헤더 뒤로 숨던 문제), ModalContent `max-height`, sticky title/buttons, 모바일 풀스크린 | ✓ |
+| admin payment-settings 응답 표준화 | GET/POST 응답을 `{success, data}`로 래핑, 에러 응답 `{success:false, message}` 정규화 | ✓ |
+| 운영 배포 | 18:32 배포 완료. smoke 10/10, `main.cf7275d4.js`, 백업 `/var/www/backups/20260411_183058` | ✓ |
+
+### 수정된 파일
+- `dev-backend/routes/notices.js`
+- `dev-backend/routes/admin-payment-settings.js`
+- `dev-frontend/src/pages/Admin/SystemProductManagementPage.tsx`
+- `dev-frontend/src/pages/Admin/PaymentSettingsPage.tsx`
+- `dev-frontend/src/pages/Landing/PackagesPage.tsx`
+- `dev-frontend/public/locales/{en,ko,zh,ms}/landing.json`
 
 ---
 

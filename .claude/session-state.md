@@ -1,114 +1,61 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-11 18:32 (v3.13 운영 배포 완료)
+**마지막 업데이트:** 2026-04-11 (v3.13 운영 배포 완료, /개발완료)
 **현재 버전:** v3.13
-**작업 상태:** 완료 — 운영 배포 성공
-
-### 운영 배포 결과 (2026-04-11 18:32)
-- commit `94a0bcfd` — notices/addon/packages/payment-settings 수정 일괄
-- `main.cf7275d4.js` 운영 반영
-- smoke: 10/10 passed
-- 백업: `/var/www/backups/20260411_183058`
-- 포함 내역:
-  - notices 데모/테스트 계정 제외 필터
-  - admin 하드웨어 Package addon max_quantity=0(무제한) UI 허용 + loader 버그 수정
-  - 운영 DB `system_product_addons.max_quantity` 108건 1→0 (18:00 이미 수행)
-  - /packages Quote Summary 소프트웨어 구독 라인 + 4개 언어 i18n
-  - /packages Request a Quote 모달 z-index + 레이아웃 수정
-  - admin payment-settings 응답 형식 표준화
-  - (이전 대기분) External QR, inventory adjust, Phase C-6 파일럿 등
+**작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
-### 이어서 한 작업 (2026-04-11 저녁)
-
-#### Notice 이메일 발송에서 데모/테스트 계정 제외 (dev only)
-- `routes/notices.js` recipient 생성 로직: target_type `all`/`role`/`brand`/`foodcourt` 4개 브로드캐스트에서 `is_demo=false, is_test=false` 필터 추가
-- Restaurant + User 모두 필터 적용 (두 모델 모두 is_demo/is_test 컬럼 존재)
-- `role=Restaurant Admin/Staff`의 경우 유저·레스토랑 양쪽 필터 (데모 레스토랑 소속 실계정도 제외)
-- `target_type=select_restaurants` (명시 선택)는 그대로 유지 — 관리자가 의도적으로 데모 선택 가능
-- 검증 실호출 10/10: all(5개 rest, 2 user 포함), role=Restaurant Admin(5 rest), role=Brand General(1 user), 데모/테스트 0건. 테스트 notice 원복 완료
-- health-check 39/39
-
-#### payment-settings 응답 형식 표준화 (dev only)
-- `routes/admin-payment-settings.js` GET `/` → `{success, data}` 래핑 (이전: flat)
-- POST `/` 응답에 `data` 필드 추가
-- 에러 응답 `{error, details}` → `{success:false, message}` 표준화
-- 프론트: `Admin/PaymentSettingsPage.tsx` — legacy flat + 새 래핑 둘 다 수용 (`json.success && json.data ? json.data : json`)
-- **`/available/:currency`는 변경 범위 외** — 6+ invoice 페이지 + brands/foodcourts sibling 변경 필요, 별도 작업으로 분리
-- 검증: API 실호출 GET/POST/재GET (데이터 변경 없음 확인), 빌드 warning 0 신규, health-check 39/39, hydration check 0 warning
-
 ### 완료된 작업 (이번 세션 — 2026-04-11)
 
-#### 1. Phase C-6 파일럿 — InventoryManager 분할
-- `components/Inventory/InventoryManager.tsx` 3141줄 → 26개 파일 (types/styles/utils + 11 hooks + 3 sections + 9 modals + 슬림 main 340줄)
-- 공개 API 불변 (`<InventoryManager mode restaurantId />`) — 2개 consumer 무수정
-- 패턴 원칙 (C-6 나머지에 재사용):
-  1. Hook = state+로직+API capsule. setter는 useInventoryData에서 받아 optimistic update
-  2. Mode 분기는 hook 내부에서만. Section/Modal은 mode 무지
-  3. Add+Edit 유사 모달은 mode prop으로 통합
-  4. 단방향 data flow
+#### 1. notices 데모/테스트 계정 제외 (v3.13)
+- `routes/notices.js` broadcast 4개 target(all/role/brand/foodcourt)에서 `is_demo=false, is_test=false` 필터
+- `select_restaurants`는 명시 선택이라 그대로
+- Restaurant Admin/Staff는 소속 레스토랑까지 교차 체크
+- 검증 10/10, 원복 완료
+- 문서: `docs/DEMO_ACCOUNT_GUIDE.md` 보호 규칙 테이블 업데이트
 
-#### 2. Inventory UX 정리
-- 대시보드 카드 5 → 4 (Expiring Soon 제거)
-- 9 모달 모두 표준 `Modal footer={...}` prop 전환 (sticky footer)
-- 테이블 반응형 정렬 fix — `display: contents` 때문에 `nth-child` 못 미치는 문제, 클래스 셀렉터(`.col-min`, `.col-cost`, `.col-supplier`, `.col-last`)로 교체. 1280px 미만에서 5컬럼 + Actions 폭 160px→260px
-- 버튼 `+` prefix 제거
+#### 2. admin 하드웨어 max_quantity 무제한 UI (v3.13)
+- `SystemProductManagementPage.tsx` Hardware Package 편집 모달
+- loader `|| 1` → `?? 0` (기존 0이 1로 변조되던 핵심 버그)
+- 신규 addon 기본값 0, input `min="0"`, `|| 0` fallback, `(0 = unlimited)` 힌트
+- **운영 DB**: `system_product_addons.max_quantity=1`인 108건을 0으로 일괄 UPDATE (백업 `system_product_addons_20260411_175650.sql`)
 
-#### 3. StatsGrid 15 페이지 표준화
-- 모두 `4 → ≤1024 2 → ≤768 2` 통일. 이전 12개는 `auto-fit minmax(200px, 1fr)`로 모바일 1열 무너짐
-- 영향: Admin 4 + OperationInquiry 5 + Manager 5 + Owner 1
+#### 3. /packages Quote Summary 소프트웨어 구독 라인 (v3.13)
+- `PackagesPage.tsx` Request a Quote 모달: 플랜/청구주기/가격 + "Billed separately" 안내
+- 하드웨어 one-time 총액과 dashed divider로 분리
+- 체크박스/플랜/가격 없을 때 숨김 가드
+- i18n 2 keys × 4 lang (en/ko/zh/ms)
 
-#### 4. Repo hygiene (3건 untrack)
-- `public/static/` (4 파일), `nginx-build/` (138 파일), `dev-frontend-build/` (495 파일)
-- `.gitignore` 갱신. 매 빌드마다 발생하던 거대 diff + 옛 main.js 해시 복사로 인한 ChunkLoadError 해결
+#### 4. /packages Request a Quote 모달 레이아웃 (v3.13)
+- z-index `200 → 10000` (Landing 헤더 1000 뒤로 숨던 문제)
+- ModalContent `max-height: calc(100vh - 40px)`, flex column
+- ModalTitle 상단 고정(`flex-shrink:0` + border-bottom)
+- ModalForm 중앙만 스크롤(`overflow-y: auto`)
+- ModalButtonRow 하단 sticky(`position: sticky; bottom:0` + border-top)
+- 모바일(≤640px) 풀스크린
 
-#### 5. 운영 배포 (2026-04-11 06:03)
-- Phase C-3/C-4/C-5/C-6 + StatsGrid 15 + repo hygiene (public/static, nginx-build) + 이모지 치환 일괄
-- `main.b6c3e39d.js` 운영 배포
-- 9단계 검증 PASS: 39/39 health-check + 모든 SPA 라우트 200
-- 운영 smoke: 9/10 (1 false-fail: payment-settings 응답 형식 차이, 기능 정상)
-- 백업: `/var/www/backups/20260411_060326`
+#### 5. admin payment-settings 응답 형식 표준화 (v3.13)
+- `GET/POST /api/admin/payment-settings` → `{success, data}` 래핑
+- 에러 응답 `{success:false, message}` 정규화
+- 프론트에 legacy/새 래핑 둘 다 수용하는 defensive 언랩
+- **`/available/:currency`는 연쇄 영향 커서 별도 작업**
 
-#### 6. inventory adjust route 버그 수정 (dev only)
-- `POST /inventory/adjust`가 `quantity` (incremental)만 받아 인라인 편집 작동 안 함 — long-standing 버그
-- `new_quantity` (absolute) 수용 추가, `new_quantity=0` 정상 처리
-- 4 시나리오 검증 완료
+### 운영 배포 (2026-04-11 18:32)
+- commit `94a0bcfd` (기능) + `149ec25e` (CHANGELOG)
+- `main.cf7275d4.js` 운영 반영
+- smoke: 10/10 passed
+- 백업: `/var/www/backups/20260411_183058`
 
-#### 7. External QR 기능 (dev only)
-- Settings Operations 탭에 새 카드 — 파트너 가게/호텔/사무실 등 외부용 커스텀 이름 QR
-- SVG/PNG/Print/삭제. 저장: `table_settings.externalQRs: string[]`
-- 주문은 기존 `table_number` 컬럼에 이름 그대로 기록 (내부 테이블과 동일 경로)
-- 백엔드 변경 0, DB 마이그레이션 0
-- 카드 좌우 풀폭 (`gridColumn: 1 / -1`), QR은 가로 wrap
-- 모바일 OrderTypePage `Table` prefix 제거 — 내부/외부 둘 다 값 그대로 표시
-
-#### 8. Hydration 검증 자동화 (dev only)
-- External QR 버그(legacy localStorage hydration시 `undefined.length` crash)가 9단계 검증을 통과한 뒤 발생 — 근본 원인은 새 state field의 legacy 데이터 방어 미검사
-- 신규: `dev-frontend/scripts/state-hydration-check.js` 정적 분석
-- 검증: `npm run check:hydration`, 자체 테스트 시 버그 commit에서 6 warnings 정확 검출
-- `/검증` 스킬에 **0단계** 추가 (build 전 실행, warning 1건이라도 있으면 차단)
-- State Hydration 안전 패턴 가이드 4항목 문서화
-
-### 운영 배포 대기분 (다음 `/배포` 시)
-- `8480a158` inventory adjust route 버그 수정
-- `30bf17f0` External QR 카드 최초 추가
-- `9b7543c2` External QR hydration 수정 + 검증 스크립트
-- `4e5ae091` External QR 풀폭 + Table prefix 제거
-- `f720579c` CHANGELOG 업데이트
-
-### 다음 할 일
-- **Phase C-6 나머지** (별도 세션): 확립된 패턴으로 4개 컴포넌트 분할
+### 후속 과제 (별도 세션 권장)
+- **Phase C-6 나머지** 거대 컴포넌트 4개 분할 (패턴 확립됨, 참조: `components/Inventory/`)
   - `pages/LiveOrders/LiveOrdersPage.tsx` 4458줄
   - `pages/BrandGeneral/BrandInvoicesPage.tsx` 4566줄
   - `pages/Admin/InvoicesPage.tsx` 4205줄
   - `mobile/pages/PaymentPage.tsx` 2597줄
-  - 참조 패턴: `components/Inventory/`
-- **브라우저 수동 확인**: Inventory 4탭 + 9 모달 + External QR 생성/스캔 흐름
-- **발견된 별도 이슈 후속**:
-  - payment-settings 응답 형식 비표준 (flat → `{success, data}`)
-  - DB sync "Too many keys" 경고 (10 models)
-  - `entity_plan_charges` 테이블 운영 미동기화
+- payment-settings `/available/:currency` 표준화 (brands/foodcourts sibling 포함, 프론트 6+ 페이지)
+- DB sync "Too many keys specified" 경고 (10 models, MySQL 64-key 한도)
+- `entity_plan_charges` 테이블 운영 동기화
 
 ---
 
