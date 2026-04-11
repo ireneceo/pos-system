@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkfrontend=self.webpackChunkfrontend||[]).push([[8471],{8471:(e,n,t)=>{t.r(n),t.d(n,{default:()=>c});t(9950);var a=t(5030),r=t(8248),s=t(4414);const c=()=>{const{t:e}=(0,a.Bd)("contract");return(0,s.jsx)(r.A,{entityType:"brand",pageTitle:e("franchiseManagement","Franchise Management")})}}}]);

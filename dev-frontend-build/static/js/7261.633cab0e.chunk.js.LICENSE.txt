@@ -1,8 +1,0 @@
-/**
- * @version 2.2.5
- * @overview QZ Tray Connector
- * @license LGPL-2.1-only
- * <p/>
- * Connects a web client to the QZ Tray software.
- * Enables printing and device communication from javascript.
- */

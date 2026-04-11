@@ -1,9 +1,0 @@
-{
-  "short_name": "PurpleHere",
-  "name": "PurpleHere POS - Cloud Restaurant Management",
-  "icons": [],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#635BFF",
-  "background_color": "#ffffff"
-}
