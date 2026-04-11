@@ -1,12 +1,31 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-10 (저녁 — Phase C 진행 완료)
+**마지막 업데이트:** 2026-04-11 (Phase C-6 Inventory 분할 완료)
 **현재 버전:** v3.12
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션)
+### 완료된 작업 (2026-04-11)
+- **Phase C-6 파일럿 — InventoryManager 분할 완료 (안정화 조치)**
+  - 원본: `components/Inventory/InventoryManager.tsx` 3141줄 단일 파일 (52 useState, 9 모달, 4 탭, 2 모드)
+  - 결과: 26개 파일 총 3905줄, 메인 335줄 (약 10%)
+    - `types.ts` (191) — 모든 인터페이스
+    - `styles.ts` (371) — 25개 styled-components
+    - `utils.ts` (82) — calculateStockStatus, formatStock, formatDate, getStatusLabel, getConfidenceLabel, UNIT_OPTIONS, EMPTY_GENERAL_STOCK_FORM
+    - `hooks/` 11개 — useAuthFetch, useInventoryData, useIngredientAdjustModal, useSettingsModal, useInitialStockModal, useGeneralStockReceiveModal, useGeneralStockForm, useInlineStockEdit, useOrderModal, useDeleteConfirm, useAlertResolver
+    - `sections/` 3개 — DashboardSection (287), StockListSection (513), TransactionHistorySection (146)
+    - `modals/` 8개 — Receive/Waste/InitialStock/GeneralStockReceive/Order/Settings/GeneralStockForm (Add+Edit 통합)/DeleteConfirm
+  - **패턴 원칙** (향후 C-6 나머지 4개 컴포넌트에 재사용):
+    1. Hook = 상태+로직+API 호출의 캡슐. setter는 useInventoryData에서 받아서 훅들이 optimistic update
+    2. Data flow 단방향: InventoryManager → useInventoryData → 9개 feature hooks (setter 공유)
+    3. Section은 presentational. 모든 핸들러 props로 받음
+    4. Modal은 독립 + props-only. 폼 상태는 부모 훅에 위치
+    5. Mode 분기는 hook 내부에서만. Section/Modal은 mode 무지
+    6. Add+Edit 유사 모달은 mode prop으로 통합 (GeneralStockFormModal)
+  - 공개 API 불변: `<InventoryManager mode restaurantId />` — 2개 consumer (InventoryPage, BrandInventoryPage) 무수정
+
+### 완료된 작업 (이전 세션 — 2026-04-10)
 - **Phase C-1/C-2 운영 배포** (17:19) — 토큰 키 단일 진입점 + 하드코딩 fallback 제거. 운영 health-check 39/39 통과
 - **Phase C-3 개발 완료** — Fetch 인터셉터 단일화. 신규 `utils/httpClient.ts`에 `installFetchInterceptor()` + `setOn401Handler()`. `index.tsx`에서 1회 호출, `AuthContext`는 on401 콜백만 등록. StrictMode/HMR 인터셉터 누락·중복 위험 해소
 - **Phase C-4 개발 완료** — `CustomerContext` 내부 분할
@@ -25,31 +44,33 @@
   - 중간 회귀 3건 즉시 수정: mobile-helpers `TableQRSession` 중복 선언, orders-payment `isPaymentAllowed` helper 누락, mobile-public `Order` import 누락
 - **63개 백엔드/셸 스크립트 이모지 치환** — ✅/❌ → ✓/✗ (perl bulk 안전 치환). 운영 배포는 미뤄두고 다음 배포 기회에 합치기
 
-### 검증
-- 빌드: main.790aac97.js, 64초, 신규 warning 0
+### 검증 (C-6 InventoryManager)
+- 빌드: main.695189c5.js, 124초, 신규 warning 0 (기존 pre-existing warnings 유지)
 - health-check: 39/39 통과
-- 분할 라우트 추가 실호출: 14/14 (total 53/53 포함 health)
-- 역할별 플로우: 16/16 (POS Admin + 모바일 downtown-pizza + demo-korean-bbq)
-- SPA 라우팅: 10개 경로 전부 200
-- 번들 마커: `mobile_customer:`×1, `mobile_guest:`×1, `mobile_token:`×2, `locationchange`×1, `__locationChangePatched`×1, `__httpClientInstalled`×1, `auth_token`×2, 구 `__fetchInterceptorInstalled`/`__originalFetch` 0
+- Inventory API 실호출 14/14:
+  - Restaurant mode (System Admin): summary/inventory/alerts/suggestions/expiring/general-stock/suppliers/gs-categories/transactions 9개
+  - Brand mode (Brand General): product-ingredients track_stock/general-stock/gs-categories/suppliers/gs-transactions 5개
+- 번들 마커 확인 (청크 3184.28f7762a.chunk.js 82KB): PAR Level calculation, Unlink from Inventory, Receive Stock, Record Waste, Set Initial Stock, Add General Stock, Edit General Stock, Reorder Suggestions, Expiring Items 9/9
+- 페이지 HTTP: /restaurant/1/inventory 200, /brand/inventory 200, 청크 URL 200
 
 ### 운영 배포 대기분
 - Phase C-3 (httpClient 단일화) — 프론트
 - Phase C-4 (CustomerContext 분할 + 모바일 세션 slug 격리) — 프론트
 - Phase C-5 (백엔드 5개 라우트 분할) — 백엔드
+- Phase C-6 파일럿 (InventoryManager 26파일 분할) — 프론트
 - 이모지 치환 (63개 스크립트) — 백엔드
 
 → 다음 `/배포` 명령 시 한 번에 운영 동기화. C-4의 모바일 세션 격리 버그 수정도 운영에 나가야 함.
 
 ### 다음 할 일
-- **C-6**: 프론트 거대 컴포넌트 5개 분할 (각 세션 분리 권장, 브라우저 수동 검증 필수)
+- **C-6 나머지**: 확립된 패턴으로 4개 컴포넌트 분할 (별도 세션 권장)
   - `pages/LiveOrders/LiveOrdersPage.tsx` 4458줄
-  - `components/Inventory/InventoryManager.tsx` 3141줄
   - `pages/BrandGeneral/BrandInvoicesPage.tsx` 4566줄
-  - `mobile/pages/PaymentPage.tsx` 2597줄
   - `pages/Admin/InvoicesPage.tsx` 4205줄
-  - **접근법**: hook 추출(useXxxState.ts) + 서브컴포넌트 추출(XxxSection.tsx) — sed로 일괄 분할 불가 (closure/state/effects 얽힘)
-- 브라우저 수동 확인: 모바일 세션 per-slug 격리 동작 확인 (Ctrl+Shift+R 후 레스토랑 간 이동 테스트)
+  - `mobile/pages/PaymentPage.tsx` 2597줄
+  - **참조 패턴**: `components/Inventory/` (types/styles/utils + hooks/sections/modals 구조)
+- 브라우저 수동 확인: Inventory 4탭 + 9개 모달 실제 동작 (Ctrl+Shift+R 후 Restaurant/Brand 모드 각각)
+- 브라우저 수동 확인: 모바일 세션 per-slug 격리 (C-4 후속)
 
 ---
 
