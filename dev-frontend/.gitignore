@@ -10,6 +10,8 @@
 
 # production
 # /build (Plesk 배포를 위해 주석 처리)
+/public/static
+/nginx-build
 
 # misc
 .DS_Store
