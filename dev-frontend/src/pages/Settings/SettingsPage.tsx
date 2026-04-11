@@ -961,8 +961,10 @@ const SettingsPage: React.FC = () => {
     totalTables: 20,
     qrCodeBaseUrl: window.location.origin,
     qrMode: 'static' as 'static' | 'session',
-    qrExpirationMinutes: 180
+    qrExpirationMinutes: 180,
+    externalQRs: [] as string[]
   });
+  const [newExternalQR, setNewExternalQR] = useState('');
   
   const [tables, setTables] = useState<Table[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
@@ -1156,7 +1158,8 @@ const SettingsPage: React.FC = () => {
                 totalTables: restaurant.table_settings.totalTables || 20,
                 qrCodeBaseUrl: restaurant.table_settings.qrCodeBaseUrl || window.location.origin,
                 qrMode: restaurant.table_settings.qrMode || 'static',
-                qrExpirationMinutes: restaurant.table_settings.qrExpirationMinutes || 180
+                qrExpirationMinutes: restaurant.table_settings.qrExpirationMinutes || 180,
+                externalQRs: Array.isArray(restaurant.table_settings.externalQRs) ? restaurant.table_settings.externalQRs : []
               });
             }
 
@@ -1632,6 +1635,149 @@ const SettingsPage: React.FC = () => {
       link.click();
       URL.revokeObjectURL(url);
     }
+  };
+
+  // ─── External QR (custom-named QR codes for partner shops, hotel lobbies, etc.) ───
+  // Stored as `tableSettings.externalQRs: string[]`. The name is sent as `?table={name}`,
+  // identical to internal table numbers — orders record it as `order.table_number` exactly
+  // the same way internal table QRs do. No backend changes required.
+  const externalQRRef = useRef<AutoSaveHandle>(null);
+  const externalQRUrl = (name: string) =>
+    `${tableSettings.qrCodeBaseUrl}/mobile/${restaurantSlug}?table=${encodeURIComponent(name)}`;
+
+  const handleAddExternalQR = () => {
+    const name = newExternalQR.trim();
+    if (!name) return;
+    if (name.length > 20) {
+      alert('Name must be 20 characters or less');
+      return;
+    }
+    if (tableSettings.externalQRs.includes(name)) {
+      alert('This name already exists');
+      return;
+    }
+    setTableSettings({ ...tableSettings, externalQRs: [...tableSettings.externalQRs, name] });
+    setNewExternalQR('');
+    externalQRRef.current?.triggerSave();
+  };
+
+  const handleRemoveExternalQR = (name: string) => {
+    setTableSettings({
+      ...tableSettings,
+      externalQRs: tableSettings.externalQRs.filter(n => n !== name)
+    });
+    externalQRRef.current?.triggerSave();
+  };
+
+  const handleDownloadExternalPNG = (name: string, idx: number) => {
+    const qrCanvas = document.getElementById(`qr-ext-${idx}`) as HTMLCanvasElement;
+    if (!qrCanvas) return;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const padding = 20;
+    const labelHeight = 50;
+    const qrSize = qrCanvas.width || 100;
+    canvas.width = qrSize + padding * 2;
+    canvas.height = qrSize + padding * 2 + labelHeight;
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0A2540';
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, canvas.width / 2, padding + labelHeight / 2);
+    ctx.drawImage(qrCanvas, padding, padding + labelHeight);
+    const url = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `${name}-qr.png`;
+    link.href = url;
+    link.click();
+  };
+
+  const handleDownloadExternalSVG = (name: string, idx: number) => {
+    const storeName = storeSettings.name || 'Restaurant';
+    const svgElement = document.getElementById(`qr-svg-ext-${idx}`);
+    if (!svgElement) return;
+    const clonedSvg = svgElement.cloneNode(true) as SVGElement;
+    const svgWrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svgWrapper.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svgWrapper.setAttribute('width', '300');
+    svgWrapper.setAttribute('height', '350');
+    svgWrapper.setAttribute('viewBox', '0 0 300 350');
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('width', '300');
+    bg.setAttribute('height', '350');
+    bg.setAttribute('fill', 'white');
+    svgWrapper.appendChild(bg);
+    const storeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    storeText.setAttribute('x', '150');
+    storeText.setAttribute('y', '30');
+    storeText.setAttribute('text-anchor', 'middle');
+    storeText.setAttribute('font-family', 'Arial, sans-serif');
+    storeText.setAttribute('font-size', '16');
+    storeText.setAttribute('font-weight', '600');
+    storeText.setAttribute('fill', '#0A2540');
+    storeText.textContent = storeName;
+    svgWrapper.appendChild(storeText);
+    const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    nameText.setAttribute('x', '150');
+    nameText.setAttribute('y', '60');
+    nameText.setAttribute('text-anchor', 'middle');
+    nameText.setAttribute('font-family', 'Arial, sans-serif');
+    nameText.setAttribute('font-size', '24');
+    nameText.setAttribute('font-weight', 'bold');
+    nameText.setAttribute('fill', '#0A2540');
+    nameText.textContent = name;
+    svgWrapper.appendChild(nameText);
+    const qrGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    qrGroup.setAttribute('transform', 'translate(50, 80)');
+    clonedSvg.setAttribute('width', '200');
+    clonedSvg.setAttribute('height', '200');
+    qrGroup.appendChild(clonedSvg);
+    svgWrapper.appendChild(qrGroup);
+    const svgData = new XMLSerializer().serializeToString(svgWrapper);
+    const blob = new Blob([svgData], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `${name}-qr.svg`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrintExternalQR = (name: string, idx: number) => {
+    const storeName = storeSettings.name || 'Restaurant';
+    const svgElement = document.getElementById(`qr-svg-ext-${idx}`);
+    if (!svgElement) return;
+    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Print QR - ${name}</title>
+        <style>
+          body { margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: Arial, sans-serif; }
+          .store-name { font-size: 18px; font-weight: 600; color: #0A2540; margin-bottom: 8px; }
+          .ext-name { font-size: 28px; font-weight: bold; color: #0A2540; margin-bottom: 16px; }
+          .qr-container { padding: 20px; background: white; }
+          .qr-container svg { width: 200px; height: 200px; }
+          @media print { body { padding: 0; } .qr-container svg { width: 250px; height: 250px; } }
+        </style>
+      </head>
+      <body>
+        <div class="store-name">${storeName}</div>
+        <div class="ext-name">${name}</div>
+        <div class="qr-container">${svgData}</div>
+        <script>
+          window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const handlePaymentToggle = (methodKey: string, platform: 'pos' | 'mobile', enabled: boolean, refKey?: string) => {
@@ -3378,6 +3524,75 @@ const SettingsPage: React.FC = () => {
                   <div style={{ marginTop: '24px', padding: '16px', background: '#F0F0FF', borderRadius: '8px', color: '#635BFF', fontSize: '14px' }}>
                     Session mode is active. QR codes are generated per visit from the <strong>{t('settings:settingsPage.floorPlan')}</strong> page.
                   </div>
+                )}
+              </SettingsCard>
+
+              {/* External QR — custom-named QR codes for partner shops, hotel lobbies, etc. */}
+              <SettingsCard>
+                <CardTitle>External QR</CardTitle>
+                <p style={{ color: '#6B7C93', marginBottom: '16px', fontSize: '14px' }}>
+                  Create QR codes with custom names (e.g. "Cafe Maru", "Lobby") for partner locations.
+                  Orders will be recorded with this name in place of a table number.
+                </p>
+
+                <FormGroup>
+                  <Label>Add Custom QR</Label>
+                  <AutoSaveField ref={externalQRRef} onSave={handleSave}>
+                    <Input
+                      type="text"
+                      value={newExternalQR}
+                      onChange={(e) => setNewExternalQR(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddExternalQR(); } }}
+                      placeholder="e.g., Cafe Maru"
+                      maxLength={20}
+                    />
+                  </AutoSaveField>
+                  <button
+                    type="button"
+                    onClick={handleAddExternalQR}
+                    style={{ marginTop: '8px', padding: '10px 20px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
+                  >
+                    Add
+                  </button>
+                  <HelpText>Up to 20 characters. The name will appear as the table identifier on orders.</HelpText>
+                </FormGroup>
+
+                {tableSettings.externalQRs.length > 0 && (
+                  <>
+                    <Divider />
+                    <div style={{ marginTop: '24px' }}>
+                      <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '16px' }}>
+                        External QR Codes ({tableSettings.externalQRs.length})
+                      </h4>
+                      <TablesGrid>
+                        {tableSettings.externalQRs.map((name, idx) => {
+                          const qrUrl = externalQRUrl(name);
+                          return (
+                            <TableItem key={`ext-${idx}-${name}`}>
+                              <TableNumber>{name}</TableNumber>
+                              <QRContainer>
+                                <QRCodeCanvas id={`qr-ext-${idx}`} value={qrUrl} size={100} level="H" includeMargin={true} style={{ display: 'none' }} />
+                                <QRCodeSVG id={`qr-svg-ext-${idx}`} value={qrUrl} size={100} level="H" includeMargin={true} />
+                              </QRContainer>
+                              <TableActions>
+                                <ActionButton onClick={() => handleDownloadExternalSVG(name, idx)} title="Download SVG">SVG</ActionButton>
+                                <ActionButton onClick={() => handleDownloadExternalPNG(name, idx)} title="Download PNG">PNG</ActionButton>
+                                <ActionButton onClick={() => handlePrintExternalQR(name, idx)}>Print</ActionButton>
+                                <ActionButton
+                                  type="button"
+                                  onClick={() => handleRemoveExternalQR(name)}
+                                  title="Delete"
+                                  style={{ color: '#DC2626' }}
+                                >
+                                  ✕
+                                </ActionButton>
+                              </TableActions>
+                            </TableItem>
+                          );
+                        })}
+                      </TablesGrid>
+                    </div>
+                  </>
                 )}
               </SettingsCard>
 
