@@ -1,12 +1,12 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-11 (v3.13 운영 배포 — notices 데모 제외 + admin 하드웨어 max_quantity + /packages Quote 모달)
+> **최종 업데이트:** 2026-04-11 (운영 배포 — notices 데모 제외 + admin 하드웨어 max_quantity + /packages Quote 모달, 버전 v3.12 유지)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 
 ---
 
-## ✅ 완료: v3.13 운영 배포 (2026-04-11)
+## ✅ 완료: 2026-04-11 운영 배포 (버전 v3.12 유지)
 
 ### 완료된 작업
 

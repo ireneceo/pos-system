@@ -6,7 +6,7 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-## [v3.13] — 2026-04-11 배포
+## 2026-04-11 배포 (v3.12 유지 — 버그 수정 및 UI 조정 위주)
 
 ### notices 데모/테스트 제외 + admin 하드웨어 max_quantity 무제한 + /packages Quote 모달 수정 + External QR + inventory adjust fix
 
