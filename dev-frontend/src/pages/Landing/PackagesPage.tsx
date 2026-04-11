@@ -767,34 +767,53 @@ const ModalOverlay = styled.div`
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 200;
+  z-index: 10000;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  overflow-y: auto;
-  padding: 40px 20px;
+  padding: 20px;
+
+  @media (max-width: 640px) {
+    padding: 0;
+    align-items: stretch;
+  }
 `;
 
 const ModalContent = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 32px;
   max-width: 500px;
   width: 100%;
-  flex-shrink: 0;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  @media (max-width: 640px) {
+    border-radius: 0;
+    max-height: 100vh;
+    height: 100%;
+  }
 `;
 
 const ModalTitle = styled.h2`
   font-size: 22px;
   font-weight: 700;
   color: #0A2540;
-  margin: 0 0 24px 0;
+  margin: 0;
+  padding: 28px 32px 16px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #F1F5F9;
 `;
 
 const ModalForm = styled.form`
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding: 24px 32px 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
 `;
 
 const FormGroup = styled.div`
@@ -893,6 +912,13 @@ const ModalButtonRow = styled.div`
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+  position: sticky;
+  bottom: 0;
+  background: white;
+  margin: 8px -32px 0;
+  padding: 16px 32px;
+  border-top: 1px solid #F1F5F9;
+  z-index: 1;
 `;
 
 const SuccessMessage = styled.div`
@@ -1638,14 +1664,14 @@ const PackagesPage: React.FC = () => {
               <ModalTitle>{t('landing:packagesPage.requestAQuote')}</ModalTitle>
 
               {quoteSubmitted ? (
-                <>
+                <div style={{ padding: '24px 32px 32px' }}>
                   <SuccessMessage>
                     {t('landing:packagesPage.yourQuoteRequestHasBeenSubmittedWellCont')}
                   </SuccessMessage>
                   <div style={{ marginTop: 20, textAlign: 'center' }}>
                     <CancelButton onClick={closeModal}>{t('landing:packagesPage.close')}</CancelButton>
                   </div>
-                </>
+                </div>
               ) : (
                 <ModalForm onSubmit={handleQuoteSubmit}>
                   {submitError && <ErrorMessage>{submitError}</ErrorMessage>}
@@ -1887,6 +1913,36 @@ const PackagesPage: React.FC = () => {
                       <span>{t('landing:packagesPage.total')}</span>
                       <span>{currencyInfo.symbol} {formatPrice(totalAmount, selectedCurrency)}</span>
                     </div>
+                    {(() => {
+                      if (!formData.plan_id) return null;
+                      const plan = plans.find((p: any) => p.id === formData.plan_id);
+                      if (!plan) return null;
+                      const isAnnual = formData.billing_cycle === 'annual';
+                      const subPrice = isAnnual
+                        ? (plan.currency_prices?.[selectedCurrency]?.annual || plan.base_price_annual)
+                        : (plan.currency_prices?.[selectedCurrency]?.monthly || plan.base_price_monthly);
+                      if (!subPrice) return null;
+                      return (
+                        <div style={{
+                          borderTop: '1px dashed #E6EBF1',
+                          paddingTop: 8,
+                          marginTop: 8,
+                        }}>
+                          <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            {t('landing:packagesPage.softwareSubscription')}
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span>{plan.display_name} ({isAnnual ? 'annual' : 'monthly'})</span>
+                            <span style={{ fontWeight: 600 }}>
+                              {currencyInfo.symbol} {formatPrice(subPrice, selectedCurrency)}{isAnnual ? '/yr' : '/mo'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>
+                            * {t('landing:packagesPage.softwareChargedSeparately')}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <ModalButtonRow>

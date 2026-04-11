@@ -369,29 +369,32 @@ router.post('/', authenticateToken, async (req, res) => {
     // Create recipients based on target_type
     const recipients = [];
 
+    // Exclude demo/test accounts from broadcast targets (explicit select_restaurants bypasses this)
+    const excludeDemoTest = { is_demo: false, is_test: false };
+
     if (target_type === 'all' && user.role === 'System Admin') {
-      // All restaurants
-      const allRestaurants = await Restaurant.findAll({ attributes: ['id'] });
+      // All restaurants (excluding demo/test)
+      const allRestaurants = await Restaurant.findAll({ where: excludeDemoTest, attributes: ['id'] });
       allRestaurants.forEach(r => {
         recipients.push({ notice_id: notice.id, restaurant_id: r.id });
       });
       // All System Admins (so they can track read status)
-      const systemAdmins = await User.findAll({ where: { role: 'System Admin' }, attributes: ['id'] });
+      const systemAdmins = await User.findAll({ where: { role: 'System Admin', ...excludeDemoTest }, attributes: ['id'] });
       systemAdmins.forEach(u => {
         recipients.push({ notice_id: notice.id, user_id: u.id });
       });
       // All Brand Generals
-      const brandGenerals = await User.findAll({ where: { role: 'Brand General' }, attributes: ['id'] });
+      const brandGenerals = await User.findAll({ where: { role: 'Brand General', ...excludeDemoTest }, attributes: ['id'] });
       brandGenerals.forEach(u => {
         recipients.push({ notice_id: notice.id, user_id: u.id });
       });
       // All Foodcourt Generals
-      const fcGenerals = await User.findAll({ where: { role: 'Foodcourt General' }, attributes: ['id'] });
+      const fcGenerals = await User.findAll({ where: { role: 'Foodcourt General', ...excludeDemoTest }, attributes: ['id'] });
       fcGenerals.forEach(u => {
         recipients.push({ notice_id: notice.id, user_id: u.id });
       });
       // All Restaurant Owners
-      const owners = await User.findAll({ where: { role: 'Restaurant Owner' }, attributes: ['id'] });
+      const owners = await User.findAll({ where: { role: 'Restaurant Owner', ...excludeDemoTest }, attributes: ['id'] });
       owners.forEach(u => {
         recipients.push({ notice_id: notice.id, user_id: u.id });
       });
@@ -400,13 +403,18 @@ router.post('/', authenticateToken, async (req, res) => {
       if (target_roles && Array.isArray(target_roles)) {
         for (const role of target_roles) {
           if (['Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(role)) {
-            const users = await User.findAll({ where: { role }, attributes: ['id'] });
+            const users = await User.findAll({ where: { role, ...excludeDemoTest }, attributes: ['id'] });
             users.forEach(u => {
               recipients.push({ notice_id: notice.id, user_id: u.id });
             });
           }
           if (['Restaurant Admin', 'Staff'].includes(role)) {
-            const users = await User.findAll({ where: { role, restaurant_id: { [Op.ne]: null } }, attributes: ['id', 'restaurant_id'] });
+            const allowedRestaurants = await Restaurant.findAll({ where: excludeDemoTest, attributes: ['id'] });
+            const allowedRestIds = allowedRestaurants.map(r => r.id);
+            const users = await User.findAll({
+              where: { role, restaurant_id: { [Op.in]: allowedRestIds }, ...excludeDemoTest },
+              attributes: ['id', 'restaurant_id']
+            });
             users.forEach(u => {
               recipients.push({ notice_id: notice.id, restaurant_id: u.restaurant_id });
             });
@@ -414,14 +422,14 @@ router.post('/', authenticateToken, async (req, res) => {
         }
       }
     } else if (target_type === 'brand') {
-      // All restaurants in a brand
-      const brandRestaurants = await Restaurant.findAll({ where: { brand_id }, attributes: ['id'] });
+      // All restaurants in a brand (excluding demo/test)
+      const brandRestaurants = await Restaurant.findAll({ where: { brand_id, ...excludeDemoTest }, attributes: ['id'] });
       brandRestaurants.forEach(r => {
         recipients.push({ notice_id: notice.id, restaurant_id: r.id });
       });
     } else if (target_type === 'foodcourt') {
-      // All restaurants in a foodcourt
-      const fcRestaurants = await Restaurant.findAll({ where: { foodcourt_id }, attributes: ['id'] });
+      // All restaurants in a foodcourt (excluding demo/test)
+      const fcRestaurants = await Restaurant.findAll({ where: { foodcourt_id, ...excludeDemoTest }, attributes: ['id'] });
       fcRestaurants.forEach(r => {
         recipients.push({ notice_id: notice.id, restaurant_id: r.id });
       });

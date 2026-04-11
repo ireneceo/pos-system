@@ -402,12 +402,11 @@ const PaymentSettingsPage: React.FC = () => {
       }
 
       if (paymentRes.ok) {
-        const data = await paymentRes.json();
+        const json = await paymentRes.json();
+        const data = json?.success && json?.data ? json.data : json;
         if (data && Object.keys(data).length > 0) {
-          // Normalize additionalCharges: legacy array → per-currency object
           let charges = data.additionalCharges || {};
           if (Array.isArray(charges)) {
-            // Legacy flat array — no currency assignment yet, keep empty
             charges = {};
           }
           const loaded = {

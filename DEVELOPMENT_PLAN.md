@@ -60,7 +60,8 @@
 
 ### 발견된 별도 이슈 (후속 처리 필요)
 
-- payment-settings 응답 형식 비표준 — `{success, data}` 래퍼 미사용
+- ✓ admin payment-settings 응답 형식 표준화 완료 (GET/POST `{success, data}`, 에러 `{success:false, message}`)
+- payment-settings `/available/:currency` 표준화 — 6+ 페이지 + brands/foodcourts sibling 필요, 별도 작업
 - DB sync "Too many keys specified" 경고 (10 models) — MySQL 64-key 한도
 - `entity_plan_charges` 테이블 운영 미동기화
 

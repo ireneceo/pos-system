@@ -326,6 +326,8 @@
   "packagesPage.yourQuoteRequestHasBeenSubmittedWellCont": "Your quote request has been submitted! We'll contact you within 1-2 business days.",
   "packagesPage.iNeedAFormalInvoice": "I need a formal invoice",
   "packagesPage.includeSoftwareSubscription": "Include software subscription",
+  "packagesPage.softwareSubscription": "Software Subscription",
+  "packagesPage.softwareChargedSeparately": "Billed separately from hardware (recurring invoice)",
   "pricingPage.chooseThePlanThatFitsYourBusinessNoHidde": "Choose the plan that fits your business. No hidden fees, cancel anytime.",
   "pricingPage.currency": "Currency:",
   "pricingPage.noPlansAvailableForThisCategoryYet": "No plans available for this category yet.",

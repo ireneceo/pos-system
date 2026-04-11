@@ -1,10 +1,28 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-11 (Phase C-6 + External QR + hydration 검증 자동화 완료)
+**마지막 업데이트:** 2026-04-11 (payment-settings 응답 형식 표준화 추가)
 **현재 버전:** v3.12 (내부 수정만 이번 세션 — 버전 미증가)
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
+
+### 이어서 한 작업 (2026-04-11 저녁)
+
+#### Notice 이메일 발송에서 데모/테스트 계정 제외 (dev only)
+- `routes/notices.js` recipient 생성 로직: target_type `all`/`role`/`brand`/`foodcourt` 4개 브로드캐스트에서 `is_demo=false, is_test=false` 필터 추가
+- Restaurant + User 모두 필터 적용 (두 모델 모두 is_demo/is_test 컬럼 존재)
+- `role=Restaurant Admin/Staff`의 경우 유저·레스토랑 양쪽 필터 (데모 레스토랑 소속 실계정도 제외)
+- `target_type=select_restaurants` (명시 선택)는 그대로 유지 — 관리자가 의도적으로 데모 선택 가능
+- 검증 실호출 10/10: all(5개 rest, 2 user 포함), role=Restaurant Admin(5 rest), role=Brand General(1 user), 데모/테스트 0건. 테스트 notice 원복 완료
+- health-check 39/39
+
+#### payment-settings 응답 형식 표준화 (dev only)
+- `routes/admin-payment-settings.js` GET `/` → `{success, data}` 래핑 (이전: flat)
+- POST `/` 응답에 `data` 필드 추가
+- 에러 응답 `{error, details}` → `{success:false, message}` 표준화
+- 프론트: `Admin/PaymentSettingsPage.tsx` — legacy flat + 새 래핑 둘 다 수용 (`json.success && json.data ? json.data : json`)
+- **`/available/:currency`는 변경 범위 외** — 6+ invoice 페이지 + brands/foodcourts sibling 변경 필요, 별도 작업으로 분리
+- 검증: API 실호출 GET/POST/재GET (데이터 변경 없음 확인), 빌드 warning 0 신규, health-check 39/39, hydration check 0 warning
 
 ### 완료된 작업 (이번 세션 — 2026-04-11)
 

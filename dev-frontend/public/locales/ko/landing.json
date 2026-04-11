@@ -326,6 +326,8 @@
   "packagesPage.yourQuoteRequestHasBeenSubmittedWellCont": "견적 요청이 제출되었습니다! 1-2 영업일 내에 연락드리겠습니다.",
   "packagesPage.iNeedAFormalInvoice": "공식 인보이스 필요",
   "packagesPage.includeSoftwareSubscription": "소프트웨어 구독 포함",
+  "packagesPage.softwareSubscription": "소프트웨어 구독",
+  "packagesPage.softwareChargedSeparately": "하드웨어와 별도 청구 (반복 인보이스)",
   "pricingPage.chooseThePlanThatFitsYourBusinessNoHidde": "비즈니스에 맞는 플랜을 선택하세요. 숨겨진 비용 없음, 언제든 해지 가능.",
   "pricingPage.currency": "Currency:",
   "pricingPage.noPlansAvailableForThisCategoryYet": "이 카테고리에 대한 플랜이 아직 없습니다.",

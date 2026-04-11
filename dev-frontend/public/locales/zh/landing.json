@@ -326,6 +326,8 @@
   "packagesPage.yourQuoteRequestHasBeenSubmittedWellCont": "您的报价请求已提交！我们将在1-2个工作日内与您联系。",
   "packagesPage.iNeedAFormalInvoice": "我需要正式发票",
   "packagesPage.includeSoftwareSubscription": "包含软件订阅",
+  "packagesPage.softwareSubscription": "软件订阅",
+  "packagesPage.softwareChargedSeparately": "与硬件分开计费（定期发票）",
   "pricingPage.chooseThePlanThatFitsYourBusinessNoHidde": "选择适合您业务的套餐。无隐藏费用，随时取消。",
   "pricingPage.currency": "Currency:",
   "pricingPage.noPlansAvailableForThisCategoryYet": "此类别暂无可用套餐。",

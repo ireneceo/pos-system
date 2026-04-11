@@ -987,7 +987,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
           productId: a.addon_product_id || a.productId,
           name: a.addonProduct?.name || a.name || '',
           addon_label: a.addon_label || '',
-          max_quantity: a.max_quantity || 1,
+          max_quantity: a.max_quantity ?? 0,
           is_inquiry_only: a.is_inquiry_only || false,
         })),
         prices: buildPricesMap(product.prices || []),
@@ -1224,7 +1224,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
 
     setFormData(prev => ({
       ...prev,
-      addons: [...prev.addons, { productId, name: p.name, addon_label: '', max_quantity: 1, is_inquiry_only: false }]
+      addons: [...prev.addons, { productId, name: p.name, addon_label: '', max_quantity: 0, is_inquiry_only: false }]
     }));
   };
 
@@ -1686,11 +1686,13 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                             <span style={{ fontSize: '12px', color: '#6B7280' }}>Max:</span>
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               value={addon.max_quantity}
-                              onChange={(e) => handleUpdateAddon(addon.productId, 'max_quantity', parseInt(e.target.value) || 1)}
+                              onChange={(e) => handleUpdateAddon(addon.productId, 'max_quantity', parseInt(e.target.value) || 0)}
                               style={{ width: '50px', padding: '4px 6px', border: '1px solid #D1D5DB', borderRadius: '4px', fontSize: '12px' }}
+                              title="0 = unlimited"
                             />
+                            <span style={{ fontSize: '11px', color: '#9CA3AF' }}>(0 = unlimited)</span>
                           </div>
                           <CheckboxLabel style={{ fontSize: '12px' }}>
                             <input

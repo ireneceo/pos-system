@@ -32,7 +32,7 @@ router.get('/', authenticateToken, requireRole('System Admin'), async (req, res)
     });
 
     if (!settings || !settings.setting_value) {
-      return res.json(defaultPaymentSettings);
+      return res.json({ success: true, data: defaultPaymentSettings });
     }
 
     const savedSettings = settings.setting_value;
@@ -57,13 +57,12 @@ router.get('/', authenticateToken, requireRole('System Admin'), async (req, res)
       result.paypal.clientSecret = '••••••••' + result.paypal.clientSecret.slice(-4);
     }
 
-    res.json(result);
+    res.json({ success: true, data: result });
   } catch (error) {
     console.error('Error fetching payment settings:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch payment settings',
-      details: error.message
+      message: 'Failed to fetch payment settings'
     });
   }
 });
@@ -146,14 +145,14 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
 
     res.json({
       success: true,
+      data: settingsData,
       message: 'Payment settings saved successfully'
     });
   } catch (error) {
     console.error('Error saving payment settings:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to save payment settings',
-      details: error.message
+      message: 'Failed to save payment settings'
     });
   }
 });
@@ -178,7 +177,7 @@ router.get('/available/:currency', async (req, res) => {
     console.error('Error fetching available payment methods:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch payment methods'
+      message: 'Failed to fetch payment methods'
     });
   }
 });

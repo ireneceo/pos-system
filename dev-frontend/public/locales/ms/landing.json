@@ -326,6 +326,8 @@
   "packagesPage.yourQuoteRequestHasBeenSubmittedWellCont": "Permintaan sebut harga anda telah dihantar! Kami akan menghubungi anda dalam 1-2 hari bekerja.",
   "packagesPage.iNeedAFormalInvoice": "Saya perlukan invois rasmi",
   "packagesPage.includeSoftwareSubscription": "Termasuk langganan perisian",
+  "packagesPage.softwareSubscription": "Langganan Perisian",
+  "packagesPage.softwareChargedSeparately": "Dicaj berasingan daripada perkakasan (invois berulang)",
   "pricingPage.chooseThePlanThatFitsYourBusinessNoHidde": "Pilih pelan yang sesuai dengan perniagaan anda. Tiada yuran tersembunyi, batal bila-bila masa.",
   "pricingPage.currency": "Currency:",
   "pricingPage.noPlansAvailableForThisCategoryYet": "Belum ada pelan untuk kategori ini.",
