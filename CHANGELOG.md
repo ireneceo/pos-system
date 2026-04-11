@@ -6,6 +6,14 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-11 (External QR + inventory adjust fix + hydration 검증 자동화)
+- feat(settings): External QR 카드 신규 — Operations 탭에 커스텀 이름 QR 생성 섹션 추가. 파트너 가게, 호텔 로비, 사무실 등 외부 지점에 주는 QR. 이름(최대 20자) 입력 → SVG/PNG/Print/삭제. 손님이 스캔 시 모바일 메뉴 진입, 주문의 `table_number` 컬럼에 이름 그대로 저장(내부 테이블 QR과 동일 경로). 저장 위치: `table_settings.externalQRs: string[]` — DB 마이그레이션/백엔드 변경 0건
+- fix(settings): External QR 카드 좌우 풀폭 — `gridColumn: 1 / -1`로 2열 SettingsGrid에서 한 행 통째 사용. 생성된 QR들은 `TablesGrid auto-fill minmax(180px, 1fr)`로 가로 wrap
+- fix(mobile): OrderTypePage의 `Table {tableFromQR}` 하드코딩 제거 — 내부(`T001`)에선 prefix 중복이었고 외부(`Cafe Maru`)에선 어색했음. 이제 값 그대로 표시
+- fix(settings): External QR runtime crash 수정 — legacy `localStorage.tableSettings` 캐시에 `externalQRs` 필드가 없어서 `setTableSettings(parsedSettings)` 로 통째 덮어쓰면서 `undefined.length` 접근. 함수형 업데이트 + 기본값 머지로 전환, JSX 5개 접근 모두 `(... || [])` 가드
+- fix(inventory): `POST /api/restaurants/:id/inventory/adjust` 라우트가 `quantity`(incremental delta)만 받아서 프론트 인라인 편집(`new_quantity` absolute 전달)이 작동 안 함. 두 파라미터 모두 수용하도록 수정 (new_quantity 우선, 없으면 quantity 폴백, new_quantity=0 정상 처리). General Stock은 별도 라우트라 이미 정상이었음. long-standing 버그
+- chore(검증): `/검증` 스킬 0단계 신규 — `dev-frontend/scripts/state-hydration-check.js` 정적 분석 스크립트. 새 state field 추가 시 legacy hydration source(localStorage/JSON.parse/fetch)에서 defensive merge 안 하면 warning, JSX에서 `.length`/`.map`/`.filter` 접근 시 `(... || [])` / `?.` 가드 없으면 warning. 위 External QR 버그를 자동 차단 가능. npm run check:hydration으로 실행
+
 ### 2026-04-11 (Phase C-6 + UX 정리 + repo hygiene)
 - refactor(C-6): `components/Inventory/InventoryManager.tsx` 3141줄 → 26개 파일로 분할 (types/styles/utils + 11 hooks + 3 sections + 9 modals + 슬림 main 340줄). 공개 API 불변(`<InventoryManager mode restaurantId />`) — 2개 consumer 무수정. 패턴: hook = state+API capsule, mode 분기는 hook 내부에만, Add+Edit는 mode prop으로 통합
 - fix(Inventory): 대시보드 카드 5 → 4 (Expiring Soon 제거 — 아래 Expiring Items 섹션과 중복)

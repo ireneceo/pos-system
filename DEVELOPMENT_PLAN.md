@@ -1,8 +1,68 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-10 (저녁 — Phase C 진행: C-1/C-2 운영, C-3/C-4/C-5 개발 완료)
+> **최종 업데이트:** 2026-04-11 (Phase C-6 파일럿 + UX 정리 + External QR + hydration 검증 스크립트)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: Phase C-6 파일럿 + External QR (2026-04-11)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Phase C-6 파일럿 | `InventoryManager.tsx` 3141줄 → 26개 파일 분할 (types/styles/utils + 11 hooks + 3 sections + 9 modals + 슬림 main 340줄). 공개 API 불변 | ✓ |
+| Inventory UX 정리 | 대시보드 카드 5→4 (Expiring Soon 제거), 9 모달 footer prop 전환 (sticky footer), 테이블 반응형 정렬 fix (class 셀렉터), 버튼 `+` prefix 제거 | ✓ |
+| StatsGrid 표준화 | 15개 페이지의 로컬 StatsGrid를 `4→≤1024 2→≤768 2` 패턴으로 통일. 이전엔 12개가 `auto-fit minmax(200px, 1fr)`로 모바일 1열 무너짐 | ✓ |
+| Repo hygiene | `public/static/` (4), `nginx-build/` (138), `dev-frontend-build/` (495) git untrack + .gitignore. 매 빌드 시 거대 diff 제거 | ✓ |
+| 운영 배포 | Phase C-3/C-4/C-5/C-6 + StatsGrid + repo hygiene 일괄 운영 배포. 9단계 검증 39/39, smoke 9/10 (1 false-fail) | ✓ |
+| inventory adjust 버그 | `POST /inventory/adjust`가 `quantity` (incremental)만 받음 → `new_quantity` (absolute) 수용 추가. long-standing 버그 | ✓ (dev only) |
+| External QR 기능 | Settings Operations 탭에 새 카드 추가 — 커스텀 이름 QR 생성/SVG/PNG/Print/삭제. `table_settings.externalQRs: string[]`. 주문에 동일하게 `table_number` 기록. 모바일 `Table` prefix 제거 | ✓ (dev only) |
+| Hydration 검증 자동화 | `/검증` 스킬 0단계 신규 — `state-hydration-check.js` 로 새 state field의 legacy localStorage hydration 안전성 자동 검사. External QR runtime crash 재발 방지 | ✓ |
+
+### 패턴 원칙 (Phase C-6 나머지에 재사용)
+
+1. **Hook = state + 로직 + API capsule**. setter는 `useInventoryData` 중앙에서 받아 optimistic update
+2. **Mode 분기는 hook 내부에서만**. Section/Modal은 mode 무지
+3. **Add+Edit 유사 모달은 mode prop으로 통합** (e.g. `GeneralStockFormModal`)
+4. **단방향 data flow**: main → central hook → feature hooks → sections/modals
+5. **공개 API 불변** → consumer 무수정
+
+### 수정된 파일 (핵심)
+
+- `dev-frontend/src/components/Inventory/` — 26개 신규/수정
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx` — External QR 카드 + gridColumn 풀폭
+- `dev-frontend/src/mobile/pages/OrderTypePage.tsx` — `Table` prefix 제거
+- `dev-frontend/src/pages/` — StatsGrid 15개 페이지 표준화
+- `dev-backend/routes/inventory-routes.js` — adjust route `new_quantity` 수용
+- `dev-frontend/scripts/state-hydration-check.js` — 신규 검증 스크립트
+- `.claude/commands/검증.md` — 0단계 추가 (10단계 검증)
+- `.gitignore` + `dev-frontend/.gitignore` — untrack entries
+- `CHANGELOG.md` — Phase C-6 + UX + hygiene + External QR 항목
+
+### 운영 배포 상태
+
+- **운영 배포 완료 (2026-04-11 06:03)**: Phase C-3/C-4/C-5/C-6 + StatsGrid 15 페이지 + repo hygiene + 이모지 치환
+- **운영 배포 대기 (dev only)**:
+  - `8480a158` inventory adjust route 버그 수정
+  - `9b7543c2` External QR hydration 수정 + 검증 스크립트
+  - `30bf17f0` External QR 카드 최초 추가
+  - `4e5ae091` External QR 풀폭 + Table prefix 제거
+  - `f720579c` CHANGELOG 업데이트
+
+### 검증 결과
+
+- 빌드: 신규 warning 0
+- 0단계 hydration check: 0 warnings
+- health-check: 39/39 (dev + prod)
+- 운영 배포 smoke: 9/10 (1 false-fail은 payment-settings 응답형식 차이, 기능 정상)
+
+### 발견된 별도 이슈 (후속 처리 필요)
+
+- payment-settings 응답 형식 비표준 — `{success, data}` 래퍼 미사용
+- DB sync "Too many keys specified" 경고 (10 models) — MySQL 64-key 한도
+- `entity_plan_charges` 테이블 운영 미동기화
 
 ---
 

@@ -1,76 +1,82 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-11 (Phase C-6 Inventory 분할 완료)
-**현재 버전:** v3.12
+**마지막 업데이트:** 2026-04-11 (Phase C-6 + External QR + hydration 검증 자동화 완료)
+**현재 버전:** v3.12 (내부 수정만 이번 세션 — 버전 미증가)
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (2026-04-11)
-- **Phase C-6 파일럿 — InventoryManager 분할 완료 (안정화 조치)**
-  - 원본: `components/Inventory/InventoryManager.tsx` 3141줄 단일 파일 (52 useState, 9 모달, 4 탭, 2 모드)
-  - 결과: 26개 파일 총 3905줄, 메인 335줄 (약 10%)
-    - `types.ts` (191) — 모든 인터페이스
-    - `styles.ts` (371) — 25개 styled-components
-    - `utils.ts` (82) — calculateStockStatus, formatStock, formatDate, getStatusLabel, getConfidenceLabel, UNIT_OPTIONS, EMPTY_GENERAL_STOCK_FORM
-    - `hooks/` 11개 — useAuthFetch, useInventoryData, useIngredientAdjustModal, useSettingsModal, useInitialStockModal, useGeneralStockReceiveModal, useGeneralStockForm, useInlineStockEdit, useOrderModal, useDeleteConfirm, useAlertResolver
-    - `sections/` 3개 — DashboardSection (287), StockListSection (513), TransactionHistorySection (146)
-    - `modals/` 8개 — Receive/Waste/InitialStock/GeneralStockReceive/Order/Settings/GeneralStockForm (Add+Edit 통합)/DeleteConfirm
-  - **패턴 원칙** (향후 C-6 나머지 4개 컴포넌트에 재사용):
-    1. Hook = 상태+로직+API 호출의 캡슐. setter는 useInventoryData에서 받아서 훅들이 optimistic update
-    2. Data flow 단방향: InventoryManager → useInventoryData → 9개 feature hooks (setter 공유)
-    3. Section은 presentational. 모든 핸들러 props로 받음
-    4. Modal은 독립 + props-only. 폼 상태는 부모 훅에 위치
-    5. Mode 분기는 hook 내부에서만. Section/Modal은 mode 무지
-    6. Add+Edit 유사 모달은 mode prop으로 통합 (GeneralStockFormModal)
-  - 공개 API 불변: `<InventoryManager mode restaurantId />` — 2개 consumer (InventoryPage, BrandInventoryPage) 무수정
+### 완료된 작업 (이번 세션 — 2026-04-11)
 
-### 완료된 작업 (이전 세션 — 2026-04-10)
-- **Phase C-1/C-2 운영 배포** (17:19) — 토큰 키 단일 진입점 + 하드코딩 fallback 제거. 운영 health-check 39/39 통과
-- **Phase C-3 개발 완료** — Fetch 인터셉터 단일화. 신규 `utils/httpClient.ts`에 `installFetchInterceptor()` + `setOn401Handler()`. `index.tsx`에서 1회 호출, `AuthContext`는 on401 콜백만 등록. StrictMode/HMR 인터셉터 누락·중복 위험 해소
-- **Phase C-4 개발 완료** — `CustomerContext` 내부 분할
-  - 신규: `contexts/customer/types.ts`, `useMobileCustomerState.ts`, `usePosCustomersState.ts`
-  - `CustomerContext.tsx`는 composite provider로 재작성 (공개 API 불변 → 10개 consumer 무수정)
-  - **레스토랑 간 모바일 세션 격리 버그 수정**: per-slug localStorage 키 (`mobile_customer:<slug>`, `mobile_guest:<slug>`, `mobile_token:<slug>`). `history.pushState/replaceState` 패치로 SPA 네비게이션 시 `locationchange` 이벤트 발생 → 즉시 상태 재로드. 첫 로드 시 레거시(스코프 없는) 키 자동 정리
-  - `mobile/utils/mobileApi.ts`도 per-slug 토큰 키로 업데이트
-- **Phase C-5 개발 완료** — 백엔드 5개 거대 라우트 → 16개 파일로 분할
-  - customers.js 1263 → barrel + self(223) + admin(320) + auth(608)
-  - mobile.js 1304 → barrel + helpers(163) + public(602) + orders(565)
-  - orders.js 2140 → barrel + crud(1501) + views(469) + payment(231)
-  - restaurants.js 2204 → barrel + subscription(461) + crud(1648) + ingredients(152)
-  - invoices.js 3170 → barrel + helpers(418) + main(2327) + payment(527)
-  - 마운트 순서 주의: customers는 self→auth→admin, literal 경로가 `/:id` 와일드카드보다 먼저
-  - cross-module: `routes/owner.js` → `./invoices`에서 `getIssuerCompanyInfo/getPayerCompanyInfo` require → invoices.js 배럴에서 re-export로 호환
-  - 중간 회귀 3건 즉시 수정: mobile-helpers `TableQRSession` 중복 선언, orders-payment `isPaymentAllowed` helper 누락, mobile-public `Order` import 누락
-- **63개 백엔드/셸 스크립트 이모지 치환** — ✅/❌ → ✓/✗ (perl bulk 안전 치환). 운영 배포는 미뤄두고 다음 배포 기회에 합치기
+#### 1. Phase C-6 파일럿 — InventoryManager 분할
+- `components/Inventory/InventoryManager.tsx` 3141줄 → 26개 파일 (types/styles/utils + 11 hooks + 3 sections + 9 modals + 슬림 main 340줄)
+- 공개 API 불변 (`<InventoryManager mode restaurantId />`) — 2개 consumer 무수정
+- 패턴 원칙 (C-6 나머지에 재사용):
+  1. Hook = state+로직+API capsule. setter는 useInventoryData에서 받아 optimistic update
+  2. Mode 분기는 hook 내부에서만. Section/Modal은 mode 무지
+  3. Add+Edit 유사 모달은 mode prop으로 통합
+  4. 단방향 data flow
 
-### 검증 (C-6 InventoryManager)
-- 빌드: main.695189c5.js, 124초, 신규 warning 0 (기존 pre-existing warnings 유지)
-- health-check: 39/39 통과
-- Inventory API 실호출 14/14:
-  - Restaurant mode (System Admin): summary/inventory/alerts/suggestions/expiring/general-stock/suppliers/gs-categories/transactions 9개
-  - Brand mode (Brand General): product-ingredients track_stock/general-stock/gs-categories/suppliers/gs-transactions 5개
-- 번들 마커 확인 (청크 3184.28f7762a.chunk.js 82KB): PAR Level calculation, Unlink from Inventory, Receive Stock, Record Waste, Set Initial Stock, Add General Stock, Edit General Stock, Reorder Suggestions, Expiring Items 9/9
-- 페이지 HTTP: /restaurant/1/inventory 200, /brand/inventory 200, 청크 URL 200
+#### 2. Inventory UX 정리
+- 대시보드 카드 5 → 4 (Expiring Soon 제거)
+- 9 모달 모두 표준 `Modal footer={...}` prop 전환 (sticky footer)
+- 테이블 반응형 정렬 fix — `display: contents` 때문에 `nth-child` 못 미치는 문제, 클래스 셀렉터(`.col-min`, `.col-cost`, `.col-supplier`, `.col-last`)로 교체. 1280px 미만에서 5컬럼 + Actions 폭 160px→260px
+- 버튼 `+` prefix 제거
 
-### 운영 배포 대기분
-- Phase C-3 (httpClient 단일화) — 프론트
-- Phase C-4 (CustomerContext 분할 + 모바일 세션 slug 격리) — 프론트
-- Phase C-5 (백엔드 5개 라우트 분할) — 백엔드
-- Phase C-6 파일럿 (InventoryManager 26파일 분할) — 프론트
-- 이모지 치환 (63개 스크립트) — 백엔드
+#### 3. StatsGrid 15 페이지 표준화
+- 모두 `4 → ≤1024 2 → ≤768 2` 통일. 이전 12개는 `auto-fit minmax(200px, 1fr)`로 모바일 1열 무너짐
+- 영향: Admin 4 + OperationInquiry 5 + Manager 5 + Owner 1
 
-→ 다음 `/배포` 명령 시 한 번에 운영 동기화. C-4의 모바일 세션 격리 버그 수정도 운영에 나가야 함.
+#### 4. Repo hygiene (3건 untrack)
+- `public/static/` (4 파일), `nginx-build/` (138 파일), `dev-frontend-build/` (495 파일)
+- `.gitignore` 갱신. 매 빌드마다 발생하던 거대 diff + 옛 main.js 해시 복사로 인한 ChunkLoadError 해결
+
+#### 5. 운영 배포 (2026-04-11 06:03)
+- Phase C-3/C-4/C-5/C-6 + StatsGrid 15 + repo hygiene (public/static, nginx-build) + 이모지 치환 일괄
+- `main.b6c3e39d.js` 운영 배포
+- 9단계 검증 PASS: 39/39 health-check + 모든 SPA 라우트 200
+- 운영 smoke: 9/10 (1 false-fail: payment-settings 응답 형식 차이, 기능 정상)
+- 백업: `/var/www/backups/20260411_060326`
+
+#### 6. inventory adjust route 버그 수정 (dev only)
+- `POST /inventory/adjust`가 `quantity` (incremental)만 받아 인라인 편집 작동 안 함 — long-standing 버그
+- `new_quantity` (absolute) 수용 추가, `new_quantity=0` 정상 처리
+- 4 시나리오 검증 완료
+
+#### 7. External QR 기능 (dev only)
+- Settings Operations 탭에 새 카드 — 파트너 가게/호텔/사무실 등 외부용 커스텀 이름 QR
+- SVG/PNG/Print/삭제. 저장: `table_settings.externalQRs: string[]`
+- 주문은 기존 `table_number` 컬럼에 이름 그대로 기록 (내부 테이블과 동일 경로)
+- 백엔드 변경 0, DB 마이그레이션 0
+- 카드 좌우 풀폭 (`gridColumn: 1 / -1`), QR은 가로 wrap
+- 모바일 OrderTypePage `Table` prefix 제거 — 내부/외부 둘 다 값 그대로 표시
+
+#### 8. Hydration 검증 자동화 (dev only)
+- External QR 버그(legacy localStorage hydration시 `undefined.length` crash)가 9단계 검증을 통과한 뒤 발생 — 근본 원인은 새 state field의 legacy 데이터 방어 미검사
+- 신규: `dev-frontend/scripts/state-hydration-check.js` 정적 분석
+- 검증: `npm run check:hydration`, 자체 테스트 시 버그 commit에서 6 warnings 정확 검출
+- `/검증` 스킬에 **0단계** 추가 (build 전 실행, warning 1건이라도 있으면 차단)
+- State Hydration 안전 패턴 가이드 4항목 문서화
+
+### 운영 배포 대기분 (다음 `/배포` 시)
+- `8480a158` inventory adjust route 버그 수정
+- `30bf17f0` External QR 카드 최초 추가
+- `9b7543c2` External QR hydration 수정 + 검증 스크립트
+- `4e5ae091` External QR 풀폭 + Table prefix 제거
+- `f720579c` CHANGELOG 업데이트
 
 ### 다음 할 일
-- **C-6 나머지**: 확립된 패턴으로 4개 컴포넌트 분할 (별도 세션 권장)
+- **Phase C-6 나머지** (별도 세션): 확립된 패턴으로 4개 컴포넌트 분할
   - `pages/LiveOrders/LiveOrdersPage.tsx` 4458줄
   - `pages/BrandGeneral/BrandInvoicesPage.tsx` 4566줄
   - `pages/Admin/InvoicesPage.tsx` 4205줄
   - `mobile/pages/PaymentPage.tsx` 2597줄
-  - **참조 패턴**: `components/Inventory/` (types/styles/utils + hooks/sections/modals 구조)
-- 브라우저 수동 확인: Inventory 4탭 + 9개 모달 실제 동작 (Ctrl+Shift+R 후 Restaurant/Brand 모드 각각)
-- 브라우저 수동 확인: 모바일 세션 per-slug 격리 (C-4 후속)
+  - 참조 패턴: `components/Inventory/`
+- **브라우저 수동 확인**: Inventory 4탭 + 9 모달 + External QR 생성/스캔 흐름
+- **발견된 별도 이슈 후속**:
+  - payment-settings 응답 형식 비표준 (flat → `{success, data}`)
+  - DB sync "Too many keys" 경고 (10 models)
+  - `entity_plan_charges` 테이블 운영 미동기화
 
 ---
 
