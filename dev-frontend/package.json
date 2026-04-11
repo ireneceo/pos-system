@@ -52,6 +52,7 @@
   },
   "scripts": {
     "i18n:verify": "node scripts/verify-translations.js",
+    "check:hydration": "node scripts/state-hydration-check.js",
     "start": "react-scripts start",
     "build": "CACHE_DIR=node_modules/.cache; if [ -d \"$CACHE_DIR\" ] && [ \"$(stat -c '%U' \"$CACHE_DIR\" 2>/dev/null)\" = 'root' ]; then SUDO_PW=$(grep SUDO_PASSWORD /var/www/dev-backend/.env | cut -d= -f2); echo $SUDO_PW | sudo -S chown -R $(whoami):$(whoami) \"$CACHE_DIR\"; fi; GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=1536' react-scripts build",
     "build:dev": "./deploy-dev.sh",

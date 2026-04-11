@@ -1411,7 +1411,13 @@ const SettingsPage: React.FC = () => {
     const savedTableSettings = localStorage.getItem('tableSettings');
     if (savedTableSettings) {
       const parsedSettings = JSON.parse(savedTableSettings);
-      setTableSettings(parsedSettings);
+      // Merge with current defaults so newly-added fields (e.g. externalQRs) are
+      // not lost when loading legacy localStorage payloads that pre-date them.
+      setTableSettings(prev => ({
+        ...prev,
+        ...parsedSettings,
+        externalQRs: Array.isArray(parsedSettings.externalQRs) ? parsedSettings.externalQRs : [],
+      }));
     }
   }, []);
 
@@ -1652,11 +1658,12 @@ const SettingsPage: React.FC = () => {
       alert('Name must be 20 characters or less');
       return;
     }
-    if (tableSettings.externalQRs.includes(name)) {
+    const current = tableSettings.externalQRs || [];
+    if (current.includes(name)) {
       alert('This name already exists');
       return;
     }
-    setTableSettings({ ...tableSettings, externalQRs: [...tableSettings.externalQRs, name] });
+    setTableSettings({ ...tableSettings, externalQRs: [...current, name] });
     setNewExternalQR('');
     externalQRRef.current?.triggerSave();
   };
@@ -1664,7 +1671,7 @@ const SettingsPage: React.FC = () => {
   const handleRemoveExternalQR = (name: string) => {
     setTableSettings({
       ...tableSettings,
-      externalQRs: tableSettings.externalQRs.filter(n => n !== name)
+      externalQRs: (tableSettings.externalQRs || []).filter(n => n !== name)
     });
     externalQRRef.current?.triggerSave();
   };
@@ -3557,15 +3564,15 @@ const SettingsPage: React.FC = () => {
                   <HelpText>Up to 20 characters. The name will appear as the table identifier on orders.</HelpText>
                 </FormGroup>
 
-                {tableSettings.externalQRs.length > 0 && (
+                {(tableSettings.externalQRs || []).length > 0 && (
                   <>
                     <Divider />
                     <div style={{ marginTop: '24px' }}>
                       <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '16px' }}>
-                        External QR Codes ({tableSettings.externalQRs.length})
+                        External QR Codes ({(tableSettings.externalQRs || []).length})
                       </h4>
                       <TablesGrid>
-                        {tableSettings.externalQRs.map((name, idx) => {
+                        {(tableSettings.externalQRs || []).map((name, idx) => {
                           const qrUrl = externalQRUrl(name);
                           return (
                             <TableItem key={`ext-${idx}-${name}`}>
