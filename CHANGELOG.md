@@ -6,18 +6,37 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-04-13
+### 2026-04-13 (배포 3 이후)
+- AddonModule 전체 역할 1:1 분리 (restaurant/brand/foodcourt/owner). 신규 8개 advanced 모듈: `work_manuals`, `ingredients`, `suppliers`, `brand_work_manuals`, `brand_ingredients`, `brand_suppliers`, `fc_work_manuals`, `owner_work_manuals`. `notices`/`recipe_management`/`inventory_management`/`brand_notices`/`brand_product_recipes`/`brand_inventory`/`fc_notices`/`owner_notices`의 번들 라우트 축소. dev + 운영 DB 직접 반영 (코드 변경 없음)
+- `inventory_management` + `brand_inventory` 모듈 이름을 "Inventory & Supplier Management" → "Inventory"로 정리 (suppliers가 독립 모듈로 승격)
+- 기존 플랜 자동 마이그레이션 없음 — System Admin이 `/pos/admin/plans`에서 수동 체크 필요
+
+## 2026-04-13 배포 3 — 인보이스 안정화 + Dangling Admin 가드
+
+### 인보이스 인쇄/PDF/View i18n + 레이아웃
 - 인보이스 인쇄/PDF/View 모달의 i18n 키가 그대로 출력되던 버그 수정 (5개 역할)
 - 인보이스 PDF가 1장에 잘리던 문제 해결 (다중 페이지 분할 + iframe 동적 높이)
 - 인보이스 금액 RM이 줄바꿈되던 UI 깨짐 fix (`white-space: nowrap`)
 - Pricing 페이지 탭별 URL 딥링크 (`/pricing?tab=brand` 등)
+
+### 인보이스 정합성
 - Payment Settings 변경 시 미결제 인보이스 자동 재계산 + "수정됨" 배지 자동 표시
 - 시스템 자동 수정도 modification_history 기록 (수동 수정과 동일 UX)
 - 인보이스 view 모달 크래시 fix (modification_history 이중 인코딩 + 양형식 호환 렌더러)
 - Hardware 인보이스 QTY/단가 표시 정상화 (description "x4" → 별도 quantity 컬럼)
 - Hardware Quote 모달 payment_settings 자동 로드
 - 인보이스 삭제 시 hardware_quotes FK 해제 (500 에러 제거)
+
+### Brand ↔ Restaurant 연결
 - Brand General 레스토랑 생성/편집에 "Link to Brand" 드롭다운 신규 (브랜드-레스토랑 연결 UI)
+
+### Dangling Restaurant Admin 가드 (치명)
+- 백엔드 `POST /api/users`: role이 Restaurant Admin/Staff인데 restaurant_id 없이 생성 요청 시 400 차단
+- 백엔드 `PUT /api/users/:id`: restaurant_id 클리어 또는 role 변경으로 dangling 상태 만드는 시도 차단
+- 백엔드 `POST /api/users`: `skipVerification is not defined` ReferenceError 수정 (req.body destructure 누락)
+- 프론트 `App.tsx`: `user.restaurantId || '1'` 하드코딩 폴백 제거 — dangling 사용자에게 `NoRestaurantAssigned` 에러 화면 렌더 (다른 테넌트 누수 차단)
+- 프론트 `ProtectedRoute.tsx`: restaurant-scoped 역할이 restaurant_id 없이 `/restaurant/:id/*` 접근 시 `/pos`로 바운스. `|| '1'` 폴백 4건 모두 제거
+- 프론트 `LoginPage.tsx` / `OperationInquiryPage.tsx`: 하드코딩 폴백 정리
 
 ## 2026-04-13 배포 2 (v3.13 유지 — 회계/인보이스 정합성 복구)
 

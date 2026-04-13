@@ -214,7 +214,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
   console.log('📝 Request body:', req.body);
 
   try {
-    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, monthly_salary, pin_code } = req.body;
+    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, monthly_salary, pin_code, skip_verification: skipVerification } = req.body;
     // Support both camelCase (new) and snake_case (legacy) for restaurant ID
     const finalRestaurantId = restaurantId || restaurant_id;
 
@@ -223,6 +223,17 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       return res.status(400).json({
         success: false,
         error: 'Email is required'
+      });
+    }
+
+    // Restaurant-scoped roles must be tied to a restaurant at creation time.
+    // Creating a Restaurant Admin / Staff without restaurant_id leaves the account
+    // in a dangling state where login succeeds but every restaurant-scoped API
+    // fails with 403/404 (no `checkRestaurantAccess` context).
+    if ((role === 'Restaurant Admin' || role === 'Staff') && !finalRestaurantId) {
+      return res.status(400).json({
+        success: false,
+        error: `${role} requires a restaurant. Please select the restaurant this account belongs to.`
       });
     }
 
@@ -506,6 +517,20 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
     console.log('✓ User found:', user.username, user.email);
 
     const { password, first_name, last_name, ...updateData } = req.body;
+
+    // Prevent leaving restaurant-scoped roles without a restaurant.
+    // Covers both direct restaurant_id clears and role promotions/demotions that
+    // would result in a Restaurant Admin / Staff with no restaurant.
+    const nextRole = updateData.role !== undefined ? updateData.role : user.role;
+    const nextRestaurantId = updateData.restaurant_id !== undefined
+      ? updateData.restaurant_id
+      : user.restaurant_id;
+    if ((nextRole === 'Restaurant Admin' || nextRole === 'Staff') && !nextRestaurantId) {
+      return res.status(400).json({
+        success: false,
+        error: `${nextRole} requires a restaurant. Please assign the account to a restaurant before saving.`
+      });
+    }
 
     // If password is being updated, hash it
     if (password) {

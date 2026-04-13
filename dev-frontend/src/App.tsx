@@ -207,6 +207,53 @@ const FoodcourtWorkManualsPage = React.lazy(() => import('./pages/Foodcourt/Work
 const OwnerWorkManualsPage = React.lazy(() => import('./pages/Owner/WorkManualsPage'));
 const RestaurantWorkManualsPage = React.lazy(() => import('./pages/Restaurant/WorkManualsPage'));
 
+// Shown when a restaurant-scoped user logs in without an assigned restaurant.
+// Avoids the previous silent fallback to `/restaurant/1/dashboard` which leaked
+// into another tenant and cascaded into 403/404 on every API call.
+const NoRestaurantAssigned: React.FC = () => {
+  const { logout } = useAuth();
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '20px'
+    }}>
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        padding: '40px',
+        maxWidth: '480px',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        textAlign: 'center'
+      }}>
+        <h2 style={{ color: '#0A2540', marginBottom: '12px' }}>No restaurant assigned</h2>
+        <p style={{ color: '#6B7C93', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
+          Your account does not have a restaurant linked yet. Please contact your
+          administrator to assign a restaurant to this account before signing in.
+        </p>
+        <button
+          onClick={logout}
+          style={{
+            padding: '12px 24px',
+            background: '#635BFF',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 600,
+            cursor: 'pointer'
+          }}
+        >
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // POS Root redirect component (for authenticated users)
 const PosRootRedirect: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -235,13 +282,16 @@ const PosRootRedirect: React.FC = () => {
       return <Navigate to="/pos/owner/dashboard" replace />;
     case 'Restaurant Admin':
     case 'Staff': {
-      // For Restaurant Admin and Staff, include restaurantId in URL
-      const restaurantId = user?.restaurantId || '1';
-      return <Navigate to={`/restaurant/${restaurantId}/dashboard`} replace />;
+      if (!user?.restaurantId) {
+        return <NoRestaurantAssigned />;
+      }
+      return <Navigate to={`/restaurant/${user.restaurantId}/dashboard`} replace />;
     }
     default: {
-      const restaurantId = user?.restaurantId || '1';
-      return <Navigate to={`/restaurant/${restaurantId}/dashboard`} replace />;
+      if (!user?.restaurantId) {
+        return <NoRestaurantAssigned />;
+      }
+      return <Navigate to={`/restaurant/${user.restaurantId}/dashboard`} replace />;
     }
   }
 };
@@ -251,12 +301,15 @@ const LegacyRestaurantRedirect: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
 
+  if (!user?.restaurantId) {
+    return <NoRestaurantAssigned />;
+  }
+
   // Extract the path after /pos/restaurant/
   const pathAfterRestaurant = location.pathname.replace('/pos/restaurant/', '');
-  const restaurantId = user?.restaurantId || '1';
 
   // Redirect to new structure
-  return <Navigate to={`/restaurant/${restaurantId}/${pathAfterRestaurant}`} replace />;
+  return <Navigate to={`/restaurant/${user.restaurantId}/${pathAfterRestaurant}`} replace />;
 };
 
 function App() {

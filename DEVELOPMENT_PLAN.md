@@ -1,8 +1,39 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-13 (인보이스 인쇄/PDF/View i18n + qty/unit_price + modification_history fix + Pricing 탭 딥링크 + Brand-Restaurant 연결 UI)
+> **최종 업데이트:** 2026-04-13 (Dangling Admin 가드 + AddonModule 전체 역할 1:1 분리)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: Dangling Admin 가드 + AddonModule 전체 역할 1:1 분리 (2026-04-13)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Dangling Restaurant Admin 가드 (치명) | `POST /api/users` / `PUT /api/users/:id`에서 role=Restaurant Admin/Staff인데 restaurant_id가 null이면 400 차단. 프론트는 `App.tsx`의 `\|\| '1'` 하드코딩 폴백 제거하고 `NoRestaurantAssigned` 에러 화면 렌더. `ProtectedRoute`가 restaurant-scoped 역할을 restaurant_id 없이 `/restaurant/:id/*` 접근 시 `/pos`로 바운스 (cross-tenant 누수 차단). LoginPage/OperationInquiryPage 하드코딩 폴백도 정리 | ✓ |
+| `skipVerification` ReferenceError fix | `POST /api/users`에서 `skipVerification` 변수가 선언 안 돼 모든 관리자 유저 생성이 500 에러. `req.body`에서 `skip_verification` destructure로 fix | ✓ |
+| AddonModule 사이드바 메뉴 1:1 분리 (전체 역할) | restaurant/brand/foodcourt/owner 4개 역할에서 번들된 모듈을 사이드바 메뉴와 1:1로 분리. 신규 8개 advanced 모듈: `work_manuals`, `ingredients`, `suppliers` (restaurant) / `brand_work_manuals`, `brand_ingredients`, `brand_suppliers` / `fc_work_manuals` / `owner_work_manuals`. 기존 `notices`/`recipe_management`/`inventory_management`/`brand_notices`/`brand_product_recipes`/`brand_inventory`/`fc_notices`/`owner_notices`의 ui_routes에서 분리된 라우트 제거 | ✓ |
+| Inventory 모듈 이름 정리 | `inventory_management` + `brand_inventory` 모듈 이름을 "Inventory & Supplier Management" → **"Inventory"**로 변경. suppliers가 독립 모듈로 승격됐으니 이름도 맞춤 | ✓ |
+| 테스트 계정 정리 | dev/prod DB 양쪽에서 `hsoooj@naver.com` (dangling Restaurant Admin 테스트 계정) 삭제 | ✓ |
+
+### 수정된 파일
+- `dev-backend/routes/users.js` (POST/PUT 가드, skip_verification destructure)
+- `dev-frontend/src/App.tsx` (NoRestaurantAssigned 화면, 폴백 제거)
+- `dev-frontend/src/components/ProtectedRoute.tsx` (restaurant-scoped 접근 차단, 폴백 4건 제거)
+- `dev-frontend/src/pages/Login/LoginPage.tsx` (폴백 `/pos`로 통일)
+- `dev-frontend/src/pages/Restaurant/OperationInquiryPage.tsx` (하드코딩 폴백 제거)
+- `addon_modules` 테이블 (DB 데이터 변경, dev+prod 동시 적용)
+
+### DB 변경 (dev + 운영 모두 적용)
+- 신규 AddonModule 8건 생성 (restaurant 3 + brand 3 + foodcourt 1 + owner 1)
+- 기존 AddonModule 8건 ui_routes 축소 (notices, recipe_management, inventory_management, brand_notices, brand_product_recipes, brand_inventory, fc_notices, owner_notices)
+- `inventory_management`/`brand_inventory` name 필드 "Inventory & Supplier Management" → "Inventory"
+
+### 후속 과제
+- 기존 플랜에 신규 모듈 **자동 마이그레이션 없음** (opt-in). System Admin이 `/pos/admin/plans`에서 플랜별로 Work Manuals/Ingredients/Suppliers 체크해야 복구됨
+- `POST /api/restaurants` requireRole 누락 (HIGH 보안 갭) 미해결
 
 ---
 

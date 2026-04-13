@@ -484,11 +484,12 @@ const LoginPage: React.FC = () => {
             navigate('/pos/brand/dashboard', { replace: true });
             break;
           case 'Restaurant Admin':
-            // Use user's restaurantId for the dashboard URL
+            // Route to /pos root — PosRootRedirect renders the NoRestaurantAssigned
+            // screen when restaurantId is missing, instead of leaking into restaurant 1.
             if (user.restaurantId) {
               navigate(`/restaurant/${user.restaurantId}/dashboard`, { replace: true });
             } else {
-              navigate('/pos/restaurant/dashboard', { replace: true });
+              navigate('/pos', { replace: true });
             }
             break;
           case 'Restaurant Owner':
@@ -498,7 +499,7 @@ const LoginPage: React.FC = () => {
             if (user.restaurantId) {
               navigate(`/restaurant/${user.restaurantId}/dashboard`, { replace: true });
             } else {
-              navigate('/pos/basic', { replace: true });
+              navigate('/pos', { replace: true });
             }
             break;
           default:

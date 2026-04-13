@@ -104,10 +104,17 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (requireRestaurantMatch && params.restaurantId && user) {
     const urlRestaurantId = parseInt(params.restaurantId, 10);
     const userRestaurantId = user.restaurantId ? Number(user.restaurantId) : undefined;
+    const isSystemAdmin = user.role === 'System Admin';
+
+    // Restaurant-scoped roles without an assigned restaurant must not fall
+    // through to someone else's tenant. Bounce to /pos for the no-restaurant
+    // screen instead of allowing a silent cross-tenant read.
+    if (!isSystemAdmin && !userRestaurantId && (user.role === 'Restaurant Admin' || user.role === 'Staff')) {
+      return <Navigate to="/pos" replace />;
+    }
 
     // System Admin만 모든 레스토랑 접근 가능
     // 나머지 모든 역할은 자신의 restaurantId와 일치하는 레스토랑만 접근 가능
-    const isSystemAdmin = user.role === 'System Admin';
     const shouldCheckAccess = !isSystemAdmin && userRestaurantId && userRestaurantId !== urlRestaurantId;
 
     if (shouldCheckAccess) {
@@ -135,11 +142,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       case 'Brand Manager':
         return <Navigate to="/pos/brand/dashboard" replace />;
       case 'Restaurant Admin':
-        return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
+        return user.restaurantId
+          ? <Navigate to={`/restaurant/${user.restaurantId}/dashboard`} replace />
+          : <Navigate to="/pos" replace />;
       case 'Restaurant Owner':
         return <Navigate to="/pos/owner/dashboard" replace />;
       case 'Staff':
-        return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
+        return user.restaurantId
+          ? <Navigate to={`/restaurant/${user.restaurantId}/dashboard`} replace />
+          : <Navigate to="/pos" replace />;
       default:
         return <Navigate to="/pos" replace />;
     }
@@ -233,11 +244,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         case 'Brand Manager':
           return <Navigate to="/pos/brand/dashboard" replace />;
         case 'Restaurant Admin':
-          return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
+          return user.restaurantId
+            ? <Navigate to={`/restaurant/${user.restaurantId}/dashboard`} replace />
+            : <Navigate to="/pos" replace />;
         case 'Restaurant Owner':
           return <Navigate to="/pos/owner/dashboard" replace />;
         case 'Staff':
-          return <Navigate to={`/restaurant/${user.restaurantId || '1'}/dashboard`} replace />;
+          return user.restaurantId
+            ? <Navigate to={`/restaurant/${user.restaurantId}/dashboard`} replace />
+            : <Navigate to="/pos" replace />;
         default:
           return <Navigate to="/pos" replace />;
       }

@@ -415,7 +415,9 @@ const OperationInquiryPage: React.FC = () => {
   const currentUserName = user?.name || user?.email || 'Restaurant User';
   const currentUserEmail = user?.email || 'restaurant@example.com';
   const currentUserRole = user?.role || 'Restaurant Admin';
-  const currentRestaurantId = user?.restaurantId || '1';
+  // ProtectedRoute guarantees user.restaurantId exists before this page renders
+  // for Restaurant Admin / Staff; the `|| ''` is a pure TypeScript guard.
+  const currentRestaurantId = user?.restaurantId || '';
   const currentRestaurantName = user?.restaurantName || 'Test Restaurant';
 
   useEffect(() => {
