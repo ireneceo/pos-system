@@ -1,8 +1,46 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-13 (Dangling Admin 가드 + AddonModule 전체 역할 1:1 분리)
+> **최종 업데이트:** 2026-04-13 (Brand Cross-Tenant 누수 fix — 운영 배포 4)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: Brand Cross-Tenant 누수 fix (치명 보안, 2026-04-13 배포 4)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Brand General 격리 (치명) | 한 BG가 다른 BG 소유 재료/공급업체/상품을 조회·수정 가능했던 누수 차단. 모델 정립: 한 BG가 여러 brand 소유 (`brands.owner_id`). 재료/공급업체/BG 프로덕트는 BG 소유자 단위 공유, 레시피는 브랜드별 사용 | ✓ |
+| DB 스키마 변경 (dev + 운영) | 7개 BG-level 테이블에 `owner_user_id` 컬럼 추가 (product_ingredients, product_ingredient_categories, suppliers, brand_products, brand_product_categories, brand_product_option_groups, brand_product_options). 2개 brand-level 테이블에 `brand_id` 컬럼 추가 (product_recipes, product_recipe_categories) | ✓ |
+| 운영 백필 + 고아 할당 | N:M 조인(`brand_product_brands`, `supplier_brands`) + 레시피→재료 추적으로 자동 백필. K-DINE 시리즈 고아 데이터(재료 7건, 카테고리 4건, 레시피 2건, 공급업체 1건) → user 23 (K-DINE owner) 수동 할당 | ✓ |
+| 신규 미들웨어 brandScope.js | `requireBGScope`/`applyBGFilter`/`assertBGOwnsRow` (BG 단위) + `requireBrandScope`/`applyBrandFilter`/`assertBrandOwnsRow` (브랜드 단위, brands.owner_id 검증). System Admin 우회 가능 | ✓ |
+| 라우트 패치 6개 | product-ingredients.js / product-ingredient-categories.js / product-recipes.js / product-recipe-categories.js / suppliers.js / brand-products.js — GET 필터 + POST owner 자동 세트 + PUT/DELETE 소유권 검증 (404 존재 은닉) | ✓ |
+| suppliers.js 누수 폴백 제거 | `\|\| supplier.connectedBrands.length === 0` 폴백 코드 삭제 (누수의 직접 원인). N:M `supplier_brands` 읽기 중단 | ✓ |
+| `isBrandManager` free pass 제거 | URL에 brand_id가 없을 때 `Brand.count({where:{owner_id:user.id}}) > 0` 검증 (dangling BG 차단) | ✓ |
+| 9개 모델 업데이트 | ProductIngredient, ProductIngredientCategory, Supplier, BrandProduct, BrandProductCategory, BrandProductOptionGroup, BrandProductOption (owner_user_id) + ProductRecipe, ProductRecipeCategory (brand_id) | ✓ |
+| 검증 | dev 21/21 격리 테스트, health-check 39/39, 운영 smoke 10/10, 운영 격리 검증 (user 23/24/29 각자 본인 데이터만, 교차 GET 404) | ✓ |
+
+### 수정된 파일
+- `dev-backend/middleware/brandScope.js` (신규, 190줄)
+- `dev-backend/middleware/recipeAuth.js` (`isBrandManager` 수정)
+- `dev-backend/models/{ProductIngredient,ProductIngredientCategory,Supplier,BrandProduct,BrandProductCategory,BrandProductOptionGroup,BrandProductOption,ProductRecipe,ProductRecipeCategory}.js`
+- `dev-backend/routes/{product-ingredients,product-ingredient-categories,product-recipes,product-recipe-categories,suppliers,brand-products}.js`
+- `dev-backend/scripts/migrate-bg-scope-prod.js` (신규, 운영 마이그레이션 + 백필)
+
+### DB 변경 (dev + 운영 모두 적용)
+- 7개 테이블 `owner_user_id INT NULL` 컬럼 추가 + 백필
+- 2개 테이블 `brand_id INT NULL` 컬럼 추가 + 백필 (이전 세션의 잘못된 컬럼 정정)
+- dev에서만: 4개 테이블 `brand_id` 컬럼 DROP (잘못된 방향이었던 컬럼)
+- dev에서만: 고아 테스트 데이터 8건 삭제
+
+### 후속 과제 (다음 세션)
+- `POST /api/restaurants` requireRole 누락 (HIGH 보안 갭) — `validateBrandPermission`이 부분 보호 중이지만 명시적 추가 권장
+- 모든 역할 모든 페이지 레스토랑 이름 옆 `branch_name` 표시 (대부분 적용됨, 누락 페이지 점검 필요)
+- "No Active Subscription" 배너 정책 결정 (Free 플랜 자동 발행 vs 배너 vs 차단)
+- N:M 조인 테이블 (`brand_product_brands`, `supplier_brands`) DROP — 읽기 중단 완료, 즉시 또는 1-2주 안정화 후
+- 신규 advanced 모듈 8개를 기존 플랜에 수동 체크 (Irene이 `/pos/admin/plans`에서)
 
 ---
 

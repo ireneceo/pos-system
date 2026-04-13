@@ -9,6 +9,11 @@ ProductIngredient.init({
     primaryKey: true,
     autoIncrement: true
   },
+  owner_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand General user id (scope owner)'
+  },
   // 카테고리
   category_id: {
     type: DataTypes.INTEGER,

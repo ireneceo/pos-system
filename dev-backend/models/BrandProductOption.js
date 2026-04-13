@@ -7,6 +7,11 @@ const BrandProductOption = sequelize.define('BrandProductOption', {
     primaryKey: true,
     autoIncrement: true
   },
+  owner_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand General user id (scope owner)'
+  },
   option_group_id: {
     type: DataTypes.INTEGER,
     allowNull: false,

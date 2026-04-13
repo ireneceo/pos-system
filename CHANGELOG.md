@@ -6,8 +6,25 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-04-13 (배포 3 이후)
-- AddonModule 전체 역할 1:1 분리 (restaurant/brand/foodcourt/owner). 신규 8개 advanced 모듈: `work_manuals`, `ingredients`, `suppliers`, `brand_work_manuals`, `brand_ingredients`, `brand_suppliers`, `fc_work_manuals`, `owner_work_manuals`. `notices`/`recipe_management`/`inventory_management`/`brand_notices`/`brand_product_recipes`/`brand_inventory`/`fc_notices`/`owner_notices`의 번들 라우트 축소. dev + 운영 DB 직접 반영 (코드 변경 없음)
+(현재 미배포 항목 없음)
+
+## 2026-04-13 배포 4 — Brand Cross-Tenant 누수 fix (치명 보안, 버전 미상승)
+
+### Brand General 격리 (운영 발견 누수)
+- **증상**: BG 사용자가 다른 BG 소유 재료/공급업체/상품을 조회/수정 가능 (`/pos/brand-ingredients`, `/pos/suppliers`)
+- **모델 정립**: 한 BG가 여러 brand를 소유 (`brands.owner_id`). 재료/공급업체/BG 프로덕트는 BG 소유자 단위 공유. 레시피는 브랜드별 사용
+- **DB 변경**: 7개 BG-level 테이블에 `owner_user_id` 컬럼 추가 (`product_ingredients`, `product_ingredient_categories`, `suppliers`, `brand_products`, `brand_product_categories`, `brand_product_option_groups`, `brand_product_options`). 2개 brand-level 테이블에 `brand_id` 컬럼 추가 (`product_recipes`, `product_recipe_categories`)
+- **운영 백필**: 기존 N:M 조인(`brand_product_brands`, `supplier_brands`) + 레시피→재료 추적으로 자동 백필. 한국 음식 K-DINE 시리즈 고아 데이터(재료 7건, 카테고리 4건, 레시피 2건, 공급업체 1건)는 K-DINE owner(user 23)에 수동 할당
+- **신규 미들웨어** `middleware/brandScope.js`: `requireBGScope`/`applyBGFilter`/`assertBGOwnsRow` (BG 단위) + `requireBrandScope`/`applyBrandFilter`/`assertBrandOwnsRow` (브랜드 단위, `brands.owner_id` 검증)
+- **라우트 패치 (6개)**: product-ingredients.js / product-ingredient-categories.js / product-recipes.js / product-recipe-categories.js / suppliers.js / brand-products.js — GET 필터 + POST owner 자동 세트 + PUT/DELETE 소유권 검증 (404 존재 은닉)
+- **suppliers.js**: `|| supplier.connectedBrands.length === 0` 폴백 제거 (누수의 직접 원인). N:M `supplier_brands` 읽기 중단
+- **`isBrandManager` free pass 제거**: URL에 brand_id가 없을 때 `Brand.count({where:{owner_id:user.id}})` 검증 (dangling BG 차단)
+- **9개 모델** 업데이트 — owner_user_id 또는 brand_id 필드 추가
+- **검증**: dev 21/21 격리 테스트 통과, health-check 39/39, 운영 smoke 10/10
+- **운영 영향**: 배포 후 user 23(K-DINE)/user 24(K-Taste)/user 29(The Fire) 각각 본인 데이터만 표시. 교차 GET/PUT/DELETE 모두 404
+
+### 이월 항목 (이전 [Unreleased])
+- AddonModule 전체 역할 1:1 분리 (restaurant/brand/foodcourt/owner). 신규 8개 advanced 모듈: `work_manuals`, `ingredients`, `suppliers`, `brand_work_manuals`, `brand_ingredients`, `brand_suppliers`, `fc_work_manuals`, `owner_work_manuals`. dev + 운영 DB 직접 반영 (코드 변경 없음)
 - `inventory_management` + `brand_inventory` 모듈 이름을 "Inventory & Supplier Management" → "Inventory"로 정리 (suppliers가 독립 모듈로 승격)
 - 기존 플랜 자동 마이그레이션 없음 — System Admin이 `/pos/admin/plans`에서 수동 체크 필요
 

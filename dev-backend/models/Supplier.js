@@ -14,7 +14,12 @@ Supplier.init({
     type: DataTypes.ENUM('brand', 'restaurant'),
     allowNull: false,
     defaultValue: 'restaurant',
-    comment: 'Owner type: brand (shared) or restaurant (location-specific)'
+    comment: 'Owner type: brand (BG-shared) or restaurant (location-specific)'
+  },
+  owner_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand General user id — scope owner for owner_type=brand'
   },
   // Owner
   brand_id: {

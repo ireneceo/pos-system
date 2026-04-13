@@ -108,8 +108,9 @@ async function canViewRecipe(req, res, next) {
 
 /**
  * Brand manager permission check
- * If brand_id is in URL params, verifies brand ownership
- * If no brand_id in URL, just checks if user is Brand General/Manager
+ * - System Admin: always allowed
+ * - Brand General/Manager: must have brand_id in URL and own it (brands.owner_id === user.id)
+ * - When URL has no brand_id, user.id must exist as an owner of at least one brand
  */
 async function isBrandManager(req, res, next) {
   const user = req.user;
@@ -118,27 +119,29 @@ async function isBrandManager(req, res, next) {
     return next();
   }
 
-  if (user.role === 'Brand General' || user.role === 'Brand Manager') {
-    const brand_id = req.params.brandId || req.params.brand_id;
-
-    // If no brand_id in URL, just allow Brand General/Manager access
-    if (!brand_id) {
-      return next();
-    }
-
-    const brand = await Brand.findByPk(brand_id);
-    if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
-    }
-
-    if (brand.owner_id === user.id) {
-      return next();
-    }
-
-    return res.status(403).json({ error: 'No permission for this brand' });
+  if (user.role !== 'Brand General' && user.role !== 'Brand Manager') {
+    return res.status(403).json({ success: false, message: 'Brand manager access only' });
   }
 
-  return res.status(403).json({ error: 'Brand manager access only' });
+  const brand_id = req.params.brandId || req.params.brand_id;
+
+  if (brand_id) {
+    const brand = await Brand.findByPk(brand_id);
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+    if (brand.owner_id !== user.id) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+    return next();
+  }
+
+  // No URL brand_id — verify user owns at least one brand (prevents dangling BG from bypass)
+  const ownsAny = await Brand.count({ where: { owner_id: user.id } });
+  if (ownsAny === 0) {
+    return res.status(403).json({ success: false, message: 'No brand owned by user' });
+  }
+  return next();
 }
 
 /**

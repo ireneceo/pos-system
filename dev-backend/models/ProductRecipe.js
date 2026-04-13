@@ -9,6 +9,11 @@ ProductRecipe.init({
     primaryKey: true,
     autoIncrement: true
   },
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand FK — recipes are brand-scoped'
+  },
   // 기본 정보
   code: {
     type: DataTypes.STRING(20),

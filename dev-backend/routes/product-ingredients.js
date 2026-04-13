@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
 const {
   ProductIngredient,
   ProductIngredientCategory,
@@ -8,22 +9,8 @@ const {
 } = require('../models');
 const { Op } = require('sequelize');
 
-// 인증 필수
 router.use(authenticateToken);
-
-// Brand General/Manager 권한 체크
-const checkBrandAccess = (req, res, next) => {
-  const userRole = req.user.role;
-  if (!['Brand General', 'Brand Manager', 'System Admin'].includes(userRole)) {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied. Brand General/Manager role required.'
-    });
-  }
-  next();
-};
-
-router.use(checkBrandAccess);
+router.use(requireBGScope);
 
 // ==================== 프로덕트 재료 CRUD ====================
 
@@ -33,6 +20,7 @@ router.get('/', async (req, res) => {
     const { category_id, search, is_active, track_stock } = req.query;
 
     const where = {};
+    applyBGFilter(where, req);
     if (category_id) where.category_id = category_id;
     if (is_active !== undefined) where.is_active = is_active === 'true';
     if (track_stock !== undefined) where.track_stock = track_stock === 'true';
@@ -70,6 +58,9 @@ router.get('/:id/usage', async (req, res) => {
     const { id } = req.params;
     const { ProductRecipe, BrandProduct } = require('../models');
 
+    const ingredient = await ProductIngredient.findByPk(id);
+    if (!assertBGOwnsRow(ingredient, req, res)) return;
+
     // Recipes using this ingredient
     const recipeLinks = await ProductRecipeIngredient.findAll({
       where: { ingredient_id: id },
@@ -104,12 +95,7 @@ router.get('/:id', async (req, res) => {
       ]
     });
 
-    if (!ingredient) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product ingredient not found'
-      });
-    }
+    if (!assertBGOwnsRow(ingredient, req, res)) return;
 
     res.json({
       success: true,
@@ -135,11 +121,18 @@ router.post('/', async (req, res) => {
       manual_daily_usage, track_stock
     } = req.body;
 
-    // 코드 자동 생성
-    const count = await ProductIngredient.count();
-    const code = `PI-${String(count + 1).padStart(3, '0')}`;
+    // 코드 자동 생성 (BG 소유 내 카운트)
+    const scopedCount = await ProductIngredient.count({
+      where: req.bgOwnerId != null ? { owner_user_id: req.bgOwnerId } : {}
+    });
+    const code = `PI-${String(scopedCount + 1).padStart(3, '0')}`;
+
+    if (req.bgOwnerId == null) {
+      return res.status(400).json({ success: false, message: 'owner_user_id required' });
+    }
 
     const ingredient = await ProductIngredient.create({
+      owner_user_id: req.bgOwnerId,
       code,
       name,
       category_id,
@@ -181,12 +174,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const ingredient = await ProductIngredient.findByPk(req.params.id);
-    if (!ingredient) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product ingredient not found'
-      });
-    }
+    if (!assertBGOwnsRow(ingredient, req, res)) return;
 
     // 부분 업데이트 지원 - undefined가 아닌 필드만 업데이트
     const updateFields = [
@@ -228,12 +216,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const ingredient = await ProductIngredient.findByPk(req.params.id);
-    if (!ingredient) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product ingredient not found'
-      });
-    }
+    if (!assertBGOwnsRow(ingredient, req, res)) return;
 
     // 레시피에서 사용 중인지 확인
     const usageCount = await ProductRecipeIngredient.count({
@@ -265,12 +248,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/adjust-stock', async (req, res) => {
   try {
     const ingredient = await ProductIngredient.findByPk(req.params.id);
-    if (!ingredient) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product ingredient not found'
-      });
-    }
+    if (!assertBGOwnsRow(ingredient, req, res)) return;
 
     const { adjustment, reason } = req.body;
     const newStock = parseFloat(ingredient.current_stock) + parseFloat(adjustment);

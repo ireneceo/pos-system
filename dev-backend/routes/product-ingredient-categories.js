@@ -1,25 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
 const { ProductIngredientCategory, ProductIngredient } = require('../models');
-const { Op } = require('sequelize');
 
-// 인증 필수
 router.use(authenticateToken);
-
-// Brand General/Manager 권한 체크
-const checkBrandAccess = (req, res, next) => {
-  const userRole = req.user.role;
-  if (!['Brand General', 'Brand Manager', 'System Admin'].includes(userRole)) {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied. Brand General/Manager role required.'
-    });
-  }
-  next();
-};
-
-router.use(checkBrandAccess);
+router.use(requireBGScope);
 
 // ==================== 프로덕트 재료 카테고리 CRUD ====================
 
@@ -29,6 +15,7 @@ router.get('/', async (req, res) => {
     const { is_active } = req.query;
 
     const where = {};
+    applyBGFilter(where, req);
     if (is_active !== undefined) where.is_active = is_active === 'true';
 
     const categories = await ProductIngredientCategory.findAll({
@@ -36,7 +23,6 @@ router.get('/', async (req, res) => {
       order: [['display_order', 'ASC'], ['name', 'ASC']]
     });
 
-    // 각 카테고리별 재료 수 추가
     const categoriesWithCount = await Promise.all(
       categories.map(async (cat) => {
         const ingredientCount = await ProductIngredient.count({ where: { category_id: cat.id } });
@@ -60,17 +46,49 @@ router.get('/', async (req, res) => {
   }
 });
 
+// 순서 변경 (must come before /:id)
+router.put('/reorder', async (req, res) => {
+  try {
+    const { categoryIds } = req.body;
+
+    if (!Array.isArray(categoryIds)) {
+      return res.status(400).json({
+        success: false,
+        error: 'categoryIds must be an array'
+      });
+    }
+
+    const scopedWhere = req.bgOwnerIsAdmin && req.bgOwnerId == null
+      ? {}
+      : { owner_user_id: req.bgOwnerId };
+
+    await Promise.all(
+      categoryIds.map((id, index) =>
+        ProductIngredientCategory.update(
+          { display_order: index },
+          { where: { id, ...scopedWhere } }
+        )
+      )
+    );
+
+    res.json({
+      success: true,
+      message: 'Categories reordered successfully'
+    });
+  } catch (error) {
+    console.error('Error reordering categories:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // 단일 조회
 router.get('/:id', async (req, res) => {
   try {
     const category = await ProductIngredientCategory.findByPk(req.params.id);
-
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product ingredient category not found'
-      });
-    }
+    if (!assertBGOwnsRow(category, req, res)) return;
 
     res.json({
       success: true,
@@ -90,10 +108,17 @@ router.post('/', async (req, res) => {
   try {
     const { name, description, emoji } = req.body;
 
-    // display_order 자동 설정
-    const maxOrder = await ProductIngredientCategory.max('display_order') || 0;
+    if (req.bgOwnerId == null) {
+      return res.status(400).json({ success: false, message: 'owner_user_id required' });
+    }
+
+    // display_order 자동 설정 (BG 스코프 내 max)
+    const maxOrder = await ProductIngredientCategory.max('display_order', {
+      where: { owner_user_id: req.bgOwnerId }
+    }) || 0;
 
     const category = await ProductIngredientCategory.create({
+      owner_user_id: req.bgOwnerId,
       name,
       description,
       emoji,
@@ -119,12 +144,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const category = await ProductIngredientCategory.findByPk(req.params.id);
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product ingredient category not found'
-      });
-    }
+    if (!assertBGOwnsRow(category, req, res)) return;
 
     const { name, description, emoji, is_active } = req.body;
 
@@ -150,14 +170,8 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const category = await ProductIngredientCategory.findByPk(req.params.id);
-    if (!category) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product ingredient category not found'
-      });
-    }
+    if (!assertBGOwnsRow(category, req, res)) return;
 
-    // 카테고리 사용 중인지 확인
     const ingredientCount = await ProductIngredient.count({ where: { category_id: category.id } });
     if (ingredientCount > 0) {
       return res.status(400).json({
@@ -174,40 +188,6 @@ router.delete('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting product ingredient category:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// 순서 변경
-router.put('/reorder', async (req, res) => {
-  try {
-    const { categoryIds } = req.body;
-
-    if (!Array.isArray(categoryIds)) {
-      return res.status(400).json({
-        success: false,
-        error: 'categoryIds must be an array'
-      });
-    }
-
-    await Promise.all(
-      categoryIds.map((id, index) =>
-        ProductIngredientCategory.update(
-          { display_order: index },
-          { where: { id } }
-        )
-      )
-    );
-
-    res.json({
-      success: true,
-      message: 'Categories reordered successfully'
-    });
-  } catch (error) {
-    console.error('Error reordering categories:', error);
     res.status(500).json({
       success: false,
       error: error.message

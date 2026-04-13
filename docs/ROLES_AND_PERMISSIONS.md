@@ -1,5 +1,8 @@
 # 역할 및 권한 정의
 
+> **2026-04-13 업데이트** — Brand General 스코프 모델 변경:
+> 한 BG가 여러 brand를 소유 (`brands.owner_id`). 재료/공급업체/BG 프로덕트는 BG 소유자 단위로 공유 (`owner_user_id` 컬럼), 레시피는 브랜드별 사용 (`brand_id` 컬럼). 이전의 `user.brand_id` 기반 단일 브랜드 가정은 deprecated. 새 미들웨어 `middleware/brandScope.js`가 RBAC + 데이터 스코프 처리. 자세한 구현은 `dev-backend/middleware/brandScope.js` 참조.
+
 ## 역할 계층 구조
 
 ```

@@ -17,6 +17,7 @@ const {
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
+const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
 
 /**
  * Generate unique product SKU
@@ -105,9 +106,12 @@ async function syncProductToIngredients(productId) {
  * GET /api/brand-product-categories
  * Get all product categories
  */
-router.get('/brand-product-categories', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brand-product-categories', authenticateToken, requireBGScope, async (req, res) => {
   try {
+    const where = {};
+    applyBGFilter(where, req);
     const categories = await BrandProductCategory.findAll({
+      where,
       include: [
         {
           model: BrandProduct,
@@ -134,7 +138,7 @@ router.get('/brand-product-categories', authenticateToken, isBrandManager, async
  * POST /api/brand-product-categories
  * Create product category
  */
-router.post('/brand-product-categories', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brand-product-categories', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { name, description, emoji, sort_order, is_active } = req.body;
 
@@ -142,22 +146,27 @@ router.post('/brand-product-categories', authenticateToken, isBrandManager, asyn
       return res.status(400).json({ error: 'Category name is required' });
     }
 
-    // Duplicate check
+    if (req.bgOwnerId == null) {
+      return res.status(400).json({ success: false, message: 'owner_user_id required' });
+    }
+
+    // Duplicate check (within BG scope)
     const existing = await BrandProductCategory.findOne({
-      where: { name: name.trim() }
+      where: { name: name.trim(), owner_user_id: req.bgOwnerId }
     });
     if (existing) {
       return res.status(400).json({ error: 'A category with this name already exists' });
     }
 
-    // Auto-set sort_order
+    // Auto-set sort_order (within BG scope)
     let finalSortOrder = sort_order;
     if (finalSortOrder === undefined || finalSortOrder === null) {
-      const maxOrder = await BrandProductCategory.max('sort_order');
+      const maxOrder = await BrandProductCategory.max('sort_order', { where: { owner_user_id: req.bgOwnerId } });
       finalSortOrder = (maxOrder || 0) + 1;
     }
 
     const category = await BrandProductCategory.create({
+      owner_user_id: req.bgOwnerId,
       name: name.trim(),
       description: description || null,
       emoji: emoji || null,
@@ -176,21 +185,18 @@ router.post('/brand-product-categories', authenticateToken, isBrandManager, asyn
  * PUT /api/brand-product-categories/:categoryId
  * Update product category
  */
-router.put('/brand-product-categories/:categoryId', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brand-product-categories/:categoryId', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { categoryId } = req.params;
     const { name, description, emoji, sort_order, is_active } = req.body;
 
     const category = await BrandProductCategory.findByPk(categoryId);
+    if (!assertBGOwnsRow(category, req, res)) return;
 
-    if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
-    }
-
-    // Check name duplicate (excluding self)
+    // Check name duplicate (excluding self, within BG scope)
     if (name && name.trim() !== category.name) {
       const existing = await BrandProductCategory.findOne({
-        where: { name: name.trim() }
+        where: { name: name.trim(), owner_user_id: category.owner_user_id }
       });
       if (existing && existing.id !== parseInt(categoryId)) {
         return res.status(400).json({ error: 'A category with this name already exists' });
@@ -216,7 +222,7 @@ router.put('/brand-product-categories/:categoryId', authenticateToken, isBrandMa
  * DELETE /api/brand-product-categories/:categoryId
  * Delete product category
  */
-router.delete('/brand-product-categories/:categoryId', authenticateToken, isBrandManager, async (req, res) => {
+router.delete('/brand-product-categories/:categoryId', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { categoryId } = req.params;
 
@@ -224,9 +230,7 @@ router.delete('/brand-product-categories/:categoryId', authenticateToken, isBran
       include: [{ model: BrandProduct, as: 'products' }]
     });
 
-    if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
-    }
+    if (!assertBGOwnsRow(category, req, res)) return;
 
     if (category.products && category.products.length > 0) {
       return res.status(400).json({
@@ -246,7 +250,7 @@ router.delete('/brand-product-categories/:categoryId', authenticateToken, isBran
  * PUT /api/brand-product-categories/:categoryId/reorder
  * Reorder product category
  */
-router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { categoryId } = req.params;
     const { direction } = req.body;
@@ -256,11 +260,12 @@ router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, i
     }
 
     const category = await BrandProductCategory.findByPk(categoryId);
-    if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
-    }
+    if (!assertBGOwnsRow(category, req, res)) return;
 
+    const reorderWhere = {};
+    applyBGFilter(reorderWhere, req);
     const allCategories = await BrandProductCategory.findAll({
+      where: reorderWhere,
       order: [['sort_order', 'ASC'], ['id', 'ASC']]
     });
 
@@ -291,9 +296,12 @@ router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, i
  * GET /api/brand-product-option-groups
  * Get all option groups
  */
-router.get('/brand-product-option-groups', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brand-product-option-groups', authenticateToken, requireBGScope, async (req, res) => {
   try {
+    const where = {};
+    applyBGFilter(where, req);
     const optionGroups = await BrandProductOptionGroup.findAll({
+      where,
       include: [
         {
           model: BrandProductOption,
@@ -333,22 +341,26 @@ router.get('/brand-product-option-groups', authenticateToken, isBrandManager, as
  * POST /api/brand-product-option-groups
  * Create option group
  */
-router.post('/brand-product-option-groups', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brand-product-option-groups', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { name, is_required, min_selections, max_selections, sort_order, options } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Option group name is required' });
     }
+    if (req.bgOwnerId == null) {
+      return res.status(400).json({ success: false, message: 'owner_user_id required' });
+    }
 
-    // Auto-set sort_order
+    // Auto-set sort_order (within BG scope)
     let finalSortOrder = sort_order;
     if (finalSortOrder === undefined || finalSortOrder === null) {
-      const maxOrder = await BrandProductOptionGroup.max('sort_order');
+      const maxOrder = await BrandProductOptionGroup.max('sort_order', { where: { owner_user_id: req.bgOwnerId } });
       finalSortOrder = (maxOrder || 0) + 1;
     }
 
     const optionGroup = await BrandProductOptionGroup.create({
+      owner_user_id: req.bgOwnerId,
       name: name.trim(),
       is_required: is_required || false,
       min_selections: min_selections || 0,
@@ -361,6 +373,7 @@ router.post('/brand-product-option-groups', authenticateToken, isBrandManager, a
       for (let j = 0; j < options.length; j++) {
         const opt = options[j];
         const createdOpt = await BrandProductOption.create({
+          owner_user_id: req.bgOwnerId,
           option_group_id: optionGroup.id,
           name: opt.name,
           price_adjustment: opt.price_adjustment || 0,
@@ -394,16 +407,13 @@ router.post('/brand-product-option-groups', authenticateToken, isBrandManager, a
  * PUT /api/brand-product-option-groups/:groupId
  * 옵션 그룹 수정
  */
-router.put('/brand-product-option-groups/:groupId', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brand-product-option-groups/:groupId', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { groupId } = req.params;
     const { name, is_required, min_selections, max_selections, sort_order, options } = req.body;
 
     const optionGroup = await BrandProductOptionGroup.findByPk(groupId);
-
-    if (!optionGroup) {
-      return res.status(404).json({ error: '옵션 그룹을 찾을 수 없습니다' });
-    }
+    if (!assertBGOwnsRow(optionGroup, req, res)) return;
 
     await optionGroup.update({
       name: name !== undefined ? name.trim() : optionGroup.name,
@@ -426,6 +436,7 @@ router.put('/brand-product-option-groups/:groupId', authenticateToken, isBrandMa
         for (let j = 0; j < options.length; j++) {
           const opt = options[j];
           const createdOpt = await BrandProductOption.create({
+            owner_user_id: optionGroup.owner_user_id,
             option_group_id: groupId,
             name: opt.name,
             price_adjustment: opt.price_adjustment || 0,
@@ -459,15 +470,12 @@ router.put('/brand-product-option-groups/:groupId', authenticateToken, isBrandMa
  * DELETE /api/brand-product-option-groups/:groupId
  * 옵션 그룹 삭제
  */
-router.delete('/brand-product-option-groups/:groupId', authenticateToken, isBrandManager, async (req, res) => {
+router.delete('/brand-product-option-groups/:groupId', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { groupId } = req.params;
 
     const optionGroup = await BrandProductOptionGroup.findByPk(groupId);
-
-    if (!optionGroup) {
-      return res.status(404).json({ error: '옵션 그룹을 찾을 수 없습니다' });
-    }
+    if (!assertBGOwnsRow(optionGroup, req, res)) return;
 
     // 제품에 연결되어 있는지 확인
     const linkedProducts = await BrandProductOptionGroupProduct.count({
@@ -497,11 +505,12 @@ router.delete('/brand-product-option-groups/:groupId', authenticateToken, isBran
  * GET /api/brand-products
  * 제품 전체 목록 조회
  */
-router.get('/brand-products', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brand-products', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { category_id, is_active } = req.query;
 
     const where = {};
+    applyBGFilter(where, req);
     if (category_id) where.category_id = category_id;
     if (is_active !== undefined) where.is_active = is_active === 'true';
 
@@ -550,7 +559,7 @@ router.get('/brand-products', authenticateToken, isBrandManager, async (req, res
  * GET /api/brand-products/:productId
  * 제품 상세 조회
  */
-router.get('/brand-products/:productId', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brand-products/:productId', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
 
@@ -585,9 +594,7 @@ router.get('/brand-products/:productId', authenticateToken, isBrandManager, asyn
       ]
     });
 
-    if (!product) {
-      return res.status(404).json({ error: '제품을 찾을 수 없습니다' });
-    }
+    if (!assertBGOwnsRow(product, req, res)) return;
 
     res.json({ success: true, data: product });
   } catch (error) {
@@ -600,7 +607,7 @@ router.get('/brand-products/:productId', authenticateToken, isBrandManager, asyn
  * POST /api/brand-products
  * 제품 생성
  */
-router.post('/brand-products', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brand-products', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const {
       name, description, sku, unit, base_quantity, unit_price,
@@ -635,11 +642,24 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
       }
     }
 
+    if (req.bgOwnerId == null) {
+      return res.status(400).json({ success: false, message: 'owner_user_id required' });
+    }
+
+    // Validate category belongs to same BG
+    if (category_id) {
+      const cat = await BrandProductCategory.findByPk(category_id);
+      if (!cat || (cat.owner_user_id !== req.bgOwnerId && !req.bgOwnerIsAdmin)) {
+        return res.status(400).json({ success: false, message: 'Invalid category_id' });
+      }
+    }
+
     // Auto-generate SKU if not provided
     const finalSku = sku || await generateProductSKU();
 
     // Create product
     const product = await BrandProduct.create({
+      owner_user_id: req.bgOwnerId,
       category_id: category_id || null,
       name: name.trim(),
       description: description || null,
@@ -743,7 +763,7 @@ router.post('/brand-products', authenticateToken, isBrandManager, async (req, re
  * PUT /api/brand-products/:productId
  * 제품 수정
  */
-router.put('/brand-products/:productId', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brand-products/:productId', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
     const {
@@ -754,10 +774,7 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
     } = req.body;
 
     const product = await BrandProduct.findByPk(productId);
-
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
+    if (!assertBGOwnsRow(product, req, res)) return;
 
     // Set menu validation
     const finalIsSet = is_set_menu !== undefined ? is_set_menu : product.is_set_menu;
@@ -898,15 +915,12 @@ router.put('/brand-products/:productId', authenticateToken, isBrandManager, asyn
  * DELETE /api/brand-products/:productId
  * 제품 삭제
  */
-router.delete('/brand-products/:productId', authenticateToken, isBrandManager, async (req, res) => {
+router.delete('/brand-products/:productId', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
 
     const product = await BrandProduct.findByPk(productId);
-
-    if (!product) {
-      return res.status(404).json({ error: '제품을 찾을 수 없습니다' });
-    }
+    if (!assertBGOwnsRow(product, req, res)) return;
 
     // Delete auto recipe if exists
     if (product.product_recipe_id) {
@@ -938,7 +952,7 @@ router.delete('/brand-products/:productId', authenticateToken, isBrandManager, a
  * POST /api/brand-products/:productId/copy
  * Duplicate a product
  */
-router.post('/brand-products/:productId/copy', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brand-products/:productId/copy', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
 
@@ -949,13 +963,12 @@ router.post('/brand-products/:productId/copy', authenticateToken, isBrandManager
       ]
     });
 
-    if (!original) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
-    }
+    if (!assertBGOwnsRow(original, req, res)) return;
 
     const newSku = await generateProductSKU();
 
     const copy = await BrandProduct.create({
+      owner_user_id: original.owner_user_id,
       category_id: original.category_id,
       name: `${original.name} (Copy)`,
       description: original.description,
@@ -1011,14 +1024,12 @@ router.post('/brand-products/:productId/copy', authenticateToken, isBrandManager
  * PUT /api/brand-products/:productId/toggle-active
  * Toggle product active status
  */
-router.put('/brand-products/:productId/toggle-active', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brand-products/:productId/toggle-active', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
 
     const product = await BrandProduct.findByPk(productId);
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Product not found' });
-    }
+    if (!assertBGOwnsRow(product, req, res)) return;
 
     await product.update({ is_active: !product.is_active });
 
@@ -1048,15 +1059,19 @@ router.get('/brands/:brandId/products', authenticateToken, async (req, res) => {
   try {
     const { brandId } = req.params;
 
+    // Resolve BG owner and verify caller owns this brand
+    const brand = await Brand.findByPk(brandId, { attributes: ['owner_id'] });
+    if (!brand) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+    if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+
+    // Brand-products are BG-scoped (shared across BG's brands)
     const products = await BrandProduct.findAll({
+      where: brand.owner_id != null ? { owner_user_id: brand.owner_id } : {},
       include: [
-        {
-          model: Brand,
-          as: 'brands',
-          where: { id: brandId },
-          attributes: [],
-          through: { attributes: [] }
-        },
         {
           model: BrandProductCategory,
           as: 'category',
@@ -1092,7 +1107,7 @@ router.get('/brands/:brandId/products', authenticateToken, async (req, res) => {
  * GET /api/brand-products/:productId/recipe
  * Get product with recipe details
  */
-router.get('/brand-products/:productId/recipe', authenticateToken, isBrandManager, async (req, res) => {
+router.get('/brand-products/:productId/recipe', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
 
@@ -1170,7 +1185,7 @@ router.get('/brand-products/:productId/recipe', authenticateToken, isBrandManage
  * PUT /api/brand-products/:productId/recipe
  * Link/unlink recipe to product
  */
-router.put('/brand-products/:productId/recipe', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brand-products/:productId/recipe', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
     const { recipe_id } = req.body;
@@ -1206,7 +1221,7 @@ router.put('/brand-products/:productId/recipe', authenticateToken, isBrandManage
  * POST /api/brand-products/:productId/recipe
  * Create inline recipe for a product (creates recipe and links it)
  */
-router.post('/brand-products/:productId/recipe', authenticateToken, isBrandManager, async (req, res) => {
+router.post('/brand-products/:productId/recipe', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
     const { name, description, ingredients, prep_time, cook_time } = req.body;
@@ -1280,7 +1295,7 @@ router.post('/brand-products/:productId/recipe', authenticateToken, isBrandManag
  * PUT /api/brand-products/:productId/recipe/ingredients
  * Update recipe ingredients for a product's recipe
  */
-router.put('/brand-products/:productId/recipe/ingredients', authenticateToken, isBrandManager, async (req, res) => {
+router.put('/brand-products/:productId/recipe/ingredients', authenticateToken, requireBGScope, async (req, res) => {
   try {
     const { productId } = req.params;
     const { ingredients } = req.body;

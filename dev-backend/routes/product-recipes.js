@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { requireBrandScope, applyBrandFilter, assertBrandOwnsRow } = require('../middleware/brandScope');
 const {
   ProductRecipe,
   ProductIngredient,
@@ -10,22 +11,8 @@ const {
 } = require('../models');
 const { Op } = require('sequelize');
 
-// 인증 필수
 router.use(authenticateToken);
-
-// Brand General/Manager 권한 체크
-const checkBrandAccess = (req, res, next) => {
-  const userRole = req.user.role;
-  if (!['Brand General', 'Brand Manager', 'System Admin'].includes(userRole)) {
-    return res.status(403).json({
-      success: false,
-      error: 'Access denied. Brand General/Manager role required.'
-    });
-  }
-  next();
-};
-
-router.use(checkBrandAccess);
+router.use(requireBrandScope());
 
 // ==================== 프로덕트 레시피 CRUD ====================
 
@@ -35,6 +22,7 @@ router.get('/', async (req, res) => {
     const { category_id, search, is_active } = req.query;
 
     const where = {};
+    applyBrandFilter(where, req);
     if (category_id) where.category_id = category_id;
     if (is_active !== undefined) where.is_active = is_active === 'true';
     if (search) {
@@ -84,12 +72,7 @@ router.get('/:id', async (req, res) => {
       ]
     });
 
-    if (!recipe) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product recipe not found'
-      });
-    }
+    if (!assertBrandOwnsRow(recipe, req, res)) return;
 
     res.json({
       success: true,
@@ -115,11 +98,24 @@ router.post('/', async (req, res) => {
       ingredients
     } = req.body;
 
-    // 코드 자동 생성
-    const count = await ProductRecipe.count();
-    const code = `PR-${String(count + 1).padStart(3, '0')}`;
+    // Resolve target brand_id: explicit body > scope single brand
+    let brandId = req.body.brand_id != null ? parseInt(req.body.brand_id, 10) : req.brandScope.brandId;
+    if (brandId == null && !req.brandScope.isAdmin && req.brandScope.ownedBrandIds?.length === 1) {
+      brandId = req.brandScope.ownedBrandIds[0];
+    }
+    if (brandId == null) {
+      return res.status(400).json({ success: false, message: 'brand_id required' });
+    }
+    if (!req.brandScope.isAdmin && !req.brandScope.ownedBrandIds.includes(brandId)) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+
+    // 코드 자동 생성 (브랜드 스코프 내 카운트)
+    const scopedCount = await ProductRecipe.count({ where: { brand_id: brandId } });
+    const code = `PR-${String(scopedCount + 1).padStart(3, '0')}`;
 
     const recipe = await ProductRecipe.create({
+      brand_id: brandId,
       code,
       name,
       description,
@@ -190,12 +186,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const recipe = await ProductRecipe.findByPk(req.params.id);
-    if (!recipe) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product recipe not found'
-      });
-    }
+    if (!assertBrandOwnsRow(recipe, req, res)) return;
 
     const {
       name, description, category_id, image, emoji,
@@ -265,12 +256,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const recipe = await ProductRecipe.findByPk(req.params.id);
-    if (!recipe) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product recipe not found'
-      });
-    }
+    if (!assertBrandOwnsRow(recipe, req, res)) return;
 
     // 연결된 BrandProduct 확인
     const linkedProducts = await BrandProduct.count({ where: { product_recipe_id: recipe.id } });
@@ -309,12 +295,7 @@ router.post('/:id/recalculate-cost', async (req, res) => {
       }]
     });
 
-    if (!recipe) {
-      return res.status(404).json({
-        success: false,
-        error: 'Product recipe not found'
-      });
-    }
+    if (!assertBrandOwnsRow(recipe, req, res)) return;
 
     let totalCost = 0;
     for (const ri of recipe.recipeIngredients) {

@@ -7,6 +7,11 @@ const ProductRecipeCategory = sequelize.define('ProductRecipeCategory', {
     primaryKey: true,
     autoIncrement: true
   },
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand FK — recipe categories are brand-scoped'
+  },
   name: {
     type: DataTypes.STRING(100),
     allowNull: false

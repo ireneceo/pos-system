@@ -7,6 +7,11 @@ const BrandProduct = sequelize.define('BrandProduct', {
     primaryKey: true,
     autoIncrement: true
   },
+  owner_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Brand General user id (scope owner)'
+  },
   category_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
