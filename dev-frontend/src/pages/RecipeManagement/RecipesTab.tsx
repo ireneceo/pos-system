@@ -11,7 +11,6 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '../../utils/unitConversion';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface RecipesTabProps {
@@ -761,7 +760,6 @@ const RecipeDetailText = styled.div`
 `;
 
 const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
-  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');

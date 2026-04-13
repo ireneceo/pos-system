@@ -114,19 +114,6 @@ const FiltersContainer = styled.div`
   align-items: center;
 `;
 
-const FilterGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const FilterLabel = styled.label`
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
 
 const SearchInput = styled.input`
   padding: 8px 12px;

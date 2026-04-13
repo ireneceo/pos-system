@@ -64,6 +64,7 @@ router.get('/settings', authenticateToken, async (req, res) => {
       data: {
         id: restaurant.id,
         name: restaurant.name,
+        branch_name: restaurant.branch_name || null,
         email: restaurant.email,
         phone: restaurant.phone,
         address: restaurant.address,

@@ -4,7 +4,6 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
-import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   padding: 24px 16px 100px;
@@ -266,7 +265,6 @@ const HiddenFileInput = styled.input`
 `;
 
 const BankTransferPage: React.FC = () => {
-  const { t } = useTranslation('common');
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -333,6 +331,7 @@ const BankTransferPage: React.FC = () => {
     };
 
     loadBankDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStore?.id]);
 
   const copyToClipboard = (text: string, fieldName: string) => {

@@ -7,7 +7,6 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/S
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import { getActionGuide } from '../../utils/logActionGuides';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface SystemLog {
@@ -610,7 +609,6 @@ const transformLog = (log: any): SystemLog => ({
 });
 
 const SystemLogsPage: React.FC = () => {
-  const { t } = useTranslation('admin');
   const [activeTab, setActiveTab] = useState<ActiveTab>('logs');
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [searchTerm, setSearchTerm] = useState('');

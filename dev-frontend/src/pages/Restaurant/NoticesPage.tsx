@@ -28,7 +28,7 @@ interface Notice {
   priority: 'normal' | 'important' | 'urgent';
   status: string;
   createdAt: string;
-  category?: 'general' | 'guide';
+  category?: 'general' | 'guide' | 'updates';
   commentCount: number;
   attachments?: any[];
   author?: any;
@@ -362,7 +362,7 @@ const NoticesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide' | 'updates'>('all');
   const [authorRoleFilter, setAuthorRoleFilter] = useState('all');
 
   // View Modal state
@@ -545,7 +545,7 @@ const NoticesPage: React.FC = () => {
 
         {/* Category Filter Pills */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          {(['all', 'general', 'guide'] as const).map(cat => (
+          {(['all', 'general', 'guide', 'updates'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -561,7 +561,7 @@ const NoticesPage: React.FC = () => {
                 transition: 'all 0.15s'
               }}
             >
-              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : 'Guide'}
+              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : cat === 'guide' ? 'Guide' : 'Updates'}
             </button>
           ))}
         </div>
@@ -670,9 +670,25 @@ const NoticesPage: React.FC = () => {
             title="Notice Details"
             size="large"
             footer={
-              <Button variant="secondary" onClick={handleCloseModal}>
-                Close
-              </Button>
+              <>
+                {selectedNotice.category === 'guide' && (
+                  <Button variant="secondary" onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/work-manuals/from-notice/${selectedNotice.id}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+                        body: JSON.stringify({ restaurant_id: restaurantId ? parseInt(restaurantId) : undefined })
+                      });
+                      if ((await res.json()).success) handleCloseModal();
+                    } catch (e) { /* silent */ }
+                  }}>
+                    Send to Work Manuals
+                  </Button>
+                )}
+                <Button variant="secondary" onClick={handleCloseModal}>
+                  Close
+                </Button>
+              </>
             }
           >
                 {/* Title & Priority */}

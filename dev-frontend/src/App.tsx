@@ -30,6 +30,7 @@ import PrivacyPolicyPage from './pages/Landing/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/Landing/TermsOfServicePage';
 import FAQPage from './pages/Landing/FAQPage';
 import BlogPage from './pages/Landing/BlogPage';
+import NewsPage from './pages/Landing/NewsPage';
 import BlogPostPage from './pages/Landing/BlogPostPage';
 // Login Page (keep static - frequently used)
 import LoginPage from './pages/Login/LoginPage';
@@ -199,6 +200,13 @@ const BrandNoticesPage = React.lazy(() => import('./pages/Brand/NoticesPage'));
 const FoodcourtNoticesPage = React.lazy(() => import('./pages/Foodcourt/NoticesPage'));
 const RestaurantNoticesPage = React.lazy(() => import('./pages/Restaurant/NoticesPage'));
 
+// Work Manuals Pages
+const AdminWorkManualsPage = React.lazy(() => import('./pages/Admin/WorkManualsPage'));
+const BrandWorkManualsPage = React.lazy(() => import('./pages/Brand/WorkManualsPage'));
+const FoodcourtWorkManualsPage = React.lazy(() => import('./pages/Foodcourt/WorkManualsPage'));
+const OwnerWorkManualsPage = React.lazy(() => import('./pages/Owner/WorkManualsPage'));
+const RestaurantWorkManualsPage = React.lazy(() => import('./pages/Restaurant/WorkManualsPage'));
+
 // POS Root redirect component (for authenticated users)
 const PosRootRedirect: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -356,6 +364,8 @@ function App() {
                       <Route path="/faq" element={<FAQPage />} />
                       <Route path="/blog" element={<BlogPage />} />
                       <Route path="/blog/:slug" element={<BlogPostPage />} />
+                      <Route path="/news" element={<NewsPage />} />
+                      <Route path="/news/:slug" element={<BlogPostPage />} />
 
                       {/* Login & Email Verification */}
                       <Route path="/pos" element={<LoginPage />} />
@@ -451,6 +461,11 @@ function App() {
                       <Route path="/pos/admin/notices" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <AdminNoticesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/work-manuals" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <AdminWorkManualsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/system-config" element={
@@ -557,6 +572,11 @@ function App() {
                           <OwnerNoticesPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/owner/work-manuals" element={
+                        <ProtectedRoute requiredRole={['Restaurant Owner']}>
+                          <OwnerWorkManualsPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/owner/system-inquiry" element={
                         <ProtectedRoute requiredRole={['Restaurant Owner']}>
                           <OwnerSystemInquiryPage />
@@ -622,6 +642,11 @@ function App() {
                       <Route path="/pos/foodcourt/general/notices" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <FoodcourtNoticesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/general/work-manuals" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <FoodcourtWorkManualsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/invoices" element={
@@ -694,6 +719,11 @@ function App() {
                       <Route path="/pos/brand/general/notices" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandNoticesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/work-manuals" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandWorkManualsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/history" element={
@@ -959,6 +989,11 @@ function App() {
                       <Route path="/restaurant/:restaurantId/notices" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
                           <RestaurantNoticesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:restaurantId/work-manuals" element={
+                        <ProtectedRoute requireRestaurantMatch={true} requiredRole={['Restaurant Admin', 'Staff']}>
+                          <RestaurantWorkManualsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:restaurantId/settings" element={

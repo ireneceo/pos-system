@@ -6,6 +6,119 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-13
+- 인보이스 인쇄/PDF/View 모달의 i18n 키가 그대로 출력되던 버그 수정 (5개 역할)
+- 인보이스 PDF가 1장에 잘리던 문제 해결 (다중 페이지 분할 + iframe 동적 높이)
+- 인보이스 금액 RM이 줄바꿈되던 UI 깨짐 fix (`white-space: nowrap`)
+- Pricing 페이지 탭별 URL 딥링크 (`/pricing?tab=brand` 등)
+- Payment Settings 변경 시 미결제 인보이스 자동 재계산 + "수정됨" 배지 자동 표시
+- 시스템 자동 수정도 modification_history 기록 (수동 수정과 동일 UX)
+- 인보이스 view 모달 크래시 fix (modification_history 이중 인코딩 + 양형식 호환 렌더러)
+- Hardware 인보이스 QTY/단가 표시 정상화 (description "x4" → 별도 quantity 컬럼)
+- Hardware Quote 모달 payment_settings 자동 로드
+- 인보이스 삭제 시 hardware_quotes FK 해제 (500 에러 제거)
+- Brand General 레스토랑 생성/편집에 "Link to Brand" 드롭다운 신규 (브랜드-레스토랑 연결 UI)
+
+## 2026-04-13 배포 2 (v3.13 유지 — 회계/인보이스 정합성 복구)
+
+### Payment settings → Invoice additional_charges 자동 적용 (치명)
+- fix(services/subscriptionInvoiceService.js): 기존엔 tax 6% 하드코딩이었는데, 이제 `SystemSettings.payment_settings.additionalCharges[currency]`에서 조회해 적용. enabled=true + rate>0 인 charge만 필터. 각 charge를 `{name, rate, amount}` JSON으로 `invoices.additional_charges` 컬럼에 저장
+- fix: `invoices` 테이블의 `total_amount`가 base + 모든 charge 합으로 정확히 계산됨 (이전엔 6% 고정이라 SST 이외의 service charge 등이 누락)
+- fix(syncPendingInvoice): 비교 로직에 `additional_charges` 포함. total_amount는 같아도 charges JSON이 다르면 업데이트 수행
+
+### A 방안: Activate Subscription 토글 (하드웨어 전용 고객 대응)
+- feat(restaurants-crud.js POST): `activate_subscription` 플래그 수용. false면 `createInitialInvoice` 호출 skip
+- feat(Admin/RestaurantsPage 생성 모달): "Activate subscription now" 체크박스 추가. 기본 ON (backward compat). OFF 시 주황 배경 + 경고 텍스트 "No subscription invoice will be generated"
+- 유스케이스: 하드웨어만 주문한 고객 / 플레이스홀더 계정 / 파트너 셋업 등 — 구독 결정 전까지 인보이스 미발행. 나중에 PUT으로 플랜 변경 시 자동 동기화 (no_pending → createInitialInvoice 전환)
+
+### Unknown Restaurant 표시 제거
+- fix(routes/invoices-main.js): customerName/customerCompany/payerName/restaurantName 전부 폴백 체인 변경. `restaurant?.name → external_payer_company → external_payer_name → '—'`. "Unknown Restaurant" 텍스트 완전 제거
+
+### 운영 DB 인보이스 정비
+- chore: INV-2025110001 (Sunway Pyramid Basic Annual) — additional_charges=[{SST, 6, 29.40}] 수동 추가
+- chore: INV-2025110002 (KFC Professional Monthly) — additional_charges=[{SST, 6, 5.94}] 수동 추가
+- INV-2026040001 (Enterprise)는 이미 정상 (189.74 + SST 10.74)
+
+### 선행 이슈 기록 (다음 세션)
+- `POST /api/restaurants`에 `requireRole` 없음. Staff/Brand Manager도 restaurant 생성 가능한 보안 갭. DEVELOPMENT_PLAN.md에 HIGH로 기록
+
+## 2026-04-13 배포 (v3.13 유지 — 시스템관리자 버그 수정 위주)
+
+### 구독 플랜 한도 시스템 정합성
+- fix(users.js POST): Staff / Restaurant Admin 생성 시 `staff_limit` 체크 로직 추가. 초과 시 403 + `{limit, current, upgradeRequired}` 반환. 이전엔 플랜 한도 무시하고 무제한 생성 가능했음 (치명)
+- fix(subscriptions.js): Downgrade 검증에 `order_limit` 체크 추가. 기존엔 staff/menu만 체크 → Professional→Basic 같은 다운그레이드 시 월 주문 한도 위반해도 통과하던 버그
+- feat(Profile/SubscriptionTab): 플랜 사용량 섹션 신규. Staff / Menu Items / Orders (this month) 3개 카드 + 진행바. 80% 접근 시 주황 경고 배너, 100% 도달 시 빨강 차단 배너 자동. 이전엔 백엔드가 `current_usage` 반환하는데 프론트가 렌더 안 함
+- fix(Profile/SubscriptionTab): Unlimited 플랜(`-1`) 처리 추가 — "Unlimited" 텍스트 표시, 진행바 숨김
+
+### 사용자/매니저 검색 수정
+- fix(users.js GET): `?search=` 파라미터 지원 추가. `%term%` LIKE substring 매칭으로 중간글자 검색 가능. 이전엔 param이 무시되어 프론트가 전체 목록을 받고 `slice(0,20)`으로 잘라서 알파벳 순 상위 20명만 보이던 버그 — Hardware Quote 등에서 Restaurant Admin 검색이 작동 안 하던 근본 원인
+- fix(users.js GET): `?q=` 파라미터도 backward compat로 수용
+
+### Hardware Quote → Link Restaurant Admin 전용
+- feat(Admin/HardwareQuotesPage): "Link User" → "Link Restaurant Admin" 이름 변경. 하드웨어 인보이스가 레스토랑 관리자에게 청구되므로 역할 명확화
+- feat(Admin/HardwareQuotesPage): 검색 쿼리에 `role=Restaurant Admin` 필터 추가 + client-side 이중 필터 방어. 다른 역할(Manager, Staff 등) 노출 차단
+- feat(Admin/HardwareQuotesPage): 모달 내부에 설명 텍스트 추가 ("Only Restaurant Admins are shown — hardware invoices are billed to the restaurant admin")
+- feat(Admin/HardwareQuotesPage): 검색 결과 없음 메시지 명확화 ("No Restaurant Admin found matching your search")
+
+### 공지 Updates 카테고리 UI
+- feat(NoticesPage x5 — Admin/Brand/Foodcourt/Owner/Restaurant): 카테고리 필터 탭에 `Updates` 추가. 이전엔 백엔드 Notice.category ENUM에 'updates' 있는데 프론트 타입/필터/라벨이 'general'/'guide' 만 하드코딩되어 Updates 카테고리 공지(v3.0.1~v3.13 릴리즈 노트 12건 포함)가 탭에서 필터링되지 않던 문제
+
+## [v3.13] — 2026-04-12 배포 (구독/인보이스 시스템 정합성 복구 + 업무매뉴얼/News 신규)
+
+### 구독/인보이스 정합성 복구 (치명 버그 수정)
+- fix(users.js POST): Brand General / Foodcourt General 유저 생성 시 구독 필드(plan_type, plan_amount, billing_cycle, subscription_start/end, trial_end_date 등)가 저장 안 되던 버그. role 체크가 'Restaurant Owner' 만 되어 있어 Brand General/Foodcourt General은 프론트에서 보낸 구독 정보가 무시됨. 이게 프로덕션에 Brand/Foodcourt 인보이스 0건인 근본 원인
+- fix(users.js POST): Restaurant Owner 구독의 `calcSubscriptionEnd` 변수가 정의 안 되어 `subscription_end`가 `undefined` 저장되던 버그
+- fix(users.js POST): `subscription_status` 논리 오류 — `subscription_start ? 'active' : 'trial'` 이 아니라 "start가 미래면 trial, 오늘/과거면 active"로 수정
+- feat(users.js POST): Brand General / Foodcourt General / Restaurant Owner 생성 시 첫 구독 인보이스 자동 발행 (레스토랑 생성과 동일 패턴)
+- feat(users.js PUT): 구독 필드 변경 시 미결제 인보이스 자동 동기화. 미결제 인보이스 없으면 신규 생성
+- feat(restaurants-crud.js PUT): 구독 필드 변경 시 미결제 인보이스 자동 동기화. 결제된 인보이스는 절대 건드리지 않음 (`status IN ('draft','pending_payment','overdue')` 필터)
+- fix(invoiceScheduler.js `isTodayAdvanceOf`): 정확히 14일 전인 날에만 true 반환하던 1일 창문 브리틀니스. Catch-up 모드(`today >= generationDate`)로 전환. cron 하루 실패해도 다음날 발행됨. 중복 방지는 기존 `billing_period_start` 체크로 보장
+
+### 리팩토링 — 공용 인보이스 헬퍼
+- refactor(services/subscriptionInvoiceService.js 신규): Restaurant/User 공용 `createInitialInvoice(subject)` + `syncPendingInvoice(subject)`. 기존 `routes/restaurants-crud.js` 의 인보이스 생성 로직을 헬퍼로 교체. `invoice.modification_history` JSON에 before/after/reason 감사 추적 기록
+- refactor(utils/subscriptionDates.ts 신규): `calcEndDate`, `deriveStatus`, `calcTrialEnd`, `formatDateISO`, `parseDateLocal` 공용 날짜 함수
+
+### 레스토랑/매니저 등록 UI
+- feat(Admin/RestaurantsPage): End Date 필드 readonly 전환 (자동 계산, 회색 배경). Start Date 변경 시 `+1개월-1일`(Monthly) 또는 `+1년-1일`(Annual) 자동 재계산
+- feat(Admin/RestaurantsPage): Billing Cycle 변경 시 End Date 즉시 재계산
+- feat(Admin/RestaurantsPage): "Apply 7-Day Free Trial" 체크박스 → "Treat as trial until subscription starts"로 일반화. 7일 하드코드 제거. Start Date가 미래면 그 기간이 자동으로 트라이얼 (20일/30일/자유)
+- feat(Admin/ManagersPage): `calcSubscriptionEnd` 함수에 `-1일` 규칙 적용 (기존: +1개월, 수정: +1개월-1일)
+- fix(Admin/RestaurantsPage 편집 모달): 트라이얼 체크박스 신규 추가 (기존에는 편집 시 변경 불가였음)
+
+### 업무매뉴얼 (신규 기능)
+- feat: 5개 역할(Admin/Brand/Foodcourt/Owner/Restaurant) 전용 업무매뉴얼 메뉴 추가. 블로그 형식 카드 그리드 + 상세 모달 + 댓글
+- feat: 스코프별 격리 (System=company-wide, Brand=brand_id, Foodcourt=foodcourt_id, Restaurant Admin/Staff=restaurant_id, Owner=per-restaurant 선택)
+- feat: 사용자 자체 카테고리 CRUD (100% 자율 관리)
+- feat: 공지 guide 카테고리 상세 모달에 "업무매뉴얼로 보내기" 버튼 — 타역할 가이드를 복사해 자기 스코프로 가져오기
+- feat: 매뉴얼 간 복사 기능 (Owner는 대상 레스토랑 선택 가능)
+- model: `WorkManual`, `WorkManualCategory` 신규. `Comment.entity_type` ENUM에 `work_manual` 추가
+
+### 랜딩 페이지 News 메뉴 (신규)
+- feat: 상단 GNB에 `Setup Quote` 제거 → `News` 추가 (4개 언어 번역 포함)
+- feat: `/news` 페이지 신규 — 블로그와 동일 구조, 카테고리 탭 `All / Product News / Updates`
+- feat: `GET /api/contents/public/news` 엔드포인트 — Product News + Updates 카테고리만 반환
+- refactor: `GET /api/contents/public/blog` — Product News/Updates 카테고리 제외
+- fix: 두 엔드포인트 모두 **포스트가 있는 카테고리만** 반환 (빈 카테고리 숨김)
+- feat: `BlogPostPage`가 `/news/:slug` 도 처리 — 경로로 back 버튼 목적지 분기 (/blog vs /news)
+
+### 릴리즈 콘텐츠 자동 등록 인프라
+- feat: `scripts/create-release-post.js` 신규 — 배포 시 JSON을 입력받아 (1) 랜딩 블로그 포스트(영어, ContentCategory=updates) + (2) System Admin 공지(영어+한글 이중언어, Notice.category=updates, target_type=all) 동시 생성. `--sync-prod` 플래그로 SSH 운영 DB 자동 동기화
+- model: `Notice.category` ENUM에 `updates` 추가 (dev + prod 둘 다 동기화)
+- chore: 운영 DB 기존 릴리즈 공지 12개(v3.0.1~v3.12)를 `general` → `updates` 카테고리로 마이그레이션
+- chore: 운영 DB 기존 릴리즈 공지 12개의 영어 섹션만 추출하여 `contents` 테이블에 `release-v{version}` slug로 블로그 포스트 생성
+- docs: `/배포` 스킬 문서에 "릴리즈 콘텐츠 자동 등록" 섹션 추가
+
+### 자동저장 정리 (SettingsPage)
+- fix: `brands` / `billing` 탭에서 의미 없는 "Save Changes" 버튼 4곳 제거. 두 탭 모두 편집 가능 필드가 없는 표시 전용이라 Save 버튼이 혼란만 줬음. 실제 편집 가능한 모든 설정은 `AutoSaveField`로 자동저장 동작 확인 완료
+
+### UI 수정
+- fix: `Admin/ContactInquiriesPage` 헤더 높이가 공통 `PageComponents.Header` (56px)와 달라서 다른 페이지와 정렬 안 맞던 문제 수정
+
+### i18n
+- fix: `i18next-http-backend` 캐시버스트 추가 — 페이지 로드 시 `/locales/{lng}/{ns}.json?v={timestamp}` 쿼리 파라미터. 번역 키 추가 시 사용자가 수동 캐시 클리어 없이 반영됨 (ETag 유지로 내용 미변경 시 304)
+- feat: `common.json`에 `nav.workManuals` 4개 언어 추가 (en/ko/zh/ms)
+- feat: `landing.json`에 `nav.news` 4개 언어 추가
+
 ## 2026-04-11 배포 (v3.12 유지 — 버그 수정 및 UI 조정 위주)
 
 ### notices 데모/테스트 제외 + admin 하드웨어 max_quantity 무제한 + /packages Quote 모달 수정 + External QR + inventory adjust fix

@@ -157,7 +157,7 @@ const StripeCheckoutForm: React.FC<{
 const OnlinePaymentPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { setCurrentOrder, clearCart, currentStore, currency } = useMobileOrder();
+  const { setCurrentOrder, clearCart, currency } = useMobileOrder();
 
   // Get order data from sessionStorage
   const sessionData = sessionStorage.getItem('pendingOnlinePayment');

@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { getAuthToken } from '../utils/auth';
 interface StoreSettings {
   name: string;
+  branchName: string;
   businessRegistration: string;
   phone: string;
   email: string;
@@ -69,6 +70,7 @@ interface StoreContextType {
 
 const defaultStoreSettings: StoreSettings = {
   name: '',
+  branchName: '',
   businessRegistration: '',
   phone: '',
   email: '',
@@ -215,6 +217,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
         if (result.success && result.data) {
           setStoreSettings({
             name: result.data.name || '',
+            branchName: result.data.branch_name || '',
             businessRegistration: result.data.business_registration || '',
             phone: result.data.phone || '',
             email: result.data.email || '',

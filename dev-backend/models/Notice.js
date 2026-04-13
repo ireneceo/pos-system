@@ -81,9 +81,9 @@ Notice.init({
     }
   },
   category: {
-    type: DataTypes.ENUM('general', 'guide'),
+    type: DataTypes.ENUM('general', 'guide', 'updates'),
     defaultValue: 'general',
-    comment: 'general=일반 공지, guide=가이드/참고 자료'
+    comment: 'general=일반 공지, guide=가이드/참고 자료, updates=릴리즈 노트/업데이트'
   },
   priority: {
     type: DataTypes.ENUM('normal', 'important', 'urgent'),

@@ -29,13 +29,6 @@ const Content = styled.main`
 `;
 
 
-const SectionTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0 0 20px 0;
-`;
-
 const ProfileHeader = styled.div`
   background: white;
   border-radius: 12px;
@@ -530,20 +523,6 @@ const ProfilePage: React.FC = () => {
       window.alert(error.message || 'Failed to save profile');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleReset = () => {
-    if (currentUser) {
-      setFormData({
-        name: currentUser.name,
-        email: currentUser.email,
-        phone: currentUser.phone,
-        department: currentUser.department || '',
-        company_name: currentUser.company_name || '',
-      });
-      setHasChanges(false);
-      setSavedSuccessfully(false);
     }
   };
 

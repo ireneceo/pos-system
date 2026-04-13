@@ -10,7 +10,6 @@ import api from '../services/api';
 import { formatCurrency } from '../../utils/currency';
 import PhoneInput from '../components/common/PhoneInput';
 import { mobileFetch } from '../utils/mobileApi';
-import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   padding-bottom: 100px;
@@ -511,7 +510,6 @@ const validateCouponAPI = async (code: string, restaurantId: number, orderAmount
 };
 
 const PaymentPage: React.FC = () => {
-  const { t } = useTranslation('common');
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { cartItems, cartTotal, clearCart, setCurrentOrder, currentStore, setCurrentStore, currency } = useMobileOrder();
@@ -913,6 +911,7 @@ const PaymentPage: React.FC = () => {
     };
 
     loadPaymentSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStore?.id]);
 
   // Load available tables from restaurant settings
@@ -954,6 +953,7 @@ const PaymentPage: React.FC = () => {
     if (preSelectedTable) {
       setSelectedTable(preSelectedTable);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStore?.id]);
 
   // Load delivery zones from operationSettings

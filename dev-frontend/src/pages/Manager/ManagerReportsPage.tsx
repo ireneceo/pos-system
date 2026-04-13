@@ -187,7 +187,7 @@ const ProgressBar = styled.div<{ percentage: number }>`
 
 const ManagerReportsPage: React.FC = () => {
   const { t } = useTranslation('admin');
-  const { user } = useAuth();
+  useAuth();
   const location = useLocation();
   const [selectedRestaurant, setSelectedRestaurant] = useState('all');
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
@@ -287,74 +287,6 @@ const ManagerReportsPage: React.FC = () => {
     }));
   }, [selectedRestaurant, dateRange.start, dateRange.end]);
 
-  const handleExportReport = () => {
-    const exportData = {
-      generatedAt: new Date().toISOString(),
-      restaurant: selectedRestaurant === 'all' ? 'All Restaurants' : restaurants.find(r => r.id === selectedRestaurant)?.name,
-      dateRange: `${dateRange.start}_to_${dateRange.end}`,
-      manager: user?.name,
-      summary: {
-        totalRevenue: reportData.totalRevenue,
-        totalOrders: reportData.totalOrders,
-        averageOrderValue: reportData.averageOrderValue,
-        customerCount: reportData.customerCount
-      },
-      topItems: reportData.topItems,
-      staffPerformance: reportData.staffPerformance,
-      hourlyAnalysis: reportData.hourlyData,
-      customerAnalysis: reportData.customerAnalysis
-    };
-
-    const csvContent = generateCSV(exportData);
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `manager-report-${selectedRestaurant}-${dateRange.start}_to_${dateRange.end}-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-  };
-
-
-  const generateCSV = (data: any) => {
-    let csv = `Manager Reports - ${data.restaurant}\n`;
-    csv += `Generated: ${new Date().toLocaleString()}\n`;
-    csv += `Period: ${data.dateRange}\n`;
-    csv += `Manager: ${data.manager}\n\n`;
-
-    csv += `SALES SUMMARY\n`;
-    csv += `Total Revenue,RM ${data.summary.totalRevenue}\n`;
-    csv += `Total Orders,${data.summary.totalOrders}\n`;
-    csv += `Average Order Value,RM ${data.summary.averageOrderValue}\n`;
-    csv += `Customer Count,${data.summary.customerCount}\n\n`;
-
-    csv += `CUSTOMER ANALYSIS\n`;
-    csv += `Total Customers,${data.customerAnalysis.totalCustomers}\n`;
-    csv += `New Customers,${data.customerAnalysis.newCustomers}\n`;
-    csv += `Returning Customers,${data.customerAnalysis.returningCustomers}\n`;
-    csv += `VIP Customers,${data.customerAnalysis.vipCustomers}\n`;
-    csv += `Average Orders per Customer,${data.customerAnalysis.averageOrdersPerCustomer}\n`;
-    csv += `Customer Retention Rate,${data.customerAnalysis.customerRetentionRate}%\n`;
-    csv += `Satisfaction Score,${data.customerAnalysis.satisfaction}/5.0\n\n`;
-
-    csv += `TOP PERFORMING ITEMS\n`;
-    csv += `Item Name,Quantity,Revenue\n`;
-    data.topItems.forEach((item: any) => {
-      csv += `${item.name},${item.quantity},RM ${item.revenue}\n`;
-    });
-
-    csv += `\nSTAFF PERFORMANCE\n`;
-    csv += `Staff Name,Orders Handled,Efficiency\n`;
-    data.staffPerformance.forEach((staff: any) => {
-      csv += `${staff.name},${staff.orders},${staff.efficiency}%\n`;
-    });
-
-    csv += `\nHOURLY ANALYSIS\n`;
-    csv += `Hour,Orders,Revenue\n`;
-    data.hourlyAnalysis.forEach((hour: any) => {
-      csv += `${hour.hour},${hour.orders},RM ${hour.revenue}\n`;
-    });
-
-    return csv;
-  };
 
   return (
     <>

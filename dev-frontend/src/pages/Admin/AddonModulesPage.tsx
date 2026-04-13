@@ -7,7 +7,7 @@ import {
   ActionSection,
   Content,
   Button
-, Modal as CommonModal } from '../../components/UI';
+, Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
@@ -283,40 +283,6 @@ const CheckboxItem = styled.div`
   }
 `;
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 24px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-`;
-
-const StatCard = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-`;
-
-const StatValue = styled.div`
-  font-size: 28px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 14px;
-  color: #6B7280;
-`;
 
 const FilterBar = styled.div`
   display: flex;

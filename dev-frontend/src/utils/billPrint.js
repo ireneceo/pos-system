@@ -7,7 +7,6 @@
  * 3. QZ Tray (Network) - ESC/POS via QZ Tray to LAN network printers
  */
 import qz from 'qz-tray';
-import QRCode from 'qrcode';
 
 // ============================================
 // ESC/POS Command Definitions
@@ -2430,6 +2429,7 @@ async function printKitchenTicketsByStation(orderData, storeInfo, settings) {
  * Generate Station-specific Kitchen Ticket ESC/POS content
  * Same as generateKitchenTicketContent but with Station name header + ticket count
  */
+// eslint-disable-next-line no-unused-vars
 function generateStationKitchenTicket(orderData, storeInfo, stationName, ticketIndex, totalTickets) {
   let content = '';
 

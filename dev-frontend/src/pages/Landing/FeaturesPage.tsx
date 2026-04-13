@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateHowToSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
-import { useTranslation } from 'react-i18next';
 
 // ─── Types ───
 interface FeatureItem {
@@ -575,7 +574,6 @@ const ROLE_TABS: RoleTab[] = [
 
 // ─── Main Component ───
 const FeaturesPage: React.FC = () => {
-  const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('restaurant');
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number; title: string } | null>(null);

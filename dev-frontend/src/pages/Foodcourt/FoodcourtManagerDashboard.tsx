@@ -346,6 +346,7 @@ const StatusBadge = styled.span<{ status: string }>`
 interface TenantSummary {
   id: number;
   name: string;
+  branch_name?: string | null;
   status: string;
   address: string;
   cuisine: string;
@@ -436,6 +437,7 @@ const FoodcourtManagerDashboard: React.FC = () => {
             return {
               id: r.id,
               name: r.name,
+              branch_name: r.branch_name || null,
               status: r.status || 'active',
               address: r.address || 'No address',
               cuisine: r.cuisine || 'Various',
@@ -625,7 +627,7 @@ const FoodcourtManagerDashboard: React.FC = () => {
               {tenants.length > 0 ? (
                 tenants.map((tenant) => (
                   <Tr key={tenant.id} onClick={() => navigate(`/pos/manager/reports?tab=sales&restaurantId=${tenant.id}&restaurantName=${encodeURIComponent(tenant.name)}`)}>
-                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{tenant.name}</Td>
+                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{tenant.name}{tenant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{tenant.branch_name}</span>}</Td>
                     <Td>{tenant.adminName}</Td>
                     <Td>
                       <StatusBadge status={tenant.status}>{tenant.status}</StatusBadge>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Modal as CommonModal } from '../../components/UI';
+import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { API_BASE_URL } from '../../config/api';
@@ -89,62 +89,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   `}
 `;
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-  transition: all 0.2s;
-  
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
-  }
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const StatTrend = styled.div<{ positive?: boolean }>`
-  font-size: 12px;
-  color: ${props => props.positive ? '#059669' : '#DC2626'};
-  font-weight: 500;
-  margin-top: 4px;
-`;
-
-// Unused styled component - kept for reference
-// const StatDetail = styled.div`
-//   font-size: 12px;
-//   color: #9CA3AF;
-// `;
 
 const SubscriptionGrid = styled.div`
   display: grid;
@@ -820,22 +764,22 @@ const ManagerSubscriptionsPage: React.FC = () => {
           <StatCard color="#059669">
             <StatValue>{subscriptions.length}</StatValue>
             <StatLabel>{t('admin:subscriptionsPage.totalRestaurants')}</StatLabel>
-            <StatTrend positive>{t('admin:subscriptionsPage.underYourManagement')}</StatTrend>
+            <StatTrend trend="up">{t('admin:subscriptionsPage.underYourManagement')}</StatTrend>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{activeSubscriptions}</StatValue>
             <StatLabel>{t('admin:subscriptionsPage.activeSubscriptions')}</StatLabel>
-            <StatTrend positive>{Math.round((activeSubscriptions/subscriptions.length)*100)}% operational</StatTrend>
+            <StatTrend trend="up">{Math.round((activeSubscriptions/subscriptions.length)*100)}% operational</StatTrend>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{formatCurrency(totalMonthlyFees)}</StatValue>
             <StatLabel>{t('admin:subscriptionsPage.yourMonthlyPayment')}</StatLabel>
-            <StatTrend positive>{t('admin:subscriptionsPage.managerpaidRestaurantsOnly')}</StatTrend>
+            <StatTrend trend="up">{t('admin:subscriptionsPage.managerpaidRestaurantsOnly')}</StatTrend>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{selfPayingRestaurants}</StatValue>
             <StatLabel>{t('admin:subscriptionsPage.selfpayingRestaurants')}</StatLabel>
-            <StatTrend positive>{t('admin:subscriptionsPage.directBillingToRestaurant')}</StatTrend>
+            <StatTrend trend="up">{t('admin:subscriptionsPage.directBillingToRestaurant')}</StatTrend>
           </StatCard>
         </StatsGrid>
 
@@ -844,7 +788,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
             <SubscriptionCard key={subscription.id}>
               <CardHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{subscription.restaurantName} {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}</RestaurantName>
+                  <RestaurantName>{subscription.restaurantName} {subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.branchName}</span>}{subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}</RestaurantName>
                 </RestaurantInfo>
                 <StatusBadge status={subscription.status}>
                   {subscription.status}

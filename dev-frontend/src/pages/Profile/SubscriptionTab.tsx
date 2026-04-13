@@ -212,6 +212,91 @@ const BlockedBox = styled.div<{ variant?: 'warning' | 'info' }>`
   line-height: 1.5;
 `;
 
+// ── Usage display ──
+const UsageSection = styled.div`
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #E6EBF1;
+`;
+
+const UsageSectionTitle = styled.h4`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 16px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const UsageGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const UsageCard = styled.div<{ percent: number }>`
+  background: #F8FAFC;
+  border: 1px solid ${p => p.percent >= 100 ? '#FCA5A5' : p.percent >= 80 ? '#FDE68A' : '#E6EBF1'};
+  border-radius: 8px;
+  padding: 16px;
+`;
+
+const UsageLabel = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: 8px;
+`;
+
+const UsageValue = styled.div<{ percent: number }>`
+  font-size: 20px;
+  font-weight: 700;
+  color: ${p => p.percent >= 100 ? '#DC2626' : p.percent >= 80 ? '#D97706' : '#0A2540'};
+  margin-bottom: 8px;
+`;
+
+const UsageBar = styled.div`
+  width: 100%;
+  height: 8px;
+  background: #E5E7EB;
+  border-radius: 4px;
+  overflow: hidden;
+`;
+
+const UsageBarFill = styled.div<{ percent: number }>`
+  height: 100%;
+  width: ${p => Math.min(p.percent, 100)}%;
+  background: ${p => p.percent >= 100 ? '#DC2626' : p.percent >= 80 ? '#F59E0B' : '#10B981'};
+  transition: width 0.3s;
+`;
+
+const UsageHint = styled.div<{ percent: number }>`
+  font-size: 11px;
+  color: ${p => p.percent >= 100 ? '#DC2626' : p.percent >= 80 ? '#D97706' : '#6B7280'};
+  margin-top: 6px;
+  font-weight: ${p => p.percent >= 80 ? 600 : 400};
+`;
+
+const UsageWarningBanner = styled.div<{ level: 'warning' | 'critical' }>`
+  background: ${p => p.level === 'critical' ? '#FEE2E2' : '#FEF3C7'};
+  border: 1px solid ${p => p.level === 'critical' ? '#FCA5A5' : '#FDE68A'};
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: ${p => p.level === 'critical' ? '#991B1B' : '#92400E'};
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+`;
+
 const ChangePlanButton = styled.button`
   padding: 10px 20px;
   background: #635BFF;
@@ -562,7 +647,7 @@ const SubscriptionTab: React.FC = () => {
   if (loading) return <LoadingSpinner>{t('settings:subscriptionTab.loadingSubscriptionData')}</LoadingSpinner>;
   if (error || !data) return <BlockedBox variant="warning">{error || 'Failed to load subscription data.'}</BlockedBox>;
 
-  const { current, pending_change, available_plans } = data;
+  const { current, pending_change, available_plans, current_usage } = data;
 
   // Get effective price for selected plan in selected cycle
   const getEffectivePrice = (plan: AvailablePlan, cycle: string): number => {
@@ -619,6 +704,95 @@ const SubscriptionTab: React.FC = () => {
             <InfoValue>{formatDate(current.next_billing_date)}</InfoValue>
           </InfoItem>
         </InfoGrid>
+
+        {/* Current Usage + Limit Warnings */}
+        {current_usage && (() => {
+          // Find the current plan in available_plans to get its limits
+          const currentPlanInfo = available_plans?.find(p => p.display_name === current.plan_type);
+          const limits = currentPlanInfo?.limits || { staff: -1, menu_items: -1, orders: -1 };
+
+          const staffPercent = limits.staff > 0 ? Math.round((current_usage.staff_count / limits.staff) * 100) : 0;
+          const menuPercent = limits.menu_items > 0 ? Math.round((current_usage.menu_item_count / limits.menu_items) * 100) : 0;
+          const orderPercent = limits.orders > 0 ? Math.round((current_usage.order_count / limits.orders) * 100) : 0;
+
+          const nearLimit: string[] = [];
+          const atLimit: string[] = [];
+          if (staffPercent >= 100) atLimit.push(`Staff (${current_usage.staff_count}/${limits.staff})`);
+          else if (staffPercent >= 80) nearLimit.push(`Staff (${current_usage.staff_count}/${limits.staff})`);
+          if (menuPercent >= 100) atLimit.push(`Menu items (${current_usage.menu_item_count}/${limits.menu_items})`);
+          else if (menuPercent >= 80) nearLimit.push(`Menu items (${current_usage.menu_item_count}/${limits.menu_items})`);
+          if (orderPercent >= 100) atLimit.push(`Orders this month (${current_usage.order_count}/${limits.orders})`);
+          else if (orderPercent >= 80) nearLimit.push(`Orders this month (${current_usage.order_count}/${limits.orders})`);
+
+          const fmtValue = (count: number, limit: number) => limit > 0 ? `${count} / ${limit}` : `${count}`;
+          const unlimited = (limit: number) => limit <= 0;
+
+          return (
+            <UsageSection>
+              <UsageSectionTitle>Plan Usage</UsageSectionTitle>
+              <UsageGrid>
+                <UsageCard percent={staffPercent}>
+                  <UsageLabel>Staff Members</UsageLabel>
+                  <UsageValue percent={staffPercent}>{fmtValue(current_usage.staff_count, limits.staff)}</UsageValue>
+                  {!unlimited(limits.staff) && (
+                    <>
+                      <UsageBar><UsageBarFill percent={staffPercent} /></UsageBar>
+                      <UsageHint percent={staffPercent}>
+                        {staffPercent >= 100 ? 'Limit reached — upgrade to add more' : staffPercent >= 80 ? `${staffPercent}% used` : `${staffPercent}% used`}
+                      </UsageHint>
+                    </>
+                  )}
+                  {unlimited(limits.staff) && <UsageHint percent={0}>Unlimited</UsageHint>}
+                </UsageCard>
+
+                <UsageCard percent={menuPercent}>
+                  <UsageLabel>Menu Items</UsageLabel>
+                  <UsageValue percent={menuPercent}>{fmtValue(current_usage.menu_item_count, limits.menu_items)}</UsageValue>
+                  {!unlimited(limits.menu_items) && (
+                    <>
+                      <UsageBar><UsageBarFill percent={menuPercent} /></UsageBar>
+                      <UsageHint percent={menuPercent}>
+                        {menuPercent >= 100 ? 'Limit reached — upgrade to add more' : `${menuPercent}% used`}
+                      </UsageHint>
+                    </>
+                  )}
+                  {unlimited(limits.menu_items) && <UsageHint percent={0}>Unlimited</UsageHint>}
+                </UsageCard>
+
+                <UsageCard percent={orderPercent}>
+                  <UsageLabel>Orders (this month)</UsageLabel>
+                  <UsageValue percent={orderPercent}>{fmtValue(current_usage.order_count, limits.orders)}</UsageValue>
+                  {!unlimited(limits.orders) && (
+                    <>
+                      <UsageBar><UsageBarFill percent={orderPercent} /></UsageBar>
+                      <UsageHint percent={orderPercent}>
+                        {orderPercent >= 100 ? 'Limit reached — upgrade required' : `${orderPercent}% used`}
+                      </UsageHint>
+                    </>
+                  )}
+                  {unlimited(limits.orders) && <UsageHint percent={0}>Unlimited</UsageHint>}
+                </UsageCard>
+              </UsageGrid>
+
+              {atLimit.length > 0 && (
+                <UsageWarningBanner level="critical">
+                  <span>🚫</span>
+                  <div>
+                    <strong>Limit reached:</strong> {atLimit.join(', ')}. Please upgrade your plan to continue adding items or accept new orders.
+                  </div>
+                </UsageWarningBanner>
+              )}
+              {atLimit.length === 0 && nearLimit.length > 0 && (
+                <UsageWarningBanner level="warning">
+                  <span>⚠️</span>
+                  <div>
+                    <strong>Approaching limit:</strong> {nearLimit.join(', ')}. Consider upgrading your plan to avoid disruptions.
+                  </div>
+                </UsageWarningBanner>
+              )}
+            </UsageSection>
+          );
+        })()}
 
         {/* Pending Change */}
         {pending_change && (

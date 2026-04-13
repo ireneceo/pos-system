@@ -92,30 +92,6 @@ const SupplierCode = styled.span`
   margin-left: 8px;
 `;
 
-const BrandTagsContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-`;
-
-const BrandTag = styled.span`
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-  background: #EEF2FF;
-  color: #4F46E5;
-`;
-
-const NoBrandTag = styled.span`
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-  background: #FEF3C7;
-  color: #92400E;
-`;
 
 const StatusBadge = styled.span<{ active: boolean }>`
   padding: 4px 8px;
@@ -217,51 +193,6 @@ const SectionTitle = styled.h4`
   gap: 8px;
 `;
 
-// Brand selection in form
-const BrandCheckboxContainer = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px;
-  background: #F9FAFB;
-  border-radius: 8px;
-  border: 1px solid #E5E7EB;
-`;
-
-const BrandCheckboxLabel = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: white;
-  border: 1px solid #E5E7EB;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #374151;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: #635BFF;
-  }
-
-  input:checked + & {
-    border-color: #635BFF;
-    background: #EEF2FF;
-  }
-`;
-
-const HiddenCheckbox = styled.input`
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-`;
-
-const CheckboxWrapper = styled.div`
-  position: relative;
-  display: inline-flex;
-`;
 
 const ViewSection = styled.div`
   display: flex;
@@ -312,7 +243,7 @@ const SuppliersPage: React.FC = () => {
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [brandSuppliers, setBrandSuppliers] = useState<Supplier[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [, setBrands] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
@@ -472,15 +403,6 @@ const SuppliersPage: React.FC = () => {
   const handleViewSupplier = (supplier: Supplier) => {
     setViewSupplier(supplier);
     setShowViewModal(true);
-  };
-
-  const handleBrandToggle = (brandId: number) => {
-    setFormData(prev => ({
-      ...prev,
-      brand_ids: prev.brand_ids.includes(brandId)
-        ? prev.brand_ids.filter(id => id !== brandId)
-        : [...prev.brand_ids, brandId]
-    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

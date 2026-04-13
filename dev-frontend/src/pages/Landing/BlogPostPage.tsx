@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateArticleSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
+import { useSiteTimezone, formatDateInSiteTz } from '../../hooks/useSiteTimezone';
 
 interface BlogCategory {
   id: number;
@@ -358,6 +359,9 @@ const BlogPostPage: React.FC = () => {
   const { t } = useTranslation('landing');
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isNews = location.pathname.startsWith('/news');
+  const backPath = isNews ? '/news' : '/blog';
   const [post, setPost] = useState<BlogPost | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -389,14 +393,8 @@ const BlogPostPage: React.FC = () => {
     setLoading(false);
   };
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  const siteTimezone = useSiteTimezone();
+  const formatDate = (dateStr: string | null) => formatDateInSiteTz(dateStr, siteTimezone, { month: 'long' });
 
   if (loading) {
   // useTranslation moved to component level
@@ -417,7 +415,7 @@ const BlogPostPage: React.FC = () => {
           <NotFoundState>
             <h2>{t('landing:blogPostPage.postNotFound')}</h2>
             <p>{t('landing:blogPostPage.theBlogPostYoureLookingForDoesntExistOrHasBeenRemoved')}</p>
-            <BackButton onClick={() => navigate('/blog')} style={{ background: '#635BFF', border: 'none' }}>
+            <BackButton onClick={() => navigate(backPath)} style={{ background: '#635BFF', border: 'none' }}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -513,7 +511,7 @@ const BlogPostPage: React.FC = () => {
 
         <ArticleSection>
           <ArticleHeader>
-            <BackButton onClick={() => navigate('/blog')}>
+            <BackButton onClick={() => navigate(backPath)}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>

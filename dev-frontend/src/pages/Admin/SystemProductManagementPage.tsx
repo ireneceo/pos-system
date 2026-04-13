@@ -9,7 +9,6 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -714,7 +713,6 @@ const getToken = () => getAuthToken();
 // ─── Main Page Component ─────────────────────────────────────────────────────
 
 const SystemProductManagementPage: React.FC = () => {
-  const { t } = useTranslation('admin');
   const [activeTab, handleTabChange] = useTabParam<TabType>('products');
   const [productsCount, setProductsCount] = useState(0);
   const [categoriesCount, setCategoriesCount] = useState(0);

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   Container,
   Header,
@@ -94,7 +93,6 @@ const STAT_COLORS: Record<string, string> = {
 
 const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityType, pageTitle }) => {
   const { t } = useTranslation('contract');
-  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [contracts, setContracts] = useState<any[]>([]);
   const [search, setSearch] = useState('');

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
@@ -150,25 +150,6 @@ const LandingFooter: React.FC = () => {
   const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
-  const [contactInfo, setContactInfo] = useState({
-    email: 'support@purplehere.com',
-    phone: '+60-XX-XXX-XXXX',
-    hours: 'Mon-Fri 9AM-6PM (GMT+8)'
-  });
-
-  useEffect(() => {
-    fetch('/api/site-settings')
-      .then(res => res.json())
-      .then(data => {
-        const businessHours = data.business_hours?.weekdays || 'Mon-Fri 9AM-6PM (GMT+8)';
-        setContactInfo({
-          email: data.email || 'support@purplehere.com',
-          phone: data.phone || '+60-XX-XXX-XXXX',
-          hours: businessHours
-        });
-      })
-      .catch(err => console.error('Failed to load company settings:', err));
-  }, []);
 
   return (
     <Footer>

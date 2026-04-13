@@ -13,7 +13,6 @@ import { printBillViaRawBT, printKitchenTicketViaRawBT } from '../../utils/billP
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
-import { useTranslation } from 'react-i18next';
 
 // Global print styles
 const PrintStyles = createGlobalStyle`
@@ -266,7 +265,6 @@ const OrderCompleteModal: React.FC<OrderCompleteModalProps> = ({
   orderData,
   onPrintBill
 }) => {
-  const { t } = useTranslation('common');
   const { getStoreInfo, operationSettings, paymentSettings } = useStore();
   const storeInfo = getStoreInfo();
   // Auto-print is handled in POSTerminalPage after payment completion

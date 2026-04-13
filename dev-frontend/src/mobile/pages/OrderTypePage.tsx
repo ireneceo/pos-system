@@ -4,7 +4,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { API_BASE_URL } from '../../config/api';
 import MobileAlertModal from '../components/common/MobileAlertModal';
-import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -40,6 +39,14 @@ const Title = styled.h1`
   font-weight: 600;
   color: #0A2540;
   margin: 0 0 8px 0;
+`;
+
+const BranchName = styled.p`
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7C93;
+  margin: 4px 0 0 0;
+  letter-spacing: 0.3px;
 `;
 
 const Subtitle = styled.p`
@@ -114,6 +121,7 @@ interface StoreData {
   id: string;
   slug: string;
   name: string;
+  branchName: string | null;
   description: string;
   logo: string;
   isOpen: boolean;
@@ -130,7 +138,6 @@ interface StoreData {
 }
 
 const OrderTypePage: React.FC = () => {
-  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
@@ -157,6 +164,7 @@ const OrderTypePage: React.FC = () => {
               id: result.data.id?.toString() || '1',
               slug: result.data.slug || slug,
               name: result.data.name || 'Restaurant',
+              branchName: result.data.branch_name || null,
               description: result.data.description || 'Welcome to our restaurant',
               logo: result.data.logo || '/images/store-logo.png',
               isOpen: result.data.isOpen !== false,
@@ -299,9 +307,15 @@ const OrderTypePage: React.FC = () => {
     <Container>
       <Header>
         {storeData?.logo && storeData.logo !== '/images/store-logo.png' ? (
-          <StoreLogo src={storeData.logo} alt={storeData.name} />
+          <>
+            <StoreLogo src={storeData.logo} alt={storeData.name} />
+            {storeData.branchName && <BranchName>{storeData.branchName}</BranchName>}
+          </>
         ) : (
-          <Title>{storeData?.name || 'Welcome'}</Title>
+          <>
+            <Title>{storeData?.name || 'Welcome'}</Title>
+            {storeData?.branchName && <BranchName>{storeData.branchName}</BranchName>}
+          </>
         )}
         <Subtitle>How would you like your order?</Subtitle>
       </Header>

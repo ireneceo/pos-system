@@ -17,6 +17,7 @@ interface Store {
   id: string;
   slug: string;
   name: string;
+  branchName?: string | null;
   description: string;
   logo: string;
   isOpen: boolean;

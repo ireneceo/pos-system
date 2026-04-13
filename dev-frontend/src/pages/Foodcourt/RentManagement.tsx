@@ -3,7 +3,6 @@ import styled from 'styled-components';
 import { ModalComponent, FormGroup, FormLabel, FormInput, Button, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
-import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -243,7 +242,6 @@ interface Stats {
 }
 
 const RentManagement: React.FC = () => {
-  const { t } = useTranslation('common');
   const [searchTerm, setSearchTerm] = useState('');
   const [rentData, setRentData] = useState<RentData[]>([]);
   const [stats, setStats] = useState<Stats>({

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 
 // 공통 탭 컨테이너
 export const TabContainer = styled.div`
@@ -92,7 +91,6 @@ export const Tabs: React.FC<TabsProps> = ({
   defaultTab,
   onTabChange
 }) => {
-  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTabKey, setActiveTabKey] = useState<string>(defaultTab || tabs[0]?.key || '');

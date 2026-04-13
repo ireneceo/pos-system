@@ -20,7 +20,6 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface Ingredient {
@@ -177,7 +176,6 @@ const EmptyDescription = styled.p`
 `;
 
 const IngredientsPage: React.FC = () => {
-  const { t } = useTranslation('inventory');
   const { user } = useAuth();
   const { defaultCurrency, supportedCurrencies } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('');

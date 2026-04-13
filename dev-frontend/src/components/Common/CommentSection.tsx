@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import AttachmentList from './AttachmentList';
 import { linkifyText } from '../../utils/linkify';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface AttachmentFile {
@@ -282,7 +281,6 @@ const InternalToggle = styled.label`
 const ALLOWED_EXTENSIONS = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.zip';
 
 const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, currentUserId, onMarkRead }) => {
-  const { t } = useTranslation('common');
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(false);

@@ -5,6 +5,7 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateItemListSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
+import { useSiteTimezone, formatDateInSiteTz } from '../../hooks/useSiteTimezone';
 
 interface BlogCategory {
   id: number;
@@ -331,14 +332,8 @@ const BlogPage: React.FC = () => {
     setLoading(false);
   };
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
+  const siteTimezone = useSiteTimezone();
+  const formatDate = (dateStr: string | null) => formatDateInSiteTz(dateStr, siteTimezone);
 
   // Generate ItemList schema for blog posts (AEO)
   const blogListSchema = useMemo(() => {

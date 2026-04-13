@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { FloorTable, TableStatus, TableStatusInfo, STATUS_COLORS, STATUS_LABELS } from './types';
-import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -99,10 +98,9 @@ interface OrderStats {
 
 const FloorPlanStatsBar: React.FC<FloorPlanStatsBarProps> = ({ tables, tableStatuses, currency, restaurantId }) => {
   const { t } = useTranslation('floorplan');
-  const totalTables = tables.length;
   const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
   const [threshold, setThreshold] = useState(20);
-  const [editingThreshold, setEditingThreshold] = useState(false);
+  const [, setEditingThreshold] = useState(false);
   const thresholdInputRef = useRef<HTMLInputElement>(null);
   const thresholdSaveRef = useRef<NodeJS.Timeout | null>(null);
 

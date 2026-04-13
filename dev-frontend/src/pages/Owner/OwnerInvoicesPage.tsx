@@ -697,11 +697,12 @@ const OwnerInvoicesPage: React.FC = () => {
         .items-table th.text-right { text-align: right; }
         .items-table td { padding: 12px 8px; font-size: 14px; color: #374151; border-bottom: 1px solid #F3F4F6; }
         .items-table td.text-center { text-align: center; }
-        .items-table td.text-right { text-align: right; }
+        .items-table td.text-right { text-align: right; white-space: nowrap; }
+        .items-table th.text-right { white-space: nowrap; }
 
         .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
         .summary-box { width: 280px; }
-        .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
         .summary-row.subtotal { color: #6B7280; }
         .summary-row.tax { color: #6B7280; }
         .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
@@ -737,7 +738,7 @@ const OwnerInvoicesPage: React.FC = () => {
                 </div>
             </div>
             <div class="invoice-title">
-                <div class="invoice-label">{t('owner:ownerInvoicesPage.invoice')}</div>
+                <div class="invoice-label">${t('owner:ownerInvoicesPage.invoice')}</div>
                 <div class="invoice-number">${invoice.invoiceNumber}</div>
                 <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
             </div>
@@ -745,7 +746,7 @@ const OwnerInvoicesPage: React.FC = () => {
 
         <div class="billing-info">
             <div class="bill-to-section">
-                <div class="section-label">{t('owner:ownerInvoicesPage.billTo')}</div>
+                <div class="section-label">${t('owner:ownerInvoicesPage.billTo')}</div>
                 <div class="customer-name">${payerCompany?.name || invoice.restaurantName || 'Restaurant'}</div>
                 ${payerCompany?.address ? `<div class="customer-details">${payerCompany.address}</div>` : ''}
                 ${[payerCompany?.city, payerCompany?.state, payerCompany?.postalCode].filter(Boolean).length > 0 ? `<div class="customer-details">${[payerCompany?.city, payerCompany?.state, payerCompany?.postalCode].filter(Boolean).join(', ')}</div>` : ''}
@@ -775,14 +776,14 @@ const OwnerInvoicesPage: React.FC = () => {
         </div>
 
         <div class="items-section">
-            <div class="section-label">{t('owner:ownerInvoicesPage.items')}</div>
+            <div class="section-label">${t('owner:ownerInvoicesPage.items')}</div>
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th>{t('owner:ownerInvoicesPage.description')}</th>
-                        <th class="text-center">{t('owner:ownerInvoicesPage.qty')}</th>
-                        <th class="text-right">{t('owner:ownerInvoicesPage.unitPrice')}</th>
-                        <th class="text-right">{t('owner:ownerInvoicesPage.amount')}</th>
+                        <th>${t('owner:ownerInvoicesPage.description')}</th>
+                        <th class="text-center">${t('owner:ownerInvoicesPage.qty')}</th>
+                        <th class="text-right">${t('owner:ownerInvoicesPage.unitPrice')}</th>
+                        <th class="text-right">${t('owner:ownerInvoicesPage.amount')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -832,7 +833,7 @@ const OwnerInvoicesPage: React.FC = () => {
 
         ${issuerInfo?.bankName ? `
         <div class="bank-section">
-            <div class="bank-title">{t('owner:ownerInvoicesPage.paymentDetails')}</div>
+            <div class="bank-title">${t('owner:ownerInvoicesPage.paymentDetails')}</div>
             <div class="bank-details">
                 <strong>Bank:</strong> ${issuerInfo.bankName}<br>
                 <strong>Account Name:</strong> ${issuerInfo.bankAccountName || '-'}<br>
@@ -851,8 +852,8 @@ const OwnerInvoicesPage: React.FC = () => {
         ` : ''}
 
         <div class="footer">
-            <div class="footer-text">{t('owner:ownerInvoicesPage.thankYouForYourBusiness')}</div>
-            <div class="footer-text">{t('owner:ownerInvoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
+            <div class="footer-text">${t('owner:ownerInvoicesPage.thankYouForYourBusiness')}</div>
+            <div class="footer-text">${t('owner:ownerInvoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
         </div>
     </div>
 </body>
@@ -900,13 +901,16 @@ const OwnerInvoicesPage: React.FC = () => {
         setTimeout(resolve, 100);
       });
 
+      const contentHeight = iframeDoc.body.scrollHeight;
+      iframe.style.height = `${contentHeight}px`;
+
       const canvas = await html2canvas(iframeDoc.body, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
         windowWidth: 800,
-        windowHeight: 1200
+        windowHeight: contentHeight
       });
 
       document.body.removeChild(iframe);
@@ -919,9 +923,19 @@ const OwnerInvoicesPage: React.FC = () => {
       });
 
       const imgWidth = 210;
+      const pageHeight = 297;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      let heightLeft = imgHeight;
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
       pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -1223,16 +1237,16 @@ const OwnerInvoicesPage: React.FC = () => {
                           <tr key={index} style={{ borderBottom: '1px solid #F3F4F6' }}>
                             <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{item.description}</td>
                             <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
+                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
                           </tr>
                         ))
                       ) : (
                         <tr style={{ borderBottom: '1px solid #F3F4F6' }}>
                           <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{selectedInvoice.categoryDisplayName || selectedInvoice.planType || 'Service'}</td>
                           <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>1</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</td>
                         </tr>
                       )}
                     </tbody>
@@ -1241,7 +1255,7 @@ const OwnerInvoicesPage: React.FC = () => {
 
                 {/* Summary */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-                  <div style={{ width: '280px' }}>
+                  <div style={{ width: '280px', whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>
                       <span>Subtotal:</span>
                       <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>

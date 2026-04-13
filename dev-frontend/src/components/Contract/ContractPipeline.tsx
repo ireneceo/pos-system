@@ -159,15 +159,6 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
     return new Date(dateStr).toLocaleDateString('en-CA', { month: '2-digit', day: '2-digit' });
   };
 
-  const getSubtext = (c: Contract) => {
-    if (c.stage === 'active' && c.end_date) return `~ ${c.end_date.substring(0, 7)}`;
-    if (c.stage === 'setup' && c.tasks) {
-      const done = c.tasks.filter(t => t.is_completed).length;
-      return `${done}/${c.tasks.length} done`;
-    }
-    return formatDate(c.createdAt || c.created_at);
-  };
-
   return (
     <PipelineGrid>
       {STAGES.map(stage => {
@@ -184,7 +175,7 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
             {list.slice(0, showMax).map(c => (
               <Card key={c.id} borderColor={theme.border} onClick={() => onCardClick(c.id)}>
                 <CardName>{c.applicant_name}</CardName>
-                {c.restaurant && <CardRestaurant>{c.restaurant.name}</CardRestaurant>}
+                {c.restaurant && <CardRestaurant>{c.restaurant.name}{c.restaurant.branch_name ? ` (${c.restaurant.branch_name})` : ''}</CardRestaurant>}
                 {c.applicant_phone && <CardSub>{c.applicant_phone}</CardSub>}
                 {c.applicant_location && <CardSub>{c.applicant_location}</CardSub>}
                 <CardMeta>

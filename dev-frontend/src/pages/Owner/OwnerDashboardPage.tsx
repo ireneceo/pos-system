@@ -823,7 +823,7 @@ const OwnerDashboardPage: React.FC = () => {
             >
               <CardHeader>
                 <div>
-                  <RestaurantName>{restaurant.name}</RestaurantName>
+                  <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branch_name}</span>}</RestaurantName>
                   <AdminName>{restaurant.admin_name || 'No admin assigned'}</AdminName>
                 </div>
                 <StatusBadge status={restaurant.status}>{restaurant.status}</StatusBadge>

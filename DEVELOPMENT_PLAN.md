@@ -1,8 +1,55 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-11 (운영 배포 — notices 데모 제외 + admin 하드웨어 max_quantity + /packages Quote 모달, 버전 v3.12 유지)
+> **최종 업데이트:** 2026-04-13 (인보이스 인쇄/PDF/View i18n + qty/unit_price + modification_history fix + Pricing 탭 딥링크 + Brand-Restaurant 연결 UI)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: 인보이스/모달 안정화 + Brand-Restaurant 연결 (2026-04-13)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 인쇄/PDF i18n 평가 | `generateInvoiceHTML` 템플릿 리터럴 안에 JSX `{t(...)}`가 박혀 그대로 출력되던 버그 → `${t(...)}`로 수정. 5개 역할(Admin/Brand/Foodcourt/Owner/Restaurant) 모두 적용 | ✓ |
+| PDF 다중 페이지 | `pdf.addImage()` 단일 호출 → `pageHeight=297mm` 기준 슬라이스 + `addPage()` 루프. iframe 높이 `body.scrollHeight` 동적 적용으로 캡처 클리핑 방지 | ✓ |
+| 금액 줄바꿈 방지 | `.text-right` 셀과 `.summary-row`에 `white-space: nowrap`. View/Print/PDF 모두 통일 | ✓ |
+| Pricing 탭 URL 딥링크 | `/pricing?tab=restaurant\|brand\|foodcourt\|owner` `useSearchParams`로 양방향 sync | ✓ |
+| Payment Settings 자동 재계산 (치명) | `recalcPendingInvoiceCharges` 신규 — 미결제(draft/pending_payment/overdue) 인보이스를 새 charges로 일괄 재계산. `subtotal - discount_amount` base 사용. modification_history `{reason:'payment_settings_updated', before, after}` 기록 + `is_modified=true` | ✓ |
+| 시스템 자동 수정 배지 | `syncPendingInvoice`도 `is_modified=true` 설정해서 수동 수정과 동일하게 "수정됨" 배지 표시 | ✓ |
+| modification_history 이중 인코딩 fix (치명 크래시) | `modification_history: JSON.stringify(history)` → `modification_history: history`. JSON 컬럼이라 Sequelize가 자동 직렬화. 이전엔 string으로 박혀서 frontend `.map()` 시 runtime crash. dev 33건 + 운영 12건 DB 클린업 (string→array) | ✓ |
+| modification history 렌더러 양형식 호환 | 수동 편집 `{changes:{field:{from,to}}}` + 시스템 자동 `{before,after,reason}` 둘 다 처리. Admin/Brand/Foodcourt 인보이스 페이지의 view 모달 + edit 모달 6곳 모두 수정. `Object.keys(undefined)` 크래시 방지 | ✓ |
+| Hardware 인보이스 QTY/단가 (치명) | `invoice_items` 테이블에 `quantity INT NOT NULL DEFAULT 1`, `unit_price DECIMAL(10,2)` 컬럼 신규. `hardware-quotes.js` POST/PAID 양쪽 addon 생성 경로 `description x{N}` 제거하고 quantity/unit_price 저장. invoices-main.js의 4개 transform이 `item.unit_price`로 unitPrice 노출. dev 7건/2건 + 운영 5건 SQL 백필 (hardware_quotes.addon_items JSON_TABLE join) | ✓ |
+| Hardware Quote 모달 payment_settings auto-load | `openInvoiceModal` async 변환, `/api/admin/payment-settings` fetch 후 charges 자동 로드. rate-based 입력 + amount preview | ✓ |
+| Invoice DELETE FK 해제 | `hardware_quotes.invoice_id`/`subscription_invoice_id` FK가 삭제 차단 → DELETE 라우트에서 사전 NULL 처리 | ✓ |
+| InvoicesPage Non-Member 뱃지 | `payerType === 'external'`에만 표시 (이전엔 hardware quote 링크된 인보이스도 잘못 Non-Member 표시) | ✓ |
+| Brand-Restaurant 연결 UI | Manager/RestaurantsPage 생성/편집 모달에 Brand General 전용 "Link to Brand" / "Linked Brand" 드롭다운 신규. 백엔드는 이미 `validateBrandPermission`으로 권한 검증. 이전엔 user.brand_id가 null인 Brand General이 선택 못 하던 문제 | ✓ |
+
+### 수정된 파일
+- `dev-backend/services/subscriptionInvoiceService.js` (recalc 함수 신규, JSON.stringify 제거, is_modified 추가)
+- `dev-backend/routes/admin-payment-settings.js` (POST 시 recalc 호출)
+- `dev-backend/routes/hardware-quotes.js` (addon quantity/unit_price 저장)
+- `dev-backend/routes/invoices-main.js` (DELETE FK 해제, transform unit_price 사용)
+- `dev-backend/models/InvoiceItem.js` (quantity/unit_price 컬럼 추가)
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx` (modification history 양형식, nowrap, PDF 분할, i18n)
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx` (동일 패턴)
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx` (동일 패턴)
+- `dev-frontend/src/pages/Owner/OwnerInvoicesPage.tsx` (i18n, nowrap, PDF 분할)
+- `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx` (i18n, nowrap, PDF 분할)
+- `dev-frontend/src/pages/Landing/PricingPage.tsx` (URL 탭 딥링크)
+- `dev-frontend/src/pages/Manager/RestaurantsPage.tsx` (Brand-Restaurant 연결 dropdown)
+
+### DB 변경 (dev + 운영 모두 적용)
+- `invoice_items` 컬럼 추가: `quantity INT NOT NULL DEFAULT 1`, `unit_price DECIMAL(10,2) NULL`
+- 백필: `hardware_addon` invoice_items에 hardware_quotes.addon_items JSON_TABLE join으로 quantity/unit_price 채움 (dev 9건, 운영 5건)
+- modification_history 클린업: 이중 인코딩된 string → array (dev 33건, 운영 12건)
+
+### 후속 과제 (다음 세션)
+- 모든 역할 모든 페이지 레스토랑 이름 옆에 `branch_name` 표시 (같은 브랜드 내 이름 중복 구분)
+- 통계/리포트 (모든 탭) 레스토랑 표시에 branch_name 동행
+- "No Active Subscription" 배너: Brand General 테스트 계정 plan_type=null 케이스 (Free 플랜 자동 발행 정책 결정 필요)
+- `POST /api/restaurants` requireRole 누락 (HIGH 보안)
 
 ---
 
@@ -5960,4 +6007,105 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 | 8 | 트랜잭션 처리 | 발주→입고→Invoice 연쇄 | ⬜ |
 | 9 | 권한 체계 | Supplier 역할 추가 영향 | ⬜ |
 | 10 | 데이터 마이그레이션 | 기존 데이터 호환성 | ⬜ |
+
+---
+
+## 📋 예정: 선행 보안 이슈 (2026-04-13 발견)
+
+> /검증 과정에서 드러난 pre-existing 보안 갭. 이번 세션 작업 아님.
+
+### 1. `POST /api/restaurants` 역할 제한 누락 (HIGH)
+- **현재**: `authenticateToken + validateRestaurantCreation` 만 있음. Staff/Brand Manager 포함 모든 로그인 유저가 restaurant 생성 가능
+- **검증 결과**: Staff, Brand Manager 모두 POST 성공 (201 반환)
+- **위험**: 권한 없는 유저가 타인의 브랜드/푸드코트 restaurant 생성 → 데이터 오염
+- **수정 방향**:
+  - `router.post('/', authenticateToken, requireRole('System Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner'), validateRestaurantCreation, ...)`
+  - Brand Manager/Foodcourt Manager는 General에게 요청하도록 UX 가이드
+  - 역할별 brand_id/foodcourt_id 자동 할당 로직(line 645~652) 유지
+- **관련**: `/var/www/dev-backend/routes/restaurants-crud.js:638`
+
+---
+
+## 📋 예정: 구독/인보이스 시스템 후속 작업
+
+> 2026-04-12 구독/인보이스 자동화 작업 중 발견한 후속 과제. 별도 세션에서 진행.
+
+### 1. Supplier Portal + 구독 인보이스 연동
+- **현재**: `suppliers` 테이블은 납품업체 데이터(Brand/Restaurant 소속). 로그인/구독 없음
+- **계획**: Supplier Portal 구축 시
+  - `users.role` ENUM에 'Supplier' 추가
+  - Supplier 유저가 직접 로그인해서 발주/재고 조회
+  - 구독 요금 부과 (같은 `subscriptionInvoiceService` 헬퍼 재사용)
+  - `createInitialInvoice({ kind: 'user', role: 'Supplier', ... })` 패턴 그대로 작동
+- **영향 범위**: Supplier Portal 구축 시 5분 작업 (헬퍼만 추가 호출)
+
+### 2. 구독 변경 히스토리 페이지
+- **현재**: `invoice.modification_history` JSON에 before/after/reason 저장
+- **계획**: 한 엔티티(레스토랑/유저)의 전체 구독 변경 타임라인 조회 페이지
+- **위치**: 레스토랑 상세 페이지 또는 Manager 상세 페이지에 탭 추가
+
+### 3. Trial 만료 자동 알림 이메일
+- **현재**: `subscriptionScheduler.js`가 상태 전환만 수행. 알림 이메일 없음
+- **계획**: 3일 전/당일/만료 후 1일 이메일 발송
+- **대상**: 각 구독 엔티티의 이메일 주소
+- **템플릿**: `notificationTemplates.js`에 `trialExpiringEmail`, `trialExpiredEmail` 추가
+
+### 4. Daily scheduler 모니터링 대시보드
+- **현재**: `generateSubscriptionInvoices`, `generateEntitySubscriptionInvoices` 등이 매일 2시에 실행. 결과는 콘솔 로그만
+- **계획**: 실행 결과(generated/skipped/errors) 를 DB 테이블에 저장하고 System Admin 대시보드에서 조회
+- **필요 이유**: 프로덕션에서 스케줄러가 실제로 돌고 있는지, 얼마나 생성/실패하는지 가시성 확보
+- **버그 참고**: v3.12까지 `isTodayAdvanceOf()` 가 정확히 14일 전인 날에만 true 반환 → catch-up 모드로 수정 완료 (2026-04-12)
+
+### 5. 대량 구독 변경 확인 다이얼로그
+- **현재**: 구독 필드 1건 수정 시 미결제 인보이스 1건 자동 동기화 (모달 없음)
+- **계획**: Bulk edit (여러 엔티티 동시 변경) 기능 추가 시 "N개 인보이스가 업데이트됩니다" 확인 모달 필요
+- **우선순위**: 낮음 (현재 Bulk edit 기능 없음)
+
+### 6. 인보이스 수동 vs 자동 생성 UI 구분
+- **현재**: `invoice.type` ENUM 은 'automatic'/'manual' 있지만 UI에서 시각 구분 없음
+- **계획**: 인보이스 목록에 작은 아이콘/뱃지로 구분 표시 (🤖 auto / 👤 manual)
+
+---
+
+## 📋 예정: 스토어 키오스크 UI (태블릿 모바일 오더)
+
+> 매장 태블릿에서 손님이 직접 주문하는 키오스크 모드. 모바일 오더와 별도 UX/세션.
+
+### 배경
+- Restaurant Admin이 매장 태블릿으로 모바일 오더 사용을 원함
+- 현재 모바일 오더는 "고객 본인 핸드폰 = 개인 계정" 전제로 설계
+- 공유 태블릿에 persistent login 남으면 다음 손님에게 개인정보/포인트 노출 위험
+
+### 설계 방향
+- **별도 키오스크 모드로 분리** (반응형만 추가하는 것으로는 세션 보안 해결 안 됨)
+- 기존 모바일 오더 백엔드 + 카트 로직 + 메뉴 데이터 + 결제 API 전부 재사용 (약 70% 재사용 가능)
+- 페이지 레이아웃과 네비게이션/세션 래퍼만 신규
+
+### 범위
+| 항목 | 내용 |
+|------|------|
+| 진입점 | `/kiosk/:slug` — 모바일 로그인 화면 대신 게스트 메뉴 즉시 노출 |
+| 레이아웃 | 태블릿 가로/세로 최적화 (10~13인치, 큰 터치 타겟) |
+| 인증 | 로그인/회원가입 UI 완전 제거. 모든 주문 guest |
+| 세션 | 주문 완료 3초 후 state 전체 리셋 + 홈으로 자동 이동 |
+| 테이블 바인딩 | 설정에서 "이 태블릿 = Table N 고정" 또는 "카운터 픽업 전용" 매핑 |
+| 결제 | 카운터 결제 / QR 결제만 허용 (모바일 회원 결제 플로우 제거) |
+| 설정 | `operationSettings.kioskMode: { enabled, tableBinding, paymentModes }` |
+
+### 구현 단계
+1. `<KioskProvider>` — 로그인/세션 차단하는 상위 컨텍스트
+2. `/kiosk/:slug` 라우트 5개 (entry / menu / cart / checkout / thanks)
+3. 공통 로직 재사용: `MobileOrderContext` 일부, 메뉴 API, 결제 API
+4. Settings → Operations 탭에 "키오스크 모드" 토글 + 테이블 바인딩 선택
+5. 주문 완료 자동 리셋 훅 (idle timeout + thanks 페이지 후 홈 이동)
+6. 검증: 공유 태블릿 시나리오, 2명 연속 주문 시 state 격리
+
+### 관련 결정 사항 (작업 시작 전 확인)
+- 키오스크 모드가 모바일 회원 포인트와 연동되는가? (권장: 안 함 — 100% 게스트)
+- 쿠폰 코드 수동 입력은 허용? (권장: 허용 — guest도 공개 promo 사용 가능)
+- 태블릿 사용 중 인터넷 끊기면? (권장: offline 주문 캐시 → 재연결 시 전송)
+
+### 참고
+- Irene 의견 요청 후 결정: 2026-04-12 — "나중에 다시 물어볼게" (즉시 작업 X)
+- 실제 착수 전 Irene에게 우선순위 확인 필요
 

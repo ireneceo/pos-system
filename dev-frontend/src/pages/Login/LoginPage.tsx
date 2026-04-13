@@ -461,7 +461,7 @@ const LoginPage: React.FC = () => {
 
       const fullScreenPages = ['/pos-terminal', '/kitchen', '/display', '/checkout-display'];
       const isFullScreen = from && fullScreenPages.some(p => from.includes(p));
-      const isValidPath = from && from.startsWith('/') && !from.startsWith('//') && !from.includes('javascript:');
+      const isValidPath = from && from.startsWith('/') && !from.startsWith('//') && !from.includes('javascript:') // eslint-disable-line no-script-url -- security validation;
       if (isValidPath && from !== '/pos' && !isFullScreen) {
         // Redirect to the originally requested page
         navigate(from, { replace: true });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Modal as CommonModal } from '../../components/UI';
+import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency } from '../../utils/currency';
@@ -92,49 +92,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   `}
 `;
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-  transition: all 0.2s;
-  
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
-  }
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
 
 // Filter Bar components are now imported from Common/FilterComponents
 
@@ -483,7 +440,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
   const totalSubscriptions = subscriptions.length;
   const activeSubscriptions = subscriptions.filter(s => s.status === 'active').length;
   const trialSubscriptions = subscriptions.filter(s => s.status === 'trial').length;
-  const selfPayingRestaurants = subscriptions.filter(s => s.paymentModel === 'self').length;
+
   const monthlyRevenue = subscriptions
     .filter(s => s.status === 'active')
     .reduce((sum, s) => sum + (s.billingCycle === 'monthly' ? s.monthlyFee : s.annualFee / 12), 0);
@@ -700,10 +657,6 @@ const RestaurantSubscriptionsPage: React.FC = () => {
             <StatValue>{trialSubscriptions}</StatValue>
             <StatLabel>{t('admin:restaurantSubscriptionsPage.trialSubscriptions')}</StatLabel>
           </StatCard>
-          <StatCard color="#7C3AED">
-            <StatValue>{selfPayingRestaurants}</StatValue>
-            <StatLabel>{t('admin:restaurantSubscriptionsPage.selfpaying')}</StatLabel>
-          </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{formatCurrency(monthlyRevenue)}</StatValue>
             <StatLabel>{t('admin:restaurantSubscriptionsPage.monthlyRevenue')}</StatLabel>
@@ -764,7 +717,7 @@ const RestaurantSubscriptionsPage: React.FC = () => {
           {filteredSubscriptions.map(subscription => (
             <TableRow key={subscription.id}>
               <RestaurantInfo>
-                <RestaurantName>{subscription.restaurantName}</RestaurantName>
+                <RestaurantName>{subscription.restaurantName}{subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{subscription.branchName}</span>}</RestaurantName>
                 <ManagerInfo>
                   <PaymentBadge type={subscription.paymentModel}>
                     {subscription.paymentModel === 'self' ? 'Self' : 'Manager'}

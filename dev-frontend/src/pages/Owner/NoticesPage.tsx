@@ -6,10 +6,9 @@ import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
 import { linkifyText } from '../../utils/linkify';
-import { Modal as CommonModal } from '../../components/UI';
+import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Tabs, Tab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 // ============================================================================
@@ -31,7 +30,7 @@ interface Notice {
   status: string;
   createdAt: string;
   recipients: any[];
-  category?: 'general' | 'guide';
+  category?: 'general' | 'guide' | 'updates';
   commentCount: number;
   attachments?: any[];
   brand?: any;
@@ -158,48 +157,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   }}
 `;
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-`;
-
-const StatCard = styled.div<{ borderColor?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.borderColor || '#635BFF'};
-  transition: all 0.2s;
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  }
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
 
 
 const FiltersContainer = styled.div`
@@ -583,7 +540,6 @@ const RecipientTag = styled.span`
 // ============================================================================
 
 const NoticesPage: React.FC = () => {
-  const { t } = useTranslation('owner');
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useTabParam<'received' | 'sent'>('received');
   const [receivedNotices, setReceivedNotices] = useState<Notice[]>([]);
@@ -591,7 +547,7 @@ const NoticesPage: React.FC = () => {
   const [metadata, setMetadata] = useState<NoticeMetadata | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide' | 'updates'>('all');
   const [authorRoleFilter, setAuthorRoleFilter] = useState('all');
   const [loading, setLoading] = useState(false);
 
@@ -880,19 +836,19 @@ const NoticesPage: React.FC = () => {
         <Content>
           {/* Stats */}
           <StatsGrid>
-            <StatCard borderColor="#635BFF">
+            <StatCard color="#635BFF">
               <StatValue>{totalReceived}</StatValue>
               <StatLabel>{'Received'}</StatLabel>
             </StatCard>
-            <StatCard borderColor="#F59E0B">
+            <StatCard color="#F59E0B">
               <StatValue>{unreadCount}</StatValue>
               <StatLabel>{'Unread'}</StatLabel>
             </StatCard>
-            <StatCard borderColor="#10B981">
+            <StatCard color="#10B981">
               <StatValue>{totalSent}</StatValue>
               <StatLabel>{'Sent'}</StatLabel>
             </StatCard>
-            <StatCard borderColor="#EF4444">
+            <StatCard color="#EF4444">
               <StatValue>{urgentCount}</StatValue>
               <StatLabel>{'Urgent'}</StatLabel>
             </StatCard>
@@ -910,7 +866,7 @@ const NoticesPage: React.FC = () => {
 
           {/* Category Filter Pills */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-            {(['all', 'general', 'guide'] as const).map(cat => (
+            {(['all', 'general', 'guide', 'updates'] as const).map(cat => (
               <button
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
@@ -926,7 +882,7 @@ const NoticesPage: React.FC = () => {
                   transition: 'all 0.15s'
                 }}
               >
-                {cat === 'all' ? 'All' : cat === 'general' ? 'General' : 'Guide'}
+                {cat === 'all' ? 'All' : cat === 'general' ? 'General' : cat === 'guide' ? 'Guide' : 'Updates'}
               </button>
             ))}
           </div>
@@ -1146,7 +1102,7 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal */}
       {/* ================================================================== */}
       {showViewModal && viewNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setViewNotice(null); }} title={viewNotice.title} size="large" footer={<><Button variant="secondary" onClick={() => { setShowViewModal(false); setViewNotice(null); }}>{'Close'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setViewNotice(null); }} title={viewNotice.title} size="large" footer={<>{viewNotice.category === 'guide' && (<Button variant="secondary" onClick={async () => { try { const res = await fetch(`/api/work-manuals/from-notice/${viewNotice.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({}) }); if ((await res.json()).success) { setShowViewModal(false); setViewNotice(null); } } catch (e) { /* silent */ } }}>Send to Work Manuals</Button>)}<Button variant="secondary" onClick={() => { setShowViewModal(false); setViewNotice(null); }}>{'Close'}</Button></>}>
               <NoticeDetailMeta>
                 <MetaItem>
                   <MetaLabel>From:</MetaLabel>

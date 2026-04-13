@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -854,18 +855,6 @@ const OwnerReportsPage: React.FC = () => {
     setIsCustomDateRange(true);
     setActivePeriod('all');
     setDateRange({ start, end });
-  };
-
-  // Download handler
-  const handleDownloadReport = () => {
-    const totalRevenue = salesData.reduce((sum, item) => sum + item.sales, 0);
-    const csvContent = `Owner Reports\nGenerated: ${new Date().toISOString()}\nPeriod: ${dateRange.start} to ${dateRange.end}\nRestaurant Filter: ${selectedRestaurant === 'all' ? 'All Restaurants' : restaurantSearchQuery}\n\nTotal Revenue: RM ${totalRevenue.toFixed(2)}\nTotal Orders: ${filteredOrders.length}\n`;
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `owner_report_${dateRange.start}_to_${dateRange.end}.csv`;
-    link.click();
   };
 
   const formatCurrency = (amount: number) => formatCurrencyUtil(amount, selectedCurrency);

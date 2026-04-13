@@ -4,7 +4,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
-import { useTranslation } from 'react-i18next';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -207,7 +206,6 @@ const HomeButton = styled(Button)`
 `;
 
 const OrderTrackingPage: React.FC = () => {
-  const { t } = useTranslation('common');
   const { slug, orderId } = useParams<{ slug: string; orderId: string }>();
   const navigate = useNavigate();
   const { currency } = useMobileOrder();

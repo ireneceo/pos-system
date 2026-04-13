@@ -48,6 +48,13 @@ const StoreName = styled.h2`
   margin: 0 0 4px 0;
 `;
 
+const StoreBranch = styled.span`
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7C93;
+  margin-left: 6px;
+`;
+
 const StoreStatus = styled.div<{ isOpen: boolean }>`
   font-size: 14px;
   color: ${props => props.isOpen ? '#10B981' : '#EF4444'};
@@ -386,6 +393,7 @@ const MenuPage: React.FC = () => {
             setCurrentStore({
               id: result.data.id.toString(),
               name: result.data.name,
+              branchName: result.data.branch_name || null,
               slug: result.data.slug,
               description: result.data.description || '',
               logo: result.data.logo_url || '',
@@ -483,8 +491,8 @@ const MenuPage: React.FC = () => {
           const r = await storeRes.json();
           if (r.success && r.data) {
             setCurrentStore({
-              id: r.data.id.toString(), name: r.data.name, slug: r.data.slug,
-              description: r.data.description || '', logo: r.data.logo_url || '',
+              id: r.data.id.toString(), name: r.data.name, branchName: r.data.branch_name || null,
+              slug: r.data.slug, description: r.data.description || '', logo: r.data.logo_url || '',
               isOpen: r.data.status === 'active', openingHours: r.data.opening_hours || {}
             });
           }
@@ -728,7 +736,7 @@ const MenuPage: React.FC = () => {
     >
       {currentStore && (
         <StoreHeader>
-          <StoreName>{currentStore.name}</StoreName>
+          <StoreName>{currentStore.name}{currentStore.branchName && <StoreBranch>{currentStore.branchName}</StoreBranch>}</StoreName>
           <StoreStatus isOpen={currentStore.isOpen}>
             {currentStore.isOpen ? '✓ Open Now' : '✗ Closed'}
           </StoreStatus>

@@ -640,7 +640,7 @@ const OwnerPerformance: React.FC = () => {
                 {sortedRestaurants.map((restaurant) => (
                   <RestaurantCard key={restaurant.id}>
                     <RestaurantHeader>
-                      <RestaurantName>{restaurant.name}</RestaurantName>
+                      <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', marginLeft: '6px' }}>({restaurant.branch_name})</span>}</RestaurantName>
                       <StatusBadge status={restaurant.status}>
                         {restaurant.status === 'active' ? 'Active' : restaurant.status}
                       </StatusBadge>

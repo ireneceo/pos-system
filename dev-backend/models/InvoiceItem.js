@@ -22,6 +22,15 @@ InvoiceItem.init({
     type: DataTypes.STRING,
     allowNull: false
   },
+  quantity: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1
+  },
+  unit_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true
+  },
   calculation_method: {
     type: DataTypes.ENUM('fixed', 'percentage', 'combined'),
     defaultValue: 'fixed'

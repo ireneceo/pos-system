@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
-import { Modal as CommonModal } from '../../components/UI';
+import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import CommentSection from '../../components/Common/CommentSection';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { useTranslation } from 'react-i18next';
@@ -107,49 +107,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
       border-color: #CBD5E1;
     }
   `}
-`;
-
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-  transition: all 0.2s;
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  }
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 `;
 
 const FiltersContainer = styled.div`

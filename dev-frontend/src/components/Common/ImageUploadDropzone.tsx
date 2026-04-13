@@ -1,6 +1,5 @@
 import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import styled from 'styled-components';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface ImageUploadDropzoneProps {
@@ -182,7 +181,6 @@ const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   removeButtonText = 'Remove Image',
   imageAltText = 'Uploaded'
 }) => {
-  const { t } = useTranslation('common');
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

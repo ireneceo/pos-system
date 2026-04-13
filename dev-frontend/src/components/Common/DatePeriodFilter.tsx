@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import CalendarPicker from './CalendarPicker';
-import { useTranslation } from 'react-i18next';
 
 // Types
 export type PeriodType = 'today' | 'yesterday' | 'week' | 'month' | 'year' | 'all';
@@ -90,7 +89,6 @@ const DatePeriodFilter: React.FC<DatePeriodFilterProps> = ({
   includeToday = false,
   children
 }) => {
-  const { t } = useTranslation('common');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleCalendarSelect = (start: string, end: string) => {

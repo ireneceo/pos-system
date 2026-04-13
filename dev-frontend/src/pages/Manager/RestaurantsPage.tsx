@@ -156,6 +156,17 @@ const RestaurantName = styled.h3`
   margin-bottom: 4px;
 `;
 
+const BranchBadge = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+  color: #6B7C93;
+  background: #F3F4F6;
+  padding: 1px 8px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+`;
+
 const RestaurantMeta = styled.div`
   font-size: 13px;
   color: #6B7280;
@@ -551,7 +562,9 @@ const ManagerRestaurantsPage: React.FC = () => {
     subscriptionStart: '',
     subscriptionEnd: '',
     autoRenew: true,
-    enableTrial: false
+    enableTrial: false,
+    brand_id: '' as string,
+    foodcourt_id: '' as string
   });
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -654,7 +667,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       setFilterBrand(brandId);
       setFilterBrandSearchQuery(decodeURIComponent(brandName));
     }
-  }, [searchParams]);
+  }, [searchParams, selectedCurrency]);
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -673,7 +686,7 @@ const ManagerRestaurantsPage: React.FC = () => {
           const transformedRestaurants: Restaurant[] = data.map((restaurant: any) => ({
             id: restaurant.id.toString(),
             name: restaurant.name,
-            branchName: restaurant.name, // Use name as branchName for now
+            branchName: restaurant.branch_name || '',
             location: restaurant.address || restaurant.location || 'No address provided',
             address: restaurant.address || restaurant.location || 'No address provided',
             phone: restaurant.phone || 'No phone provided',
@@ -772,7 +785,9 @@ const ManagerRestaurantsPage: React.FC = () => {
       subscriptionStart: currentDate,
       subscriptionEnd: endDate.toISOString().split('T')[0],
       autoRenew: true,
-      enableTrial: false
+      enableTrial: false,
+      brand_id: searchParams.get('brandId') || '',
+      foodcourt_id: searchParams.get('foodcourtId') || ''
     });
     setAdminAction('create');
     setNewAdminData({ fullName: '', email: '', username: '', phone: '' });
@@ -824,14 +839,27 @@ const ManagerRestaurantsPage: React.FC = () => {
 
       const managerId = user?.managerId || user?.id || '2';
 
-      // Auto-link brand_id/foodcourt_id based on current user's role
+      // Resolve brand_id / foodcourt_id from form selection (Brand General picks one of their brands)
       let autoBrandId: number | null = null;
       let autoFoodcourtId: number | null = null;
-      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
+      if (newRestaurant.brand_id) {
+        autoBrandId = parseInt(newRestaurant.brand_id);
+      } else if (user?.role === 'Brand Manager') {
         autoBrandId = (user as any)?.brand_id || null;
       }
-      if (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') {
+      if (newRestaurant.foodcourt_id) {
+        autoFoodcourtId = parseInt(newRestaurant.foodcourt_id);
+      } else if (user?.role === 'Foodcourt Manager') {
         autoFoodcourtId = (user as any)?.foodcourt_id || null;
+      }
+      // Brand/Foodcourt General must pick a brand/foodcourt
+      if (user?.role === 'Brand General' && !autoBrandId) {
+        setFormError('Please select a brand to link this restaurant to.');
+        return;
+      }
+      if (user?.role === 'Foodcourt General' && !autoFoodcourtId) {
+        setFormError('Please select a foodcourt to link this restaurant to.');
+        return;
       }
 
       const restaurantData: any = {
@@ -1052,7 +1080,9 @@ const ManagerRestaurantsPage: React.FC = () => {
       subscriptionStart: '',
       subscriptionEnd: '',
       autoRenew: true,
-      enableTrial: false
+      enableTrial: false,
+      brand_id: (restaurant as any).brand_id ? (restaurant as any).brand_id.toString() : '',
+      foodcourt_id: (restaurant as any).foodcourt_id ? (restaurant as any).foodcourt_id.toString() : ''
     });
     setShowEditModal(true);
   };
@@ -1081,7 +1111,10 @@ const ManagerRestaurantsPage: React.FC = () => {
           billing_cycle: newRestaurant.billingCycle,
           payment_model: newRestaurant.paymentModel === 'manager'
             ? (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ? 'foodcourt_manager' : 'brand_manager')
-            : 'restaurant'
+            : 'restaurant',
+          // Allow Brand/Foodcourt General to relink restaurant
+          ...(user?.role === 'Brand General' ? { brand_id: newRestaurant.brand_id ? parseInt(newRestaurant.brand_id) : null } : {}),
+          ...(user?.role === 'Foodcourt General' ? { foodcourt_id: newRestaurant.foodcourt_id ? parseInt(newRestaurant.foodcourt_id) : null } : {})
         };
 
         const response = await fetch(`/api/restaurants/${editingRestaurant.id}`, {
@@ -1289,7 +1322,7 @@ const ManagerRestaurantsPage: React.FC = () => {
               <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id, restaurant.name)}>
                 <RestaurantHeader>
                   <RestaurantInfo>
-                    <RestaurantName>{restaurant.name} {restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}</RestaurantName>
+                    <RestaurantName>{restaurant.name} {restaurant.branchName && <BranchBadge>{restaurant.branchName}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}</RestaurantName>
                     {restaurant.brand_id && (
                       <RestaurantMeta style={{ fontWeight: '600', color: '#635BFF' }}>
                         {brands.find(b => b.id === restaurant.brand_id)?.name || 'Brand'}
@@ -1345,6 +1378,21 @@ const ManagerRestaurantsPage: React.FC = () => {
                 <CommonModal isOpen={true} onClose={() => setShowAddModal(false)} title="Add New Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowAddModal(false); setFormError(''); }}>{t('admin:restaurantsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleSubmitNewRestaurant}>{t('admin:restaurantsPage.addRestaurant')}</ThemedButton></>}>
 
               <FormGrid>
+                {/* Brand link selector — Brand General manages multiple brands so must pick one */}
+                {user?.role === 'Brand General' && (
+                  <FormGroup style={{gridColumn: '1 / -1'}}>
+                    <FormLabel>Link to Brand *</FormLabel>
+                    <select
+                      value={newRestaurant.brand_id}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, brand_id: e.target.value})}
+                      style={{width: '100%', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', background: '#fff'}}
+                    >
+                      <option value="">— Select brand —</option>
+                      {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  </FormGroup>
+                )}
+
                 <FormGroup style={{gridColumn: '1 / -1'}}>
                   <FormLabel>Restaurant Name *</FormLabel>
                   <FormInput
@@ -1677,6 +1725,21 @@ const ManagerRestaurantsPage: React.FC = () => {
                 <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title="Edit Restaurant" footer={<>{formError && ( <div style={{width: '100%', padding: '10px 16px', marginBottom: '8px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', lineHeight: '1.5'}}> {formError} </div> )} <ThemedButton variant="cancel" onClick={() => { setShowEditModal(false); setFormError(''); }}>{t('admin:restaurantsPage.cancel')}</ThemedButton><ThemedButton variant="primary" onClick={handleUpdateRestaurant}>{t('admin:restaurantsPage.updateRestaurant')}</ThemedButton></>}>
 
               <FormGrid>
+                {/* Brand link selector — Brand General can change which brand the restaurant is linked to */}
+                {user?.role === 'Brand General' && (
+                  <FormGroup style={{gridColumn: '1 / -1'}}>
+                    <FormLabel>Linked Brand</FormLabel>
+                    <select
+                      value={newRestaurant.brand_id}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, brand_id: e.target.value})}
+                      style={{width: '100%', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', background: '#fff'}}
+                    >
+                      <option value="">— Not linked to any brand —</option>
+                      {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  </FormGroup>
+                )}
+
                 <FormGroup style={{gridColumn: '1 / -1'}}>
                   <FormLabel>Restaurant Name *</FormLabel>
                   <FormInput

@@ -5,7 +5,6 @@ import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { formatCurrency } from '../../utils/currency';
-import { useTranslation } from 'react-i18next';
 import { mobileFetch } from '../utils/mobileApi';
 
 const OrdersContainer = styled.div`
@@ -173,7 +172,6 @@ const getOrderTypeLabel = (orderType: string) => {
 };
 
 const OrdersPage: React.FC = () => {
-  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { slug } = useParams<{ slug: string }>();
   const [orders, setOrders] = useState<any[]>([]);

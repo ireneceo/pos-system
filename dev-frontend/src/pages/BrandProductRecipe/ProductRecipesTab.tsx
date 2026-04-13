@@ -12,7 +12,6 @@ import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
 import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '../../utils/unitConversion';
 import ConfirmModal from '../../components/ConfirmModal';
-import { useTranslation } from 'react-i18next';
 
 interface ProductRecipesTabProps {
   onCountChange?: (count: number) => void;
@@ -121,19 +120,6 @@ const RecipeHeader = styled.div`
   margin-bottom: 16px;
 `;
 
-const RecipeEmoji = styled.div`
-  font-size: 40px;
-  line-height: 1;
-  flex-shrink: 0;
-`;
-
-const RecipeImage = styled.img`
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  object-fit: cover;
-  flex-shrink: 0;
-`;
 
 const RecipeInfo = styled.div`
   flex: 1;
@@ -336,18 +322,6 @@ const EmptyDescription = styled.p`
   margin-bottom: 24px;
 `;
 
-const HeaderSection = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  gap: 16px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
 
 const SectionTitle = styled.h3`
   font-size: 16px;
@@ -674,10 +648,6 @@ const ViewImage = styled.div`
   }
 `;
 
-const ViewEmoji = styled.div`
-  font-size: 80px;
-  line-height: 1;
-`;
 
 const ViewTitleSection = styled.div`
   flex: 1;
@@ -807,7 +777,6 @@ const ViewTotalRow = styled.div`
 `;
 
 const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, categoryRefreshKey }) => {
-  const { t } = useTranslation('brand');
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');

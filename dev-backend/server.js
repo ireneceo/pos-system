@@ -521,6 +521,7 @@ const systemLogsRouter = require('./routes/system-logs');
 const adminReportsRouter = require('./routes/admin-reports');
 const commentsRouter = require('./routes/comments');
 const noticesRouter = require('./routes/notices');
+const workManualsRouter = require('./routes/work-manuals');
 const badgeCountsRouter = require('./routes/badgeCounts');
 const kitchenStationsRouter = require('./routes/kitchen-stations');
 const systemProductsRouter = require('./routes/system-products');
@@ -603,6 +604,7 @@ app.use('/api/subscriptions', subscriptionsRouter);  // Subscriptions (dashboard
 app.use('/api/owner', ownerRouter);  // Restaurant Owner routes
 app.use('/api/comments', commentsRouter);  // Polymorphic comments (notices, tickets)
 app.use('/api/notices', noticesRouter);  // Notices (공지) system
+app.use('/api/work-manuals', workManualsRouter);  // Work Manuals (업무매뉴얼) system
 app.use('/api/badge-counts', badgeCountsRouter);  // Sidebar badge counts
 app.use('/api/kitchen-stations', kitchenStationsRouter);  // Kitchen station management
 app.use('/api/system-products', systemProductsRouter);  // System products (hardware)

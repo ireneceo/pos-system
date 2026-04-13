@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import {
   Container,
@@ -35,6 +36,7 @@ import {
 interface FoodcourtSubscription {
   restaurant_id: number;
   restaurant_name: string;
+  restaurant_branch_name?: string | null;
   restaurant_email: string;
   restaurant_status: string;
   restaurant_currency?: string;
@@ -612,7 +614,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     <MobileValue className="col-info">
                       <MobileLabel>{t('foodcourt:foodcourtSubscriptionsPage.tenant')}</MobileLabel>
                       <RestaurantInfo>
-                        <RestaurantName>{sub.restaurant_name} {sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_currency}</span>}</RestaurantName>
+                        <RestaurantName>{sub.restaurant_name} {sub.restaurant_branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_branch_name}</span>}{sub.restaurant_currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{sub.restaurant_currency}</span>}</RestaurantName>
                         <RestaurantMeta>{sub.restaurant_email}</RestaurantMeta>
                       </RestaurantInfo>
                     </MobileValue>

@@ -8,6 +8,7 @@ import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { Modal as CommonModal } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import {
   Container,
@@ -384,7 +385,7 @@ const SystemInquiryPage: React.FC = () => {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [activeTab, handleTabChange] = useTabParam<'active' | 'closed'>('active');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showCreateTicketModal, setShowCreateTicketModal] = useState(false);

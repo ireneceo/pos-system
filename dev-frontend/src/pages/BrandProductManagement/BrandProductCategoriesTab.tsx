@@ -5,7 +5,6 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface BrandProductCategoriesTabProps {
@@ -186,7 +185,6 @@ const BrandProductCategoriesTab: React.FC<BrandProductCategoriesTabProps> = ({
   onCountChange,
   onCategoryChange
 }) => {
-  const { t } = useTranslation('brand');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);

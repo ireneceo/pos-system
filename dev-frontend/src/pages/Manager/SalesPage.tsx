@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI/StatCard';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -95,56 +96,6 @@ const Content = styled.div`
   padding: 32px;
 `;
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-  transition: all 0.2s;
-  
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
-  }
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const StatTrend = styled.div<{ positive?: boolean }>`
-  font-size: 12px;
-  color: ${props => props.positive ? '#059669' : '#DC2626'};
-  font-weight: 500;
-  margin-top: 4px;
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
 
 
 const ChartsGrid = styled.div`
@@ -497,28 +448,28 @@ const ManagerSalesPage: React.FC = () => {
             <StatCard color="#059669">
               <StatLabel>{t('admin:salesPage.totalSales')}</StatLabel>
               <StatValue>{formatCurrency(totals.todaySales, selectedCurrency)}</StatValue>
-              <StatTrend positive={salesChange > 0}>
+              <StatTrend trend={salesChange > 0 ? 'up' : 'down'}>
                 {salesChange > 0 ? '↑' : '↓'} {Math.abs(salesChange).toFixed(1)}% vs yesterday
               </StatTrend>
             </StatCard>
             <StatCard color="#2563EB">
               <StatLabel>{t('admin:salesPage.totalOrders')}</StatLabel>
               <StatValue>{totals.todayOrders}</StatValue>
-              <StatTrend positive>
+              <StatTrend trend="up">
                 ↑ 12% vs yesterday
               </StatTrend>
             </StatCard>
             <StatCard color="#7C3AED">
               <StatLabel>{t('admin:salesPage.averageOrderValue')}</StatLabel>
               <StatValue>{formatCurrency(averageOrderValue, selectedCurrency)}</StatValue>
-              <StatTrend positive>
+              <StatTrend trend="up">
                 ↑ 5.3% vs yesterday
               </StatTrend>
             </StatCard>
             <StatCard color="#DC2626">
               <StatLabel>{t('admin:salesPage.activeRestaurants')}</StatLabel>
               <StatValue>{restaurantSales.length}</StatValue>
-              <StatTrend positive>
+              <StatTrend trend="up">
                 All operational
               </StatTrend>
             </StatCard>

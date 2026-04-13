@@ -197,13 +197,6 @@ const ContentSection = styled.section`
   }
 `;
 
-const CurrencyBar = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 32px;
-`;
 
 const CurrencyLabel = styled.span`
   font-size: 14px;

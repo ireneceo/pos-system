@@ -483,16 +483,24 @@ router.post('/', authenticateToken, async (req, res) => {
             recipientUserIds.add(r.user_id);
           }
           if (r.restaurant_id && r.restaurant?.id) {
-            // Notify restaurant admin
-            const rest = await Restaurant.findByPk(r.restaurant_id, { attributes: ['admin_id'] });
-            if (rest?.admin_id && rest.admin_id !== user.id) {
+            // Notify restaurant admin (skip demo/test restaurants)
+            const rest = await Restaurant.findByPk(r.restaurant_id, { attributes: ['admin_id', 'is_demo', 'is_test'] });
+            if (rest?.admin_id && rest.admin_id !== user.id && !rest.is_demo && !rest.is_test) {
               recipientUserIds.add(rest.admin_id);
             }
           }
         }
 
+        // Final safety filter: exclude demo/test users from email
         if (recipientUserIds.size > 0) {
-          await sendNotificationBatch([...recipientUserIds], 'notice_received', mail);
+          const safeUsers = await User.findAll({
+            where: { id: { [Op.in]: [...recipientUserIds] }, is_demo: false, is_test: false },
+            attributes: ['id']
+          });
+          const safeIds = safeUsers.map(u => u.id);
+          if (safeIds.length > 0) {
+            await sendNotificationBatch(safeIds, 'notice_received', mail);
+          }
         }
       } catch (e) {
         console.error('[Notice notification error]', e.message);

@@ -15,28 +15,38 @@ router.get('/', authenticateToken, requireRole('System Admin'), async (req, res)
   try {
     const { sequelize } = require('../config/database');
 
-    // Handle manager role filter - 'Manager' maps to 4 specific roles
-    let roleFilter = '';
-    let replacements = [];
+    // Build WHERE clauses for role filter + search
+    const conditions = [];
+    const replacements = [];
 
     if (req.query.role) {
       if (req.query.role === 'Manager') {
         // Map 'Manager' to all manager-level roles (including Restaurant Owner)
-        roleFilter = 'WHERE u.role IN (?, ?, ?, ?, ?)';
-        replacements = ['Foodcourt General', 'Foodcourt Manager', 'Brand General', 'Brand Manager', 'Restaurant Owner'];
+        conditions.push('u.role IN (?, ?, ?, ?, ?)');
+        replacements.push('Foodcourt General', 'Foodcourt Manager', 'Brand General', 'Brand Manager', 'Restaurant Owner');
       } else {
-        // Use specific role
-        roleFilter = 'WHERE u.role = ?';
-        replacements = [req.query.role];
+        conditions.push('u.role = ?');
+        replacements.push(req.query.role);
       }
     }
+
+    // Search filter — substring match (works for middle characters)
+    // Accepts both `search` and `q` for backward compat
+    const searchTerm = (req.query.search || req.query.q || '').trim();
+    if (searchTerm) {
+      conditions.push('(u.full_name LIKE ? OR u.email LIKE ? OR u.username LIKE ?)');
+      const pattern = `%${searchTerm}%`;
+      replacements.push(pattern, pattern, pattern);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     // Get users first (no brand/foodcourt join to avoid duplicates)
     const users = await sequelize.query(`
       SELECT u.*, r.name as restaurant_name
       FROM users u
       LEFT JOIN restaurants r ON u.restaurant_id = r.id
-      ${roleFilter}
+      ${whereClause}
       ORDER BY u.full_name
     `, {
       replacements,
@@ -290,6 +300,31 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       }
     }
 
+    // Staff / Restaurant Admin creation — enforce staff_limit from restaurant plan
+    if (finalRestaurantId && (role === 'Staff' || role === 'Restaurant Admin')) {
+      const Restaurant = require('../models/Restaurant');
+      const restaurant = await Restaurant.findByPk(finalRestaurantId, {
+        attributes: ['id', 'name', 'staff_limit']
+      });
+      if (restaurant && restaurant.staff_limit && restaurant.staff_limit > 0) {
+        const currentStaffCount = await User.count({
+          where: {
+            restaurant_id: finalRestaurantId,
+            role: { [require('sequelize').Op.in]: ['Staff', 'Restaurant Admin'] }
+          }
+        });
+        if (currentStaffCount >= restaurant.staff_limit) {
+          return res.status(403).json({
+            success: false,
+            error: `Staff limit reached. Your plan allows up to ${restaurant.staff_limit} staff members (including Restaurant Admin). Currently: ${currentStaffCount}.`,
+            limit: restaurant.staff_limit,
+            current: currentStaffCount,
+            upgradeRequired: true
+          });
+        }
+      }
+    }
+
     // MX 레코드 검증: 이메일 도메인에 메일 서버가 존재하는지 확인
     const { verifyMxRecord, generateVerificationToken, getVerificationUrl } = require('../utils/emailValidator');
     const mxResult = await verifyMxRecord(email);
@@ -305,18 +340,46 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
        first_name || last_name || null);
 
     // Subscription fields from request
-    const { plan_type, plan_amount, billing_cycle, currency, subscription_start, subscription_end } = req.body;
+    const { plan_type, plan_amount, billing_cycle, currency, subscription_start, auto_renew } = req.body;
 
-    // Calculate subscription_end from start + billing_cycle if not provided
-    let calcSubscriptionEnd = subscription_end || null;
-    if (subscription_start && !subscription_end && billing_cycle) {
-      const startDate = new Date(subscription_start);
-      if (billing_cycle === 'annual') {
-        startDate.setFullYear(startDate.getFullYear() + 1);
+    // Roles that have their own subscription stored on the User model
+    const SUBSCRIBING_ROLES = ['Brand General', 'Foodcourt General', 'Restaurant Owner'];
+    const hasSubscription = SUBSCRIBING_ROLES.includes(role) && subscription_start && plan_type;
+
+    // Calculate subscription end date (Monthly: +1 month - 1 day, Annual: +1 year - 1 day)
+    // Derive subscription_status from subscription_start vs today
+    let calcSubscriptionStartDate = null;
+    let calcSubscriptionEndDate = null;
+    let calcSubscriptionStatus = null;
+    let calcTrialEndDate = null;
+
+    if (hasSubscription) {
+      calcSubscriptionStartDate = new Date(subscription_start);
+      const cycle = billing_cycle || 'monthly';
+
+      const endD = new Date(calcSubscriptionStartDate);
+      if (cycle === 'annual') {
+        endD.setFullYear(endD.getFullYear() + 1);
       } else {
-        startDate.setMonth(startDate.getMonth() + 1);
+        endD.setMonth(endD.getMonth() + 1);
       }
-      calcSubscriptionEnd = startDate.toISOString().split('T')[0];
+      endD.setDate(endD.getDate() - 1);
+      calcSubscriptionEndDate = endD;
+
+      // Derive status: if start is in the future → trial, else active
+      const todayMid = new Date();
+      todayMid.setHours(0, 0, 0, 0);
+      const startMid = new Date(calcSubscriptionStartDate);
+      startMid.setHours(0, 0, 0, 0);
+
+      if (startMid > todayMid) {
+        calcSubscriptionStatus = 'trial';
+        calcTrialEndDate = new Date(startMid);
+        calcTrialEndDate.setDate(calcTrialEndDate.getDate() - 1);
+      } else {
+        calcSubscriptionStatus = 'active';
+        calcTrialEndDate = null;
+      }
     }
 
     // Build user create data
@@ -335,15 +398,17 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       pin_code: pin_code || null
     };
 
-    // For Restaurant Owner: store subscription on user directly (brands/foodcourts use entity tables)
-    if (role === 'Restaurant Owner') {
-      userCreateData.plan_type = plan_type || null;
+    // Subscription fields — applies to Brand General / Foodcourt General / Restaurant Owner
+    if (hasSubscription) {
+      userCreateData.plan_type = plan_type;
       userCreateData.plan_amount = plan_amount ? parseFloat(plan_amount) : null;
       userCreateData.billing_cycle = billing_cycle || 'monthly';
       userCreateData.currency = currency || 'MYR';
-      userCreateData.subscription_status = subscription_start ? 'active' : 'trial';
-      userCreateData.subscription_start = subscription_start || new Date();
-      userCreateData.subscription_end = calcSubscriptionEnd;
+      userCreateData.subscription_status = calcSubscriptionStatus;
+      userCreateData.subscription_start = calcSubscriptionStartDate;
+      userCreateData.subscription_end = calcSubscriptionEndDate;
+      userCreateData.trial_end_date = calcTrialEndDate;
+      userCreateData.auto_renew = auto_renew !== false;
     }
 
     // 관리자가 만드는 계정은 이메일 인증 건너뛰기 (셀프 가입만 인증 필요)
@@ -378,6 +443,28 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
 
     // Brand General / Foodcourt General: 유저만 생성
     // Brand/Foodcourt 엔티티는 본인이 로그인 후 직접 추가 (Brand Management / Foodcourt Management 페이지)
+
+    // Auto-generate first subscription invoice for subscribing users (non-blocking)
+    if (hasSubscription) {
+      try {
+        const { createInitialInvoice } = require('../services/subscriptionInvoiceService');
+        const result = await createInitialInvoice({
+          kind: 'user',
+          id: user.id,
+          role: user.role,
+          plan_type: user.plan_type,
+          plan_amount: user.plan_amount,
+          billing_cycle: user.billing_cycle,
+          currency: user.currency,
+          subscription_start: user.subscription_start
+        });
+        if (result && result.invoice) {
+          console.log(`[Auto-Invoice] Created ${result.invoiceNumber} for new ${role} "${user.full_name || user.email}"`);
+        }
+      } catch (invoiceError) {
+        console.error('[Auto-Invoice] Failed to generate initial invoice for user:', invoiceError.message);
+      }
+    }
 
     console.log('✓ User created successfully:', user.id, user.username);
 
@@ -472,20 +559,82 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
       updateData.plan_amount = updateData.plan_amount ? parseFloat(updateData.plan_amount) : null;
     }
 
+    // Detect subscription field changes (for invoice sync later)
+    const subscriptionFieldsChanged =
+      updateData.plan_type !== undefined ||
+      updateData.plan_amount !== undefined ||
+      updateData.billing_cycle !== undefined ||
+      updateData.subscription_start !== undefined ||
+      updateData.currency !== undefined;
+
     // Auto-calculate subscription_end if start + billing_cycle provided
+    // Monthly: +1 month - 1 day. Annual: +1 year - 1 day.
     const effectiveBillingCycle = updateData.billing_cycle || user.billing_cycle;
     const effectiveStart = updateData.subscription_start;
-    if (effectiveStart && effectiveBillingCycle && !updateData.subscription_end) {
+    if (effectiveStart && effectiveBillingCycle) {
       const startDate = new Date(effectiveStart);
       if (effectiveBillingCycle === 'annual') {
         startDate.setFullYear(startDate.getFullYear() + 1);
       } else {
         startDate.setMonth(startDate.getMonth() + 1);
       }
-      updateData.subscription_end = startDate.toISOString().split('T')[0];
+      startDate.setDate(startDate.getDate() - 1);
+      updateData.subscription_end = startDate;
+
+      // Re-derive subscription_status from start vs today
+      const todayMid = new Date();
+      todayMid.setHours(0, 0, 0, 0);
+      const startMid = new Date(effectiveStart);
+      startMid.setHours(0, 0, 0, 0);
+      if (startMid > todayMid) {
+        if (updateData.subscription_status === undefined) updateData.subscription_status = 'trial';
+        const tEnd = new Date(startMid);
+        tEnd.setDate(tEnd.getDate() - 1);
+        updateData.trial_end_date = tEnd;
+      } else {
+        if (updateData.subscription_status === undefined) updateData.subscription_status = 'active';
+        updateData.trial_end_date = null;
+      }
     }
 
     await user.update(updateData);
+
+    // Sync pending invoice if subscription changed (for subscribing roles)
+    const SUBSCRIBING_ROLES = ['Brand General', 'Foodcourt General', 'Restaurant Owner'];
+    if (subscriptionFieldsChanged && SUBSCRIBING_ROLES.includes(user.role) && user.subscription_start && user.plan_type) {
+      try {
+        const { syncPendingInvoice, createInitialInvoice } = require('../services/subscriptionInvoiceService');
+        const subject = {
+          kind: 'user',
+          id: user.id,
+          role: user.role,
+          plan_type: user.plan_type,
+          plan_amount: user.plan_amount,
+          billing_cycle: user.billing_cycle,
+          currency: user.currency,
+          subscription_start: user.subscription_start
+        };
+        const syncResult = await syncPendingInvoice(subject);
+        if (syncResult.updated) {
+          console.log(`[Auto-Invoice Sync] Updated ${syncResult.invoiceNumber} after subscription change for user ${user.id}`);
+          logActivity(req, {
+            action_type: 'update',
+            entity_type: 'invoice',
+            entity_id: syncResult.updated.id,
+            entity_name: syncResult.invoiceNumber,
+            description: `Auto-synced invoice ${syncResult.invoiceNumber} due to subscription update for ${user.role} "${user.full_name || user.username}"`
+          });
+        } else if (syncResult.reason === 'no_pending') {
+          // No pending invoice — create a new one (first-time subscription activation via edit)
+          const createResult = await createInitialInvoice(subject);
+          if (createResult && createResult.invoice) {
+            console.log(`[Auto-Invoice] Created ${createResult.invoiceNumber} on subscription edit for user ${user.id}`);
+          }
+        }
+      } catch (invoiceError) {
+        console.error('[Auto-Invoice Sync] Error syncing invoice for user:', invoiceError.message);
+      }
+    }
 
     logActivity(req, {
       action_type: 'update',

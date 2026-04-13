@@ -8,7 +8,6 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { fetchAPI } from '../../utils/api';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface ProductIngredientsTabProps {
@@ -276,18 +275,6 @@ const EmptyDescription = styled.p`
   margin-bottom: 24px;
 `;
 
-const HeaderSection = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  gap: 16px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
 
 const ImagePreview = styled.div`
   width: 100%;
@@ -339,7 +326,6 @@ const StockBadge = styled.span<{ status: 'normal' | 'low' | 'out' }>`
 `;
 
 const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ onCountChange, categoryRefreshKey }) => {
-  const { t } = useTranslation('brand');
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);

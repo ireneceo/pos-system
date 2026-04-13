@@ -862,6 +862,7 @@ const ReportsPage: React.FC = () => {
     }
 
     return lines.join('\n');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentMethodData, cardTypeData, staffMealData, totalPaymentRevenue]);
 
   // What and Why: 탭별 CSV 생성 및 다운로드 통합 함수

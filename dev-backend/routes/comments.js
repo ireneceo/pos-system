@@ -20,7 +20,7 @@ router.post('/mark-read', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'entity_type and entity_id are required' });
     }
 
-    const validTypes = ['notice', 'operation_ticket', 'support_ticket', 'hardware_quote', 'contract'];
+    const validTypes = ['notice', 'operation_ticket', 'support_ticket', 'hardware_quote', 'contract', 'work_manual'];
     if (!validTypes.includes(entity_type)) {
       return res.status(400).json({ success: false, message: 'Invalid entity type' });
     }
@@ -48,7 +48,7 @@ router.get('/unread-counts', authenticateToken, async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    const validTypes = ['notice', 'operation_ticket', 'support_ticket', 'hardware_quote', 'contract'];
+    const validTypes = ['notice', 'operation_ticket', 'support_ticket', 'hardware_quote', 'contract', 'work_manual'];
     if (!validTypes.includes(entity_type)) {
       return res.status(400).json({ success: false, message: 'Invalid entity type' });
     }
@@ -123,7 +123,7 @@ function canSeeInternal(viewerRole, commentAuthorRole) {
 router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
   try {
     const { entityType, entityId } = req.params;
-    const validTypes = ['notice', 'operation_ticket', 'support_ticket', 'hardware_quote', 'contract'];
+    const validTypes = ['notice', 'operation_ticket', 'support_ticket', 'hardware_quote', 'contract', 'work_manual'];
     if (!validTypes.includes(entityType)) {
       return res.status(400).json({ success: false, message: 'Invalid entity type' });
     }
@@ -157,7 +157,7 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'entity_type, entity_id, and content (or attachments) are required' });
     }
 
-    const validTypes = ['notice', 'operation_ticket', 'support_ticket', 'hardware_quote', 'contract'];
+    const validTypes = ['notice', 'operation_ticket', 'support_ticket', 'hardware_quote', 'contract', 'work_manual'];
     if (!validTypes.includes(entity_type)) {
       return res.status(400).json({ success: false, message: 'Invalid entity type' });
     }

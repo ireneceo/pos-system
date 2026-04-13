@@ -356,7 +356,6 @@ const CompanyProfilePage: React.FC = () => {
     };
 
     setProfile(emptyData);
-    setOriginalProfile(emptyData);
   };
 
   const handleInputChange = (field: keyof CompanyProfile, value: string) => {

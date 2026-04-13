@@ -3,6 +3,10 @@ import { initReactI18next } from 'react-i18next';
 import HttpBackend from 'i18next-http-backend';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
+// Cache-bust locale files per page load so translation key updates take effect
+// without users manually clearing cache. Evaluated once at module load.
+const I18N_CACHE_BUST = Date.now().toString();
+
 i18n
   .use(HttpBackend)
   .use(LanguageDetector)
@@ -21,7 +25,7 @@ i18n
     defaultNS: 'common',
 
     backend: {
-      loadPath: '/locales/{{lng}}/{{ns}}.json',
+      loadPath: `/locales/{{lng}}/{{ns}}.json?v=${I18N_CACHE_BUST}`,
     },
 
     detection: {

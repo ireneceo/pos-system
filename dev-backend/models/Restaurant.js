@@ -19,6 +19,11 @@ Restaurant.init({
     unique: true,
     comment: 'URL-friendly restaurant identifier'
   },
+  branch_name: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Branch/location name (e.g. Bukit Bintang, Sunway Pyramid)'
+  },
   admin_id: {
     type: DataTypes.INTEGER,
     allowNull: true,

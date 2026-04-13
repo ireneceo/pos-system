@@ -13,6 +13,7 @@ import { getAuthToken } from '../../utils/auth';
 interface Restaurant {
   id: string;
   name: string;
+  branch_name?: string | null;
   location: string;
   address: string;
   phone: string;
@@ -159,6 +160,17 @@ const RestaurantName = styled.h3`
   font-weight: 600;
   color: #0A2540;
   margin-bottom: 4px;
+`;
+
+const BranchBadge = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+  color: #6B7C93;
+  background: #F3F4F6;
+  padding: 1px 8px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
 `;
 
 const RestaurantMeta = styled.div`
@@ -546,6 +558,7 @@ const OwnerRestaurantsPage: React.FC = () => {
           const transformedRestaurants: Restaurant[] = result.data.map((restaurant: any) => ({
             id: restaurant.id.toString(),
             name: restaurant.name,
+            branch_name: restaurant.branch_name || null,
             location: restaurant.address || 'No address provided',
             address: restaurant.address || '',
             phone: restaurant.phone || '',
@@ -588,7 +601,6 @@ const OwnerRestaurantsPage: React.FC = () => {
   const activeRestaurants = restaurants.filter(r => r.status === 'active').length;
   const totalSales = restaurants.reduce((sum, r) => sum + r.todaySales, 0);
   const totalOrders = restaurants.reduce((sum, r) => sum + r.todayOrders, 0);
-  const totalStaff = restaurants.reduce((sum, r) => sum + r.staffCount, 0);
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -891,11 +903,6 @@ const OwnerRestaurantsPage: React.FC = () => {
               <StatLabel>{t('owner:ownerRestaurantsPage.todaysOrders')}</StatLabel>
               <StatTrend trend="neutral">{t('owner:ownerRestaurantsPage.acrossAllRestaurants')}</StatTrend>
             </StatCard>
-            <StatCard color="#D97706">
-              <StatValue>{totalStaff}</StatValue>
-              <StatLabel>{t('owner:ownerRestaurantsPage.totalStaff')}</StatLabel>
-              <StatTrend trend="neutral">{t('owner:ownerRestaurantsPage.allRestaurants')}</StatTrend>
-            </StatCard>
           </StatsGrid>
 
           <PageFilterWrapper>
@@ -927,7 +934,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                 <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id, restaurant.name)}>
                   <RestaurantHeader>
                     <RestaurantInfo>
-                      <RestaurantName>{restaurant.name} {restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}</RestaurantName>
+                      <RestaurantName>{restaurant.name} {restaurant.branch_name && <BranchBadge>{restaurant.branch_name}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{restaurant.currency}</span>}</RestaurantName>
                       {restaurant.adminName && (
                         <RestaurantMeta style={{ fontWeight: '600', color: '#635BFF' }}>
                           Admin: {restaurant.adminName}

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { useAuth } from '../../contexts/AuthContext';
 import LanguageSelector from '../Common/LanguageSelector';
 import { useTranslation } from 'react-i18next';
 
@@ -283,7 +282,6 @@ interface LandingHeaderProps {
 const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
   const { t } = useTranslation('landing');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const brandLogo = '/uploads/logos/brand-logo.png';
@@ -319,8 +317,8 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
             {t('nav.blog')}
           </NavLink>
-          <NavLink active={isActive('/packages')} onClick={() => handleNavigate('/packages')}>
-            {t('nav.setupQuote')}
+          <NavLink active={isActive('/news')} onClick={() => handleNavigate('/news')}>
+            {t('nav.news')}
           </NavLink>
           <NavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             {t('nav.contact')}
@@ -363,8 +361,8 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <MobileNavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
             {t('nav.blog')}
           </MobileNavLink>
-          <MobileNavLink active={isActive('/packages')} onClick={() => handleNavigate('/packages')}>
-            {t('nav.setupQuote')}
+          <MobileNavLink active={isActive('/news')} onClick={() => handleNavigate('/news')}>
+            {t('nav.news')}
           </MobileNavLink>
           <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             {t('nav.contact')}

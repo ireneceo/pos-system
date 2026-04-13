@@ -934,7 +934,7 @@ const BrandPerformance: React.FC = () => {
                 {sortedRestaurants.map((restaurant) => (
                   <RestaurantCard key={restaurant.id}>
                     <RestaurantHeader>
-                      <RestaurantName>{restaurant.name}</RestaurantName>
+                      <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', marginLeft: '6px' }}>({restaurant.branch_name})</span>}</RestaurantName>
                       <BrandBadge>{restaurant.brandCode}</BrandBadge>
                     </RestaurantHeader>
                     <MetricRow>
@@ -984,7 +984,7 @@ const BrandPerformance: React.FC = () => {
                   <RankingItem key={restaurant.id}>
                     <RankNumber rank={index + 1}>{index + 1}</RankNumber>
                     <RankInfo>
-                      <RankRestaurant>{restaurant.name}</RankRestaurant>
+                      <RankRestaurant>{restaurant.name}{restaurant.branch_name ? ` (${restaurant.branch_name})` : ''}</RankRestaurant>
                       <RankStats>
                         <RankStat>Revenue: {formatCurrency(restaurant.sales, restaurant.currency)}</RankStat>
                         <RankStat>Orders: {restaurant.completedOrders}</RankStat>

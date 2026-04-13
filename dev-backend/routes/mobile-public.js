@@ -82,6 +82,7 @@ router.get('/store/:slug', async (req, res) => {
       id: restaurant.id.toString(),
       slug: restaurant.slug,
       name: restaurant.name,
+      branch_name: restaurant.branch_name || null,
       description: restaurant.trade_name || restaurant.name,
       logo: restaurant.logo_url || '/images/store-logo.png',
       isOpen: restaurant.status === 'active',

@@ -2,6 +2,7 @@ export interface BaseRestaurant {
   id: string;
   name: string;
   branchName: string;
+  branch_name?: string | null;
   location: string;
   address: string;
   phone: string;

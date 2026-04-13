@@ -3,7 +3,6 @@ import styled from 'styled-components';
 import { ModalComponent, FormGroup, FormLabel, FormInput, Button, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
-import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -212,7 +211,6 @@ interface FoodcourtFormData {
 }
 
 const FoodcourtManagement: React.FC = () => {
-  const { t } = useTranslation('foodcourt');
   const [stats, setStats] = useState({
     totalFoodcourts: 0,
     totalTenants: 0,

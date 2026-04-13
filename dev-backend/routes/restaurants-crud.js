@@ -166,6 +166,7 @@ router.get('/', optionalAuth, async (req, res) => {
       return {
         id: restaurantData.id.toString(),
         name: restaurantData.name,
+        branch_name: restaurantData.branch_name || null,
         // Admin (Owner) 정보
         admin: adminData ? {
           id: adminData.id.toString(),
@@ -776,6 +777,7 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
     // Map frontend fields to database fields
     const restaurantData = {
       name: req.body.name,
+      branch_name: req.body.branch_name || null,
       admin_id: adminUser ? adminUser.id : (req.body.managerId || null),
       admin_name: adminUser ? (adminUser.full_name || adminUser.username) : null,
       email: req.body.email,
@@ -906,120 +908,35 @@ router.post('/', authenticateToken, validateRestaurantCreation, async (req, res)
       }
     }
 
-    // Auto-generate first POS subscription invoice for active restaurants (non-blocking)
-    if (restaurant.status === 'active' && restaurant.subscription_start) {
+    // Auto-generate first POS subscription invoice for restaurants with subscription info (non-blocking).
+    // Creates invoice for both 'active' and 'trial' statuses — trial users see their upcoming invoice.
+    //
+    // `activate_subscription` flag (default true for backward compat):
+    //   false → skip invoice generation. Use case: hardware-only customer,
+    //           admin wants to create restaurant record without forcing subscription billing.
+    //           Subscription can be activated later via PUT (which triggers sync).
+    const activateSubscription = req.body.activate_subscription !== false;
+    if (activateSubscription && restaurant.subscription_start && restaurant.plan_type) {
       try {
-        const InvoiceItem = require('../models/InvoiceItem');
-        const PlanPrice = require('../models/PlanPrice');
-
-        const subStart = new Date(restaurant.subscription_start);
-        const billingCycle = restaurant.billing_cycle || 'monthly';
-
-        // Calculate billing period
-        let billingEnd;
-        if (billingCycle === 'annual') {
-          billingEnd = new Date(subStart);
-          billingEnd.setFullYear(billingEnd.getFullYear() + 1);
-          billingEnd.setDate(billingEnd.getDate() - 1);
-        } else {
-          billingEnd = new Date(subStart);
-          billingEnd.setMonth(billingEnd.getMonth() + 1);
-          billingEnd.setDate(billingEnd.getDate() - 1);
-        }
-
-        // Due date: 7 days after creation
-        const dueDate = new Date();
-        dueDate.setDate(dueDate.getDate() + 7);
-
-        // Generate invoice number (system_admin format: INV-YYMMDDNNN)
-        const now = new Date();
-        const dateStr = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-        const searchPattern = `INV-${dateStr}%`;
-        const lastInv = await Invoice.findOne({
-          where: { invoice_number: { [Op.like]: searchPattern } },
-          order: [['invoice_number', 'DESC']],
-          attributes: ['invoice_number']
-        });
-        let nextNum = 1;
-        if (lastInv && lastInv.invoice_number) {
-          const match = lastInv.invoice_number.match(/(\d{3})$/);
-          if (match) nextNum = parseInt(match[1], 10) + 1;
-        }
-        const invoiceNumber = `INV-${dateStr}${String(nextNum).padStart(3, '0')}`;
-
-        // Get plan amount (currency-aware)
-        let currency = restaurant.currency || 'MYR';
-        if (currency === 'RM') currency = 'MYR';
-        let planAmount = parseFloat(restaurant.plan_amount || 29);
-
-        const planTemplate = await PlanTemplate.findOne({
-          where: { display_name: restaurant.plan_type }
-        });
-        if (planTemplate) {
-          const planPrice = await PlanPrice.findOne({
-            where: { plan_id: planTemplate.id, currency, is_active: true }
-          });
-          if (planPrice) {
-            planAmount = billingCycle === 'annual'
-              ? parseFloat(planPrice.annual_price) / 12
-              : parseFloat(planPrice.monthly_price);
+        const { createInitialInvoice } = require('../services/subscriptionInvoiceService');
+        const result = await createInitialInvoice({
+          kind: 'restaurant',
+          id: restaurant.id,
+          plan_type: restaurant.plan_type,
+          plan_amount: restaurant.plan_amount,
+          billing_cycle: restaurant.billing_cycle || 'monthly',
+          currency: restaurant.currency || 'MYR',
+          subscription_start: restaurant.subscription_start,
+          restaurant: {
+            id: restaurant.id,
+            payment_model: restaurant.payment_model,
+            brand_id: restaurant.brand_id,
+            foodcourt_id: restaurant.foodcourt_id
           }
-        }
-
-        const taxRate = 0.06;
-        const taxAmount = planAmount * taxRate;
-        const totalAmount = planAmount + taxAmount;
-
-        // Determine payer
-        let payerType = 'restaurant';
-        let payerId = null;
-        if (restaurant.payment_model === 'brand_manager' && restaurant.brand_id) {
-          const brand = await Brand.findByPk(restaurant.brand_id);
-          if (brand && brand.owner_id) { payerType = 'brand_manager'; payerId = brand.owner_id; }
-        } else if (restaurant.payment_model === 'foodcourt_manager' && restaurant.foodcourt_id) {
-          const foodcourt = await Foodcourt.findByPk(restaurant.foodcourt_id);
-          if (foodcourt && foodcourt.owner_id) { payerType = 'foodcourt_manager'; payerId = foodcourt.owner_id; }
-        }
-
-        const formatDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const cycleText = billingCycle === 'annual' ? 'Annual' : 'Monthly';
-        const periodText = `${formatDate(subStart)} ~ ${formatDate(billingEnd)}`;
-        const companyInfo = await CompanySettings.findOne({ where: { id: 1 }, attributes: ['site_name'] });
-        const siteName = companyInfo?.site_name || 'POS';
-
-        const invoice = await Invoice.create({
-          restaurant_id: restaurant.id,
-          invoice_number: invoiceNumber,
-          type: 'automatic',
-          invoice_category: 'subscription',
-          category_display_name: `${siteName} - ${restaurant.plan_type} (${cycleText})`,
-          billing_period_start: subStart,
-          billing_period_end: billingEnd,
-          due_date: dueDate,
-          total_amount: totalAmount,
-          currency,
-          status: 'pending_payment',
-          notes: `${cycleText} subscription invoice for ${restaurant.plan_type}. Service period: ${periodText}. Due within 7 days.`,
-          issued_by: 0,
-          issued_at: now,
-          issuer_type: 'system_admin',
-          payer_type: payerType,
-          payer_id: payerId
         });
-
-        await InvoiceItem.create({
-          invoice_id: invoice.id,
-          item_type: 'subscription',
-          description: `${restaurant.plan_type} - ${cycleText} Subscription (${periodText})`,
-          calculation_method: 'fixed',
-          fixed_amount: planAmount,
-          calculated_amount: planAmount,
-          tax_rate: taxRate * 100,
-          tax_amount: taxAmount,
-          total_amount: totalAmount
-        });
-
-        console.log(`[Auto-Invoice] Created ${invoiceNumber} for new restaurant "${restaurant.name}" (${totalAmount} ${currency})`);
+        if (result && result.invoice) {
+          console.log(`[Auto-Invoice] Created ${result.invoiceNumber} for new restaurant "${restaurant.name}"`);
+        }
       } catch (invoiceError) {
         console.error('[Auto-Invoice] Failed to generate initial invoice:', invoiceError.message);
       }
@@ -1101,6 +1018,7 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     if (req.body.postal_code !== undefined) updateData.postal_code = req.body.postal_code;
     if (req.body.country !== undefined) updateData.country = req.body.country;
     if (req.body.business_registration !== undefined) updateData.business_registration = req.body.business_registration;
+    if (req.body.branch_name !== undefined) updateData.branch_name = req.body.branch_name;
     if (req.body.trade_name !== undefined) updateData.trade_name = req.body.trade_name;
     if (req.body.tax_id !== undefined) updateData.tax_id = req.body.tax_id;
     if (req.body.website !== undefined) updateData.website = req.body.website;
@@ -1146,18 +1064,43 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       updateData.auto_renew = req.body.autoRenew !== undefined ? req.body.autoRenew : req.body.auto_renew;
     }
 
-    // Auto-calculate subscription_end if start + billing_cycle provided but end not specified
+    // Auto-calculate subscription_end if start + billing_cycle changed.
+    // Rule: Monthly = start + 1 month - 1 day. Annual = start + 1 year - 1 day.
     const effectiveStart = updateData.subscription_start || restaurant.subscription_start;
     const effectiveCycle = updateData.billing_cycle || restaurant.billing_cycle;
-    if (effectiveStart && effectiveCycle && !updateData.subscription_end && (updateData.subscription_start || updateData.billing_cycle)) {
+    if (effectiveStart && effectiveCycle && (updateData.subscription_start !== undefined || updateData.billing_cycle !== undefined)) {
       const startDate = new Date(effectiveStart);
       if (effectiveCycle === 'annual') {
         startDate.setFullYear(startDate.getFullYear() + 1);
       } else {
         startDate.setMonth(startDate.getMonth() + 1);
       }
-      updateData.subscription_end = startDate.toISOString().split('T')[0];
+      startDate.setDate(startDate.getDate() - 1);
+      updateData.subscription_end = startDate;
+
+      // Re-derive status from start vs today
+      const todayMid = new Date();
+      todayMid.setHours(0, 0, 0, 0);
+      const startMid = new Date(effectiveStart);
+      startMid.setHours(0, 0, 0, 0);
+      if (startMid > todayMid) {
+        if (updateData.status === undefined) updateData.status = 'trial';
+        const tEnd = new Date(startMid);
+        tEnd.setDate(tEnd.getDate() - 1);
+        updateData.trial_end_date = tEnd;
+      } else {
+        if (updateData.status === undefined) updateData.status = 'active';
+        updateData.trial_end_date = null;
+      }
     }
+
+    // Detect subscription changes for invoice sync (after update)
+    const subscriptionFieldsChanged =
+      updateData.plan_type !== undefined ||
+      updateData.plan_amount !== undefined ||
+      updateData.billing_cycle !== undefined ||
+      updateData.subscription_start !== undefined ||
+      updateData.currency !== undefined;
 
     // Limit fields
     if (req.body.menuItemLimit !== undefined || req.body.menu_item_limit !== undefined) {
@@ -1354,6 +1297,40 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
         }));
 
         await RestaurantManager.bulkCreate(managerAssociations);
+      }
+    }
+
+    // Sync pending invoice if subscription fields changed
+    if (subscriptionFieldsChanged && restaurant.subscription_start && restaurant.plan_type) {
+      try {
+        const { syncPendingInvoice, createInitialInvoice } = require('../services/subscriptionInvoiceService');
+        const subject = {
+          kind: 'restaurant',
+          id: restaurant.id,
+          plan_type: restaurant.plan_type,
+          plan_amount: restaurant.plan_amount,
+          billing_cycle: restaurant.billing_cycle,
+          currency: restaurant.currency,
+          subscription_start: restaurant.subscription_start,
+          restaurant: {
+            id: restaurant.id,
+            payment_model: restaurant.payment_model,
+            brand_id: restaurant.brand_id,
+            foodcourt_id: restaurant.foodcourt_id
+          }
+        };
+        const syncResult = await syncPendingInvoice(subject);
+        if (syncResult.updated) {
+          console.log(`[Auto-Invoice Sync] Updated ${syncResult.invoiceNumber} after subscription change for restaurant ${restaurant.id}`);
+        } else if (syncResult.reason === 'no_pending') {
+          // No pending invoice — create new (happens when editing a restaurant that had no subscription before)
+          const createResult = await createInitialInvoice(subject);
+          if (createResult && createResult.invoice) {
+            console.log(`[Auto-Invoice] Created ${createResult.invoiceNumber} on subscription edit for restaurant ${restaurant.id}`);
+          }
+        }
+      } catch (invoiceError) {
+        console.error('[Auto-Invoice Sync] Error syncing invoice for restaurant:', invoiceError.message);
       }
     }
 

@@ -35,7 +35,7 @@ interface Notice {
   status: string;
   createdAt: string;
   recipients: any[];
-  category?: 'general' | 'guide';
+  category?: 'general' | 'guide' | 'updates';
   commentCount: number;
   attachments?: any[];
   brand?: any;
@@ -439,7 +439,7 @@ const NoticesPage: React.FC = () => {
   const [metadata, setMetadata] = useState<NoticeMetadata | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide' | 'updates'>('all');
   const [authorRoleFilter, setAuthorRoleFilter] = useState('all');
   const [loading, setLoading] = useState(false);
 
@@ -855,7 +855,7 @@ const NoticesPage: React.FC = () => {
 
         {/* Category Filter Pills */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          {(['all', 'general', 'guide'] as const).map(cat => (
+          {(['all', 'general', 'guide', 'updates'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -871,7 +871,7 @@ const NoticesPage: React.FC = () => {
                 transition: 'all 0.15s'
               }}
             >
-              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : 'Guide'}
+              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : cat === 'guide' ? 'Guide' : 'Updates'}
             </button>
           ))}
         </div>
@@ -1114,7 +1114,7 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal                                                   */}
       {/* ================================================================== */}
       {showViewModal && selectedNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" headerActions={<ViewModalHeaderRight><PriorityBadge priority={selectedNotice.priority}>{selectedNotice.priority}</PriorityBadge>{isOwnNotice(selectedNotice) && (<DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('common:noticesPage.delete')}</DeleteNoticeButton>)}</ViewModalHeaderRight>} footer={<><Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>{t('common:noticesPage.close')}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" headerActions={<ViewModalHeaderRight><PriorityBadge priority={selectedNotice.priority}>{selectedNotice.priority}</PriorityBadge>{isOwnNotice(selectedNotice) && (<DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('common:noticesPage.delete')}</DeleteNoticeButton>)}</ViewModalHeaderRight>} footer={<>{selectedNotice.category === 'guide' && (<Button variant="secondary" onClick={async () => { try { const res = await fetch(`/api/work-manuals/from-notice/${selectedNotice.id}`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({}) }); if ((await res.json()).success) { setShowViewModal(false); setSelectedNotice(null); } } catch (e) { /* silent */ } }}>Send to Work Manuals</Button>)}<Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedNotice(null); }}>{t('common:noticesPage.close')}</Button></>}>
               {/* Meta info */}
               <ViewNoticeMeta>
                 <MetaField>

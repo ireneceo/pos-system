@@ -7,7 +7,6 @@ import { useStore } from '../../contexts/StoreContext';
 import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR } from '../../utils/billPrint';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { Modal, ModalButton } from '../../components/UI';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 // Helper: payment_proof 호환 — { current, history } 구조 또는 기존 단일 객체 모두 지원
@@ -524,7 +523,6 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   onOrderIndexChange,
   qrMode = 'static'
 }) => {
-  const { t } = useTranslation('floorplan');
   const [loading, setLoading] = useState(false);
   const { getStoreInfo, paymentSettings } = useStore();
 

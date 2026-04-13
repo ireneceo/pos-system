@@ -31,6 +31,7 @@ interface RestaurantSubscription {
   id: string;
   restaurantId: string;
   restaurantName: string;
+  branchName?: string | null;
   managerId: string;
   managerName: string;
   planType: 'basic' | 'professional' | 'enterprise' | string;
@@ -308,6 +309,7 @@ const SubscriptionsPage: React.FC = () => {
   const [availableRestaurants, setAvailableRestaurants] = useState<any[]>([]);
   const [availableManagers, setAvailableManagers] = useState<any[]>([]);
   const [allRestaurantsData, setAllRestaurantsData] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [customPlans, setCustomPlans] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
   const [userType, setUserType] = useState<'restaurant' | 'brand' | 'foodcourt' | 'owner'>('restaurant');
@@ -368,6 +370,7 @@ const SubscriptionsPage: React.FC = () => {
           id: `sub-rest-${restaurant.id}`,
           restaurantId: restaurant.id?.toString() || `rest-${index}`,
           restaurantName: restaurant.name || 'Restaurant Name',
+          branchName: restaurant.branch_name || null,
           currency: restaurant.currency || 'MYR',
           managerId: (restaurant.managerId || restaurant.admin_id)?.toString() || '',
           managerName: `${restaurant.admin?.username || restaurant.managerId || ''} • ${restaurant.admin?.email || restaurant.managerName || restaurant.admin_name || 'No Manager Assigned'}`,
@@ -1152,6 +1155,7 @@ const SubscriptionsPage: React.FC = () => {
                     <RestaurantInfo>
                       <RestaurantName>
                         {subscription.restaurantName}
+                        {subscription.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.branchName}</span>}
                         {(subscription as any).isDemo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:subscriptionsPage.demo')}</span>}
                         {(subscription as any).isTest && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:subscriptionsPage.test')}</span>}
                         {subscription.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{subscription.currency}</span>}

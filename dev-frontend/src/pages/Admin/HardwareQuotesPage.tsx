@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/StatCard';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { Modal as CommonModal, Container, Header, Title, Content } from '../../components/UI';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
@@ -91,43 +92,6 @@ interface UserSearchResult {
 
 
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-`;
-
-const StatValue = styled.div`
-  font-size: 28px;
-  font-weight: 700;
-  color: #0A2540;
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
-`;
 
 const FilterBar = styled.div`
   display: flex;
@@ -609,7 +573,9 @@ const HardwareQuotesPage: React.FC = () => {
   const [invoiceDueDate, setInvoiceDueDate] = useState('');
   const [discountType, setDiscountType] = useState<'none' | 'percentage' | 'fixed'>('none');
   const [discountValue, setDiscountValue] = useState('');
-  const [additionalCharges, setAdditionalCharges] = useState<Array<{ name: string; amount: string }>>([]);
+  // Charges now use rate-based (percentage) calculation, auto-loaded from payment_settings.
+  // Each charge: { name, rate (%), amount (auto-calculated from subtotal × rate) }
+  const [additionalCharges, setAdditionalCharges] = useState<Array<{ name: string; rate: string; amount: string }>>([]);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
 
   // Proceed Contract modal (for quotes with plan_id)
@@ -815,6 +781,9 @@ const HardwareQuotesPage: React.FC = () => {
     setShowLinkUserModal(true);
   };
 
+  // Hardware quotes can only be linked to Restaurant Admin users — the invoice
+  // for the hardware will be billed to them. Backend now supports `search` query
+  // param with substring LIKE matching (middle characters work).
   const searchUsers = useCallback(async (term: string) => {
     if (term.length < 2) {
       setUserResults([]);
@@ -823,13 +792,15 @@ const HardwareQuotesPage: React.FC = () => {
     setSearchingUsers(true);
     try {
       const token = getToken();
-      const res = await fetch(`/api/users?search=${encodeURIComponent(term)}`, {
+      const res = await fetch(`/api/users?role=Restaurant Admin&search=${encodeURIComponent(term)}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
         const users = Array.isArray(data) ? data : (data.data || []);
-        setUserResults(users.slice(0, 20).map((u: UserSearchResult) => ({
+        // Defensive client-side filter in case backend returns extras
+        const filtered = users.filter((u: UserSearchResult) => u.role === 'Restaurant Admin');
+        setUserResults(filtered.slice(0, 20).map((u: UserSearchResult) => ({
           id: u.id,
           full_name: u.full_name,
           email: u.email,
@@ -837,7 +808,7 @@ const HardwareQuotesPage: React.FC = () => {
         })));
       }
     } catch (error) {
-      console.error('Error searching users:', error);
+      console.error('Error searching restaurant admins:', error);
     } finally {
       setSearchingUsers(false);
     }
@@ -872,22 +843,48 @@ const HardwareQuotesPage: React.FC = () => {
   };
 
   // Create Invoice
-  const openInvoiceModal = () => {
+  const openInvoiceModal = async () => {
     const defaultDue = new Date();
     defaultDue.setDate(defaultDue.getDate() + 14);
     setInvoiceDueDate(defaultDue.toISOString().split('T')[0]);
     setDiscountType('none');
     setDiscountValue('');
-    setAdditionalCharges([]);
+
+    // Auto-load additional charges from payment settings for the quote's currency
+    try {
+      const token = getToken();
+      const res = await fetch('/api/admin/payment-settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const settings = data?.data || data;
+        const currency = (selectedQuote?.currency || 'MYR').replace(/^RM$/, 'MYR');
+        const currencyCharges = settings?.additionalCharges?.[currency] || [];
+        const loaded = currencyCharges
+          .filter((c: { enabled: boolean; rate: number }) => c && c.enabled && parseFloat(String(c.rate)) > 0)
+          .map((c: { name: string; rate: number }) => ({
+            name: c.name || 'Charge',
+            rate: String(c.rate),
+            amount: '' // Will be computed from subtotal × rate
+          }));
+        setAdditionalCharges(loaded);
+      } else {
+        setAdditionalCharges([]);
+      }
+    } catch (e) {
+      setAdditionalCharges([]);
+    }
+
     setShowDetailModal(false);
     setTimeout(() => setShowInvoiceModal(true), 200);
   };
 
   const addCharge = () => {
-    setAdditionalCharges(prev => [...prev, { name: '', amount: '' }]);
+    setAdditionalCharges(prev => [...prev, { name: '', rate: '', amount: '' }]);
   };
 
-  const updateCharge = (index: number, field: 'name' | 'amount', value: string) => {
+  const updateCharge = (index: number, field: 'name' | 'rate' | 'amount', value: string) => {
     setAdditionalCharges(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
   };
 
@@ -897,19 +894,26 @@ const HardwareQuotesPage: React.FC = () => {
 
   const calculateInvoiceTotal = (): number => {
     if (!selectedQuote) return 0;
-    let total = selectedQuote.total_amount;
+    let subtotal = selectedQuote.total_amount;
 
     if (discountType === 'percentage' && discountValue) {
-      total -= total * (parseFloat(discountValue) / 100);
+      subtotal -= subtotal * (parseFloat(discountValue) / 100);
     } else if (discountType === 'fixed' && discountValue) {
-      total -= parseFloat(discountValue);
+      subtotal -= parseFloat(discountValue);
     }
+    subtotal = Math.max(0, subtotal);
 
+    // Apply each additional charge (rate-based takes priority over fixed amount)
+    let chargesTotal = 0;
     additionalCharges.forEach(c => {
-      if (c.amount) total += parseFloat(c.amount);
+      if (c.rate && parseFloat(c.rate) > 0) {
+        chargesTotal += subtotal * (parseFloat(c.rate) / 100);
+      } else if (c.amount) {
+        chargesTotal += parseFloat(c.amount);
+      }
     });
 
-    return Math.max(0, total);
+    return subtotal + chargesTotal;
   };
 
   const createInvoice = async () => {
@@ -926,12 +930,16 @@ const HardwareQuotesPage: React.FC = () => {
         body.discount_value = parseFloat(discountValue);
       }
 
-      const validCharges = additionalCharges.filter(c => c.name && c.amount);
+      // Send charges with rate (backend computes amount from subtotal × rate).
+      // Support both rate-based (auto-loaded from payment settings) and fixed amounts.
+      const validCharges = additionalCharges.filter(c => c.name && (c.rate || c.amount));
       if (validCharges.length > 0) {
-        body.additional_charges = validCharges.map(c => ({
-          name: c.name,
-          amount: parseFloat(c.amount)
-        }));
+        body.additional_charges = validCharges.map(c => {
+          const hasRate = c.rate && parseFloat(c.rate) > 0;
+          return hasRate
+            ? { name: c.name, rate: parseFloat(c.rate) }
+            : { name: c.name, amount: parseFloat(c.amount) };
+        });
       }
 
       const res = await fetch(`/api/hardware-quotes/${selectedQuote.id}/invoice`, {
@@ -1098,10 +1106,6 @@ const HardwareQuotesPage: React.FC = () => {
             <StatCard color="#10B981">
               <StatValue>{stats.confirmed}</StatValue>
               <StatLabel>{t('admin:hardwareQuotesPage.confirmed')}</StatLabel>
-            </StatCard>
-            <StatCard color="#8B5CF6">
-              <StatValue>{stats.invoiced}</StatValue>
-              <StatLabel>{t('admin:hardwareQuotesPage.invoiced')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
@@ -1345,7 +1349,7 @@ const HardwareQuotesPage: React.FC = () => {
             ) : (
               <LinkedUserBox style={{ background: '#F9FAFB' }}>
                 <LinkedUserInfo style={{ color: '#6B7280' }}>{t('admin:hardwareQuotesPage.notLinked')}</LinkedUserInfo>
-                <ActionButton variant="primary" onClick={openLinkUserModal}>{t('admin:hardwareQuotesPage.linkUser')}</ActionButton>
+                <ActionButton variant="primary" onClick={openLinkUserModal}>Link Restaurant Admin</ActionButton>
               </LinkedUserBox>
             )}
 
@@ -1536,24 +1540,27 @@ const HardwareQuotesPage: React.FC = () => {
           </CommonModal>
         )}
 
-        {/* Link User Modal */}
+        {/* Link Restaurant Admin Modal */}
         {showLinkUserModal && (
           <CommonModal
             isOpen={true}
             onClose={() => setShowLinkUserModal(false)}
-            title="Link User to Quote"
+            title="Link Restaurant Admin to Quote"
             footer={
               <ActionButton onClick={() => setShowLinkUserModal(false)}>{t('admin:hardwareQuotesPage.cancel')}</ActionButton>
             }
           >
             <FormGroup>
-              <FormLabel>{t('admin:hardwareQuotesPage.searchUsersByNameOrEmail')}</FormLabel>
+              <FormLabel>Search Restaurant Admin by name or email</FormLabel>
               <FormInput
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
                 placeholder="Type at least 2 characters..."
                 autoFocus
               />
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                Only Restaurant Admins are shown — hardware invoices are billed to the restaurant admin.
+              </div>
             </FormGroup>
 
             {searchingUsers && <div style={{ textAlign: 'center', color: '#6B7280', padding: 16 }}>{t('admin:hardwareQuotesPage.searching')}</div>}
@@ -1570,7 +1577,7 @@ const HardwareQuotesPage: React.FC = () => {
             )}
 
             {userSearch.length >= 2 && !searchingUsers && userResults.length === 0 && (
-              <div style={{ textAlign: 'center', color: '#6B7280', padding: 16 }}>{t('admin:hardwareQuotesPage.noUsersFound')}</div>
+              <div style={{ textAlign: 'center', color: '#6B7280', padding: 16 }}>No Restaurant Admin found matching your search.</div>
             )}
           </CommonModal>
         )}
@@ -1646,33 +1653,51 @@ const HardwareQuotesPage: React.FC = () => {
               </div>
             </FormGroup>
 
-            {/* Additional Charges */}
+            {/* Additional Charges — auto-loaded from Payment Settings */}
             <FormGroup>
               <FormLabel>{t('admin:hardwareQuotesPage.additionalCharges')}</FormLabel>
-              {additionalCharges.map((charge, idx) => (
-                <ChargeRow key={idx}>
-                  <InlineFormGroup>
-                    <FormInput
-                      value={charge.name}
-                      onChange={(e) => updateCharge(idx, 'name', e.target.value)}
-                      placeholder="Charge name"
-                    />
-                  </InlineFormGroup>
-                  <InlineFormGroup>
-                    <FormInput
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={charge.amount}
-                      onChange={(e) => updateCharge(idx, 'amount', e.target.value)}
-                      placeholder="Amount"
-                    />
-                  </InlineFormGroup>
-                  <ActionButton variant="danger" onClick={() => removeCharge(idx)} style={{ flexShrink: 0 }}>
-                    Remove
-                  </ActionButton>
-                </ChargeRow>
-              ))}
+              <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
+                Auto-loaded from Payment Settings for {selectedQuote?.currency || 'MYR'}. You can edit or add more charges.
+              </div>
+              {additionalCharges.map((charge, idx) => {
+                // Preview calculated amount for this charge
+                const subtotal = (() => {
+                  let s = selectedQuote?.total_amount || 0;
+                  if (discountType === 'percentage' && discountValue) s -= s * (parseFloat(discountValue) / 100);
+                  else if (discountType === 'fixed' && discountValue) s -= parseFloat(discountValue);
+                  return Math.max(0, s);
+                })();
+                const previewAmount = charge.rate && parseFloat(charge.rate) > 0
+                  ? subtotal * (parseFloat(charge.rate) / 100)
+                  : parseFloat(charge.amount || '0');
+                return (
+                  <ChargeRow key={idx}>
+                    <InlineFormGroup>
+                      <FormInput
+                        value={charge.name}
+                        onChange={(e) => updateCharge(idx, 'name', e.target.value)}
+                        placeholder="Charge name (e.g., SST)"
+                      />
+                    </InlineFormGroup>
+                    <InlineFormGroup style={{ maxWidth: '100px' }}>
+                      <FormInput
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={charge.rate}
+                        onChange={(e) => updateCharge(idx, 'rate', e.target.value)}
+                        placeholder="Rate %"
+                      />
+                    </InlineFormGroup>
+                    <div style={{ minWidth: '100px', fontSize: '13px', color: '#6B7280', textAlign: 'right', alignSelf: 'center' }}>
+                      = {formatCurrency(previewAmount, selectedQuote?.currency || 'MYR')}
+                    </div>
+                    <ActionButton variant="danger" onClick={() => removeCharge(idx)} style={{ flexShrink: 0 }}>
+                      Remove
+                    </ActionButton>
+                  </ChargeRow>
+                );
+              })}
               <ActionButton onClick={addCharge} style={{ marginTop: 8 }}>
                 + Add Charge
               </ActionButton>

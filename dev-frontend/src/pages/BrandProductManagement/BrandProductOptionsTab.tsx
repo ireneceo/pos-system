@@ -4,8 +4,6 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
 import { Modal } from '../../components/UI/Modal';
-import { useTranslation } from 'react-i18next';
-
 
 import { getAuthToken } from '../../utils/auth';
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
@@ -260,7 +258,6 @@ interface Props {
 }
 
 const BrandProductOptionsTab: React.FC<Props> = ({ onCountChange }) => {
-  const { t } = useTranslation('brand');
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

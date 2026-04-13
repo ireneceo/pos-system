@@ -580,6 +580,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
+  white-space: nowrap;
 
   ${props => props.highlight ? `
     border-top: 1px solid #E6EBF1;
@@ -693,7 +694,7 @@ const BrandInvoicesPage: React.FC = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<InvoiceCategory | null>(null);
   const [categoryFormData, setCategoryFormData] = useState({ name: '', code: '', description: '' });
-  const [savingCategory, setSavingCategory] = useState(false);
+  const [savingCategory] = useState(false);
   const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<InvoiceCategory | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -1536,11 +1537,12 @@ const BrandInvoicesPage: React.FC = () => {
         .items-table th.text-right { text-align: right; }
         .items-table td { padding: 12px 8px; font-size: 14px; color: #374151; border-bottom: 1px solid #F3F4F6; }
         .items-table td.text-center { text-align: center; }
-        .items-table td.text-right { text-align: right; }
+        .items-table td.text-right { text-align: right; white-space: nowrap; }
+        .items-table th.text-right { white-space: nowrap; }
 
         .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
         .summary-box { width: 280px; }
-        .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
         .summary-row.subtotal { color: #6B7280; }
         .summary-row.tax { color: #6B7280; }
         .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
@@ -1576,7 +1578,7 @@ const BrandInvoicesPage: React.FC = () => {
                 </div>
             </div>
             <div class="invoice-title">
-                <div class="invoice-label">{t('brand:brandInvoicesPage.invoice')}</div>
+                <div class="invoice-label">${t('brand:brandInvoicesPage.invoice')}</div>
                 <div class="invoice-number">${invoice.invoiceNumber}</div>
                 <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
             </div>
@@ -1584,7 +1586,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         <div class="billing-info">
             <div class="bill-to-section">
-                <div class="section-label">{t('brand:brandInvoicesPage.billTo')}</div>
+                <div class="section-label">${t('brand:brandInvoicesPage.billTo')}</div>
                 ${isReceivedInvoice ? `
                 <div class="customer-name">${companySettings?.companyName || 'Your Company'}</div>
                 ${companySettings?.address ? `<div class="customer-details">${companySettings.address}</div>` : ''}
@@ -1620,14 +1622,14 @@ const BrandInvoicesPage: React.FC = () => {
         </div>
 
         <div class="items-section">
-            <div class="section-label">{t('brand:brandInvoicesPage.items')}</div>
+            <div class="section-label">${t('brand:brandInvoicesPage.items')}</div>
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th>{t('brand:brandInvoicesPage.description')}</th>
-                        <th class="text-center">{t('brand:brandInvoicesPage.qty')}</th>
-                        <th class="text-right">{t('brand:brandInvoicesPage.unitPrice')}</th>
-                        <th class="text-right">{t('brand:brandInvoicesPage.amount')}</th>
+                        <th>${t('brand:brandInvoicesPage.description')}</th>
+                        <th class="text-center">${t('brand:brandInvoicesPage.qty')}</th>
+                        <th class="text-right">${t('brand:brandInvoicesPage.unitPrice')}</th>
+                        <th class="text-right">${t('brand:brandInvoicesPage.amount')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1670,7 +1672,7 @@ const BrandInvoicesPage: React.FC = () => {
 
         ${displayCompany.bankName ? `
         <div class="bank-section">
-            <div class="bank-title">{t('brand:brandInvoicesPage.paymentDetails')}</div>
+            <div class="bank-title">${t('brand:brandInvoicesPage.paymentDetails')}</div>
             <div class="bank-details">
                 <strong>Bank:</strong> ${displayCompany.bankName}<br>
                 <strong>Account Name:</strong> ${displayCompany.bankAccountName || '-'}<br>
@@ -1689,8 +1691,8 @@ const BrandInvoicesPage: React.FC = () => {
         ` : ''}
 
         <div class="footer">
-            <div class="footer-text">{t('brand:brandInvoicesPage.thankYouForYourBusiness')}</div>
-            <div class="footer-text">{t('brand:brandInvoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
+            <div class="footer-text">${t('brand:brandInvoicesPage.thankYouForYourBusiness')}</div>
+            <div class="footer-text">${t('brand:brandInvoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
         </div>
     </div>
 </body>
@@ -1754,6 +1756,9 @@ const BrandInvoicesPage: React.FC = () => {
         setTimeout(resolve, 100);
       });
 
+      const contentHeight = iframeDoc.body.scrollHeight;
+      iframe.style.height = `${contentHeight}px`;
+
       // Convert iframe body to canvas
       const canvas = await html2canvas(iframeDoc.body, {
         scale: 2,
@@ -1761,7 +1766,7 @@ const BrandInvoicesPage: React.FC = () => {
         logging: false,
         backgroundColor: '#ffffff',
         windowWidth: 800,
-        windowHeight: 1200
+        windowHeight: contentHeight
       });
 
       // Remove the iframe
@@ -1776,9 +1781,19 @@ const BrandInvoicesPage: React.FC = () => {
       });
 
       const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      let heightLeft = imgHeight;
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
       pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -3813,8 +3828,8 @@ const BrandInvoicesPage: React.FC = () => {
                         <tr key={index} style={{ borderBottom: '1px solid #F3F4F6' }}>
                           <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{item.description}</td>
                           <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3877,22 +3892,34 @@ const BrandInvoicesPage: React.FC = () => {
                 )}
 
                 {/* Modification History in View Modal */}
-                {selectedInvoice.isModified && selectedInvoice.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                {selectedInvoice.isModified && Array.isArray(selectedInvoice.modificationHistory) && selectedInvoice.modificationHistory.length > 0 && (
                   <div style={{ marginTop: '20px', padding: '16px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.modificationHistory')}</div>
-                    {selectedInvoice.modificationHistory.map((mod, idx) => (
-                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
-                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
-                        {mod.reason && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
-                        {Object.keys(mod.changes).length > 0 && (
-                          <div style={{ marginTop: '3px', color: '#92400E' }}>
-                            {Object.entries(mod.changes).map(([field, change]) => (
-                              <div key={field}>{field}: {String(change.from)} → {String(change.to)}</div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    {(selectedInvoice.modificationHistory as any[]).map((mod: any, idx: number) => {
+                      const ts = mod.modified_at || mod.timestamp;
+                      const who = mod.modified_by_name || (mod.reason === 'payment_settings_updated' ? 'System (payment settings)' : mod.reason === 'subscription_updated' ? 'System (subscription)' : 'System');
+                      const isLast = idx >= (selectedInvoice.modificationHistory as any[]).length - 1;
+                      return (
+                        <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: isLast ? '0' : '10px', paddingBottom: isLast ? '0' : '10px', borderBottom: isLast ? 'none' : '1px solid #FDE68A' }}>
+                          <div style={{ fontWeight: 500 }}>{ts ? new Date(ts).toLocaleString() : ''}{who ? ` - ${who}` : ''}</div>
+                          {mod.reason && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
+                          {mod.changes && typeof mod.changes === 'object' && Object.keys(mod.changes).length > 0 && (
+                            <div style={{ marginTop: '3px', color: '#92400E' }}>
+                              {Object.entries(mod.changes).map(([field, change]: [string, any]) => (
+                                <div key={field}>{field}: {String(change?.from)} → {String(change?.to)}</div>
+                              ))}
+                            </div>
+                          )}
+                          {!mod.changes && (mod.before || mod.after) && (
+                            <div style={{ marginTop: '3px', color: '#92400E' }}>
+                              {mod.before?.total_amount !== undefined && mod.after?.total_amount !== undefined && (
+                                <div>total: {String(mod.before.total_amount)} → {String(mod.after.total_amount)}</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               
@@ -4295,22 +4322,34 @@ const BrandInvoicesPage: React.FC = () => {
                   />
                 </FormGroup>
 
-                {selectedInvoice?.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                {Array.isArray(selectedInvoice?.modificationHistory) && selectedInvoice.modificationHistory.length > 0 && (
                   <div style={{ marginTop: '16px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.modificationHistory')}</div>
-                    {selectedInvoice.modificationHistory.map((mod, idx) => (
-                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
-                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
+                    {(selectedInvoice.modificationHistory as any[]).map((mod: any, idx: number) => {
+                      const ts = mod.modified_at || mod.timestamp;
+                      const who = mod.modified_by_name || (mod.reason === 'payment_settings_updated' ? 'System (payment settings)' : mod.reason === 'subscription_updated' ? 'System (subscription)' : 'System');
+                      const isLast = idx >= (selectedInvoice.modificationHistory as any[]).length - 1;
+                      return (
+                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: isLast ? '0' : '8px', paddingBottom: isLast ? '0' : '8px', borderBottom: isLast ? 'none' : '1px solid #FDE68A' }}>
+                        <div style={{ fontWeight: 500 }}>{ts ? new Date(ts).toLocaleString() : ''}{who ? ` - ${who}` : ''}</div>
                         {mod.reason && <div style={{ marginTop: '2px' }}>Reason: {mod.reason}</div>}
-                        {Object.keys(mod.changes).length > 0 && (
+                        {mod.changes && typeof mod.changes === 'object' && Object.keys(mod.changes).length > 0 && (
                           <div style={{ marginTop: '2px', color: '#92400E' }}>
-                            {Object.entries(mod.changes).map(([field, change]) => (
-                              <span key={field} style={{ marginRight: '8px' }}>{field}: {String(change.from)} → {String(change.to)}</span>
+                            {Object.entries(mod.changes).map(([field, change]: [string, any]) => (
+                              <span key={field} style={{ marginRight: '8px' }}>{field}: {String(change?.from)} → {String(change?.to)}</span>
                             ))}
                           </div>
                         )}
+                        {!mod.changes && (mod.before || mod.after) && (
+                          <div style={{ marginTop: '2px', color: '#92400E' }}>
+                            {mod.before?.total_amount !== undefined && mod.after?.total_amount !== undefined && (
+                              <span style={{ marginRight: '8px' }}>total: {String(mod.before.total_amount)} → {String(mod.after.total_amount)}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               

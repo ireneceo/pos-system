@@ -552,6 +552,7 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
+  white-space: nowrap;
 
   ${props => props.highlight ? `
     border-top: 1px solid #E6EBF1;
@@ -597,7 +598,7 @@ const InvoicesPage: React.FC = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<InvoiceCategory | null>(null);
   const [categoryFormData, setCategoryFormData] = useState({ name: '', code: '', description: '' });
-  const [savingCategory, setSavingCategory] = useState(false);
+  const [savingCategory] = useState(false);
   const [deleteCategoryModalOpen, setDeleteCategoryModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<InvoiceCategory | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -748,46 +749,6 @@ const InvoicesPage: React.FC = () => {
     setShowCategoryModal(false);
     setEditingCategory(null);
     setCategoryFormData({ name: '', code: '', description: '' });
-  };
-
-  const handleCategorySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!categoryFormData.name.trim() || !categoryFormData.code.trim()) return;
-
-    try {
-      setSavingCategory(true);
-      const token = getAuthToken();
-      const url = editingCategory
-        ? `/api/invoices/categories/${editingCategory.id}`
-        : '/api/invoices/categories';
-      const method = editingCategory ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: categoryFormData.name.trim(),
-          code: categoryFormData.code.trim().toLowerCase().replace(/\s+/g, '_'),
-          description: categoryFormData.description.trim() || null
-        })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        handleCloseCategoryModal();
-        fetchInvoiceCategories();
-      } else {
-        alert(data.error || 'Failed to save category');
-      }
-    } catch (error) {
-      console.error('Failed to save category:', error);
-      alert('Failed to save category');
-    } finally {
-      setSavingCategory(false);
-    }
   };
 
   const handleDeleteCategoryClick = (category: InvoiceCategory) => {
@@ -1384,11 +1345,12 @@ const InvoicesPage: React.FC = () => {
         .items-table th.text-right { text-align: right; }
         .items-table td { padding: 12px 8px; font-size: 14px; color: #374151; border-bottom: 1px solid #F3F4F6; }
         .items-table td.text-center { text-align: center; }
-        .items-table td.text-right { text-align: right; }
+        .items-table td.text-right { text-align: right; white-space: nowrap; }
+        .items-table th.text-right { white-space: nowrap; }
 
         .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
         .summary-box { width: 280px; }
-        .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
         .summary-row.subtotal { color: #6B7280; }
         .summary-row.tax { color: #6B7280; }
         .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
@@ -1424,7 +1386,7 @@ const InvoicesPage: React.FC = () => {
                 </div>
             </div>
             <div class="invoice-title">
-                <div class="invoice-label">{t('admin:invoicesPage.invoice')}</div>
+                <div class="invoice-label">${t('admin:invoicesPage.invoice')}</div>
                 <div class="invoice-number">${invoice.invoiceNumber}</div>
                 <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
             </div>
@@ -1432,7 +1394,7 @@ const InvoicesPage: React.FC = () => {
 
         <div class="billing-info">
             <div class="bill-to-section">
-                <div class="section-label">{t('admin:invoicesPage.billTo')}</div>
+                <div class="section-label">${t('admin:invoicesPage.billTo')}</div>
                 <div class="customer-name">${invoice.customerName || invoice.managerName || 'Customer'}</div>
                 ${invoice.customerAddress ? `<div class="customer-details">${invoice.customerAddress}</div>` : ''}
                 ${invoice.restaurantName ? `<div class="customer-details">Restaurant: ${invoice.restaurantName}</div>` : ''}
@@ -1460,14 +1422,14 @@ const InvoicesPage: React.FC = () => {
         </div>
 
         <div class="items-section">
-            <div class="section-label">{t('admin:invoicesPage.items')}</div>
+            <div class="section-label">${t('admin:invoicesPage.items')}</div>
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th>{t('admin:invoicesPage.description')}</th>
-                        <th class="text-center">{t('admin:invoicesPage.qty')}</th>
-                        <th class="text-right">{t('admin:invoicesPage.unitPrice')}</th>
-                        <th class="text-right">{t('admin:invoicesPage.amount')}</th>
+                        <th>${t('admin:invoicesPage.description')}</th>
+                        <th class="text-center">${t('admin:invoicesPage.qty')}</th>
+                        <th class="text-right">${t('admin:invoicesPage.unitPrice')}</th>
+                        <th class="text-right">${t('admin:invoicesPage.amount')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1510,7 +1472,7 @@ const InvoicesPage: React.FC = () => {
 
         ${companySettings.bankName ? `
         <div class="bank-section">
-            <div class="bank-title">{t('admin:invoicesPage.paymentDetails')}</div>
+            <div class="bank-title">${t('admin:invoicesPage.paymentDetails')}</div>
             <div class="bank-details">
                 <strong>Bank:</strong> ${companySettings.bankName}<br>
                 <strong>Account Name:</strong> ${companySettings.bankAccountName || '-'}<br>
@@ -1529,8 +1491,8 @@ const InvoicesPage: React.FC = () => {
         ` : ''}
 
         <div class="footer">
-            <div class="footer-text">{t('admin:invoicesPage.thankYouForYourBusiness')}</div>
-            <div class="footer-text">{t('admin:invoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
+            <div class="footer-text">${t('admin:invoicesPage.thankYouForYourBusiness')}</div>
+            <div class="footer-text">${t('admin:invoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
         </div>
     </div>
 </body>
@@ -1592,6 +1554,10 @@ const InvoicesPage: React.FC = () => {
         setTimeout(resolve, 100);
       });
 
+      // Resize iframe to actual content height so html2canvas captures everything
+      const contentHeight = iframeDoc.body.scrollHeight;
+      iframe.style.height = `${contentHeight}px`;
+
       // Convert iframe body to canvas
       const canvas = await html2canvas(iframeDoc.body, {
         scale: 2,
@@ -1599,7 +1565,7 @@ const InvoicesPage: React.FC = () => {
         logging: false,
         backgroundColor: '#ffffff',
         windowWidth: 800,
-        windowHeight: 1200
+        windowHeight: contentHeight
       });
 
       // Remove the iframe
@@ -1614,9 +1580,20 @@ const InvoicesPage: React.FC = () => {
       });
 
       const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      // Slice tall canvas across multiple A4 pages
+      let heightLeft = imgHeight;
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
       pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -2498,12 +2475,12 @@ const InvoicesPage: React.FC = () => {
                   <DataTableCell data-label="Customer" align="left">
                     <InvoiceInfo>
                       <InvoiceNumber>
-                        {invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}
+                        {invoice.customerName || invoice.restaurantName || invoice.externalPayerName || '—'}
                         {invoice.isDemo && <DemoBadge>{t('admin:invoicesPage.demo')}</DemoBadge>}
-                        {(invoice.payerType === 'external' || invoice.externalPayerName || (invoice.hardwareQuoteNumber && !invoice.restaurantId)) && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('admin:invoicesPage.nonmember')}</span>}
+                        {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('admin:invoicesPage.nonmember')}</span>}
                       </InvoiceNumber>
                       <CompanyName>
-                        {(invoice.payerType === 'external' || invoice.externalPayerName || (invoice.hardwareQuoteNumber && !invoice.restaurantId)) ? 'Non-Member' : getPayerDisplay(invoice.payerType || 'restaurant')}
+                        {invoice.payerType === 'external' ? 'Non-Member' : getPayerDisplay(invoice.payerType || 'restaurant')}
                       </CompanyName>
                       {invoice.hardwareQuoteNumber && (
                         <div>
@@ -2720,10 +2697,10 @@ const InvoicesPage: React.FC = () => {
                       <DataTableCell data-label="Customer" align="left">
                         <InvoiceInfo>
                           <InvoiceNumber>
-                            {invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}
-                            {(invoice.payerType === 'external' || invoice.externalPayerName || (invoice.hardwareQuoteNumber && !invoice.restaurantId)) && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('admin:invoicesPage.nonmember')}</span>}
+                            {invoice.customerName || invoice.restaurantName || invoice.externalPayerName || '—'}
+                            {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('admin:invoicesPage.nonmember')}</span>}
                           </InvoiceNumber>
-                          <CompanyName>{invoice.companyName}</CompanyName>
+                          <CompanyName>{invoice.companyName || getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
                         </InvoiceInfo>
                       </DataTableCell>
                       <DataTableCell data-label="Payment Method" align="center">
@@ -3366,8 +3343,8 @@ const InvoicesPage: React.FC = () => {
                       <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
                         <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('admin:invoicesPage.description')}</th>
                         <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('admin:invoicesPage.qty')}</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('admin:invoicesPage.unitPrice')}</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('admin:invoicesPage.amount')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280', whiteSpace: 'nowrap' }}>{t('admin:invoicesPage.unitPrice')}</th>
+                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280', whiteSpace: 'nowrap' }}>{t('admin:invoicesPage.amount')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3375,8 +3352,8 @@ const InvoicesPage: React.FC = () => {
                         <tr key={index} style={{ borderBottom: '1px solid #F3F4F6' }}>
                           <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{item.description}</td>
                           <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
+                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3439,22 +3416,38 @@ const InvoicesPage: React.FC = () => {
                 )}
 
                 {/* Modification History in View Modal */}
-                {selectedInvoice.isModified && selectedInvoice.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                {selectedInvoice.isModified && Array.isArray(selectedInvoice.modificationHistory) && selectedInvoice.modificationHistory.length > 0 && (
                   <div style={{ marginTop: '20px', padding: '16px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>{t('admin:invoicesPage.modificationHistory')}</div>
-                    {selectedInvoice.modificationHistory.map((mod, idx) => (
-                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '10px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
-                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
-                        {mod.reason && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
-                        {Object.keys(mod.changes).length > 0 && (
-                          <div style={{ marginTop: '3px', color: '#92400E' }}>
-                            {Object.entries(mod.changes).map(([field, change]) => (
-                              <div key={field}>{field}: {String(change.from)} → {String(change.to)}</div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                    {(selectedInvoice.modificationHistory as any[]).map((mod: any, idx: number) => {
+                      const ts = mod.modified_at || mod.timestamp;
+                      const who = mod.modified_by_name || (mod.reason === 'payment_settings_updated' ? 'System (payment settings)' : mod.reason === 'subscription_updated' ? 'System (subscription)' : 'System');
+                      const isLast = idx >= (selectedInvoice.modificationHistory as any[]).length - 1;
+                      return (
+                        <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: isLast ? '0' : '10px', paddingBottom: isLast ? '0' : '10px', borderBottom: isLast ? 'none' : '1px solid #FDE68A' }}>
+                          <div style={{ fontWeight: 500 }}>{ts ? new Date(ts).toLocaleString() : ''}{who ? ` - ${who}` : ''}</div>
+                          {mod.reason && !mod.modified_by_name && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
+                          {mod.reason && mod.modified_by_name && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
+                          {mod.changes && typeof mod.changes === 'object' && Object.keys(mod.changes).length > 0 && (
+                            <div style={{ marginTop: '3px', color: '#92400E' }}>
+                              {Object.entries(mod.changes).map(([field, change]: [string, any]) => (
+                                <div key={field}>{field}: {String(change?.from)} → {String(change?.to)}</div>
+                              ))}
+                            </div>
+                          )}
+                          {!mod.changes && (mod.before || mod.after) && (
+                            <div style={{ marginTop: '3px', color: '#92400E' }}>
+                              {mod.before?.total_amount !== undefined && mod.after?.total_amount !== undefined && (
+                                <div>total: {String(mod.before.total_amount)} → {String(mod.after.total_amount)}</div>
+                              )}
+                              {mod.before?.additional_charges !== undefined && (
+                                <div>additional charges updated</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               
@@ -3934,22 +3927,34 @@ const InvoicesPage: React.FC = () => {
                 </FormGroup>
 
                 {/* Previous Modification History */}
-                {selectedInvoice?.modificationHistory && selectedInvoice.modificationHistory.length > 0 && (
+                {Array.isArray(selectedInvoice?.modificationHistory) && selectedInvoice.modificationHistory.length > 0 && (
                   <div style={{ marginTop: '16px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>{t('admin:invoicesPage.modificationHistory')}</div>
-                    {selectedInvoice.modificationHistory.map((mod, idx) => (
-                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', paddingBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '8px' : '0', borderBottom: idx < selectedInvoice.modificationHistory!.length - 1 ? '1px solid #FDE68A' : 'none' }}>
-                        <div style={{ fontWeight: 500 }}>{new Date(mod.modified_at).toLocaleString()} - {mod.modified_by_name}</div>
+                    {(selectedInvoice.modificationHistory as any[]).map((mod: any, idx: number) => {
+                      const ts = mod.modified_at || mod.timestamp;
+                      const who = mod.modified_by_name || (mod.reason === 'payment_settings_updated' ? 'System (payment settings)' : mod.reason === 'subscription_updated' ? 'System (subscription)' : 'System');
+                      const isLast = idx >= (selectedInvoice.modificationHistory as any[]).length - 1;
+                      return (
+                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: isLast ? '0' : '8px', paddingBottom: isLast ? '0' : '8px', borderBottom: isLast ? 'none' : '1px solid #FDE68A' }}>
+                        <div style={{ fontWeight: 500 }}>{ts ? new Date(ts).toLocaleString() : ''}{who ? ` - ${who}` : ''}</div>
                         {mod.reason && <div style={{ marginTop: '2px' }}>Reason: {mod.reason}</div>}
-                        {Object.keys(mod.changes).length > 0 && (
+                        {mod.changes && typeof mod.changes === 'object' && Object.keys(mod.changes).length > 0 && (
                           <div style={{ marginTop: '2px', color: '#92400E' }}>
-                            {Object.entries(mod.changes).map(([field, change]) => (
-                              <span key={field} style={{ marginRight: '8px' }}>{field}: {String(change.from)} → {String(change.to)}</span>
+                            {Object.entries(mod.changes).map(([field, change]: [string, any]) => (
+                              <span key={field} style={{ marginRight: '8px' }}>{field}: {String(change?.from)} → {String(change?.to)}</span>
                             ))}
                           </div>
                         )}
+                        {!mod.changes && (mod.before || mod.after) && (
+                          <div style={{ marginTop: '2px', color: '#92400E' }}>
+                            {mod.before?.total_amount !== undefined && mod.after?.total_amount !== undefined && (
+                              <span style={{ marginRight: '8px' }}>total: {String(mod.before.total_amount)} → {String(mod.after.total_amount)}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               

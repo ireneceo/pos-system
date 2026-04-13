@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
-import { Modal as CommonModal } from '../../components/UI';
+import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useTranslation } from 'react-i18next';
@@ -42,12 +42,17 @@ const Header = styled.div`
   background: white;
   padding: 16px 32px;
   border-bottom: 1px solid #E6EBF1;
+  margin-bottom: 0;
+  height: 56px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 20px;
 
   @media (max-width: 768px) {
     padding: 16px;
+    height: auto;
+    min-height: 56px;
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
@@ -71,43 +76,6 @@ const Content = styled.div`
   }
 `;
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-`;
-
-const StatValue = styled.div`
-  font-size: 28px;
-  font-weight: 700;
-  color: #0A2540;
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
-`;
 
 const FilterBar = styled.div`
   display: flex;

@@ -897,32 +897,32 @@ class InvoiceScheduler {
    * @returns {boolean}
    */
   isTodayAdvanceOf(billingDay, today) {
+    // CATCH-UP MODE: returns true if today is AT OR AFTER the generation date
+    // (billing date - ADVANCE_DAYS). This ensures invoices are still generated
+    // even if the cron missed a day (server down, timezone shift, etc.).
+    // Duplicate prevention is handled by the invoice existence check in the caller.
     const currentDay = today.getDate();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
 
-    // Calculate the next upcoming billing date
     let billingDate;
     const effectiveThisMonth = this.resolveEffectiveDay(billingDay, currentYear, currentMonth);
 
     if (currentDay < effectiveThisMonth) {
-      // Billing day is still ahead this month
       billingDate = new Date(currentYear, currentMonth, effectiveThisMonth);
     } else {
-      // Billing day passed or is today -> next month
       const nextMonth = currentMonth + 1;
       const effectiveNextMonth = this.resolveEffectiveDay(billingDay, currentYear, nextMonth);
       billingDate = new Date(currentYear, nextMonth, effectiveNextMonth);
     }
 
-    // The generation date is ADVANCE_DAYS before billing date
     const generationDate = new Date(billingDate);
     generationDate.setDate(generationDate.getDate() - ADVANCE_DAYS);
 
-    // Compare dates (year, month, day only)
-    return generationDate.getFullYear() === today.getFullYear() &&
-           generationDate.getMonth() === today.getMonth() &&
-           generationDate.getDate() === today.getDate();
+    // Catch-up: today >= generationDate (was: today === generationDate)
+    const todayMid = new Date(currentYear, currentMonth, currentDay);
+    const genMid = new Date(generationDate.getFullYear(), generationDate.getMonth(), generationDate.getDate());
+    return todayMid >= genMid;
   }
 
   /**

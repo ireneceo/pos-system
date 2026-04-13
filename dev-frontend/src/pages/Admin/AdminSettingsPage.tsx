@@ -188,7 +188,7 @@ const LogoPreview = styled.img`
 const AdminSettingsPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const [uploadError, setUploadError] = useState('');
-  const [initialSettings, setInitialSettings] = useState<CompanySettings | null>(null);
+  const [, setInitialSettings] = useState<CompanySettings | null>(null);
 
   const [settings, setSettings] = useState<CompanySettings>({
     companyName: '',

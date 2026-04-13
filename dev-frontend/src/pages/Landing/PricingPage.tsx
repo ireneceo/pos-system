@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateBreadcrumbSchema, generateLocalBusinessSchema } from '../../components/Common/SEOHead';
@@ -192,13 +192,6 @@ const PlanName = styled.h3`
   text-align: center;
 `;
 
-const PlanDescription = styled.p`
-  font-size: 14px;
-  color: #6B7280;
-  margin-bottom: 24px;
-  text-align: center;
-  min-height: 40px;
-`;
 
 const PriceSection = styled.div`
   text-align: center;
@@ -534,7 +527,29 @@ const countryToCurrency: Record<string, string> = {
 const PricingPage: React.FC = () => {
   const { t } = useTranslation('landing');
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'restaurant' | 'brand' | 'foodcourt' | 'owner'>('restaurant');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const VALID_TABS = ['restaurant', 'brand', 'foodcourt', 'owner'] as const;
+  type TabKey = typeof VALID_TABS[number];
+  const initialTab = (VALID_TABS.includes(searchParams.get('tab') as TabKey) ? searchParams.get('tab') : 'restaurant') as TabKey;
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
+
+  // Sync activeTab to URL ?tab= so each tab is shareable as a deep link
+  useEffect(() => {
+    const current = searchParams.get('tab');
+    if (current !== activeTab) {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', activeTab);
+      setSearchParams(next, { replace: true });
+    }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // React to back/forward navigation that changes the tab query
+  useEffect(() => {
+    const fromUrl = searchParams.get('tab') as TabKey | null;
+    if (fromUrl && VALID_TABS.includes(fromUrl) && fromUrl !== activeTab) {
+      setActiveTab(fromUrl);
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
@@ -692,19 +707,6 @@ const PricingPage: React.FC = () => {
   const formatLimit = (limit: number) => {
     if (limit === -1) return 'Unlimited';
     return limit.toLocaleString();
-  };
-
-  const getDescription = (planName: string): string => {
-    if (planName.toLowerCase().includes('basic')) {
-      return 'Perfect for small businesses starting their POS journey';
-    }
-    if (planName.toLowerCase().includes('professional')) {
-      return 'Ideal for growing businesses with advanced needs';
-    }
-    if (planName.toLowerCase().includes('enterprise')) {
-      return 'Comprehensive solution for large-scale operations';
-    }
-    return 'Subscription plan for your business';
   };
 
   // API에서 가져온 플랜 데이터 기반으로 탭 동적 생성

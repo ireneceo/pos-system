@@ -485,7 +485,7 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
       changeType = newSortOrder > currentSortOrder ? 'upgrade' : 'downgrade';
     }
 
-    // Downgrade: check usage limits
+    // Downgrade: check usage limits (staff + menu + monthly orders)
     if (changeType === 'downgrade' && current.current_usage) {
       const exceeded = [];
       if (newPlan.staff_limit > 0 && current.current_usage.staff_count > newPlan.staff_limit) {
@@ -493,6 +493,9 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
       }
       if (newPlan.menu_item_limit > 0 && current.current_usage.menu_item_count > newPlan.menu_item_limit) {
         exceeded.push(`Menu items: ${current.current_usage.menu_item_count} active (${newPlan.display_name} limit: ${newPlan.menu_item_limit})`);
+      }
+      if (newPlan.order_limit > 0 && current.current_usage.order_count > newPlan.order_limit) {
+        exceeded.push(`Orders this month: ${current.current_usage.order_count} (${newPlan.display_name} limit: ${newPlan.order_limit}/month)`);
       }
       if (exceeded.length > 0) {
         await transaction.rollback();

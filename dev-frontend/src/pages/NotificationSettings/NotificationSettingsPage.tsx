@@ -194,20 +194,6 @@ const SecondaryButton = styled.button`
   }
 `;
 
-const Alert = styled.div<{ type: 'success' | 'error' }>`
-  padding: 12px 16px;
-  border-radius: 6px;
-  margin-top: 16px;
-  font-size: 14px;
-
-  ${props => props.type === 'success' ? `
-    background: #D1FAE5;
-    color: #065F46;
-  ` : `
-    background: #FEE2E2;
-    color: #991B1B;
-  `}
-`;
 
 const ModalText = styled.p`
   font-size: 14px;

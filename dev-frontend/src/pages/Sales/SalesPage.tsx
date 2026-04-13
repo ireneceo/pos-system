@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI/StatCard';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useStaff } from '../../contexts/StaffContext';
 import { useOrders } from '../../contexts/OrderContext';
@@ -205,47 +206,6 @@ const DateInput = styled.input`
   }
 `;
 
-const StatsRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 32px;
-`;
-
-const StatCard = styled.div<{ color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.color || '#635BFF'};
-  transition: all 0.2s;
-  
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
-  }
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  font-weight: 600;
-  color: #6B7C93;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
-`;
-
-const StatValue = styled.div`
-  font-size: 28px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const StatDescription = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-`;
 
 const TableContainer = styled.div`
   background: white;
@@ -1540,7 +1500,7 @@ const SalesPage: React.FC = () => {
           </FiltersRow>
 
           {summary && (
-            <StatsRow>
+            <StatsGrid>
               <StatCard color="#059669">
                 <StatLabel>{t('reports:salesPage.totalSales')}</StatLabel>
                 <StatValue>{formatCurrency(summary.totalSales, operationSettings.currency)}</StatValue>
@@ -1561,7 +1521,7 @@ const SalesPage: React.FC = () => {
                 <StatValue>{formatCurrency(summary.totalDiscount, operationSettings.currency)}</StatValue>
                 <StatDescription>{t('reports:salesPage.promotionsApplied')}</StatDescription>
               </StatCard>
-            </StatsRow>
+            </StatsGrid>
           )}
 
           <TableContainer>
@@ -1795,7 +1755,7 @@ const SalesPage: React.FC = () => {
               )}
 
               {summary && (
-                <StatsRow>
+                <StatsGrid>
                   <StatCard color="#635BFF">
                     <StatLabel>
                       Total {detailView.type === 'year' ? 'Months' : detailView.type === 'month' ? 'Days' : viewMode === 'yearly' ? 'Years' : viewMode === 'monthly' ? 'Months' : 'Days'}
@@ -1832,7 +1792,7 @@ const SalesPage: React.FC = () => {
                     </StatValue>
                     <StatDescription>{t('reports:salesPage.peakRecord')}</StatDescription>
                   </StatCard>
-                </StatsRow>
+                </StatsGrid>
               )}
 
               {/* Daily Transaction Details */}

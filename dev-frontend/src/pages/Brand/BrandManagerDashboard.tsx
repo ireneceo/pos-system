@@ -346,6 +346,7 @@ const StatusBadge = styled.span<{ status: string }>`
 interface RestaurantSummary {
   id: number;
   name: string;
+  branch_name?: string | null;
   status: string;
   address: string;
   cuisine: string;
@@ -471,6 +472,7 @@ const BrandManagerDashboard: React.FC = () => {
             return {
               id: r.id,
               name: r.name,
+              branch_name: r.branch_name || null,
               status: r.status || 'active',
               address: r.address || 'No address',
               cuisine: r.cuisine || 'Various',
@@ -638,7 +640,7 @@ const BrandManagerDashboard: React.FC = () => {
               {restaurants.length > 0 ? (
                 restaurants.map((restaurant) => (
                   <Tr key={restaurant.id} onClick={() => navigate(`/pos/brand/general/reports?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)}>
-                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{restaurant.name}</Td>
+                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branch_name}</span>}</Td>
                     <Td>{restaurant.adminName}</Td>
                     <Td>
                       <StatusBadge status={restaurant.status}>{restaurant.status}</StatusBadge>

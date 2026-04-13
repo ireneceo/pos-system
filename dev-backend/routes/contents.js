@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
 const ContentCategory = require('../models/ContentCategory');
 const Content = require('../models/Content');
 const { authenticateToken, requireRole } = require('../middleware/auth');
@@ -63,8 +64,11 @@ router.get('/public/faq', async (req, res) => {
   }
 });
 
-// GET /api/contents/public/blog - Get all published blog posts
-router.get('/public/blog', async (req, res) => {
+// News category slugs — shown on /news page, excluded from /blog
+const NEWS_CATEGORY_SLUGS = ['product-news', 'updates'];
+
+// Shared handler for blog/news listing
+async function listPublishedPosts(req, res, { isNews }) {
   try {
     const { category, page = 1, limit = 12 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -74,17 +78,49 @@ router.get('/public/blog', async (req, res) => {
       status: 'published'
     };
 
-    // Get categories
-    const categories = await ContentCategory.findAll({
+    // Get all blog categories
+    const allCategories = await ContentCategory.findAll({
       where: { type: 'blog', is_active: true },
       order: [['sort_order', 'ASC']]
     });
 
-    // If category filter provided
+    // Split into news vs. non-news
+    const newsCategoryIds = allCategories.filter(c => NEWS_CATEGORY_SLUGS.includes(c.slug)).map(c => c.id);
+    const scopedCategories = isNews
+      ? allCategories.filter(c => NEWS_CATEGORY_SLUGS.includes(c.slug))
+      : allCategories.filter(c => !NEWS_CATEGORY_SLUGS.includes(c.slug));
+
+    // Restrict post listing to scope (news vs non-news)
+    if (isNews) {
+      if (newsCategoryIds.length === 0) {
+        return res.json({ categories: [], items: [], pagination: { total: 0, page: parseInt(page), limit: parseInt(limit), totalPages: 0 } });
+      }
+      where.category_id = { [Op.in]: newsCategoryIds };
+    } else {
+      // Blog: exclude news categories (but include null category_id)
+      if (newsCategoryIds.length > 0) {
+        where[Op.and] = [
+          { [Op.or]: [{ category_id: null }, { category_id: { [Op.notIn]: newsCategoryIds } }] }
+        ];
+      }
+    }
+
+    // Get category_ids that actually have published posts within this scope
+    const categoryIdsWithPosts = await Content.findAll({
+      where: { ...where, category_id: { [Op.ne]: null } },
+      attributes: [[sequelize.fn('DISTINCT', sequelize.col('category_id')), 'category_id']],
+      raw: true
+    });
+    const activeIdSet = new Set(categoryIdsWithPosts.map(c => c.category_id));
+    const categories = scopedCategories.filter(c => activeIdSet.has(c.id));
+
+    // If specific category filter provided, narrow down
     if (category && category !== 'all') {
-      const cat = categories.find(c => c.slug === category);
+      const cat = scopedCategories.find(c => c.slug === category);
       if (cat) {
         where.category_id = cat.id;
+        // Remove the Op.and exclusion since we're picking a specific one
+        if (where[Op.and]) delete where[Op.and];
       }
     }
 
@@ -111,10 +147,16 @@ router.get('/public/blog', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching public blog:', error);
-    res.status(500).json({ error: 'Failed to fetch blog posts' });
+    console.error('Error fetching public posts:', error);
+    res.status(500).json({ error: 'Failed to fetch posts' });
   }
-});
+}
+
+// GET /api/contents/public/blog - Blog posts (excluding news categories)
+router.get('/public/blog', (req, res) => listPublishedPosts(req, res, { isNews: false }));
+
+// GET /api/contents/public/news - News posts (product-news + updates only)
+router.get('/public/news', (req, res) => listPublishedPosts(req, res, { isNews: true }));
 
 // GET /api/contents/public/blog/:slug - Get single blog post by slug
 router.get('/public/blog/:slug', async (req, res) => {

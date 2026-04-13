@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
@@ -114,21 +114,6 @@ const CardTitle = styled.h3`
   display: flex;
   align-items: center;
   justify-content: space-between;
-`;
-
-const AutoSaveStatus = styled.span<{ $status: 'idle' | 'saving' | 'saved' | 'error' }>`
-  font-size: 12px;
-  font-weight: 500;
-  transition: opacity 0.3s;
-  opacity: ${props => props.$status === 'idle' ? 0 : 1};
-  color: ${props => {
-    switch (props.$status) {
-      case 'saving': return '#8898AA';
-      case 'saved': return '#30B858';
-      case 'error': return '#DC2626';
-      default: return 'transparent';
-    }
-  }};
 `;
 
 const FormGroup = styled.div`
@@ -276,23 +261,6 @@ const HelpText = styled.p`
   font-size: 12px;
   color: #8898AA;
   margin-top: 4px;
-`;
-
-const StatusMessage = styled.div<{ type: 'success' | 'error' }>`
-  padding: 12px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  margin-top: 12px;
-
-  ${props => props.type === 'success' ? `
-    background: #ECFDF5;
-    color: #059669;
-    border: 1px solid #A7F3D0;
-  ` : `
-    background: #FEF2F2;
-    color: #DC2626;
-    border: 1px solid #FECACA;
-  `}
 `;
 
 // Unused styled component - kept for reference
@@ -608,11 +576,10 @@ const SettingsPage: React.FC = () => {
   const [activeTab, handleTabChange] = useTabParam<TabType>(defaultTab);
 
   const [hasChanges, setHasChanges] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
-  const autoSaveStatusText = autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : autoSaveStatus === 'error' ? 'Save failed' : '';
 
   const markChanged = () => {
     setHasChanges(true);
@@ -643,7 +610,6 @@ const SettingsPage: React.FC = () => {
   const mobileOrderShowPopularRef = useRef<AutoSaveHandle>(null);
   const mobileOrderCategorySchedulesRef = useRef<AutoSaveHandle>(null);
   const mobileOrderDeliveryEnabledRef = useRef<AutoSaveHandle>(null);
-  const mobileOrderDeliveryZonesRef = useRef<AutoSaveHandle>(null);
 
   // Payment / Printer / KitchenStations / Membership / Company tab AutoSave refs
   // Payment tab: dynamic refs for each payment method's toggles/fields
@@ -717,7 +683,6 @@ const SettingsPage: React.FC = () => {
   const [kitchenAssignmentMode, setKitchenAssignmentMode] = useState<'category' | 'menu_item'>('category');
   const [itemMergeTimeLimit, setItemMergeTimeLimit] = useState<number>(0);
   const [itemMergeMaxCount, setItemMergeMaxCount] = useState<number>(0);
-  const [itemMergeSaving, setItemMergeSaving] = useState(false);
   const [kitchenStationsLoading, setKitchenStationsLoading] = useState(true);
   const [showStationModal, setShowStationModal] = useState(false);
   const [editingStation, setEditingStation] = useState<any>(null);
@@ -1301,8 +1266,6 @@ const SettingsPage: React.FC = () => {
     loadPrinterSettings();
   }, [user?.restaurantId]);
 
-  // Track printer/receipt settings changes for auto-save (after initial load)
-  const printerInitializedRef = useRef(false);
   // Printer settings changes are now handled by AutoSaveField refs (billPrinterToggleRef etc.)
   // No useEffect-based markChanged needed for printer tab
 
@@ -1352,6 +1315,7 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     loadKitchenStations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.restaurantId]);
 
   // Load membership settings
@@ -2116,20 +2080,6 @@ const SettingsPage: React.FC = () => {
             )}
           </TabContainer>
 
-          {(activeTab === 'brands' || activeTab === 'billing') && (
-            <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '-24px 0 8px' }}>
-              <SaveButton
-                onClick={async () => {
-                  if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                  setAutoSaveStatus('saving');
-                  if (saveCallbackRef.current) await saveCallbackRef.current();
-                }}
-                disabled={!hasChanges || autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-              >
-                {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-              </SaveButton>
-            </div>
-          )}
 
           {activeTab === 'payment' && (
             <>
@@ -2671,19 +2621,6 @@ const SettingsPage: React.FC = () => {
                   </div>
                 </SettingsCard>
               ))}
-
-              <SaveButtonContainer>
-                <SaveButton
-                  onClick={async () => {
-                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                    setAutoSaveStatus('saving');
-                    if (saveCallbackRef.current) await saveCallbackRef.current();
-                  }}
-                  disabled={!hasChanges || autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-                >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-                </SaveButton>
-              </SaveButtonContainer>
             </div>
           )}
           {activeTab === 'billing' && (
@@ -2741,18 +2678,6 @@ const SettingsPage: React.FC = () => {
               </SettingsCard>
               </SettingsGrid>
 
-              <SaveButtonContainer>
-                <SaveButton
-                  onClick={async () => {
-                    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-                    setAutoSaveStatus('saving');
-                    if (saveCallbackRef.current) await saveCallbackRef.current();
-                  }}
-                  disabled={!hasChanges || autoSaveStatus === 'saving' || autoSaveStatus === 'saved'}
-                >
-                  {autoSaveStatus === 'saving' ? 'Saving...' : autoSaveStatus === 'saved' ? '✓ Saved' : 'Save Changes'}
-                </SaveButton>
-              </SaveButtonContainer>
             </>
           )}
           {activeTab === 'store' && (

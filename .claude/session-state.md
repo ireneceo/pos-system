@@ -1,56 +1,62 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-11 (운영 배포 + /개발완료 — 버전 v3.12 유지)
-**현재 버전:** v3.12
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-04-13
+**현재 버전:** v3.13
+**작업 상태:** 완료 (일부 변경 사항 미배포 상태)
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 — 2026-04-11)
+### 완료된 작업 (이번 세션 — 2026-04-13)
 
-#### 1. notices 데모/테스트 계정 제외- `routes/notices.js` broadcast 4개 target(all/role/brand/foodcourt)에서 `is_demo=false, is_test=false` 필터
-- `select_restaurants`는 명시 선택이라 그대로
-- Restaurant Admin/Staff는 소속 레스토랑까지 교차 체크
-- 검증 10/10, 원복 완료
-- 문서: `docs/DEMO_ACCOUNT_GUIDE.md` 보호 규칙 테이블 업데이트
+#### 1. 인보이스 인쇄/PDF/View 안정화
+- 5개 역할 인보이스 페이지의 인쇄 템플릿에서 `{t(...)}`(JSX 스타일)이 그대로 텍스트로 출력되던 버그 → `${t(...)}`(템플릿 리터럴 보간식) 수정
+- 인쇄용 PDF가 1장에 모든 내용 박혀서 잘리던 문제 → `pageHeight=297mm` 기준 슬라이스 + `addPage()` 다중 페이지
+- iframe 캡처 클리핑 방지: `body.scrollHeight`로 동적 높이
+- 금액 RM 줄바꿈 방지: `.text-right` / `.summary-row`에 `white-space: nowrap`
 
-#### 2. admin 하드웨어 max_quantity 무제한 UI- `SystemProductManagementPage.tsx` Hardware Package 편집 모달
-- loader `|| 1` → `?? 0` (기존 0이 1로 변조되던 핵심 버그)
-- 신규 addon 기본값 0, input `min="0"`, `|| 0` fallback, `(0 = unlimited)` 힌트
-- **운영 DB**: `system_product_addons.max_quantity=1`인 108건을 0으로 일괄 UPDATE (백업 `system_product_addons_20260411_175650.sql`)
+#### 2. Payment Settings 자동 재계산 + 수정 배지
+- 미결제(draft/pending_payment/overdue) 인보이스를 새 charges로 일괄 재계산
+- `subtotal - discount_amount` base 사용 (할인 보존)
+- modification_history에 `{reason:'payment_settings_updated'}` 기록 + `is_modified=true` 자동 표시
+- `syncPendingInvoice`도 동일하게 `is_modified=true` 추가 (시스템 자동 수정도 수정 배지 표시)
 
-#### 3. /packages Quote Summary 소프트웨어 구독 라인- `PackagesPage.tsx` Request a Quote 모달: 플랜/청구주기/가격 + "Billed separately" 안내
-- 하드웨어 one-time 총액과 dashed divider로 분리
-- 체크박스/플랜/가격 없을 때 숨김 가드
-- i18n 2 keys × 4 lang (en/ko/zh/ms)
+#### 3. modification_history 크래시 (치명) 해결
+- 이중 인코딩 fix: `JSON.stringify(history)` → `history` (Sequelize JSON 컬럼 자동 직렬화)
+- DB 클린업: dev 33건 + 운영 12건 string → array
+- 프론트엔드 렌더러: 수동 편집 `{changes:{...}}` + 시스템 자동 `{before,after}` 양형식 모두 처리
+- Admin/Brand/Foodcourt 6곳 (view 모달 + edit 모달)
 
-#### 4. /packages Request a Quote 모달 레이아웃- z-index `200 → 10000` (Landing 헤더 1000 뒤로 숨던 문제)
-- ModalContent `max-height: calc(100vh - 40px)`, flex column
-- ModalTitle 상단 고정(`flex-shrink:0` + border-bottom)
-- ModalForm 중앙만 스크롤(`overflow-y: auto`)
-- ModalButtonRow 하단 sticky(`position: sticky; bottom:0` + border-top)
-- 모바일(≤640px) 풀스크린
+#### 4. Hardware 인보이스 QTY/단가 (치명)
+- `invoice_items.quantity INT NOT NULL DEFAULT 1`, `unit_price DECIMAL(10,2)` 컬럼 추가 (dev + 운영)
+- `hardware-quotes.js` 양쪽 addon 생성 경로에서 `description x{N}` 제거 + quantity/unit_price 저장
+- `invoices-main.js` 4개 transform이 `item.unit_price`로 unitPrice 노출
+- DB 백필: hardware_quotes.addon_items JSON_TABLE join (dev 9건, 운영 5건)
 
-#### 5. admin payment-settings 응답 형식 표준화- `GET/POST /api/admin/payment-settings` → `{success, data}` 래핑
-- 에러 응답 `{success:false, message}` 정규화
-- 프론트에 legacy/새 래핑 둘 다 수용하는 defensive 언랩
-- **`/available/:currency`는 연쇄 영향 커서 별도 작업**
+#### 5. 기타 수정
+- Pricing 페이지 탭 URL 딥링크 (`?tab=restaurant|brand|foodcourt|owner`)
+- Hardware Quote 모달에 payment_settings 자동 로드 (rate-based + amount preview)
+- 인보이스 DELETE FK 해제 (`hardware_quotes` FK 사전 NULL)
+- InvoicesPage Non-Member 뱃지: `payerType === 'external'`만으로 단순화
+- Brand General 레스토랑 생성/편집 모달에 "Link to Brand" 드롭다운 신규 (이전엔 user.brand_id가 null이라 연결 못 함)
 
-### 운영 배포 (2026-04-11 18:32)
-- commit `94a0bcfd` (기능) + `149ec25e` (CHANGELOG)
-- `main.cf7275d4.js` 운영 반영
-- smoke: 10/10 passed
-- 백업: `/var/www/backups/20260411_183058`
+### 운영 배포 (이번 세션)
+- 배포 1 (23:14 MYT): 인보이스 i18n + nowrap + PDF 분할 — `main.7c8f69a7.js`
+- 배포 2 (23:52 MYT): hardware quantity/unit_price + DELETE FK fix + payment_settings recalc — 백엔드 only
+- 배포 3 (대기): modification_history 양형식 렌더러 + Brand-Restaurant 연결 UI — 빌드 완료, `main.fd0a9498.js` (배포 대기)
 
-### 후속 과제 (별도 세션 권장)
-- **Phase C-6 나머지** 거대 컴포넌트 4개 분할 (패턴 확립됨, 참조: `components/Inventory/`)
-  - `pages/LiveOrders/LiveOrdersPage.tsx` 4458줄
-  - `pages/BrandGeneral/BrandInvoicesPage.tsx` 4566줄
-  - `pages/Admin/InvoicesPage.tsx` 4205줄
-  - `mobile/pages/PaymentPage.tsx` 2597줄
-- payment-settings `/available/:currency` 표준화 (brands/foodcourts sibling 포함, 프론트 6+ 페이지)
-- DB sync "Too many keys specified" 경고 (10 models, MySQL 64-key 한도)
-- `entity_plan_charges` 테이블 운영 동기화
+### 미배포 변경 (다음 /배포 시 반영)
+- 인보이스 view 모달 modificationHistory 크래시 양형식 렌더러 fix
+- Brand General Restaurant 생성/편집에 "Link to Brand" 드롭다운
+
+### 다음 할 일
+1. 미배포 변경 운영 배포
+2. 모든 역할 모든 페이지 레스토랑 이름 옆에 `branch_name` 표시 (같은 브랜드 내 이름 중복 구분 — Reports, Stats, Performance, 인보이스, 주문 등 전 영역)
+3. "No Active Subscription" 배너 정책 결정: Brand General 테스트 계정 plan_type=null 케이스 → Free 플랜 자동 발행할지, "구독 없음 + 접근 허용"으로 풀지
+4. `POST /api/restaurants` requireRole 누락 (HIGH 보안 갭) 수정
+
+### 알아둘 것 (DB 변경)
+- `invoice_items` 테이블에 `quantity` + `unit_price` 컬럼 추가됨 (dev + 운영 모두)
+- modification_history JSON 컬럼 데이터 정합성 복구 완료
 
 ---
 

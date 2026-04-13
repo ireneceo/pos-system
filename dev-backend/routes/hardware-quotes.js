@@ -267,16 +267,21 @@ router.post('/:id/invoice', authenticateToken, requireRole('System Admin'), asyn
     const addonItems = quote.addon_items || [];
     for (const addon of addonItems) {
       if (addon.quantity > 0) {
+        const qty = parseInt(addon.quantity) || 1;
+        const lineTotal = parseFloat(addon.subtotal || addon.total_price || 0);
+        const unitPrice = parseFloat(addon.unit_price) || (qty > 0 ? lineTotal / qty : 0);
         await InvoiceItem.create({
           invoice_id: invoice.id,
           item_type: 'hardware_addon',
-          description: `${addon.name} x${addon.quantity}`,
+          description: addon.name,
+          quantity: qty,
+          unit_price: unitPrice,
           calculation_method: 'fixed',
-          fixed_amount: parseFloat(addon.subtotal) || 0,
-          calculated_amount: parseFloat(addon.subtotal) || 0,
+          fixed_amount: lineTotal,
+          calculated_amount: lineTotal,
           tax_rate: 0,
           tax_amount: 0,
-          total_amount: parseFloat(addon.subtotal) || 0
+          total_amount: lineTotal
         });
       }
     }
@@ -426,15 +431,20 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
     const addonItems = quote.addon_items || [];
     for (const addon of addonItems) {
       if (addon.quantity > 0) {
+        const qty = parseInt(addon.quantity) || 1;
+        const lineTotal = parseFloat(addon.subtotal || addon.total_price || 0);
+        const unitPrice = parseFloat(addon.unit_price) || (qty > 0 ? lineTotal / qty : 0);
         await InvoiceItem.create({
           invoice_id: hwInvoice.id,
           item_type: 'hardware_addon',
-          description: `${addon.name} x${addon.quantity}`,
+          description: addon.name,
+          quantity: qty,
+          unit_price: unitPrice,
           calculation_method: 'fixed',
-          fixed_amount: parseFloat(addon.subtotal || addon.total_price || 0),
-          calculated_amount: parseFloat(addon.subtotal || addon.total_price || 0),
+          fixed_amount: lineTotal,
+          calculated_amount: lineTotal,
           tax_rate: 0, tax_amount: 0,
-          total_amount: parseFloat(addon.subtotal || addon.total_price || 0)
+          total_amount: lineTotal
         });
       }
     }

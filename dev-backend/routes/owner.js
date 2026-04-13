@@ -407,7 +407,7 @@ router.get('/restaurants/:restaurantId/orders', requireRole('Restaurant Owner'),
 // ============================================
 router.post('/restaurants', requireRole('Restaurant Owner'), async (req, res) => {
   try {
-    const { name, address, phone, email, cuisine_type, description } = req.body;
+    const { name, branch_name, address, phone, email, cuisine_type, description } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Restaurant name is required' });
@@ -416,6 +416,7 @@ router.post('/restaurants', requireRole('Restaurant Owner'), async (req, res) =>
     // 레스토랑 생성
     const restaurant = await Restaurant.create({
       name,
+      branch_name: branch_name || null,
       address: address || null,
       phone: phone || null,
       email: email || null,

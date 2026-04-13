@@ -9,7 +9,6 @@ import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface IngredientsTabProps {
@@ -456,21 +455,8 @@ const EmptyDescription = styled.p`
   margin-bottom: 24px;
 `;
 
-const HeaderSection = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  gap: 16px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
 
 const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: propsRestaurantId, onCountChange, categoryRefreshKey }) => {
-  const { t } = useTranslation('recipes');
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');

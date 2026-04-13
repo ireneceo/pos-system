@@ -164,63 +164,114 @@ router.get('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Get all unique payer IDs to fetch manager data
+    // Get all unique payer IDs to fetch user data — includes ALL payer types
+    // (restaurant, brand_manager, foodcourt_manager, restaurant_owner).
+    // For orphan invoices (restaurant_id=null but payer_id set), we need user info.
     const payerIds = [...new Set(filteredInvoices
-      .filter(inv => inv.payer_id && inv.payer_type !== 'restaurant')
+      .filter(inv => inv.payer_id)
       .map(inv => inv.payer_id)
     )];
 
-    // Fetch payer (manager) information
+    // Fetch payer User records + their restaurants (for orphan invoice fallback)
     const payers = payerIds.length > 0 ? await User.findAll({
       where: { id: { [Op.in]: payerIds } }
     }) : [];
 
+    // Fetch restaurant names for any payer-User that has a restaurant_id
+    const payerRestaurantIds = [...new Set(payers
+      .map(p => p.restaurant_id)
+      .filter(Boolean)
+    )];
+    const payerRestaurants = payerRestaurantIds.length > 0 ? await Restaurant.findAll({
+      where: { id: { [Op.in]: payerRestaurantIds } },
+      attributes: ['id', 'name', 'address']
+    }) : [];
+    const payerRestaurantById = {};
+    payerRestaurants.forEach(r => { payerRestaurantById[r.id] = r; });
+
+    // Fetch linked hardware quotes for hardware invoices (for company_name fallback)
+    const invoiceIds = filteredInvoices.map(inv => inv.id);
+    const HardwareQuote = require('../models/HardwareQuote');
+    const linkedQuotes = invoiceIds.length > 0 ? await HardwareQuote.findAll({
+      where: { invoice_id: { [Op.in]: invoiceIds } },
+      attributes: ['id', 'invoice_id', 'company_name', 'contact_name', 'contact_email']
+    }) : [];
+    const quoteByInvoiceId = {};
+    linkedQuotes.forEach(q => { quoteByInvoiceId[q.invoice_id] = q; });
+
     // Transform data to match frontend expectations
     const transformedInvoices = filteredInvoices.map(invoice => {
-      // Determine customer info based on payer type
-      let customerName, customerAddress, customerCompany;
+      // Resolve customer info with a comprehensive fallback chain:
+      //   1. Direct restaurant_id → restaurant.name
+      //   2. payer_id → user's restaurant (for orphan invoices where admin is linked)
+      //   3. payer_id → user.company_name / full_name
+      //   4. Linked hardware_quote.company_name / contact_name
+      //   5. external_payer_company / external_payer_name
+      //   6. '—'
+      let customerName, customerAddress, customerCompany, customerRole;
+
+      const payer = invoice.payer_id ? payers.find(p => p.id === invoice.payer_id) : null;
+      const payerRestaurant = payer?.restaurant_id ? payerRestaurantById[payer.restaurant_id] : null;
+      const linkedQuote = quoteByInvoiceId[invoice.id];
 
       if (invoice.payer_type === 'external') {
-        // Non-member payer
-        customerName = invoice.external_payer_name || 'Non-Member';
+        customerName = invoice.external_payer_name
+          || linkedQuote?.company_name
+          || linkedQuote?.contact_name
+          || 'Non-Member';
         customerAddress = invoice.external_payer_address || 'No address';
-        customerCompany = invoice.external_payer_company || invoice.external_payer_name || 'Non-Member';
-      } else if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
-        // Restaurant pays
-        customerName = invoice.restaurant?.name || 'Unknown Restaurant';
-        customerAddress = invoice.restaurant?.address || 'No address';
-        customerCompany = invoice.restaurant?.name || 'Unknown Restaurant';
+        customerCompany = invoice.external_payer_company
+          || linkedQuote?.company_name
+          || invoice.external_payer_name
+          || 'Non-Member';
+        customerRole = null;
       } else {
-        // Manager pays (foodcourt or brand manager)
-        const payer = payers.find(p => p.id === invoice.payer_id);
-        if (payer) {
-          customerName = payer.full_name || payer.company_name || 'Unknown Manager';
-          customerAddress = payer.address || 'No address';
-          customerCompany = payer.company_name || payer.full_name || 'Unknown Company';
-        } else {
-          customerName = 'Unknown Payer';
-          customerAddress = 'No address';
-          customerCompany = 'Unknown Company';
-        }
+        // Unified fallback for all non-external payer types
+        customerName = invoice.restaurant?.name
+          || payerRestaurant?.name
+          || payer?.company_name
+          || payer?.full_name
+          || linkedQuote?.company_name
+          || linkedQuote?.contact_name
+          || invoice.external_payer_company
+          || invoice.external_payer_name
+          || '—';
+        customerAddress = invoice.restaurant?.address
+          || payerRestaurant?.address
+          || invoice.external_payer_address
+          || 'No address';
+        customerCompany = invoice.restaurant?.name
+          || payerRestaurant?.name
+          || payer?.company_name
+          || linkedQuote?.company_name
+          || payer?.full_name
+          || '—';
+        customerRole = payer?.role || null;
       }
 
-      // Get payer info (name + plan_type)
+      // Get payer info (person name + plan_type)
       let payerName;
       let payerPlanType = null;
       let payerBillingCycle = null;
       if (invoice.payer_type === 'external') {
-        payerName = invoice.external_payer_name || 'Non-Member';
+        payerName = invoice.external_payer_name
+          || linkedQuote?.contact_name
+          || linkedQuote?.company_name
+          || 'Non-Member';
         payerPlanType = null;
         payerBillingCycle = null;
-      } else if (invoice.payer_type === 'restaurant' || !invoice.payer_id) {
-        payerName = invoice.restaurant?.admin_name || invoice.restaurant?.name || 'Unknown Restaurant';
-        payerPlanType = invoice.restaurant?.plan_type;
-        payerBillingCycle = invoice.restaurant?.billing_cycle;
       } else {
-        const payer = payers.find(p => p.id === invoice.payer_id);
-        payerName = payer?.full_name || payer?.company_name || customerName || 'Unknown Payer';
-        payerPlanType = payer?.plan_type;
-        payerBillingCycle = payer?.billing_cycle;
+        // Prefer user's full_name (actual person), fall back through company names
+        payerName = payer?.full_name
+          || invoice.restaurant?.admin_name
+          || payer?.company_name
+          || invoice.restaurant?.name
+          || payerRestaurant?.name
+          || linkedQuote?.contact_name
+          || invoice.external_payer_name
+          || '—';
+        payerPlanType = payer?.plan_type || invoice.restaurant?.plan_type;
+        payerBillingCycle = payer?.billing_cycle || invoice.restaurant?.billing_cycle;
       }
 
       // Resolve plan type: restaurant → users table for Brand/FC/Owner
@@ -235,7 +286,12 @@ router.get('/', authenticateToken, async (req, res) => {
         customerName: customerName,
         customerAddress: customerAddress,
         restaurantId: invoice.restaurant_id?.toString(),
-        restaurantName: invoice.restaurant?.name || 'Unknown Restaurant',
+        restaurantName: invoice.restaurant?.name
+          || payerRestaurant?.name
+          || linkedQuote?.company_name
+          || invoice.external_payer_company
+          || invoice.external_payer_name
+          || '',
         issueDate: invoice.issued_at || invoice.createdAt,
         dueDate: invoice.due_date,
         paidDate: invoice.paid_at,
@@ -264,8 +320,8 @@ router.get('/', authenticateToken, async (req, res) => {
 
           return {
             description: fullDescription,
-            quantity: 1,
-            unitPrice: parseFloat(item.fixed_amount || item.calculated_amount || 0),
+            quantity: item.quantity || 1,
+            unitPrice: parseFloat(item.unit_price || item.fixed_amount || item.calculated_amount || 0),
             total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
           };
         }) : [{
@@ -514,7 +570,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         invoiceItems = invoice.items.map(item => ({
           description: item.description,
           quantity: item.quantity || 1,
-          unitPrice: parseFloat(item.fixed_amount || item.calculated_amount || 0),
+          unitPrice: parseFloat(item.unit_price || item.fixed_amount || item.calculated_amount || 0),
           taxAmount: parseFloat(item.tax_amount || 0),
           total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
         }));
@@ -1011,7 +1067,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
           return {
             description: desc,
             quantity: item.quantity || 1,
-            unitPrice: parseFloat(item.fixed_amount || item.calculated_amount || 0),
+            unitPrice: parseFloat(item.unit_price || item.fixed_amount || item.calculated_amount || 0),
             total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
           };
         }) || [],
@@ -1106,7 +1162,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         id: item.id?.toString(),
         description: item.description,
         quantity: item.quantity || 1,
-        unitPrice: parseFloat(item.fixed_amount || item.calculated_amount || 0),
+        unitPrice: parseFloat(item.unit_price || item.fixed_amount || item.calculated_amount || 0),
         taxRate: parseFloat(item.tax_rate || 0),
         taxAmount: parseFloat(item.tax_amount || 0),
         total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
@@ -1440,7 +1496,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     if (!invoice) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
-    
+
     // Delete invoice items first
     await InvoiceItem.destroy({
       where: { invoice_id: req.params.id }
@@ -1448,6 +1504,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     const invoiceNumber = invoice.invoice_number;
     const invoiceRestaurantId = invoice.restaurant_id;
+
+    // Null out FK references from hardware_quotes before deleting.
+    // hardware_quotes.invoice_id and subscription_invoice_id reference this invoice.
+    // Without nulling, FK constraint blocks deletion.
+    const { sequelize } = require('../config/database');
+    try {
+      await sequelize.query('UPDATE hardware_quotes SET invoice_id = NULL WHERE invoice_id = ?', { replacements: [req.params.id] });
+      await sequelize.query('UPDATE hardware_quotes SET subscription_invoice_id = NULL WHERE subscription_invoice_id = ?', { replacements: [req.params.id] });
+    } catch (fkError) {
+      console.warn('[DELETE Invoice] Could not null hardware_quotes FK refs:', fkError.message);
+    }
 
     // Delete invoice
     await invoice.destroy();

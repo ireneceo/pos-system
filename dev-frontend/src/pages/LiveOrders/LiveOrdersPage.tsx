@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import { io, Socket } from 'socket.io-client';
@@ -21,7 +21,7 @@ import {
   Modal as CommonModal
 } from '../../components/UI';
 // OLD: import { printBill } from '../../utils/thermalPrinter';
-import { printBillViaRawBT, generateBillContent, generateHTMLBill, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
+import { printBillViaRawBT, generateHTMLBill, printKitchenTicketViaRawBT, generateKitchenTicketPreview } from '../../utils/billPrint';
 import { formatDateTime as formatDateTimeUtil, getTimeElapsed } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -81,7 +81,6 @@ const getFetchOptions = (options: RequestInit = {}): RequestInit => {
 
 // Time Ago Display Component - 실시간 업데이트용 (글로벌 유틸리티 사용)
 const TimeAgoDisplay: React.FC<{ dateString: string }> = ({ dateString }) => {
-  const { t } = useTranslation('orders');
   const [display, setDisplay] = React.useState('calculating...');
 
   React.useEffect(() => {
@@ -2385,57 +2384,7 @@ const LiveOrdersPage: React.FC = () => {
     }
   };
 
-  const handleRejectPayment = async () => {
-    if (!selectedOrder) return;
-    try {
-      await fetch(`/api/orders/${selectedOrder.id}`, getFetchOptions({
-        method: 'PATCH',
-        body: JSON.stringify({ payment_status: 'rejected', status: 'outstanding' })
-      }));
-      handleCloseModal();
-      fetchOrders();
-    } catch (error) {
-      console.error('Error rejecting payment:', error);
-    }
-  };
 
-  const handleConfirmPayment = async () => {
-    if (!selectedOrder) {
-      return;
-    }
-
-    // Stop repeating notification sound when payment confirmed
-    stopSound();
-
-    try {
-      // 결제 완료 처리
-      const response = await fetch(`/api/orders/${selectedOrder.id}`, getFetchOptions({
-        method: 'PATCH',
-        body: JSON.stringify({
-          payment_status: 'completed'
-        })
-      }));
-
-      if (!response.ok) {
-        throw new Error('Failed to confirm payment');
-      }
-
-      // 결제 완료 후 outstanding이면 pending으로 변경 (주방에 전송)
-      if (selectedOrder.status === 'outstanding') {
-        await fetch(`/api/orders/${selectedOrder.id}/status`, getFetchOptions({
-          method: 'PATCH',
-          body: JSON.stringify({
-            status: 'pending'
-          })
-        }));
-      }
-
-      handleCloseModal();
-      fetchOrders(); // Refresh orders list
-    } catch (error) {
-      console.error('Error confirming payment:', error);
-    }
-  };
 
   // Payment Verification Modal handlers (for table list Confirm button)
   const handleVerifyConfirm = async () => {

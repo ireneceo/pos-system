@@ -146,6 +146,7 @@ const CheckoutDisplayPage: React.FC = () => {
   // useTranslation moved to component level
 
   return () => { socket.disconnect(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId]);
 
   const selectedCountry = COUNTRIES.find(c => c.code === countryCode) || COUNTRIES[0];

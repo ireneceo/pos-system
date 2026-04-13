@@ -143,10 +143,22 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       });
     }
 
+    // Recalculate additional_charges on all pending (unpaid) invoices so they reflect
+    // the new rates immediately. Issued-but-unpaid invoices should track the latest
+    // tax/service charge configuration until payment is actually made.
+    let recalcResult = null;
+    try {
+      const { recalcPendingInvoiceCharges } = require('../services/subscriptionInvoiceService');
+      recalcResult = await recalcPendingInvoiceCharges();
+    } catch (recalcErr) {
+      console.error('[PAYMENT SETTINGS] Pending invoice recalc failed:', recalcErr.message);
+    }
+
     res.json({
       success: true,
       data: settingsData,
-      message: 'Payment settings saved successfully'
+      message: 'Payment settings saved successfully',
+      pendingInvoicesUpdated: recalcResult?.updated || 0
     });
   } catch (error) {
     console.error('Error saving payment settings:', error);

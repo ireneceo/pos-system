@@ -130,12 +130,6 @@ const PlanName = styled.h3`
   text-transform: capitalize;
 `;
 
-const PlanDescription = styled.p`
-  font-size: 14px;
-  color: #6B7280;
-  margin-bottom: 24px;
-`;
-
 const PlanPricing = styled.div`
   text-align: center;
 `;

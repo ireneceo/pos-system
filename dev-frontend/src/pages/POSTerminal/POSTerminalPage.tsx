@@ -21,7 +21,6 @@ import CustomerModal from '../../components/Customer/CustomerModal';
 import { normalizeCustomerName } from '../../utils/orderUtils';
 import { getCurrencySymbol } from '../../utils/currency';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 const POSContainer = styled.div`
@@ -1099,7 +1098,6 @@ interface OrderItemType {
 }
 
 const POSTerminalPage: React.FC = () => {
-  const { t } = useTranslation('pos');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fromParam = searchParams.get('from') || '';

@@ -285,6 +285,7 @@ const ManagerDashboard: React.FC = () => {
         const restaurantsData: Restaurant[] = managerRestaurants.map((restaurant: any) => ({
           id: restaurant.id.toString(),
           name: restaurant.name,
+          branchName: restaurant.branch_name || '',
           location: restaurant.address || restaurant.location || 'No address',
           status: restaurant.status === 'active' ? 'active' : 
                   restaurant.status === 'suspended' ? 'maintenance' : 'inactive',
@@ -406,7 +407,7 @@ const ManagerDashboard: React.FC = () => {
             <RestaurantCard key={restaurant.id} onClick={() => handleRestaurantClick(restaurant.id)}>
               <RestaurantHeader>
                 <RestaurantInfo>
-                  <RestaurantName>{restaurant.name}</RestaurantName>
+                  <RestaurantName>{restaurant.name}{restaurant.branchName && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branchName}</span>}</RestaurantName>
                   <RestaurantLocation>{restaurant.location}</RestaurantLocation>
                 </RestaurantInfo>
                 <StatusBadge status={restaurant.status}>

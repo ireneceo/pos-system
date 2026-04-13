@@ -1047,9 +1047,6 @@ const KitchenDisplayPage: React.FC = () => {
   // ─── Print Helper ───
   // Item View 그룹 프린트 — 카드에 보이는 대로: 메뉴명 x총수량 + 출처 라벨 + 옵션 상세
   const printGroupTicket = (group: MenuGroup) => {
-    const allSources = [...group.plainSources, ...group.optionSources];
-    const totalQty = group.plainQty + group.optionSources.reduce((s, o) => s + o.quantity, 0);
-
     // 출처 라벨 (T002 x4, #001 등)
     const plainLabelMap = new Map<string, number>();
     group.plainSources.forEach(s => {
@@ -1838,6 +1835,7 @@ const KitchenDisplayPage: React.FC = () => {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const pendingGroupsRaw = useMemo(() => getItemViewPendingGroupsRaw(), [orders, selectedStation, menuStationMap]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const pendingGroups = useMemo(() => applyMergeLimits(pendingGroupsRaw), [pendingGroupsRaw, itemMergeSettings, orders]);
 
   const getItemViewPendingGroups = () => pendingGroups;
@@ -2208,7 +2206,7 @@ const KitchenDisplayPage: React.FC = () => {
         });
       })
       .sort((a, b) => a.orderTime.getTime() - b.orderTime.getTime());
-  }, [orders, orderHasStationItems, selectedStation, isItemInSelectedStation]);
+  }, [orders, orderHasStationItems]);
 
   const getItemViewReadyOrders = () => readyOrdersMemo;
 

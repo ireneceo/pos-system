@@ -626,16 +626,19 @@ const ManagersPage: React.FC = () => {
     });
   };
 
-  // Auto-calculate subscription end date from start + billing cycle
+  // Auto-calculate subscription end date from start + billing cycle.
+  // Rule: Monthly = start + 1 month - 1 day. Annual = start + 1 year - 1 day.
   const calcSubscriptionEnd = (start: string, cycle: string) => {
     if (!start) return '';
-    const d = new Date(start);
+    const [y, m, d] = start.split('-').map(Number);
+    const endD = new Date(y, m - 1, d);
     if (cycle === 'annual') {
-      d.setFullYear(d.getFullYear() + 1);
+      endD.setFullYear(endD.getFullYear() + 1);
     } else {
-      d.setMonth(d.getMonth() + 1);
+      endD.setMonth(endD.getMonth() + 1);
     }
-    return d.toISOString().split('T')[0];
+    endD.setDate(endD.getDate() - 1);
+    return `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {

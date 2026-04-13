@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 import { Container, Header, Title, Content } from '../../components/UI';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
-import { useAuth } from '../../contexts/AuthContext';
 import ProductIngredientsTab from './ProductIngredientsTab';
 import ProductIngredientCategoriesTab from './ProductIngredientCategoriesTab';
 import { useTranslation } from 'react-i18next';
@@ -35,7 +34,6 @@ type TabType = 'ingredients' | 'ingredient-categories';
 
 const BrandIngredientsPage: React.FC = () => {
   const { t } = useTranslation('brand');
-  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, handleTabParamChange] = useTabParam<TabType>('ingredients');
   const [ingredientsCount, setIngredientsCount] = useState(0);

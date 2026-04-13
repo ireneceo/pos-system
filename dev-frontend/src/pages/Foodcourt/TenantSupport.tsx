@@ -5,7 +5,6 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
-import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -326,7 +325,6 @@ interface SupportRequest {
 }
 
 const TenantSupport: React.FC = () => {
-  const { t } = useTranslation('common');
   const [activeTab, setActiveTab] = useTabParam<'requests' | 'communication' | 'announcements'>('requests');
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');

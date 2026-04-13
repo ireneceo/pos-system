@@ -363,7 +363,7 @@ interface OptionGroup {
   }>;
 }
 
-type OptionItem = { id: string; name: string; price: number; ingredient_id?: number | null; ingredient_quantity?: number; ingredient_name?: string; ingredient_unit?: string };
+type OptionItemData = { id: string; name: string; price: number; ingredient_id?: number | null; ingredient_quantity?: number; ingredient_name?: string; ingredient_unit?: string };
 
 const OptionManagementPage: React.FC = () => {
   const { t } = useTranslation('menu');
@@ -376,9 +376,9 @@ const OptionManagementPage: React.FC = () => {
     name: '',
     required: false,
     multiple: false,
-    options: [] as OptionItem[]
+    options: [] as OptionItemData[]
   });
-  const [newOption, setNewOption] = useState<OptionItem>({ id: '', name: '', price: 0, ingredient_id: null, ingredient_quantity: 1 });
+  const [newOption, setNewOption] = useState<OptionItemData>({ id: '', name: '', price: 0, ingredient_id: null, ingredient_quantity: 1 });
   const [ingredients, setIngredients] = useState<{id: number; name: string; unit: string; unit_cost: number}[]>([]);
 
   // Fetch ingredients
@@ -439,7 +439,7 @@ const OptionManagementPage: React.FC = () => {
     if (!newOption.name.trim()) return;
 
     const ing = newOption.ingredient_id ? ingredients.find(i => i.id === newOption.ingredient_id) : null;
-    const option: OptionItem = {
+    const option: OptionItemData = {
       id: `opt-${Date.now()}`,
       name: newOption.name,
       price: newOption.price,

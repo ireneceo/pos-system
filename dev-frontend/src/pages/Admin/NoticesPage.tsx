@@ -51,7 +51,7 @@ interface Notice {
     restaurant?: { id: number; name: string };
     user?: { id: number; name: string; full_name?: string; role: string };
   }>;
-  category?: 'general' | 'guide';
+  category?: 'general' | 'guide' | 'updates';
   commentCount: number;
   attachments?: any[];
   brand?: { id: number; name: string } | null;
@@ -463,14 +463,6 @@ const DeleteButton = styled.button`
   }
 `;
 
-const ViewModalActions = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  border-top: 1px solid #E6EBF1;
-`;
-
 // ============================================================================
 // Component
 // ============================================================================
@@ -486,7 +478,7 @@ const NoticesPage: React.FC = () => {
   // UI states
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide' | 'updates'>('all');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [showSendModal, setShowSendModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -797,7 +789,7 @@ const NoticesPage: React.FC = () => {
 
         {/* Category Filter Pills */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          {(['all', 'general', 'guide'] as const).map(cat => (
+          {(['all', 'general', 'guide', 'updates'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -813,7 +805,7 @@ const NoticesPage: React.FC = () => {
                 transition: 'all 0.15s'
               }}
             >
-              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : 'Guide'}
+              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : cat === 'guide' ? 'Guide' : 'Updates'}
             </button>
           ))}
         </div>
@@ -973,7 +965,7 @@ const NoticesPage: React.FC = () => {
                             onChange={() => handleRestaurantToggle(restaurant.id)}
                             onClick={(e) => e.stopPropagation()}
                           />
-                          <RestaurantName>{restaurant.name}</RestaurantName>
+                          <RestaurantName>{restaurant.name}{restaurant.branch_name ? ` (${restaurant.branch_name})` : ''}</RestaurantName>
                         </RestaurantItem>
                       ))
                     )}
@@ -1069,6 +1061,18 @@ const NoticesPage: React.FC = () => {
               </>
             ) : (
               <>
+                {selectedNotice.category === 'guide' && (
+                  <Button variant="secondary" onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/work-manuals/from-notice/${selectedNotice.id}`, {
+                        method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({})
+                      });
+                      if ((await res.json()).success) {
+                        setShowViewModal(false); setSelectedNotice(null);
+                      }
+                    } catch (e) { /* silent */ }
+                  }}>Send to Work Manuals</Button>
+                )}
                 {String(selectedNotice.author_id) === String(user?.id) && (
                   <Button variant="primary" onClick={() => {
                     setEditForm({ title: selectedNotice.title, content: selectedNotice.content, priority: selectedNotice.priority });

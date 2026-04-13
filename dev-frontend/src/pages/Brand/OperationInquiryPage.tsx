@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
-import { Modal as CommonModal } from '../../components/UI';
+import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import CommentSection from '../../components/Common/CommentSection';
@@ -121,48 +121,6 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   `}
 `;
 
-const StatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 32px;
-
-  @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-`;
-
-const StatCard = styled.div<{ borderColor?: string; color?: string }>`
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #E6EBF1;
-  border-left: 4px solid ${props => props.borderColor || props.color || '#635BFF'};
-  transition: all 0.2s;
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  }
-`;
-
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
 
 const FiltersContainer = styled.div`
   margin-bottom: 24px;
@@ -172,19 +130,6 @@ const FiltersContainer = styled.div`
   align-items: center;
 `;
 
-const FilterGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-`;
-
-const FilterLabel = styled.label`
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7280;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
 
 const SearchInput = styled.input`
   padding: 8px 12px;
@@ -589,19 +534,19 @@ const OperationInquiryPage: React.FC = () => {
         </Header>
         <Content>
           <StatsGrid>
-            <StatCard borderColor="#635BFF">
+            <StatCard color="#635BFF">
               <StatValue>{totalTickets}</StatValue>
               <StatLabel>{t('common:operationInquiryPage.totalInquiries')}</StatLabel>
             </StatCard>
-            <StatCard borderColor="#F59E0B">
+            <StatCard color="#F59E0B">
               <StatValue>{openTickets}</StatValue>
               <StatLabel>{t('common:operationInquiryPage.open')}</StatLabel>
             </StatCard>
-            <StatCard borderColor="#3B82F6">
+            <StatCard color="#3B82F6">
               <StatValue>{inProgressTickets}</StatValue>
               <StatLabel>{t('common:operationInquiryPage.inProgress')}</StatLabel>
             </StatCard>
-            <StatCard borderColor="#10B981">
+            <StatCard color="#10B981">
               <StatValue>{resolvedTickets}</StatValue>
               <StatLabel>{t('common:operationInquiryPage.resolved')}</StatLabel>
             </StatCard>

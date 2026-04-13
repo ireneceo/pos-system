@@ -180,18 +180,6 @@ const CheckItem = styled.div`
   &:last-child { border-bottom: none; }
 `;
 
-const NoteItem = styled.div`
-  padding: 10px 0;
-  border-bottom: 1px solid #F3F4F6;
-  &:last-child { border-bottom: none; }
-`;
-
-const NoteText = styled.p`
-  font-size: 14px;
-  color: #0A2540;
-  margin: 0 0 4px 0;
-`;
-
 const NoteMeta = styled.span`
   font-size: 12px;
   color: #6B7C93;
@@ -274,7 +262,6 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
   const [form, setForm] = useState<any>({});
   const [formError, setFormError] = useState<string | null>(null);
   const formRef = React.useRef<any>({});
-  const [newNote, setNewNote] = useState('');
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [terminateModal, setTerminateModal] = useState(false);
   const [terminateReason, setTerminateReason] = useState('');
@@ -335,18 +322,6 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
     } catch {
       setFormError('Stage transition failed');
     }
-  };
-
-  const handleAddNote = async () => {
-    if (!newNote.trim()) return;
-    try {
-      await fetch(`/api/contracts/${contractId}/notes`, {
-        method: 'POST', headers: headers(),
-        body: JSON.stringify({ content: newNote })
-      });
-      setNewNote('');
-      await fetchContract();
-    } catch {}
   };
 
   const handleAddTask = async () => {
@@ -506,7 +481,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       <BackLink onClick={onBack}>&larr; {t('detail.backToList', 'Back to list')}</BackLink>
 
       <DetailHeader>
-        <DetailTitle>{contract.restaurant?.name || contract.applicant_name}</DetailTitle>
+        <DetailTitle>{contract.restaurant?.name || contract.applicant_name}{contract.restaurant?.branch_name && <span style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', marginLeft: '8px' }}>({contract.restaurant.branch_name})</span>}</DetailTitle>
         <StageBadge bg={badge.bg} color={badge.color}>{contract.stage}</StageBadge>
       </DetailHeader>
 

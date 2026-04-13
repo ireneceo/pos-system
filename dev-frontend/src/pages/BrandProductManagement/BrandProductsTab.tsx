@@ -7,7 +7,6 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface Brand {
@@ -345,7 +344,6 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   categoryRefreshKey,
   optionRefreshKey
 }) => {
-  const { t } = useTranslation('brand');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);

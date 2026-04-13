@@ -7,7 +7,6 @@ import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import PageHeader from '../../components/Common/PageHeader';
 import ConfirmModal from '../../components/ConfirmModal';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 // 스타일 컴포넌트
@@ -411,7 +410,6 @@ interface CustomerOption {
 }
 
 const CouponsPage: React.FC = () => {
-  const { t } = useTranslation('menu');
   const { user } = useAuth();
   const { operationSettings } = useStore();
   const restaurantId = user?.restaurantId;

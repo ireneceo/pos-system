@@ -5,7 +5,6 @@ import { useMenu } from '../../contexts/MenuContext';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal, ModalButton } from '../../components/UI/Modal';
 import { OrderControls } from '../../components/UI';
-import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 const Container = styled.div`
@@ -321,7 +320,6 @@ interface Category {
 }
 
 const CategoryManagementPage: React.FC = () => {
-  const { t } = useTranslation('menu');
   const { categories, menuItems, addCategory, updateCategory, deleteCategory, reorderCategories } = useMenu();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);

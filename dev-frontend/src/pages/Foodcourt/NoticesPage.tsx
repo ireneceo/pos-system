@@ -34,7 +34,7 @@ interface Notice {
   status: string;
   createdAt: string;
   recipients: any[];
-  category?: 'general' | 'guide';
+  category?: 'general' | 'guide' | 'updates';
   commentCount: number;
   attachments?: any[];
   brand?: any;
@@ -451,7 +451,7 @@ const NoticesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useTabParam<'received' | 'sent'>('received');
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'general' | 'guide' | 'updates'>('all');
   const [authorRoleFilter, setAuthorRoleFilter] = useState('all');
 
   // New Notice modal state
@@ -855,7 +855,7 @@ const NoticesPage: React.FC = () => {
 
         {/* Category Filter Pills */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-          {(['all', 'general', 'guide'] as const).map(cat => (
+          {(['all', 'general', 'guide', 'updates'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -871,7 +871,7 @@ const NoticesPage: React.FC = () => {
                 transition: 'all 0.15s'
               }}
             >
-              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : 'Guide'}
+              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : cat === 'guide' ? 'Guide' : 'Updates'}
             </button>
           ))}
         </div>
@@ -1099,7 +1099,7 @@ const NoticesPage: React.FC = () => {
       {/* View Notice Modal */}
       {/* ================================================================== */}
       {showViewModal && selectedNotice && (
-        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" footer={String(selectedNotice.author_id) === String(user?.id) ? <ViewModalActions><DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('common:noticesPage.deleteNotice')}</DeleteNoticeButton></ViewModalActions> : undefined}>
+        <CommonModal isOpen={true} onClose={() => { setShowViewModal(false); setSelectedNotice(null); }} title={selectedNotice.title} size="large" footer={<>{selectedNotice.category === 'guide' && (<button onClick={async () => { try { const res = await fetch(`/api/work-manuals/from-notice/${selectedNotice.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify({}) }); if ((await res.json()).success) { setShowViewModal(false); setSelectedNotice(null); } } catch (e) { /* silent */ } }} style={{ padding: '8px 16px', background: '#F0EFFF', color: '#635BFF', border: '1px solid #635BFF', borderRadius: '6px', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>Send to Work Manuals</button>)}{String(selectedNotice.author_id) === String(user?.id) && (<ViewModalActions><DeleteNoticeButton onClick={() => handleDeleteNotice(selectedNotice.id)}>{t('common:noticesPage.deleteNotice')}</DeleteNoticeButton></ViewModalActions>)}</>}>
               {/* Notice metadata */}
               <NoticeDetailMeta>
                 <NoticeDetailMetaItem>

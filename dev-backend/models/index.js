@@ -80,6 +80,8 @@ const ContractNote = require('./ContractNote');
 const ContractHistory = require('./ContractHistory');
 const ContractPlan = require('./ContractPlan');
 const FoodcourtUnit = require('./FoodcourtUnit');
+const WorkManual = require('./WorkManual');
+const WorkManualCategory = require('./WorkManualCategory');
 
 // Define associations
 // Brand - Restaurant associations
@@ -552,6 +554,18 @@ FoodcourtUnit.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt'
 Foodcourt.hasMany(FoodcourtUnit, { foreignKey: 'foodcourt_id', as: 'units' });
 FoodcourtUnit.belongsTo(Contract, { foreignKey: 'current_contract_id', as: 'currentContract' });
 
+// WorkManual associations
+WorkManual.belongsTo(User, { foreignKey: 'author_id', as: 'author' });
+User.hasMany(WorkManual, { foreignKey: 'author_id', as: 'workManuals' });
+WorkManual.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(WorkManual, { foreignKey: 'restaurant_id', as: 'workManuals' });
+WorkManual.belongsTo(Brand, { foreignKey: 'brand_id', as: 'brand' });
+Brand.hasMany(WorkManual, { foreignKey: 'brand_id', as: 'workManuals' });
+WorkManual.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
+Foodcourt.hasMany(WorkManual, { foreignKey: 'foodcourt_id', as: 'workManuals' });
+WorkManual.belongsTo(WorkManualCategory, { foreignKey: 'category_id', as: 'category' });
+WorkManualCategory.hasMany(WorkManual, { foreignKey: 'category_id', as: 'manuals' });
+
 module.exports = {
   User,
   Restaurant,
@@ -634,5 +648,7 @@ module.exports = {
   ContractNote,
   ContractHistory,
   ContractPlan,
-  FoodcourtUnit
+  FoodcourtUnit,
+  WorkManual,
+  WorkManualCategory
 };
