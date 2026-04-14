@@ -31,8 +31,7 @@ import {
 , Modal as CommonModal } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
 import { useTranslation } from 'react-i18next';
 
@@ -1448,24 +1447,25 @@ const BrandInvoicesPage: React.FC = () => {
 
   // Generate invoice HTML content (shared for PDF, Print, Email)
   const generateInvoiceHTML = (invoice: Invoice) => {
-    // For received invoices (to_pay tab), use issuer's company info
-    const isReceivedInvoice = (activeTab === 'to_pay' || activeTab === 'paid') && invoice.issuerInfo;
-    const displayCompany = isReceivedInvoice ? {
-      companyName: invoice.issuerInfo?.name,
-      companyLogo: invoice.issuerInfo?.logoUrl,
-      address: invoice.issuerInfo?.address,
-      city: invoice.issuerInfo?.city,
-      state: invoice.issuerInfo?.state,
-      postalCode: invoice.issuerInfo?.postalCode,
-      country: invoice.issuerInfo?.country,
-      phone: invoice.issuerInfo?.phone,
-      email: invoice.issuerInfo?.email,
-      bankName: invoice.issuerInfo?.bankName,
-      bankAccount: invoice.issuerInfo?.bankAccount,
-      bankAccountName: invoice.issuerInfo?.bankAccountName,
-      swiftCode: invoice.issuerInfo?.swiftCode,
-      taxNumber: invoice.issuerInfo?.taxId,
-      registrationNumber: invoice.issuerInfo?.businessRegistration
+    // Prefer issuerInfo from API (has bank info from payment_settings).
+    // Fall back to local companySettings only when issuerInfo absent.
+    const hasIssuerInfo = !!invoice.issuerInfo;
+    const displayCompany = hasIssuerInfo ? {
+      companyName: invoice.issuerInfo?.name || companySettings?.companyName,
+      companyLogo: invoice.issuerInfo?.logoUrl || companySettings?.companyLogo,
+      address: invoice.issuerInfo?.address || companySettings?.address,
+      city: invoice.issuerInfo?.city || companySettings?.city,
+      state: invoice.issuerInfo?.state || companySettings?.state,
+      postalCode: invoice.issuerInfo?.postalCode || companySettings?.postalCode,
+      country: invoice.issuerInfo?.country || companySettings?.country,
+      phone: invoice.issuerInfo?.phone || companySettings?.phone,
+      email: invoice.issuerInfo?.email || companySettings?.email,
+      bankName: invoice.issuerInfo?.bankName || companySettings?.bankName,
+      bankAccount: invoice.issuerInfo?.bankAccount || companySettings?.bankAccount,
+      bankAccountName: invoice.issuerInfo?.bankAccountName || companySettings?.bankAccountName,
+      swiftCode: invoice.issuerInfo?.swiftCode || '',
+      taxNumber: invoice.issuerInfo?.taxId || companySettings?.taxNumber,
+      registrationNumber: invoice.issuerInfo?.businessRegistration || companySettings?.registrationNumber
     } : companySettings;
 
     if (!displayCompany) return '';
@@ -1556,11 +1556,7 @@ const BrandInvoicesPage: React.FC = () => {
         .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
         .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
 
-        @media print {
-            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-            .invoice-container { padding: 20px; }
-            .no-print { display: none !important; }
-        }
+        ${INVOICE_PRINT_CSS}
     </style>
 </head>
 <body>
@@ -1733,68 +1729,11 @@ const BrandInvoicesPage: React.FC = () => {
       iframeDoc.write(invoiceHTML);
       iframeDoc.close();
 
-      // What and Why: iframe 렌더링 완료 대기
-      // - 150ms는 이미지/폰트 로딩에 불충분
-      // - 폰트 로딩, 이미지 로딩, 레이아웃 완료를 순차적으로 대기
-      await new Promise<void>(async (resolve) => {
-        // 폰트 로딩 대기
-        try {
-          if ((iframeDoc as any).fonts?.ready) {
-            await (iframeDoc as any).fonts.ready;
-          }
-        } catch { /* 폰트 API 미지원 시 무시 */ }
-
-        // 이미지 로딩 대기
-        const images = iframeDoc.querySelectorAll('img');
-        await Promise.all(
-          Array.from(images).map(img =>
-            img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
-          )
-        );
-
-        // 레이아웃 안정화 대기
-        setTimeout(resolve, 100);
-      });
-
-      const contentHeight = iframeDoc.body.scrollHeight;
-      iframe.style.height = `${contentHeight}px`;
-
-      // Convert iframe body to canvas
-      const canvas = await html2canvas(iframeDoc.body, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 800,
-        windowHeight: contentHeight
-      });
-
-      // Remove the iframe
-      document.body.removeChild(iframe);
-
-      // Create PDF from canvas
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      try {
+        await renderIframeToPdf(iframe, `Invoice-${invoice.invoiceNumber}.pdf`);
+      } finally {
+        document.body.removeChild(iframe);
       }
-      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
       setSuccessMessage('Failed to generate PDF. Please try again.');
@@ -3672,23 +3611,24 @@ const BrandInvoicesPage: React.FC = () => {
 
         {/* View Invoice Modal */}
         {showViewModal && selectedInvoice && (() => {
-          // For to_pay tab, use issuer's company info; for issued tab, use logged-in user's company info
-          const isReceivedInvoice = (activeTab === 'to_pay' || activeTab === 'paid') && selectedInvoice.issuerInfo;
-          const displayCompany = isReceivedInvoice ? {
-            companyName: selectedInvoice.issuerInfo?.name,
-            companyLogo: selectedInvoice.issuerInfo?.logoUrl,
-            address: selectedInvoice.issuerInfo?.address,
-            city: selectedInvoice.issuerInfo?.city,
-            state: selectedInvoice.issuerInfo?.state,
-            postalCode: selectedInvoice.issuerInfo?.postalCode,
-            country: selectedInvoice.issuerInfo?.country,
-            phone: selectedInvoice.issuerInfo?.phone,
-            email: selectedInvoice.issuerInfo?.email,
-            bankName: selectedInvoice.issuerInfo?.bankName,
-            bankAccount: selectedInvoice.issuerInfo?.bankAccount,
-            bankAccountName: selectedInvoice.issuerInfo?.bankAccountName,
-            taxNumber: selectedInvoice.issuerInfo?.taxId,
-            registrationNumber: selectedInvoice.issuerInfo?.businessRegistration
+          // Prefer issuerInfo (has bank details from payment_settings), fall back to companySettings.
+          const hasIssuerInfo = !!selectedInvoice.issuerInfo;
+          const displayCompany = hasIssuerInfo ? {
+            companyName: selectedInvoice.issuerInfo?.name || companySettings?.companyName,
+            companyLogo: selectedInvoice.issuerInfo?.logoUrl || companySettings?.companyLogo,
+            address: selectedInvoice.issuerInfo?.address || companySettings?.address,
+            city: selectedInvoice.issuerInfo?.city || companySettings?.city,
+            state: selectedInvoice.issuerInfo?.state || companySettings?.state,
+            postalCode: selectedInvoice.issuerInfo?.postalCode || companySettings?.postalCode,
+            country: selectedInvoice.issuerInfo?.country || companySettings?.country,
+            phone: selectedInvoice.issuerInfo?.phone || companySettings?.phone,
+            email: selectedInvoice.issuerInfo?.email || companySettings?.email,
+            bankName: selectedInvoice.issuerInfo?.bankName || companySettings?.bankName,
+            bankAccount: selectedInvoice.issuerInfo?.bankAccount || companySettings?.bankAccount,
+            bankAccountName: selectedInvoice.issuerInfo?.bankAccountName || companySettings?.bankAccountName,
+            swiftCode: selectedInvoice.issuerInfo?.swiftCode || '',
+            taxNumber: selectedInvoice.issuerInfo?.taxId || companySettings?.taxNumber,
+            registrationNumber: selectedInvoice.issuerInfo?.businessRegistration || companySettings?.registrationNumber
           } : companySettings;
 
           return (
@@ -3876,8 +3816,9 @@ const BrandInvoicesPage: React.FC = () => {
                     <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('brand:brandInvoicesPage.paymentDetails')}</div>
                     <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
                       <div><strong>Bank:</strong> {displayCompany.bankName}</div>
-                      <div><strong>Account Name:</strong> {displayCompany.bankAccountName}</div>
-                      <div><strong>Account Number:</strong> {displayCompany.bankAccount}</div>
+                      <div><strong>Account Name:</strong> {displayCompany.bankAccountName || '-'}</div>
+                      <div><strong>Account Number:</strong> {displayCompany.bankAccount || '-'}</div>
+                      {displayCompany.swiftCode && <div><strong>SWIFT Code:</strong> {displayCompany.swiftCode}</div>}
                     </div>
                   </div>
                 )}

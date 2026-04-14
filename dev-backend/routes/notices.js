@@ -104,8 +104,22 @@ router.get('/metadata', authenticateToken, async (req, res) => {
 // GET /api/notices/sent - Get notices sent by the current user
 router.get('/sent', authenticateToken, async (req, res) => {
   try {
+    // System Admin users share one "sent" inbox — any System Admin should see
+    // every notice authored by any other System Admin (including release posts
+    // created by automated scripts). Other roles only see their own.
+    let authorCondition;
+    if (req.user.role === 'System Admin') {
+      const adminIds = (await User.findAll({
+        where: { role: 'System Admin' },
+        attributes: ['id']
+      })).map(u => u.id);
+      authorCondition = { author_id: { [Op.in]: adminIds } };
+    } else {
+      authorCondition = { author_id: req.user.id };
+    }
+
     const notices = await Notice.findAll({
-      where: { author_id: req.user.id },
+      where: authorCondition,
       include: [
         { model: User, as: 'author', attributes: ['id', 'full_name', 'role'] },
         { model: Brand, as: 'brand', attributes: ['id', 'name'] },

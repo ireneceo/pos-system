@@ -8,6 +8,53 @@
 
 (현재 미배포 항목 없음)
 
+## [v3.14] — 2026-04-14 배포
+
+### 공지 가시성 + Updates 카테고리 배지 (배포 2 — hotfix)
+- **증상 1**: 릴리즈 공지가 `/pos/admin/notices` 에 안 보임. 이전 v3.13 공지까지 전부 누락
+- **원인**: `/api/notices/sent` 가 `where: { author_id: req.user.id }` 로 본인 작성만 반환. release-post 스크립트가 author=1 로 고정 생성 → Irene(id=4) 로그인 시 0건
+- **수정**: System Admin 로그인 시 `author_id IN (모든 System Admin ids)` 로 확장. 다른 역할은 기존대로 본인 작성만
+- **증상 2**: 리스트가 "NORMAL" 만 보이고 Updates 카테고리 표시 없음
+- **원인**: `NoticesPage.tsx` 5개 역할 모두 `notice.category === 'guide'` 만 배지 렌더, `updates` 누락
+- **수정**: 5개 역할 페이지 전부 `updates` 카테고리에 보라색 "Updates" 배지 추가 (기존 `guide` 패턴 재사용)
+- **검증**: 운영 Irene (id=4) `/sent` 응답 0 → 14건 (v3.14 포함). 배포 2 smoke 10/10 (07:14 UTC, `main.3fe57608.js`)
+
+### 인보이스 발행자 은행계좌 정보 복구 + PDF 안전 분할
+- **증상**: Brand/Foodcourt 가 Payment Settings 모달에 입력한 은행계좌가 인보이스 뷰/프린트/다운로드 어디에도 표시 안 됨. 2장 넘는 긴 인보이스는 PDF 다운로드 시 글자 중간에서 잘림
+- **원인 1**: `invoices-helpers.js getIssuerCompanyInfo` 가 brand/foodcourt 분기에서 legacy `brand.bank_name` 직접 컬럼만 읽고 `payment_settings.bankTransfer[currency]` JSON 을 무시
+- **원인 2**: 메인 `/api/invoices` GET transform 이 `issuerInfo` 필드를 응답에 포함 안 함. Admin 프론트는 `companySettings.bankName` (별개 엔드포인트) 을 사용하는데 여긴 은행정보 없음
+- **원인 3**: 5개 역할 페이지 모두 `html2canvas` → 단일 PNG → 297mm 고정 height slice 로 기계적 분할. 행 중간 절단 방지 장치 없음
+- **수정 (백엔드)**: `extractBankFromPaymentSettings(payment_settings, currency)` 헬퍼 추가. brand/foodcourt 분기에서 payment_settings 우선, legacy 컬럼 폴백. 메인 GET 에 `issuerInfo` 추가 (캐시로 N+1 방지)
+- **수정 (프론트)**: `dev-frontend/src/utils/invoicePdf.ts` 신규 — `renderIframeToPdf()` 로 캔버스 픽셀 행 스캔 (흰색 행) 후 안전 분할. `INVOICE_PRINT_CSS` 상수 — `.summary-section`, `.items-table tr`, `.bank-section` 등에 `page-break-inside: avoid`. 5개 invoice 페이지 (Admin/Restaurant/Brand/Foodcourt/Owner) 모두 공통 util 호출로 중복 로직 제거
+- **수정 (Admin/Brand/Foodcourt view)**: HTML 템플릿 + React 뷰 모달 모두 `invoice.issuerInfo?.bankName` 우선, `companySettings` 폴백
+- **검증**: API 실호출 — System Admin 34건 중 33건 issuerInfo.bankName 채움 (1건 EUR 미설정), Brand General 8건 전부 `payment_settings.bankTransfer.MYR` 기반 bank info 매칭. health-check 39/39. 뷰/프린트/다운로드 3경로 모두 표시 확인
+
+### Kitchen Stations 3개 이슈
+- **증상 1**: 신규 레스토랑이 메뉴 아이템에 카테고리 다 배정했는데도 "2 uncategorized menu items" 오경고 표시
+- **원인**: `SettingsPage.tsx:4697` 필터가 `p.category` 를 검사하는데 백엔드 `/api/menu` 응답은 `categoryId` (camelCase) 로 반환 → 항상 undefined → 전부 오탐
+- **수정**: `p.categoryId ?? p.category_id` 둘 다 허용
+- **증상 2**: 주방이 1개뿐인데도 복잡한 Assignment Mode 카드 + 경고 배너 표시. 사용자가 "세팅 안 해도 되는데 헷갈린다" 호소
+- **수정 (백엔드)**: `kitchen-stations.js GET /` 에서 stations 0개이면 "Kitchen" default station 자동 INSERT (lazy create)
+- **수정 (프론트)**: stations ≤ 1 일 때 초록색 안내 배너 ("You have 1 kitchen station. All orders will be routed here. No setup needed.") 표시 + Assignment Mode 카드 + Unassigned 경고 블록 숨김
+- **증상 3**: 대시보드 "Complete Your Setup" 체크리스트에서 "Set up Kitchen Stations" 가 설정 후에도 체크 안 됨
+- **원인**: `useSetupStatus.ts:103` 가 `result.data` 를 array 로 취급하는데 실제 응답은 `{ data: { assignment_mode, stations: [...] } }` 구조 → 항상 length=0
+- **수정**: `result.data?.stations || []` 로 올바르게 파싱
+- **검증**: lazy create idempotent (Settings/KitchenDisplay/Dashboard 3경로 동일 ID 반환, DB 중복 없음)
+
+### Legacy email 템플릿 2개 → emailLayout() 교체
+- **증상**: 운영에서 신규 회원가입 admin 알림 이메일이 옛날 템플릿으로 발송 — 로고 없음, 텍스트 `<h1>PurpleHere</h1>` 헤더, "No-reply email" 레거시 footer
+- **원인**: 2개 사이트가 `emailLayout()` 미사용 raw HTML
+  - `services/authService.js:437 notifyAdminNewSignup` (이번 운영 사건의 템플릿)
+  - `routes/public.js:356` 문의 답변
+- **수정**: 둘 다 `bodyContent` 만 구성 → `emailLayout(bodyContent)` 로 래핑. `sendPlatformEmail` 이 `cid:purplehere-logo` 자동 감지 → `getLogoAttachment()` 로 로고 CID 첨부
+- **검증**: 테스트 이메일 실발송 → 신규 템플릿 렌더링 확인 (액센트 바 + 로고 + preferences footer). 다른 모든 email 발송 사이트 감사 — 모두 `emailLayout()` 기반 정상
+
+### POST /api/restaurants 역할 가드 보강 (HIGH 보안 갭)
+- **증상**: `POST /api/restaurants` 에 `requireRole` 미들웨어 없음. `validateBrandPermission` 은 brand_id 파라미터가 있을 때만 작동하므로 Restaurant Admin/Staff/Customer 가 brand_id 생략하고 호출하면 restaurant 생성 가능
+- **수정**: `restaurants-crud.js:638` 에 `requireRole('System Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner')` 명시 추가. 회원가입 흐름은 `authService.js:193 Restaurant.create` 직접 호출이므로 이 endpoint 미경유 — 영향 없음
+- **영구 안전망**: `scripts/health-check.js` 에 "Restaurant Admin POST /restaurants → 403 (역할 가드)" regression test 추가 (39 → 40)
+- **검증**: 8개 역할 매트릭스 — 6 allow + 2 BLOCK. Attack 시나리오 — Restaurant Admin 가 POST 시도 → 403, DB 에 생성 안 됨. Write→Read 왕복 (System Admin) 201 → GET 200 확인
+
 ## 2026-04-13 배포 4 — Brand Cross-Tenant 누수 fix (치명 보안, 버전 미상승)
 
 ### Brand General 격리 (운영 발견 누수)

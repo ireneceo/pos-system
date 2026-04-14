@@ -1,8 +1,59 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-13 (Brand Cross-Tenant 누수 fix — 운영 배포 4)
+> **최종 업데이트:** 2026-04-14 (v3.14 운영 배포 + 공지 가시성 hotfix)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: v3.14 운영 배포 — 인보이스/주방/이메일/보안 종합 fix (2026-04-14)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 인보이스 은행계좌 정보 복구 | Brand/Foodcourt Payment Settings 의 `bankTransfer[currency]` JSON 을 `getIssuerCompanyInfo` 에서 읽도록 수정. 메인 `/api/invoices` GET 에 `issuerInfo` 포함 (캐시). 5개 역할 invoice 페이지 모두 `invoice.issuerInfo?.bankName` 우선 사용. 뷰/프린트/다운로드 3경로 모두 표시 | ✅ |
+| PDF 안전 분할 | `dev-frontend/src/utils/invoicePdf.ts` 신규 — 캔버스 픽셀 행 스캔으로 흰색 행 찾아 안전 break. `INVOICE_PRINT_CSS` 상수 — `page-break-inside: avoid` 규칙 집합. 5개 invoice 페이지의 중복 PDF 로직 (~60줄 × 5) → 1 함수 호출로 치환 | ✅ |
+| Kitchen Stations uncategorized 오경고 | `SettingsPage.tsx:4697` 필터 `p.category` → `p.categoryId ?? p.category_id`. `/api/menu` 응답 필드명 불일치로 생긴 오탐 제거 | ✅ |
+| Kitchen Stations lazy default | `kitchen-stations.js GET /` 에서 stations 0개이면 "Kitchen" 자동 INSERT. 신규 레스토랑 무설정 경험 | ✅ |
+| 1-station 단순 UI | stations ≤ 1 일 때 초록색 안내 배너 + Assignment Mode 카드 + Unassigned 경고 숨김 | ✅ |
+| 온보딩 체크리스트 파싱 | `useSetupStatus.ts:103` → `result.data?.stations \|\| []` 로 수정. Set up Kitchen Stations 즉시 완료 표시 | ✅ |
+| Legacy email 템플릿 2개 → emailLayout() | `authService.js notifyAdminNewSignup` (신규가입 admin 알림, 운영 레거시 발송 사건의 템플릿) + `public.js` 문의 답변. 로고 CID 자동 첨부 | ✅ |
+| POST /api/restaurants 역할 가드 (HIGH 보안 갭) | `requireRole('System Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner')` 추가. 회원가입 흐름 미영향. health-check 영구 regression test 추가 (39 → 40) | ✅ |
+| 공지 가시성 hotfix | `/api/notices/sent` 가 System Admin 은 모든 System Admin 작성 공지 표시하도록 확장. 이전엔 `author_id: req.user.id` 로 본인 작성만 반환 → release-post 스크립트가 id=1 로 고정 생성한 notice 를 Irene(id=4) 이 못 봄. 5개 역할 NoticesPage 리스트에 `updates` 카테고리 배지 (보라색) 추가. 기존 `guide` 만 배지 있던 것 확장 | ✅ |
+
+### 수정된 파일 (백엔드 10개, 프론트 12개)
+
+**백엔드**
+- `dev-backend/routes/invoices-helpers.js`
+- `dev-backend/routes/invoices-main.js`
+- `dev-backend/routes/kitchen-stations.js`
+- `dev-backend/routes/notices.js`
+- `dev-backend/routes/public.js`
+- `dev-backend/routes/restaurants-crud.js`
+- `dev-backend/scripts/health-check.js`
+- `dev-backend/services/authService.js`
+
+**프론트**
+- `dev-frontend/src/utils/invoicePdf.ts` (신규)
+- `dev-frontend/src/hooks/useSetupStatus.ts`
+- `dev-frontend/src/pages/Settings/SettingsPage.tsx`
+- `dev-frontend/src/pages/Admin/InvoicesPage.tsx`
+- `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx`
+- `dev-frontend/src/pages/BrandGeneral/BrandInvoicesPage.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx`
+- `dev-frontend/src/pages/Owner/OwnerInvoicesPage.tsx`
+- `dev-frontend/src/pages/Admin/NoticesPage.tsx`
+- `dev-frontend/src/pages/Brand/NoticesPage.tsx`
+- `dev-frontend/src/pages/Foodcourt/NoticesPage.tsx`
+- `dev-frontend/src/pages/Owner/NoticesPage.tsx`
+- `dev-frontend/src/pages/Restaurant/NoticesPage.tsx`
+
+### 운영 배포
+- 배포 1 (06:27 UTC 2026-04-14): `main.0028215c.js`, smoke 10/10 — 4개 종합 fix
+- 배포 2 hotfix (07:14 UTC 2026-04-14): `main.3fe57608.js`, smoke 10/10 — 공지 가시성 + updates 배지
+- 릴리즈 공지: dev id=41, prod id=18 — category=updates, target_type=all
+- 랜딩 블로그: `/blog/release-v3.14` (dev id=45, prod 생성)
 
 ---
 

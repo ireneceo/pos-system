@@ -12,7 +12,8 @@
       "Bash(python3 -c \"import sys,json; print\\(json.load\\(sys.stdin\\).get\\('status'\\)\\)\")",
       "Bash(ssh:*)",
       "Bash(ls -la /var/www/dev-frontend-build/static/js/main.*.js)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

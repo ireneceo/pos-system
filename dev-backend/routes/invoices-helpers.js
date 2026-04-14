@@ -123,27 +123,45 @@ function calculateAdditionalCharges(subtotal, additionalChargesConfig) {
   }));
 }
 
-// Helper function to get bank info from Payment Settings based on currency
+// Extract bank info from a payment_settings object for a given currency.
+// Accepts both { bankTransfer: { MYR: {...} } } and { bankTransfer: {...flat } }.
+function extractBankFromPaymentSettings(paymentSettings, currency) {
+  if (!paymentSettings || typeof paymentSettings !== 'object') return null;
+  const bt = paymentSettings.bankTransfer;
+  if (!bt || typeof bt !== 'object') return null;
+
+  // Per-currency keyed object (preferred)
+  const perCurrency = bt[currency];
+  if (perCurrency && typeof perCurrency === 'object' && (perCurrency.bankName || perCurrency.accountNumber)) {
+    if (perCurrency.enabled === false) return null;
+    return {
+      bankName: perCurrency.bankName || '',
+      bankAccount: perCurrency.accountNumber || '',
+      bankAccountName: perCurrency.accountName || '',
+      swiftCode: perCurrency.swiftCode || ''
+    };
+  }
+
+  // Flat object fallback (legacy shape)
+  if (bt.bankName || bt.accountNumber) {
+    if (bt.enabled === false) return null;
+    return {
+      bankName: bt.bankName || '',
+      bankAccount: bt.accountNumber || '',
+      bankAccountName: bt.accountName || '',
+      swiftCode: bt.swiftCode || ''
+    };
+  }
+  return null;
+}
+
+// Helper function to get system admin bank info from Payment Settings based on currency
 async function getBankInfoByCurrency(currency) {
   try {
     const paymentSettings = await SystemSettings.findOne({
       where: { setting_key: PAYMENT_SETTINGS_KEY }
     });
-
-    if (paymentSettings && paymentSettings.setting_value) {
-      const settings = paymentSettings.setting_value;
-      const bankConfig = settings.bankTransfer?.[currency];
-
-      if (bankConfig?.enabled) {
-        return {
-          bankName: bankConfig.bankName || '',
-          bankAccount: bankConfig.accountNumber || '',
-          bankAccountName: bankConfig.accountName || '',
-          swiftCode: bankConfig.swiftCode || ''
-        };
-      }
-    }
-    return null;
+    return extractBankFromPaymentSettings(paymentSettings?.setting_value, currency);
   } catch (error) {
     console.error('Error fetching bank info by currency:', error);
     return null;
@@ -183,6 +201,7 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
   } else if (issuerType === 'brand' && issuerId) {
     const brand = await Brand.findByPk(issuerId);
     if (brand) {
+      const bankFromSettings = extractBankFromPaymentSettings(brand.payment_settings, currency);
       return {
         name: brand.name || 'Brand',
         logoUrl: brand.logo_url || null,
@@ -196,15 +215,16 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
         website: brand.website || '',
         taxId: brand.tax_id || '',
         businessRegistration: brand.business_registration || '',
-        bankName: brand.bank_name || '',
-        bankAccount: brand.bank_account || '',
-        bankAccountName: brand.bank_account_name || '',
-        swiftCode: ''
+        bankName: bankFromSettings?.bankName || brand.bank_name || '',
+        bankAccount: bankFromSettings?.bankAccount || brand.bank_account || '',
+        bankAccountName: bankFromSettings?.bankAccountName || brand.bank_account_name || '',
+        swiftCode: bankFromSettings?.swiftCode || ''
       };
     }
   } else if (issuerType === 'foodcourt' && issuerId) {
     const foodcourt = await Foodcourt.findByPk(issuerId);
     if (foodcourt) {
+      const bankFromSettings = extractBankFromPaymentSettings(foodcourt.payment_settings, currency);
       return {
         name: foodcourt.name || 'Foodcourt',
         logoUrl: foodcourt.logo_url || null,
@@ -218,10 +238,10 @@ async function getIssuerCompanyInfo(issuerType, issuerId, currency = 'MYR') {
         website: foodcourt.website || '',
         taxId: foodcourt.tax_id || '',
         businessRegistration: foodcourt.business_registration || '',
-        bankName: foodcourt.bank_name || '',
-        bankAccount: foodcourt.bank_account || '',
-        bankAccountName: foodcourt.bank_account_name || '',
-        swiftCode: ''
+        bankName: bankFromSettings?.bankName || foodcourt.bank_name || '',
+        bankAccount: bankFromSettings?.bankAccount || foodcourt.bank_account || '',
+        bankAccountName: bankFromSettings?.bankAccountName || foodcourt.bank_account_name || '',
+        swiftCode: bankFromSettings?.swiftCode || ''
       };
     }
   }

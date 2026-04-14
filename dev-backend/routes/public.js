@@ -353,28 +353,22 @@ router.post('/admin/inquiries/:id/reply', authenticateToken, async (req, res) =>
         const company = await CompanySettings.findOne({ where: { id: 1 } });
         const companyName = company?.company_name || 'PurpleHere';
 
-        await sendPlatformEmail({
-          to: inquiry.email,
-          subject: `Re: Your inquiry to ${companyName}`,
-          html: `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')}" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
-  <tr><td style="padding:32px;">
-    <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">Response to Your Inquiry</h2>
-    <p style="color:#374151;font-size:14px;line-height:1.6;">Dear ${inquiry.name},</p>
-    <p style="color:#374151;font-size:14px;line-height:1.6;">Thank you for your inquiry. Here is our response:</p>
+        const bodyContent = `
+    <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">Response to Your Inquiry</h2>
+    <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 12px;">Dear ${inquiry.name},</p>
+    <p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 16px;">Thank you for your inquiry. Here is our response:</p>
     <div style="background:#F8FAFC;padding:16px 20px;border-left:4px solid #635BFF;border-radius:0 8px 8px 0;margin:20px 0;">
       <p style="color:#374151;font-size:14px;margin:0;line-height:1.6;">${reply_message.replace(/\n/g, '<br>')}</p>
     </div>
     <div style="margin:20px 0;padding-top:16px;border-top:1px solid #E6EBF1;">
       <p style="color:#6B7280;font-size:13px;margin:0 0 8px;"><strong>Your original message:</strong></p>
       <p style="color:#9CA3AF;font-size:13px;margin:0;line-height:1.5;">${inquiry.message.replace(/\n/g, '<br>')}</p>
-    </div>
-  </td></tr>
-  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">Best regards, ${companyName} Team<br>This is a no-reply email. <a href="${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com')}" style="color:#635BFF;text-decoration:none;">purplehere.com</a></p></td></tr>
-</table></td></tr></table></body></html>`
+    </div>`;
+
+        await sendPlatformEmail({
+          to: inquiry.email,
+          subject: `Re: Your inquiry to ${companyName}`,
+          html: emailLayout(bodyContent)
         });
 
         await inquiry.update({

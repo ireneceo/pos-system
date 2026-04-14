@@ -75,7 +75,15 @@ Station을 모두 지우면 다시 기존 단일 카드로 복원.
 
 ## 4. Kitchen Stations 탭 (신규)
 
-### 화면 구성
+### 기본 동작 (v3.14+)
+
+신규 레스토랑은 Kitchen Stations 탭에 **처음 진입하는 순간 백엔드가 "Kitchen" default station 을 자동으로 생성**한다 (`GET /api/kitchen-stations` 가 lazy-create). 사용자가 별도로 설정하지 않아도 온보딩 체크리스트의 "Set up Kitchen Stations" 가 즉시 완료로 표시된다.
+
+**stations 개수에 따른 UI 분기**:
+- `stations.length ≤ 1`: 초록색 안내 배너 ("You have 1 kitchen station. All orders will be routed here. No setup needed.") + **Assignment Mode 카드/Unassigned 경고 숨김**. 라우팅 선택지가 의미 없으므로 복잡도 제거
+- `stations.length > 1`: 아래 화면 구성처럼 Assignment Mode + Unassigned 경고 전부 표시
+
+### 화면 구성 (stations ≥ 2 일 때)
 ```
 ┌─────────────────────────────────────────────────────┐
 │  Kitchen Stations                                    │

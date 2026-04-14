@@ -59,9 +59,9 @@
 | # | 유형 | 트리거 | 수신자 | 템플릿 | 상태 |
 |---|------|--------|--------|--------|------|
 | 1 | 회원가입 환영 | 셀프 가입 완료 | 가입자 | `signupWelcomeEmail()` | ✅ |
-| 2 | 가입 알림 | 셀프 가입 완료 | System Admin 전원 | 인라인 HTML | ✅ |
+| 2 | 가입 알림 | 셀프 가입 완료 | System Admin 전원 | `notifyAdminNewSignup()` + `emailLayout()` | ✅ |
 | 3 | 비밀번호 리셋 (관리자) | 비번 찾기 요청 | 해당 사용자 | `passwordResetEmail()` | ✅ |
-| 4 | Contact 문의 확인 | 랜딩페이지 문의 | 문의자 | 인라인 HTML → emailLayout 교체 필요 | ✅ (옛 템플릿) |
+| 4 | Contact 문의 답변 | 어드민 답변 작성 | 문의자 | `public.js` 답변 메일 + `emailLayout()` | ✅ |
 | 5 | **Contact 문의 알림** | 랜딩페이지 문의 | **System Admin** | - | ❌ **미구현** |
 | 6 | **구독 Trial 만료 알림** | subscriptionScheduler | 해당 유저 | - | ❌ **미구현** |
 | 7 | **구독 Suspended 전환 알림** | subscriptionScheduler | 해당 유저 | - | ❌ **미구현** |
@@ -157,7 +157,8 @@
 | | `invoicePaidEmail()` | ✅ (wrapTemplate) | |
 | `invoiceEmailTemplate.js` | `generateInvoiceNotificationEmail()` | ✅ | SA 인보이스 발행 |
 | `emailService.js` | `sendTestEmail()` | ✅ | 2026-03-23 교체 |
-| `routes/public.js` | Contact 확인 메일 | ❌ **인라인 HTML** | emailLayout 교체 필요 |
+| `routes/public.js` | Contact 문의 답변 | ✅ | 2026-04-14 emailLayout 교체 |
+| `services/authService.js` | `notifyAdminNewSignup()` | ✅ | 2026-04-14 emailLayout 교체 |
 | `routes/customers.js` | 고객 비밀번호 리셋 | ❌ **인라인 HTML** | emailLayout 교체 필요 |
 
 ---
@@ -215,7 +216,6 @@
 | 1 | Contact → System Admin 알림 | Platform | 문의 들어왔는데 관리자가 모름 |
 | 2 | 구독 Trial→Overdue 전환 알림 | 발행자 | 만료 후 아무 알림 없음 |
 | 3 | 구독 Overdue→Suspended 전환 알림 | 발행자 | 서비스 정지 후 아무 알림 없음 |
-| 4 | Contact 확인 메일 emailLayout 교체 | Platform | 옛 하드코딩 HTML |
 | 5 | 고객 비밀번호 리셋 emailLayout 교체 | Restaurant | 옛 하드코딩 HTML |
 
 ### 추후

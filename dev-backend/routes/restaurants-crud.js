@@ -635,7 +635,12 @@ const validateFoodcourtPermission = async (foodcourtId, userId, userRole) => {
 };
 
 // Create new restaurant (with Restaurant Admin 1:1 coupling)
-router.post('/', authenticateToken, validateRestaurantCreation, async (req, res) => {
+router.post('/', authenticateToken, requireRole(
+  'System Admin',
+  'Brand General', 'Brand Manager',
+  'Foodcourt General', 'Foodcourt Manager',
+  'Restaurant Owner'
+), validateRestaurantCreation, async (req, res) => {
   const { sequelize } = require('../config/database');
   const bcrypt = require('bcrypt');
   const transaction = await sequelize.transaction();

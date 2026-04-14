@@ -858,6 +858,9 @@ const NoticesPage: React.FC = () => {
                     {notice.category === 'guide' && (
                       <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{t('admin:noticesPage.guide')}</span>
                     )}
+                    {notice.category === 'updates' && (
+                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>Updates</span>
+                    )}
                     <PriorityBadge priority={notice.priority}>
                       {notice.priority}
                     </PriorityBadge>

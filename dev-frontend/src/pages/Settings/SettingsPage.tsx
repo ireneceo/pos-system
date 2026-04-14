@@ -4573,7 +4573,25 @@ QZ Tray (installed on this device)
                 </div>
               </SettingsCard>
 
-              {/* Assignment Mode */}
+              {/* Single-station simplified notice — routing mode is irrelevant when only 1 station exists */}
+              {!kitchenStationsLoading && kitchenStations.length <= 1 && (
+                <SettingsCard style={{ marginBottom: '24px', background: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <span style={{ fontSize: '20px' }}>✓</span>
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#065F46', fontSize: '14px', marginBottom: '4px' }}>
+                        You have 1 kitchen station. All orders will be routed here.
+                      </div>
+                      <div style={{ color: '#047857', fontSize: '13px' }}>
+                        No setup needed. Add more stations below only if you want to split orders by preparation area.
+                      </div>
+                    </div>
+                  </div>
+                </SettingsCard>
+              )}
+
+              {/* Assignment Mode — only relevant with 2+ stations */}
+              {kitchenStations.length > 1 && (
               <SettingsCard style={{ marginBottom: '24px' }}>
                 <CardTitle>{t('settings:settingsPage.assignmentMode')}</CardTitle>
                 <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
@@ -4603,6 +4621,7 @@ QZ Tray (installed on this device)
                   ))}
                 </div>
               </SettingsCard>
+              )}
 
               {/* Stations List */}
               <SettingsCard>
@@ -4686,16 +4705,20 @@ QZ Tray (installed on this device)
                   </div>
                 )}
 
-                {/* Unassigned Warning */}
-                {kitchenStations.length > 0 && (() => {
+                {/* Unassigned Warning — only meaningful when user has 2+ stations to route between */}
+                {kitchenStations.length > 1 && (() => {
                   const assignedCatIds = new Set(kitchenStations.flatMap((s: any) => (s.categories || []).map((c: any) => c.id)));
                   const assignedProdIds = new Set(kitchenStations.flatMap((s: any) => (s.products || []).map((p: any) => p.id)));
                   const unassignedCats = allCategories.filter((c: any) => !assignedCatIds.has(c.id));
                   const unassignedProds = allProducts.filter((p: any) => !assignedProdIds.has(p.id));
 
                   // 카테고리 없는 아이템 찾기 (Uncategorized)
+                  // Backend returns menu items with `categoryId` (camelCase) — also accept `category_id` for safety.
                   const validCatIds = new Set(allCategories.map((c: any) => Number(c.id)));
-                  const uncategorizedProds = allProducts.filter((p: any) => !p.category || !validCatIds.has(Number(p.category)));
+                  const uncategorizedProds = allProducts.filter((p: any) => {
+                    const catId = p.categoryId ?? p.category_id;
+                    return catId == null || !validCatIds.has(Number(catId));
+                  });
 
                   const warnings: React.ReactElement[] = [];
 

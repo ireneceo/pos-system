@@ -34,9 +34,11 @@ const verifyRestaurantAccess = async (req, res, next) => {
 
 // GET /api/kitchen-stations?restaurant_id=5
 // Station 목록 (배정된 카테고리/메뉴 포함)
+// Lazy-creates a default "Kitchen" station if the restaurant has none,
+// so a brand-new restaurant never sees an empty-state requiring manual setup.
 router.get('/', authenticateToken, verifyRestaurantAccess, async (req, res) => {
   try {
-    const stations = await KitchenStation.findAll({
+    const loadStations = () => KitchenStation.findAll({
       where: { restaurant_id: req.restaurantId },
       include: [
         {
@@ -52,6 +54,18 @@ router.get('/', authenticateToken, verifyRestaurantAccess, async (req, res) => {
       ],
       order: [['display_order', 'ASC'], ['id', 'ASC']]
     });
+
+    let stations = await loadStations();
+
+    if (stations.length === 0) {
+      await KitchenStation.create({
+        restaurant_id: req.restaurantId,
+        name: 'Kitchen',
+        display_order: 0,
+        is_active: true
+      });
+      stations = await loadStations();
+    }
 
     // Get restaurant assignment mode
     const restaurant = await Restaurant.findByPk(req.restaurantId, {

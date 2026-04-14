@@ -437,6 +437,7 @@ function sendSignupWelcomeEmail({ user, role, entityName, planName, billingCycle
 function notifyAdminNewSignup({ user, role, entityName, planName, billingCycle }) {
   try {
     const { sendPlatformEmail } = require('../utils/emailService');
+    const { emailLayout } = require('../utils/emailTemplates');
     const User = require('../models/User');
 
     // Find System Admin emails
@@ -444,24 +445,22 @@ function notifyAdminNewSignup({ user, role, entityName, planName, billingCycle }
       if (!admins.length) return;
 
       const adminEmails = admins.map(a => a.email).join(', ');
-      const r = (label, value) => `<tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;width:35%;">${label}</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${value}</td></tr>`;
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#F6F9FC;font-family:'Inter',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F9FC;padding:40px 20px;"><tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-  <tr><td style="background:linear-gradient(135deg,#635BFF,#4B45C6);padding:24px 32px;"><a href="https://purplehere.com" style="text-decoration:none;"><h1 style="margin:0;color:white;font-size:22px;font-weight:600;">PurpleHere</h1></a></td></tr>
-  <tr><td style="padding:32px;">
-    <h2 style="color:#0A2540;font-size:20px;margin:0 0 16px;">New Signup</h2>
+      const row = (label, value) => `<tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;width:35%;">${label}</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${value}</td></tr>`;
+      const trialEnds = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString();
+
+      const bodyContent = `
+    <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">New Signup</h2>
     <p style="color:#6B7280;font-size:14px;margin:0 0 20px;">A new user has registered:</p>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB;border-radius:8px;margin:0 0 16px;">
-      ${r('Name', user.full_name)}${r('Email', user.email)}${r('Role', role)}
-      ${entityName ? r('Entity', entityName) : ''}
-      ${r('Plan', `${planName} (${billingCycle})`)}
-      ${r('Trial Ends', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString())}
-    </table>
-  </td></tr>
-  <tr><td style="background:#F8FAFC;padding:20px 32px;border-top:1px solid #E6EBF1;"><p style="margin:0;color:#6B7C93;font-size:12px;text-align:center;">Automated notification from <a href="https://purplehere.com" style="color:#635BFF;text-decoration:none;">PurpleHere</a>. No-reply email.</p></td></tr>
-</table></td></tr></table></body></html>`;
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;margin:0 0 16px;">
+      ${row('Name', user.full_name)}
+      ${row('Email', user.email)}
+      ${row('Role', role)}
+      ${entityName ? row('Entity', entityName) : ''}
+      ${row('Plan', `${planName} (${billingCycle})`)}
+      ${row('Trial Ends', trialEnds)}
+    </table>`;
+
+      const html = emailLayout(bodyContent);
 
       sendPlatformEmail({
         to: adminEmails,

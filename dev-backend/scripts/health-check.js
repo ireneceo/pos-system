@@ -214,6 +214,16 @@ function defineSecurityTests({ customerToken, member }) {
     const r = await request('GET', '/customers/1', null, { Authorization: `Bearer ${customerToken}` });
     return r.status === 401;
   });
+
+  // Role gate: Restaurant Admin must not create restaurants
+  test('security', 'Restaurant Admin이 POST /restaurants → 403 (역할 가드)', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra) return true; // skip if no fixture
+    const raToken = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('POST', '/restaurants', { name: 'x' }, { Authorization: `Bearer ${raToken}` });
+    return r.status === 403 && /Insufficient permissions/i.test(JSON.stringify(r.body));
+  });
 }
 
 // ============================================

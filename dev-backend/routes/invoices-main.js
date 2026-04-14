@@ -199,8 +199,18 @@ router.get('/', authenticateToken, async (req, res) => {
     const quoteByInvoiceId = {};
     linkedQuotes.forEach(q => { quoteByInvoiceId[q.invoice_id] = q; });
 
+    // Cache issuer info by (type,id,currency) to avoid duplicate lookups
+    const issuerInfoCache = new Map();
+    const getCachedIssuerInfo = async (type, id, currency) => {
+      const key = `${type}|${id || ''}|${currency}`;
+      if (!issuerInfoCache.has(key)) {
+        issuerInfoCache.set(key, await getIssuerCompanyInfo(type, id, currency));
+      }
+      return issuerInfoCache.get(key);
+    };
+
     // Transform data to match frontend expectations
-    const transformedInvoices = filteredInvoices.map(invoice => {
+    const transformedInvoices = await Promise.all(filteredInvoices.map(async invoice => {
       // Resolve customer info with a comprehensive fallback chain:
       //   1. Direct restaurant_id → restaurant.name
       //   2. payer_id → user's restaurant (for orphan invoices where admin is linked)
@@ -276,6 +286,13 @@ router.get('/', authenticateToken, async (req, res) => {
 
       // Resolve plan type: restaurant → users table for Brand/FC/Owner
       const resolvedPlanType = invoice.restaurant?.plan_type || payerPlanType;
+
+      // Attach issuerInfo so frontend can render bank info on issued invoices
+      const issuerInfo = await getCachedIssuerInfo(
+        invoice.issuer_type,
+        invoice.issuer_id,
+        invoice.currency || 'MYR'
+      );
 
       return {
         id: invoice.id.toString(),
@@ -375,9 +392,11 @@ router.get('/', authenticateToken, async (req, res) => {
         externalPayerAddress: invoice.external_payer_address || null,
         externalPayerTaxId: invoice.external_payer_tax_id || null,
         // Demo flag
-        isDemo: invoice.restaurant?.is_demo || false
+        isDemo: invoice.restaurant?.is_demo || false,
+        // Issuer info (company name, logo, bank details) for PDF/print rendering
+        issuerInfo
       };
-    });
+    }));
 
     console.log('📊 Transformed invoices count:', transformedInvoices.length);
     console.log('📊 First 3 invoices:', transformedInvoices.slice(0, 3).map(inv => ({

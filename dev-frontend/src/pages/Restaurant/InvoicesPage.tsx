@@ -28,9 +28,8 @@ import {
 } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
-import jsPDF from 'jspdf';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
-import html2canvas from 'html2canvas';
+import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 
@@ -802,11 +801,7 @@ const RestaurantInvoicesPage: React.FC = () => {
         .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
         .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
 
-        @media print {
-            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-            .invoice-container { padding: 20px; }
-            .no-print { display: none !important; }
-        }
+        ${INVOICE_PRINT_CSS}
     </style>
 </head>
 <body>
@@ -972,68 +967,11 @@ const RestaurantInvoicesPage: React.FC = () => {
       iframeDoc.write(invoiceHTML);
       iframeDoc.close();
 
-      // What and Why: iframe 렌더링 완료 대기
-      // - 150ms는 이미지/폰트 로딩에 불충분
-      // - 폰트 로딩, 이미지 로딩, 레이아웃 완료를 순차적으로 대기
-      await new Promise<void>(async (resolve) => {
-        // 폰트 로딩 대기
-        try {
-          if ((iframeDoc as any).fonts?.ready) {
-            await (iframeDoc as any).fonts.ready;
-          }
-        } catch { /* 폰트 API 미지원 시 무시 */ }
-
-        // 이미지 로딩 대기
-        const images = iframeDoc.querySelectorAll('img');
-        await Promise.all(
-          Array.from(images).map(img =>
-            img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
-          )
-        );
-
-        // 레이아웃 안정화 대기
-        setTimeout(resolve, 100);
-      });
-
-      const contentHeight = iframeDoc.body.scrollHeight;
-      iframe.style.height = `${contentHeight}px`;
-
-      // Convert iframe body to canvas
-      const canvas = await html2canvas(iframeDoc.body, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 800,
-        windowHeight: contentHeight
-      });
-
-      // Remove the iframe
-      document.body.removeChild(iframe);
-
-      // Create PDF from canvas
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      try {
+        await renderIframeToPdf(iframe, `Invoice-${invoice.invoiceNumber}.pdf`);
+      } finally {
+        document.body.removeChild(iframe);
       }
-      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
     }

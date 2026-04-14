@@ -30,8 +30,7 @@ import {
 , Modal as CommonModal } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -95,6 +94,24 @@ interface Invoice {
     changes: Record<string, { from: any; to: any }>;
     reason: string;
   }>;
+  issuerInfo?: {
+    name?: string;
+    logoUrl?: string | null;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    taxId?: string;
+    businessRegistration?: string;
+    bankName?: string;
+    bankAccount?: string;
+    bankAccountName?: string;
+    swiftCode?: string;
+  };
 }
 
 interface CurrencyConfig {
@@ -1364,11 +1381,7 @@ const InvoicesPage: React.FC = () => {
         .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
         .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
 
-        @media print {
-            body { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-            .invoice-container { padding: 20px; }
-            .no-print { display: none !important; }
-        }
+        ${INVOICE_PRINT_CSS}
     </style>
 </head>
 <body>
@@ -1470,17 +1483,23 @@ const InvoicesPage: React.FC = () => {
             </div>
         </div>
 
-        ${companySettings.bankName ? `
+        ${(() => {
+          const bankName = invoice.issuerInfo?.bankName || companySettings.bankName;
+          const bankAccount = invoice.issuerInfo?.bankAccount || companySettings.bankAccount;
+          const bankAccountName = invoice.issuerInfo?.bankAccountName || companySettings.bankAccountName;
+          const swiftCode = invoice.issuerInfo?.swiftCode || companySettings.swiftCode;
+          if (!bankName) return '';
+          return `
         <div class="bank-section">
             <div class="bank-title">${t('admin:invoicesPage.paymentDetails')}</div>
             <div class="bank-details">
-                <strong>Bank:</strong> ${companySettings.bankName}<br>
-                <strong>Account Name:</strong> ${companySettings.bankAccountName || '-'}<br>
-                <strong>Account Number:</strong> ${companySettings.bankAccount || '-'}
-                ${companySettings.swiftCode ? `<br><strong>SWIFT Code:</strong> ${companySettings.swiftCode}` : ''}
+                <strong>Bank:</strong> ${bankName}<br>
+                <strong>Account Name:</strong> ${bankAccountName || '-'}<br>
+                <strong>Account Number:</strong> ${bankAccount || '-'}
+                ${swiftCode ? `<br><strong>SWIFT Code:</strong> ${swiftCode}` : ''}
             </div>
-        </div>
-        ` : ''}
+        </div>`;
+        })()}
 
         ${(companySettings.taxNumber || companySettings.registrationNumber) ? `
         <div class="registration-info">
@@ -1531,70 +1550,11 @@ const InvoicesPage: React.FC = () => {
       iframeDoc.write(invoiceHTML);
       iframeDoc.close();
 
-      // What and Why: iframe 렌더링 완료 대기
-      // - 150ms는 이미지/폰트 로딩에 불충분
-      // - 폰트 로딩, 이미지 로딩, 레이아웃 완료를 순차적으로 대기
-      await new Promise<void>(async (resolve) => {
-        // 폰트 로딩 대기
-        try {
-          if ((iframeDoc as any).fonts?.ready) {
-            await (iframeDoc as any).fonts.ready;
-          }
-        } catch { /* 폰트 API 미지원 시 무시 */ }
-
-        // 이미지 로딩 대기
-        const images = iframeDoc.querySelectorAll('img');
-        await Promise.all(
-          Array.from(images).map(img =>
-            img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
-          )
-        );
-
-        // 레이아웃 안정화 대기
-        setTimeout(resolve, 100);
-      });
-
-      // Resize iframe to actual content height so html2canvas captures everything
-      const contentHeight = iframeDoc.body.scrollHeight;
-      iframe.style.height = `${contentHeight}px`;
-
-      // Convert iframe body to canvas
-      const canvas = await html2canvas(iframeDoc.body, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 800,
-        windowHeight: contentHeight
-      });
-
-      // Remove the iframe
-      document.body.removeChild(iframe);
-
-      // Create PDF from canvas
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // Slice tall canvas across multiple A4 pages
-      let heightLeft = imgHeight;
-      let position = 0;
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      try {
+        await renderIframeToPdf(iframe, `Invoice-${invoice.invoiceNumber}.pdf`);
+      } finally {
+        document.body.removeChild(iframe);
       }
-      pdf.save(`Invoice-${invoice.invoiceNumber}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
       setSuccessMessage('Failed to generate PDF. Please try again.');
@@ -3394,17 +3354,25 @@ const InvoicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Bank Details (if company has bank info) */}
-                {companySettings?.bankName && (
-                  <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('admin:invoicesPage.paymentDetails')}</div>
-                    <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
-                      <div><strong>Bank:</strong> {companySettings.bankName}</div>
-                      <div><strong>Account Name:</strong> {companySettings.bankAccountName}</div>
-                      <div><strong>Account Number:</strong> {companySettings.bankAccount}</div>
+                {/* Bank Details (prefer issuerInfo from payment settings, fall back to companySettings) */}
+                {(() => {
+                  const bankName = selectedInvoice.issuerInfo?.bankName || companySettings?.bankName;
+                  const bankAccount = selectedInvoice.issuerInfo?.bankAccount || companySettings?.bankAccount;
+                  const bankAccountName = selectedInvoice.issuerInfo?.bankAccountName || companySettings?.bankAccountName;
+                  const swiftCode = selectedInvoice.issuerInfo?.swiftCode || companySettings?.swiftCode;
+                  if (!bankName) return null;
+                  return (
+                    <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('admin:invoicesPage.paymentDetails')}</div>
+                      <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
+                        <div><strong>Bank:</strong> {bankName}</div>
+                        <div><strong>Account Name:</strong> {bankAccountName || '-'}</div>
+                        <div><strong>Account Number:</strong> {bankAccount || '-'}</div>
+                        {swiftCode && <div><strong>SWIFT Code:</strong> {swiftCode}</div>}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Registration Info */}
                 {(companySettings?.taxNumber || companySettings?.registrationNumber) && (

@@ -102,7 +102,11 @@ export function useSetupStatus(params: UseSetupStatusParams) {
           }
           if (kitchenStationsRes.ok) {
             const result = await kitchenStationsRes.json();
-            const stations = result.data || [];
+            // API shape: { success, data: { assignment_mode, stations: [...] } }.
+            // Accept flat array for forward compat.
+            const stations = Array.isArray(result.data)
+              ? result.data
+              : (result.data?.stations || []);
             kitchenStationCount = Array.isArray(stations) ? stations.length : 0;
           }
           if (notificationRes.ok) {
