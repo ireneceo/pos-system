@@ -485,40 +485,57 @@ router.post('/forgot-password', async (req, res) => {
       : `${baseUrl}/mobile/reset-password?token=${resetToken}`;
 
     try {
-      let restaurantId = restaurant?.id || null;
-
-      if (!restaurantId) {
-        const restaurantCustomer = await RestaurantCustomer.findOne({
+      // 1. 대상 레스토랑 결정 (slug 우선 → customer ↔ restaurant 관계 fallback)
+      let targetRestaurant = restaurant;
+      if (!targetRestaurant) {
+        const rc = await RestaurantCustomer.findOne({
           where: { customer_id: customer.id },
           include: [{ model: Restaurant, as: 'restaurant' }]
         });
-
-        if (restaurantCustomer?.restaurant) {
-          restaurantId = restaurantCustomer.restaurant.id;
-        } else {
-          restaurantId = 1;
-        }
+        targetRestaurant = rc?.restaurant || null;
       }
 
-      console.log(`📧 Sending password reset email via restaurant ID: ${restaurantId} (slug: ${slug || 'none'})`);
+      // 2. 브랜딩 가져오기 (발송 SMTP와 무관하게 고객이 인식하는 브랜드 = 레스토랑)
+      const { getEntityBranding } = require('../utils/emailBranding');
+      const branding = targetRestaurant
+        ? await getEntityBranding('restaurant', targetRestaurant.id)
+        : null;
+      const brandDisplayName = branding?.name || 'your restaurant';
+      const brandColor = branding?.color || '#635BFF';
 
+      // 3. 본문 (레스토랑 이름 명시, CTA 색상 브랜딩 반영)
       const resetBody = `
         <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">Password Reset Request</h2>
         <p style="color:#374151;font-size:14px;line-height:1.6;">Hi ${customer.name || 'there'},</p>
-        <p style="color:#374151;font-size:14px;line-height:1.6;">We received a request to reset your password. Click the button below to create a new password:</p>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">We received a request to reset your password for your <strong>${brandDisplayName}</strong> account. Click the button below to create a new password:</p>
         <div style="text-align:center;margin:24px 0;">
-          <a href="${resetLink}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Reset Password</a>
+          <a href="${resetLink}" style="display:inline-block;background:${brandColor};color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Reset Password</a>
         </div>
         <p style="color:#6B7280;font-size:14px;">This link will expire in 1 hour.</p>
         <p style="color:#6B7280;font-size:14px;">If you didn't request this, you can safely ignore this email.</p>`;
 
-      await emailService.sendEmail('restaurant', restaurantId, {
+      // 첨부: entity branding 있으면 entity 로고만, 없으면 PurpleHere 로고만
+      // (둘 다 붙이면 Gmail 이 unreferenced attachment 를 본문 하단에 크게 표시)
+      const attachments = branding?.logoAttachment
+        ? branding.logoAttachment
+        : getLogoAttachment();
+
+      const mailOptions = {
         to: customer.email,
-        subject: 'Password Reset Request - PurpleHere',
-        html: emailLayout(resetBody),
-        attachments: getLogoAttachment()
-      });
-      console.log(`✓ Password reset email sent to ${customer.email}`);
+        subject: `Password Reset Request${branding ? ' - ' + branding.name : ''}`,
+        html: emailLayout(resetBody, branding || undefined),
+        attachments
+      };
+
+      // 4. 발송: 레스토랑 SMTP 있으면 그걸, 없으면 플랫폼 fallback
+      if (targetRestaurant) {
+        const result = await emailService.sendEntityOrPlatformEmail('restaurant', targetRestaurant.id, mailOptions);
+        console.log(`✓ Password reset email sent to ${customer.email} via ${result.via} SMTP (restaurant #${targetRestaurant.id})`);
+      } else {
+        // 레스토랑 정보 없음 → 플랫폼 직접
+        await emailService.sendPlatformEmail(mailOptions);
+        console.log(`✓ Password reset email sent to ${customer.email} via platform SMTP (no restaurant context)`);
+      }
     } catch (emailError) {
       console.error('Failed to send password reset email:', emailError);
     }

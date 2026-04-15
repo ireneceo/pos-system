@@ -373,6 +373,9 @@ const MenuPage: React.FC = () => {
   const loadTriggerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
+  // 카테고리별 아이템 캐시 — 같은 카테고리를 다시 누를 때 네트워크 0
+  const categoryCacheRef = useRef<Map<string, MenuItem[]>>(new Map());
+
   // Load initial menu data
   const loadMenu = useCallback(async (categoryId?: string, page: number = 1, append: boolean = false) => {
     if (!slug) return;
@@ -435,9 +438,16 @@ const MenuPage: React.FC = () => {
 
           // Append or replace items
           if (append) {
-            setMenuItems(prev => [...prev, ...items]);
+            setMenuItems(prev => {
+              const next = [...prev, ...items];
+              if (categoryId) categoryCacheRef.current.set(categoryId.toString(), next);
+              return next;
+            });
           } else {
             setMenuItems(items);
+            if (categoryId && page === 1) {
+              categoryCacheRef.current.set(categoryId.toString(), items);
+            }
           }
 
           // 검색용 전체 메뉴 캐시 (categoryId 없이 로드한 경우)
@@ -513,12 +523,14 @@ const MenuPage: React.FC = () => {
             if (cats.length > 0) {
               firstCatId = cats[0].id.toString();
               setSelectedCategory(cats[0].id);
-              // 첫 카테고리 아이템만 fetch
+              // 첫 카테고리 아이템만 fetch + 캐시 저장
               const firstCatRes = await fetch(`/api/mobile/menu/${slug}?page=1&limit=${ITEMS_PER_PAGE}&categoryId=${firstCatId}`);
               if (firstCatRes.ok) {
                 const cr = await firstCatRes.json();
                 if (cr.success && cr.data) {
-                  setMenuItems(transformItems(cr.data.items || []));
+                  const firstItems = transformItems(cr.data.items || []);
+                  setMenuItems(firstItems);
+                  categoryCacheRef.current.set(firstCatId, firstItems);
                 }
               }
             }
@@ -590,8 +602,8 @@ const MenuPage: React.FC = () => {
     }
   }, [mobileSettings, featuredItems, popularItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Handle category change
-  const handleCategoryChange = useCallback((categoryId: string) => {
+  // Handle category change — 탭 아래 리스트만 교체, 페이지 리로드 없음
+  const handleCategoryChange = useCallback(async (categoryId: string) => {
     if (isSearchMode) {
       setIsSearchMode(false);
       setSearchQuery('');
@@ -599,13 +611,39 @@ const MenuPage: React.FC = () => {
     setSelectedCategory(categoryId);
     setPagination(null);
     const catId = categoryId.toString();
-    // allMenuItems 로드 완료 시 즉시 필터링, 아니면 API 호출
-    if (allMenuItems.length > 0) {
-      setMenuItems(allMenuItems.filter(item => item.categoryId === catId));
-    } else {
-      loadMenu(categoryId, 1, false);
+
+    // Featured tab은 별도 렌더 (아이템 fetch 불필요)
+    if (catId === '__featured__') return;
+
+    // 1순위: 카테고리 캐시 — 재방문 시 네트워크 0
+    const cached = categoryCacheRef.current.get(catId);
+    if (cached) {
+      setMenuItems(cached);
+      return;
     }
-  }, [isSearchMode, allMenuItems, loadMenu]);
+
+    // 2순위: allMenuItems 로드 완료 시 즉시 필터링 (검색 이후)
+    if (allMenuItems.length > 0) {
+      const filtered = allMenuItems.filter(item => item.categoryId === catId);
+      setMenuItems(filtered);
+      categoryCacheRef.current.set(catId, filtered);
+      return;
+    }
+
+    // 3순위: inline fetch — isLoading 건드리지 않음 (전체 페이지 loader 방지)
+    try {
+      const res = await fetch(`/api/mobile/menu/${slug}?page=1&limit=${ITEMS_PER_PAGE}&categoryId=${catId}`);
+      if (res.ok) {
+        const r = await res.json();
+        if (r.success && r.data) {
+          const items = transformItems(r.data.items || []);
+          setMenuItems(items);
+          categoryCacheRef.current.set(catId, items);
+          if (r.pagination) setPagination(r.pagination);
+        }
+      }
+    } catch { /* silent — 기존 리스트 유지 */ }
+  }, [isSearchMode, allMenuItems, slug, transformItems]);
 
   // 검색어 입력 처리
   const handleSearchChange = useCallback((query: string) => {

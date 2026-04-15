@@ -1,61 +1,65 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-14 (v3.14 운영 배포 + hotfix — /개발완료)
-**현재 버전:** v3.14
-**작업 상태:** 완료 (운영 배포 2회, smoke 10/10 × 2)
+**마지막 업데이트:** 2026-04-15 (모바일 이미지 파이프라인 + 엔티티 브랜딩 이메일)
+**작업 상태:** 완료 (dev 검증 완료, 이메일 브랜딩 운영 배포 대기)
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션)
 
-#### 운영 배포 1 (06:27 UTC 2026-04-14) — `main.0028215c.js`
+#### 긴급 이슈 1: 모바일 주문 상품 상세 진입 불가
+- `routes/mobile-public.js:413` `getPreparationTime()` 호출 제거 → `|| 15` 리터럴로 교체
+- 운영 영향: with MIN Cafe 포함 모든 레스토랑 모바일 주문에서 상품 탭 시 장바구니 담기 실패 → 복구
+- 이미 Irene이 운영 배포 완료 (2026-04-15 06:08 UTC)
 
-1. **인보이스 발행자 은행계좌 정보 복구 + PDF 안전 분할**
-   - `invoices-helpers.js`: `extractBankFromPaymentSettings` 헬퍼 추가. Brand/Foodcourt 분기에서 `payment_settings.bankTransfer[currency]` JSON 우선 읽기, legacy 컬럼 폴백
-   - `invoices-main.js`: 메인 `/api/invoices` GET 에 `issuerInfo` 추가 (캐시로 N+1 방지)
-   - `invoicePdf.ts` 신규: `renderIframeToPdf()` — 캔버스 픽셀 행 스캔으로 흰색 행 찾아 안전 분할. `INVOICE_PRINT_CSS` 상수
-   - 5개 invoice 페이지 (Admin/Restaurant/Brand/Foodcourt/Owner) 모두 공통 util 호출 + `issuerInfo` 우선 렌더
-   - 뷰/프린트/다운로드 3경로 모두 은행정보 표시 확인
+#### 긴급 이슈 2: 모바일 메뉴 카테고리 전환 30초+ 로딩
+- `utils/imageProcessor.js:processImage()` 재작성 — sharp 로 파일 저장 + URL 반환 (이전엔 base64 JSON 반환하던 버그)
+- `routes/menu.js` create/update 2곳: `JSON.stringify` 제거, `image` + `image_thumbnail` 분리 저장
+- `scripts/migrate-images.js` 기존 스크립트로 운영 290건 base64 → 파일 변환 (289 성공, 1 스킵)
+- 운영 `products.image` 컬럼 35.4MB → 0.01MB
+- 모바일 `/api/mobile/menu/with-min-cafe` 응답 2,394KB → 44KB (~55배 감소)
+- Irene이 운영 배포 완료 (2026-04-15 08:51 UTC)
 
-2. **Kitchen Stations 3개 이슈**
-   - `SettingsPage.tsx:4697` uncategorized 필터: `p.category` → `p.categoryId ?? p.category_id`
-   - `kitchen-stations.js GET /`: stations 0개이면 "Kitchen" default station 자동 INSERT (lazy)
-   - stations ≤ 1 일 때 초록 안내 배너 + Assignment Mode/경고 숨김
-   - `useSetupStatus.ts:103`: `result.data?.stations || []` 로 올바른 파싱 → 온보딩 체크리스트 즉시 완료
+#### 긴급 이슈 3: 카테고리 전환 시 전체 페이지 리로딩 flicker
+- `MenuPage.tsx:handleCategoryChange` 가 `loadMenu()` 경유 → `setIsLoading(true)` → 페이지 전체가 `<LoadingContainer>Loading menu...</LoadingContainer>` 로 교체되는 현상
+- 수정: inline fetch 로 전환, `setIsLoading` 건드리지 않음
+- `categoryCacheRef: useRef<Map<string, MenuItem[]>>` 추가 — 재방문 시 네트워크 0
+- Irene이 운영 배포 완료 (2026-04-15 09:10 UTC)
 
-3. **Legacy email 템플릿 2개 → emailLayout() 교체**
-   - `authService.js notifyAdminNewSignup` (신규가입 admin 알림 — 운영 레거시 발송 사건의 템플릿)
-   - `routes/public.js` 문의 답변 메일
-   - `sendPlatformEmail` 이 `cid:purplehere-logo` 자동 감지 → 로고 CID 첨부
+#### 이메일 엔티티 브랜딩 시스템 구축 (운영 배포 대기)
+- `utils/emailBranding.js` 신규 — `getEntityBranding(entityType, entityId)` + sharp pre-resize (height 40px / max-width 280px) → Buffer CID 첨부
+- `utils/emailService.js` — `sendEntityOrPlatformEmail(entityType, entityId, mailOptions)` 헬퍼 추가 (entity SMTP 시도 → "not configured" 에러 시 플랫폼 fallback)
+- `routes/customers-auth.js` 고객 비밀번호 리셋 전환 — 레스토랑 브랜딩 + fallback + 하드코딩 `restaurantId=1` 제거
+- `utils/notificationTemplates.js` — 8개 템플릿에 `_title/_body/_lang` non-enumerable 메타 포함 (`withRenderMeta`)
+- `utils/notificationService.js` — `resolveReceiverBranding(user)` + `sendNotification` 수신자별 재렌더 파이프라인
+- `utils/emailTemplates.js:emailLayout` 로고 렌더 규칙 재작성 — 3 분기: (1) hasIssuer+logo → pre-resized img 링크 없음, (2) hasIssuer+no logo → 브랜드 이름 텍스트, (3) !hasIssuer → PurpleHere 기본 (기존 유지)
+- 푸터 조건부 링크 — entity 브랜딩 시 PurpleHere 도메인/notification-preferences 링크 완전 제거, entity website 있으면 그것만 표시
+- 첨부 정책 분기 — entity 브랜딩 → entity 로고만 / PurpleHere 기본 → `getLogoAttachment()` (html 에 `cid:purplehere-logo` 있을 때만 자동)
+- **System Admin 발송 메일은 영향 없음** (`auth.js`/`users.js`/`public.js`/`authService.notifyAdminNewSignup`/`systemLogger.js` 등 `emailLayout(body)` 경로는 그대로)
 
-4. **POST /api/restaurants 역할 가드 (HIGH 보안 갭)**
-   - `requireRole('System Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager', 'Restaurant Owner')` 추가
-   - 회원가입 흐름 (`authService.js Restaurant.create`) 미영향
-   - `health-check.js` regression test 추가 (39 → 40 통과)
-
-#### 운영 배포 2 hotfix (07:14 UTC 2026-04-14) — `main.3fe57608.js`
-
-5. **공지 가시성 + Updates 배지**
-   - `/api/notices/sent`: System Admin 로그인 시 `author_id IN (모든 SA ids)` 로 확장. 이전엔 `req.user.id` 로 본인 작성만 → release-post 스크립트가 id=1 로 고정 생성한 공지를 Irene(id=4) 이 못 봄
-   - 5개 역할 NoticesPage (Admin/Brand/Foodcourt/Owner/Restaurant): `updates` 카테고리에 보라색 "Updates" 배지 추가. 기존 `guide` 배지 패턴 재사용
-   - 검증: Irene (prod id=4) `/sent` 응답 0 → 14건, v3.14 포함
-
-### 문서 업데이트
-- `DEVELOPMENT_PLAN.md`: v3.14 완료 섹션 추가
-- `CHANGELOG.md`: v3.14 섹션 — 4개 종합 fix + hotfix 추가
-- `docs/KITCHEN_STATION_SYSTEM.md`: lazy default 생성 + 1-station UI 분기 문단 추가
-- `docs/EMAIL_SYSTEM.md`: notifyAdminNewSignup / public.js 문의 답변 emailLayout 전환 기록. TODO 목록에서 Contact 확인 메일 항목 제거
-
-### v3.11 건너뜀
-- 질문 있었음. CHANGELOG + git 이력 확인 — v3.10 → v3.12 로 버전 번호만 건너뛴 것. 공지/블로그도 v3.11 없음. 그대로 두기로 결정
+### 검증
+- dev health-check: 40/40 통과
+- state-hydration-check: 0 warnings
+- 통합 API 테스트: 39/39 (Write→Read 왕복, 권한별, 에러케이스)
+- 브랜딩 유닛 테스트: 27/27 (로고 있음/없음, Restaurant/Brand/Foodcourt, 텍스트 fallback, 재렌더)
+- 실제 이메일 수신 테스트: irene@irenewp.com 으로 5케이스 반복 발송하여 Irene 육안 확인
 
 ### 다음 할 일
-1. **운영 플랜 수동 체크** (Irene 직접): `/pos/admin/plans` 에서 신규 advanced 모듈 8개 (Work Manuals, Ingredients, Suppliers) 를 Restaurant/Brand/Foodcourt/Owner 플랜에 체크
-2. **`branch_name` 표시 점검**: 모든 역할 모든 페이지 레스토랑 이름 옆 `branch_name` 누락 페이지 찾기
-3. **"No Active Subscription" 배너 정책**: Free 플랜 자동 발행 vs 배너 vs 차단 — Irene 판단 필요
-4. **N:M 조인 테이블 DROP** (`brand_product_brands`, `supplier_brands`): 2026-04-13 읽기 중단 후 1-2주 안정화 완료 시점에 DROP
-5. **고객 비밀번호 리셋 메일 emailLayout 전환** (`routes/customers.js`): 레거시 HTML 마지막 남은 사이트
-6. **`POST /api/contact/inquiries` 알림 미구현** (System Admin 에게): EMAIL_SYSTEM.md TODO #1
+
+#### 운영 배포 대기 (Irene 본인 실행)
+이번 세션의 이메일 엔티티 브랜딩은 dev 검증 완료, 운영 배포는 Irene이 직접 `/var/www/deploy-to-production.sh --auto` 실행 예정.
+
+#### 후속 개발 과제 (DEVELOPMENT_PLAN.md 기반)
+1. **고객 회원가입 환영 + 이메일 인증 플로우** (현재 미구현, 구현 시 플랫폼 이메일)
+2. **주문 확인 / 영수증 메일** (현재 미구현, 구현 시 레스토랑 SMTP 우선 + 플랫폼 fallback)
+3. **branch_name 표시 전수 점검** — 모든 역할/페이지의 레스토랑 이름 옆 branch_name 누락 감사 (중규모)
+4. **"No Active Subscription" 배너 정책 결정** — Free 플랜 자동 발행 vs 배너 vs 차단 (Irene 판단)
+5. **N:M 조인 테이블 DROP** (`brand_product_brands`, `supplier_brands`) — 2026-04-13 읽기 중단 후 안정화 완료 시점
+6. **구독 Trial→Overdue/Suspended 전환 알림** (EMAIL_SYSTEM.md TODO #2, #3)
+7. **다른 이미지 경로 (Brand logo, Foodcourt logo, Ingredient image 등) base64 저장 여부 감사** — 상품 이미지와 동일 구조 문제 없는지 확인
+
+#### Irene 직접 확인 필요 (코딩 아님)
+- `/pos/admin/plans` 에서 신규 advanced 모듈 8개 (Work Manuals, Ingredients, Suppliers) 를 Restaurant/Brand/Foodcourt/Owner 플랜에 체크
 
 ---
 

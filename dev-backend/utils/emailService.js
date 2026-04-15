@@ -330,6 +330,33 @@ async function verifyConnection(settings) {
   }
 }
 
+/**
+ * Try entity SMTP first; on "not configured", transparently fall back to platform SMTP.
+ * Other errors (network, auth failure, etc.) are re-thrown.
+ *
+ * 사용처 예: 고객 비밀번호 리셋 — 레스토랑 SMTP 있으면 그걸, 없으면 플랫폼 help@purplehere.com.
+ *
+ * @param {string} entityType - 'restaurant' | 'brand' | 'foodcourt' | ...
+ * @param {number} entityId
+ * @param {object} mailOptions - nodemailer options (to, subject, html, text, attachments)
+ * @returns {Promise<{success, via:'entity'|'platform', ...}>}
+ */
+async function sendEntityOrPlatformEmail(entityType, entityId, mailOptions) {
+  try {
+    const result = await sendEmail(entityType, entityId, mailOptions);
+    return { ...result, via: 'entity' };
+  } catch (err) {
+    const msg = String(err && err.message || '');
+    const notConfigured = /not configured/i.test(msg);
+    if (!notConfigured) {
+      throw err;
+    }
+    console.log(`[EmailFallback] ${entityType}#${entityId} SMTP not configured → platform fallback`);
+    const result = await sendPlatformEmail(mailOptions);
+    return { ...result, via: 'platform' };
+  }
+}
+
 module.exports = {
   getEmailSettings,
   getPlatformEmailSettings,
@@ -337,6 +364,7 @@ module.exports = {
   createTransporter,
   sendEmail,
   sendPlatformEmail,
+  sendEntityOrPlatformEmail,
   sendIssuerEmail,
   sendTestEmail,
   verifyConnection

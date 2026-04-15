@@ -71,6 +71,44 @@ async function resolveReceiverSmtp(user) {
  * @param {string} category - Notification category key (e.g., 'invoice_created')
  * @param {object} mailOptions - { subject, html, text } (to is auto-set, from is auto-set)
  */
+/**
+ * 사용자의 entity 정보로부터 이메일 branding 을 결정.
+ * - Restaurant Admin/Staff → restaurant branding
+ * - Brand General/Manager → brand branding
+ * - Foodcourt General/Manager → foodcourt branding
+ * - Restaurant Owner → 첫 소유 restaurant branding (없으면 null → PurpleHere)
+ * - System Admin → null (PurpleHere 기본)
+ */
+async function resolveReceiverBranding(user) {
+  try {
+    const { getEntityBranding } = require('./emailBranding');
+    switch (user.role) {
+      case 'Restaurant Admin':
+      case 'Staff':
+        return user.restaurant_id ? await getEntityBranding('restaurant', user.restaurant_id) : null;
+      case 'Brand General':
+      case 'Brand Manager':
+        return user.brand_id ? await getEntityBranding('brand', user.brand_id) : null;
+      case 'Foodcourt General':
+      case 'Foodcourt Manager':
+        return user.foodcourt_id ? await getEntityBranding('foodcourt', user.foodcourt_id) : null;
+      case 'Restaurant Owner': {
+        const row = await sequelize.query(
+          `SELECT restaurant_id FROM restaurant_managers WHERE manager_id = :uid AND relationship_type = 'ownership' LIMIT 1`,
+          { replacements: { uid: user.id }, type: QueryTypes.SELECT }
+        );
+        return row[0]?.restaurant_id ? await getEntityBranding('restaurant', row[0].restaurant_id) : null;
+      }
+      case 'System Admin':
+      default:
+        return null;
+    }
+  } catch (e) {
+    console.error('[Notification] resolveReceiverBranding error:', e.message);
+    return null;
+  }
+}
+
 async function sendNotification(recipientUserId, category, mailOptions) {
   try {
     // 1. Get recipient user
@@ -94,10 +132,34 @@ async function sendNotification(recipientUserId, category, mailOptions) {
       return;
     }
 
-    // 4. Send email
+    // 4. Resolve recipient branding & re-render if template metadata available
+    const branding = await resolveReceiverBranding(user);
+    let renderedHtml = mailOptions.html;
+    if (branding && mailOptions._title && mailOptions._body) {
+      const { wrapTemplate } = require('./notificationTemplates');
+      renderedHtml = wrapTemplate(mailOptions._title, mailOptions._body, mailOptions._lang, branding);
+    }
+
+    // 5. Send email — exclude metadata fields from nodemailer payload
+    const { _title, _body, _lang, ...cleanOptions } = mailOptions;
     const transporter = emailService.createTransporter(smtp.settings);
+
+    // 첨부 정책 (unreferenced attachment 가 본문 하단에 표시되는 문제 방지):
+    //  - branding 있음 (entity) → entity 로고만, PurpleHere 로고 첨부 안 함
+    //  - branding 없음 (PurpleHere 기본) + html 에 cid:purplehere-logo 참조 → 자동 첨부
+    //  - 기존 cleanOptions.attachments 는 그대로 유지 (caller 가 명시적으로 넣은 것)
+    let finalAttachments = [...(cleanOptions.attachments || [])];
+    if (branding?.logoAttachment) {
+      finalAttachments.push(...branding.logoAttachment);
+    } else if (!branding && renderedHtml && renderedHtml.includes('cid:purplehere-logo')) {
+      const { getLogoAttachment } = require('./emailTemplates');
+      finalAttachments.push(...getLogoAttachment());
+    }
+
     const finalOptions = {
-      ...mailOptions,
+      ...cleanOptions,
+      html: renderedHtml,
+      attachments: finalAttachments.length > 0 ? finalAttachments : undefined,
       to: user.email,
       from: smtp.settings.from_name
         ? `"${smtp.settings.from_name}" <${smtp.settings.from_email}>`
@@ -109,7 +171,7 @@ async function sendNotification(recipientUserId, category, mailOptions) {
     }
 
     const info = await transporter.sendMail(finalOptions);
-    console.log(`[Notification] Sent '${category}' to ${user.email} via ${smtp.source} SMTP (${info.messageId})`);
+    console.log(`[Notification] Sent '${category}' to ${user.email} via ${smtp.source} SMTP, branding=${branding ? branding.name : 'PurpleHere'} (${info.messageId})`);
   } catch (error) {
     console.error(`[Notification] Error sending '${category}' to user ${recipientUserId}:`, error.message);
     // Never throw - notifications should not break the main flow
@@ -183,6 +245,7 @@ module.exports = {
   sendNotification,
   sendNotificationBatch,
   resolveReceiverSmtp,
+  resolveReceiverBranding,
   getSystemAdminIds,
   getBrandManagerIds,
   getFoodcourtManagerIds,

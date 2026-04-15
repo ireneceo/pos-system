@@ -369,17 +369,23 @@ router.post('/product', async (req, res) => {
           productData.image_thumbnail = productData.image.replace('/products/', '/products/thumbnails/');
         }
       }
-      // base64 이미지면 파일로 저장 (하위 호환성)
+      // base64 이미지면 파일로 저장
       else if (productData.image.startsWith('data:image/')) {
         try {
           const processedImages = await processImage(productData.image);
-          if (processedImages) {
-            // 임시로 JSON 저장 (마이그레이션 후 URL로 변환됨)
-            productData.image = JSON.stringify(processedImages);
-            console.log('Image processed for new product (legacy base64)');
+          if (processedImages && processedImages.original) {
+            productData.image = processedImages.original;
+            productData.image_thumbnail = processedImages.thumbnail;
+          } else {
+            // 저장 실패 시 이미지 필드 제거하여 빈 값으로 저장
+            delete productData.image;
+            delete productData.image_thumbnail;
+            console.warn('Image processing failed on create — image field cleared');
           }
         } catch (imgError) {
           console.error('Image processing error:', imgError);
+          delete productData.image;
+          delete productData.image_thumbnail;
         }
       }
     }
@@ -547,19 +553,26 @@ router.put('/product/:id', async (req, res) => {
           updateData.image_thumbnail = updateData.image.replace('/products/', '/products/thumbnails/');
         }
       }
-      // base64 이미지면 파일로 저장 (하위 호환성)
+      // base64 이미지면 파일로 저장
       else if (updateData.image.startsWith('data:image/')) {
         try {
           const processedImages = await processImage(updateData.image);
-          if (processedImages) {
-            updateData.image = JSON.stringify(processedImages);
-            console.log('Image processed for product update (legacy base64):', req.params.id);
+          if (processedImages && processedImages.original) {
+            updateData.image = processedImages.original;
+            updateData.image_thumbnail = processedImages.thumbnail;
+          } else {
+            // 저장 실패 시 이미지 필드 제거하여 기존값 유지
+            delete updateData.image;
+            delete updateData.image_thumbnail;
+            console.warn('Image processing failed on update — keeping existing image:', req.params.id);
           }
         } catch (imgError) {
           console.error('Image processing error:', imgError);
+          delete updateData.image;
+          delete updateData.image_thumbnail;
         }
       }
-      // JSON 형식(이전 데이터)이면 그대로 유지
+      // JSON 형식(이전 데이터)이면 그대로 유지 — 마이그레이션 스크립트가 처리
     }
 
     // Handle directIngredients: auto-create or update recipe

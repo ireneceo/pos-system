@@ -40,13 +40,32 @@ function getLogoAttachment() {
 function emailLayout(bodyContent, issuerInfo, lang) {
   const { getEmailText } = require('./i18n');
   const emailLang = lang || 'en';
+  const hasIssuer = !!(issuerInfo && issuerInfo.name);
   const brandName = issuerInfo?.name || 'PurpleHere';
   const brandColor = issuerInfo?.color || '#635BFF';
-  const logoSrc = issuerInfo?.logoUrl || 'cid:purplehere-logo';
   const platformUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
-  const logoLink = issuerInfo?.website || platformUrl;
-  const logoHtml = `<a href="${logoLink}" style="text-decoration:none;"><img src="${logoSrc}" alt="${brandName}" style="height:32px;display:block;" /></a>`;
-  const footerText = issuerInfo?.companyName || 'PurpleHere POS System';
+
+  // 로고 렌더 규칙:
+  // - hasIssuer + logoUrl 있음 → pre-resized img, 링크 없음 (PurpleHere 노출 방지)
+  // - hasIssuer + logoUrl 없음 → 브랜드 이름 텍스트, 링크 없음
+  // - hasIssuer 없음 (PurpleHere 기본) → CID 로고 + purplehere.com 링크
+  //
+  // entity branding 에서는 PurpleHere 링크/도메인이 노출되지 않도록 전부 제거.
+  // entity website 가 있으면 그 링크를 쓸 수도 있지만, 혼선 방지 위해 로고는 plain img.
+  let logoHtml;
+  if (hasIssuer) {
+    if (issuerInfo.logoUrl) {
+      const w = issuerInfo.logoWidth || 160;
+      const h = issuerInfo.logoHeight || 40;
+      logoHtml = `<img src="${issuerInfo.logoUrl}" alt="${brandName}" width="${w}" height="${h}" style="display:block;width:${w}px;height:${h}px;border:0;outline:none;" />`;
+    } else {
+      logoHtml = `<span style="display:inline-block;font-size:20px;font-weight:700;color:#0A2540;letter-spacing:-0.3px;">${brandName}</span>`;
+    }
+  } else {
+    logoHtml = `<a href="${platformUrl}" style="text-decoration:none;"><img src="cid:purplehere-logo" alt="PurpleHere" height="32" style="display:block;height:32px;border:0;outline:none;text-decoration:none;" /></a>`;
+  }
+
+  const footerText = issuerInfo?.companyName || issuerInfo?.name || 'PurpleHere POS System';
   const footerUrl = issuerInfo?.website || platformUrl;
   const footerDomain = issuerInfo?.website ? issuerInfo.website.replace(/^https?:\/\//, '') : platformUrl.replace(/^https?:\/\//, '');
 
@@ -66,8 +85,8 @@ function emailLayout(bodyContent, issuerInfo, lang) {
       </table>
       <!-- Main card -->
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:0 0 8px 8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <!-- Logo header -->
-        <tr><td style="padding:28px 32px 20px;border-bottom:1px solid #EEEEF0;">
+        <!-- Logo header (항상 좌측 정렬) -->
+        <tr><td align="left" style="padding:28px 32px 20px;border-bottom:1px solid #EEEEF0;text-align:left;">
           ${logoHtml}
         </td></tr>
         <!-- Body -->
@@ -77,9 +96,7 @@ function emailLayout(bodyContent, issuerInfo, lang) {
         <!-- Footer -->
         <tr><td style="padding:20px 32px;border-top:1px solid #EEEEF0;">
           <p style="margin:0;color:#9CA3AF;font-size:12px;line-height:1.6;text-align:center;">
-            ${getEmailText(emailLang, 'footer.automated', { company: footerText })}<br>
-            <a href="${footerUrl}/notification-preferences" style="color:#6B7280;text-decoration:underline;">${getEmailText(emailLang, 'footer.managePreferences')}</a><br>
-            <a href="${footerUrl}" style="color:#6B7280;text-decoration:none;">${footerDomain}</a>
+            ${getEmailText(emailLang, 'footer.automated', { company: footerText })}${hasIssuer ? '' : '<br><a href="' + platformUrl + '/notification-preferences" style="color:#6B7280;text-decoration:underline;">' + getEmailText(emailLang, 'footer.managePreferences') + '</a><br><a href="' + platformUrl + '" style="color:#6B7280;text-decoration:none;">' + platformUrl.replace(/^https?:\/\//, '') + '</a>'}${hasIssuer && issuerInfo.website ? '<br><a href="' + issuerInfo.website + '" style="color:#6B7280;text-decoration:none;">' + issuerInfo.website.replace(/^https?:\/\//, '') + '</a>' : ''}
           </p>
         </td></tr>
       </table>

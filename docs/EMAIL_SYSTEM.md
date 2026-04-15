@@ -159,7 +159,58 @@
 | `emailService.js` | `sendTestEmail()` | ✅ | 2026-03-23 교체 |
 | `routes/public.js` | Contact 문의 답변 | ✅ | 2026-04-14 emailLayout 교체 |
 | `services/authService.js` | `notifyAdminNewSignup()` | ✅ | 2026-04-14 emailLayout 교체 |
-| `routes/customers.js` | 고객 비밀번호 리셋 | ❌ **인라인 HTML** | emailLayout 교체 필요 |
+| `routes/customers-auth.js` | 고객 비밀번호 리셋 | ✅ | 2026-04-15 emailLayout + entity 브랜딩 + 플랫폼 fallback |
+
+---
+
+## 5.1. 엔티티 브랜딩 이메일 (2026-04-15 구축)
+
+### 개요
+Notification 이메일(공지/댓글/티켓/인보이스 등) + 고객 비밀번호 리셋에서, 수신자가 속한 Restaurant/Brand/Foodcourt 의 로고·이름·색상을 이메일 헤더/푸터에 표시.
+
+### 핵심 헬퍼
+
+**`utils/emailBranding.js` 신규**
+- `getEntityBranding(entityType, entityId)` → `{ name, logoUrl, logoAttachment, logoWidth, logoHeight, website, companyName, color } | null`
+- 로고가 `/uploads/...` 로컬 파일이면 sharp 로 **pre-resize** (height 40px, max-width 280px) → Buffer CID 첨부 생성
+- 로고 없으면 `logoUrl = null` → `emailLayout` 에서 텍스트 이름 fallback
+
+**`utils/emailService.js:sendEntityOrPlatformEmail(entityType, entityId, mailOptions)`**
+- entity SMTP 시도 → "not configured" 에러면 자동 플랫폼 fallback
+- 고객 비밀번호 리셋이 대표 사용처 — "레스토랑 우선, 없으면 시스템"
+
+**`utils/notificationService.js:resolveReceiverBranding(user)`**
+- 수신자 역할에서 entity 추출 (Restaurant Admin → restaurant, Brand Manager → brand, 등)
+- `sendNotification` 이 수신자별 branding 으로 `wrapTemplate` 재렌더 후 발송
+
+**`utils/notificationTemplates.js` — `withRenderMeta` + 8개 템플릿**
+- 각 템플릿 return 값에 non-enumerable `_title/_body/_lang` 포함
+- `notificationService` 가 수신자 branding 으로 재렌더할 수 있도록 메타데이터 제공
+- `{...mailOptions}` spread, `JSON.stringify`, nodemailer 페이로드에는 노출 안 됨
+
+### emailLayout 로고 렌더 규칙
+
+| 케이스 | 헤더 | 푸터 | 첨부 |
+|---|---|---|---|
+| `hasIssuer` + `logoUrl` 있음 | pre-resized img, **링크 없음** | 회사명 텍스트 + (entity website 있으면 링크) | entity 로고 CID 만 |
+| `hasIssuer` + `logoUrl` 없음 | 브랜드 이름 텍스트 | 회사명 텍스트 | 없음 |
+| `!hasIssuer` (PurpleHere 기본) | `cid:purplehere-logo` img + purplehere.com 링크 | notification-preferences + purplehere.com 링크 | `getLogoAttachment()` (html 에 `cid:purplehere-logo` 있을 때만) |
+
+### 첨부 정책 (중요)
+엔티티 브랜딩 이메일에 PurpleHere 로고 첨부를 섞으면 Gmail 이 unreferenced inline attachment 를 본문 하단에 크게 표시. 아래 규칙 엄수:
+- `branding.logoAttachment` 있으면 **그것만** 첨부
+- `branding` 없으면 html 에 `cid:purplehere-logo` 참조 있을 때만 `getLogoAttachment()` 자동 추가
+- 둘 다 넣지 않음
+
+### 시스템 관리자 발송은 영향 없음
+`emailLayout(body)` (issuerInfo 미전달) 경로는 기존 그대로:
+- `auth.js` POS 관리자 비밀번호 리셋/이메일 인증
+- `users.js` 관리자 계정 생성 안내
+- `authService.js:notifyAdminNewSignup` 신규 가입 관리자 알림
+- `public.js` 랜딩 문의 확인/답변/하드웨어 견적
+- `systemLogger.js` 시스템 에러 알림
+
+PurpleHere 로고 + 링크 + 푸터 전부 기존과 동일.
 
 ---
 
@@ -213,10 +264,10 @@
 
 | # | 항목 | SMTP | 비고 |
 |---|------|------|------|
-| 1 | Contact → System Admin 알림 | Platform | 문의 들어왔는데 관리자가 모름 |
+| 1 | Contact → System Admin 알림 | Platform | 이미 구현됨 (public.js sendNotificationBatch) — 2026-04-15 확인 |
 | 2 | 구독 Trial→Overdue 전환 알림 | 발행자 | 만료 후 아무 알림 없음 |
 | 3 | 구독 Overdue→Suspended 전환 알림 | 발행자 | 서비스 정지 후 아무 알림 없음 |
-| 5 | 고객 비밀번호 리셋 emailLayout 교체 | Restaurant | 옛 하드코딩 HTML |
+| 5 | ~~고객 비밀번호 리셋 emailLayout 교체~~ | ~~Restaurant~~ | **2026-04-15 완료** (entity 브랜딩 + 플랫폼 fallback) |
 
 ### 추후
 

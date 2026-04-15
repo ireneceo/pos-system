@@ -10,6 +10,11 @@
 const sharp = require('sharp');
 const fs = require('fs').promises;
 const path = require('path');
+const crypto = require('crypto');
+
+// 파일 저장 위치
+const PRODUCTS_DIR = '/var/www/uploads/products';
+const PRODUCTS_THUMB_DIR = '/var/www/uploads/products/thumbnails';
 
 // 이미지 크기 설정
 const IMAGE_SIZES = {
@@ -25,84 +30,137 @@ const QUALITY_SETTINGS = {
   original: 85
 };
 
+function generateImageFilename() {
+  return `${Date.now()}_${crypto.randomBytes(8).toString('hex')}`;
+}
+
 /**
- * Base64 이미지를 처리하여 여러 크기로 변환
- * @param {string} base64Image - data:image/... 형식의 base64 이미지
- * @returns {Promise<{thumbnail: string, medium: string, original: string} | null>}
+ * Base64 이미지를 파일로 저장하고 URL 경로를 반환
+ *
+ * Input:
+ *   - base64 data URI (data:image/...)
+ *   - 이미 URL 경로면 그대로 반환
+ * Output:
+ *   - { original, thumbnail, medium } — 모두 URL 문자열 (/uploads/products/xxx.jpg)
+ *   - 실패 시 null (호출부가 null 처리)
+ *
+ * 변환 내용:
+ *   - 원본: 최대 1200x1200, quality 85
+ *   - 썸네일: 300x300 cover crop, quality 70
+ *   - medium: 호환용, original URL과 동일 (별도 파일 생성 안 함)
+ *
+ * 포맷 분기:
+ *   - SVG: 원본 그대로 저장 (리사이즈 없음)
+ *   - PNG: 투명도 보존, .png 확장자 유지
+ *   - 그 외 (JPEG 등): .jpg로 통일
  */
 async function processImage(base64Image) {
   if (!base64Image || typeof base64Image !== 'string') {
     return null;
   }
 
-  // data:image/xxx;base64, 형식 체크
+  // 이미 URL 경로이면 그대로 반환 (idempotent)
+  if (base64Image.startsWith('/uploads/') || base64Image.startsWith('http://') || base64Image.startsWith('https://')) {
+    const thumb = base64Image.replace('/products/', '/products/thumbnails/');
+    return {
+      original: base64Image,
+      thumbnail: thumb,
+      medium: base64Image
+    };
+  }
+
+  // data:image/...;base64, 형식 아니면 처리 불가
   if (!base64Image.startsWith('data:image/')) {
-    // 이미 URL인 경우 그대로 반환
-    if (base64Image.startsWith('http://') || base64Image.startsWith('https://') || base64Image.startsWith('/')) {
-      return {
-        thumbnail: base64Image,
-        medium: base64Image,
-        original: base64Image
-      };
-    }
     return null;
   }
 
+  const matches = base64Image.match(/^data:image\/([\w+.-]+);base64,(.+)$/);
+  if (!matches) {
+    console.error('processImage: invalid base64 format');
+    return null;
+  }
+
+  const mimeSubtype = matches[1].toLowerCase();
+  const buffer = Buffer.from(matches[2], 'base64');
+
   try {
-    // base64 데이터 추출
-    const matches = base64Image.match(/^data:image\/(\w+);base64,(.+)$/);
-    if (!matches) {
-      console.error('Invalid base64 image format');
-      return null;
+    // 디렉토리 존재 보장
+    await fs.mkdir(PRODUCTS_DIR, { recursive: true });
+    await fs.mkdir(PRODUCTS_THUMB_DIR, { recursive: true });
+
+    const filename = generateImageFilename();
+
+    // SVG: 원본 그대로 저장 (리사이즈 불필요, 썸네일도 SVG 자체 사용)
+    if (mimeSubtype === 'svg+xml') {
+      const filepath = path.join(PRODUCTS_DIR, `${filename}.svg`);
+      await fs.writeFile(filepath, buffer);
+      const url = `/uploads/products/${filename}.svg`;
+      console.log(`processImage: SVG saved ${Math.round(buffer.length / 1024)}KB → ${url}`);
+      return { original: url, thumbnail: url, medium: url };
     }
 
-    const imageFormat = matches[1].toLowerCase();
-    const base64Data = matches[2];
-    const buffer = Buffer.from(base64Data, 'base64');
+    // PNG: 투명도 보존
+    if (mimeSubtype === 'png') {
+      const originalPath = path.join(PRODUCTS_DIR, `${filename}.png`);
+      const thumbnailPath = path.join(PRODUCTS_THUMB_DIR, `${filename}.png`);
 
-    // 이미지 메타데이터 확인
-    const metadata = await sharp(buffer).metadata();
-    console.log(`Processing image: ${metadata.width}x${metadata.height}, format: ${imageFormat}`);
+      await sharp(buffer, { failOn: 'none' })
+        .resize(IMAGE_SIZES.original.width, IMAGE_SIZES.original.height, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .png({ quality: QUALITY_SETTINGS.original })
+        .toFile(originalPath);
 
-    // 각 크기별로 이미지 생성
-    const results = {};
+      await sharp(buffer, { failOn: 'none' })
+        .resize(IMAGE_SIZES.thumbnail.width, IMAGE_SIZES.thumbnail.height, {
+          fit: 'cover',
+          position: 'centre'
+        })
+        .png({ quality: QUALITY_SETTINGS.thumbnail })
+        .toFile(thumbnailPath);
 
-    for (const [sizeName, dimensions] of Object.entries(IMAGE_SIZES)) {
-      const quality = QUALITY_SETTINGS[sizeName];
+      const originalUrl = `/uploads/products/${filename}.png`;
+      const thumbnailUrl = `/uploads/products/thumbnails/${filename}.png`;
 
-      let processedBuffer;
+      const origStats = await fs.stat(originalPath);
+      const thumbStats = await fs.stat(thumbnailPath);
+      console.log(`processImage: PNG ${Math.round(origStats.size / 1024)}KB + ${Math.round(thumbStats.size / 1024)}KB thumb → ${originalUrl}`);
 
-      // 원본이 목표 크기보다 작으면 리사이즈하지 않음
-      if (metadata.width <= dimensions.width && metadata.height <= dimensions.height && sizeName !== 'thumbnail') {
-        // 품질만 조정
-        processedBuffer = await sharp(buffer)
-          .jpeg({ quality })
-          .toBuffer();
-      } else {
-        // 리사이즈 (비율 유지, 내부 맞춤)
-        processedBuffer = await sharp(buffer)
-          .resize(dimensions.width, dimensions.height, {
-            fit: 'inside',
-            withoutEnlargement: true
-          })
-          .jpeg({ quality })
-          .toBuffer();
-      }
-
-      results[sizeName] = `data:image/jpeg;base64,${processedBuffer.toString('base64')}`;
+      return { original: originalUrl, thumbnail: thumbnailUrl, medium: originalUrl };
     }
 
-    // 로그 출력
-    const originalSize = Math.round(base64Data.length / 1024);
-    const thumbnailSize = Math.round((results.thumbnail.length - 23) / 1024); // 23 = 'data:image/jpeg;base64,' length
-    const mediumSize = Math.round((results.medium.length - 23) / 1024);
-    const newOriginalSize = Math.round((results.original.length - 23) / 1024);
+    // JPEG 및 기타 (webp, gif → jpeg로 통일)
+    const originalPath = path.join(PRODUCTS_DIR, `${filename}.jpg`);
+    const thumbnailPath = path.join(PRODUCTS_THUMB_DIR, `${filename}.jpg`);
 
-    console.log(`Image processed: Original ${originalSize}KB -> Thumbnail ${thumbnailSize}KB, Medium ${mediumSize}KB, Optimized ${newOriginalSize}KB`);
+    await sharp(buffer, { failOn: 'none' })
+      .resize(IMAGE_SIZES.original.width, IMAGE_SIZES.original.height, {
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ quality: QUALITY_SETTINGS.original })
+      .toFile(originalPath);
 
-    return results;
+    await sharp(buffer, { failOn: 'none' })
+      .resize(IMAGE_SIZES.thumbnail.width, IMAGE_SIZES.thumbnail.height, {
+        fit: 'cover',
+        position: 'centre'
+      })
+      .jpeg({ quality: QUALITY_SETTINGS.thumbnail })
+      .toFile(thumbnailPath);
+
+    const originalUrl = `/uploads/products/${filename}.jpg`;
+    const thumbnailUrl = `/uploads/products/thumbnails/${filename}.jpg`;
+
+    const origStats = await fs.stat(originalPath);
+    const thumbStats = await fs.stat(thumbnailPath);
+    console.log(`processImage: JPEG ${Math.round(origStats.size / 1024)}KB + ${Math.round(thumbStats.size / 1024)}KB thumb → ${originalUrl}`);
+
+    return { original: originalUrl, thumbnail: thumbnailUrl, medium: originalUrl };
+
   } catch (error) {
-    console.error('Image processing error:', error);
+    console.error('processImage error:', error.message);
     return null;
   }
 }

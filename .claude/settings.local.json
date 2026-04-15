@@ -13,7 +13,17 @@
       "Bash(ssh:*)",
       "Bash(ls -la /var/www/dev-frontend-build/static/js/main.*.js)",
       "Bash(grep:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(xargs -I{} basename {})",
+      "Bash(xargs -I{} curl -sI \"https://purplehere.com/uploads/products/{}\")",
+      "Bash(ls -la /var/www/dev-frontend-build/static/js/*.js)",
+      "Bash(pm2 list *)",
+      "Bash(ls /var/www/dev-frontend-build/static/js/main.*.js)",
+      "Bash(xargs -I{} curl -sI \"https://dev.purplehere.com/static/js/{}\")",
+      "Bash(stat -c '%y %s' /var/www/dev-frontend-build/static/js/main.*.js)",
+      "Bash(pm2 jlist *)",
+      "Bash(xargs -n1 basename)"
     ],
     "deny": [],
     "ask": []

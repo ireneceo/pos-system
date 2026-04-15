@@ -410,7 +410,7 @@ router.get('/menu/item/:itemId', async (req, res) => {
       imageThumbnail: imageData?.thumbnail || undefined,
       imageOriginal: imageData?.original || undefined,
       isAvailable: true,
-      preparationTime: product.preparation_time || getPreparationTime(product.category),
+      preparationTime: product.preparation_time || 15,
       calories: Math.floor(Math.random() * 400) + 200,
       ingredients: ['Fresh ingredients', 'Made to order'],
       allergens: ['May contain gluten'],

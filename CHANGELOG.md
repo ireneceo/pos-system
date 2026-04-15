@@ -6,7 +6,18 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-(현재 미배포 항목 없음)
+### 2026-04-15
+- 모바일 주문 카테고리 전환 시 전체 페이지 리로딩 현상 제거 (inline fetch, isLoading 상태 토글 생략)
+- 모바일 이미지 파이프라인 전면 재작성 — base64 저장 구조를 파일 URL 로 전환, 운영 DB `products.image` 35.4MB → 0.01MB (289건 sharp 변환)
+- 모바일 상품 상세 API 500 에러 복구 (`getPreparationTime is not defined` ReferenceError)
+- 모바일 메뉴 카테고리별 초기 로드 + 메모리 캐시 (`categoryCacheRef`) — 재방문 시 네트워크 0
+- 이메일 엔티티 브랜딩 시스템 구축 — Restaurant/Brand/Foodcourt 자체 로고·이름·색상을 이메일 헤더/푸터에 반영
+- 고객 비밀번호 리셋 메일: 레스토랑 SMTP 우선 → 없으면 플랫폼 fallback, 항상 레스토랑 브랜딩 유지
+- Notification 이메일 (공지/댓글/인보이스/티켓): 수신자 entity 브랜딩으로 자동 재렌더 (notificationTemplates metadata + notificationService 재렌더 파이프라인)
+- 엔티티 브랜딩 이메일에서 PurpleHere 로고/링크 완전 제거 (헤더 `<a>` 래퍼 + 푸터 링크 + unreferenced CID 첨부 모두 조건부 제거)
+- `emailLayout` 로고 텍스트 fallback — 로고 없는 엔티티는 브랜드 이름 텍스트 표시 (PurpleHere 기본 로고로 오해되던 문제 해결)
+- 이메일 로고 바이너리 pre-resize (sharp, height 40px / max-width 280px) — CSS 스케일링 의존 제거로 와이드 배너 overflow 방지
+- System Admin 발송 메일(POS 비밀번호 리셋/회원가입 환영/랜딩 문의 등)은 기존과 완전 동일 (PurpleHere 브랜딩 유지)
 
 ## [v3.14] — 2026-04-14 배포
 

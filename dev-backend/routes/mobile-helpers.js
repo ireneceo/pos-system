@@ -21,14 +21,20 @@ function parseImageData(imageStr, imageThumbnail = null, listOnly = false) {
   if (imageStr.startsWith('{')) {
     try {
       const parsed = JSON.parse(imageStr);
-      return listOnly ? { thumbnail: parsed.thumbnail } : parsed;
+      if (listOnly) {
+        const thumb = parsed.thumbnail;
+        if (!thumb || thumb.startsWith('data:')) return null;
+        return { thumbnail: thumb };
+      }
+      return parsed;
     } catch {
       return listOnly ? null : { thumbnail: imageStr, medium: imageStr, original: imageStr };
     }
   }
 
-  // Legacy base64 — include in list views (until migrated to file URLs)
-  return listOnly ? { thumbnail: imageStr } : { thumbnail: imageStr, medium: imageStr, original: imageStr };
+  // Legacy base64 — exclude from list views to keep payload small (emoji fallback)
+  if (listOnly) return null;
+  return { thumbnail: imageStr, medium: imageStr, original: imageStr };
 }
 
 // Generate order number per restaurant with transaction support

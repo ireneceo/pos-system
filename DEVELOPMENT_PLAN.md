@@ -1,8 +1,72 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-14 (v3.14 운영 배포 + 공지 가시성 hotfix)
+> **최종 업데이트:** 2026-04-15 (모바일 이미지 파이프라인 + 엔티티 브랜딩 이메일)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: 모바일 이미지 파이프라인 + 엔티티 브랜딩 이메일 (2026-04-15)
+
+### 배경
+- **긴급 이슈 1**: 모바일 주문에서 김치볶음밥 클릭 시 장바구니 담기 실패 (운영)
+  → 상세 API `/api/mobile/menu/item/:id` 가 `ReferenceError: getPreparationTime is not defined` 으로 500 반환 → ItemDetailPage가 `navigate(-1)`로 튕김
+- **긴급 이슈 2**: 모바일 메뉴 카테고리 전환 시 30초+ 로딩
+  → 상품 이미지가 전부 base64로 DB에 저장 (운영 35MB, 1건 평균 170-330KB) → `/api/mobile/menu/:slug` 응답 2.4MB
+- **긴급 이슈 3**: 카테고리 전환 시 MenuPage 가 전체 페이지 reloading flicker
+  → `handleCategoryChange` 가 `loadMenu()` 를 통해 `setIsLoading(true)` → 전체 페이지 `<LoadingContainer>` 교체
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | `/api/mobile/menu/item/:id` 500 에러 fix | `mobile-public.js:413` `getPreparationTime()` 호출 → 리터럴 `\|\| 15` 로 교체 (list endpoint 와 동일 패턴) | ✅ |
+| 2 | `utils/imageProcessor.js:processImage()` 재작성 | sharp 로 base64 → 파일로 저장하던 함수가 실제로는 base64 JSON 리턴하던 버그. 파일 저장 + URL 반환으로 전환. SVG/PNG/JPEG 분기, failOn:'none' + 폴백 | ✅ |
+| 3 | `routes/menu.js` 저장 로직 변경 | create/update 2곳에서 `JSON.stringify(processedImages)` 제거. `products.image = URL`, `products.image_thumbnail = thumbnail URL` 분리 저장 | ✅ |
+| 4 | 기존 `scripts/migrate-images.js` 운영 실행 | 운영 290건(raw 217 + JSON 73) base64 → 파일 변환. 289 성공 / 1 스킵 / 0 오류. `products.image` 컬럼 35MB → 500B 수준 | ✅ |
+| 5 | `MenuPage` 카테고리 캐시 + inline fetch | `categoryCacheRef: Map<catId, items>` 추가. `handleCategoryChange` 가 `loadMenu()` 우회하고 직접 fetch → `setIsLoading(true)` 안 건드려서 전체 페이지 flicker 제거. 같은 카테고리 재클릭 시 네트워크 0 | ✅ |
+| 6 | 이메일 엔티티 브랜딩 시스템 (`emailBranding.js` 신규) | Restaurant/Brand/Foodcourt 각자의 `logo_url`/`name`/`website`/`company_name` 추출. sharp 로 로고를 pre-resize (height 40px, max-width 280px) → Buffer CID 첨부 반환 | ✅ |
+| 7 | `emailService.sendEntityOrPlatformEmail` 헬퍼 추가 | entity SMTP 시도 → "not configured" 에러 시 자동 플랫폼 fallback. 고객 비밀번호 리셋 등에서 "레스토랑 우선, 없으면 시스템" 패턴 구현 | ✅ |
+| 8 | `customers-auth.js` 비밀번호 리셋 전환 | `restaurantId = 1` 하드코딩 제거. 레스토랑 브랜딩 + `sendEntityOrPlatformEmail` 사용. 레스토랑 SMTP 있으면 그걸, 없으면 플랫폼 | ✅ |
+| 9 | `notificationTemplates` 메타데이터 + 재렌더 | 8개 템플릿 함수가 `_title/_body/_lang` non-enumerable 메타 포함 반환. `notificationService.sendNotification` 이 수신자 entity 브랜딩 resolve 후 재렌더 | ✅ |
+| 10 | `emailLayout` 로고 렌더 규칙 | hasIssuer + logoUrl → pre-resized img (링크 없음, 고정 pixel 크기), hasIssuer + logoUrl 없음 → 텍스트 이름, PurpleHere 기본 → 기존 CID 로고 + 링크 | ✅ |
+| 11 | 엔티티 브랜딩 시 PurpleHere 링크/로고 완전 제거 | 헤더 로고 `<a>` 래퍼 제거, 푸터 `notification-preferences`/`purplehere.com` 링크 제거 (entity website 있으면 그 링크만). PurpleHere 기본 브랜딩은 기존 그대로 유지 (System Admin 발송 영향 없음) | ✅ |
+| 12 | 첨부 정책 분기 | entity 브랜딩 → entity 로고만 첨부. PurpleHere 기본 → `getLogoAttachment()` (html에 `cid:purplehere-logo` 있을 때만 자동). Gmail 에서 unreferenced attachment 가 하단에 크게 노출되던 문제 해결 | ✅ |
+
+### 수정된 파일 (백엔드 10개, 프론트 1개, 신규 1개)
+
+**백엔드 (수정)**
+- `dev-backend/routes/mobile-public.js` — `getPreparationTime` 참조 제거
+- `dev-backend/routes/mobile-helpers.js` — `parseImageData` list view base64 방어층
+- `dev-backend/utils/imageProcessor.js` — processImage 파일 저장 방식 재작성
+- `dev-backend/routes/menu.js` — create/update 이미지 저장 경로 2곳
+- `dev-backend/routes/customers-auth.js` — 고객 비밀번호 리셋 entity/platform fallback + 브랜딩
+- `dev-backend/utils/emailService.js` — `sendEntityOrPlatformEmail` 헬퍼 추가
+- `dev-backend/utils/emailTemplates.js` — emailLayout 로고 렌더 규칙 + 푸터 조건부 링크
+- `dev-backend/utils/notificationService.js` — `resolveReceiverBranding` + 재렌더 + 첨부 정책
+- `dev-backend/utils/notificationTemplates.js` — 8개 템플릿 메타데이터 (`withRenderMeta`)
+
+**백엔드 (신규)**
+- `dev-backend/utils/emailBranding.js` — `getEntityBranding(entityType, entityId)` + `resolveLogoAsCid` (sharp pre-resize)
+
+**프론트엔드**
+- `dev-frontend/src/mobile/pages/MenuPage.tsx` — `categoryCacheRef` + `handleCategoryChange` inline fetch
+
+**운영 스크립트 (기존 재사용)**
+- `dev-backend/scripts/migrate-images.js` — dev 검증 완료 후 운영에서 실행 (289건 변환 성공)
+
+### 운영 반영 현황
+- 2026-04-15 06:08 UTC: 모바일 이미지 pipeline 배포 (Irene 실행)
+- 2026-04-15 08:51 UTC: 카테고리별 로드 + MenuPage hotfix 배포 (Irene 실행)
+- 2026-04-15 09:10 UTC: 카테고리 전환 리로딩 방지 hotfix 배포 (Irene 실행)
+- 운영 DB 마이그레이션: `products.image` 35.4MB → ~0.01MB, 파일 URL 305건
+- 이메일 엔티티 브랜딩은 dev 검증 완료, **운영 배포 대기 (Irene 본인 실행 예정)**
+
+### 후속 과제 (다음 세션)
+- 고객 회원가입 환영/이메일 인증 플로우 (현재 미구현)
+- 주문 확인 / 영수증 메일 (현재 미구현, 구현 시 레스토랑 SMTP 우선 + 플랫폼 fallback)
+- Brand/Foodcourt 산하 사용자 대상 notification 메일도 수신자 entity 브랜딩 실운영 확인
+- Product 이미지 외 다른 이미지 경로 (Brand logo, Foodcourt logo 등) 가 base64 로 저장되는 곳 없는지 감사
 
 ---
 

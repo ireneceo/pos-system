@@ -15,11 +15,25 @@ function ctaButton(label, url) {
     </div>`;
 }
 
-function wrapTemplate(title, bodyContent, lang) {
+function wrapTemplate(title, bodyContent, lang, branding) {
   const content = `
     <h2 style="color:#1A1A2E;font-size:20px;font-weight:600;margin:0 0 8px;">${title}</h2>
     ${bodyContent}`;
-  return emailLayout(content, undefined, lang);
+  return emailLayout(content, branding, lang);
+}
+
+/**
+ * 템플릿 결과에 재렌더 메타데이터(_title/_body/_lang)를 포함.
+ * notificationService 가 수신자별 branding 으로 재렌더할 수 있도록.
+ *
+ * non-enumerable 로 저장 → spread({...mail}) / JSON.stringify / nodemailer 직렬화에 노출되지 않음.
+ * 직접 접근(mail._title)은 가능.
+ */
+function withRenderMeta(result, title, body, lang) {
+  Object.defineProperty(result, '_title', { value: title, enumerable: false, writable: false, configurable: false });
+  Object.defineProperty(result, '_body', { value: body, enumerable: false, writable: false, configurable: false });
+  Object.defineProperty(result, '_lang', { value: lang, enumerable: false, writable: false, configurable: false });
+  return result;
 }
 
 function infoRow(label, value) {
@@ -41,6 +55,7 @@ function noticeReceivedEmail(notice, authorName, lang = 'en') {
   const { getEmailText } = require('./i18n');
   const t = (key, params) => getEmailText(lang, key, params);
 
+  const title = t('notice.heading');
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
       ${t('notice.body')}
@@ -55,11 +70,11 @@ function noticeReceivedEmail(notice, authorName, lang = 'en') {
     </div>
     ${ctaButton(t('notice.viewButton'), `${BASE_URL}/pos/notices`)}`;
 
-  return {
+  return withRenderMeta({
     subject: t('notice.subject', { title: (notice.title || 'Untitled').slice(0, 60) }),
-    html: wrapTemplate(t('notice.heading'), body, lang),
-    text: `${t('notice.heading')}: ${notice.title}\n${t('notice.postedBy')}: ${authorName}\n\n${(notice.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
-  };
+    html: wrapTemplate(title, body, lang),
+    text: `${title}: ${notice.title}\n${t('notice.postedBy')}: ${authorName}\n\n${(notice.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
+  }, title, body, lang);
 }
 
 /**
@@ -69,6 +84,7 @@ function commentReceivedEmail(comment, entityTitle, commenterName, lang = 'en') 
   const { getEmailText } = require('./i18n');
   const t = (key, params) => getEmailText(lang, key, params);
 
+  const title = t('comment.heading');
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
       ${t('comment.commentedOn', { name: `<strong>${commenterName || 'Someone'}</strong>`, title: `<strong>${entityTitle || 'an item'}</strong>` })}
@@ -80,17 +96,18 @@ function commentReceivedEmail(comment, entityTitle, commenterName, lang = 'en') 
     </div>
     ${ctaButton(t('comment.viewButton'), `${BASE_URL}/pos/dashboard`)}`;
 
-  return {
+  return withRenderMeta({
     subject: t('comment.subject', { title: (entityTitle || 'item').slice(0, 50) }),
-    html: wrapTemplate(t('comment.heading'), body, lang),
+    html: wrapTemplate(title, body, lang),
     text: `${commenterName} → "${entityTitle}":\n\n${(comment.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
-  };
+  }, title, body, lang);
 }
 
 /**
  * New inquiry/ticket received (for managers)
  */
 function inquiryReceivedEmail(ticket, requesterName) {
+  const title = 'New Inquiry';
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
       A new inquiry has been submitted.
@@ -106,17 +123,18 @@ function inquiryReceivedEmail(ticket, requesterName) {
     </div>
     ${ctaButton('Review Inquiry', `${BASE_URL}/pos/dashboard`)}`;
 
-  return {
+  return withRenderMeta({
     subject: `New Inquiry: ${(ticket.title || ticket.subject || 'No subject').slice(0, 50)}`,
-    html: wrapTemplate('New Inquiry', body),
+    html: wrapTemplate(title, body),
     text: `New Inquiry from ${requesterName}\nSubject: ${ticket.title || ticket.subject}\nCategory: ${ticket.category}\n\n${(ticket.description || ticket.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
-  };
+  }, title, body, 'en');
 }
 
 /**
  * Inquiry reply received (for the requester)
  */
 function inquiryRepliedEmail(ticket, reply, replierName) {
+  const title = 'Inquiry Reply';
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
       Your inquiry has received a reply.
@@ -132,11 +150,11 @@ function inquiryRepliedEmail(ticket, reply, replierName) {
     </div>
     ${ctaButton('View Conversation', `${BASE_URL}/pos/dashboard`)}`;
 
-  return {
+  return withRenderMeta({
     subject: `Reply to: ${(ticket.title || ticket.subject || 'Your inquiry').slice(0, 50)}`,
-    html: wrapTemplate('Inquiry Reply', body),
+    html: wrapTemplate(title, body),
     text: `Reply to "${ticket.title || ticket.subject}" from ${replierName}:\n\n${(reply.content || '').replace(/<[^>]*>/g, '').slice(0, 500)}`
-  };
+  }, title, body, 'en');
 }
 
 /**
@@ -151,6 +169,7 @@ function ticketStatusChangedEmail(ticket, newStatus) {
     'pending': '#F59E0B'
   };
   const color = statusColors[newStatus] || '#635BFF';
+  const title = 'Ticket Status Update';
 
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
@@ -162,11 +181,11 @@ function ticketStatusChangedEmail(ticket, newStatus) {
     )}
     ${ctaButton('View Ticket', `${BASE_URL}/pos/dashboard`)}`;
 
-  return {
+  return withRenderMeta({
     subject: `Ticket Update: ${(ticket.title || ticket.subject || 'Ticket').slice(0, 40)} - ${newStatus}`,
-    html: wrapTemplate('Ticket Status Update', body),
+    html: wrapTemplate(title, body),
     text: `Ticket "${ticket.title || ticket.subject}" status changed to: ${newStatus}`
-  };
+  }, title, body, 'en');
 }
 
 /**
@@ -185,6 +204,7 @@ function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
       </p>
     </div>` : '';
 
+  const title = 'New Invoice';
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
       A new invoice has been issued for <strong>${restaurantName}</strong>.
@@ -198,11 +218,11 @@ function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
     )}
     ${ctaButton('View Invoice', `${BASE_URL}/pos/invoices`)}`;
 
-  return {
+  return withRenderMeta({
     subject: `Invoice ${invoice.invoice_number} - ${amount} Due ${dueDate}`,
-    html: wrapTemplate('New Invoice', body),
+    html: wrapTemplate(title, body),
     text: `New Invoice ${invoice.invoice_number}\nAmount: ${amount}\nDue: ${dueDate}\nRestaurant: ${restaurantName}`
-  };
+  }, title, body, 'en');
 }
 
 /**
@@ -211,6 +231,7 @@ function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
 function invoiceOverdueEmail(invoice, restaurantName) {
   const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
   const dueDate = new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const title = 'Invoice Overdue';
 
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
@@ -224,11 +245,11 @@ function invoiceOverdueEmail(invoice, restaurantName) {
     )}
     ${ctaButton('Pay Now', `${BASE_URL}/pos/invoices`)}`;
 
-  return {
+  return withRenderMeta({
     subject: `OVERDUE: Invoice ${invoice.invoice_number} - ${amount}`,
-    html: wrapTemplate('Invoice Overdue', body),
+    html: wrapTemplate(title, body),
     text: `OVERDUE Invoice ${invoice.invoice_number}\nAmount: ${amount}\nDue: ${dueDate}\nRestaurant: ${restaurantName}`
-  };
+  }, title, body, 'en');
 }
 
 /**
@@ -236,6 +257,7 @@ function invoiceOverdueEmail(invoice, restaurantName) {
  */
 function invoicePaidEmail(invoice, restaurantName) {
   const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
+  const title = 'Payment Confirmed';
 
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
@@ -248,17 +270,18 @@ function invoicePaidEmail(invoice, restaurantName) {
     )}
     ${ctaButton('View Details', `${BASE_URL}/pos/invoices`)}`;
 
-  return {
+  return withRenderMeta({
     subject: `Payment Confirmed: Invoice ${invoice.invoice_number} - ${amount}`,
-    html: wrapTemplate('Payment Confirmed', body),
+    html: wrapTemplate(title, body),
     text: `Payment Confirmed for Invoice ${invoice.invoice_number}\nAmount: ${amount}\nRestaurant: ${restaurantName}`
-  };
+  }, title, body, 'en');
 }
 
 /**
  * Email Verification Email
  */
 function emailVerificationEmail(fullName, verificationUrl) {
+  const title = 'Email Verification';
   const body = `
     <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">
       Hi ${fullName || 'there'},
@@ -271,14 +294,15 @@ function emailVerificationEmail(fullName, verificationUrl) {
       This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.
     </p>`;
 
-  return {
+  return withRenderMeta({
     subject: 'Verify your email - PurpleHere',
-    html: wrapTemplate('Email Verification', body),
+    html: wrapTemplate(title, body),
     text: `Hi ${fullName},\n\nPlease verify your email: ${verificationUrl}\n\nThis link expires in 24 hours.`
-  };
+  }, title, body, 'en');
 }
 
 module.exports = {
+  wrapTemplate,
   noticeReceivedEmail,
   commentReceivedEmail,
   inquiryReceivedEmail,
