@@ -62,18 +62,23 @@ class SubscriptionScheduler {
       // 4. Process Brand/Foodcourt/Owner subscription transitions
       const entityResults = await this.processEntitySubscriptions();
 
+      // 5. Send overdue invoice reminders (D+3, D+7, D+14)
+      const reminderResults = await this.processOverdueReminders();
+
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       console.log(`✓ [SUBSCRIPTION SCHEDULER] Completed in ${duration}s`);
       console.log(`   - Trial expired: ${trialResults.updated} restaurants`);
       console.log(`   - Grace period expired: ${graceResults.updated} restaurants`);
       console.log(`   - Overdue payments: ${paymentResults.updated} restaurants`);
       console.log(`   - Entity subscriptions: ${entityResults.updated} entities`);
+      console.log(`   - Overdue reminders sent: ${reminderResults.sent}`);
 
       return {
         success: true,
         trialExpired: trialResults.updated,
         gracePeriodExpired: graceResults.updated,
         overduePayments: paymentResults.updated,
+        remindersSent: reminderResults.sent,
         duration
       };
 
@@ -270,6 +275,11 @@ class SubscriptionScheduler {
             }
 
             console.log(`⚠️ ${restaurant.name}: Active -> Overdue (overdue invoice #${overdueInvoice.invoice_number})`);
+
+            // Send email notification
+            this.sendSubscriptionEmail(restaurant, 'trial_expired').catch(e =>
+              console.error(`[Subscription email error] ${restaurant.name}:`, e.message));
+
             updated++;
           }
         } catch (error) {
@@ -330,6 +340,9 @@ class SubscriptionScheduler {
             } else {
               await entity.update({ subscription_status: 'overdue', grace_period_start: today });
               console.log(`⚠️ ${entityType} ${entity.name || entity.username}: Trial -> Overdue`);
+
+              this.sendEntitySubscriptionEmail(entity, entityType, 'trial_expired').catch(e =>
+                console.error(`[Entity subscription email error] ${entity.name || entity.username}:`, e.message));
             }
             updated++;
           } else if (status === 'overdue' && entity.grace_period_start && new Date(entity.grace_period_start) <= graceCutoff) {
@@ -349,6 +362,9 @@ class SubscriptionScheduler {
               }
               await entity.update(suspendData);
               console.log(`🚫 ${entityType} ${entity.name || entity.username}: Overdue -> Suspended`);
+
+              this.sendEntitySubscriptionEmail(entity, entityType, 'suspended').catch(e =>
+                console.error(`[Entity subscription email error] ${entity.name || entity.username}:`, e.message));
             }
             updated++;
           }
@@ -629,6 +645,167 @@ class SubscriptionScheduler {
       console.log(`[Subscription] Sent '${type}' email to ${recipientEmail} via ${issuerType} SMTP`);
     } catch (e) {
       console.error(`[Subscription] Email failed for ${restaurant.name}:`, e.message);
+    }
+  }
+
+  /**
+   * Send overdue invoice reminders at D+3, D+7, D+14
+   * Sends to Restaurant Admin + Owner via issuer SMTP
+   */
+  async processOverdueReminders() {
+    const REMINDER_DAYS = [3, 7, 14];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let sent = 0;
+
+    try {
+      // Find all overdue/pending_payment invoices with past due dates
+      const overdueInvoices = await Invoice.findAll({
+        where: {
+          status: { [Op.in]: ['overdue', 'pending_payment'] },
+          due_date: { [Op.lt]: today },
+          invoice_category: { [Op.in]: ['subscription', 'pos_subscription', 'brand_plan', 'foodcourt_plan'] }
+        },
+        include: [{
+          model: Restaurant,
+          as: 'restaurant',
+          attributes: ['id', 'name', 'email', 'brand_id', 'foodcourt_id'],
+          where: { is_demo: { [Op.ne]: true }, is_test: { [Op.ne]: true } },
+          required: false
+        }]
+      });
+
+      for (const invoice of overdueInvoices) {
+        try {
+          const dueDate = new Date(invoice.due_date);
+          dueDate.setHours(0, 0, 0, 0);
+          const daysSinceDue = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+
+          // Only send on exact reminder days
+          if (!REMINDER_DAYS.includes(daysSinceDue)) continue;
+
+          const recipientEmail = invoice.restaurant?.email || invoice.payer_email;
+          if (!recipientEmail) continue;
+
+          const restaurantName = invoice.restaurant?.name || invoice.payer_name || 'Customer';
+
+          // Determine issuer
+          let issuerType = 'system_admin';
+          let issuerId = null;
+          if (invoice.issuer_type === 'brand' && invoice.issuer_id) {
+            issuerType = 'brand';
+            issuerId = invoice.issuer_id;
+          } else if (invoice.issuer_type === 'foodcourt' && invoice.issuer_id) {
+            issuerType = 'foodcourt';
+            issuerId = invoice.issuer_id;
+          }
+
+          const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
+          const formattedAmount = `${invoice.currency || 'MYR'} ${Number(invoice.total_amount).toFixed(2)}`;
+          const formattedDueDate = dueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+          const urgencyColor = daysSinceDue >= 14 ? '#DC2626' : daysSinceDue >= 7 ? '#F59E0B' : '#635BFF';
+          const urgencyBg = daysSinceDue >= 14 ? '#FEE2E2' : daysSinceDue >= 7 ? '#FEF3C7' : '#EEF2FF';
+          const urgencyLabel = daysSinceDue >= 14 ? 'Final Notice' : daysSinceDue >= 7 ? 'Second Reminder' : 'Payment Reminder';
+
+          const subject = `[PurpleHere] ${urgencyLabel} - Invoice #${invoice.invoice_number}`;
+          const bodyContent = `
+            <p style="color:#374151;font-size:14px;line-height:1.6;">Hi,</p>
+            <p style="color:#374151;font-size:14px;line-height:1.6;">This is a reminder that Invoice <strong>#${invoice.invoice_number}</strong> for <strong>${restaurantName}</strong> is overdue.</p>
+            <div style="background:${urgencyBg};padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid ${urgencyColor};">
+              <p style="color:${urgencyColor};font-size:14px;margin:0;font-weight:600;">${urgencyLabel} — ${daysSinceDue} days past due</p>
+              <p style="color:#374151;font-size:14px;margin:8px 0 0;">Amount: <strong>${formattedAmount}</strong> | Due: ${formattedDueDate}</p>
+            </div>
+            ${daysSinceDue >= 14 ? '<p style="color:#DC2626;font-size:14px;line-height:1.6;font-weight:600;">Your account may be suspended if payment is not received soon.</p>' : ''}
+            <p style="color:#374151;font-size:14px;line-height:1.6;">Please log in to complete the payment.</p>
+            <div style="text-align:center;margin:24px 0;">
+              <a href="${FRONTEND_URL}/pos" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Pay Now</a>
+            </div>`;
+
+          const html = emailLayout(`
+            <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">${urgencyLabel}</h2>
+            ${bodyContent}`);
+
+          await sendIssuerEmail(issuerType, issuerId, {
+            to: recipientEmail,
+            subject,
+            html,
+            attachments: getLogoAttachment()
+          });
+
+          console.log(`[Reminder] D+${daysSinceDue} sent for invoice #${invoice.invoice_number} to ${recipientEmail}`);
+          sent++;
+        } catch (e) {
+          console.error(`[Reminder] Error for invoice #${invoice.invoice_number}:`, e.message);
+        }
+      }
+    } catch (error) {
+      console.error('[Reminder] Error in processOverdueReminders:', error.message);
+    }
+
+    return { sent };
+  }
+
+  /**
+   * Send subscription status change email for entity users (Brand/Foodcourt/Owner)
+   * Uses Platform SMTP since entity users don't have an issuer
+   */
+  async sendEntitySubscriptionEmail(user, entityType, type) {
+    const recipientEmail = user.email;
+    if (!recipientEmail) return;
+
+    const displayName = user.name || user.username || 'User';
+    const entityLabel = entityType === 'brand' ? 'Brand' : entityType === 'foodcourt' ? 'Foodcourt' : 'Owner';
+    const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
+
+    let subject, title, bodyContent;
+
+    if (type === 'trial_expired') {
+      subject = `[PurpleHere] Trial expired - ${entityLabel} Account`;
+      title = 'Your Free Trial Has Ended';
+      bodyContent = `
+        <p style="color:#374151;font-size:14px;line-height:1.6;">Hi ${displayName},</p>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">The free trial period for your <strong>${entityLabel}</strong> account has ended.</p>
+        <div style="background:#FEF3C7;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #F59E0B;">
+          <p style="color:#92400E;font-size:14px;margin:0;font-weight:600;">You have ${GRACE_PERIOD_DAYS} days to complete payment before your account is suspended.</p>
+        </div>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">Please log in to your dashboard and complete the payment to continue using all features.</p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${FRONTEND_URL}/pos" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Go to Dashboard</a>
+        </div>`;
+    } else if (type === 'suspended') {
+      subject = `[PurpleHere] Account suspended - ${entityLabel} Account`;
+      title = 'Your Account Has Been Suspended';
+      bodyContent = `
+        <p style="color:#374151;font-size:14px;line-height:1.6;">Hi ${displayName},</p>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">Your <strong>${entityLabel}</strong> account has been suspended due to non-payment.</p>
+        <div style="background:#FEE2E2;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #EF4444;">
+          <p style="color:#991B1B;font-size:14px;margin:0;font-weight:600;">Access to management features has been restricted until payment is completed.</p>
+        </div>
+        <p style="color:#374151;font-size:14px;line-height:1.6;">To restore access, please log in and complete the outstanding payment.</p>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${FRONTEND_URL}/pos" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Go to Dashboard</a>
+        </div>`;
+    } else {
+      return;
+    }
+
+    const { sendPlatformEmail } = require('../utils/emailService');
+
+    const html = emailLayout(`
+      <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">${title}</h2>
+      ${bodyContent}`);
+
+    try {
+      await sendPlatformEmail({
+        to: recipientEmail,
+        subject,
+        html,
+        attachments: getLogoAttachment()
+      });
+      console.log(`[Subscription] Sent '${type}' email to ${recipientEmail} (${entityLabel} entity)`);
+    } catch (e) {
+      console.error(`[Subscription] Entity email failed for ${displayName}:`, e.message);
     }
   }
 

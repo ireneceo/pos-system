@@ -28,6 +28,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies, normalizeCurrencyCode } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
+import DateField from '../../components/Common/DateField';
 import { useStore } from '../../contexts/StoreContext';
 import { useTranslation } from 'react-i18next';
 
@@ -1328,20 +1329,18 @@ const ManagersPage: React.FC = () => {
 
                     <FormGroup>
                       <FormLabel>Subscription Start Date *</FormLabel>
-                      <FormInput
-                        type="date"
+                      <DateField
                         value={newManager.subscriptionStart}
-                        onChange={(e) => handleInputChange('subscriptionStart', e.target.value)}
+                        onChange={(v) => handleInputChange('subscriptionStart', v)}
                       />
                     </FormGroup>
 
                     <FormGroup>
                       <FormLabel>{t('admin:managersPage.subscriptionEndDateAuto')}</FormLabel>
-                      <FormInput
-                        type="date"
+                      <DateField
                         value={newManager.subscriptionEnd}
+                        onChange={() => {}}
                         disabled
-                        style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                       />
                     </FormGroup>
 
@@ -1622,15 +1621,13 @@ const ManagersPage: React.FC = () => {
 
                     <FormGroup>
                       <FormLabel>Subscription Start Date *</FormLabel>
-                      <FormInput
-                        type="date"
+                      <DateField
                         value={editingManager.subscriptionStart || new Date().toISOString().split('T')[0]}
-                        onChange={(e) => {
-                          const start = e.target.value;
+                        onChange={(v) => {
                           setEditingManager({
                             ...editingManager,
-                            subscriptionStart: start,
-                            subscriptionEnd: calcSubscriptionEnd(start, editingManager.billingCycle || 'monthly')
+                            subscriptionStart: v,
+                            subscriptionEnd: calcSubscriptionEnd(v, editingManager.billingCycle || 'monthly')
                           });
                         }}
                       />
@@ -1638,11 +1635,10 @@ const ManagersPage: React.FC = () => {
 
                     <FormGroup>
                       <FormLabel>{t('admin:managersPage.subscriptionEndDateAuto')}</FormLabel>
-                      <FormInput
-                        type="date"
+                      <DateField
                         value={editingManager.subscriptionEnd || ''}
+                        onChange={() => {}}
                         disabled
-                        style={{ backgroundColor: '#F8FAFC', color: '#6B7280' }}
                       />
                     </FormGroup>
                   </>

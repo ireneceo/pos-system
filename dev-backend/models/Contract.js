@@ -27,8 +27,12 @@ Contract.init({
   },
 
   // Applicant
-  applicant_name: {
+  applicant_company_name: {
     type: DataTypes.STRING(200),
+    allowNull: true
+  },
+  applicant_contact_person: {
+    type: DataTypes.STRING(100),
     allowNull: true
   },
   applicant_email: {

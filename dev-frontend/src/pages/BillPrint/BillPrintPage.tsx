@@ -12,6 +12,7 @@ import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
   const date = new Date(dateString);
@@ -350,7 +351,7 @@ const BillPrintPage: React.FC = () => {
               {receiptSettings.receiptLogo && (
                 <img src={receiptSettings.receiptLogo} alt="Logo" style={{ maxWidth: '160px', maxHeight: '50px', marginBottom: '8px', filter: 'grayscale(100%)' }} />
               )}
-              <StoreName>{storeContext.storeSettings.name}</StoreName>
+              <StoreName>{getRestaurantDisplayName({ name: storeContext.storeSettings.name, branchName: storeContext.storeSettings.branchName })}</StoreName>
               <StoreInfo>
                 {storeContext.storeSettings.address && <>{storeContext.storeSettings.address}<br /></>}
                 {(storeContext.storeSettings.city || storeContext.storeSettings.state) && (

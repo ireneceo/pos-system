@@ -72,7 +72,8 @@ router.get('/', authenticateToken, async (req, res, next) => {
     if (searchTerm) {
       const like = `%${searchTerm}%`;
       where[Op.or] = [
-        { applicant_name: { [Op.like]: like } },
+        { applicant_company_name: { [Op.like]: like } },
+        { applicant_contact_person: { [Op.like]: like } },
         { contract_number: { [Op.like]: like } },
         { applicant_email: { [Op.like]: like } },
         { applicant_phone: { [Op.like]: like } },
@@ -146,7 +147,7 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
     const contract = await Contract.findOne({
       where,
       include: [
-        { model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'address', 'phone'] },
+        { model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'branch_name', 'address', 'phone'] },
         { model: User, as: 'creator', attributes: ['id', 'full_name'] },
         { model: User, as: 'updater', attributes: ['id', 'full_name'] },
         { model: FoodcourtUnit, as: 'unit' },
@@ -161,7 +162,28 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
     });
 
     if (!contract) return res.status(404).json({ success: false, message: 'Contract not found' });
-    res.json({ success: true, data: contract });
+
+    // Attach entity currency for display
+    const contractData = contract.toJSON();
+    try {
+      if (contract.entity_type === 'brand') {
+        const Brand = require('../models/Brand');
+        const brand = await Brand.findByPk(contract.entity_id, { attributes: ['id', 'name', 'currency'] });
+        contractData.entity_currency = brand?.currency || 'MYR';
+        contractData.entity = brand;
+      } else if (contract.entity_type === 'foodcourt') {
+        const Foodcourt = require('../models/Foodcourt');
+        const foodcourt = await Foodcourt.findByPk(contract.entity_id, { attributes: ['id', 'name', 'currency'] });
+        contractData.entity_currency = foodcourt?.currency || 'MYR';
+        contractData.entity = foodcourt;
+      } else {
+        contractData.entity_currency = 'MYR';
+      }
+    } catch (err) {
+      contractData.entity_currency = 'MYR';
+    }
+
+    res.json({ success: true, data: contractData });
   } catch (error) {
     next(error);
   }
@@ -179,7 +201,8 @@ router.post('/', authenticateToken, async (req, res, next) => {
       entity_type: entity.entity_type,
       entity_id: entity.entity_id,
       stage: 'proposal',
-      applicant_name: req.body.applicant_name,
+      applicant_company_name: req.body.applicant_company_name ?? req.body.applicant_name,
+      applicant_contact_person: req.body.applicant_contact_person,
       applicant_email: req.body.applicant_email,
       applicant_phone: req.body.applicant_phone,
       applicant_business_type: req.body.applicant_business_type,
@@ -215,7 +238,8 @@ router.put('/:id', authenticateToken, async (req, res, next) => {
 
     const oldTerms = JSON.stringify(contract.financial_terms);
     const updateFields = [
-      'applicant_name', 'applicant_email', 'applicant_phone',
+      'applicant_company_name', 'applicant_contact_person',
+      'applicant_email', 'applicant_phone',
       'applicant_business_type', 'applicant_location', 'applicant_notes',
       'contract_number', 'contract_type', 'start_date', 'end_date',
       'duration_months', 'signing_date', 'financial_terms',
@@ -223,6 +247,11 @@ router.put('/:id', authenticateToken, async (req, res, next) => {
       'early_termination_fee', 'restaurant_id', 'unit_id',
       'target_open_date', 'person_in_charge', 'notes'
     ];
+
+    // Backward compat: accept legacy applicant_name as company_name
+    if (req.body.applicant_name !== undefined && req.body.applicant_company_name === undefined) {
+      req.body.applicant_company_name = req.body.applicant_name;
+    }
 
     const updates = { updated_by: req.user.id };
     for (const field of updateFields) {
@@ -279,8 +308,8 @@ router.put('/:id/stage', authenticateToken, async (req, res, next) => {
     // Validate requirements per stage
     if (stage === 'contracting') {
       // Proposal terms should be filled — minimal check
-      if (!contract.applicant_name) {
-        return res.status(400).json({ success: false, message: 'Applicant name is required before proceeding' });
+      if (!contract.applicant_company_name) {
+        return res.status(400).json({ success: false, message: 'Applicant company name is required before proceeding' });
       }
     }
 
@@ -384,7 +413,8 @@ router.post('/:id/renew', authenticateToken, async (req, res, next) => {
       entity_id: contract.entity_id,
       restaurant_id: contract.restaurant_id,
       stage: termsChanged ? 'proposal' : 'active',
-      applicant_name: contract.applicant_name,
+      applicant_company_name: contract.applicant_company_name,
+      applicant_contact_person: contract.applicant_contact_person,
       applicant_email: contract.applicant_email,
       applicant_phone: contract.applicant_phone,
       applicant_business_type: contract.applicant_business_type,

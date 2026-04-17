@@ -4,6 +4,7 @@ import AttachmentList from './AttachmentList';
 import { linkifyText } from '../../utils/linkify';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 interface AttachmentFile {
   url: string;
   originalName: string;
@@ -446,7 +447,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
     if (hours < 24) return `${hours}h ago`;
     const days = Math.floor(hours / 24);
     if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatDateTz(date, null);
   };
 
   return (

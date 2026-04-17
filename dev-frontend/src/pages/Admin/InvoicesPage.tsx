@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import styled from 'styled-components';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
-import { EmptyState as CategoryEmptyState } from '../../components/UI/TableComponents';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { useSearchParams } from 'react-router-dom';
 import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
-import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
+import { formatDateTime } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
 import {
   Container,
@@ -26,561 +25,40 @@ import {
   DataTableCell,
   DataTableEmpty,
   DataTableAmount,
-  ActionButtons
-, Modal as CommonModal } from '../../components/UI';
+  ActionButtons,
+  Modal as CommonModal,
+} from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import { useTranslation } from 'react-i18next';
-
 import { getAuthToken } from '../../utils/auth';
-interface AdditionalCharge {
-  name: string;
-  rate: number;
-  amount: number;
-}
 
-interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  managerId: string;
-  managerName: string;
-  companyName: string;
-  customerName: string;
-  customerAddress: string;
-  restaurantId?: string;
-  restaurantName?: string;
-  issueDate: string;
-  dueDate: string;
-  paidDate?: string;
-  status: 'draft' | 'sent' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
-  currency?: string;
-  amount: number;
-  tax: number;
-  total: number;
-  items: InvoiceItem[];
-  billingPeriod: string;
-  planType: string;
-  paymentMethod?: string;
-  transactionId?: string;
-  receiptUrl?: string;
-  hasPaymentInfo?: boolean;
-  type?: 'automatic' | 'manual';
-  payerType?: 'restaurant' | 'foodcourt_manager' | 'brand_manager' | 'external';
-  payerId?: string;
-  invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'others';
-  customDescription?: string;
-  serviceDescription?: string;
-  categoryDisplayName?: string;
-  additionalCharges?: AdditionalCharge[];
-  hardwareQuoteNumber?: string;
-  externalPayerName?: string;
-  externalPayerEmail?: string;
-  externalPayerPhone?: string;
-  externalPayerCompany?: string;
-  externalPayerAddress?: string;
-  externalPayerTaxId?: string;
-  discountType?: string;
-  discountValue?: number;
-  discountAmount?: number;
-  discountReason?: string;
-  subtotalBeforeDiscount?: number;
-  isModified?: boolean;
-  isDemo?: boolean;
-  modificationHistory?: Array<{
-    modified_at: string;
-    modified_by: number;
-    modified_by_name: string;
-    changes: Record<string, { from: any; to: any }>;
-    reason: string;
-  }>;
-  issuerInfo?: {
-    name?: string;
-    logoUrl?: string | null;
-    address?: string;
-    city?: string;
-    state?: string;
-    postalCode?: string;
-    country?: string;
-    phone?: string;
-    email?: string;
-    website?: string;
-    taxId?: string;
-    businessRegistration?: string;
-    bankName?: string;
-    bankAccount?: string;
-    bankAccountName?: string;
-    swiftCode?: string;
-  };
-}
-
-interface CurrencyConfig {
-  [code: string]: {
-    symbol: string;
-    name: string;
-    decimals: number;
-  };
-}
-
-interface InvoiceItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-}
-
-interface Manager {
-  id: string;
-  fullName: string;
-  email: string;
-  role: string;
-  companyName?: string;
-  currency?: string;
-}
-
-interface Restaurant {
-  id: string;
-  name: string;
-  admin_id: string;
-  status: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  currency?: string;
-}
-
-// Subscription interface removed - not currently used
-
-interface InvoiceCategory {
-  id: number;
-  name: string;
-  code: string;
-  description: string;
-  display_order: number;
-  is_system: boolean;
-  is_active: boolean;
-}
-
-interface CompanySettings {
-  companyName: string;
-  address: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-  phone: string;
-  email: string;
-  website: string;
-  taxNumber: string;
-  registrationNumber: string;
-  companyLogo?: string; // Company logo for invoices
-  bankName?: string;
-  bankAccount?: string;
-  bankAccountName?: string;
-  swiftCode?: string;
-}
-
-// Common components now imported from ../../components/UI
-// Page-specific styled components below
-
-// Button 컴포넌트는 BaseButton으로 교체됨
-const Button = styled(BaseButton)``;
-
-const InvoiceInfo = styled.div``;
-
-const InvoiceNumber = styled.div`
-  font-weight: 600;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const CompanyName = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-`;
-
-const AutoBadge = styled.span`
-  display: inline-block;
-  background: #10B981;
-  color: white;
-  font-size: 9px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 3px;
-  vertical-align: middle;
-`;
-
-const DemoBadge = styled.span`
-  display: inline-block;
-  background: #F59E0B;
-  color: white;
-  font-size: 9px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 3px;
-  vertical-align: middle;
-  margin-left: 4px;
-`;
-
-const DemoToggleLabel = styled.label`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #6B7280;
-  cursor: pointer;
-  white-space: nowrap;
-  user-select: none;
-
-  input {
-    width: 14px;
-    height: 14px;
-    cursor: pointer;
-  }
-`;
-
-// StatusBadge 컴포넌트는 CommonStatusBadge로 교체됨
-const StatusBadge = styled(CommonStatusBadge)`
-  white-space: normal;
-  line-height: 1.3;
-`;
-
-const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' | 'success' }>`
-  padding: 5px 8px;
-  border-radius: 5px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-    border-color: #635BFF;
-
-    &:hover {
-      background: #5A51E6;
-    }
-  ` : props.variant === 'success' ? `
-    background: #10B981;
-    color: white;
-    border-color: #10B981;
-
-    &:hover {
-      background: #059669;
-    }
-  ` : props.variant === 'danger' ? `
-    background: transparent;
-    color: #DC2626;
-    border-color: #FCA5A5;
-
-    &:hover {
-      background: #FEE2E2;
-    }
-  ` : props.variant === 'email' ? `
-    background: #F3F4F6;
-    color: #6B7280;
-    border-color: #E5E7EB;
-    padding: 5px;
-
-    &:hover {
-      background: #E5E7EB;
-      color: #374151;
-    }
-  ` : props.variant === 'cancel' ? `
-    background: #F6F9FC;
-    color: #6B7C93;
-    border-color: #E6EBF1;
-
-    &:hover {
-      background: #E6EBF1;
-      transform: translateY(-1px);
-    }
-  ` : `
-    background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-
-    &:hover {
-      border-color: #635BFF;
-      color: #635BFF;
-      background: #F4F3FF;
-    }
-  `}
-`;
-
-const LocalIconButton = styled.button`
-  padding: 6px;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-  margin-left: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #E6EBF1;
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-`;
-
-const IconSymbol = styled.span`
-  font-size: 16px;
-  font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
-  display: inline-block;
-  line-height: 1;
-`;
-
-// Category Card Components (Recipe style)
-const CategoryGrid = styled.div`
-  display: grid;
-  gap: 12px;
-`;
-
-const CategoryCard = styled.div<{ isActive?: boolean }>`
-  background: white;
-  border-radius: 12px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: all 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  opacity: ${props => props.isActive !== false ? 1 : 0.6};
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-`;
-
-const CategoryIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  background: #F3F4F6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: #635BFF;
-  flex-shrink: 0;
-`;
-
-const CategoryInfo = styled.div`
-  flex: 1;
-`;
-
-const CategoryName = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  color: #1F2937;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const CategoryMeta = styled.div`
-  display: flex;
-  gap: 16px;
-  font-size: 13px;
-  color: #6B7280;
-`;
-
-const CategoryActions = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const CategoryStatusBadge = styled.span<{ active: boolean }>`
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  background: ${props => props.active ? '#D1FAE5' : '#FEE2E2'};
-  color: ${props => props.active ? '#059669' : '#DC2626'};
-`;
-
-const CategoryIconButton = styled.button`
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  border: 1px solid #E6EBF1;
-  background: #F6F9FC;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: #635BFF;
-    background: #F4F3FF;
-    transform: translateY(-1px);
-
-    svg {
-      color: #635BFF;
-    }
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-    color: #6B7280;
-    transition: color 0.15s;
-  }
-`;
-
-const HeaderRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-`;
-
-const SectionTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0;
-`;
-
-// FilterControls and FilterRow now come from DatePeriodFilter
-
-const CreateButtonArea = styled.div`
-  margin-left: auto;
-
-  @media (max-width: 600px) {
-    margin-left: 0;
-    width: 100%;
-    order: 99;
-
-    button {
-      width: 100%;
-    }
-  }
-`;
-
-// DateButton, DateRangePickerWrapper, DateRangeTrigger now come from DatePeriodFilter
-
-
-const FormRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 20px;
-`;
-
-const FormLabel = styled.label`
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 8px;
-`;
-
-const FormInput = styled.input`
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const FormTextarea = styled.textarea`
-  width: 100%;
-  max-width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
-  resize: vertical;
-  box-sizing: border-box;
-  font-family: inherit;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const FormSelect = styled.select`
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  transition: all 0.2s;
-  
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const InvoiceSummary = styled.div`
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 16px;
-`;
-
-const SummaryRow = styled.div<{ highlight?: boolean }>`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  white-space: nowrap;
-
-  ${props => props.highlight ? `
-    border-top: 1px solid #E6EBF1;
-    margin-top: 8px;
-    padding-top: 16px;
-    font-size: 16px;
-  ` : ''}
-`;
-
-type TabType = 'invoices' | 'payment_submitted' | 'categories';
-// PeriodType imported from DatePeriodFilter
+// Split sub-components
+import { Invoice, CurrencyConfig, Manager, Restaurant, InvoiceCategory, CompanySettings, TabType } from './invoices/types';
+import {
+  Button,
+  InvoiceInfo,
+  InvoiceNumber,
+  CompanyName,
+  AutoBadge,
+  DemoBadge,
+  DemoToggleLabel,
+  StatusBadge,
+  LocalActionButton,
+  LocalIconButton,
+  IconSymbol,
+  CreateButtonArea,
+  FormGroup,
+  FormLabel,
+  FormInput,
+  InvoiceSummary,
+  SummaryRow,
+} from './invoices/styles';
+import InvoiceViewModal from './invoices/InvoiceViewModal';
+import InvoiceEditModal from './invoices/InvoiceEditModal';
+import InvoiceCreateModal from './invoices/InvoiceCreateModal';
+import InvoiceCategoryManager from './invoices/InvoiceCategoryManager';
 
 const InvoicesPage: React.FC = () => {
   const { t } = useTranslation('admin');
@@ -628,7 +106,6 @@ const InvoicesPage: React.FC = () => {
   const [editSelectedTarget, setEditSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  // subscriptions state removed - not currently used in UI
   const [searchResults, setSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -694,11 +171,7 @@ const InvoicesPage: React.FC = () => {
   const fetchInvoices = async () => {
     try {
       const token = getAuthToken();
-      console.log('🔐 [INVOICES] Token present:', !!token);
-      console.log('🔐 [INVOICES] Token first 50 chars:', token ? token.substring(0, 50) + '...' : 'NULL');
-
       if (!token) {
-        console.error('❌ [INVOICES] No auth token found in localStorage');
         setInvoices([]);
         return;
       }
@@ -710,20 +183,14 @@ const InvoicesPage: React.FC = () => {
         }
       });
 
-      console.log('📡 [INVOICES] API response status:', response.status);
-
       if (response.ok) {
         const invoicesData = await response.json();
-        console.log('✅ [INVOICES] Fetched invoices count:', invoicesData.length);
-        console.log('📋 [INVOICES] First 3 invoices:', invoicesData.slice(0, 3).map((inv: any) => ({ id: inv.id, invoiceNumber: inv.invoiceNumber })));
         setInvoices(invoicesData);
       } else {
-        const errorText = await response.text();
-        console.error('❌ [INVOICES] Failed to fetch invoices:', response.status, errorText);
         setInvoices([]);
       }
     } catch (error) {
-      console.error('❌ [INVOICES] Error fetching invoices:', error);
+      console.error('Error fetching invoices:', error);
       setInvoices([]);
     }
   };
@@ -827,15 +294,12 @@ const InvoicesPage: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        // Load additional charges — per-currency object or legacy array
         if (data.additionalCharges) {
           if (Array.isArray(data.additionalCharges)) {
-            // Legacy flat array — treat as empty (no currency assignment)
             setAdditionalChargesMap({});
           } else {
             setAdditionalChargesMap(data.additionalCharges);
           }
-          // taxSettings backward compat — find first enabled from any currency
           const allCharges = Array.isArray(data.additionalCharges)
             ? data.additionalCharges
             : Object.values(data.additionalCharges).flat();
@@ -893,18 +357,16 @@ const InvoicesPage: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [includeDemo]);
 
-  // Get additionalCharges for a specific currency from the map (normalizes RM→MYR etc.)
+  // Get additionalCharges for a specific currency from the map
   const getChargesForCurrency = (currency: string) => {
     const code = normalizeCurrencyCode(currency);
     return additionalChargesMap[code] || additionalChargesMap[currency] || [];
   };
 
-  // Derive additionalCharges for the current new invoice currency
   const additionalCharges = getChargesForCurrency(newInvoice.currency);
 
   const fetchCurrencyConfig = async () => {
     try {
-      // Fetch currency config
       const configRes = await fetch('/api/currencies/config');
       if (configRes.ok) {
         const data = await configRes.json();
@@ -912,8 +374,6 @@ const InvoicesPage: React.FC = () => {
           setCurrencyConfig(data.currencies);
         }
       }
-
-      // Fetch supported currencies
       const supportedRes = await fetch('/api/currencies/supported');
       if (supportedRes.ok) {
         const data = await supportedRes.json();
@@ -935,8 +395,6 @@ const InvoicesPage: React.FC = () => {
         'Content-Type': 'application/json'
       };
 
-      // Fetch only General roles (Brand General, Foodcourt General)
-      // Managers (Brand Manager, Foodcourt Manager) are support roles and don't receive invoices
       const [brandGeneralRes, foodcourtGeneralRes] = await Promise.all([
         fetch('/api/users?role=Brand General', { headers }),
         fetch('/api/users?role=Foodcourt General', { headers })
@@ -970,7 +428,6 @@ const InvoicesPage: React.FC = () => {
         allManagers = [...allManagers, ...transformed];
       }
 
-      console.log('Fetched managers (General only):', allManagers.length);
       setManagers(allManagers);
     } catch (error) {
       console.error('Error fetching managers:', error);
@@ -989,8 +446,6 @@ const InvoicesPage: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched restaurants:', data);
-        // Transform API data to match interface
         const transformedRestaurants = data.map((restaurant: any) => ({
           id: restaurant.id.toString(),
           name: restaurant.name,
@@ -1002,9 +457,7 @@ const InvoicesPage: React.FC = () => {
           currency: restaurant.currency || 'MYR'
         }));
         setRestaurants(transformedRestaurants);
-        console.log('Transformed restaurants:', transformedRestaurants);
       } else {
-        console.error('Failed to fetch restaurants');
         setRestaurants([]);
       }
     } catch (error) {
@@ -1012,8 +465,6 @@ const InvoicesPage: React.FC = () => {
       setRestaurants([]);
     }
   };
-
-  // fetchSubscriptions removed - not currently used in UI
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -1024,10 +475,6 @@ const InvoicesPage: React.FC = () => {
       return;
     }
 
-    console.log('Searching with query:', query);
-    console.log('Available managers:', managers);
-    console.log('Available restaurants:', restaurants);
-
     const filteredManagers = managers.filter(manager =>
       (manager.fullName && manager.fullName.toLowerCase().includes(query.toLowerCase())) ||
       (manager.companyName && manager.companyName.toLowerCase().includes(query.toLowerCase()))
@@ -1036,9 +483,6 @@ const InvoicesPage: React.FC = () => {
     const filteredRestaurants = restaurants.filter(restaurant =>
       restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
     );
-
-    console.log('Filtered managers:', filteredManagers);
-    console.log('Filtered restaurants:', filteredRestaurants);
 
     setSearchResults({
       managers: filteredManagers.slice(0, 5),
@@ -1075,7 +519,6 @@ const InvoicesPage: React.FC = () => {
     setEditSearchQuery(type === 'manager' ? (data as Manager).fullName : (data as Restaurant).name);
     setShowEditSearchDropdown(false);
 
-    // Update editInvoice with new target data
     if (type === 'manager') {
       const manager = data as Manager;
       setEditInvoice({
@@ -1126,13 +569,11 @@ const InvoicesPage: React.FC = () => {
     setPaymentMethodWarning(null);
 
     const token = getAuthToken();
-    let currency = 'USD'; // Default fallback if no currency configured
+    let currency = 'USD';
 
-    // Auto-populate invoice data
     if (type === 'manager') {
       const manager = data as Manager;
 
-      // Fetch currency from manager's brand or foodcourt
       try {
         const userRes = await fetch(`/api/users/${manager.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -1141,23 +582,17 @@ const InvoicesPage: React.FC = () => {
           const userData = await userRes.json();
           const user = userData.success ? userData.data : userData;
 
-          // Get currency from brand or foodcourt payment-settings
           if (user.brand_id) {
             const brandRes = await fetch(`/api/brands/${user.brand_id}/payment-settings`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
             if (brandRes.ok) {
               const brandData = await brandRes.json();
-              const data = brandData.data || brandData;
-              // Use defaultCurrency from payment_settings first, then supported_currencies[0]
-              const defaultCurrency = data.payment_settings?.defaultCurrency;
-              const supported = data.supported_currencies;
-              if (defaultCurrency) {
-                currency = defaultCurrency;
-              } else if (supported && supported.length > 0) {
-                currency = supported[0];
-              }
-              console.log('Brand currency:', currency, 'defaultCurrency:', defaultCurrency, 'supported:', supported);
+              const bData = brandData.data || brandData;
+              const defaultCurrency = bData.payment_settings?.defaultCurrency;
+              const supported = bData.supported_currencies;
+              if (defaultCurrency) currency = defaultCurrency;
+              else if (supported && supported.length > 0) currency = supported[0];
             }
           } else if (user.foodcourt_id) {
             const foodcourtRes = await fetch(`/api/foodcourts/${user.foodcourt_id}/payment-settings`, {
@@ -1165,16 +600,11 @@ const InvoicesPage: React.FC = () => {
             });
             if (foodcourtRes.ok) {
               const foodcourtData = await foodcourtRes.json();
-              const data = foodcourtData.data || foodcourtData;
-              // Use defaultCurrency from payment_settings first, then supported_currencies[0]
-              const defaultCurrency = data.payment_settings?.defaultCurrency;
-              const supported = data.supported_currencies;
-              if (defaultCurrency) {
-                currency = defaultCurrency;
-              } else if (supported && supported.length > 0) {
-                currency = supported[0];
-              }
-              console.log('Foodcourt currency:', currency, 'defaultCurrency:', defaultCurrency, 'supported:', supported);
+              const fData = foodcourtData.data || foodcourtData;
+              const defaultCurrency = fData.payment_settings?.defaultCurrency;
+              const supported = fData.supported_currencies;
+              if (defaultCurrency) currency = defaultCurrency;
+              else if (supported && supported.length > 0) currency = supported[0];
             }
           }
         }
@@ -1196,7 +626,6 @@ const InvoicesPage: React.FC = () => {
       const restaurant = data as Restaurant;
       const manager = managers.find(m => m.id === restaurant.admin_id);
 
-      // Fetch restaurant details to get currency
       try {
         const restRes = await fetch(`/api/restaurants/${restaurant.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -1229,64 +658,32 @@ const InvoicesPage: React.FC = () => {
         const data = await response.json();
         setCompanySettings(data);
       } else {
-        // Try to load from adminSettings localStorage
         const adminSettings = localStorage.getItem('adminSettings');
         let companyLogo = '';
         if (adminSettings) {
           try {
             const parsed = JSON.parse(adminSettings);
             companyLogo = parsed.companyLogo || parsed.logo || '';
-          } catch (e) {
-            console.error('Error parsing adminSettings:', e);
-          }
+          } catch (e) { /* ignore */ }
         }
-
-        // Use default company settings - should not reach here if API works
-        console.warn('Company settings not found in API response');
         setCompanySettings({
-          companyName: '',
-          address: '',
-          city: '',
-          state: '',
-          postalCode: '',
-          country: '',
-          phone: '',
-          email: '',
-          website: '',
-          taxNumber: '',
-          registrationNumber: '',
-          companyLogo: companyLogo
+          companyName: '', address: '', city: '', state: '', postalCode: '', country: '',
+          phone: '', email: '', website: '', taxNumber: '', registrationNumber: '', companyLogo
         });
       }
     } catch (error) {
       console.error('Error fetching company settings:', error);
-
-      // Try to load from adminSettings localStorage
       const adminSettings = localStorage.getItem('adminSettings');
       let companyLogo = '';
       if (adminSettings) {
         try {
           const parsed = JSON.parse(adminSettings);
           companyLogo = parsed.companyLogo || parsed.logo || '';
-        } catch (e) {
-          console.error('Error parsing adminSettings:', e);
-        }
+        } catch (e) { /* ignore */ }
       }
-
-      console.error('Failed to load company settings from API');
       setCompanySettings({
-        companyName: '',
-        address: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: '',
-        phone: '',
-        email: '',
-        website: '',
-        taxNumber: '',
-        registrationNumber: '',
-        companyLogo: companyLogo
+        companyName: '', address: '', city: '', state: '', postalCode: '', country: '',
+        phone: '', email: '', website: '', taxNumber: '', registrationNumber: '', companyLogo
       });
     }
   };
@@ -1343,18 +740,15 @@ const InvoicesPage: React.FC = () => {
         .status-overdue { background: #FEE2E2; color: #DC2626; }
         .status-cancelled { background: #FEF2F2; color: #DC2626; }
         .status-draft { background: #F3F4F6; color: #6B7280; }
-
         .billing-info { display: flex; justify-content: space-between; margin-bottom: 24px; }
         .bill-to-section { flex: 1; }
         .section-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .customer-name { font-size: 15px; font-weight: 600; color: #0A2540; }
         .customer-details { font-size: 13px; color: #6B7280; margin-top: 4px; }
-
         .dates-section { text-align: right; }
         .date-row { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px; font-size: 13px; }
         .date-label { color: #6B7280; }
         .date-value { color: #0A2540; font-weight: 500; min-width: 140px; }
-
         .items-section { margin-bottom: 24px; }
         .items-table { width: 100%; border-collapse: collapse; }
         .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 2px solid #E5E7EB; }
@@ -1364,23 +758,18 @@ const InvoicesPage: React.FC = () => {
         .items-table td.text-center { text-align: center; }
         .items-table td.text-right { text-align: right; white-space: nowrap; }
         .items-table th.text-right { white-space: nowrap; }
-
         .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
         .summary-box { width: 280px; }
         .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
         .summary-row.subtotal { color: #6B7280; }
         .summary-row.tax { color: #6B7280; }
         .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
-
         .bank-section { background: #F8FAFC; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
         .bank-title { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; }
         .bank-details { font-size: 13px; color: #374151; line-height: 1.6; }
-
         .registration-info { font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 16px; }
-
         .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
         .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
-
         ${INVOICE_PRINT_CSS}
     </style>
 </head>
@@ -1404,7 +793,6 @@ const InvoicesPage: React.FC = () => {
                 <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
             </div>
         </div>
-
         <div class="billing-info">
             <div class="bill-to-section">
                 <div class="section-label">${t('admin:invoicesPage.billTo')}</div>
@@ -1413,123 +801,52 @@ const InvoicesPage: React.FC = () => {
                 ${invoice.restaurantName ? `<div class="customer-details">Restaurant: ${invoice.restaurantName}</div>` : ''}
             </div>
             <div class="dates-section">
-                <div class="date-row">
-                    <span class="date-label">Billing Period:</span>
-                    <span class="date-value">${invoice.billingPeriod || '-'}</span>
-                </div>
-                <div class="date-row">
-                    <span class="date-label">Issue Date:</span>
-                    <span class="date-value">${formatDate(invoice.issueDate)}</span>
-                </div>
-                <div class="date-row">
-                    <span class="date-label">Due Date:</span>
-                    <span class="date-value">${formatDate(invoice.dueDate)}</span>
-                </div>
-                ${invoice.paidDate ? `
-                <div class="date-row">
-                    <span class="date-label">Paid Date:</span>
-                    <span class="date-value">${formatDate(invoice.paidDate)}</span>
-                </div>
-                ` : ''}
+                <div class="date-row"><span class="date-label">Billing Period:</span><span class="date-value">${invoice.billingPeriod || '-'}</span></div>
+                <div class="date-row"><span class="date-label">Issue Date:</span><span class="date-value">${formatDate(invoice.issueDate)}</span></div>
+                <div class="date-row"><span class="date-label">Due Date:</span><span class="date-value">${formatDate(invoice.dueDate)}</span></div>
+                ${invoice.paidDate ? `<div class="date-row"><span class="date-label">Paid Date:</span><span class="date-value">${formatDate(invoice.paidDate)}</span></div>` : ''}
             </div>
         </div>
-
         <div class="items-section">
             <div class="section-label">${t('admin:invoicesPage.items')}</div>
             <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>${t('admin:invoicesPage.description')}</th>
-                        <th class="text-center">${t('admin:invoicesPage.qty')}</th>
-                        <th class="text-right">${t('admin:invoicesPage.unitPrice')}</th>
-                        <th class="text-right">${t('admin:invoicesPage.amount')}</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>${t('admin:invoicesPage.description')}</th><th class="text-center">${t('admin:invoicesPage.qty')}</th><th class="text-right">${t('admin:invoicesPage.unitPrice')}</th><th class="text-right">${t('admin:invoicesPage.amount')}</th></tr></thead>
                 <tbody>
-                    ${invoice.items.map(item => `
-                    <tr>
-                        <td>${item.description}</td>
-                        <td class="text-center">${item.quantity}</td>
-                        <td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
-                        <td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td>
-                    </tr>
-                    `).join('')}
+                    ${invoice.items.map(item => `<tr><td>${item.description}</td><td class="text-center">${item.quantity}</td><td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td><td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td></tr>`).join('')}
                 </tbody>
             </table>
         </div>
-
         <div class="summary-section">
             <div class="summary-box">
-                <div class="summary-row subtotal">
-                    <span>Subtotal:</span>
-                    <span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span>
-                </div>
-                ${invoice.discountType && invoice.discountType !== 'none' && invoice.discountAmount > 0 ? `
-                <div class="summary-row tax" style="color: #15803D;">
-                    <span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span>
-                    <span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span>
-                </div>
-                ` : ''}
-                ${(invoice.additionalCharges || []).map(charge => `
-                <div class="summary-row tax">
-                    <span>${charge.name} (${charge.rate}%):</span>
-                    <span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span>
-                </div>
-                `).join('')}
-                <div class="summary-row total">
-                    <span>Total:</span>
-                    <span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
-                </div>
+                <div class="summary-row subtotal"><span>Subtotal:</span><span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span></div>
+                ${invoice.discountType && invoice.discountType !== 'none' && invoice.discountAmount && invoice.discountAmount > 0 ? `<div class="summary-row tax" style="color: #15803D;"><span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span><span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span></div>` : ''}
+                ${(invoice.additionalCharges || []).map(charge => `<div class="summary-row tax"><span>${charge.name} (${charge.rate}%):</span><span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span></div>`).join('')}
+                <div class="summary-row total"><span>Total:</span><span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span></div>
             </div>
         </div>
-
         ${(() => {
           const bankName = invoice.issuerInfo?.bankName || companySettings.bankName;
           const bankAccount = invoice.issuerInfo?.bankAccount || companySettings.bankAccount;
           const bankAccountName = invoice.issuerInfo?.bankAccountName || companySettings.bankAccountName;
           const swiftCode = invoice.issuerInfo?.swiftCode || companySettings.swiftCode;
           if (!bankName) return '';
-          return `
-        <div class="bank-section">
-            <div class="bank-title">${t('admin:invoicesPage.paymentDetails')}</div>
-            <div class="bank-details">
-                <strong>Bank:</strong> ${bankName}<br>
-                <strong>Account Name:</strong> ${bankAccountName || '-'}<br>
-                <strong>Account Number:</strong> ${bankAccount || '-'}
-                ${swiftCode ? `<br><strong>SWIFT Code:</strong> ${swiftCode}` : ''}
-            </div>
-        </div>`;
+          return `<div class="bank-section"><div class="bank-title">${t('admin:invoicesPage.paymentDetails')}</div><div class="bank-details"><strong>Bank:</strong> ${bankName}<br><strong>Account Name:</strong> ${bankAccountName || '-'}<br><strong>Account Number:</strong> ${bankAccount || '-'}${swiftCode ? `<br><strong>SWIFT Code:</strong> ${swiftCode}` : ''}</div></div>`;
         })()}
-
-        ${(companySettings.taxNumber || companySettings.registrationNumber) ? `
-        <div class="registration-info">
-            ${companySettings.registrationNumber ? `Reg No: ${companySettings.registrationNumber}` : ''}
-            ${companySettings.registrationNumber && companySettings.taxNumber ? ' | ' : ''}
-            ${companySettings.taxNumber ? `Tax No: ${companySettings.taxNumber}` : ''}
-        </div>
-        ` : ''}
-
-        <div class="footer">
-            <div class="footer-text">${t('admin:invoicesPage.thankYouForYourBusiness')}</div>
-            <div class="footer-text">${t('admin:invoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
-        </div>
+        ${(companySettings.taxNumber || companySettings.registrationNumber) ? `<div class="registration-info">${companySettings.registrationNumber ? `Reg No: ${companySettings.registrationNumber}` : ''}${companySettings.registrationNumber && companySettings.taxNumber ? ' | ' : ''}${companySettings.taxNumber ? `Tax No: ${companySettings.taxNumber}` : ''}</div>` : ''}
+        <div class="footer"><div class="footer-text">${t('admin:invoicesPage.thankYouForYourBusiness')}</div><div class="footer-text">${t('admin:invoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div></div>
     </div>
 </body>
 </html>`;
   };
 
-  // Download invoice as PDF file
   const generateInvoicePDF = async (invoice: Invoice) => {
     if (!companySettings) {
       setSuccessMessage('Company settings not loaded. Please try again.');
       setShowSuccessModal(true);
       return;
     }
-
     try {
       const invoiceHTML = generateInvoiceHTML(invoice);
-
-      // Create iframe for PDF generation (prevents layout shifts)
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
       iframe.style.left = '-10000px';
@@ -1539,8 +856,6 @@ const InvoicesPage: React.FC = () => {
       iframe.style.visibility = 'hidden';
       iframe.style.pointerEvents = 'none';
       document.body.appendChild(iframe);
-
-      // Write HTML to iframe
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
       if (!iframeDoc) {
         document.body.removeChild(iframe);
@@ -1549,7 +864,6 @@ const InvoicesPage: React.FC = () => {
       iframeDoc.open();
       iframeDoc.write(invoiceHTML);
       iframeDoc.close();
-
       try {
         await renderIframeToPdf(iframe, `Invoice-${invoice.invoiceNumber}.pdf`);
       } finally {
@@ -1562,79 +876,52 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
-  // Print invoice directly
   const handlePrintInvoice = (invoice: Invoice) => {
     if (!companySettings) {
       setSuccessMessage('Company settings not loaded. Please try again.');
       setShowSuccessModal(true);
       return;
     }
-
     const invoiceHTML = generateInvoiceHTML(invoice);
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     if (printWindow) {
       printWindow.document.write(invoiceHTML);
       printWindow.document.close();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
+      setTimeout(() => { printWindow.print(); }, 250);
     }
   };
 
-  // Open email modal with default recipient based on payer type
   const handleOpenEmailModal = async (invoice: Invoice) => {
     setEmailInvoice(invoice);
-
-    // Get default email based on payer type
     let defaultEmail = '';
-
     if (invoice.payerType === 'restaurant' && invoice.restaurantId) {
-      // Find restaurant email
       const restaurant = restaurants.find(r => r.id === invoice.restaurantId);
-      if (restaurant?.email) {
-        defaultEmail = restaurant.email;
-      }
+      if (restaurant?.email) defaultEmail = restaurant.email;
     } else if (invoice.payerType === 'foodcourt_manager' || invoice.payerType === 'brand_manager') {
-      // Find manager email
       const manager = managers.find(m => m.id === invoice.managerId);
-      if (manager?.email) {
-        defaultEmail = manager.email;
-      }
+      if (manager?.email) defaultEmail = manager.email;
     }
-
-    // If no specific email found, try to get from the invoice customer
     if (!defaultEmail && invoice.managerId) {
       const manager = managers.find(m => m.id === invoice.managerId);
-      if (manager?.email) {
-        defaultEmail = manager.email;
-      }
+      if (manager?.email) defaultEmail = manager.email;
     }
-
     setEmailRecipient(defaultEmail);
     setShowEmailModal(true);
   };
 
-  // Send invoice via email
   const handleSendInvoiceEmail = async () => {
     if (!emailInvoice || !emailRecipient) {
       setSuccessMessage('Please enter a valid email address.');
       setShowSuccessModal(true);
       return;
     }
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${emailInvoice.id}/send-email`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          recipientEmail: emailRecipient
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ recipientEmail: emailRecipient })
       });
-
       if (response.ok) {
         setSuccessMessage(`Invoice sent successfully to ${emailRecipient}`);
         setShowEmailModal(false);
@@ -1654,25 +941,10 @@ const InvoicesPage: React.FC = () => {
 
   const resetInvoiceForm = () => {
     setNewInvoice({
-      managerId: '',
-      managerName: '',
-      companyName: '',
-      restaurantId: '',
-      restaurantName: '',
-      amount: '',
-      tax: '0',
-      total: '0',
-      description: '',
-      dueDate: '',
-      planType: 'professional',
-      billingCycle: 'monthly',
-      invoiceCategory: 'service',
-      customDescription: '',
-      serviceDescription: '',
-      currency: '',
-      discountType: 'none' as 'none' | 'percentage' | 'fixed',
-      discountValue: '',
-      discountReason: ''
+      managerId: '', managerName: '', companyName: '', restaurantId: '', restaurantName: '',
+      amount: '', tax: '0', total: '0', description: '', dueDate: '', planType: 'professional',
+      billingCycle: 'monthly', invoiceCategory: 'service', customDescription: '', serviceDescription: '',
+      currency: '', discountType: 'none' as 'none' | 'percentage' | 'fixed', discountValue: '', discountReason: ''
     });
     setSelectedTarget(null);
     setSearchQuery('');
@@ -1681,24 +953,15 @@ const InvoicesPage: React.FC = () => {
     setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
   };
 
-  // Helper functions for display (moved before filteredInvoices to avoid reference error)
-  // Check if invoice is overdue based on due_date
-  // Only pending_payment can be overdue (not paid, cancelled, draft, or payment_submitted)
   const isInvoiceOverdue = (invoice: Invoice): boolean => {
-    // Only pending_payment status can become overdue
-    if (invoice.status !== 'pending_payment') {
-      return false;
-    }
+    if (invoice.status !== 'pending_payment') return false;
     const now = new Date();
     const dueDate = new Date(invoice.dueDate);
     return dueDate < now;
   };
 
-  // Get effective status (considering overdue)
   const getEffectiveStatus = (invoice: Invoice): 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | 'active' | 'inactive' | '' => {
-    if (isInvoiceOverdue(invoice)) {
-      return 'overdue';
-    }
+    if (isInvoiceOverdue(invoice)) return 'overdue';
     return invoice.status;
   };
 
@@ -1726,7 +989,6 @@ const InvoicesPage: React.FC = () => {
   };
 
   const filteredInvoices = invoices.filter(invoice => {
-    // Universal search - searches all visible fields
     const term = searchTerm.toLowerCase();
     const statusText = getStatusDisplay(invoice.status).toLowerCase();
     const typeText = invoice.type === 'automatic' ? 'auto automatic' : 'manual';
@@ -1739,21 +1001,16 @@ const InvoicesPage: React.FC = () => {
                          (invoice.companyName || '').toLowerCase().includes(term) ||
                          (invoice.invoiceNumber || '').toLowerCase().includes(term) ||
                          (invoice.managerName || '').toLowerCase().includes(term) ||
-                         statusText.includes(term) ||
-                         typeText.includes(term) ||
-                         planTypeText.includes(term) ||
-                         categoryText.includes(term) ||
-                         customerName.includes(term) ||
-                         payerTypeText.includes(term) ||
+                         statusText.includes(term) || typeText.includes(term) ||
+                         planTypeText.includes(term) || categoryText.includes(term) ||
+                         customerName.includes(term) || payerTypeText.includes(term) ||
                          (invoice.billingPeriod || '').toLowerCase().includes(term);
 
-    // Date range filter (based on issue date)
     let matchesDateRange = true;
     if (dateRange.start && dateRange.end) {
       const invoiceDate = new Date(invoice.issueDate);
       const startDate = new Date(dateRange.start);
       const endDate = new Date(dateRange.end);
-      // Set time to start/end of day for accurate comparison
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(23, 59, 59, 999);
       matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
@@ -1761,47 +1018,28 @@ const InvoicesPage: React.FC = () => {
 
     return matchesSearch && matchesDateRange;
   }).sort((a, b) => {
-    // Dynamic sorting based on sortField and sortDirection
     let comparison = 0;
     switch (sortField) {
-      case 'invoiceNumber':
-        comparison = a.invoiceNumber.localeCompare(b.invoiceNumber);
-        break;
-      case 'companyName':
-        comparison = (a.companyName || '').localeCompare(b.companyName || '');
-        break;
-      case 'issueDate':
-        comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
-        break;
-      case 'dueDate':
-        comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        break;
-      case 'amount':
-        comparison = a.total - b.total;
-        break;
-      case 'status':
-        comparison = (a.status || '').localeCompare(b.status || '');
-        break;
-      default:
-        // Default: sort by issue date (newest first)
-        comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
+      case 'invoiceNumber': comparison = a.invoiceNumber.localeCompare(b.invoiceNumber); break;
+      case 'companyName': comparison = (a.companyName || '').localeCompare(b.companyName || ''); break;
+      case 'issueDate': comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime(); break;
+      case 'dueDate': comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(); break;
+      case 'amount': comparison = a.total - b.total; break;
+      case 'status': comparison = (a.status || '').localeCompare(b.status || ''); break;
+      default: comparison = new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime();
     }
     return sortDirection === 'desc' ? -comparison : comparison;
   });
 
-  // Handle sort header click
   const handleSort = (field: 'invoiceNumber' | 'companyName' | 'issueDate' | 'dueDate' | 'amount' | 'status') => {
     if (sortField === field) {
-      // Toggle direction if same field
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      // New field, default to descending for dates/amounts, ascending for text
       setSortField(field);
       setSortDirection(field === 'dueDate' || field === 'amount' ? 'desc' : 'asc');
     }
   };
 
-  // Get sort indicator for header
   const getSortIndicator = (field: string) => {
     if (sortField !== field) return '';
     return sortDirection === 'asc' ? ' ▲' : ' ▼';
@@ -1813,7 +1051,7 @@ const InvoicesPage: React.FC = () => {
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-MY');
+    return formatDateTime(dateString, operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
   const handleCreateInvoice = () => {
@@ -1884,24 +1122,16 @@ const InvoicesPage: React.FC = () => {
 
   const handleEditInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-
-    // Set up editInvoice with all Create Invoice fields
     setEditInvoice({
-      managerId: invoice.managerId,
-      managerName: invoice.managerName,
-      companyName: invoice.companyName || '',
-      restaurantId: invoice.restaurantId || '',
+      managerId: invoice.managerId, managerName: invoice.managerName,
+      companyName: invoice.companyName || '', restaurantId: invoice.restaurantId || '',
       restaurantName: invoice.restaurantName || '',
       amount: (invoice.subtotalBeforeDiscount || invoice.amount).toString(),
-      tax: invoice.tax.toString(),
-      total: invoice.total.toString(),
-      dueDate: invoice.dueDate ? invoice.dueDate.split('T')[0] : '',
-      status: invoice.status,
-      planType: invoice.planType,
-      billingCycle: 'monthly',
+      tax: invoice.tax.toString(), total: invoice.total.toString(),
+      dueDate: invoice.dueDate ? invoice.dueDate.split('T')[0] : '', status: invoice.status,
+      planType: invoice.planType, billingCycle: 'monthly',
       description: invoice.items?.[0]?.description || '',
-      payerType: invoice.payerType || 'restaurant',
-      payerId: invoice.payerId || '',
+      payerType: invoice.payerType || 'restaurant', payerId: invoice.payerId || '',
       items: invoice.items,
       currency: invoice.currency || operationSettings.currency || 'MYR',
       discountType: invoice.discountType || 'none',
@@ -1911,22 +1141,13 @@ const InvoicesPage: React.FC = () => {
       customDescription: invoice.customDescription || '',
       serviceDescription: invoice.serviceDescription || ''
     });
-
-    // Set up edit target selection
     if (invoice.restaurantId) {
       const restaurant = restaurants.find(r => r.id === invoice.restaurantId);
-      if (restaurant) {
-        setEditSelectedTarget({type: 'restaurant', data: restaurant});
-        setEditSearchQuery(restaurant.name);
-      }
+      if (restaurant) { setEditSelectedTarget({type: 'restaurant', data: restaurant}); setEditSearchQuery(restaurant.name); }
     } else if (invoice.managerId) {
       const manager = managers.find(m => m.id === invoice.managerId);
-      if (manager) {
-        setEditSelectedTarget({type: 'manager', data: manager});
-        setEditSearchQuery(manager.fullName);
-      }
+      if (manager) { setEditSelectedTarget({type: 'manager', data: manager}); setEditSearchQuery(manager.fullName); }
     }
-
     setEditModificationReason('');
     setEditSaveError(null);
     setShowEditModal(true);
@@ -1939,22 +1160,14 @@ const InvoicesPage: React.FC = () => {
 
   const confirmSendInvoice = async () => {
     if (!selectedInvoice) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status: 'pending_payment'
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'pending_payment' })
       });
-
       if (response.ok) {
-        // Refresh invoices list
         await fetchInvoices();
         setShowSendConfirmModal(false);
         setSelectedInvoice(null);
@@ -1972,30 +1185,20 @@ const InvoicesPage: React.FC = () => {
 
   const handleSaveEdit = async () => {
     if (!selectedInvoice || !editInvoice) return;
-
     setEditSaveError(null);
-
-    // Require modification reason for automatic invoices
     if (selectedInvoice.type === 'automatic' && !editModificationReason.trim()) {
       setEditSaveError('Please enter a reason for modifying this invoice.');
       return;
     }
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
-          amount: parseFloat(editInvoice.amount),
-          tax: parseFloat(editInvoice.tax),
-          total: parseFloat(editInvoice.total),
-          dueDate: editInvoice.dueDate,
-          payerType: editInvoice.payerType,
-          payerId: editInvoice.payerId,
+          amount: parseFloat(editInvoice.amount), tax: parseFloat(editInvoice.tax),
+          total: parseFloat(editInvoice.total), dueDate: editInvoice.dueDate,
+          payerType: editInvoice.payerType, payerId: editInvoice.payerId,
           items: editInvoice.items,
           discountType: editInvoice.discountType !== 'none' ? editInvoice.discountType : null,
           discountValue: editInvoice.discountType !== 'none' ? parseFloat(editInvoice.discountValue) || 0 : null,
@@ -2024,24 +1227,15 @@ const InvoicesPage: React.FC = () => {
           modificationReason: editModificationReason.trim() || undefined
         }),
       });
-
       if (response.ok) {
         const updatedInvoice = {
           ...selectedInvoice,
-          amount: parseFloat(editInvoice.amount),
-          tax: parseFloat(editInvoice.tax),
-          total: parseFloat(editInvoice.total),
-          dueDate: editInvoice.dueDate,
-          status: editInvoice.status,
-          payerType: editInvoice.payerType,
-          payerId: editInvoice.payerId,
-          items: editInvoice.items
+          amount: parseFloat(editInvoice.amount), tax: parseFloat(editInvoice.tax),
+          total: parseFloat(editInvoice.total), dueDate: editInvoice.dueDate,
+          status: editInvoice.status, payerType: editInvoice.payerType,
+          payerId: editInvoice.payerId, items: editInvoice.items
         };
-
-        setInvoices(invoices.map(inv =>
-          inv.id === selectedInvoice.id ? updatedInvoice : inv
-        ));
-
+        setInvoices(invoices.map(inv => inv.id === selectedInvoice.id ? updatedInvoice : inv));
         setShowEditModal(false);
         setSelectedInvoice(null);
         setEditInvoice(null);
@@ -2065,36 +1259,21 @@ const InvoicesPage: React.FC = () => {
       alert('Please fill in name, email, amount, and due date.');
       return;
     }
-
     try {
       const amount = parseFloat(newInvoice.amount);
-
-      // Calculate discount
       const discountVal = parseFloat(newInvoice.discountValue) || 0;
       const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
       const afterDiscount = Math.max(0, amount - discountAmt);
-
-      // Calculate additional charges from payment settings (on discounted amount)
       const calculatedCharges = additionalCharges
         .filter(charge => charge.enabled && charge.name && charge.rate > 0)
-        .map(charge => ({
-          name: charge.name,
-          rate: charge.rate,
-          amount: Math.round(afterDiscount * charge.rate / 100 * 100) / 100
-        }));
-
+        .map(charge => ({ name: charge.name, rate: charge.rate, amount: Math.round(afterDiscount * charge.rate / 100 * 100) / 100 }));
       const totalChargesAmount = calculatedCharges.reduce((sum, c) => sum + c.amount, 0);
       const total = afterDiscount + totalChargesAmount;
 
-      // Prepare data for API
       let description = '';
-      if (newInvoice.invoiceCategory === 'others') {
-        description = newInvoice.customDescription || '';
-      } else {
-        description = newInvoice.serviceDescription || '';
-      }
+      if (newInvoice.invoiceCategory === 'others') description = newInvoice.customDescription || '';
+      else description = newInvoice.serviceDescription || '';
 
-      // Prepare customer information based on target type
       let customerName = '';
       let customerAddress = '';
       let companyName = '';
@@ -2111,8 +1290,6 @@ const InvoicesPage: React.FC = () => {
         const restaurant = selectedTarget.data as Restaurant;
         customerName = restaurant.name;
         companyName = restaurant.name;
-
-        // Build full address from restaurant data
         const addressParts = [];
         if (restaurant.address) addressParts.push(restaurant.address);
         if (restaurant.phone) addressParts.push(`Phone: ${restaurant.phone}`);
@@ -2122,34 +1299,26 @@ const InvoicesPage: React.FC = () => {
         const manager = selectedTarget.data as Manager;
         customerName = manager.fullName;
         companyName = manager.companyName || manager.fullName;
-
-        // Build address from manager data
         const addressParts = [];
         if (manager.companyName) addressParts.push(manager.companyName);
         if (manager.email) addressParts.push(`Email: ${manager.email}`);
         customerAddress = addressParts.join('\n');
       }
 
-      // Determine payer_type based on mode and manager's role
       let payerType = 'restaurant';
       if (payerMode === 'external') {
         payerType = 'external';
       } else if (selectedTarget?.type === 'manager') {
         const manager = selectedTarget.data as Manager;
-        if (manager.role === 'Brand General' || manager.role === 'Brand Manager') {
-          payerType = 'brand_manager';
-        } else if (manager.role === 'Foodcourt General' || manager.role === 'Foodcourt Manager') {
-          payerType = 'foodcourt_manager';
-        }
+        if (manager.role === 'Brand General' || manager.role === 'Brand Manager') payerType = 'brand_manager';
+        else if (manager.role === 'Foodcourt General' || manager.role === 'Foodcourt Manager') payerType = 'foodcourt_manager';
       }
 
       const invoiceData: any = {
         restaurant_id: payerMode === 'external' ? null : (selectedTarget?.type === 'restaurant' ? (selectedTarget.data as Restaurant).id : null),
         payer_type: payerType,
         payer_id: payerMode === 'external' ? null : (selectedTarget?.type === 'manager' ? (selectedTarget.data as Manager).id : null),
-        type: 'manual',
-        billing_period_start: null,
-        billing_period_end: null,
+        type: 'manual', billing_period_start: null, billing_period_end: null,
         due_date: new Date(newInvoice.dueDate).toISOString(),
         total_amount: total,
         subtotal_before_discount: discountAmt > 0 ? amount : null,
@@ -2157,12 +1326,9 @@ const InvoicesPage: React.FC = () => {
         discount_value: discountAmt > 0 ? discountVal : null,
         discount_amount: discountAmt > 0 ? discountAmt : null,
         discount_reason: newInvoice.discountReason || null,
-        currency: newInvoice.currency || 'MYR',
-        status: 'draft',
+        currency: newInvoice.currency || 'MYR', status: 'draft',
         notes: `${companyName}\n${customerName}\n${customerAddress}\n\n${description}`,
-        issued_by: 1,
-        issued_at: new Date().toISOString(),
-        issuer_type: 'system_admin',
+        issued_by: 1, issued_at: new Date().toISOString(), issuer_type: 'system_admin',
         invoice_category: newInvoice.invoiceCategory || 'service',
         additional_charges: calculatedCharges
       };
@@ -2177,31 +1343,19 @@ const InvoicesPage: React.FC = () => {
       }
 
       const items = [{
-        item_type: newInvoice.invoiceCategory,
-        description: description,
-        calculation_method: 'fixed',
-        fixed_amount: amount,
-        calculated_amount: amount,
-        tax_rate: 0,
-        tax_amount: 0,
-        total_amount: amount
+        item_type: newInvoice.invoiceCategory, description: description,
+        calculation_method: 'fixed', fixed_amount: amount, calculated_amount: amount,
+        tax_rate: 0, tax_amount: 0, total_amount: amount
       }];
 
       const token = getAuthToken();
       const response = await fetch('/api/invoices', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          invoice_data: invoiceData,
-          items: items
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ invoice_data: invoiceData, items: items })
       });
 
       if (response.ok) {
-        // Refresh invoices list
         await fetchInvoices();
         setShowCreateInvoiceModal(false);
         resetInvoiceForm();
@@ -2222,23 +1376,14 @@ const InvoicesPage: React.FC = () => {
 
   const handleMarkAsPaid = async () => {
     if (!selectedInvoice) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status: 'paid',
-          paid_at: new Date().toISOString()
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'paid', paid_at: new Date().toISOString() })
       });
-
       if (response.ok) {
-        // Refresh invoices list
         await fetchInvoices();
         setShowPaymentConfirmModal(false);
         setSelectedInvoice(null);
@@ -2255,7 +1400,6 @@ const InvoicesPage: React.FC = () => {
 
   const confirmResendInvoice = () => {
     if (!selectedInvoice) return;
-
     setShowResendConfirmModal(false);
     setSelectedInvoice(null);
   };
@@ -2267,22 +1411,14 @@ const InvoicesPage: React.FC = () => {
 
   const confirmCancelInvoice = async () => {
     if (!selectedInvoice) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status: 'cancelled'
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'cancelled' })
       });
-
       if (response.ok) {
-        // Refresh invoices list
         await fetchInvoices();
         setShowCancelConfirmModal(false);
         setSelectedInvoice(null);
@@ -2299,19 +1435,13 @@ const InvoicesPage: React.FC = () => {
 
   const confirmDeleteInvoice = async () => {
     if (!selectedInvoice) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
       });
-
       if (response.ok) {
-        // Refresh invoices list
         await fetchInvoices();
         setShowDeleteConfirmModal(false);
         setSelectedInvoice(null);
@@ -2435,7 +1565,7 @@ const InvoicesPage: React.FC = () => {
                   <DataTableCell data-label="Customer" align="left">
                     <InvoiceInfo>
                       <InvoiceNumber>
-                        {invoice.customerName || invoice.restaurantName || invoice.externalPayerName || '—'}
+                        {invoice.customerName || invoice.restaurantName || invoice.externalPayerName || '\u2014'}
                         {invoice.isDemo && <DemoBadge>{t('admin:invoicesPage.demo')}</DemoBadge>}
                         {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('admin:invoicesPage.nonmember')}</span>}
                       </InvoiceNumber>
@@ -2445,7 +1575,7 @@ const InvoicesPage: React.FC = () => {
                       {invoice.hardwareQuoteNumber && (
                         <div>
                           <a href={`/pos/admin/hardware-quotes?search=${invoice.hardwareQuoteNumber}`} style={{ fontSize: '11px', color: '#635BFF', textDecoration: 'none' }}>
-                            {invoice.hardwareQuoteNumber} →
+                            {invoice.hardwareQuoteNumber} &rarr;
                           </a>
                         </div>
                       )}
@@ -2471,137 +1601,47 @@ const InvoicesPage: React.FC = () => {
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('admin:invoicesPage.edit')}</LocalActionButton>
                           <LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="22" y1="2" x2="11" y2="13"/>
-                              <polygon points="22,2 15,22 11,13 2,9 22,2"/>
-                            </svg>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg>
                           </LocalActionButton>
-                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
-                            <IconSymbol>×</IconSymbol>
-                          </LocalIconButton>
+                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice"><IconSymbol>&times;</IconSymbol></LocalIconButton>
                         </>
                       )}
-                      {/* 미결제 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('admin:invoicesPage.edit')}</LocalActionButton>
-                          {Number(invoice.total) === 0 && (
-                            <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('admin:invoicesPage.markPaid')}</LocalActionButton>
-                          )}
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                              <polyline points="7,10 12,15 17,10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="6,9 6,2 18,2 18,9"/>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                              <rect x="6" y="14" width="12" height="8"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Send Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                              <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
-                            <IconSymbol>×</IconSymbol>
-                          </LocalIconButton>
+                          {Number(invoice.total) === 0 && <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('admin:invoicesPage.markPaid')}</LocalActionButton>}
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
+                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Send Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton>
+                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice"><IconSymbol>&times;</IconSymbol></LocalIconButton>
                         </>
                       )}
-
-                      {/* 결제정보 확인중 상태: 결제확인, 다운로드, 프린트, 이메일발송 (편집불가) */}
                       {invoice.status === 'payment_submitted' && (
                         <>
-                          {invoice.hasPaymentInfo && (
-                            <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('admin:invoicesPage.confirm')}</LocalActionButton>
-                          )}
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                              <polyline points="7,10 12,15 17,10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="6,9 6,2 18,2 18,9"/>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                              <rect x="6" y="14" width="12" height="8"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                              <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                          </LocalActionButton>
+                          {invoice.hasPaymentInfo && <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('admin:invoicesPage.confirm')}</LocalActionButton>}
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
+                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton>
                         </>
                       )}
-
-                      {/* 연체 상태: 편집, 다운로드, 프린트, 이메일발송, 삭제 */}
                       {invoice.status === 'overdue' && (
                         <>
                           <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('admin:invoicesPage.edit')}</LocalActionButton>
-                          {Number(invoice.total) === 0 && (
-                            <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('admin:invoicesPage.markPaid')}</LocalActionButton>
-                          )}
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                              <polyline points="7,10 12,15 17,10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="6,9 6,2 18,2 18,9"/>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                              <rect x="6" y="14" width="12" height="8"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                              <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
-                            <IconSymbol>×</IconSymbol>
-                          </LocalIconButton>
+                          {Number(invoice.total) === 0 && <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('admin:invoicesPage.markPaid')}</LocalActionButton>}
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
+                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
+                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton>
+                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice"><IconSymbol>&times;</IconSymbol></LocalIconButton>
                         </>
                       )}
                       {invoice.status === 'paid' && (
                         <>
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                              <polyline points="7,10 12,15 17,10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="6,9 6,2 18,2 18,9"/>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                              <rect x="6" y="14" width="12" height="8"/>
-                            </svg>
-                          </LocalActionButton>
+                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
+                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
                         </>
                       )}
-                      {/* 취소됨 상태: View만 가능 */}
                       {invoice.status === 'cancelled' && (
-                        <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7,10 12,15 17,10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                          </svg>
-                        </LocalActionButton>
+                        <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
                       )}
                     </ActionButtons>
                   </DataTableCell>
@@ -2657,7 +1697,7 @@ const InvoicesPage: React.FC = () => {
                       <DataTableCell data-label="Customer" align="left">
                         <InvoiceInfo>
                           <InvoiceNumber>
-                            {invoice.customerName || invoice.restaurantName || invoice.externalPayerName || '—'}
+                            {invoice.customerName || invoice.restaurantName || invoice.externalPayerName || '\u2014'}
                             {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('admin:invoicesPage.nonmember')}</span>}
                           </InvoiceNumber>
                           <CompanyName>{invoice.companyName || getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
@@ -2700,1476 +1740,255 @@ const InvoicesPage: React.FC = () => {
         )}
 
         {activeTab === 'categories' && (
-          <div style={{ padding: '24px 0' }}>
-            <HeaderRow>
-              <div>
-                <SectionTitle>{t('admin:invoicesPage.invoiceCategories')}</SectionTitle>
-                <p style={{ color: '#6B7280', fontSize: '14px', margin: '8px 0 0 0' }}>
-                  Manage invoice categories for organizing different types of charges.
-                </p>
-              </div>
-              <Button variant="primary" onClick={() => handleOpenCategoryModal()}>{t('admin:invoicesPage.addCategory')}</Button>
-            </HeaderRow>
-
-            {invoiceCategories.length === 0 ? (
-              <CategoryEmptyState>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>{t('admin:invoicesPage.noCategoriesYet')}</h4>
-                <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 16px 0' }}>{t('admin:invoicesPage.createYourFirstInvoiceCategoryToGetStarted')}</p>
-                <Button variant="primary" onClick={() => handleOpenCategoryModal()}>{t('admin:invoicesPage.addCategory')}</Button>
-              </CategoryEmptyState>
-            ) : (
-              <CategoryGrid>
-                {invoiceCategories.map((category) => (
-                  <CategoryCard key={category.id} isActive={category.is_active}>
-                    <CategoryIcon>
-                      {category.name.charAt(0).toUpperCase()}
-                    </CategoryIcon>
-                    <CategoryInfo>
-                      <CategoryName>
-                        {category.name}
-                        <CategoryStatusBadge active={category.is_active}>
-                          {category.is_active ? 'Active' : 'Inactive'}
-                        </CategoryStatusBadge>
-                      </CategoryName>
-                      <CategoryMeta>
-                        <span>Code: <strong>{category.code}</strong></span>
-                        {category.description && <span>{category.description}</span>}
-                      </CategoryMeta>
-                    </CategoryInfo>
-                    <CategoryActions>
-                      <CategoryIconButton
-                        onClick={() => handleToggleCategoryActive(category)}
-                        title={category.is_active ? 'Deactivate' : 'Activate'}
-                      >
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          {category.is_active ? (
-                            <>
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                              <circle cx="12" cy="12" r="3" />
-                            </>
-                          ) : (
-                            <>
-                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                              <line x1="1" y1="1" x2="23" y2="23" />
-                            </>
-                          )}
-                        </svg>
-                      </CategoryIconButton>
-                      <CategoryIconButton onClick={() => handleOpenCategoryModal(category)} title="Edit Category">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </CategoryIconButton>
-                      <CategoryIconButton onClick={() => handleDeleteCategoryClick(category)} title="Delete Category">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3,6 5,6 21,6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                      </CategoryIconButton>
-                    </CategoryActions>
-                  </CategoryCard>
-                ))}
-              </CategoryGrid>
-            )}
-          </div>
+          <InvoiceCategoryManager
+            invoiceCategories={invoiceCategories}
+            showCategoryModal={showCategoryModal}
+            editingCategory={editingCategory}
+            categoryFormData={categoryFormData}
+            setCategoryFormData={setCategoryFormData}
+            savingCategory={savingCategory}
+            onOpenCategoryModal={handleOpenCategoryModal}
+            onCloseCategoryModal={handleCloseCategoryModal}
+            deleteCategoryModalOpen={deleteCategoryModalOpen}
+            categoryToDelete={categoryToDelete}
+            onDeleteCategoryClick={handleDeleteCategoryClick}
+            onDeleteCategoryConfirm={handleDeleteCategoryConfirm}
+            onDeleteCategoryCancel={() => setDeleteCategoryModalOpen(false)}
+            onToggleCategoryActive={handleToggleCategoryActive}
+          />
         )}
-
-        {/* Category Modal */}
-        {showCategoryModal && (
-                    <CommonModal isOpen={true} onClose={handleCloseCategoryModal} title={editingCategory ? 'Edit Category' : 'Add Category'} footer={<><Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>{t('admin:invoicesPage.cancel')}</Button><Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}> {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')} </Button></>}>
-
-                  <FormGroup>
-                    <FormLabel>Name *</FormLabel>
-                    <FormInput
-                      value={categoryFormData.name}
-                      onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
-                      placeholder="e.g., Hardware"
-                      required
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Code *</FormLabel>
-                    <FormInput
-                      value={categoryFormData.code}
-                      onChange={(e) => setCategoryFormData({ ...categoryFormData, code: e.target.value })}
-                      placeholder="e.g., hardware"
-                      required
-                      disabled={editingCategory?.is_system}
-                    />
-                    <small style={{ color: '#6B7280', fontSize: '12px' }}>
-                      Unique identifier used in the system. Use lowercase letters and underscores.
-                    </small>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>{t('admin:invoicesPage.description')}</FormLabel>
-                    <FormTextarea
-                      value={categoryFormData.description}
-                      onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
-                      placeholder="Brief description of this category"
-                      rows={3}
-                    />
-                  </FormGroup>
-                
-          </CommonModal>
-        )}
-
-        {/* Delete Category Confirmation Modal */}
-        <ConfirmModal
-          isOpen={deleteCategoryModalOpen}
-          onCancel={() => setDeleteCategoryModalOpen(false)}
-          onConfirm={handleDeleteCategoryConfirm}
-          title="Delete Category"
-          message={`Are you sure you want to delete "${categoryToDelete?.name}"? This action cannot be undone.`}
-          confirmText="Delete"
-          cancelText="Cancel"
-          type="danger"
-        />
 
         {/* Create Invoice Modal */}
-        {showCreateInvoiceModal && (
-                    <CommonModal isOpen={true} onClose={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }} title="Create Invoice" footer={<>{paymentMethodWarning && ( <div style={{ padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', fontSize: '13px', color: '#92400E', marginBottom: '12px' }}> {paymentMethodWarning} </div> )} <Button variant="secondary" onClick={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }}> Cancel </Button><Button variant="primary" onClick={handleSubmitInvoice} disabled={payerMode === 'member' ? (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate) : (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)} > Create Invoice </Button></>}>
-
-                <FormGroup>
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', border: '1px solid ' + (payerMode === 'member' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: payerMode === 'member' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="payerMode" value="member" checked={payerMode === 'member'} onChange={() => { setPayerMode('member'); setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' }); }} />
-                      Existing Member
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', border: '1px solid ' + (payerMode === 'external' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: payerMode === 'external' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="payerMode" value="external" checked={payerMode === 'external'} onChange={() => { setPayerMode('external'); setSelectedTarget(null); setSearchQuery(''); }} />
-                      Non-Member
-                    </label>
-                  </div>
-
-                  {payerMode === 'member' ? (
-                    <>
-                  <FormLabel>Search Manager or Restaurant *</FormLabel>
-                  <div style={{position: 'relative'}}>
-                    <FormInput
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      onFocus={() => setShowSearchDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
-                      placeholder="Type to search for managers or restaurants"
-                      required
-                    />
-                    {showSearchDropdown && (searchResults.managers.length > 0 || searchResults.restaurants.length > 0) && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'white',
-                        border: '1px solid #E6EBF1',
-                        borderRadius: '8px',
-                        maxHeight: '300px',
-                        overflowY: 'auto',
-                        zIndex: 1000,
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                      }}>
-                        {searchResults.managers.length > 0 && (
-                          <div>
-                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
-                              MANAGERS
-                            </div>
-                            {searchResults.managers.map(manager => (
-                              <div
-                                key={manager.id}
-                                onClick={() => selectTarget('manager', manager)}
-                                style={{
-                                  padding: '12px',
-                                  cursor: 'pointer',
-                                  borderBottom: '1px solid #F3F4F6',
-                                  transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                              >
-                                <div style={{fontWeight: '500', color: '#0A2540'}}>{manager.fullName}</div>
-                                <div style={{fontSize: '13px', color: '#6B7280'}}>{manager.companyName || manager.email}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {searchResults.restaurants.length > 0 && (
-                          <div>
-                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
-                              RESTAURANTS
-                            </div>
-                            {searchResults.restaurants.map(restaurant => {
-                              const manager = managers.find(m => m.id === restaurant.admin_id);
-                              return (
-                                <div
-                                  key={restaurant.id}
-                                  onClick={() => selectTarget('restaurant', restaurant)}
-                                  style={{
-                                    padding: '12px',
-                                    cursor: 'pointer',
-                                    borderBottom: '1px solid #F3F4F6',
-                                    transition: 'background 0.2s'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                                >
-                                  <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
-                                  <div style={{fontSize: '13px', color: '#6B7280'}}>Manager: {manager?.fullName || 'Unknown'}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {selectedTarget && (
-                    <div style={{
-                      marginTop: '8px',
-                      padding: '12px',
-                      background: '#F0F7FF',
-                      border: '1px solid #B3D9FF',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div>
-                        <div style={{fontWeight: '500', color: '#0A2540'}}>
-                          {selectedTarget.type === 'manager'
-                            ? (selectedTarget.data as Manager).fullName
-                            : (selectedTarget.data as Restaurant).name}
-                        </div>
-                        <div style={{fontSize: '13px', color: '#6B7280'}}>
-                          {selectedTarget.type === 'manager'
-                            ? `${(selectedTarget.data as Manager).companyName} • Manager`
-                            : `${(selectedTarget.data as Restaurant).address || 'No address'} • Restaurant`}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedTarget(null);
-                          setSearchQuery('');
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#6B7280',
-                          cursor: 'pointer',
-                          fontSize: '18px',
-                          lineHeight: '1',
-                          padding: '4px'
-                        }}
-                        title="Remove selection"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                    </>
-                  ) : (
-                    <>
-                      <FormLabel>{t('admin:invoicesPage.nonmemberDetails')}</FormLabel>
-                      <FormRow>
-                        <FormGroup>
-                          <FormLabel>Name *</FormLabel>
-                          <FormInput type="text" value={externalPayer.name} onChange={(e) => setExternalPayer({...externalPayer, name: e.target.value})} placeholder="Full name" required />
-                        </FormGroup>
-                        <FormGroup>
-                          <FormLabel>Email *</FormLabel>
-                          <FormInput type="email" value={externalPayer.email} onChange={(e) => setExternalPayer({...externalPayer, email: e.target.value})} placeholder="Email address" required />
-                        </FormGroup>
-                      </FormRow>
-                      <FormRow>
-                        <FormGroup>
-                          <FormLabel>{t('admin:invoicesPage.phone')}</FormLabel>
-                          <FormInput type="text" value={externalPayer.phone} onChange={(e) => setExternalPayer({...externalPayer, phone: e.target.value})} placeholder="Phone number" />
-                        </FormGroup>
-                        <FormGroup>
-                          <FormLabel>{t('admin:invoicesPage.company')}</FormLabel>
-                          <FormInput type="text" value={externalPayer.company} onChange={(e) => setExternalPayer({...externalPayer, company: e.target.value})} placeholder="Company name" />
-                        </FormGroup>
-                      </FormRow>
-                      <FormRow>
-                        <FormGroup>
-                          <FormLabel>{t('admin:invoicesPage.address')}</FormLabel>
-                          <FormInput type="text" value={externalPayer.address} onChange={(e) => setExternalPayer({...externalPayer, address: e.target.value})} placeholder="Address" />
-                        </FormGroup>
-                        <FormGroup>
-                          <FormLabel>{t('admin:invoicesPage.taxId')}</FormLabel>
-                          <FormInput type="text" value={externalPayer.tax_id} onChange={(e) => setExternalPayer({...externalPayer, tax_id: e.target.value})} placeholder="Tax ID" />
-                        </FormGroup>
-                      </FormRow>
-                    </>
-                  )}
-                </FormGroup>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Amount{newInvoice.currency ? ` (${getCurrencySymbol(newInvoice.currency)})` : ''} *</FormLabel>
-                    <FormInput
-                      type="number"
-                      step={newInvoice.currency ? (getCurrencyDecimals(newInvoice.currency) === 0 ? '1' : '0.01') : '0.01'}
-                      min="0"
-                      value={newInvoice.amount}
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        const discountVal = parseFloat(newInvoice.discountValue) || 0;
-                        const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
-                        const afterDiscount = Math.max(0, amount - discountAmt);
-                        const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
-                        const total = afterDiscount + chargesTotal;
-                        setNewInvoice({ ...newInvoice, amount: e.target.value, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
-                      }}
-                      onBlur={(e) => {
-                        if (e.target.value && newInvoice.currency) {
-                          const decimals = getCurrencyDecimals(newInvoice.currency);
-                          const amount = parseFloat(e.target.value) || 0;
-                          const formattedAmount = amount.toFixed(decimals);
-                          const discountVal = parseFloat(newInvoice.discountValue) || 0;
-                          const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
-                          const afterDiscount = Math.max(0, amount - discountAmt);
-                          const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
-                          const total = afterDiscount + chargesTotal;
-                          setNewInvoice({ ...newInvoice, amount: formattedAmount, tax: chargesTotal.toFixed(decimals), total: total.toFixed(decimals) });
-                        }
-                      }}
-                      placeholder={newInvoice.currency ? (getCurrencyDecimals(newInvoice.currency) === 0 ? '0' : '0.00') : '0.00'}
-                      required
-                      disabled={payerMode === 'member' && !selectedTarget}
-                    />
-                    {payerMode === 'member' && !selectedTarget && (
-                      <span style={{fontSize: '12px', color: '#6B7C93', marginTop: '4px', display: 'block'}}>
-                        Select a manager or restaurant first
-                      </span>
-                    )}
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Due Date *</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={newInvoice.dueDate}
-                      onChange={(e) => setNewInvoice({...newInvoice, dueDate: e.target.value})}
-                      required
-                      min={new Date().toISOString().split('T')[0]}
-                    />
-                  </FormGroup>
-                </FormRow>
-
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>{t('admin:invoicesPage.discount')}</FormLabel>
-                    <FormSelect
-                      value={newInvoice.discountType}
-                      onChange={(e) => {
-                        const dtype = e.target.value as 'none' | 'percentage' | 'fixed';
-                        const amount = parseFloat(newInvoice.amount) || 0;
-                        const discountVal = dtype === 'none' ? 0 : (parseFloat(newInvoice.discountValue) || 0);
-                        const discountAmt = dtype === 'percentage' ? amount * (discountVal / 100) : dtype === 'fixed' ? discountVal : 0;
-                        const afterDiscount = Math.max(0, amount - discountAmt);
-                        const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
-                        const total = afterDiscount + chargesTotal;
-                        setNewInvoice({ ...newInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : newInvoice.discountValue, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
-                      }}
-                    >
-                      <option value="none">{t('admin:invoicesPage.noDiscount')}</option>
-                      <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">{t('admin:invoicesPage.fixedAmount')}</option>
-                    </FormSelect>
-                  </FormGroup>
-                  {newInvoice.discountType !== 'none' && (
-                    <FormGroup>
-                      <FormLabel>{newInvoice.discountType === 'percentage' ? 'Discount (%)' : 'Discount Amount'}</FormLabel>
-                      <FormInput
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max={newInvoice.discountType === 'percentage' ? '100' : undefined}
-                        value={newInvoice.discountValue}
-                        onChange={(e) => {
-                          const amount = parseFloat(newInvoice.amount) || 0;
-                          const discountVal = parseFloat(e.target.value) || 0;
-                          const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : discountVal;
-                          const afterDiscount = Math.max(0, amount - discountAmt);
-                          const chargesTotal = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + (afterDiscount * c.rate / 100), 0);
-                          const total = afterDiscount + chargesTotal;
-                          setNewInvoice({ ...newInvoice, discountValue: e.target.value, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
-                        }}
-                        placeholder="0"
-                      />
-                    </FormGroup>
-                  )}
-                  {newInvoice.discountType !== 'none' && (
-                    <FormGroup>
-                      <FormLabel>{t('admin:invoicesPage.discountReason')}</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={newInvoice.discountReason}
-                        onChange={(e) => setNewInvoice({ ...newInvoice, discountReason: e.target.value })}
-                        placeholder="e.g. Loyalty discount"
-                      />
-                    </FormGroup>
-                  )}
-                </FormRow>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:invoicesPage.invoiceCategory')}</FormLabel>
-                  <FormSelect
-                    value={newInvoice.invoiceCategory || 'service'}
-                    onChange={(e) => setNewInvoice({...newInvoice, invoiceCategory: e.target.value})}
-                  >
-                    {invoiceCategories.length > 0 ? (
-                      invoiceCategories
-                        .filter(cat => cat.code !== 'subscription')
-                        .map(cat => (
-                          <option key={cat.id} value={cat.code}>{cat.name}</option>
-                        ))
-                    ) : (
-                      <>
-                        <option value="service">{t('admin:invoicesPage.service')}</option>
-                        <option value="consulting">{t('admin:invoicesPage.consulting')}</option>
-                        <option value="others">{t('admin:invoicesPage.others')}</option>
-                      </>
-                    )}
-                  </FormSelect>
-                </FormGroup>
-
-                {/* Show item/description input for all non-subscription categories */}
-                {(newInvoice.invoiceCategory || 'service') !== 'subscription' && (
-                  <FormGroup>
-                    <FormLabel>{t('admin:invoicesPage.itemdescription')}</FormLabel>
-                    <FormTextarea
-                      value={newInvoice.invoiceCategory === 'others' ? (newInvoice.customDescription || '') : (newInvoice.serviceDescription || '')}
-                      onChange={(e) => {
-                        if (newInvoice.invoiceCategory === 'others') {
-                          setNewInvoice({...newInvoice, customDescription: e.target.value});
-                        } else {
-                          setNewInvoice({...newInvoice, serviceDescription: e.target.value});
-                        }
-                      }}
-                      placeholder={`Enter ${newInvoice.invoiceCategory || 'service'} description...`}
-                      rows={2}
-                    />
-                  </FormGroup>
-                )}
-                <InvoiceSummary>
-                  <SummaryRow>
-                    <span>Subtotal:</span>
-                    <span>{newInvoice.currency ? formatCurrency(parseFloat(newInvoice.amount || '0'), newInvoice.currency) : '-'}</span>
-                  </SummaryRow>
-                  {newInvoice.discountType !== 'none' && parseFloat(newInvoice.discountValue || '0') > 0 && (() => {
-                    const amt = parseFloat(newInvoice.amount || '0');
-                    const dv = parseFloat(newInvoice.discountValue || '0');
-                    const discountAmt = newInvoice.discountType === 'percentage' ? amt * (dv / 100) : dv;
-                    return (
-                      <SummaryRow>
-                        <span style={{ color: '#15803D' }}>Discount{newInvoice.discountType === 'percentage' ? ` (${dv}%)` : ''}:</span>
-                        <span style={{ color: '#15803D' }}>-{newInvoice.currency ? formatCurrency(discountAmt, newInvoice.currency) : '-'}</span>
-                      </SummaryRow>
-                    );
-                  })()}
-                  {additionalCharges.filter(c => c.enabled && c.name && c.rate > 0).map((charge, idx) => {
-                    const amt = parseFloat(newInvoice.amount || '0');
-                    const dv = parseFloat(newInvoice.discountValue || '0');
-                    const discountAmt = newInvoice.discountType === 'percentage' ? amt * (dv / 100) : newInvoice.discountType === 'fixed' ? dv : 0;
-                    const afterDiscount = Math.max(0, amt - discountAmt);
-                    const chargeAmount = afterDiscount * (charge.rate / 100);
-                    return (
-                      <SummaryRow key={idx}>
-                        <span>{charge.name} ({charge.rate}%):</span>
-                        <span>{newInvoice.currency ? formatCurrency(chargeAmount, newInvoice.currency) : '-'}</span>
-                      </SummaryRow>
-                    );
-                  })}
-                  <SummaryRow highlight>
-                    <span>Total:</span>
-                    <span><strong>{newInvoice.currency ? formatCurrency(parseFloat(newInvoice.total || '0'), newInvoice.currency) : '-'}</strong></span>
-                  </SummaryRow>
-                </InvoiceSummary>
-              
-          </CommonModal>
-        )}
+        <InvoiceCreateModal
+          show={showCreateInvoiceModal}
+          onClose={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }}
+          onSubmit={handleSubmitInvoice}
+          newInvoice={newInvoice}
+          setNewInvoice={setNewInvoice}
+          payerMode={payerMode}
+          setPayerMode={setPayerMode}
+          externalPayer={externalPayer}
+          setExternalPayer={setExternalPayer}
+          searchQuery={searchQuery}
+          onSearch={handleSearch}
+          showSearchDropdown={showSearchDropdown}
+          onShowSearchDropdown={setShowSearchDropdown}
+          searchResults={searchResults}
+          selectedTarget={selectedTarget}
+          onSelectTarget={selectTarget}
+          onClearTarget={() => { setSelectedTarget(null); setSearchQuery(''); }}
+          managers={managers}
+          invoiceCategories={invoiceCategories}
+          additionalCharges={additionalCharges}
+          paymentMethodWarning={paymentMethodWarning}
+        />
 
         {/* View Invoice Modal */}
-        {showViewModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}>{t('admin:invoicesPage.close')}</Button></>}>
+        <InvoiceViewModal
+          show={showViewModal}
+          invoice={selectedInvoice}
+          companySettings={companySettings}
+          operationSettings={operationSettings}
+          onClose={() => setShowViewModal(false)}
+          formatDate={formatDate}
+          showLinkAccountModal={showLinkAccountModal}
+          onOpenLinkAccountModal={() => { setShowLinkAccountModal(true); setLinkSearchQuery(''); setLinkSearchResults({managers: [], restaurants: []}); }}
+          onCloseLinkAccountModal={() => setShowLinkAccountModal(false)}
+          linkSearchQuery={linkSearchQuery}
+          onLinkSearch={handleLinkSearch}
+          showLinkSearchDropdown={showLinkSearchDropdown}
+          onShowLinkSearchDropdown={setShowLinkSearchDropdown}
+          linkSearchResults={linkSearchResults}
+          onLinkAccount={handleLinkAccount}
+        />
 
-                {/* Invoice Header with Company Info */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
-                  <div style={{ flex: '0 0 55%' }}>
-                    {companySettings?.companyLogo && (
-                      <img src={companySettings.companyLogo} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
-                    )}
-                    <div style={{ fontSize: companySettings?.companyLogo ? '16px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
-                      {companySettings?.companyName || 'Company Name'}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
-                      {companySettings?.address && <div>{companySettings.address}</div>}
-                      {(companySettings?.city || companySettings?.state || companySettings?.postalCode) && (
-                        <div>{[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}</div>
-                      )}
-                      {companySettings?.country && <div>{companySettings.country}</div>}
-                      {companySettings?.phone && <div>Tel: {companySettings.phone}</div>}
-                      {companySettings?.email && <div>Email: {companySettings.email}</div>}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>{t('admin:invoicesPage.invoice')}</div>
-                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.invoiceNumber}</div>
-                    <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
-                      {getStatusDisplay(selectedInvoice.status)}
-                    </StatusBadge>
-                    {selectedInvoice.isModified && (
-                      <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px' }}>{t('admin:invoicesPage.modified')}</span>
-                    )}
-                  </div>
-                </div>
+        {/* Edit Invoice Modal */}
+        <InvoiceEditModal
+          show={showEditModal}
+          selectedInvoice={selectedInvoice}
+          editInvoice={editInvoice}
+          setEditInvoice={setEditInvoice}
+          editModificationReason={editModificationReason}
+          setEditModificationReason={setEditModificationReason}
+          editSaveError={editSaveError}
+          onSave={handleSaveEdit}
+          onClose={() => setShowEditModal(false)}
+          editSearchQuery={editSearchQuery}
+          onEditSearch={handleEditSearch}
+          showEditSearchDropdown={showEditSearchDropdown}
+          onShowEditSearchDropdown={setShowEditSearchDropdown}
+          editSearchResults={editSearchResults}
+          editSelectedTarget={editSelectedTarget}
+          onEditTargetSelect={handleEditTargetSelect}
+          onClearEditTarget={() => { setEditSelectedTarget(null); setEditSearchQuery(''); }}
+          managers={managers}
+          invoiceCategories={invoiceCategories}
+          operationSettings={operationSettings}
+          getChargesForCurrency={getChargesForCurrency}
+        />
 
-                {/* Bill To + Dates Section (Side by Side) */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-                  {/* Bill To */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('admin:invoicesPage.billTo')}</div>
-                    {selectedInvoice.payerType === 'external' ? (
-                      <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.externalPayerName || selectedInvoice.customerName}</div>
-                          <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px' }}>{t('admin:invoicesPage.nonmember')}</span>
-                        </div>
-                        {selectedInvoice.externalPayerCompany && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {selectedInvoice.externalPayerCompany}</div>
-                        )}
-                        {selectedInvoice.externalPayerEmail && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Email: {selectedInvoice.externalPayerEmail}</div>
-                        )}
-                        {selectedInvoice.externalPayerPhone && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Phone: {selectedInvoice.externalPayerPhone}</div>
-                        )}
-                        {selectedInvoice.externalPayerAddress && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.externalPayerAddress}</div>
-                        )}
-                        {selectedInvoice.externalPayerTaxId && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Tax ID: {selectedInvoice.externalPayerTaxId}</div>
-                        )}
-                        <button
-                          onClick={() => { setShowLinkAccountModal(true); setLinkSearchQuery(''); setLinkSearchResults({managers: [], restaurants: []}); }}
-                          style={{ marginTop: '10px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, color: '#635BFF', background: '#F0F0FF', border: '1px solid #635BFF', borderRadius: '6px', cursor: 'pointer' }}
-                        >
-                          Link to Member Account
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.customerName}</div>
-                        {selectedInvoice.customerAddress && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.customerAddress}</div>
-                        )}
-                        {selectedInvoice.payerType === 'restaurant' && selectedInvoice.restaurantName && selectedInvoice.restaurantName !== 'Unknown Restaurant' && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {selectedInvoice.restaurantName}</div>
-                        )}
-                        {selectedInvoice.companyName && selectedInvoice.companyName !== selectedInvoice.customerName && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {selectedInvoice.companyName}</div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  {/* Dates */}
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#6B7280' }}>Billing Period:</span>
-                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{selectedInvoice.billingPeriod || '-'}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#6B7280' }}>Issue Date:</span>
-                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.issueDate)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#6B7280' }}>Due Date:</span>
-                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.dueDate)}</span>
-                    </div>
-                    {selectedInvoice.paidDate && (
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                        <span style={{ color: '#6B7280' }}>Paid Date:</span>
-                        <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.paidDate)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Items Table */}
-                <div style={{ marginBottom: '24px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>{t('admin:invoicesPage.items')}</div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
-                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('admin:invoicesPage.description')}</th>
-                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('admin:invoicesPage.qty')}</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280', whiteSpace: 'nowrap' }}>{t('admin:invoicesPage.unitPrice')}</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280', whiteSpace: 'nowrap' }}>{t('admin:invoicesPage.amount')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedInvoice.items.map((item, index) => (
-                        <tr key={index} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{item.description}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Summary */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-                  <div style={{ width: '280px' }}>
-                    <InvoiceSummary>
-                      <SummaryRow>
-                        <span>Subtotal:</span>
-                        <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
-                      </SummaryRow>
-                      {selectedInvoice.discountType && selectedInvoice.discountType !== 'none' && selectedInvoice.discountAmount > 0 && (
-                        <SummaryRow>
-                          <span style={{color: '#15803D'}}>Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:</span>
-                          <span style={{color: '#15803D'}}>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
-                        </SummaryRow>
-                      )}
-                      {(selectedInvoice.additionalCharges || []).map((charge: any, idx: number) => (
-                        <SummaryRow key={idx}>
-                          <span>{charge.name} ({charge.rate}%):</span>
-                          <span>{formatCurrency(charge.amount, selectedInvoice.currency || 'MYR')}</span>
-                        </SummaryRow>
-                      ))}
-                      {(selectedInvoice.additionalCharges || []).length === 0 && selectedInvoice.tax > 0 && (
-                        <SummaryRow>
-                          <span>Tax:</span>
-                          <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>
-                        </SummaryRow>
-                      )}
-                      <SummaryRow highlight>
-                        <span>Total:</span>
-                        <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>
-                      </SummaryRow>
-                    </InvoiceSummary>
-                  </div>
-                </div>
-
-                {/* Bank Details (prefer issuerInfo from payment settings, fall back to companySettings) */}
-                {(() => {
-                  const bankName = selectedInvoice.issuerInfo?.bankName || companySettings?.bankName;
-                  const bankAccount = selectedInvoice.issuerInfo?.bankAccount || companySettings?.bankAccount;
-                  const bankAccountName = selectedInvoice.issuerInfo?.bankAccountName || companySettings?.bankAccountName;
-                  const swiftCode = selectedInvoice.issuerInfo?.swiftCode || companySettings?.swiftCode;
-                  if (!bankName) return null;
-                  return (
-                    <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('admin:invoicesPage.paymentDetails')}</div>
-                      <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
-                        <div><strong>Bank:</strong> {bankName}</div>
-                        <div><strong>Account Name:</strong> {bankAccountName || '-'}</div>
-                        <div><strong>Account Number:</strong> {bankAccount || '-'}</div>
-                        {swiftCode && <div><strong>SWIFT Code:</strong> {swiftCode}</div>}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Registration Info */}
-                {(companySettings?.taxNumber || companySettings?.registrationNumber) && (
-                  <div style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', marginTop: '16px' }}>
-                    {companySettings?.registrationNumber && <span>Reg No: {companySettings.registrationNumber}</span>}
-                    {companySettings?.registrationNumber && companySettings?.taxNumber && <span> | </span>}
-                    {companySettings?.taxNumber && <span>Tax No: {companySettings.taxNumber}</span>}
-                  </div>
-                )}
-
-                {/* Modification History in View Modal */}
-                {selectedInvoice.isModified && Array.isArray(selectedInvoice.modificationHistory) && selectedInvoice.modificationHistory.length > 0 && (
-                  <div style={{ marginTop: '20px', padding: '16px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>{t('admin:invoicesPage.modificationHistory')}</div>
-                    {(selectedInvoice.modificationHistory as any[]).map((mod: any, idx: number) => {
-                      const ts = mod.modified_at || mod.timestamp;
-                      const who = mod.modified_by_name || (mod.reason === 'payment_settings_updated' ? 'System (payment settings)' : mod.reason === 'subscription_updated' ? 'System (subscription)' : 'System');
-                      const isLast = idx >= (selectedInvoice.modificationHistory as any[]).length - 1;
-                      return (
-                        <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: isLast ? '0' : '10px', paddingBottom: isLast ? '0' : '10px', borderBottom: isLast ? 'none' : '1px solid #FDE68A' }}>
-                          <div style={{ fontWeight: 500 }}>{ts ? new Date(ts).toLocaleString() : ''}{who ? ` - ${who}` : ''}</div>
-                          {mod.reason && !mod.modified_by_name && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
-                          {mod.reason && mod.modified_by_name && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
-                          {mod.changes && typeof mod.changes === 'object' && Object.keys(mod.changes).length > 0 && (
-                            <div style={{ marginTop: '3px', color: '#92400E' }}>
-                              {Object.entries(mod.changes).map(([field, change]: [string, any]) => (
-                                <div key={field}>{field}: {String(change?.from)} → {String(change?.to)}</div>
-                              ))}
-                            </div>
-                          )}
-                          {!mod.changes && (mod.before || mod.after) && (
-                            <div style={{ marginTop: '3px', color: '#92400E' }}>
-                              {mod.before?.total_amount !== undefined && mod.after?.total_amount !== undefined && (
-                                <div>total: {String(mod.before.total_amount)} → {String(mod.after.total_amount)}</div>
-                              )}
-                              {mod.before?.additional_charges !== undefined && (
-                                <div>additional charges updated</div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              
-          </CommonModal>
-        )}
-
-        {/* Link Account Modal */}
-        {showLinkAccountModal && selectedInvoice && (
-          <CommonModal isOpen={true} onClose={() => setShowLinkAccountModal(false)} title="Link to Member Account" footer={<Button variant="secondary" onClick={() => setShowLinkAccountModal(false)}>{t('admin:invoicesPage.cancel')}</Button>}>
+        {/* Payment Confirmation Modal */}
+        {showPaymentConfirmModal && selectedInvoice && (
+          <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
             <FormGroup>
-              <FormLabel>Search Member *</FormLabel>
-              <div style={{position: 'relative'}}>
-                <FormInput
-                  type="text"
-                  value={linkSearchQuery}
-                  onChange={(e) => handleLinkSearch(e.target.value)}
-                  onFocus={() => setShowLinkSearchDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowLinkSearchDropdown(false), 200)}
-                  placeholder="Type to search for managers or restaurants"
-                />
-                {showLinkSearchDropdown && (linkSearchResults.managers.length > 0 || linkSearchResults.restaurants.length > 0) && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #E6EBF1', borderRadius: '8px', maxHeight: '300px', overflowY: 'auto', zIndex: 1000, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                    {linkSearchResults.managers.length > 0 && (
-                      <div>
-                        <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>{t('admin:invoicesPage.managers')}</div>
-                        {linkSearchResults.managers.map(manager => (
-                          <div key={manager.id} onClick={() => handleLinkAccount('manager', manager)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
-                            <div style={{fontWeight: '500', color: '#0A2540'}}>{manager.fullName}</div>
-                            <div style={{fontSize: '13px', color: '#6B7280'}}>{manager.companyName || manager.email} - {manager.role}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {linkSearchResults.restaurants.length > 0 && (
-                      <div>
-                        <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>{t('admin:invoicesPage.restaurants')}</div>
-                        {linkSearchResults.restaurants.map(restaurant => (
-                          <div key={restaurant.id} onClick={() => handleLinkAccount('restaurant', restaurant)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
-                            <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
-                            <div style={{fontSize: '13px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+              <FormLabel>{t('admin:invoicesPage.invoiceSummary')}</FormLabel>
+              <InvoiceSummary>
+                <SummaryRow><span>Customer:</span><span>{selectedInvoice.customerName || selectedInvoice.managerName}</span></SummaryRow>
+                <SummaryRow><span>Company:</span><span>{selectedInvoice.companyName}</span></SummaryRow>
+                <SummaryRow><span>Invoice Number:</span><span>{selectedInvoice.invoiceNumber}</span></SummaryRow>
+                <SummaryRow><span>Due Date:</span><span>{formatDate(selectedInvoice.dueDate)}</span></SummaryRow>
+                <SummaryRow highlight><span><strong>Payment Amount:</strong></span><span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span></SummaryRow>
+              </InvoiceSummary>
+            </FormGroup>
+            {selectedInvoice.hasPaymentInfo && (
+              <FormGroup>
+                <FormLabel>{t('admin:invoicesPage.customersPaymentInformation')}</FormLabel>
+                <div style={{ background: '#EFF6FF', border: '1px solid #3B82F6', borderRadius: '8px', padding: '16px' }}>
+                  <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
+                    <p style={{ margin: '0 0 8px 0' }}>
+                      <strong>Payment Method:</strong> {
+                        selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
+                        selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' :
+                        selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' :
+                        selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' :
+                        selectedInvoice.paymentMethod || 'Not specified'
+                      }
+                    </p>
+                    {selectedInvoice.transactionId && <p style={{ margin: '0 0 8px 0' }}><strong>Transaction ID:</strong> {selectedInvoice.transactionId}</p>}
                   </div>
-                )}
-              </div>
-              <div style={{ marginTop: '12px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
-                This will convert the non-member invoice to a member invoice and link it to the selected account.
+                  {selectedInvoice.receiptUrl && (
+                    <div style={{ marginTop: '12px' }}>
+                      <p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p>
+                      <div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}>
+                        <img src={selectedInvoice.receiptUrl} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }} onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')} />
+                        <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>Click image to view full size</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </FormGroup>
+            )}
+            <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', padding: '16px', margin: '16px 0' }}>
+              <p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}>
+                <strong>{t('admin:invoicesPage.confirmPaymentReceipt')}</strong><br />
+                Only mark this invoice as paid if you have received and verified the payment.
+                This action will update the invoice status to "Paid".
+              </p>
+            </div>
+            <FormGroup>
+              <FormLabel>{t('admin:invoicesPage.statusChange')}</FormLabel>
+              <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#374151', background: '#F8FAFC', padding: '12px', borderRadius: '6px' }}>
+                Payment Submitted &rarr; Paid<br />
+                Paid Date: {formatDateTime(new Date(), operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' })}
               </div>
             </FormGroup>
           </CommonModal>
         )}
 
-        {/* Payment Confirmation Modal */}
-        {showPaymentConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:invoicesPage.invoiceSummary')}</FormLabel>
-                  <InvoiceSummary>
-                    <SummaryRow>
-                      <span>Customer:</span>
-                      <span>{selectedInvoice.customerName || selectedInvoice.managerName}</span>
-                    </SummaryRow>
-                    <SummaryRow>
-                      <span>Company:</span>
-                      <span>{selectedInvoice.companyName}</span>
-                    </SummaryRow>
-                    <SummaryRow>
-                      <span>Invoice Number:</span>
-                      <span>{selectedInvoice.invoiceNumber}</span>
-                    </SummaryRow>
-                    <SummaryRow>
-                      <span>Due Date:</span>
-                      <span>{formatDate(selectedInvoice.dueDate)}</span>
-                    </SummaryRow>
-                    <SummaryRow highlight>
-                      <span><strong>Payment Amount:</strong></span>
-                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>
-                    </SummaryRow>
-                  </InvoiceSummary>
-                </FormGroup>
-
-                {/* Customer's Payment Information */}
-                {selectedInvoice.hasPaymentInfo && (
-                  <FormGroup>
-                    <FormLabel>{t('admin:invoicesPage.customersPaymentInformation')}</FormLabel>
-                    <div style={{
-                      background: '#EFF6FF',
-                      border: '1px solid #3B82F6',
-                      borderRadius: '8px',
-                      padding: '16px'
-                    }}>
-                      <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
-                        <p style={{ margin: '0 0 8px 0' }}>
-                          <strong>Payment Method:</strong> {
-                            selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
-                            selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' :
-                            selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' :
-                            selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' :
-                            selectedInvoice.paymentMethod || 'Not specified'
-                          }
-                        </p>
-                        {selectedInvoice.transactionId && (
-                          <p style={{ margin: '0 0 8px 0' }}>
-                            <strong>Transaction ID:</strong> {selectedInvoice.transactionId}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Receipt Image */}
-                      {selectedInvoice.receiptUrl && (
-                        <div style={{ marginTop: '12px' }}>
-                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p>
-                          <div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}>
-                            <img
-                              src={selectedInvoice.receiptUrl}
-                              alt="Payment Receipt"
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '300px',
-                                borderRadius: '8px',
-                                cursor: 'pointer'
-                              }}
-                              onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')}
-                            />
-                            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>
-                              Click image to view full size
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </FormGroup>
-                )}
-
-                <div style={{
-                  background: '#FEF3C7',
-                  border: '1px solid #F59E0B',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  margin: '16px 0'
-                }}>
-                  <p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}>
-                    <strong>{t('admin:invoicesPage.confirmPaymentReceipt')}</strong><br />
-                    Only mark this invoice as paid if you have received and verified the payment.
-                    This action will update the invoice status to "Paid".
-                  </p>
-                </div>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:invoicesPage.statusChange')}</FormLabel>
-                  <div style={{
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    color: '#374151',
-                    background: '#F8FAFC',
-                    padding: '12px',
-                    borderRadius: '6px'
-                  }}>
-                    Payment Submitted → Paid<br />
-                    Paid Date: {new Date().toLocaleDateString('en-MY')}
-                  </div>
-                </FormGroup>
-              
-          </CommonModal>
-        )}
-
-        {/* Edit Invoice Modal */}
-        {showEditModal && selectedInvoice && editInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Invoice - ${selectedInvoice.invoiceNumber}`} footer={<>{editSaveError && ( <div style={{ width: '100%', padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '6px', color: '#DC2626', fontSize: '13px' }}> {editSaveError} </div> )} <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', width: '100%' }}><Button variant="secondary" onClick={() => setShowEditModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSaveEdit}> Save Changes </Button></div></>}>
-
-                <FormGroup>
-                  <FormLabel>Search Manager or Restaurant *</FormLabel>
-                  <div style={{position: 'relative'}}>
-                    <FormInput
-                      type="text"
-                      value={editSearchQuery}
-                      onChange={(e) => handleEditSearch(e.target.value)}
-                      onFocus={() => setShowEditSearchDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowEditSearchDropdown(false), 200)}
-                      placeholder="Type to search for managers or restaurants"
-                      required
-                    />
-                    {showEditSearchDropdown && (editSearchResults.managers.length > 0 || editSearchResults.restaurants.length > 0) && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'white',
-                        border: '1px solid #E6EBF1',
-                        borderRadius: '8px',
-                        maxHeight: '300px',
-                        overflowY: 'auto',
-                        zIndex: 1000,
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                      }}>
-                        {editSearchResults.managers.length > 0 && (
-                          <div>
-                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
-                              MANAGERS
-                            </div>
-                            {editSearchResults.managers.map(manager => (
-                              <div
-                                key={manager.id}
-                                onClick={() => handleEditTargetSelect('manager', manager)}
-                                style={{
-                                  padding: '12px',
-                                  cursor: 'pointer',
-                                  borderBottom: '1px solid #F3F4F6',
-                                  transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                              >
-                                <div style={{fontWeight: '500', color: '#0A2540'}}>{manager.fullName}</div>
-                                <div style={{fontSize: '13px', color: '#6B7280'}}>{manager.companyName || manager.email}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {editSearchResults.restaurants.length > 0 && (
-                          <div>
-                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
-                              RESTAURANTS
-                            </div>
-                            {editSearchResults.restaurants.map(restaurant => {
-                              const manager = managers.find(m => m.id === restaurant.admin_id);
-                              return (
-                                <div
-                                  key={restaurant.id}
-                                  onClick={() => handleEditTargetSelect('restaurant', restaurant)}
-                                  style={{
-                                    padding: '12px',
-                                    cursor: 'pointer',
-                                    borderBottom: '1px solid #F3F4F6',
-                                    transition: 'background 0.2s'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                                >
-                                  <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
-                                  <div style={{fontSize: '13px', color: '#6B7280'}}>
-                                    {manager ? `Manager: ${manager.fullName}` : 'No manager assigned'} • {restaurant.address || 'No address'}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {editSelectedTarget && (
-                    <div style={{
-                      marginTop: '8px',
-                      padding: '12px',
-                      background: '#F0F7FF',
-                      border: '1px solid #B3D9FF',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div>
-                        <div style={{fontWeight: '500', color: '#0A2540'}}>
-                          {editSelectedTarget.type === 'manager'
-                            ? (editSelectedTarget.data as Manager).fullName
-                            : (editSelectedTarget.data as Restaurant).name}
-                        </div>
-                        <div style={{fontSize: '13px', color: '#6B7280'}}>
-                          {editSelectedTarget.type === 'manager'
-                            ? `${(editSelectedTarget.data as Manager).companyName} • Manager`
-                            : `${(editSelectedTarget.data as Restaurant).address || 'No address'} • Restaurant`}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setEditSelectedTarget(null);
-                          setEditSearchQuery('');
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#6B7280',
-                          cursor: 'pointer',
-                          fontSize: '16px',
-                          padding: '4px'
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                </FormGroup>
-
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Amount ({editInvoice.currency || operationSettings.currency || 'MYR'})</FormLabel>
-                    <FormInput
-                      type="number"
-                      value={editInvoice.amount}
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        const discountVal = parseFloat(editInvoice.discountValue) || 0;
-                        const discountAmt = editInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : editInvoice.discountType === 'fixed' ? discountVal : 0;
-                        const afterDiscount = Math.max(0, amount - discountAmt);
-                        const editCharges = getChargesForCurrency(editInvoice.currency || '');
-                        const chargesTotal = editCharges
-                          .filter((c: any) => c.enabled && c.rate > 0)
-                          .reduce((sum: number, c: any) => sum + (afterDiscount * c.rate / 100), 0);
-                        const total = afterDiscount + chargesTotal;
-                        setEditInvoice({
-                          ...editInvoice,
-                          amount: e.target.value,
-                          tax: chargesTotal.toFixed(2),
-                          total: total.toFixed(2)
-                        });
-                      }}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>{t('admin:invoicesPage.dueDate')}</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={editInvoice.dueDate}
-                      onChange={(e) => setEditInvoice({...editInvoice, dueDate: e.target.value})}
-                    />
-                  </FormGroup>
-                </FormRow>
-
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>{t('admin:invoicesPage.discount')}</FormLabel>
-                    <FormSelect
-                      value={editInvoice.discountType}
-                      onChange={(e) => {
-                        const dtype = e.target.value as 'none' | 'percentage' | 'fixed';
-                        const amount = parseFloat(editInvoice.amount) || 0;
-                        const discountVal = dtype === 'none' ? 0 : (parseFloat(editInvoice.discountValue) || 0);
-                        const discountAmt = dtype === 'percentage' ? amount * (discountVal / 100) : dtype === 'fixed' ? discountVal : 0;
-                        const afterDiscount = Math.max(0, amount - discountAmt);
-                        const editCharges = getChargesForCurrency(editInvoice.currency || '');
-                        const chargesTotal = editCharges.filter((c: any) => c.enabled && c.rate > 0).reduce((sum: number, c: any) => sum + (afterDiscount * c.rate / 100), 0);
-                        const total = afterDiscount + chargesTotal;
-                        setEditInvoice({ ...editInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : editInvoice.discountValue, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
-                      }}
-                    >
-                      <option value="none">{t('admin:invoicesPage.noDiscount')}</option>
-                      <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">{t('admin:invoicesPage.fixedAmount')}</option>
-                    </FormSelect>
-                  </FormGroup>
-                  {editInvoice.discountType !== 'none' && (
-                    <FormGroup>
-                      <FormLabel>{editInvoice.discountType === 'percentage' ? 'Discount (%)' : 'Discount Amount'}</FormLabel>
-                      <FormInput
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max={editInvoice.discountType === 'percentage' ? '100' : undefined}
-                        value={editInvoice.discountValue}
-                        onChange={(e) => {
-                          const amount = parseFloat(editInvoice.amount) || 0;
-                          const discountVal = parseFloat(e.target.value) || 0;
-                          const discountAmt = editInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : discountVal;
-                          const afterDiscount = Math.max(0, amount - discountAmt);
-                          const editCharges = getChargesForCurrency(editInvoice.currency || '');
-                          const chargesTotal = editCharges.filter((c: any) => c.enabled && c.rate > 0).reduce((sum: number, c: any) => sum + (afterDiscount * c.rate / 100), 0);
-                          const total = afterDiscount + chargesTotal;
-                          setEditInvoice({ ...editInvoice, discountValue: e.target.value, tax: chargesTotal.toFixed(2), total: total.toFixed(2) });
-                        }}
-                        placeholder="0"
-                      />
-                    </FormGroup>
-                  )}
-                  {editInvoice.discountType !== 'none' && (
-                    <FormGroup>
-                      <FormLabel>{t('admin:invoicesPage.discountReason')}</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={editInvoice.discountReason}
-                        onChange={(e) => setEditInvoice({ ...editInvoice, discountReason: e.target.value })}
-                        placeholder="e.g. Loyalty discount"
-                      />
-                    </FormGroup>
-                  )}
-                </FormRow>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:invoicesPage.invoiceCategory')}</FormLabel>
-                  <FormSelect
-                    value={editInvoice.invoiceCategory || 'service'}
-                    onChange={(e) => setEditInvoice({...editInvoice, invoiceCategory: e.target.value})}
-                  >
-                    {invoiceCategories.length > 0 ? (
-                      invoiceCategories
-                        .filter(cat => cat.code !== 'subscription')
-                        .map(cat => (
-                          <option key={cat.id} value={cat.code}>{cat.name}</option>
-                        ))
-                    ) : (
-                      <>
-                        <option value="service">{t('admin:invoicesPage.service')}</option>
-                        <option value="consulting">{t('admin:invoicesPage.consulting')}</option>
-                        <option value="others">{t('admin:invoicesPage.others')}</option>
-                      </>
-                    )}
-                  </FormSelect>
-                </FormGroup>
-
-                {/* Show item/description input for all non-subscription categories */}
-                {(editInvoice.invoiceCategory || 'service') !== 'subscription' && (
-                  <FormGroup>
-                    <FormLabel>{t('admin:invoicesPage.itemdescription')}</FormLabel>
-                    <FormTextarea
-                      value={editInvoice.invoiceCategory === 'others' ? (editInvoice.customDescription || '') : (editInvoice.serviceDescription || '')}
-                      onChange={(e) => {
-                        if (editInvoice.invoiceCategory === 'others') {
-                          setEditInvoice({...editInvoice, customDescription: e.target.value});
-                        } else {
-                          setEditInvoice({...editInvoice, serviceDescription: e.target.value});
-                        }
-                      }}
-                      placeholder={`Enter ${editInvoice.invoiceCategory || 'service'} description...`}
-                      rows={2}
-                    />
-                  </FormGroup>
-                )}
-
-                <InvoiceSummary>
-                  <SummaryRow>
-                    <span>Subtotal:</span>
-                    <span>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency) : '-'}</span>
-                  </SummaryRow>
-                  {editInvoice.discountType !== 'none' && parseFloat(editInvoice.discountValue || '0') > 0 && (() => {
-                    const amt = parseFloat(editInvoice.amount || '0');
-                    const dv = parseFloat(editInvoice.discountValue || '0');
-                    const da = editInvoice.discountType === 'percentage' ? amt * (dv / 100) : dv;
-                    return (
-                      <SummaryRow>
-                        <span style={{ color: '#DC2626' }}>Discount ({editInvoice.discountType === 'percentage' ? `${dv}%` : 'Fixed'}):</span>
-                        <span style={{ color: '#DC2626' }}>-{editInvoice.currency ? formatCurrency(da, editInvoice.currency) : da.toFixed(2)}</span>
-                      </SummaryRow>
-                    );
-                  })()}
-                  {getChargesForCurrency(editInvoice.currency || '').filter((c: any) => c.enabled && c.name && c.rate > 0).map((charge: any, idx: number) => {
-                    const amt = parseFloat(editInvoice.amount || '0');
-                    const dv = parseFloat(editInvoice.discountValue || '0');
-                    const da = editInvoice.discountType === 'percentage' ? amt * (dv / 100) : editInvoice.discountType === 'fixed' ? dv : 0;
-                    const afterDiscount = Math.max(0, amt - da);
-                    const chargeAmount = afterDiscount * charge.rate / 100;
-                    return (
-                      <SummaryRow key={idx}>
-                        <span>{charge.name} ({charge.rate}%):</span>
-                        <span>{editInvoice.currency ? formatCurrency(chargeAmount, editInvoice.currency) : '-'}</span>
-                      </SummaryRow>
-                    );
-                  })}
-                  <SummaryRow highlight>
-                    <span>Total:</span>
-                    <span><strong>{editInvoice.currency ? formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency) : '-'}</strong></span>
-                  </SummaryRow>
-                </InvoiceSummary>
-
-                {/* Modification Reason */}
-                <FormGroup style={{ marginTop: '16px' }}>
-                  <FormLabel>Modification Reason {selectedInvoice?.type === 'automatic' && <span style={{ color: '#EF4444' }}>*</span>}</FormLabel>
-                  <FormTextarea
-                    value={editModificationReason}
-                    onChange={(e) => setEditModificationReason(e.target.value)}
-                    placeholder="Enter reason for modification..."
-                    rows={2}
-                  />
-                </FormGroup>
-
-                {/* Previous Modification History */}
-                {Array.isArray(selectedInvoice?.modificationHistory) && selectedInvoice.modificationHistory.length > 0 && (
-                  <div style={{ marginTop: '16px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>{t('admin:invoicesPage.modificationHistory')}</div>
-                    {(selectedInvoice.modificationHistory as any[]).map((mod: any, idx: number) => {
-                      const ts = mod.modified_at || mod.timestamp;
-                      const who = mod.modified_by_name || (mod.reason === 'payment_settings_updated' ? 'System (payment settings)' : mod.reason === 'subscription_updated' ? 'System (subscription)' : 'System');
-                      const isLast = idx >= (selectedInvoice.modificationHistory as any[]).length - 1;
-                      return (
-                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: isLast ? '0' : '8px', paddingBottom: isLast ? '0' : '8px', borderBottom: isLast ? 'none' : '1px solid #FDE68A' }}>
-                        <div style={{ fontWeight: 500 }}>{ts ? new Date(ts).toLocaleString() : ''}{who ? ` - ${who}` : ''}</div>
-                        {mod.reason && <div style={{ marginTop: '2px' }}>Reason: {mod.reason}</div>}
-                        {mod.changes && typeof mod.changes === 'object' && Object.keys(mod.changes).length > 0 && (
-                          <div style={{ marginTop: '2px', color: '#92400E' }}>
-                            {Object.entries(mod.changes).map(([field, change]: [string, any]) => (
-                              <span key={field} style={{ marginRight: '8px' }}>{field}: {String(change?.from)} → {String(change?.to)}</span>
-                            ))}
-                          </div>
-                        )}
-                        {!mod.changes && (mod.before || mod.after) && (
-                          <div style={{ marginTop: '2px', color: '#92400E' }}>
-                            {mod.before?.total_amount !== undefined && mod.after?.total_amount !== undefined && (
-                              <span style={{ marginRight: '8px' }}>total: {String(mod.before.total_amount)} → {String(mod.after.total_amount)}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      );
-                    })}
-                  </div>
-                )}
-              
-          </CommonModal>
-        )}
-
         {/* Send Invoice Confirmation Modal */}
         {showSendConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowSendConfirmModal(false)} title="Send Invoice" footer={<><Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}> Cancel </Button><Button variant="success" onClick={confirmSendInvoice}> Confirm </Button></>}>
-
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#0A2540',
-                    marginBottom: '12px'
-                  }}>{t('admin:invoicesPage.sendInvoice')}</h3>
-                  <p style={{
-                    fontSize: '14px',
-                    color: '#6B7280',
-                    marginBottom: '20px',
-                    lineHeight: '1.6'
-                  }}>
-                    Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName || selectedInvoice.customerName}</strong>?
-                  </p>
-                  <div style={{
-                    background: '#F8FAFC',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    border: '1px solid #E6EBF1'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Invoice:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Recipient:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.customerName}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Company:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.customerName}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
-                    </div>
-                  </div>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowSendConfirmModal(false)} title="Send Invoice" footer={<><Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}> Cancel </Button><Button variant="success" onClick={confirmSendInvoice}> Confirm </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.sendInvoice')}</h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>
+                Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName || selectedInvoice.customerName}</strong>?
+              </p>
+              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Recipient:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.customerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Company:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.customerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>Amount:</span><span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
+              </div>
+            </div>
           </CommonModal>
         )}
 
         {/* Resend Invoice Confirmation Modal */}
         {showResendConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowResendConfirmModal(false)} title="Resend Invoice" footer={<><Button variant="secondary" onClick={() => setShowResendConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={confirmResendInvoice}> Resend Invoice </Button></>}>
-
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#0A2540',
-                    marginBottom: '12px'
-                  }}>{t('admin:invoicesPage.resendInvoice')}</h3>
-                  <p style={{ 
-                    fontSize: '14px', 
-                    color: '#6B7280', 
-                    marginBottom: '20px',
-                    lineHeight: '1.6' 
-                  }}>
-                    Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName}</strong>?
-                  </p>
-                  <div style={{
-                    background: '#FEF3C7',
-                    padding: '12px',
-                    borderRadius: '6px',
-                    border: '1px solid #F59E0B',
-                    fontSize: '13px',
-                    color: '#92400E'
-                  }}>
-                    ℹ️ This will send another copy of the invoice to the manager's email.
-                  </div>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowResendConfirmModal(false)} title="Resend Invoice" footer={<><Button variant="secondary" onClick={() => setShowResendConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={confirmResendInvoice}> Resend Invoice </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.resendInvoice')}</h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>
+                Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.managerName}</strong>?
+              </p>
+              <div style={{ background: '#FEF3C7', padding: '12px', borderRadius: '6px', border: '1px solid #F59E0B', fontSize: '13px', color: '#92400E' }}>
+                This will send another copy of the invoice to the manager's email.
+              </div>
+            </div>
           </CommonModal>
         )}
 
         {/* Cancel Invoice Confirmation Modal */}
         {showCancelConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Cancel Invoice </Button></>}>
-
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#0A2540',
-                    marginBottom: '12px'
-                  }}>{t('admin:invoicesPage.cancelInvoice')}</h3>
-                  <p style={{ 
-                    fontSize: '14px', 
-                    color: '#6B7280', 
-                    marginBottom: '20px',
-                    lineHeight: '1.6' 
-                  }}>
-                    Are you sure you want to cancel invoice <strong>{selectedInvoice.invoiceNumber}</strong>?
-                  </p>
-                  <div style={{
-                    background: '#FEE2E2',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    border: '1px solid #FCA5A5',
-                    marginBottom: '16px'
-                  }}>
-                    <p style={{ 
-                      margin: 0, 
-                      color: '#991B1B', 
-                      fontSize: '14px', 
-                      fontWeight: '500'
-                    }}>
-                      <strong>⚠️ This action cannot be undone</strong>
-                    </p>
-                    <p style={{ 
-                      margin: '8px 0 0 0', 
-                      color: '#7F1D1D', 
-                      fontSize: '13px'
-                    }}>
-                      The invoice will be marked as cancelled and cannot be sent or processed for payment.
-                    </p>
-                  </div>
-                  <div style={{
-                    background: '#F8FAFC',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    border: '1px solid #E6EBF1'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Invoice:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Manager:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
-                    </div>
-                  </div>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Cancel Invoice </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.cancelInvoice')}</h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>
+                Are you sure you want to cancel invoice <strong>{selectedInvoice.invoiceNumber}</strong>?
+              </p>
+              <div style={{ background: '#FEE2E2', padding: '16px', borderRadius: '8px', border: '1px solid #FCA5A5', marginBottom: '16px' }}>
+                <p style={{ margin: 0, color: '#991B1B', fontSize: '14px', fontWeight: '500' }}><strong>Warning: This action cannot be undone</strong></p>
+                <p style={{ margin: '8px 0 0 0', color: '#7F1D1D', fontSize: '13px' }}>The invoice will be marked as cancelled and cannot be sent or processed for payment.</p>
+              </div>
+              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Manager:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>Amount:</span><span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
+              </div>
+            </div>
           </CommonModal>
         )}
 
         {/* Delete Invoice Confirmation Modal */}
         {showDeleteConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Delete Invoice </Button></>}>
-
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#0A2540',
-                    marginBottom: '12px'
-                  }}>{t('admin:invoicesPage.deleteInvoice')}</h3>
-                  <p style={{
-                    fontSize: '14px',
-                    color: '#6B7280',
-                    lineHeight: '1.5'
-                  }}>
-                    Are you sure you want to permanently delete invoice <strong>#{selectedInvoice.invoiceNumber}</strong>?
-                    <br />This action cannot be undone.
-                  </p>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Delete Invoice </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('admin:invoicesPage.deleteInvoice')}</h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.5' }}>
+                Are you sure you want to permanently delete invoice <strong>#{selectedInvoice.invoiceNumber}</strong>?
+                <br />This action cannot be undone.
+              </p>
+            </div>
           </CommonModal>
         )}
 
         {/* Email Invoice Modal */}
         {showEmailModal && emailInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowEmailModal(false)} title="Send Invoice via Email" footer={<><Button variant="secondary" onClick={() => { setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient(''); }}> Cancel </Button><Button variant="primary" onClick={handleSendInvoiceEmail} disabled={!emailRecipient || !emailRecipient.includes('@')} > Send Email </Button></>}>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:invoicesPage.invoice')}</FormLabel>
-                  <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}>
-                    <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div>
-                    <div style={{ fontSize: '13px', color: '#6B7280' }}>{emailInvoice.customerName}</div>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#635BFF', marginTop: '8px' }}>
-                      {formatCurrency(emailInvoice.total, emailInvoice.currency || 'MYR')}
-                    </div>
-                  </div>
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Recipient Email *</FormLabel>
-                  <FormInput
-                    type="email"
-                    value={emailRecipient}
-                    onChange={(e) => setEmailRecipient(e.target.value)}
-                    placeholder="Enter recipient email address"
-                    required
-                    style={{ maxWidth: '100%' }}
-                  />
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                    {emailRecipient ? (
-                      <>Default email for {emailInvoice.payerType === 'restaurant' ? 'Restaurant' :
-                       emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' :
-                       emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'}</>
-                    ) : (
-                      <>Enter the {emailInvoice.payerType === 'restaurant' ? 'restaurant' :
-                       emailInvoice.payerType === 'foodcourt_manager' ? 'foodcourt manager' :
-                       emailInvoice.payerType === 'brand_manager' ? 'brand manager' : 'customer'} email address</>
-                    )}
-                  </div>
-                </FormGroup>
-
-                <div style={{
-                  background: '#F0F9FF',
-                  border: '1px solid #0EA5E9',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginTop: '16px'
-                }}>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#0369A1' }}>
-                    The invoice will be sent to the recipient email address using the system email settings.
-                  </p>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowEmailModal(false)} title="Send Invoice via Email" footer={<><Button variant="secondary" onClick={() => { setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient(''); }}> Cancel </Button><Button variant="primary" onClick={handleSendInvoiceEmail} disabled={!emailRecipient || !emailRecipient.includes('@')} > Send Email </Button></>}>
+            <FormGroup>
+              <FormLabel>{t('admin:invoicesPage.invoice')}</FormLabel>
+              <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}>
+                <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div>
+                <div style={{ fontSize: '13px', color: '#6B7280' }}>{emailInvoice.customerName}</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#635BFF', marginTop: '8px' }}>{formatCurrency(emailInvoice.total, emailInvoice.currency || 'MYR')}</div>
+              </div>
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Recipient Email *</FormLabel>
+              <FormInput type="email" value={emailRecipient} onChange={(e) => setEmailRecipient(e.target.value)} placeholder="Enter recipient email address" required style={{ maxWidth: '100%' }} />
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
+                {emailRecipient ? (
+                  <>Default email for {emailInvoice.payerType === 'restaurant' ? 'Restaurant' : emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' : emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'}</>
+                ) : (
+                  <>Enter the {emailInvoice.payerType === 'restaurant' ? 'restaurant' : emailInvoice.payerType === 'foodcourt_manager' ? 'foodcourt manager' : emailInvoice.payerType === 'brand_manager' ? 'brand manager' : 'customer'} email address</>
+                )}
+              </div>
+            </FormGroup>
+            <div style={{ background: '#F0F9FF', border: '1px solid #0EA5E9', borderRadius: '8px', padding: '12px', marginTop: '16px' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#0369A1' }}>The invoice will be sent to the recipient email address using the system email settings.</p>
+            </div>
           </CommonModal>
         )}
 
         {/* Success Modal */}
         {showSuccessModal && (
-                    <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" footer={<><Button variant="primary" onClick={() => setShowSuccessModal(false)}> OK </Button></>}>
-
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <p style={{
-                    fontSize: '16px',
-                    color: '#0A2540',
-                    marginBottom: '8px',
-                    fontWeight: '500'
-                  }}>{successMessage}</p>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" footer={<><Button variant="primary" onClick={() => setShowSuccessModal(false)}> OK </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ fontSize: '16px', color: '#0A2540', marginBottom: '8px', fontWeight: '500' }}>{successMessage}</p>
+            </div>
           </CommonModal>
         )}
 
-        {/* Download Success Modal */}
         </Content>
       </Container>
     </>

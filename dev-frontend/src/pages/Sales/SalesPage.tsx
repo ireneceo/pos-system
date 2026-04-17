@@ -7,8 +7,9 @@ import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
-import { getTodayInTimezone, getDateInTimezone } from '../../utils/timezone';
+import { getTodayInTimezone, getDateInTimezone, formatDateTime } from '../../utils/timezone';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
+import DateRangeField from '../../components/Common/DateRangeField';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useTranslation } from 'react-i18next';
 
@@ -619,10 +620,11 @@ const SalesPage: React.FC = () => {
           id: order.id,
           orderNumber: order.orderNumber || `ORD${order.id.slice(-4)}`,
           date: orderDate.toISOString().split('T')[0],
-          time: orderDate.toLocaleTimeString('en-US', { 
-            hour12: false, 
-            hour: '2-digit', 
-            minute: '2-digit' 
+          time: formatDateTime(orderDate, operationSettings, {
+            year: undefined, month: undefined, day: undefined,
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit'
           }),
           customer: {
             type: 'guest' as const,
@@ -729,9 +731,9 @@ const SalesPage: React.FC = () => {
         period = `${year}-${month.padStart(2, '0')}`;
       } else if (detailView.type === 'month') {
         // 월 상세 뷰 - 일별 표시
-        period = new Date(key).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric'
+        period = formatDateTime(new Date(key), operationSettings, {
+          year: undefined, month: 'short', day: 'numeric',
+          hour: undefined, minute: undefined, hour12: undefined
         });
       } else {
         // 기본 뷰
@@ -744,10 +746,9 @@ const SalesPage: React.FC = () => {
             period = `${year}-${month.padStart(2, '0')}`;
             break;
           case 'daily':
-            period = new Date(key).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric'
+            period = formatDateTime(new Date(key), operationSettings, {
+              year: 'numeric', month: 'short', day: 'numeric',
+              hour: undefined, minute: undefined, hour12: undefined
             });
             break;
         }
@@ -1113,7 +1114,7 @@ const SalesPage: React.FC = () => {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Sales Report - ${new Date().toLocaleDateString()}</title>
+    <title>Sales Report - ${formatDateTime(new Date(), operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit', hour: undefined, minute: undefined, hour12: undefined })}</title>
     <style>
         body { font-family: 'Inter', Arial, sans-serif; margin: 40px; color: #333; line-height: 1.6; }
         .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #635BFF; padding-bottom: 20px; }
@@ -1136,9 +1137,9 @@ const SalesPage: React.FC = () => {
 <body>
     <div class="header">
         <div class="title">{t('reports:salesPage.salesReport')}</div>
-        <div class="subtitle">Generated on ${new Date().toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'long', 
+        <div class="subtitle">Generated on ${formatDateTime(new Date(), operationSettings, {
+          year: 'numeric',
+          month: 'long',
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
@@ -1238,7 +1239,7 @@ const SalesPage: React.FC = () => {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} Sales Report - ${new Date().toLocaleDateString()}</title>
+    <title>${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} Sales Report - ${formatDateTime(new Date(), operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit', hour: undefined, minute: undefined, hour12: undefined })}</title>
     <style>
         body { font-family: 'Inter', Arial, sans-serif; margin: 40px; color: #333; line-height: 1.6; }
         .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #635BFF; padding-bottom: 20px; }
@@ -1261,9 +1262,9 @@ const SalesPage: React.FC = () => {
 <body>
     <div class="header">
         <div class="title">${viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} Sales Report</div>
-        <div class="subtitle">Generated on ${new Date().toLocaleDateString('en-US', { 
-          year: 'numeric', 
-          month: 'long', 
+        <div class="subtitle">Generated on ${formatDateTime(new Date(), operationSettings, {
+          year: 'numeric',
+          month: 'long',
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
@@ -1345,11 +1346,14 @@ const SalesPage: React.FC = () => {
     downloadFile(reportContent, `sales-${viewModeText}-report-${new Date().toISOString().split('T')[0]}.html`);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDateDisplay = (dateString: string) => {
+    return formatDateTime(dateString, operationSettings, {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      hour: undefined,
+      minute: undefined,
+      hour12: undefined
     });
   };
 
@@ -1451,24 +1455,14 @@ const SalesPage: React.FC = () => {
             </FilterGroup>
             
             {dateFilter === 'custom' && (
-              <>
-                <FilterGroup>
-                  <FilterLabel>{t('reports:salesPage.startDate')}</FilterLabel>
-                  <DateInput
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                  />
-                </FilterGroup>
-                <FilterGroup>
-                  <FilterLabel>{t('reports:salesPage.endDate')}</FilterLabel>
-                  <DateInput
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </FilterGroup>
-              </>
+              <FilterGroup style={{ gridColumn: 'span 2' }}>
+                <FilterLabel>{t('reports:salesPage.startDate')} — {t('reports:salesPage.endDate')}</FilterLabel>
+                <DateRangeField
+                  startDate={startDate}
+                  endDate={endDate}
+                  onChange={(s, e) => { setStartDate(s); setEndDate(e); }}
+                />
+              </FilterGroup>
             )}
             
             <FilterGroup>
@@ -1554,7 +1548,7 @@ const SalesPage: React.FC = () => {
                     
                     <div>
                       <div style={{ fontSize: '14px', fontWeight: '500', color: '#1F2937' }}>
-                        {formatDate(transaction.date)}
+                        {formatDateDisplay(transaction.date)}
                       </div>
                       <DateTime>{transaction.time}</DateTime>
                     </div>
@@ -1591,7 +1585,7 @@ const SalesPage: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                       <div>
                         <OrderNumber>{transaction.orderNumber}</OrderNumber>
-                        <DateTime>{formatDate(transaction.date)} • {transaction.time}</DateTime>
+                        <DateTime>{formatDateDisplay(transaction.date)} • {transaction.time}</DateTime>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                         <Amount>{formatCurrency(transaction.total, operationSettings.currency)}</Amount>
@@ -1747,7 +1741,7 @@ const SalesPage: React.FC = () => {
                         </>
                       )}
                       <BreadcrumbItem>
-                        {new Date(detailView.value).toLocaleDateString('en-US')} Transaction Details
+                        {formatDateDisplay(detailView.value)} Transaction Details
                       </BreadcrumbItem>
                     </>
                   )}
@@ -1800,10 +1794,13 @@ const SalesPage: React.FC = () => {
                 <DetailTransactionContainer>
                   <DetailHeader>
                     <DetailTitle>
-                      {new Date(detailView.value).toLocaleDateString('en-US', {
+                      {formatDateTime(detailView.value, operationSettings, {
                         year: 'numeric',
                         month: 'long',
-                        day: 'numeric'
+                        day: 'numeric',
+                        hour: undefined,
+                        minute: undefined,
+                        hour12: undefined
                       })} Transaction History
                     </DetailTitle>
                     <DetailSubtitle>

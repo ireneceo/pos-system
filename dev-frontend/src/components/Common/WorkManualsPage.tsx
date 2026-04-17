@@ -13,6 +13,7 @@ import ConfirmModal from '../ConfirmModal';
 import { Modal as CommonModal } from '../UI';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as tzFormatDate, formatDateTime as tzFormatDateTime } from '../../utils/timezone';
 
 // ============================================================================
 // Interfaces
@@ -487,11 +488,11 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-MY', { month: 'short', day: 'numeric', year: 'numeric' });
+    return tzFormatDate(dateString, null);
   };
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-MY', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return tzFormatDateTime(dateString, null);
   };
 
   // Create

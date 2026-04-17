@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import {
   Container,
   Header,
@@ -20,6 +21,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as tzFormatDate } from '../../utils/timezone';
 // ============================================
 // Types
 // ============================================
@@ -1372,7 +1374,7 @@ const BrandPlansPage: React.FC = () => {
                   </DetailRow>
                   <DetailRow>
                     <DetailLabel>{t('brand:brandPlansPage.createdDate')}</DetailLabel>
-                    <DetailValue>{new Date(selectedPlan.createdAt).toLocaleDateString()}</DetailValue>
+                    <DetailValue>{tzFormatDate(selectedPlan.createdAt, null)}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
@@ -1394,9 +1396,9 @@ const BrandPlansPage: React.FC = () => {
                       {selectedPlan.planRestaurants.map(pr => (
                         <RestaurantItem key={pr.id} isAssigned>
                           <div>
-                            <div style={{fontWeight: 600, color: '#0A2540'}}>{pr.restaurant?.name || `Restaurant #${pr.restaurant_id}`}</div>
+                            <div style={{fontWeight: 600, color: '#0A2540'}}>{pr.restaurant ? getRestaurantDisplayName(pr.restaurant) : `Restaurant #${pr.restaurant_id}`}</div>
                             <div style={{fontSize: '12px', color: '#6B7280'}}>
-                              Since {new Date(pr.activation_date).toLocaleDateString()}
+                              Since {tzFormatDate(pr.activation_date, null)}
                             </div>
                           </div>
                           <StatusBadge isActive={pr.is_active}>{pr.is_active ? 'Active' : 'Inactive'}</StatusBadge>
@@ -1465,7 +1467,7 @@ const BrandPlansPage: React.FC = () => {
                     return (
                       <RestaurantItem key={restaurant.id} isAssigned={isAssigned}>
                         <div>
-                          <div style={{fontWeight: 600, color: '#0A2540'}}>{restaurant.name}</div>
+                          <div style={{fontWeight: 600, color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
                           <div style={{fontSize: '12px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
                         </div>
                         {isAssigned ? (

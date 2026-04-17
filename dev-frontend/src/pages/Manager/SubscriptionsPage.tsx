@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
 import { API_BASE_URL } from '../../config/api';
 import { formatCurrency, getPlanPrice, formatPlanPrice, normalizeCurrencyCode } from '../../utils/currency';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
@@ -898,7 +899,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
               <option value="">{t('admin:subscriptionsPage.chooseARestaurant')}</option>
               {availableRestaurants.map(restaurant => (
                 <option key={restaurant.id} value={restaurant.id}>
-                  {restaurant.name} - {restaurant.location}
+                  {getRestaurantDisplayName(restaurant)} - {restaurant.location}
                 </option>
               ))}
             </Select>

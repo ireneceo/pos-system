@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled from 'styled-components';
+import { getRestaurantTimezone } from '../../utils/timezone';
 
 // Types
 interface CalendarPickerProps {
@@ -39,7 +40,7 @@ const getFirstDayOfMonth = (year: number, month: number): number =>
 
 const getMonthLabel = (year: number, month: number): string => {
   const date = new Date(year, month);
-  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: getRestaurantTimezone() });
 };
 
 // Component

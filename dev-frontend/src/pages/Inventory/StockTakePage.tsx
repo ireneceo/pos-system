@@ -17,6 +17,7 @@ import { formatCurrency } from '../../utils/currency';
 import { fetchAPI } from '../../utils/api';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 
 interface StockTakeItem {
   id: number;
@@ -706,7 +707,7 @@ const StockTakePage: React.FC = () => {
                   {stockTakeHistory.filter(st => st.status !== 'in_progress').map(st => (
                     <HistoryCard key={st.id} status={st.status}>
                       <HistoryInfo>
-                        <HistoryDate>{new Date(st.stock_take_date).toLocaleDateString()}</HistoryDate>
+                        <HistoryDate>{formatDateTz(st.stock_take_date, null)}</HistoryDate>
                         <HistoryMeta>
                           {st.total_items} items |
                           {st.items_with_variance > 0 && ` ${st.items_with_variance} with variance |`}

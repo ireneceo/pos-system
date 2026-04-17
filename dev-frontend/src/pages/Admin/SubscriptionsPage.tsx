@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import {
   Container,
   Header,
@@ -23,6 +24,7 @@ import {
   IconButton as CommonIconButton
 , Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import DateRangeField from '../../components/Common/DateRangeField';
 import { getPlanPrice, formatPlanPrice, normalizeCurrencyCode, formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
@@ -1401,7 +1403,7 @@ const SubscriptionsPage: React.FC = () => {
                                       onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
                                       onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                                     >
-                                      <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
+                                      <div style={{fontWeight: '500', color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
                                       <div style={{fontSize: '13px', color: '#6B7280'}}>
                                         Admin: {restaurant.admin ? `${restaurant.admin.name} (${restaurant.admin.email})` : 'No Admin'}
                                         {manager ? ` • Manager: ${manager.fullName || manager.full_name || manager.username}` : ''}
@@ -1602,21 +1604,12 @@ const SubscriptionsPage: React.FC = () => {
                       </FormSelect>
                     </FormGroup>
 
-                    <FormGroup>
-                      <FormLabel>Subscription Start Date *</FormLabel>
-                      <FormInput
-                        type="date"
-                        value={newSubscription.startDate}
-                        onChange={(e) => setNewSubscription({...newSubscription, startDate: e.target.value})}
-                      />
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Subscription End Date *</FormLabel>
-                      <FormInput
-                        type="date"
-                        value={newSubscription.endDate}
-                        onChange={(e) => setNewSubscription({...newSubscription, endDate: e.target.value})}
+                    <FormGroup style={{ gridColumn: 'span 2' }}>
+                      <FormLabel>Subscription Start — End Date *</FormLabel>
+                      <DateRangeField
+                        startDate={newSubscription.startDate}
+                        endDate={newSubscription.endDate}
+                        onChange={(s, e) => setNewSubscription({...newSubscription, startDate: s, endDate: e})}
                       />
                     </FormGroup>
 
@@ -1793,21 +1786,12 @@ const SubscriptionsPage: React.FC = () => {
                       </FormSelect>
                     </FormGroup>
 
-                    <FormGroup>
-                      <FormLabel>Subscription Start Date *</FormLabel>
-                      <FormInput
-                        type="date"
-                        value={editingSubscription.startDate}
-                        onChange={(e) => setEditingSubscription({...editingSubscription, startDate: e.target.value})}
-                      />
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Subscription End Date *</FormLabel>
-                      <FormInput
-                        type="date"
-                        value={editingSubscription.endDate}
-                        onChange={(e) => setEditingSubscription({...editingSubscription, endDate: e.target.value})}
+                    <FormGroup style={{ gridColumn: 'span 2' }}>
+                      <FormLabel>Subscription Start — End Date *</FormLabel>
+                      <DateRangeField
+                        startDate={editingSubscription.startDate}
+                        endDate={editingSubscription.endDate}
+                        onChange={(s, e) => setEditingSubscription({...editingSubscription, startDate: s, endDate: e})}
                       />
                     </FormGroup>
 

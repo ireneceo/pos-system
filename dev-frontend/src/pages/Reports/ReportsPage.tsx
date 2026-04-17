@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import { getPaymentMethodLabel } from '../../constants';
-// timezone utility no longer needed - DatePeriodFilter handles date calculations
+import { formatDateTime } from '../../utils/timezone';
 import { downloadCSV, escapeCSV, toCSVRow, generateFilename } from '../../utils/csvDownload';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -1152,7 +1152,7 @@ const ReportsPage: React.FC = () => {
                                 const monthInfo = yearInfo.months[month];
                                 const yearMonthKey = `${year}-${month}`;
                                 const isMonthExpanded = expandedMonths.has(yearMonthKey);
-                                const monthName = new Date(month + '-01').toLocaleString('en-US', { year: 'numeric', month: 'long' });
+                                const monthName = formatDateTime(new Date(month + '-01'), operationSettings, { year: 'numeric', month: 'long', day: undefined, hour: undefined, minute: undefined, hour12: undefined });
 
                                 return (
                                   <React.Fragment key={yearMonthKey}>
@@ -1176,11 +1176,14 @@ const ReportsPage: React.FC = () => {
                                     {/* Day Rows (only if month is expanded) */}
                                     {isMonthExpanded && Object.keys(monthInfo.days).sort((a, b) => b.localeCompare(a)).map(day => {
                                       const dayInfo = monthInfo.days[day];
-                                      const dayName = new Date(day).toLocaleString('en-US', {
+                                      const dayName = formatDateTime(new Date(day), operationSettings, {
                                         weekday: 'short',
                                         year: 'numeric',
                                         month: 'short',
-                                        day: 'numeric'
+                                        day: 'numeric',
+                                        hour: undefined,
+                                        minute: undefined,
+                                        hour12: undefined
                                       });
 
                                       return (

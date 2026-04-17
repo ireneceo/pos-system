@@ -26,6 +26,7 @@ import {
   OrderButton,
 } from '../styles';
 import { formatCurrency } from '../../../utils/currency';
+import { formatDate as formatDateTz } from '../../../utils/timezone';
 import { formatStock } from '../utils';
 import {
   IngredientStock,
@@ -148,7 +149,7 @@ const DashboardSection: React.FC<Props> = ({
                   )}
                 </AlertTitle>
                 <AlertDetail>
-                  {item.remaining_quantity} {item.unit} remaining • Expires: {new Date(item.expiry_date).toLocaleDateString()}
+                  {item.remaining_quantity} {item.unit} remaining • Expires: {formatDateTz(item.expiry_date, null)}
                 </AlertDetail>
               </AlertInfo>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

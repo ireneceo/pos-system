@@ -792,7 +792,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
               {topSubscriptions.length > 0 ? (
                 topSubscriptions.map((sub: any, idx: number) => (
                   <Tr key={idx}>
-                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{sub.restaurant_name || '-'}</Td>
+                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{sub.restaurant_branch_name ? `${sub.restaurant_name} (${sub.restaurant_branch_name})` : sub.restaurant_name || '-'}</Td>
                     <Td>{sub.plan?.name || 'No Plan'}</Td>
                     <Td>{formatCurrency(sub.current_month?.revenue || 0, currency)}</Td>
                     <Td>{sub.current_month?.order_count || 0}</Td>

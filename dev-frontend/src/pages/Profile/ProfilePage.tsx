@@ -12,6 +12,7 @@ import AutoSaveField from '../../components/Common/AutoSaveField';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 // 스타일 컴포넌트
 const ProfileContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -673,11 +674,7 @@ const ProfilePage: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return formatDateTz(dateString, null);
   };
 
   const formatLastLogin = (lastLogin?: string) => {

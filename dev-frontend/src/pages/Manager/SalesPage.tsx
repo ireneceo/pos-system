@@ -5,6 +5,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 // Chart libraries temporarily removed - will be added when needed
 
 interface RestaurantSales {
@@ -542,7 +543,7 @@ const ManagerSalesPage: React.FC = () => {
                     <SalesTableRow key={restaurant.id}>
                       <SalesTableCell data-label="Restaurant">
                         <RestaurantInfo>
-                          <RestaurantName>{restaurant.name}</RestaurantName>
+                          <RestaurantName>{getRestaurantDisplayName(restaurant)}</RestaurantName>
                           <RestaurantLocation>{restaurant.location}</RestaurantLocation>
                         </RestaurantInfo>
                       </SalesTableCell>

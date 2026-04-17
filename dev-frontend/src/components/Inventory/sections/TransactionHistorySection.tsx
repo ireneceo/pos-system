@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { EmptyState, Table, TableHeader, TableRow, MobileGrid, MobileLabel, MobileValue } from '../../UI';
 import { getAuthToken } from '../../../utils/auth';
+import { formatDateTime as formatDateTimeTz } from '../../../utils/timezone';
 import { Transaction } from '../types';
 import { formatStock } from '../utils';
 
@@ -100,7 +101,7 @@ const TransactionHistorySection: React.FC<Props> = ({ restaurantId, isBrandGener
             <MobileValue>
               <MobileLabel>Date</MobileLabel>
               <div style={{ fontSize: '14px', color: '#0A2540' }}>
-                {new Date(t.created_at).toLocaleString()}
+                {formatDateTimeTz(t.created_at, null)}
               </div>
             </MobileValue>
             <MobileValue>

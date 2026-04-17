@@ -9,6 +9,7 @@ import AttachmentList from '../../components/Common/AttachmentList';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 interface OperationTicket {
   id: number;
   ticketNumber: string;
@@ -514,7 +515,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
   const inProgressTickets = tickets.filter(t => t.status === 'in-progress').length;
   const resolvedTickets = tickets.filter(t => t.status === 'resolved').length;
 
-  const formatDateTime = (dateString: string) => new Date(dateString).toLocaleString('en-MY');
+  const formatDateTime = (dateString: string) => formatDateTimeTz(dateString, null);
 
   const handleViewTicket = (ticket: OperationTicket) => {
     setSelectedTicket(ticket);

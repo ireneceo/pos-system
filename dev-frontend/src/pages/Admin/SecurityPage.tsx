@@ -8,6 +8,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 
 interface SecurityEvent {
   id: string;
@@ -424,7 +425,7 @@ const SecurityPage: React.FC = () => {
   };
 
   const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('en-MY');
+    return formatDateTimeTz(timestamp, null);
   };
   return (
     <>

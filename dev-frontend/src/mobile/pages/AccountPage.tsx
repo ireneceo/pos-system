@@ -7,6 +7,7 @@ import { useCustomer } from '../../contexts/CustomerContext';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
 import { mobileFetch } from '../utils/mobileApi';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 
 const Container = styled.div`
   padding: 0 0 24px;
@@ -614,7 +615,7 @@ const AccountPage: React.FC = () => {
                       {c.type === 'percentage' ? `${c.value}% off` : formatCurrency(c.value, currency) + ' off'}
                     </div>
                     {c.min_order > 0 && <div style={{ fontSize: '11px', color: '#6B7280' }}>Min. {formatCurrency(c.min_order, currency)}</div>}
-                    {c.valid_until && <div style={{ fontSize: '11px', color: '#6B7280' }}>Until {new Date(c.valid_until).toLocaleDateString()}</div>}
+                    {c.valid_until && <div style={{ fontSize: '11px', color: '#6B7280' }}>Until {formatDateTz(c.valid_until, null)}</div>}
                   </div>
                 </div>
               ))}

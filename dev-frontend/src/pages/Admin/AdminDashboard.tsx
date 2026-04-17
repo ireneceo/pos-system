@@ -5,6 +5,7 @@ import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardSta
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency } from '../../utils/currency';
+import { formatDateTime } from '../../utils/timezone';
 import { useStore } from '../../contexts/StoreContext';
 import { useTranslation } from 'react-i18next';
 
@@ -1183,12 +1184,12 @@ const AdminDashboard: React.FC = () => {
                           />
                           <div style={{ fontSize: '11px', color: '#6B7280', textAlign: 'center' }}>
                             {timePeriod === 'week'
-                              ? new Date(data.period).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                              ? formatDateTime(data.period, null, { month: 'short', day: 'numeric' })
                               : timePeriod === 'month'
                               ? data.period.replace('W1-', '').replace('W2-', '').replace('W3-', '').replace('W4-', '')
                               : timePeriod === 'quarter'
-                              ? new Date(data.period + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-                              : new Date(data.period + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+                              ? formatDateTime(data.period + '-01', null, { month: 'short', year: '2-digit' })
+                              : formatDateTime(data.period + '-01', null, { month: 'short', year: '2-digit' })
                             }
                           </div>
                           <div style={{ fontSize: '10px', color: '#6B7280', textAlign: 'center' }}>

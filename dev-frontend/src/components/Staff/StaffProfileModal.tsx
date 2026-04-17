@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useStaff, Staff } from '../../contexts/StaffContext';
 import PhoneInput from '../Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
+import { formatDate as tzFormatDate } from '../../utils/timezone';
 
 const ModalOverlay = styled.div<{ isOpen: boolean }>`
   display: ${props => props.isOpen ? 'flex' : 'none'};
@@ -386,11 +387,7 @@ const StaffProfileModal: React.FC<StaffProfileModalProps> = ({ isOpen, onClose }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return tzFormatDate(dateString, null);
   };
 
   const formatLastLogin = (lastLogin?: string) => {

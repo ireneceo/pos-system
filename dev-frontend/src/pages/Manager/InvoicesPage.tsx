@@ -5,8 +5,10 @@ import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import ConfirmModal from '../../components/ConfirmModal';
+import DateField from '../../components/Common/DateField';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 import {
   DataTableContainer,
   DataTable,
@@ -483,7 +485,7 @@ const ManagerInvoicesPage: React.FC = () => {
   const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-MY');
+    return formatDateTz(dateString, null);
   };
 
   const handleExportInvoices = () => {
@@ -992,10 +994,9 @@ const ManagerInvoicesPage: React.FC = () => {
                   </FormGroup>
                   <FormGroup>
                     <FormLabel>Due Date *</FormLabel>
-                    <FormInput
-                      type="date"
+                    <DateField
                       value={newInvoice.dueDate}
-                      onChange={(e) => setNewInvoice({...newInvoice, dueDate: e.target.value})}
+                      onChange={(v) => setNewInvoice({...newInvoice, dueDate: v})}
                       required
                       min={new Date().toISOString().split('T')[0]}
                     />
@@ -1339,10 +1340,9 @@ const ManagerInvoicesPage: React.FC = () => {
                   </FormGroup>
                   <FormGroup>
                     <FormLabel>{t('admin:invoicesPage.dueDate')}</FormLabel>
-                    <FormInput
-                      type="date"
+                    <DateField
                       value={editInvoice.dueDate}
-                      onChange={(e) => setEditInvoice({...editInvoice, dueDate: e.target.value})}
+                      onChange={(v) => setEditInvoice({...editInvoice, dueDate: v})}
                     />
                   </FormGroup>
                 </FormRow>

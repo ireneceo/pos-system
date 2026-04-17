@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDateTime as tzFormatDateTime } from '../../utils/timezone';
 const Card = styled.div`
   background: white;
   border-radius: 8px;
@@ -449,7 +450,7 @@ const ImportDataTab: React.FC<ImportDataTabProps> = ({ restaurantId }) => {
               <tbody>
                 {history.filter(h => h.import_type === 'orders').map((h: any) => (
                   <tr key={h.id}>
-                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', whiteSpace: 'nowrap' }}>{new Date(h.createdAt).toLocaleString()}</td>
+                    <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', whiteSpace: 'nowrap' }}>{tzFormatDateTime(h.createdAt, null)}</td>
                     <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.file_name || '-'}</td>
                     <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', textAlign: 'right', color: '#059669', fontWeight: 600 }}>{h.success_count}</td>
                     <td style={{ padding: '8px 12px', borderBottom: '1px solid #F3F4F6', textAlign: 'right', color: h.failed_count > 0 ? '#991B1B' : '#6B7280' }}>{h.failed_count}</td>

@@ -6,6 +6,7 @@ import { FilterBar, FilterSelect } from '../../components/Common/FilterComponent
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 
@@ -296,7 +297,7 @@ const ManagerReportsPage: React.FC = () => {
             <PageTitle>
               {selectedRestaurant === 'all' 
                 ? 'Reports Dashboard' 
-                : `${restaurants.find(r => r.id === selectedRestaurant)?.name || 'Restaurant'} Reports`
+                : `${(() => { const r = restaurants.find(r => r.id === selectedRestaurant); return r ? getRestaurantDisplayName(r) : 'Restaurant'; })()} Reports`
               }
             </PageTitle>
           </HeaderContent>
@@ -320,7 +321,7 @@ const ManagerReportsPage: React.FC = () => {
               <option value="all">{t('admin:managerReportsPage.allRestaurants')}</option>
               {restaurants.map(restaurant => (
                 <option key={restaurant.id} value={restaurant.id}>
-                  {restaurant.name} - {restaurant.location}
+                  {getRestaurantDisplayName(restaurant)} - {restaurant.location}
                 </option>
               ))}
             </FilterSelect>

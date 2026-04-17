@@ -8,6 +8,7 @@ import { formatCurrency } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatTime as formatTimeTz } from '../../utils/timezone';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
 // ============================================================================
@@ -779,11 +780,7 @@ const DashboardContent: React.FC = () => {
                       </Badge>
                     </Td>
                     <Td style={{ color: '#6B7280', fontSize: '13px' }}>
-                      {order.createdAt ? new Date(order.createdAt).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                      }) : '-'}
+                      {order.createdAt ? formatTimeTz(order.createdAt, null) : '-'}
                     </Td>
                   </Tr>
                 ))

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput } from '../../UI/Modal';
+import DateField from '../../Common/DateField';
 import { InfoBox } from '../styles';
 import { IngredientStock } from '../types';
 import { formatStock } from '../utils';
@@ -94,19 +95,17 @@ const ReceiveModal: React.FC<Props> = ({
             </UIFormGroup>
             <UIFormGroup style={{ marginBottom: 0 }}>
               <FormLabel>Manufacture Date</FormLabel>
-              <FormInput
-                type="date"
+              <DateField
                 value={manufactureDate}
-                onChange={(e) => onManufactureDateChange(e.target.value)}
+                onChange={(v) => onManufactureDateChange(v)}
               />
             </UIFormGroup>
           </div>
           <UIFormGroup style={{ marginTop: '12px' }}>
             <FormLabel>Expiry Date</FormLabel>
-            <FormInput
-              type="date"
+            <DateField
               value={expiryDate}
-              onChange={(e) => onExpiryDateChange(e.target.value)}
+              onChange={(v) => onExpiryDateChange(v)}
             />
             <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
               Items with earlier expiry dates will be used first (FIFO)

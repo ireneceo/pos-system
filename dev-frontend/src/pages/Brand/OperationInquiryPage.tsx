@@ -9,6 +9,7 @@ import AttachmentList from '../../components/Common/AttachmentList';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 interface OperationTicket {
   id: string;
   ticketNumber: string;
@@ -479,7 +480,7 @@ const OperationInquiryPage: React.FC = () => {
   const closedTickets = tickets.filter(t => t.status === 'closed').length;
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-MY');
+    return formatDateTimeTz(dateString, null);
   };
 
   const formatDuration = (minutes: number) => {

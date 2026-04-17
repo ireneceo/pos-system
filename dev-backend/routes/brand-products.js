@@ -6,7 +6,6 @@ const {
   BrandProductOptionGroup,
   BrandProductOption,
   BrandProductOptionIngredient,
-  BrandProductBrand,
   BrandProductOptionGroupProduct,
   Brand,
   Ingredient,
@@ -678,16 +677,6 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
       sort_order: sort_order || 0
     });
 
-    // 브랜드 연결
-    if (brand_ids && brand_ids.length > 0) {
-      for (const brandId of brand_ids) {
-        await BrandProductBrand.create({
-          product_id: product.id,
-          brand_id: brandId
-        });
-      }
-    }
-
     // 옵션 그룹 연결
     if (option_group_ids && option_group_ids.length > 0) {
       for (const optionGroupId of option_group_ids) {
@@ -818,18 +807,6 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
     });
 
     // 브랜드 연결 업데이트
-    if (brand_ids !== undefined) {
-      await BrandProductBrand.destroy({ where: { product_id: productId } });
-      if (brand_ids && brand_ids.length > 0) {
-        for (const brandId of brand_ids) {
-          await BrandProductBrand.create({
-            product_id: productId,
-            brand_id: brandId
-          });
-        }
-      }
-    }
-
     // Update option group links
     if (option_group_ids !== undefined) {
       await BrandProductOptionGroupProduct.destroy({ where: { product_id: productId } });
@@ -936,7 +913,6 @@ router.delete('/brand-products/:productId', authenticateToken, requireBGScope, a
     await Ingredient.destroy({ where: { brand_product_id: productId } });
 
     // Delete link tables
-    await BrandProductBrand.destroy({ where: { product_id: productId } });
     await BrandProductOptionGroupProduct.destroy({ where: { product_id: productId } });
 
     await product.destroy();
@@ -986,13 +962,6 @@ router.post('/brand-products/:productId/copy', authenticateToken, requireBGScope
       sort_order: original.sort_order,
       product_recipe_id: original.product_recipe_id
     });
-
-    // Copy brand links
-    if (original.brands && original.brands.length > 0) {
-      for (const brand of original.brands) {
-        await BrandProductBrand.create({ product_id: copy.id, brand_id: brand.id });
-      }
-    }
 
     // Copy option group links
     if (original.optionGroups && original.optionGroups.length > 0) {

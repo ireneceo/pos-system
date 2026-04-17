@@ -10,6 +10,7 @@ import Modal, { ModalButton } from '../../components/UI/Modal';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
+import { formatDateTime } from '../../utils/timezone';
 import PageHeader from '../../components/Common/PageHeader';
 import { useTranslation } from 'react-i18next';
 
@@ -503,7 +504,7 @@ const CustomersPage: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return formatDateTime(dateString, null, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -859,7 +860,7 @@ const CustomersPage: React.FC = () => {
                                   </div>
                                   {c.min_order > 0 && <div style={{ fontSize: '11px', color: '#6B7280' }}>Min. {formatCurrency(c.min_order, selectedCurrency)}</div>}
                                   {c.per_user_limit && <div style={{ fontSize: '11px', color: '#6B7280' }}>{c.my_usage}/{c.per_user_limit} used</div>}
-                                  {c.valid_until && <div style={{ fontSize: '11px', color: '#6B7280' }}>Until {new Date(c.valid_until).toLocaleDateString()}</div>}
+                                  {c.valid_until && <div style={{ fontSize: '11px', color: '#6B7280' }}>Until {formatDateTime(c.valid_until, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>}
                                 </div>
                               </div>
                             ))}
@@ -880,7 +881,7 @@ const CustomersPage: React.FC = () => {
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                   <span style={{ fontWeight: 600, color: '#DC2626' }}>-{formatCurrency(h.discount, selectedCurrency)}</span>
-                                  <span style={{ color: '#9CA3AF', marginLeft: '8px', fontSize: '12px' }}>{new Date(h.used_at).toLocaleDateString()}</span>
+                                  <span style={{ color: '#9CA3AF', marginLeft: '8px', fontSize: '12px' }}>{formatDateTime(h.used_at, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
                                 </div>
                               </div>
                             ))}

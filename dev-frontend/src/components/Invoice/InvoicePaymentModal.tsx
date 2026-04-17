@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Invoice, PaymentSettings, PaymentSubmitData, CURRENCY_CONFIG } from './types';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 import InvoiceStatusBadge from './InvoiceStatusBadge';
 import StripePaymentForm from './StripePaymentForm';
 import PayPalPaymentForm from './PayPalPaymentForm';
@@ -334,7 +335,7 @@ const InvoicePaymentModal: React.FC<Props> = ({
             </SummaryRow>
             <SummaryRow>
               <Label>Due Date</Label>
-              <Value>{new Date(invoice.dueDate).toLocaleDateString()}</Value>
+              <Value>{formatDateTz(invoice.dueDate, null)}</Value>
             </SummaryRow>
             <SummaryRow>
               <Label>Subtotal</Label>

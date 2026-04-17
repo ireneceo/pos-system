@@ -9,6 +9,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime as tzFormatDateTime, formatDate as tzFormatDate } from '../../utils/timezone';
 
 interface BackupRecord {
   id: string;
@@ -438,7 +439,7 @@ const BackupRestorePage: React.FC = () => {
   };
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-MY');
+    return tzFormatDateTime(dateString, null);
   };
 
   const handleDownloadBackup = () => {
@@ -456,7 +457,7 @@ const BackupRestorePage: React.FC = () => {
   const handleConfirmCreateBackup = () => {
     const newBackup: BackupRecord = {
       id: `backup-${Date.now()}`,
-      name: `${backupType.charAt(0).toUpperCase() + backupType.slice(1)} Backup - ${new Date().toLocaleDateString()}`,
+      name: `${backupType.charAt(0).toUpperCase() + backupType.slice(1)} Backup - ${tzFormatDate(new Date(), null)}`,
       type: backupType,
       size: 0,
       createdAt: new Date().toISOString().replace('T', ' ').slice(0, 19),

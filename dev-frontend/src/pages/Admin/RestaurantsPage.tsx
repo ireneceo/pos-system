@@ -18,9 +18,11 @@ import { ModalWarning } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
 // Using page-specific filter components instead of common ones
 import { useStore } from '../../contexts/StoreContext';
+import { formatDateTime } from '../../utils/timezone';
 import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies, COUNTRY_TO_CURRENCY, normalizeCurrencyCode } from '../../utils/currency';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
+import DateRangeField from '../../components/Common/DateRangeField';
 import { COUNTRIES } from '../../constants/countries';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
@@ -1755,7 +1757,7 @@ const RestaurantsPage: React.FC = () => {
               <RatingContainer>
                 {renderStars(restaurant.rating)}
                 <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '4px' }}>
-                  {restaurant.rating} • Created: {new Date(restaurant.createdAt).toLocaleDateString()}
+                  {restaurant.rating} • Created: {formatDateTime(restaurant.createdAt, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                 </span>
               </RatingContainer>
 
@@ -2293,13 +2295,12 @@ const RestaurantsPage: React.FC = () => {
                     </FormSelect>
                   </FormGroup>
 
-                  <FormGroup>
-                    <FormLabel>Subscription Start Date *</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={newRestaurant.subscriptionStart}
-                      onChange={(e) => {
-                        const start = e.target.value;
+                  <FormGroup style={{ gridColumn: 'span 2' }}>
+                    <FormLabel>Subscription Period * (end auto-calculated)</FormLabel>
+                    <DateRangeField
+                      startDate={newRestaurant.subscriptionStart}
+                      endDate={newRestaurant.subscriptionEnd}
+                      onChange={(start, _end) => {
                         // Auto-calculate end date: start + cycle - 1 day
                         let end = '';
                         if (start) {
@@ -2315,17 +2316,6 @@ const RestaurantsPage: React.FC = () => {
                         }
                         setNewRestaurant({...newRestaurant, subscriptionStart: start, subscriptionEnd: end});
                       }}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>Subscription End Date (auto)</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={newRestaurant.subscriptionEnd}
-                      readOnly
-                      disabled
-                      style={{ backgroundColor: '#F3F4F6', cursor: 'not-allowed' }}
                     />
                   </FormGroup>
 
@@ -2781,13 +2771,12 @@ const RestaurantsPage: React.FC = () => {
                     </FormSelect>
                   </FormGroup>
 
-                  <FormGroup>
-                    <FormLabel>Subscription Start Date *</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={editingRestaurant.subscriptionStart || new Date().toISOString().split('T')[0]}
-                      onChange={(e) => {
-                        const start = e.target.value;
+                  <FormGroup style={{ gridColumn: 'span 2' }}>
+                    <FormLabel>Subscription Period * (end auto-calculated)</FormLabel>
+                    <DateRangeField
+                      startDate={editingRestaurant.subscriptionStart || new Date().toISOString().split('T')[0]}
+                      endDate={editingRestaurant.subscriptionEnd || ''}
+                      onChange={(start, _end) => {
                         let end = '';
                         if (start) {
                           const [y, m, d] = start.split('-').map(Number);
@@ -2800,17 +2789,6 @@ const RestaurantsPage: React.FC = () => {
                         }
                         setEditingRestaurant({...editingRestaurant, subscriptionStart: start, subscriptionEnd: end});
                       }}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>Subscription End Date (auto)</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={editingRestaurant.subscriptionEnd || ''}
-                      readOnly
-                      disabled
-                      style={{ backgroundColor: '#F3F4F6', cursor: 'not-allowed' }}
                     />
                   </FormGroup>
 
@@ -2968,7 +2946,7 @@ const RestaurantsPage: React.FC = () => {
               )}
               <DetailRow>
                 <DetailLabel>Created</DetailLabel>
-                <DetailValue>{selectedRestaurant.createdAt ? new Date(selectedRestaurant.createdAt).toLocaleDateString() : 'N/A'}</DetailValue>
+                <DetailValue>{selectedRestaurant.createdAt ? formatDateTime(selectedRestaurant.createdAt, null, { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A'}</DetailValue>
               </DetailRow>
             </DetailSection>
 
@@ -3046,7 +3024,7 @@ const RestaurantsPage: React.FC = () => {
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Period</DetailLabel>
-                <DetailValue>{selectedRestaurant.subscriptionStart ? new Date(selectedRestaurant.subscriptionStart).toLocaleDateString() : 'N/A'} ~ {selectedRestaurant.subscriptionEnd ? new Date(selectedRestaurant.subscriptionEnd).toLocaleDateString() : 'N/A'}</DetailValue>
+                <DetailValue>{selectedRestaurant.subscriptionStart ? formatDateTime(selectedRestaurant.subscriptionStart, null, { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A'} ~ {selectedRestaurant.subscriptionEnd ? formatDateTime(selectedRestaurant.subscriptionEnd, null, { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A'}</DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Auto Renew</DetailLabel>

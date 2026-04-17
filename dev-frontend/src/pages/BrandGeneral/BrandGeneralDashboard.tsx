@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { SetupGuide } from '../../components/Common';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
@@ -415,6 +416,7 @@ const BrandGeneralDashboard: React.FC = () => {
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }>>([]);
   const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
+  const [activeContracts, setActiveContracts] = useState<any[]>([]);
 
   useEffect(() => {
     if (defaultCurrency) setCurrency(defaultCurrency);
@@ -470,18 +472,23 @@ const BrandGeneralDashboard: React.FC = () => {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const today = now.toISOString().split('T')[0];
 
-      const [revenueRes, plansRes, invoicesRes, managersRes, subsRes, subStatusRes] = await Promise.all([
+      const [revenueRes, plansRes, invoicesRes, managersRes, subsRes, subStatusRes, contractsRes] = await Promise.all([
         fetch(`/api/brands/${brand.id}/revenue?start_date=${monthStart}&end_date=${today}`, { headers }),
         fetch(`/api/brands/${brand.id}/plans`, { headers }),
         fetch('/api/invoices', { headers }),
         fetch('/api/users?role=Brand Manager', { headers }),
         fetch(`/api/brands/${brand.id}/subscriptions`, { headers }),
         fetch('/api/restaurants/subscription-status', { headers }),
+        fetch('/api/contracts?stage=active', { headers }),
       ]);
 
-      const [revenueData, plansData, invoicesData, managersData, subsData, subStatusData] = await Promise.all([
-        revenueRes.json(), plansRes.json(), invoicesRes.json(), managersRes.json(), subsRes.json(), subStatusRes.json(),
+      const [revenueData, plansData, invoicesData, managersData, subsData, subStatusData, contractsData] = await Promise.all([
+        revenueRes.json(), plansRes.json(), invoicesRes.json(), managersRes.json(), subsRes.json(), subStatusRes.json(), contractsRes.json(),
       ]);
+
+      // Active contracts
+      const activeContractsList = Array.isArray(contractsData?.data) ? contractsData.data : (Array.isArray(contractsData) ? contractsData : []);
+      setActiveContracts(activeContractsList);
 
       // Subscription info for header badge
       const subStatus = subStatusData.data || subStatusData;
@@ -573,7 +580,7 @@ const BrandGeneralDashboard: React.FC = () => {
 
   const pieData = restaurants
     .filter((r: any) => parseFloat(r.revenue || 0) > 0)
-    .map((r: any) => ({ name: r.restaurant_name || r.name || 'Unknown', value: parseFloat(r.revenue || 0) }))
+    .map((r: any) => ({ name: r.name ? getRestaurantDisplayName(r) : (r.restaurant_branch_name ? `${r.restaurant_name} (${r.restaurant_branch_name})` : (r.restaurant_name || 'Unknown')), value: parseFloat(r.revenue || 0) }))
     .sort((a: any, b: any) => b.value - a.value)
     .slice(0, 7);
 
@@ -743,7 +750,7 @@ const BrandGeneralDashboard: React.FC = () => {
           </QuickActionsGrid>
         </QuickActionsSection>
 
-        {/* Revenue Distribution Chart */}
+        {/* Revenue Distribution + Active Contracts */}
         <ChartGrid>
           <ChartCard>
             <ChartHeader>
@@ -775,6 +782,56 @@ const BrandGeneralDashboard: React.FC = () => {
               <LoadingContainer>{t('brand:brandGeneralDashboard.noRevenueDataAvailable')}</LoadingContainer>
             )}
           </ChartCard>
+          <ChartCard>
+            <ChartHeader>
+              <ChartTitle>{t('brand:brandGeneralDashboard.activeContracts', 'Active Contracts')}</ChartTitle>
+              <a href="/pos/brand/franchise" style={{ fontSize: '13px', color: '#635BFF', textDecoration: 'none', fontWeight: 500 }}>
+                {t('brand:brandGeneralDashboard.viewAll', 'View all')} →
+              </a>
+            </ChartHeader>
+            <div style={{ textAlign: 'center', padding: '12px 0 16px', borderBottom: '1px solid #E6EBF1', marginBottom: '12px' }}>
+              <div style={{ fontSize: '36px', fontWeight: 700, color: '#0A2540', lineHeight: 1 }}>
+                {activeContracts.length}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '4px' }}>
+                {t('brand:brandGeneralDashboard.franchisesInOperation', 'Franchises in operation')}
+              </div>
+            </div>
+            <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
+              {activeContracts.length > 0 ? (
+                activeContracts.slice(0, 5).map((c: any) => {
+                  const name = c.restaurant?.name
+                    ? (c.restaurant.branch_name ? `${c.restaurant.name} (${c.restaurant.branch_name})` : c.restaurant.name)
+                    : (c.applicant_company_name || c.applicant_name || '-');
+                  const endDate = c.end_date ? new Date(c.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => window.location.href = `/pos/brand/franchise?view=pipeline&id=${c.id}`}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '8px 0', borderBottom: '1px solid #F3F4F6',
+                        cursor: 'pointer', fontSize: '13px'
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#0A2540', fontWeight: 500 }}>
+                        {name}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6B7C93', flexShrink: 0, marginLeft: '8px' }}>
+                        ~ {endDate}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ textAlign: 'center', color: '#9CA3AF', fontSize: '13px', padding: '20px 0' }}>
+                  {t('brand:brandGeneralDashboard.noActiveContracts', 'No active contracts')}
+                </div>
+              )}
+            </div>
+          </ChartCard>
         </ChartGrid>
 
         {/* Restaurant Performance Table */}
@@ -797,7 +854,7 @@ const BrandGeneralDashboard: React.FC = () => {
               {topSubscriptions.length > 0 ? (
                 topSubscriptions.map((sub: any, idx: number) => (
                   <Tr key={idx}>
-                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{sub.restaurant_name || '-'}</Td>
+                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{sub.restaurant_branch_name ? `${sub.restaurant_name} (${sub.restaurant_branch_name})` : (sub.restaurant_name || '-')}</Td>
                     <Td>{sub.plan?.name || 'No Plan'}</Td>
                     <Td>{formatCurrency(sub.current_month?.revenue || 0, currency)}</Td>
                     <Td>{sub.current_month?.order_count || 0}</Td>

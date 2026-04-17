@@ -6,7 +6,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
+import DateRangeField from '../../components/Common/DateRangeField';
 import { useTranslation } from 'react-i18next';
+import { formatDate as tzFormatDate } from '../../utils/timezone';
 
 interface Restaurant {
   id: string;
@@ -764,7 +766,7 @@ const ManagerPromotionsPage: React.FC = () => {
     };
 
     const csvContent = `Promotion Export - ${exportData.restaurant}\n` +
-      `Generated: ${new Date().toLocaleString()}\n` +
+      `Generated: ${tzFormatDate(new Date(), null)}\n` +
       `Manager: ${exportData.manager}\n\n` +
       `Name,Type,Discount,Restaurants,Start Date,End Date,Usage Count,Usage Limit,Status,Revenue\n` +
       exportData.promotions.map(promo => 
@@ -779,11 +781,7 @@ const ManagerPromotionsPage: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return tzFormatDate(dateString, null);
   };
 
   return (
@@ -1134,20 +1132,12 @@ const ManagerPromotionsPage: React.FC = () => {
               </FormRow>
 
               <FormRow>
-                <FormGroup>
-                  <Label>Start Date *</Label>
-                  <Input
-                    type="date"
-                    value={newPromotion.startDate}
-                    onChange={(e) => setNewPromotion({ ...newPromotion, startDate: e.target.value })}
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <Label>End Date *</Label>
-                  <Input
-                    type="date"
-                    value={newPromotion.endDate}
-                    onChange={(e) => setNewPromotion({ ...newPromotion, endDate: e.target.value })}
+                <FormGroup style={{ gridColumn: 'span 2' }}>
+                  <Label>Start Date — End Date *</Label>
+                  <DateRangeField
+                    startDate={newPromotion.startDate}
+                    endDate={newPromotion.endDate}
+                    onChange={(start, end) => setNewPromotion({ ...newPromotion, startDate: start, endDate: end })}
                   />
                 </FormGroup>
               </FormRow>

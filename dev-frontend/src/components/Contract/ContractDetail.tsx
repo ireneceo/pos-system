@@ -4,9 +4,13 @@ import { useTranslation } from 'react-i18next';
 import ContractStageBar from './ContractStageBar';
 import AutoSaveField from '../Common/AutoSaveField';
 import CommentSection from '../Common/CommentSection';
+import DateField from '../Common/DateField';
+import DateRangeField from '../Common/DateRangeField';
 import { useAuth } from '../../contexts/AuthContext';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as tzFormatDate } from '../../utils/timezone';
+import { getCurrencySymbol } from '../../utils/currency';
 interface ContractDetailProps {
   contractId: number;
   entityType: 'brand' | 'foodcourt';
@@ -111,6 +115,98 @@ const Input = styled.input`
   &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
   &:disabled { background: #F8FAFC; color: #6B7C93; }
 `;
+
+const CurrencyInputWrapper = styled.div`
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  background: #FFFFFF;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  &:focus-within { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1); }
+  &[data-disabled="true"] { background: #F8FAFC; }
+`;
+
+const CurrencyPrefix = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  background: #F8FAFC;
+  border-right: 1px solid #E6EBF1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6B7C93;
+  min-width: 48px;
+  justify-content: center;
+`;
+
+const CurrencyInputInner = styled.input`
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  font-size: 14px;
+  color: #0A2540;
+  outline: none;
+  background: transparent;
+  box-sizing: border-box;
+  width: 100%;
+  &:disabled { background: transparent; color: #6B7C93; cursor: not-allowed; }
+`;
+
+const PercentSuffix = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  background: #F8FAFC;
+  border-left: 1px solid #E6EBF1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6B7C93;
+`;
+
+interface CurrencyInputProps {
+  value: any;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  currency?: string;
+}
+const CurrencyInput: React.FC<CurrencyInputProps> = ({ value, onChange, disabled, currency }) => {
+  const symbol = getCurrencySymbol(currency || 'MYR');
+  return (
+    <CurrencyInputWrapper data-disabled={disabled ? 'true' : 'false'}>
+      <CurrencyPrefix>{symbol}</CurrencyPrefix>
+      <CurrencyInputInner
+        type="number"
+        step="0.01"
+        min="0"
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+      />
+    </CurrencyInputWrapper>
+  );
+};
+
+interface PercentInputProps {
+  value: any;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}
+const PercentInput: React.FC<PercentInputProps> = ({ value, onChange, disabled }) => (
+  <CurrencyInputWrapper data-disabled={disabled ? 'true' : 'false'}>
+    <CurrencyInputInner
+      type="number"
+      step="0.01"
+      min="0"
+      max="100"
+      value={value || ''}
+      onChange={e => onChange(e.target.value)}
+      disabled={disabled}
+    />
+    <PercentSuffix>%</PercentSuffix>
+  </CurrencyInputWrapper>
+);
 
 const TextArea = styled.textarea`
   width: 100%;
@@ -296,10 +392,26 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
 
   const handleAutoSave = async () => {
     setFormError(null);
+    // Only send whitelisted fields — backend filters but we reduce payload
+    const f = formRef.current || {};
+    const payload: any = {};
+    const fields = [
+      'applicant_company_name', 'applicant_contact_person',
+      'applicant_email', 'applicant_phone',
+      'applicant_business_type', 'applicant_location', 'applicant_notes',
+      'contract_number', 'contract_type', 'start_date', 'end_date',
+      'duration_months', 'signing_date', 'financial_terms',
+      'renewal_type', 'renewal_alert_months', 'termination_notice_months',
+      'early_termination_fee', 'restaurant_id', 'unit_id',
+      'target_open_date', 'person_in_charge', 'notes'
+    ];
+    for (const k of fields) {
+      if (f[k] !== undefined) payload[k] = f[k];
+    }
     const res = await fetch(`/api/contracts/${contractId}`, {
       method: 'PUT',
       headers: headers(),
-      body: JSON.stringify(formRef.current)
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.message || 'Save failed');
@@ -392,12 +504,21 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
     setSearchingRestaurant(true);
     searchTimerRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/restaurants?search=${encodeURIComponent(term)}`, {
+        const res = await fetch(`/api/restaurants?search=${encodeURIComponent(term)}&limit=10`, {
           headers: { Authorization: `Bearer ${getToken()}` }
         });
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.data?.restaurants || data.data || []);
-        setRestaurantResults(Array.isArray(list) ? list.slice(0, 10) : []);
+        // Client-side defensive filter (in case backend doesn't filter)
+        const normalized = term.trim().toLowerCase();
+        const filtered = (Array.isArray(list) ? list : []).filter((r: any) => {
+          const hay = [r.name, r.branch_name, r.slug, r.phone, r.address]
+            .filter(Boolean)
+            .map(v => String(v).toLowerCase())
+            .join(' ');
+          return hay.includes(normalized);
+        });
+        setRestaurantResults(filtered.slice(0, 10));
       } catch { setRestaurantResults([]); }
       setSearchingRestaurant(false);
     }, 300);
@@ -445,6 +566,8 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
   if (loading) return <DetailContainer><div style={{ padding: '40px', textAlign: 'center', color: '#6B7C93' }}>Loading...</div></DetailContainer>;
   if (!contract) return <DetailContainer><div style={{ padding: '40px', textAlign: 'center', color: '#6B7C93' }}>Contract not found</div></DetailContainer>;
 
+  const entityCurrency: string = contract.entity_currency || 'MYR';
+
   const badge = STAGE_COLORS[contract.stage] || { color: '#6B7280', bg: '#F3F4F6' };
   const isEditable = ['proposal', 'contracting', 'setup'].includes(contract.stage);
 
@@ -481,7 +604,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       <BackLink onClick={onBack}>&larr; {t('detail.backToList', 'Back to list')}</BackLink>
 
       <DetailHeader>
-        <DetailTitle>{contract.restaurant?.name || contract.applicant_name}{contract.restaurant?.branch_name && <span style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', marginLeft: '8px' }}>({contract.restaurant.branch_name})</span>}</DetailTitle>
+        <DetailTitle>{contract.restaurant?.name || contract.applicant_company_name || contract.applicant_name}{contract.restaurant?.branch_name && <span style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', marginLeft: '8px' }}>({contract.restaurant.branch_name})</span>}</DetailTitle>
         <StageBadge bg={badge.bg} color={badge.color}>{contract.stage}</StageBadge>
       </DetailHeader>
 
@@ -496,9 +619,15 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         <SectionTitle>{t('detail.applicantInfo', 'Applicant Information')}</SectionTitle>
         <FormGrid>
           <FormGroup>
-            <Label>{t('detail.name', 'Name')}</Label>
+            <Label>{t('detail.companyName', 'Company Name')}</Label>
             <AutoSaveField onSave={handleAutoSave}>
-              <Input value={form.applicant_name || ''} onChange={e => updateField('applicant_name', e.target.value)} disabled={!isEditable} />
+              <Input value={form.applicant_company_name || ''} onChange={e => updateField('applicant_company_name', e.target.value)} disabled={!isEditable} />
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup>
+            <Label>{t('detail.contactPerson', 'Contact Person')}</Label>
+            <AutoSaveField onSave={handleAutoSave}>
+              <Input value={form.applicant_contact_person || ''} onChange={e => updateField('applicant_contact_person', e.target.value)} disabled={!isEditable} />
             </AutoSaveField>
           </FormGroup>
           <FormGroup>
@@ -610,15 +739,28 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               </AutoSaveField>
             </FormGroup>
             <FormGroup>
-              <Label>{t('detail.startDate', 'Start Date')}</Label>
+              <Label>{t('detail.contractPeriod', 'Contract Period')}</Label>
               <AutoSaveField onSave={handleAutoSave} debounceMs={300}>
-                <Input type="date" value={form.start_date || ''} onChange={e => updateField('start_date', e.target.value)} disabled={!isEditable} />
+                <DateRangeField
+                  startDate={form.start_date}
+                  endDate={form.end_date}
+                  onChange={(s, e) => {
+                    updateField('start_date', s);
+                    updateField('end_date', e);
+                  }}
+                  disabled={!isEditable}
+                  placeholder={t('detail.selectContractPeriod', 'Select start and end date') as string}
+                />
               </AutoSaveField>
             </FormGroup>
             <FormGroup>
-              <Label>{t('detail.endDate', 'End Date')}</Label>
+              <Label>{t('detail.signingDate', 'Signing Date')}</Label>
               <AutoSaveField onSave={handleAutoSave} debounceMs={300}>
-                <Input type="date" value={form.end_date || ''} onChange={e => updateField('end_date', e.target.value)} disabled={!isEditable} />
+                <DateField
+                  value={form.signing_date}
+                  onChange={v => updateField('signing_date', v)}
+                  disabled={!isEditable}
+                />
               </AutoSaveField>
             </FormGroup>
             <FormGroup>
@@ -628,9 +770,9 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               </AutoSaveField>
             </FormGroup>
             <FormGroup>
-              <Label>{t('detail.signingDate', 'Signing Date')}</Label>
-              <AutoSaveField onSave={handleAutoSave} debounceMs={300}>
-                <Input type="date" value={form.signing_date || ''} onChange={e => updateField('signing_date', e.target.value)} disabled={!isEditable} />
+              <Label>{t('detail.remarks', 'Remarks')}</Label>
+              <AutoSaveField onSave={handleAutoSave}>
+                <Input value={form.notes || ''} onChange={e => updateField('notes', e.target.value)} disabled={!isEditable} placeholder={t('detail.remarksPlaceholder', 'Additional notes') as string} />
               </AutoSaveField>
             </FormGroup>
           </FormGrid>
@@ -646,25 +788,25 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               <FormGroup>
                 <Label>{t('detail.franchiseFee', 'Franchise Fee')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>
-                  <Input type="number" value={form.financial_terms?.franchise_fee || ''} onChange={e => updateFinancialTerm('franchise_fee', e.target.value)} disabled={!isEditable} />
-                </AutoSaveField>
-              </FormGroup>
-              <FormGroup>
-                <Label>{t('detail.royaltyPercent', 'Royalty (%)')}</Label>
-                <AutoSaveField onSave={handleAutoSave}>
-                  <Input type="number" value={form.financial_terms?.royalty_value || ''} onChange={e => updateFinancialTerm('royalty_value', e.target.value)} disabled={!isEditable} />
-                </AutoSaveField>
-              </FormGroup>
-              <FormGroup>
-                <Label>{t('detail.marketingFundPercent', 'Marketing Fund (%)')}</Label>
-                <AutoSaveField onSave={handleAutoSave}>
-                  <Input type="number" value={form.financial_terms?.marketing_fund_value || ''} onChange={e => updateFinancialTerm('marketing_fund_value', e.target.value)} disabled={!isEditable} />
+                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.franchise_fee} onChange={v => updateFinancialTerm('franchise_fee', v)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
                 <Label>{t('detail.securityDeposit', 'Security Deposit')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>
-                  <Input type="number" value={form.financial_terms?.security_deposit || ''} onChange={e => updateFinancialTerm('security_deposit', e.target.value)} disabled={!isEditable} />
+                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.security_deposit} onChange={v => updateFinancialTerm('security_deposit', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.royaltyPercent', 'Royalty (%)')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <PercentInput value={form.financial_terms?.royalty_value} onChange={v => updateFinancialTerm('royalty_value', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.marketingFundPercent', 'Marketing Fund (%)')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <PercentInput value={form.financial_terms?.marketing_fund_value} onChange={v => updateFinancialTerm('marketing_fund_value', v)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
@@ -679,31 +821,31 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               <FormGroup>
                 <Label>{t('detail.baseRent', 'Base Rent (monthly)')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>
-                  <Input type="number" value={form.financial_terms?.base_rent || ''} onChange={e => updateFinancialTerm('base_rent', e.target.value)} disabled={!isEditable} />
-                </AutoSaveField>
-              </FormGroup>
-              <FormGroup>
-                <Label>{t('detail.revenueSharePercent', 'Revenue Share (%)')}</Label>
-                <AutoSaveField onSave={handleAutoSave}>
-                  <Input type="number" value={form.financial_terms?.revenue_share_percent || ''} onChange={e => updateFinancialTerm('revenue_share_percent', e.target.value)} disabled={!isEditable} />
-                </AutoSaveField>
-              </FormGroup>
-              <FormGroup>
-                <Label>{t('detail.minGuarantee', 'Min Guarantee')}</Label>
-                <AutoSaveField onSave={handleAutoSave}>
-                  <Input type="number" value={form.financial_terms?.min_guarantee || ''} onChange={e => updateFinancialTerm('min_guarantee', e.target.value)} disabled={!isEditable} />
-                </AutoSaveField>
-              </FormGroup>
-              <FormGroup>
-                <Label>{t('detail.maintenanceFee', 'Maintenance Fee (monthly)')}</Label>
-                <AutoSaveField onSave={handleAutoSave}>
-                  <Input type="number" value={form.financial_terms?.maintenance_fee || ''} onChange={e => updateFinancialTerm('maintenance_fee', e.target.value)} disabled={!isEditable} />
+                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.base_rent} onChange={v => updateFinancialTerm('base_rent', v)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
                 <Label>{t('detail.securityDeposit', 'Security Deposit')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>
-                  <Input type="number" value={form.financial_terms?.security_deposit || ''} onChange={e => updateFinancialTerm('security_deposit', e.target.value)} disabled={!isEditable} />
+                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.security_deposit} onChange={v => updateFinancialTerm('security_deposit', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.revenueSharePercent', 'Revenue Share (%)')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <PercentInput value={form.financial_terms?.revenue_share_percent} onChange={v => updateFinancialTerm('revenue_share_percent', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.minGuarantee', 'Min Guarantee')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.min_guarantee} onChange={v => updateFinancialTerm('min_guarantee', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.maintenanceFee', 'Maintenance Fee (monthly)')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.maintenance_fee} onChange={v => updateFinancialTerm('maintenance_fee', v)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
@@ -737,7 +879,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               }}>
                 {task.title}
               </span>
-              {task.completed_at && <NoteMeta>{new Date(task.completed_at).toLocaleDateString()}</NoteMeta>}
+              {task.completed_at && <NoteMeta>{tzFormatDate(task.completed_at, null)}</NoteMeta>}
             </CheckItem>
           ))}
           {contract.stage === 'setup' && (
@@ -810,7 +952,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                 <NoteMeta>{doc.file_size ? `${(doc.file_size / 1024).toFixed(0)}KB` : ''}</NoteMeta>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <NoteMeta>{new Date(doc.createdAt || doc.created_at).toLocaleDateString()}</NoteMeta>
+                <NoteMeta>{tzFormatDate(doc.createdAt || doc.created_at, null)}</NoteMeta>
                 {isEditable && (
                   <button onClick={async () => {
                     await fetch(`/api/contracts/${contractId}/documents/${doc.id}`, { method: 'DELETE', headers: headers() });
@@ -850,7 +992,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                   {h.from_value && h.to_value ? `: ${h.from_value} → ${h.to_value}` : h.to_value ? `: ${h.to_value}` : ''}
                 </HistoryText>
                 <HistoryDate>
-                  {h.changedByUser?.full_name} &middot; {new Date(h.createdAt || h.created_at).toLocaleDateString()}
+                  {h.changedByUser?.full_name} &middot; {tzFormatDate(h.createdAt || h.created_at, null)}
                 </HistoryDate>
               </div>
             </HistoryItem>

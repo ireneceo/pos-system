@@ -6,9 +6,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
 import PageHeader from '../../components/Common/PageHeader';
+import DateRangeField from '../../components/Common/DateRangeField';
 import ConfirmModal from '../../components/ConfirmModal';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 // 스타일 컴포넌트
 const CouponsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -683,7 +685,7 @@ const CouponsPage: React.FC = () => {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString();
+    return formatDateTz(dateStr, operationSettings);
   };
 
   return (
@@ -852,21 +854,12 @@ const CouponsPage: React.FC = () => {
               </FormRow>
 
               <FormRow>
-                <FormGroup>
-                  <Label>{'Valid From'}</Label>
-                  <Input
-                    type="date"
-                    value={couponForm.valid_from}
-                    onChange={(e) => setCouponForm({ ...couponForm, valid_from: e.target.value })}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <Label>{'Valid Until'}</Label>
-                  <Input
-                    type="date"
-                    value={couponForm.valid_until}
-                    onChange={(e) => setCouponForm({ ...couponForm, valid_until: e.target.value })}
+                <FormGroup style={{ gridColumn: 'span 2' }}>
+                  <Label>{'Valid From — Valid Until'}</Label>
+                  <DateRangeField
+                    startDate={couponForm.valid_from}
+                    endDate={couponForm.valid_until}
+                    onChange={(start, end) => setCouponForm({ ...couponForm, valid_from: start, valid_until: end })}
                   />
                 </FormGroup>
               </FormRow>

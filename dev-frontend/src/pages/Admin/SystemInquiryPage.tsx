@@ -10,6 +10,7 @@ import { Modal as CommonModal } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 import {
   Container,
   Header,
@@ -493,7 +494,7 @@ const SystemInquiryPage: React.FC = () => {
   const closedTickets = tickets.filter(t => t.status === 'closed').length;
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-MY');
+    return formatDateTimeTz(dateString, null);
   };
 
   const handleExportReports = () => {

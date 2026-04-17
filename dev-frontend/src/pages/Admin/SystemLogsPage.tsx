@@ -7,6 +7,8 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/S
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import { getActionGuide } from '../../utils/logActionGuides';
+import { formatDateTime } from '../../utils/timezone';
+import DateField from '../../components/Common/DateField';
 
 import { getAuthToken } from '../../utils/auth';
 interface SystemLog {
@@ -755,7 +757,7 @@ const SystemLogsPage: React.FC = () => {
   };
 
   const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('en-MY', { 
+    return formatDateTime(timestamp, null, {
       hour12: false,
       year: 'numeric',
       month: '2-digit',
@@ -906,7 +908,7 @@ const SystemLogsPage: React.FC = () => {
         <HealthHeaderRow>
           <HealthLastCheck>
             {lastCheck ? (
-              <>Last check: {new Date(lastCheck).toLocaleString('en-MY', { hour12: false })} &middot; Status: <span style={{ fontWeight: 600, color: overallStatus === 'ok' ? '#059669' : overallStatus === 'warning' ? '#D97706' : '#DC2626' }}>{overallStatus === 'ok' ? 'Healthy' : overallStatus === 'warning' ? 'Warning' : 'Critical'}</span> &middot; Alerts (24h): {alertCount}</>
+              <>Last check: {formatDateTime(lastCheck, null, { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} &middot; Status: <span style={{ fontWeight: 600, color: overallStatus === 'ok' ? '#059669' : overallStatus === 'warning' ? '#D97706' : '#DC2626' }}>{overallStatus === 'ok' ? 'Healthy' : overallStatus === 'warning' ? 'Warning' : 'Critical'}</span> &middot; Alerts (24h): {alertCount}</>
             ) : 'No health data yet'}
           </HealthLastCheck>
           <CheckNowBtn onClick={handleCheckNow} disabled={checkNowLoading || checkNowCooldown > 0}>
@@ -989,7 +991,7 @@ const SystemLogsPage: React.FC = () => {
               <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{'CPU'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`cpu-${idx}`}>
-                  <TrendTime>{new Date(point.timestamp).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })}</TrendTime>
+                  <TrendTime>{formatDateTime(point.timestamp, null, { hour: '2-digit', minute: '2-digit', hour12: false, year: undefined, month: undefined, day: undefined })}</TrendTime>
                   <TrendBarContainer>
                     <TrendBar percent={point.cpu} color={getBarColor(point.cpu)} />
                   </TrendBarContainer>
@@ -1001,7 +1003,7 @@ const SystemLogsPage: React.FC = () => {
               <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{'Memory'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`mem-${idx}`}>
-                  <TrendTime>{new Date(point.timestamp).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })}</TrendTime>
+                  <TrendTime>{formatDateTime(point.timestamp, null, { hour: '2-digit', minute: '2-digit', hour12: false, year: undefined, month: undefined, day: undefined })}</TrendTime>
                   <TrendBarContainer>
                     <TrendBar percent={point.memory} color={getBarColor(point.memory)} />
                   </TrendBarContainer>
@@ -1013,7 +1015,7 @@ const SystemLogsPage: React.FC = () => {
               <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>{'Disk'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`disk-${idx}`}>
-                  <TrendTime>{new Date(point.timestamp).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })}</TrendTime>
+                  <TrendTime>{formatDateTime(point.timestamp, null, { hour: '2-digit', minute: '2-digit', hour12: false, year: undefined, month: undefined, day: undefined })}</TrendTime>
                   <TrendBarContainer>
                     <TrendBar percent={point.disk} color={getBarColor(point.disk)} />
                   </TrendBarContainer>
@@ -1106,11 +1108,12 @@ const SystemLogsPage: React.FC = () => {
             <option value="backup-service">{'Backup Service'}</option>
             <option value="kitchen-display-service">{'Kitchen Display'}</option>
           </FilterSelect>
-          <DateInput
-            type="date"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-          />
+          <div style={{ minWidth: '180px' }}>
+            <DateField
+              value={filterDate}
+              onChange={(v) => setFilterDate(v)}
+            />
+          </div>
           <SearchInput
             placeholder="Search logs..."
             value={searchTerm}

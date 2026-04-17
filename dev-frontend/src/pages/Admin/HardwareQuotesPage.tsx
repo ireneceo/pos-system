@@ -8,10 +8,12 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency } from '../../utils/currency';
 import CommentSection from '../../components/Common/CommentSection';
+import DateField from '../../components/Common/DateField';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 // ─── Types ───────────────────────────────────────────────────────
 
 interface AddonItem {
@@ -1060,13 +1062,7 @@ const HardwareQuotesPage: React.FC = () => {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateTimeTz(dateStr, null);
   };
 
   const formatStatusLabel = (status: string) => {
@@ -1619,10 +1615,9 @@ const HardwareQuotesPage: React.FC = () => {
             {/* Due Date */}
             <FormGroup>
               <FormLabel>{t('admin:hardwareQuotesPage.dueDate')}</FormLabel>
-              <FormInput
-                type="date"
+              <DateField
                 value={invoiceDueDate}
-                onChange={(e) => setInvoiceDueDate(e.target.value)}
+                onChange={setInvoiceDueDate}
               />
             </FormGroup>
 
@@ -1794,10 +1789,9 @@ const HardwareQuotesPage: React.FC = () => {
                 {/* Due Date */}
                 <FormGroup>
                   <FormLabel>{t('admin:hardwareQuotesPage.dueDate')}</FormLabel>
-                  <FormInput
-                    type="date"
+                  <DateField
                     value={proceedDueDate}
-                    onChange={(e) => setProceedDueDate(e.target.value)}
+                    onChange={setProceedDueDate}
                   />
                 </FormGroup>
 

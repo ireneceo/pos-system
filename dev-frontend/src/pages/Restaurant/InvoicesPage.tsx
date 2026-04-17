@@ -565,7 +565,8 @@ const RestaurantInvoicesPage: React.FC = () => {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    const tz = operationSettings?.timeZone || 'Asia/Kuala_Lumpur';
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: tz });
   };
 
   // Check if invoice is overdue based on due_date

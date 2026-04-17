@@ -1,4 +1,5 @@
 import { StockStatus } from './types';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 
 export const calculateStockStatus = (currentStock: number, minStock: number): StockStatus => {
   if (currentStock <= 0) return 'out_of_stock';
@@ -14,13 +15,7 @@ export const formatStock = (value: number | string | null | undefined): string =
 
 export const formatDate = (dateString: string | null | undefined): string => {
   if (!dateString) return '-';
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString();
-  } catch {
-    return '-';
-  }
+  return formatDateTz(dateString, null) || '-';
 };
 
 export const getStatusLabel = (status: string): string => {

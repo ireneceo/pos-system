@@ -16,10 +16,12 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as tzFormatDate } from '../../utils/timezone';
 // ============================================
 // Types
 // ============================================
@@ -1376,7 +1378,7 @@ const FoodcourtPlansPage: React.FC = () => {
                   </DetailRow>
                   <DetailRow>
                     <DetailLabel>{t('foodcourt:foodcourtPlansPage.createdDate')}</DetailLabel>
-                    <DetailValue>{new Date(selectedPlan.createdAt).toLocaleDateString()}</DetailValue>
+                    <DetailValue>{tzFormatDate(selectedPlan.createdAt, null)}</DetailValue>
                   </DetailRow>
                 </DetailSection>
 
@@ -1398,9 +1400,9 @@ const FoodcourtPlansPage: React.FC = () => {
                       {selectedPlan.planRestaurants.map(pr => (
                         <RestaurantItem key={pr.id} isAssigned>
                           <div>
-                            <div style={{fontWeight: 600, color: '#0A2540'}}>{pr.restaurant?.name || `Restaurant #${pr.restaurant_id}`}</div>
+                            <div style={{fontWeight: 600, color: '#0A2540'}}>{pr.restaurant ? getRestaurantDisplayName(pr.restaurant) : `Restaurant #${pr.restaurant_id}`}</div>
                             <div style={{fontSize: '12px', color: '#6B7280'}}>
-                              Since {new Date(pr.activation_date).toLocaleDateString()}
+                              Since {tzFormatDate(pr.activation_date, null)}
                             </div>
                           </div>
                           <StatusBadge isActive={pr.is_active}>{pr.is_active ? 'Active' : 'Inactive'}</StatusBadge>
@@ -1469,7 +1471,7 @@ const FoodcourtPlansPage: React.FC = () => {
                     return (
                       <RestaurantItem key={restaurant.id} isAssigned={isAssigned}>
                         <div>
-                          <div style={{fontWeight: 600, color: '#0A2540'}}>{restaurant.name}</div>
+                          <div style={{fontWeight: 600, color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
                           <div style={{fontSize: '12px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
                         </div>
                         {isAssigned ? (

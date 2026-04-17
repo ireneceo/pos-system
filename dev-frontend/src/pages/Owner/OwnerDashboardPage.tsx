@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as tzFormatDate } from '../../utils/timezone';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
 // ============================================================================
@@ -636,7 +637,7 @@ const OwnerDashboardPage: React.FC = () => {
         {/* Subscription Status Banner */}
         {paymentStatus.subscriptionStatus === 'trial' && paymentStatus.trialEndDate && (
           <SubscriptionBanner $type="trial">
-            Trial period active — expires {new Date(paymentStatus.trialEndDate).toLocaleDateString()}. Please pay your invoice to continue service.
+            Trial period active — expires {tzFormatDate(paymentStatus.trialEndDate, null)}. Please pay your invoice to continue service.
           </SubscriptionBanner>
         )}
         {paymentStatus.restrictionLevel === 'warning' && (

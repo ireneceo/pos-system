@@ -11,6 +11,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getPlanPrice, formatPlanPrice, normalizeCurrencyCode } from '../../utils/currency';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
+import DateRangeField from '../../components/Common/DateRangeField';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -1672,21 +1673,12 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </FormSelect>
                 </FormGroup>
 
-                <FormGroup>
-                  <FormLabel>Subscription Start Date *</FormLabel>
-                  <FormInput
-                    type="date"
-                    value={newRestaurant.subscriptionStart}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, subscriptionStart: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Subscription End Date *</FormLabel>
-                  <FormInput
-                    type="date"
-                    value={newRestaurant.subscriptionEnd}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, subscriptionEnd: e.target.value})}
+                <FormGroup style={{ gridColumn: 'span 2' }}>
+                  <FormLabel>Subscription Period *</FormLabel>
+                  <DateRangeField
+                    startDate={newRestaurant.subscriptionStart}
+                    endDate={newRestaurant.subscriptionEnd}
+                    onChange={(s, e) => setNewRestaurant({...newRestaurant, subscriptionStart: s, subscriptionEnd: e})}
                   />
                 </FormGroup>
 
@@ -1716,7 +1708,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </div>
                 </div>
               </FormGrid>
-            
+
         </CommonModal>
       )}
 
@@ -1912,21 +1904,12 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </FormSelect>
                 </FormGroup>
 
-                <FormGroup>
-                  <FormLabel>Subscription Start Date *</FormLabel>
-                  <FormInput
-                    type="date"
-                    value={newRestaurant.subscriptionStart}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, subscriptionStart: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Subscription End Date *</FormLabel>
-                  <FormInput
-                    type="date"
-                    value={newRestaurant.subscriptionEnd}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, subscriptionEnd: e.target.value})}
+                <FormGroup style={{ gridColumn: 'span 2' }}>
+                  <FormLabel>Subscription Period *</FormLabel>
+                  <DateRangeField
+                    startDate={newRestaurant.subscriptionStart}
+                    endDate={newRestaurant.subscriptionEnd}
+                    onChange={(s, e) => setNewRestaurant({...newRestaurant, subscriptionStart: s, subscriptionEnd: e})}
                   />
                 </FormGroup>
 

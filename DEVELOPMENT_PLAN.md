@@ -1,8 +1,76 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-15 (모바일 이미지 파이프라인 + 엔티티 브랜딩 이메일)
+> **최종 업데이트:** 2026-04-17 (모바일 영수증 + 전수 리팩토링 + Contract UX 개선)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: 대규모 정리 + Contract UX 개선 (2026-04-16 ~ 04-17)
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | 모바일 주문 영수증 다운로드 + 공유 | `ReceiptShare.tsx` 신규 — Download Receipt(html2canvas PNG, 결제 완료 시만) + Share Order (WhatsApp/Telegram/Web Share). `mobile-orders.js` 응답 확장 (재무 데이터 + restaurant 정보). 빌프린트와 동일 폰트(Inter) | ✅ |
+| 2 | branch_name 표시 전수 점검 | `getRestaurantDisplayName()` 유틸 25개 파일 일괄 적용 (누락 20 + 부분 수정 5). 모든 역할/페이지에서 "Name (Branch)" 형식 통일 | ✅ |
+| 3 | 이미지 base64 감사 | `recipes.image` 3건 base64 → 파일 전환. `routes/recipes.js` create/update 4곳 `processImage()` 적용 | ✅ |
+| 4 | N:M 조인 테이블 DROP | `brand_product_brands`, `supplier_brands` DB 삭제 + `brand-products.js`, `suppliers.js` 죽은 코드 제거 | ✅ |
+| 5 | 구독 전환 알림 보강 | Restaurant Active→Overdue 이메일 추가, Entity (Brand/Foodcourt/Owner) Trial→Overdue/Overdue→Suspended 이메일 (`sendEntitySubscriptionEmail`) | ✅ |
+| 6 | 인보이스 연체 리마인더 | `processOverdueReminders` 신규 — subscriptionScheduler 매일 3AM. D+3 보라/D+7 노랑/D+14 빨강(Final Notice). 발행자(Issuer) SMTP | ✅ |
+| 7 | 타임존 전체 적용 | `toLocaleString`/`Date/TimeString` 257곳 중 ~200곳 `formatDateTime`/`formatDate`/`formatTime` 유틸로 교체. ~74개 파일 수정 | ✅ |
+| 8 | C-6 거대 컴포넌트 분할 | LiveOrdersPage(4407→1856), Admin/InvoicesPage(4180→1998), BrandGeneral/BrandInvoicesPage(4548→1620), FoodcourtGeneral/FoodcourtInvoicesPage(4317→1541). 총 17,452→7,015줄 (60% 감소) | ✅ |
+| 9 | DateField/DateRangeField 컴포넌트 통일 | `<input type="date" />` 42→0. 신규 단일/범위 날짜 선택 컴포넌트. CalendarPicker 팔레트 재사용. 25개 파일 적용 | ✅ |
+| 10 | Link Restaurant 검색 fix | 백엔드 `/api/restaurants` GET에 search/limit 쿼리 추가 (name/branch_name/slug/phone/address LIKE). client-side defensive filter 추가 | ✅ |
+| 11 | Applicant Information 필드 분리 | DB `applicant_name` → `applicant_company_name` RENAME + `applicant_contact_person` 신규. 모델/라우트/프론트 전 경로 반영, legacy body 입력 하위 호환 | ✅ |
+| 12 | Contract Information 비고란 추가 | 2열×3행 6필드 (Number/Type/Period/SigningDate/Duration/Remarks). `contract.notes` 재사용 | ✅ |
+| 13 | Franchise/Tenancy Terms 통화 표시 | `CurrencyInput` (`RM 5000.00`) + `PercentInput` (`5 %`) 컴포넌트 신규. GET 응답에 `entity_currency` (Brand.currency/Foodcourt.currency) 포함. Security Deposit 확인/유지 | ✅ |
+| 14 | ContractDetail 저장 실패 fix (빨간 !) | `handleAutoSave`를 whitelist 필드만 PUT하도록 수정 | ✅ |
+| 15 | Brand Dashboard Active Contracts 위젯 | ChartGrid 오른쪽 빈 영역에 Active Contracts 카드 추가. 큰 숫자 + 최근 5개 목록 + View all 링크 + 빈 상태 | ✅ |
+| 16 | `/기능설계` 스킬 신규 | 대규모 기능 개발용 6단계 체계. `.claude/commands/기능설계.md` + CLAUDE.md 규모별 조절 표에 사용 기준 추가 | ✅ |
+
+### DB 변경 (dev 적용, 운영 배포 대기)
+- `contracts.applicant_name` → `applicant_company_name` RENAME
+- `contracts.applicant_contact_person VARCHAR(100) NULL` ADD
+- `brand_product_brands` DROP
+- `supplier_brands` DROP
+- `recipes.image` 3건 base64 → 파일 URL 마이그레이션
+
+### 수정된 주요 파일
+**백엔드**
+- `models/Contract.js`
+- `routes/contracts.js`, `routes/restaurants-crud.js`, `routes/foodcourt-units.js`
+- `routes/recipes.js`, `routes/mobile-orders.js`, `routes/brand-products.js`, `routes/suppliers.js`
+- `services/subscriptionScheduler.js`
+
+**프론트엔드 신규**
+- `components/Common/DateField.tsx`, `DateRangeField.tsx`
+- `mobile/components/common/ReceiptShare.tsx`
+- `pages/LiveOrders/{types,helpers,styles,OrderDetailModal,BillPrintPortal,PaymentVerificationModal}.tsx`
+- `pages/Admin/invoices/`, `BrandGeneral/invoices/`, `FoodcourtGeneral/invoices/` 서브디렉토리 (총 18개 파일)
+
+**프론트엔드 주요 수정**
+- `components/Contract/ContractDetail.tsx`, `ContractPipeline.tsx`, `ContractManagementPage.tsx`
+- `pages/BrandGeneral/BrandGeneralDashboard.tsx`
+- 25개 파일 DateField/DateRangeField 적용
+- ~74개 파일 타임존 유틸 적용
+
+### 검증
+- 빌드: 성공, 타입에러 0건 (다수 재빌드)
+- health-check: 40/40 통과
+- state-hydration-check: 0 warnings
+- API Write→Read: 정상
+
+### 운영 배포 대기
+- 이번 세션 전체 16건 변경 (Contract Management Enhancement 설계 + 구현 완료 후 일괄 배포)
+
+### 진행 중인 다음 작업 (Contract Management Enhancement — /기능설계 스킬 적용)
+- **1단계: 기능 정의** 완료 → Irene 승인 대기
+- Irene 공유 실제 계약서 2건 기반:
+  - 푸드코트 입점 (Tropicana): Unit Size/Rent Schedule/Service Charge/Cleaning/Fit-out 등
+  - 브랜드 가맹 (K-DINE with MIN): 양쪽 사업자번호/로열티/독점권/12개 지원업무 등
+- Gap 분석: 당사자 5개, Tenancy 10개, Franchise 8개 필드 부족
+- Phase 1 (당사자 정보) → Phase 2 (재무 확장) → Phase 3 (조항 구조화) 순차
 
 ---
 

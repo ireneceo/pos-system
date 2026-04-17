@@ -279,6 +279,46 @@ import {
 </FormRow>
 ```
 
+### 6.3 날짜 입력 컴포넌트 (필수)
+
+**`<input type="date">` 사용 금지** — 브라우저별로 스타일 다름. 반드시 아래 컴포넌트 사용:
+
+```jsx
+import DateField from '../../components/Common/DateField';
+import DateRangeField from '../../components/Common/DateRangeField';
+
+// 단일 날짜 (due_date, signing_date, received_date 등)
+<DateField
+  value={form.due_date}
+  onChange={(v) => setForm({ ...form, due_date: v })}
+  disabled={!isEditable}
+/>
+
+// 범위 날짜 (start + end 한 세트)
+<DateRangeField
+  startDate={form.start_date}
+  endDate={form.end_date}
+  onChange={(s, e) => setForm({ ...form, start_date: s, end_date: e })}
+  disabled={!isEditable}
+/>
+```
+
+- CalendarPicker와 동일한 보라색(#635BFF) 팔레트 사용
+- 날짜 표시 포맷 자동 적용 (`Apr 17, 2026` 형식)
+- Clear(×) 버튼 자동 제공
+- Today 단축 버튼 포함 (DateField)
+
+### 6.4 금액/퍼센트 입력 (Contract 등)
+
+```jsx
+// ContractDetail.tsx 내부 CurrencyInput/PercentInput 패턴 참고
+<CurrencyInput currency="MYR" value={value} onChange={setValue} />
+// 결과: [ RM | 5000.00 ]
+
+<PercentInput value={value} onChange={setValue} />
+// 결과: [ 5 | % ]
+```
+
 ---
 
 ## 7. 에러 메시지 컴포넌트

@@ -4,7 +4,7 @@ const { Recipe, Ingredient, RecipeIngredient, Restaurant, Product, RecipeCategor
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { canEditRecipe, isBrandManager } = require('../middleware/recipeAuth');
 const { generateRecipeCode } = require('../utils/codeGenerator');
-const { deleteOldImages } = require('../utils/imageProcessor');
+const { processImage, deleteOldImages } = require('../utils/imageProcessor');
 
 // ============================================
 // Brand Recipes (Brand General/Manager)
@@ -57,6 +57,15 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
       return res.status(400).json({ error: '레시피 이름은 필수입니다' });
     }
 
+    // 이미지 처리 (base64 → 파일 저장)
+    let imageUrl = null;
+    if (image && image.startsWith('data:image')) {
+      const processed = await processImage(image);
+      imageUrl = processed?.original || null;
+    } else if (image) {
+      imageUrl = image; // 이미 URL인 경우
+    }
+
     // Auto-generate code if not provided
     const finalCode = req.body.code || await generateRecipeCode(Recipe, 'brand', brandId);
 
@@ -71,7 +80,7 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
       category: category || null,
       recipe_category_id: recipe_category_id || null,
       emoji: emoji || null,
-      image: image || null,
+      image: imageUrl,
       option_groups: option_groups || null,
       yield_amount: yield_amount || 1,
       yield_unit: yield_unit || 'portion',
@@ -150,10 +159,15 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
     if (recipe_category_id !== undefined) updateData.recipe_category_id = recipe_category_id || null;
     if (emoji !== undefined) updateData.emoji = emoji || null;
     if (image !== undefined) {
-      if (image && recipe.image && image !== recipe.image) {
+      let newImageUrl = image || null;
+      if (image && image.startsWith('data:image')) {
+        const processed = await processImage(image);
+        newImageUrl = processed?.original || null;
+      }
+      if (newImageUrl && recipe.image && newImageUrl !== recipe.image) {
         await deleteOldImages(recipe.image);
       }
-      updateData.image = image || null;
+      updateData.image = newImageUrl;
     }
     if (option_groups !== undefined) updateData.option_groups = option_groups || null;
     if (yield_amount !== undefined) updateData.yield_amount = yield_amount || 1;
@@ -382,6 +396,15 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
       return res.status(400).json({ error: '레시피 이름은 필수입니다' });
     }
 
+    // 이미지 처리 (base64 → 파일 저장)
+    let imageUrl = null;
+    if (image && image.startsWith('data:image')) {
+      const processed = await processImage(image);
+      imageUrl = processed?.original || null;
+    } else if (image) {
+      imageUrl = image;
+    }
+
     // Auto-generate code if not provided
     const finalCode = req.body.code || await generateRecipeCode(Recipe, 'restaurant', restaurantId);
 
@@ -396,7 +419,7 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
       category: category || null,
       recipe_category_id: recipe_category_id || null,
       emoji: emoji || null,
-      image: image || null,
+      image: imageUrl,
       option_groups: option_groups || null,
       yield_amount: yield_amount || 1,
       yield_unit: yield_unit || 'portion',
@@ -466,8 +489,13 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
 
     const { name, description, category, emoji, image, option_groups, ingredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
 
-    // 이미지 변경 시 이전 파일 삭제
-    if (image && recipe.image && image !== recipe.image) {
+    // 이미지 처리 (base64 → 파일 저장)
+    let newImageUrl = image;
+    if (image && image.startsWith('data:image')) {
+      const processed = await processImage(image);
+      newImageUrl = processed?.original || null;
+    }
+    if (newImageUrl && recipe.image && newImageUrl !== recipe.image) {
       await deleteOldImages(recipe.image);
     }
 
@@ -477,7 +505,7 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
       description,
       category,
       emoji,
-      image,
+      image: newImageUrl,
       option_groups,
       yield_amount: yield_amount || recipe.yield_amount,
       yield_unit: yield_unit || recipe.yield_unit,

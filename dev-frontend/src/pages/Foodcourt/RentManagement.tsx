@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { ModalComponent, FormGroup, FormLabel, FormInput, Button, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
+import DateField from '../../components/Common/DateField';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -533,10 +534,9 @@ const RentManagement: React.FC = () => {
 
               <FormGroup>
                 <FormLabel>{'Contract End Date'}</FormLabel>
-                <FormInput
-                  type="date"
+                <DateField
                   value={formData.contractEndDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, contractEndDate: e.target.value }))}
+                  onChange={(v) => setFormData(prev => ({ ...prev, contractEndDate: v }))}
                   required
                 />
               </FormGroup>

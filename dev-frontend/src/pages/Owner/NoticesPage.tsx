@@ -11,6 +11,7 @@ import { Tabs, Tab, Badge as TabBadge } from '../../components/Common/TabCompone
 import { useTabParam } from '../../hooks/useTabParam';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 // ============================================================================
 // TypeScript Interfaces
 // ============================================================================
@@ -770,7 +771,7 @@ const NoticesPage: React.FC = () => {
   // ============================================================================
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-MY');
+    return formatDateTimeTz(dateString, null);
   };
 
   const formatRelativeTime = (dateString: string) => {

@@ -8,6 +8,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as tzFormatDate } from '../../utils/timezone';
 import {
   Container,
   Header,
@@ -807,7 +808,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                       <div style={{background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1'}}>
                         <div style={{marginBottom: '12px'}}>
                           <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.name')}</div>
-                          <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_name}</div>
+                          <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{viewingSub.restaurant_name}{viewingSub.restaurant_branch_name ? ` (${viewingSub.restaurant_branch_name})` : ''}</div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
                           <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.email')}</div>
@@ -875,7 +876,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                             </div>
                             <div style={{marginBottom: '12px'}}>
                               <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.activationDate')}</div>
-                              <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{new Date(viewingSub.plan.activation_date).toLocaleDateString()}</div>
+                              <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{tzFormatDate(viewingSub.plan.activation_date, null)}</div>
                             </div>
                             <div>
                               <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.discount')}</div>
@@ -953,7 +954,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                           </div>
                           <div>
                             <div style={{fontSize: '12px', color: '#6B7280', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.dueDate')}</div>
-                            <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{new Date(viewingSub.latest_invoice.due_date).toLocaleDateString()}</div>
+                            <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>{tzFormatDate(viewingSub.latest_invoice.due_date, null)}</div>
                           </div>
                         </div>
                       </div>
@@ -968,7 +969,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                         <CommonModal isOpen={true} onClose={() => setShowConfirmModal(false)} title="Confirm Action" footer={<><ThemedButton variant="cancel" onClick={() => setShowConfirmModal(false)}>{t('brand:brandSubscriptionsPage.cancel')}</ThemedButton><ThemedButton variant="danger" onClick={handleConfirmAction}>{t('brand:brandSubscriptionsPage.removePlan')}</ThemedButton></>}>
 
                   <p>
-                    {confirmAction === 'unassign' && `Are you sure you want to remove the plan "${confirmTarget.plan?.name}" from ${confirmTarget.restaurant_name}?`}
+                    {confirmAction === 'unassign' && `Are you sure you want to remove the plan "${confirmTarget.plan?.name}" from ${confirmTarget.restaurant_name}${confirmTarget.restaurant_branch_name ? ` (${confirmTarget.restaurant_branch_name})` : ''}?`}
                   </p>
                 
             </CommonModal>

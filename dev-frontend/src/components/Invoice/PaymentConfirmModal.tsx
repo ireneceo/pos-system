@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Invoice, CURRENCY_CONFIG } from './types';
 import InvoiceStatusBadge from './InvoiceStatusBadge';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 
 interface Props {
   isOpen: boolean;
@@ -316,7 +317,7 @@ const PaymentConfirmModal: React.FC<Props> = ({
             <PaymentInfo>
               <PaymentInfoTitle>Payment Submission Details</PaymentInfoTitle>
               <PaymentDetail>
-                <strong>Submitted:</strong> {new Date(invoice.paymentSubmittedAt).toLocaleString()}
+                <strong>Submitted:</strong> {formatDateTimeTz(invoice.paymentSubmittedAt, null)}
               </PaymentDetail>
               {invoice.paymentMethod && (
                 <PaymentDetail>

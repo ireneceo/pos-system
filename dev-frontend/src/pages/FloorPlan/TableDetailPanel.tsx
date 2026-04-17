@@ -4,6 +4,7 @@ import { FloorTable, TableStatusInfo, ORDER_STATUS_COLORS } from './types';
 import { formatCurrency } from '../../utils/currency';
 import { formatPaymentDisplay } from '../../constants';
 import { useStore } from '../../contexts/StoreContext';
+import { formatDateTime } from '../../utils/timezone';
 import { printBillViaRawBT, printKitchenTicketViaRawBT, printTableQR } from '../../utils/billPrint';
 import OptionModal from '../../components/POSTerminal/OptionModal';
 import { Modal, ModalButton } from '../../components/UI';
@@ -700,12 +701,14 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
   });
   const groupKeys = Object.keys(groupedItems).map(Number).sort((a, b) => a - b);
 
+  const tzSettings = timezone ? { timeZone: timezone } : null;
+
   const formatDT = (dateStr?: string) => {
     if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    const tzOpts = timezone ? { timeZone: timezone } : {};
-    return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', ...tzOpts })
-      + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', ...tzOpts });
+    return formatDateTime(dateStr, tzSettings, {
+      month: '2-digit', day: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    });
   };
 
   // ─── Handlers ───
@@ -1053,7 +1056,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
               )}
               {paymentProof.uploaded_at && (
                 <div style={{ fontSize: '12px', color: '#9CA3AF', marginBottom: '6px' }}>
-                  Submitted: {new Date(paymentProof.uploaded_at).toLocaleString()}
+                  Submitted: {formatDateTime(paymentProof.uploaded_at, tzSettings)}
                 </div>
               )}
               {paymentProof.image && (
@@ -1089,7 +1092,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                   <span style={{ fontSize: '12px', color: '#DC2626', fontWeight: 600 }}>Rejected #{entry.reject_count || idx + 1}</span>
                   {entry.rejected_at && (
-                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{new Date(entry.rejected_at).toLocaleString()}</span>
+                    <span style={{ fontSize: '11px', color: '#9CA3AF' }}>{formatDateTime(entry.rejected_at, tzSettings)}</span>
                   )}
                 </div>
                 {entry.reference && (
@@ -1640,8 +1643,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                   <div>
                     <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes ?? 0}min left)</span>
                     <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
-                      Printed: {new Date(qrSession.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      {' · '}Orders until {new Date(qrSession.expires_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      Printed: {formatDateTime(qrSession.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined })}
+                      {' · '}Orders until {formatDateTime(qrSession.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 </QRStatusInfo>
@@ -1676,8 +1679,8 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
                 <div>
                   <span style={{ color: '#059669' }}>● Active QR ({qrSession.remaining_minutes}min left)</span>
                   <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
-                    Printed: {qrSession.created_at ? new Date(qrSession.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'just now'}
-                    <br />Orders accepted until {new Date(qrSession.expires_at).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    Printed: {qrSession.created_at ? formatDateTime(qrSession.created_at, tzSettings, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', year: undefined }) : 'just now'}
+                    <br />Orders accepted until {formatDateTime(qrSession.expires_at, tzSettings, { year: undefined, month: undefined, day: undefined, hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
                 <ActionBtn $variant="link" onClick={handleExpireQR} style={{ padding: '4px 8px', fontSize: '12px', width: 'auto' }}>

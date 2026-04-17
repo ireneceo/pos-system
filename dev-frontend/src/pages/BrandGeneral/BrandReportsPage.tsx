@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -10,6 +11,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { formatDateTime } from '../../utils/timezone';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -322,6 +324,7 @@ interface Brand {
 interface Restaurant {
   id: string;
   name: string;
+  branch_name?: string | null;
   brand_id?: number;
   brand_name?: string;
 }
@@ -424,6 +427,7 @@ const BrandReportsPage: React.FC = () => {
           const formattedRestaurants = (restaurantsData.data || restaurantsData || []).map((r: any) => ({
             id: r.id?.toString(),
             name: r.name,
+            branch_name: r.branch_name || null,
             brand_id: r.brand_id,
             brand_name: r.brand_name || r.brand?.name
           }));
@@ -435,14 +439,14 @@ const BrandReportsPage: React.FC = () => {
             const match = formattedRestaurants.find((r: any) => r.id === initialRestaurantId);
             if (match) {
               setSelectedRestaurant(match.id);
-              setRestaurantSearchQuery(match.name);
+              setRestaurantSearchQuery(getRestaurantDisplayName(match));
             }
           } else if (initialRestaurantName) {
             const decoded = decodeURIComponent(initialRestaurantName);
             const match = formattedRestaurants.find((r: any) => r.name === decoded);
             if (match) {
               setSelectedRestaurant(match.id);
-              setRestaurantSearchQuery(match.name);
+              setRestaurantSearchQuery(getRestaurantDisplayName(match));
             }
           }
         }
@@ -577,7 +581,7 @@ const BrandReportsPage: React.FC = () => {
 
   const handleRestaurantSelect = (restaurant: Restaurant) => {
     setSelectedRestaurant(restaurant.id);
-    setRestaurantSearchQuery(restaurant.name);
+    setRestaurantSearchQuery(getRestaurantDisplayName(restaurant));
     setShowRestaurantDropdown(false);
   };
 
@@ -866,7 +870,7 @@ const BrandReportsPage: React.FC = () => {
       if (!restaurantId) return;
 
       const restaurant = restaurants.find(r => r.id === restaurantId);
-      const restaurantName = restaurant?.name || order.restaurant_name || 'Unknown';
+      const restaurantName = restaurant ? getRestaurantDisplayName(restaurant) : (order.restaurant_name || 'Unknown');
       const brandName = restaurant?.brand_name || brands.find(b => b.id === restaurant?.brand_id)?.name || 'Independent';
 
       if (!restaurantStats[restaurantId]) {
@@ -1051,7 +1055,7 @@ const BrandReportsPage: React.FC = () => {
             </DropdownItem>
             {filteredRestaurants.map(restaurant => (
               <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
-                <ItemName>{restaurant.name}</ItemName>
+                <ItemName>{getRestaurantDisplayName(restaurant)}</ItemName>
                 <ItemDetails>{restaurant.brand_name || 'Independent'}</ItemDetails>
               </DropdownItem>
             ))}
@@ -1225,7 +1229,7 @@ const BrandReportsPage: React.FC = () => {
                               const monthInfo = yearInfo.months[month];
                               const yearMonthKey = `${year}-${month}`;
                               const isMonthExpanded = expandedMonths.has(yearMonthKey);
-                              const monthName = new Date(month + '-01').toLocaleString('en-US', { year: 'numeric', month: 'long' });
+                              const monthName = formatDateTime(new Date(month + '-01'), null, { year: 'numeric', month: 'long', day: undefined, hour: undefined, minute: undefined, hour12: undefined });
 
                               return (
                                 <React.Fragment key={yearMonthKey}>
@@ -1241,7 +1245,7 @@ const BrandReportsPage: React.FC = () => {
 
                                   {isMonthExpanded && Object.keys(monthInfo.days).sort((a, b) => b.localeCompare(a)).map(day => {
                                     const dayInfo = monthInfo.days[day];
-                                    const dayName = new Date(day).toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+                                    const dayName = formatDateTime(new Date(day), null, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: undefined, minute: undefined, hour12: undefined });
 
                                     return (
                                       <DrilldownRow key={day} level={2}>
@@ -1496,7 +1500,7 @@ const BrandReportsPage: React.FC = () => {
                         <TableCell>
                           <RankBadge rank={index + 1}>{index + 1}</RankBadge>
                         </TableCell>
-                        <TableCell style={{ fontWeight: 600 }}>{restaurant.name}</TableCell>
+                        <TableCell style={{ fontWeight: 600 }}>{getRestaurantDisplayName(restaurant)}</TableCell>
                         <TableCell>
                           <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', backgroundColor: restaurant.brandName === 'Independent' ? '#F3F4F6' : '#E0E7FF', color: restaurant.brandName === 'Independent' ? '#6B7280' : '#4338CA' }}>
                             {restaurant.brandName}

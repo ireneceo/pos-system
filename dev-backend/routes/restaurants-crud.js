@@ -51,7 +51,8 @@ const optionalAuth = async (req, res, next) => {
 
 router.get('/', optionalAuth, async (req, res) => {
   try {
-    const { brand_id } = req.query;
+    const { brand_id, search, limit } = req.query;
+    const { Op } = require('sequelize');
 
     // Build include options for managers
     const managersInclude = {
@@ -69,13 +70,25 @@ router.get('/', optionalAuth, async (req, res) => {
       whereClause.brand_id = brand_id;
     }
 
+    // Server-side text search (name, branch_name, slug, phone, address)
+    if (search && typeof search === 'string' && search.trim().length > 0) {
+      const term = `%${search.trim()}%`;
+      whereClause[Op.or] = [
+        { name: { [Op.like]: term } },
+        { branch_name: { [Op.like]: term } },
+        { slug: { [Op.like]: term } },
+        { phone: { [Op.like]: term } },
+        { address: { [Op.like]: term } }
+      ];
+    }
+
     // Filter restaurants based on user role
     if (req.user && (req.user.role === 'Brand General' || req.user.role === 'Brand Manager')) {
       managersInclude.where = { id: req.user.id };
       managersInclude.required = true;
     }
 
-    const restaurants = await Restaurant.findAll({
+    const findOpts = {
       where: whereClause,
       include: [
         {
@@ -91,7 +104,15 @@ router.get('/', optionalAuth, async (req, res) => {
         }
       ],
       order: [['createdAt', 'DESC']]
-    });
+    };
+
+    // Apply limit when explicitly requested (e.g., dropdown search)
+    const parsedLimit = parseInt(limit, 10);
+    if (Number.isFinite(parsedLimit) && parsedLimit > 0 && parsedLimit <= 100) {
+      findOpts.limit = parsedLimit;
+    }
+
+    const restaurants = await Restaurant.findAll(findOpts);
 
     // Batch fetch today's sales, orders, and staff count for all restaurants
     const restaurantIds = restaurants.map(r => r.id);

@@ -1,10 +1,13 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 
 interface Contract {
   id: number;
-  applicant_name: string;
+  applicant_company_name?: string;
+  applicant_contact_person?: string;
+  applicant_name?: string; // legacy fallback
   applicant_email?: string;
   applicant_phone?: string;
   applicant_business_type?: string;
@@ -14,7 +17,7 @@ interface Contract {
   stage: string;
   start_date?: string;
   end_date?: string;
-  restaurant?: { id: number; name: string } | null;
+  restaurant?: { id: number; name: string; branch_name?: string | null } | null;
   created_at: string;
   createdAt?: string;
   tasks?: { is_completed: boolean }[];
@@ -156,7 +159,7 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('en-CA', { month: '2-digit', day: '2-digit' });
+    return formatDateTz(dateStr, null);
   };
 
   return (
@@ -174,7 +177,8 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
             </ColumnHeader>
             {list.slice(0, showMax).map(c => (
               <Card key={c.id} borderColor={theme.border} onClick={() => onCardClick(c.id)}>
-                <CardName>{c.applicant_name}</CardName>
+                <CardName>{c.applicant_company_name || c.applicant_name || '-'}</CardName>
+                {c.applicant_contact_person && <CardSub>{c.applicant_contact_person}</CardSub>}
                 {c.restaurant && <CardRestaurant>{c.restaurant.name}{c.restaurant.branch_name ? ` (${c.restaurant.branch_name})` : ''}</CardRestaurant>}
                 {c.applicant_phone && <CardSub>{c.applicant_phone}</CardSub>}
                 {c.applicant_location && <CardSub>{c.applicant_location}</CardSub>}

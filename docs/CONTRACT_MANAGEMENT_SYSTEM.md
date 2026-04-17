@@ -444,9 +444,11 @@ entity_id (FK → brands.id or foodcourts.id)
 restaurant_id (FK → restaurants.id, nullable)
 stage ('proposal' / 'contracting' / 'setup' / 'active' / 'terminated' / 'renewed' / 'expired')
 
--- Applicant (before restaurant link)
-applicant_name, applicant_email, applicant_phone
+-- Applicant (before restaurant link) — 2026-04-17: name 분리
+applicant_company_name, applicant_contact_person
+applicant_email, applicant_phone
 applicant_business_type, applicant_location, applicant_notes
+-- (legacy applicant_name removed; PUT body still accepted as fallback)
 
 -- Contract info
 contract_number (STRING, unique within entity)

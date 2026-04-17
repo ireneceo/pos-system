@@ -20,6 +20,7 @@ import CustomerModal from '../../components/Customer/CustomerModal';
 // StaffLoginModal removed - authentication handled by ProtectedRoute
 import { normalizeCustomerName } from '../../utils/orderUtils';
 import { getCurrencySymbol } from '../../utils/currency';
+import { formatDateTime, formatTime } from '../../utils/timezone';
 import { useRestaurantId } from '../../hooks/useRestaurantId';
 
 import { getAuthToken } from '../../utils/auth';
@@ -1806,7 +1807,7 @@ const POSTerminalPage: React.FC = () => {
         };
       }),
       status: 'pending' as const,
-      createdAt: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      createdAt: formatTime(now, operationSettings),
       subtotal,
       tax,
       taxRate: operationSettings.taxRate,
@@ -1970,7 +1971,7 @@ const POSTerminalPage: React.FC = () => {
         };
       }),
       status: 'pending' as const,
-      createdAt: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+      createdAt: formatTime(now, operationSettings),
       subtotal,
       tax,
       taxRate: operationSettings.taxRate,
@@ -2216,17 +2217,20 @@ const POSTerminalPage: React.FC = () => {
     });
   }, [orderItems, subtotal, tax, total, discountAmount, couponDiscount, policyDiscount, serviceCharge, user?.restaurantId, operationSettings]);
 
-  const formatDateTime = (date: Date) => {
-    const time = date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    });
-    const dateStr = date.toLocaleDateString('en-US', {
+  const formatDateTimeLocal = (date: Date) => {
+    const dateStr = formatDateTime(date, operationSettings, {
       month: 'short',
       day: '2-digit',
       year: 'numeric'
+    });
+    const time = formatDateTime(date, operationSettings, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+      year: undefined,
+      month: undefined,
+      day: undefined
     });
     return `${dateStr}  ${time}`;
   };
@@ -2354,7 +2358,7 @@ const POSTerminalPage: React.FC = () => {
             <span>Cashier: {user?.name || 'Staff'}</span>
             <span style={{ fontSize: '11px', color: '#8898AA', marginLeft: '4px' }}>▼</span>
           </StaffInfo>
-          <DateTime>{formatDateTime(currentDateTime)}</DateTime>
+          <DateTime>{formatDateTimeLocal(currentDateTime)}</DateTime>
           <button
             onClick={() => window.open(`/restaurant/${user?.restaurantId}/checkout-display`, '_blank')}
             title="Open Customer Checkout Display"

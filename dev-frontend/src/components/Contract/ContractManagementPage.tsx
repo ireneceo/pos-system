@@ -184,7 +184,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          applicant_name: t('newProposal.defaultName', 'New Proposal'),
+          applicant_company_name: t('newProposal.defaultName', 'New Proposal'),
           contract_type: entityType === 'brand' ? 'franchise' : 'standard'
         })
       });
@@ -329,8 +329,13 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
                       const badge = STAGE_COLORS[c.stage] || STAGE_COLORS.expired;
                       return (
                         <ClickableRow key={c.id} onClick={() => setSelectedId(c.id)}>
-                          <DataTableCell data-label={t('list.name', 'Name')} style={{ fontWeight: 500 }}>
-                            {c.applicant_name || '-'}
+                          <DataTableCell data-label={t('list.companyName', 'Company Name')} style={{ fontWeight: 500 }}>
+                            <div>{c.applicant_company_name || c.applicant_name || '-'}</div>
+                            {c.applicant_contact_person && (
+                              <div style={{ fontSize: '12px', color: '#6B7C93', marginTop: '2px' }}>
+                                {c.applicant_contact_person}
+                              </div>
+                            )}
                           </DataTableCell>
                           <DataTableCell data-label={t('list.stage', 'Stage')}>
                             <StageBadge bg={badge.bg} color={badge.color}>{c.stage}</StageBadge>

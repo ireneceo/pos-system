@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -10,6 +11,7 @@ import {
 } from 'recharts';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import { formatDateTime, formatDate } from '../../utils/timezone';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 
@@ -768,7 +770,7 @@ const AnalyticsPage: React.FC = () => {
   // CSV 생성 함수
   const generateCSV = (data: any) => {
     let csv = `System Administrator Analytics Report\n`;
-    csv += `Generated: ${new Date().toLocaleString()}\n`;
+    csv += `Generated: ${formatDateTime(new Date(), null)}\n`;
     csv += `Period: ${data.period}\n`;
     csv += `Report Type: ${data.tab.toUpperCase()}\n`;
     csv += `Filters: Manager=${selectedManagerName}, Restaurant=${selectedRestaurantName}\n\n`;
@@ -809,7 +811,7 @@ const AnalyticsPage: React.FC = () => {
             const revenue = Math.round((5000 + (restaurant.id * 1000) % 15000) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12));
             const orders = Math.round((50 + (restaurant.id * 10) % 100) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12));
             const performance = revenue > 10000 ? 'Good' : revenue > 5000 ? 'Average' : 'Below Average';
-            csv += `${restaurant.name},${revenue.toLocaleString()},${orders},${performance}\n`;
+            csv += `${getRestaurantDisplayName(restaurant)},${revenue.toLocaleString()},${orders},${performance}\n`;
           });
         }
       }
@@ -892,7 +894,7 @@ const AnalyticsPage: React.FC = () => {
       } else {
         // Restaurant Rankings when no specific restaurant is selected
         const restaurantRankings = restaurants.map(restaurant => ({
-          name: restaurant.name,
+          name: getRestaurantDisplayName(restaurant),
           manager: restaurant.admin_name || restaurant.managerName || 'Unknown',
           revenue: Math.round((8000 + (restaurant.id * 1500) % 20000) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12)),
           orders: Math.round((150 + (restaurant.id * 15) % 300) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12))
@@ -935,17 +937,17 @@ const AnalyticsPage: React.FC = () => {
       csv += `Restaurant Name,Manager,Plan Type,Monthly Fee (${getCurrencySymbol(currency)}),Status,Subscription Start,Subscription End,Location\n`;
 
       filteredRestaurantsForSubscription.forEach(restaurant => {
-        const restaurantName = restaurant.name || 'Unknown Restaurant';
+        const restaurantName = getRestaurantDisplayName(restaurant) || 'Unknown Restaurant';
         const managerName = restaurant.admin_name || restaurant.managerName || 'Unknown Manager';
         const planType = restaurant.plan_type || restaurant.planType || 'Basic Plan';
         const monthlyFee = (restaurant.plan_amount || restaurant.planAmount || 29.00).toFixed(2);
         const status = restaurant.status || 'active';
         const subscriptionStart = restaurant.subscription_start ?
-          new Date(restaurant.subscription_start).toLocaleDateString() :
-          (restaurant.subscriptionStart ? new Date(restaurant.subscriptionStart).toLocaleDateString() : 'N/A');
+          formatDate(restaurant.subscription_start, null) :
+          (restaurant.subscriptionStart ? formatDate(restaurant.subscriptionStart, null) : 'N/A');
         const subscriptionEnd = restaurant.subscription_end ?
-          new Date(restaurant.subscription_end).toLocaleDateString() :
-          (restaurant.subscriptionEnd ? new Date(restaurant.subscriptionEnd).toLocaleDateString() : 'N/A');
+          formatDate(restaurant.subscription_end, null) :
+          (restaurant.subscriptionEnd ? formatDate(restaurant.subscriptionEnd, null) : 'N/A');
         const location = restaurant.address || restaurant.location || 'N/A';
 
         csv += `${restaurantName},${managerName},${planType},${monthlyFee},${status},${subscriptionStart},${subscriptionEnd},"${location}"\n`;
@@ -1049,7 +1051,7 @@ const AnalyticsPage: React.FC = () => {
       csv += `Market Expansion Potential,${100 - Math.round(restaurants.length * 0.15)}% remaining\n`;
     }
 
-    csv += `\nReport generated on ${new Date().toLocaleString()}\n`;
+    csv += `\nReport generated on ${formatDateTime(new Date(), null)}\n`;
     return csv;
   };
 
@@ -1081,7 +1083,7 @@ const AnalyticsPage: React.FC = () => {
 
   const handleRestaurantSelect = (restaurant: any) => {
     setSelectedRestaurant(restaurant.id);
-    setSelectedRestaurantName(restaurant.name);
+    setSelectedRestaurantName(getRestaurantDisplayName(restaurant));
     setRestaurantSearch('');
     setIsRestaurantDropdownOpen(false);
     setRefreshKey(prev => prev + 1); // 데이터 새로고침
@@ -1166,7 +1168,7 @@ const AnalyticsPage: React.FC = () => {
               key={restaurant.id}
               onClick={() => handleRestaurantSelect(restaurant)}
             >
-              {restaurant.name}
+              {getRestaurantDisplayName(restaurant)}
             </DropdownItem>
           ))
         ) : (
@@ -1431,7 +1433,7 @@ const AnalyticsPage: React.FC = () => {
                         return false;
                       }).map(restaurant => ({
                         id: restaurant.id,
-                        name: restaurant.name,
+                        name: getRestaurantDisplayName(restaurant),
                         manager: selectedManagerName,
                         revenue: Math.round((5000 + (restaurant.id * 1000) % 15000) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12)),
                         monthlyFee: Math.round(2000 + (restaurant.id * 500) % 3000),
@@ -1447,7 +1449,7 @@ const AnalyticsPage: React.FC = () => {
 
                         return {
                           id: restaurant.id,
-                          name: restaurant.name,
+                          name: getRestaurantDisplayName(restaurant),
                           manager: assignedManager?.full_name || assignedManager?.username || 'Unassigned',
                           revenue: Math.round((5000 + (restaurant.id * 1000) % 15000) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12)),
                           monthlyFee: Math.round(2000 + (restaurant.id * 500) % 3000),
@@ -1848,7 +1850,7 @@ const AnalyticsPage: React.FC = () => {
                     <tbody>
                       {restaurants.map(restaurant => ({
                         id: restaurant.id,
-                        name: restaurant.name,
+                        name: getRestaurantDisplayName(restaurant),
                         manager: restaurant.admin_name || restaurant.managerName || 'Unknown',
                         revenue: Math.round((8000 + (restaurant.id * 1500) % 20000) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12)),
                         orders: Math.round((150 + (restaurant.id * 15) % 300) * (activePeriod === 'today' ? 0.033 : activePeriod === 'week' ? 0.233 : activePeriod === 'month' ? 1 : 12))
@@ -2093,7 +2095,7 @@ const AnalyticsPage: React.FC = () => {
 
                       return filteredRestaurants.map((restaurant) => (
                         <tr key={restaurant.id}>
-                          <TableCell style={{ fontWeight: 600 }}>{restaurant.name}</TableCell>
+                          <TableCell style={{ fontWeight: 600 }}>{getRestaurantDisplayName(restaurant)}</TableCell>
                           <TableCell>{restaurant.admin_name || restaurant.managerName || 'Unknown'}</TableCell>
                           <TableCell>
                             <span style={{

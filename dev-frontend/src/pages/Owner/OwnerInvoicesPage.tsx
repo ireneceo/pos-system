@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../../utils/currency';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import {
   Container,
@@ -31,6 +32,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 interface AdditionalCharge {
   name: string;
   rate: number;
@@ -508,8 +510,7 @@ const OwnerInvoicesPage: React.FC = () => {
   // Helper functions
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return formatDateTz(dateStr, null);
   };
 
   const isInvoiceOverdue = (invoice: Invoice): boolean => {
@@ -1066,7 +1067,7 @@ const OwnerInvoicesPage: React.FC = () => {
             >
               <option value="">{t('owner:ownerInvoicesPage.allRestaurants')}</option>
               {restaurants.map(r => (
-                <option key={r.id} value={r.id}>{r.name}</option>
+                <option key={r.id} value={r.id}>{getRestaurantDisplayName(r)}</option>
               ))}
             </RestaurantFilter>
 

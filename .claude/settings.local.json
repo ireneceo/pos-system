@@ -23,7 +23,9 @@
       "Bash(xargs -I{} curl -sI \"https://dev.purplehere.com/static/js/{}\")",
       "Bash(stat -c '%y %s' /var/www/dev-frontend-build/static/js/main.*.js)",
       "Bash(pm2 jlist *)",
-      "Bash(xargs -n1 basename)"
+      "Bash(xargs -n1 basename)",
+      "Bash(awk -F: '{print $1}')",
+      "Bash(scp /tmp/img_audit.js irene@87.106.78.146:/tmp/img_audit.js)"
     ],
     "deny": [],
     "ask": []

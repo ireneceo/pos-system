@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 
 
 import { getAuthToken } from '../../utils/auth';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 const FilterControlsWrapper = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -838,7 +839,7 @@ const BrandPerformance: React.FC = () => {
                 </DropdownItem>
                 {filteredRestaurantsList.map(restaurant => (
                   <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
-                    <ItemName>{restaurant.name}</ItemName>
+                    <ItemName>{getRestaurantDisplayName(restaurant)}</ItemName>
                     <ItemDetails>{restaurant.brandName || 'Independent'}</ItemDetails>
                   </DropdownItem>
                 ))}

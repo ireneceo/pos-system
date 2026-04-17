@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import styled from 'styled-components';
 import { Invoice, STATUS_CONFIG, CURRENCY_CONFIG, CompanyInfo } from './types';
+import { formatDate as tzFormatDate } from '../../utils/timezone';
 
 // Styled Components
 const ModalOverlay = styled.div`
@@ -380,16 +381,8 @@ const formatCurrency = (amount: number, currency: string = 'MYR'): string => {
 
 const formatDate = (dateString: string | undefined): string => {
   if (!dateString) return '-';
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-MY', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  } catch {
-    return dateString;
-  }
+  const result = tzFormatDate(dateString, null);
+  return result || dateString;
 };
 
 const renderCompanyInfo = (company: CompanyInfo | undefined, defaultName: string): React.ReactNode => {
@@ -612,7 +605,7 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
           <FooterSection>
             Thank you for your business!
             <br />
-            Invoice generated on {new Date().toLocaleDateString('en-MY')}
+            Invoice generated on {tzFormatDate(new Date(), null)}
           </FooterSection>
         </InvoiceContainer>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import {
   Container,
   Header,
@@ -1419,7 +1420,7 @@ const AdminStaffManagementPage: React.FC = () => {
             >
               <option value="all">{t('admin:staffManagementPage.allRestaurants')}</option>
               {uniqueRestaurants.map(rest => (
-                <option key={rest.id} value={rest.id}>{rest.name}</option>
+                <option key={rest.id} value={rest.id}>{getRestaurantDisplayName(rest)}</option>
               ))}
             </FilterSelect>
 
@@ -1660,7 +1661,7 @@ const AdminStaffManagementPage: React.FC = () => {
                           key={restaurant.id}
                           onClick={() => handleRestaurantSelect(restaurant)}
                         >
-                          <DropdownItemTitle>{restaurant.name}</DropdownItemTitle>
+                          <DropdownItemTitle>{getRestaurantDisplayName(restaurant)}</DropdownItemTitle>
                           <DropdownItemSubtitle>
                             {restaurant.address || 'No address provided'}
                           </DropdownItemSubtitle>
@@ -1670,7 +1671,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   )}
                   {selectedRestaurant && (
                     <SelectedBadge>
-                      ✓ Selected: <strong>{selectedRestaurant.name}</strong>
+                      ✓ Selected: <strong>{getRestaurantDisplayName(selectedRestaurant)}</strong>
                     </SelectedBadge>
                   )}
                 </FormGroup>
@@ -1841,7 +1842,7 @@ const AdminStaffManagementPage: React.FC = () => {
                               key={restaurant.id}
                               onClick={() => handleEditRestaurantSelect(restaurant)}
                             >
-                              <DropdownItemTitle>{restaurant.name}</DropdownItemTitle>
+                              <DropdownItemTitle>{getRestaurantDisplayName(restaurant)}</DropdownItemTitle>
                               <DropdownItemSubtitle>
                                 {restaurant.address || 'No address provided'}
                               </DropdownItemSubtitle>
@@ -1851,7 +1852,7 @@ const AdminStaffManagementPage: React.FC = () => {
                       )}
                       {editSelectedRestaurant && (
                         <SelectedBadge>
-                          ✓ Selected: <strong>{editSelectedRestaurant.name}</strong>
+                          ✓ Selected: <strong>{getRestaurantDisplayName(editSelectedRestaurant)}</strong>
                         </SelectedBadge>
                       )}
                     </FormGroup>

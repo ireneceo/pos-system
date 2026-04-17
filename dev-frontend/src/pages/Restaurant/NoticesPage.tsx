@@ -13,6 +13,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as tzFormatDate, formatDateTime as tzFormatDateTime } from '../../utils/timezone';
 // ============================================================================
 // TypeScript Interfaces
 // ============================================================================
@@ -487,23 +488,11 @@ const NoticesPage: React.FC = () => {
 
   // ── Helpers ─────────────────────────────────────────────────────────
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return tzFormatDate(dateString, null);
   };
 
   const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return tzFormatDateTime(dateString, null);
   };
 
   const getInitial = (name: string) => {

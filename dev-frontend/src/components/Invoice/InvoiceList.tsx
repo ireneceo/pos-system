@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { Invoice, InvoiceListProps, CURRENCY_CONFIG } from './types';
 import InvoiceStatusBadge from './InvoiceStatusBadge';
+import { formatDate } from '../../utils/timezone';
 
 const TableContainer = styled.div`
   overflow-x: auto;
@@ -311,7 +312,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
           </MobileRow>
           <MobileRow>
             <MobileLabel>Due Date</MobileLabel>
-            <MobileValue>{new Date(invoice.dueDate).toLocaleDateString()}</MobileValue>
+            <MobileValue>{formatDate(invoice.dueDate, null)}</MobileValue>
           </MobileRow>
           <MobileRow>
             <MobileLabel>Status</MobileLabel>
@@ -365,8 +366,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({
                   <Td>
                     <Amount highlight>{formatCurrency(invoice)}</Amount>
                   </Td>
-                  <Td>{new Date(invoice.issueDate).toLocaleDateString()}</Td>
-                  <Td>{new Date(invoice.dueDate).toLocaleDateString()}</Td>
+                  <Td>{formatDate(invoice.issueDate, null)}</Td>
+                  <Td>{formatDate(invoice.dueDate, null)}</Td>
                   <Td>
                     <InvoiceStatusBadge status={invoice.status} />
                   </Td>

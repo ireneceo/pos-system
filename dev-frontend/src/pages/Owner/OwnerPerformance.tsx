@@ -692,7 +692,7 @@ const OwnerPerformance: React.FC = () => {
                   <RankingItem key={restaurant.id}>
                     <RankNumber rank={index + 1}>{index + 1}</RankNumber>
                     <RankInfo>
-                      <RankRestaurant>{restaurant.name}</RankRestaurant>
+                      <RankRestaurant>{restaurant.name}{(restaurant as any).branch_name ? ` (${(restaurant as any).branch_name})` : ''}</RankRestaurant>
                       <RankStats>
                         <RankStat>Revenue: {formatCurrency(restaurant.sales, restaurant.currency)}</RankStat>
                         <RankStat>Orders: {restaurant.completedOrders}</RankStat>

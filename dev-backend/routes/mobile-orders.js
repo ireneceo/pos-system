@@ -405,6 +405,13 @@ router.get('/order/:orderId', async (req, res) => {
       }
     }
 
+    // Fetch restaurant info for receipt
+    const restaurant = await Restaurant.findByPk(order.restaurant_id, {
+      attributes: ['id', 'name', 'branch_name', 'address', 'city', 'state', 'postal_code', 'phone', 'business_registration', 'tax_id', 'logo_url', 'printer_settings']
+    });
+
+    const receiptSettings = restaurant?.printer_settings?.receiptSettings || {};
+
     const orderData = {
       id: 'ORD' + order.id,
       orderNumber: order.order_number || 'ORD' + order.id,
@@ -413,6 +420,18 @@ router.get('/order/:orderId', async (req, res) => {
       items: items,
       total: parseFloat(order.total_amount),
       total_amount: parseFloat(order.total_amount),
+      subtotal: parseFloat(order.subtotal || 0),
+      tax: parseFloat(order.tax || 0),
+      taxRate: parseFloat(order.tax_rate || 0),
+      discount: parseFloat(order.discount || 0),
+      couponCode: order.coupon_code || null,
+      couponDiscount: parseFloat(order.coupon_discount || 0),
+      serviceCharge: parseFloat(order.service_charge || 0),
+      serviceChargeRate: parseFloat(order.service_charge_rate || 0),
+      takeawayCharge: parseFloat(order.takeaway_charge || 0),
+      roundingAdjustment: parseFloat(order.rounding_adjustment || 0),
+      pointsUsed: order.points_used || null,
+      pointDiscount: parseFloat(order.point_discount || 0),
       createdAt: order.createdAt,
       estimatedPickupTime: new Date(order.createdAt.getTime() + 20 * 60000),
       paymentStatus: order.payment_status || 'pending',
@@ -424,7 +443,21 @@ router.get('/order/:orderId', async (req, res) => {
       orderSource: 'mobile',
       table_number: order.table_number || null,
       tableNumber: order.table_number ? order.table_number : null,
-      payment_proof: order.payment_proof || null
+      payment_proof: order.payment_proof || null,
+      restaurant: restaurant ? {
+        name: restaurant.name,
+        branchName: restaurant.branch_name || null,
+        address: restaurant.address || null,
+        city: restaurant.city || null,
+        state: restaurant.state || null,
+        postalCode: restaurant.postal_code || null,
+        phone: restaurant.phone || null,
+        businessRegistration: restaurant.business_registration || null,
+        taxId: restaurant.tax_id || null,
+        logoUrl: restaurant.logo_url || null,
+        receiptLogo: receiptSettings.receiptLogo || null,
+        footerMessage: receiptSettings.footerMessage || null
+      } : null
     };
 
     res.json({ success: true, data: orderData });

@@ -1,0 +1,437 @@
+/**
+ * DateField — 폼 입력용 단일 날짜 선택 컴포넌트
+ *
+ * CalendarPicker의 스타일/UX를 재사용하여 일관된 날짜 입력 경험 제공.
+ * 브라우저 네이티브 <input type="date" /> 대체용.
+ *
+ * Usage:
+ *   <DateField value={form.signing_date} onChange={(v) => updateField('signing_date', v)} />
+ *   <DateField value={dueDate} onChange={setDueDate} disabled placeholder="Select date" />
+ */
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import styled from 'styled-components';
+import { getRestaurantTimezone } from '../../utils/timezone';
+
+interface DateFieldProps {
+  value?: string | null; // YYYY-MM-DD
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  min?: string; // YYYY-MM-DD — minimum selectable date
+  max?: string; // YYYY-MM-DD — maximum selectable date
+  className?: string;
+  id?: string;
+  name?: string;
+  required?: boolean;
+}
+
+const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+const formatDate = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const parseDate = (s: string | null | undefined): Date | null => {
+  if (!s) return null;
+  const [y, m, d] = s.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+};
+
+const isSameDay = (a: Date, b: Date): boolean =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const getDaysInMonth = (year: number, month: number): number =>
+  new Date(year, month + 1, 0).getDate();
+
+const getFirstDayOfMonth = (year: number, month: number): number =>
+  new Date(year, month, 1).getDay();
+
+const getMonthLabel = (year: number, month: number): string => {
+  const date = new Date(year, month);
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: getRestaurantTimezone() });
+};
+
+const formatDisplayDate = (s: string | null | undefined): string => {
+  const d = parseDate(s || '');
+  if (!d) return '';
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit', timeZone: getRestaurantTimezone() });
+};
+
+const DateField: React.FC<DateFieldProps> = ({
+  value,
+  onChange,
+  disabled,
+  placeholder = 'Select date',
+  min,
+  max,
+  className,
+  id,
+  name,
+  required,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const today = new Date();
+  const initial = parseDate(value || '') || today;
+  const [viewMonth, setViewMonth] = useState(initial.getMonth());
+  const [viewYear, setViewYear] = useState(initial.getFullYear());
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const selected = parseDate(value || '');
+  const minDate = parseDate(min || '');
+  const maxDate = parseDate(max || '');
+
+  // Sync view when value changes externally
+  useEffect(() => {
+    const d = parseDate(value || '');
+    if (d) {
+      setViewMonth(d.getMonth());
+      setViewYear(d.getFullYear());
+    }
+  }, [value]);
+
+  // Outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isOpen]);
+
+  const handlePrevMonth = useCallback(() => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(y => y - 1);
+    } else {
+      setViewMonth(m => m - 1);
+    }
+  }, [viewMonth]);
+
+  const handleNextMonth = useCallback(() => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(y => y + 1);
+    } else {
+      setViewMonth(m => m + 1);
+    }
+  }, [viewMonth]);
+
+  const handleDayClick = (date: Date) => {
+    if (minDate && date < minDate) return;
+    if (maxDate && date > maxDate) return;
+    onChange(formatDate(date));
+    setIsOpen(false);
+  };
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange('');
+  };
+
+  const renderMonth = () => {
+    const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+    const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
+    const days: (Date | null)[] = [];
+
+    for (let i = 0; i < firstDay; i++) days.push(null);
+    for (let d = 1; d <= daysInMonth; d++) days.push(new Date(viewYear, viewMonth, d));
+
+    return (
+      <MonthContainer>
+        <MonthLabel>{getMonthLabel(viewYear, viewMonth)}</MonthLabel>
+        <WeekdayRow>
+          {WEEKDAYS.map(w => <Weekday key={w}>{w}</Weekday>)}
+        </WeekdayRow>
+        <DaysGrid>
+          {days.map((date, i) => {
+            if (!date) return <EmptyCell key={`e-${i}`} />;
+            const isSelected = selected && isSameDay(date, selected);
+            const isToday = isSameDay(date, today);
+            const isDisabled = (minDate && date < minDate) || (maxDate && date > maxDate);
+            return (
+              <DayCell
+                key={date.getTime()}
+                $isSelected={!!isSelected}
+                $isToday={isToday}
+                $isDisabled={!!isDisabled}
+                onClick={() => !isDisabled && handleDayClick(date)}
+              >
+                {date.getDate()}
+              </DayCell>
+            );
+          })}
+        </DaysGrid>
+      </MonthContainer>
+    );
+  };
+
+  return (
+    <Wrapper ref={wrapperRef} className={className}>
+      <InputDisplay
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        $hasValue={!!value}
+        disabled={disabled}
+        id={id}
+        aria-label={name}
+      >
+        <CalendarIcon>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </CalendarIcon>
+        <DisplayText $hasValue={!!value}>
+          {value ? formatDisplayDate(value) : placeholder}
+        </DisplayText>
+        {value && !disabled && !required && (
+          <ClearButton onClick={handleClear} aria-label="Clear">×</ClearButton>
+        )}
+      </InputDisplay>
+      {/* Hidden input for form submission */}
+      <input type="hidden" name={name} value={value || ''} />
+      {isOpen && (
+        <PickerPanel>
+          <CalendarHeader>
+            <NavButton onClick={handlePrevMonth} type="button" aria-label="Previous month">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </NavButton>
+            <NavButton onClick={handleNextMonth} type="button" aria-label="Next month">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 6 15 12 9 18" />
+              </svg>
+            </NavButton>
+          </CalendarHeader>
+          <CalendarBody>{renderMonth()}</CalendarBody>
+          <Footer>
+            <TodayButton type="button" onClick={() => handleDayClick(new Date())}>Today</TodayButton>
+          </Footer>
+        </PickerPanel>
+      )}
+    </Wrapper>
+  );
+};
+
+export default DateField;
+
+// --- Styled Components (CalendarPicker와 동일 팔레트) ---
+
+const Wrapper = styled.div`
+  position: relative;
+  display: inline-block;
+  width: 100%;
+`;
+
+const InputDisplay = styled.button<{ $hasValue: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: #FFFFFF;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 14px;
+  color: ${p => p.$hasValue ? '#0A2540' : '#9CA3AF'};
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  text-align: left;
+  font-family: inherit;
+
+  &:hover:not(:disabled) {
+    border-color: #635BFF;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #635BFF;
+    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  &:disabled {
+    background: #F3F4F6;
+    color: #9CA3AF;
+    cursor: not-allowed;
+  }
+`;
+
+const CalendarIcon = styled.span`
+  color: #6B7280;
+  display: inline-flex;
+  flex-shrink: 0;
+`;
+
+const DisplayText = styled.span<{ $hasValue: boolean }>`
+  flex: 1;
+  color: ${p => p.$hasValue ? '#0A2540' : '#9CA3AF'};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const ClearButton = styled.span`
+  color: #9CA3AF;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+
+  &:hover {
+    color: #6B7280;
+  }
+`;
+
+const PickerPanel = styled.div`
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1000;
+  background: #FFFFFF;
+  border: 1px solid #E6EBF1;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+  min-width: 280px;
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 480px) {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 16px 16px 0 0;
+  }
+`;
+
+const CalendarHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+`;
+
+const NavButton = styled.button`
+  background: transparent;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #425466;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #F6F9FC;
+    border-color: #635BFF;
+    color: #635BFF;
+  }
+`;
+
+const CalendarBody = styled.div``;
+
+const MonthContainer = styled.div``;
+
+const MonthLabel = styled.div`
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 8px;
+`;
+
+const WeekdayRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+`;
+
+const Weekday = styled.div`
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8898AA;
+  padding: 4px 0;
+  text-transform: uppercase;
+`;
+
+const DaysGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+`;
+
+const EmptyCell = styled.div`
+  aspect-ratio: 1;
+`;
+
+const DayCell = styled.div<{
+  $isSelected: boolean;
+  $isToday: boolean;
+  $isDisabled: boolean;
+}>`
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: ${p => p.$isDisabled ? 'not-allowed' : 'pointer'};
+  border-radius: 6px;
+  transition: all 0.15s;
+  color: ${p => {
+    if (p.$isDisabled) return '#D1D5DB';
+    if (p.$isSelected) return '#FFFFFF';
+    if (p.$isToday) return '#635BFF';
+    return '#0A2540';
+  }};
+  background: ${p => p.$isSelected ? '#635BFF' : 'transparent'};
+  font-weight: ${p => (p.$isSelected || p.$isToday) ? 600 : 400};
+  opacity: ${p => p.$isDisabled ? 0.5 : 1};
+
+  &:hover {
+    background: ${p => {
+      if (p.$isDisabled) return 'transparent';
+      if (p.$isSelected) return '#635BFF';
+      return '#F6F9FC';
+    }};
+  }
+`;
+
+const Footer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #E6EBF1;
+`;
+
+const TodayButton = styled.button`
+  background: transparent;
+  border: 1px solid #635BFF;
+  color: #635BFF;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #635BFF;
+    color: #FFFFFF;
+  }
+`;

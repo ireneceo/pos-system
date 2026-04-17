@@ -6,10 +6,12 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { formatDateTime } from '../../utils/timezone';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -948,7 +950,7 @@ const FoodcourtReportsPage: React.FC = () => {
             </DropdownItem>
             {filteredRestaurants.map(restaurant => (
               <DropdownItem key={restaurant.id} onClick={() => handleRestaurantSelect(restaurant)}>
-                <ItemName>{restaurant.name}</ItemName>
+                <ItemName>{getRestaurantDisplayName(restaurant)}</ItemName>
                 <ItemDetails>{restaurant.brand_name || 'Independent'}</ItemDetails>
               </DropdownItem>
             ))}
@@ -1122,7 +1124,7 @@ const FoodcourtReportsPage: React.FC = () => {
                               const monthInfo = yearInfo.months[month];
                               const yearMonthKey = `${year}-${month}`;
                               const isMonthExpanded = expandedMonths.has(yearMonthKey);
-                              const monthName = new Date(month + '-01').toLocaleString('en-US', { year: 'numeric', month: 'long' });
+                              const monthName = formatDateTime(new Date(month + '-01'), null, { year: 'numeric', month: 'long', day: undefined, hour: undefined, minute: undefined, hour12: undefined });
 
                               return (
                                 <React.Fragment key={yearMonthKey}>
@@ -1138,7 +1140,7 @@ const FoodcourtReportsPage: React.FC = () => {
 
                                   {isMonthExpanded && Object.keys(monthInfo.days).sort((a, b) => b.localeCompare(a)).map(day => {
                                     const dayInfo = monthInfo.days[day];
-                                    const dayName = new Date(day).toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+                                    const dayName = formatDateTime(new Date(day), null, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: undefined, minute: undefined, hour12: undefined });
 
                                     return (
                                       <DrilldownRow key={day} level={2}>
@@ -1393,7 +1395,7 @@ const FoodcourtReportsPage: React.FC = () => {
                         <TableCell>
                           <RankBadge rank={index + 1}>{index + 1}</RankBadge>
                         </TableCell>
-                        <TableCell style={{ fontWeight: 600 }}>{restaurant.name}</TableCell>
+                        <TableCell style={{ fontWeight: 600 }}>{getRestaurantDisplayName(restaurant)}</TableCell>
                         <TableCell>
                           <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', backgroundColor: restaurant.brandName === 'Independent' ? '#F3F4F6' : '#E0E7FF', color: restaurant.brandName === 'Independent' ? '#6B7280' : '#4338CA' }}>
                             {restaurant.brandName}

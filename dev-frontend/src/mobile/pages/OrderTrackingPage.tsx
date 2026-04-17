@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/common/MobileLayout';
 import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { formatCurrency } from '../../utils/currency';
+import ReceiptShare from '../components/common/ReceiptShare';
 
 // Helper function to format pickup time as range (e.g., "9:00 - 9:30 AM")
 const formatPickupTimeRange = (dateString: string): string => {
@@ -208,7 +209,7 @@ const HomeButton = styled(Button)`
 const OrderTrackingPage: React.FC = () => {
   const { slug, orderId } = useParams<{ slug: string; orderId: string }>();
   const navigate = useNavigate();
-  const { currency } = useMobileOrder();
+  const { currency, currentStore } = useMobileOrder();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -611,6 +612,13 @@ const OrderTrackingPage: React.FC = () => {
               </div>
             </div>
           )}
+
+          <ReceiptShare
+            order={order}
+            storeName={currentStore?.name || ''}
+            branchName={currentStore?.branchName}
+            currency={currency}
+          />
         </OrderDetails>
 
         {getPaymentStatus() === 'payment_verification_pending' && (

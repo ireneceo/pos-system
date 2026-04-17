@@ -25,6 +25,7 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 interface ContentCategory {
   id: number;
   type: 'blog' | 'faq';
@@ -785,7 +786,7 @@ const ContentManagementPage: React.FC = () => {
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                 </StatusBadge>
               </div>
-              <div>{new Date(item.updated_at).toLocaleDateString()}</div>
+              <div>{formatDateTz(item.updated_at, null)}</div>
               <ActionButtons>
                 <ActionButton onClick={() => { setEditingContent(item); setIsEditing(true); }}>
                   Edit

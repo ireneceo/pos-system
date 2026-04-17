@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import styled from 'styled-components';
-import { EmptyState as CategoryEmptyState } from '../../components/UI/TableComponents';
 import { useSearchParams } from 'react-router-dom';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
 import { useStore } from '../../contexts/StoreContext';
+import { formatDateTime } from '../../utils/timezone';
 import { useAuth } from '../../contexts/AuthContext';
-import { BaseButton, StatusBadge as CommonStatusBadge, StatusMessage } from '../../components/UI/CommonStyles';
-import ConfirmModal from '../../components/ConfirmModal';
+import { StatusMessage } from '../../components/UI/CommonStyles';
 import {
   Container,
   Header,
@@ -27,569 +25,51 @@ import {
   DataTableCell,
   DataTableEmpty,
   DataTableAmount,
-  ActionButtons
-, Modal as CommonModal } from '../../components/UI';
+  ActionButtons,
+  Modal as CommonModal,
+} from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
 import { useTranslation } from 'react-i18next';
-
 import { getAuthToken } from '../../utils/auth';
-interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  managerId: string;
-  managerName: string;
-  companyName: string;
-  customerName: string;
-  customerAddress: string;
-  restaurantId?: string;
-  restaurantName?: string;
-  issueDate: string;
-  dueDate: string;
-  paidDate?: string;
-  status: 'draft' | 'sent' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | '';
-  currency?: string;
-  amount: number;
-  tax: number;
-  total: number;
-  items: InvoiceItem[];
-  billingPeriod: string;
-  planType: string;
-  paymentMethod?: string;
-  transactionId?: string;
-  receiptUrl?: string;
-  hasPaymentInfo?: boolean;
-  type?: 'automatic' | 'manual';
-  payerType?: 'restaurant' | 'foodcourt_manager' | 'brand_manager' | 'external';
-  payerId?: string;
-  invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'others';
-  customDescription?: string;
-  serviceDescription?: string;
-  categoryDisplayName?: string;
-  externalPayerName?: string;
-  externalPayerEmail?: string;
-  externalPayerPhone?: string;
-  externalPayerCompany?: string;
-  externalPayerAddress?: string;
-  externalPayerTaxId?: string;
-  issuerType?: 'system_admin' | 'brand' | 'foodcourt';
-  issuerId?: number | string;
-  issuerName?: string;
-  issuerInfo?: {
-    name: string;
-    logoUrl?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    postalCode?: string;
-    country?: string;
-    phone?: string;
-    email?: string;
-    website?: string;
-    taxId?: string;
-    businessRegistration?: string;
-    bankName?: string;
-    bankAccount?: string;
-    bankAccountName?: string;
-    swiftCode?: string;
-  };
-  payerInfo?: {
-    name: string;
-    logoUrl?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    postalCode?: string;
-    country?: string;
-    phone?: string;
-    email?: string;
-    taxId?: string;
-    businessRegistration?: string;
-  };
-  discountType?: string;
-  discountValue?: number;
-  discountAmount?: number;
-  discountReason?: string;
-  subtotalBeforeDiscount?: number;
-  additionalCharges?: Array<{ name: string; rate: number; amount: number }>;
-  isModified?: boolean;
-  modificationHistory?: Array<{
-    modified_at: string;
-    modified_by: number;
-    modified_by_name: string;
-    changes: Record<string, { from: any; to: any }>;
-    reason: string;
-  }>;
-}
 
-interface InvoiceItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-}
+import {
+  Invoice,
+  Manager,
+  Restaurant,
+  InvoiceCategory,
+  CompanySettings,
+  AdditionalChargeConfig,
+  PaymentMethod,
+  TabType,
+} from './invoices/types';
 
-interface Manager {
-  id: string;
-  fullName: string;
-  email: string;
-  role: string;
-  companyName?: string;
-}
+import {
+  FilterBarWrapper,
+  FiltersRight,
+  Button,
+  InvoiceInfo,
+  InvoiceNumber,
+  CompanyName,
+  AutoBadge,
+  StatusBadge,
+  LocalActionButton,
+  LocalIconButton,
+  IconSymbol,
+  FormGroup,
+  FormLabel,
+  FormInput,
+  FormTextarea,
+  InvoiceSummary,
+  SummaryRow,
+} from './invoices/styles';
 
-interface Restaurant {
-  id: string;
-  name: string;
-  admin_id: string;
-  status: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-}
-
-interface InvoiceCategory {
-  id: number;
-  name: string;
-  code: string;
-  description: string;
-  display_order: number;
-  is_system: boolean;
-  is_active: boolean;
-}
-
-interface CompanySettings {
-  companyName: string;
-  address: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-  phone: string;
-  email: string;
-  website: string;
-  taxNumber: string;
-  registrationNumber: string;
-  companyLogo?: string; // Company logo for invoices
-  bankName?: string;
-  bankAccount?: string;
-  bankAccountName?: string;
-  swiftCode?: string;
-}
-
-interface AdditionalChargeConfig {
-  enabled: boolean;
-  name: string;
-  rate: number;
-}
-
-interface PaymentMethod {
-  id: string;
-  name: string;
-  description: string;
-  bankName?: string;
-  accountNumber?: string;
-  accountName?: string;
-  qrImage?: string;
-  qrDescription?: string;
-  publishableKey?: string;
-  clientId?: string;
-}
-
-// Common components now imported from ../../components/UI
-// Page-specific styled components below
-
-// FilterBar wrapper for full width layout
-const FilterBarWrapper = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 24px;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 12px;
-  }
-`;
-
-const FiltersRight = styled.div`
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-
-  @media (max-width: 768px) {
-    width: 100%;
-
-    > button {
-      width: 100%;
-    }
-  }
-`;
-
-// Button 컴포넌트는 BaseButton으로 교체됨
-const Button = styled(BaseButton)``;
-
-const InvoiceInfo = styled.div``;
-
-const InvoiceNumber = styled.div`
-  font-weight: 600;
-  color: #0A2540;
-  margin-bottom: 4px;
-`;
-
-const CompanyName = styled.div`
-  font-size: 13px;
-  color: #6B7280;
-`;
-
-const AutoBadge = styled.span`
-  display: inline-block;
-  background: #10B981;
-  color: white;
-  font-size: 9px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 3px;
-  vertical-align: middle;
-`;
-
-// StatusBadge 컴포넌트는 CommonStatusBadge로 교체됨
-const StatusBadge = styled(CommonStatusBadge)`
-  max-width: 100px;
-  white-space: normal;
-  line-height: 1.3;
-  text-align: center;
-`;
-
-const LocalActionButton = styled.button<{ variant?: 'primary' | 'danger' | 'email' | 'cancel' | 'success' }>`
-  padding: 6px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 32px;
-
-  ${props => props.variant === 'primary' ? `
-    background: #635BFF;
-    color: white;
-    border-color: #635BFF;
-    padding: 6px 12px;
-    min-width: auto;
-
-    &:hover {
-      background: #5A51E6;
-    }
-  ` : props.variant === 'success' ? `
-    background: #10B981;
-    color: white;
-    border-color: #10B981;
-    padding: 6px 12px;
-    min-width: auto;
-
-    &:hover {
-      background: #059669;
-    }
-  ` : props.variant === 'danger' ? `
-    background: transparent;
-    color: #DC2626;
-    border-color: #FCA5A5;
-    padding: 6px 12px;
-    min-width: auto;
-
-    &:hover {
-      background: #FEE2E2;
-    }
-  ` : props.variant === 'email' ? `
-    background: #F3F4F6;
-    color: #6B7280;
-    border-color: #E5E7EB;
-
-    &:hover {
-      background: #E5E7EB;
-      color: #374151;
-    }
-  ` : props.variant === 'cancel' ? `
-    background: #F6F9FC;
-    color: #6B7C93;
-    border-color: #E6EBF1;
-
-    &:hover {
-      background: #E6EBF1;
-      transform: translateY(-1px);
-    }
-  ` : `
-    background: transparent;
-    color: #6B7280;
-    border-color: #E6EBF1;
-    padding: 6px 12px;
-    min-width: auto;
-
-    &:hover {
-      border-color: #635BFF;
-      color: #635BFF;
-      background: #F4F3FF;
-    }
-  `}
-`;
-
-const LocalIconButton = styled.button`
-  padding: 6px;
-  background: #F6F9FC;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-  margin-left: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  &:hover {
-    background: #E6EBF1;
-    transform: translateY(-1px);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-`;
-
-const IconSymbol = styled.span`
-  font-size: 16px;
-  font-family: 'Lucida Console', 'Courier New', monospace;
-  color: #6B7C93;
-  display: inline-block;
-  line-height: 1;
-`;
-
-// Category Card Components (Recipe style)
-const CategoryGrid = styled.div`
-  display: grid;
-  gap: 12px;
-`;
-
-const CategoryCard = styled.div<{ isActive?: boolean }>`
-  background: white;
-  border-radius: 12px;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: all 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  opacity: ${props => props.isActive !== false ? 1 : 0.6};
-
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-`;
-
-const CategoryIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  background: #F3F4F6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: #635BFF;
-  flex-shrink: 0;
-`;
-
-const CategoryInfo = styled.div`
-  flex: 1;
-`;
-
-const CategoryName = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  color: #1F2937;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const CategoryMeta = styled.div`
-  display: flex;
-  gap: 16px;
-  font-size: 13px;
-  color: #6B7280;
-`;
-
-const CategoryActions = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const CategoryStatusBadge = styled.span<{ active: boolean }>`
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-  background: ${props => props.active ? '#D1FAE5' : '#FEE2E2'};
-  color: ${props => props.active ? '#059669' : '#DC2626'};
-`;
-
-const CategoryIconButton = styled.button`
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  border: 1px solid #E6EBF1;
-  background: #F6F9FC;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: #635BFF;
-    background: #F4F3FF;
-    transform: translateY(-1px);
-
-    svg {
-      color: #635BFF;
-    }
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  svg {
-    width: 18px;
-    height: 18px;
-    color: #6B7280;
-    transition: color 0.15s;
-  }
-`;
-
-const HeaderRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-`;
-
-const SectionTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #1F2937;
-  margin: 0;
-`;
-
-// Period filter components
-
-
-const FormRow = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 20px;
-`;
-
-const FormLabel = styled.label`
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 8px;
-`;
-
-const FormInput = styled.input`
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const FormTextarea = styled.textarea`
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s;
-  resize: vertical;
-  font-family: inherit;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const FormSelect = styled.select`
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  transition: all 0.2s;
-  box-sizing: border-box;
-  
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const InvoiceSummary = styled.div`
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 16px;
-`;
-
-const SummaryRow = styled.div<{ highlight?: boolean }>`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  white-space: nowrap;
-
-  ${props => props.highlight ? `
-    border-top: 1px solid #E6EBF1;
-    margin-top: 8px;
-    padding-top: 16px;
-    font-size: 16px;
-  ` : ''}
-`;
-
-type TabType = 'to_pay' | 'paid' | 'issued' | 'categories';
+import BrandInvoiceViewModal from './invoices/BrandInvoiceViewModal';
+import BrandInvoiceEditModal from './invoices/BrandInvoiceEditModal';
+import BrandInvoiceCreateModal from './invoices/BrandInvoiceCreateModal';
+import BrandInvoiceCategoryManager from './invoices/BrandInvoiceCategoryManager';
 
 const BrandInvoicesPage: React.FC = () => {
   const { t } = useTranslation('brand');
@@ -644,7 +124,6 @@ const BrandInvoicesPage: React.FC = () => {
   const [toPayIsCustomDateRange, setToPayIsCustomDateRange] = useState(false);
   const [toPayDateRange, setToPayDateRange] = useState(() => calculatePeriodDateRange('all'));
 
-  // To Pay period filter handlers
   const handleToPayPeriodChange = (period: PeriodType) => {
     setToPayActivePeriod(period);
     setToPayIsCustomDateRange(false);
@@ -681,7 +160,7 @@ const BrandInvoicesPage: React.FC = () => {
     paymentMethod: 'bank_transfer',
     transactionId: '',
     notes: '',
-    receiptImage: '' // Base64 encoded receipt image
+    receiptImage: ''
   });
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
@@ -745,71 +224,41 @@ const BrandInvoicesPage: React.FC = () => {
   const fetchInvoices = async () => {
     try {
       const token = getAuthToken();
-      console.log('🔐 [INVOICES] Token present:', !!token);
-      console.log('🔐 [INVOICES] Token first 50 chars:', token ? token.substring(0, 50) + '...' : 'NULL');
-
-      if (!token) {
-        console.error('❌ [INVOICES] No auth token found in localStorage');
-        setInvoices([]);
-        return;
-      }
+      if (!token) { setInvoices([]); return; }
 
       const response = await fetch('/api/invoices', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
-
-      console.log('📡 [INVOICES] API response status:', response.status);
 
       if (response.ok) {
         const invoicesData = await response.json();
-        console.log('✅ [INVOICES] Fetched invoices count:', invoicesData.length);
-        console.log('📋 [INVOICES] First 3 invoices:', invoicesData.slice(0, 3).map((inv: any) => ({ id: inv.id, invoiceNumber: inv.invoiceNumber })));
         setInvoices(invoicesData);
       } else {
-        const errorText = await response.text();
-        console.error('❌ [INVOICES] Failed to fetch invoices:', response.status, errorText);
         setInvoices([]);
       }
     } catch (error) {
-      console.error('❌ [INVOICES] Error fetching invoices:', error);
+      console.error('Error fetching invoices:', error);
       setInvoices([]);
     }
   };
 
-  // Fetch invoices to pay (from system admin)
   const fetchInvoicesToPay = async () => {
-    console.log('[BrandInvoices] fetchInvoicesToPay called');
     try {
       const token = getAuthToken();
-      if (!token) {
-        console.log('[BrandInvoices] No token found');
-        setInvoicesToPay([]);
-        return;
-      }
+      if (!token) { setInvoicesToPay([]); return; }
 
-      console.log('[BrandInvoices] Calling /api/invoices/to-pay...');
       const response = await fetch('/api/invoices/to-pay', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
 
-      console.log('[BrandInvoices] Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('[BrandInvoices] Received invoices to pay:', data.length, data);
         setInvoicesToPay(data);
       } else {
-        const errorText = await response.text();
-        console.error('[BrandInvoices] Failed to fetch invoices to pay:', response.status, errorText);
         setInvoicesToPay([]);
       }
     } catch (error) {
-      console.error('[BrandInvoices] Error fetching invoices to pay:', error);
+      console.error('Error fetching invoices to pay:', error);
       setInvoicesToPay([]);
     }
   };
@@ -820,10 +269,7 @@ const BrandInvoicesPage: React.FC = () => {
       if (!token) { setPaidInvoicesList([]); return; }
 
       const response = await fetch('/api/invoices/to-pay?status=paid', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
 
       if (response.ok) {
@@ -838,10 +284,8 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  // Submit payment for an invoice
   const handleSubmitPayment = async () => {
     if (!selectedInvoice) return;
-
     setPaymentSubmitError(null);
     setIsSubmittingPayment(true);
 
@@ -849,15 +293,12 @@ const BrandInvoicesPage: React.FC = () => {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/submit-payment`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           payment_method: paymentData.paymentMethod,
           transaction_id: paymentData.transactionId,
           notes: paymentData.notes,
-          receipt_url: paymentData.receiptImage || null // Send receipt image as base64
+          receipt_url: paymentData.receiptImage || null
         })
       });
 
@@ -883,7 +324,6 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  // Fetch available payment methods based on invoice issuer
   const fetchPaymentMethods = async (currency: string, issuerType?: string, issuerId?: number | string) => {
     setLoadingPaymentMethods(true);
     try {
@@ -900,7 +340,6 @@ const BrandInvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setAvailablePaymentMethods(data.methods || []);
-        // Set default payment method if available
         if (data.methods && data.methods.length > 0) {
           setPaymentData(prev => ({ ...prev, paymentMethod: data.methods[0].id }));
         }
@@ -915,25 +354,15 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  // Open payment submit modal
   const handleConfirmFreeInvoice = async (invoice: Invoice) => {
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${invoice.id}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          status: 'paid',
-          paid_amount: 0,
-          payment_notes: 'Free invoice - confirmed by recipient'
-        })
+        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ status: 'paid', paid_amount: 0, payment_notes: 'Free invoice - confirmed by recipient' })
       });
-      if (response.ok) {
-        fetchInvoices();
-      }
+      if (response.ok) { fetchInvoices(); }
     } catch (error) {
       console.error('Failed to confirm free invoice:', error);
     }
@@ -943,74 +372,44 @@ const BrandInvoicesPage: React.FC = () => {
     setSelectedInvoice(invoice);
     setPaymentData({ paymentMethod: '', transactionId: '', notes: '', receiptImage: '' });
     setShowPaymentSubmitModal(true);
-    // Fetch available payment methods for invoice currency from invoice issuer
     await fetchPaymentMethods(invoice.currency || 'MYR', invoice.issuerType, invoice.issuerId);
   };
 
-  // Resize image to reduce base64 size
   const resizeImage = (file: File, maxWidth: number = 800, maxHeight: number = 800, quality: number = 0.7): Promise<string> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const reader = new FileReader();
-
-      reader.onload = (e) => {
-        img.src = e.target?.result as string;
-      };
-
+      reader.onload = (e) => { img.src = e.target?.result as string; };
       img.onload = () => {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-
-        // Calculate new dimensions
         if (width > maxWidth || height > maxHeight) {
           const ratio = Math.min(maxWidth / width, maxHeight / height);
           width = Math.round(width * ratio);
           height = Math.round(height * ratio);
         }
-
         canvas.width = width;
         canvas.height = height;
-
         const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-
+        if (!ctx) { reject(new Error('Failed to get canvas context')); return; }
         ctx.drawImage(img, 0, 0, width, height);
-
-        // Convert to base64 with compression
         const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
         resolve(resizedBase64);
       };
-
       img.onerror = () => reject(new Error('Failed to load image'));
       reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsDataURL(file);
     });
   };
 
-  // Handle receipt image upload with auto-resize
   const handleReceiptImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setPaymentSubmitError('Please upload an image file (JPG, PNG, etc.)');
-      return;
-    }
-
-    // Validate file size (max 10MB before resize)
-    if (file.size > 10 * 1024 * 1024) {
-      setPaymentSubmitError('File size must be less than 10MB');
-      return;
-    }
-
+    if (!file.type.startsWith('image/')) { setPaymentSubmitError('Please upload an image file (JPG, PNG, etc.)'); return; }
+    if (file.size > 10 * 1024 * 1024) { setPaymentSubmitError('File size must be less than 10MB'); return; }
     try {
       setPaymentSubmitError(null);
-      // Resize image to reduce storage size
       const resizedImage = await resizeImage(file, 1024, 1024, 0.8);
       setPaymentData(prev => ({ ...prev, receiptImage: resizedImage }));
     } catch (error) {
@@ -1019,7 +418,6 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  // Fetch invoice categories from API
   const fetchInvoiceCategories = useCallback(async () => {
     try {
       const token = getAuthToken();
@@ -1028,19 +426,15 @@ const BrandInvoicesPage: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.data) {
-          setInvoiceCategories(data.data);
-        }
+        if (data.success && data.data) { setInvoiceCategories(data.data); }
       }
     } catch (error) {
       console.error('Error fetching invoice categories:', error);
     }
   }, []);
 
-  // Fetch brand payment settings (for additional charges)
   const fetchBrandPaymentSettings = useCallback(async () => {
     if (!user?.brand_id) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/brands/${user.brand_id}/payment-settings`, {
@@ -1051,11 +445,8 @@ const BrandInvoicesPage: React.FC = () => {
         const data = responseData.data || responseData;
         if (data.payment_settings?.additionalCharges) {
           const raw = data.payment_settings.additionalCharges;
-          if (Array.isArray(raw)) {
-            setAdditionalChargesMap({});
-          } else {
-            setAdditionalChargesMap(raw);
-          }
+          if (Array.isArray(raw)) { setAdditionalChargesMap({}); }
+          else { setAdditionalChargesMap(raw); }
         }
       }
     } catch (error) {
@@ -1063,26 +454,20 @@ const BrandInvoicesPage: React.FC = () => {
     }
   }, [user?.brand_id]);
 
-  // Category management functions
-
   const handleCloseCategoryModal = () => {
     setShowCategoryModal(false);
     setEditingCategory(null);
     setCategoryFormData({ name: '', code: '', description: '' });
   };
 
-
-
   const handleDeleteCategoryConfirm = async () => {
     if (!categoryToDelete) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/categories/${categoryToDelete.id}?force=true`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-
       const data = await response.json();
       if (data.success) {
         setDeleteCategoryModalOpen(false);
@@ -1097,7 +482,6 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  // Fetch data on component mount
   useEffect(() => {
     fetchInvoices();
     fetchInvoicesToPay();
@@ -1111,13 +495,11 @@ const BrandInvoicesPage: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Get additionalCharges for a specific currency from the map (normalizes RM→MYR etc.)
   const getChargesForCurrency = (currency: string) => {
     const code = normalizeCurrencyCode(currency);
     return additionalChargesMap[code] || additionalChargesMap[currency] || [];
   };
 
-  // Derive additionalCharges for the current new invoice currency
   const additionalCharges = getChargesForCurrency(newInvoice.currency);
 
   const fetchCurrencyConfig = async () => {
@@ -1125,9 +507,7 @@ const BrandInvoicesPage: React.FC = () => {
       const response = await fetch('/api/currencies/config');
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.currencies) {
-          setCurrencyConfig(data.currencies);
-        }
+        if (data.success && data.currencies) { setCurrencyConfig(data.currencies); }
       }
     } catch (error) {
       console.error('Error fetching currency config:', error);
@@ -1137,12 +517,7 @@ const BrandInvoicesPage: React.FC = () => {
   const fetchManagers = async () => {
     try {
       const token = getAuthToken();
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
-      // Fetch all manager types: Manager, Foodcourt_Manager, Brand_Manager
+      const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
       const [managerRes, foodcourtRes, brandRes] = await Promise.all([
         fetch('/api/users?role=Manager', { headers }),
         fetch('/api/users?role=Foodcourt_Manager', { headers }),
@@ -1150,52 +525,22 @@ const BrandInvoicesPage: React.FC = () => {
       ]);
 
       let allManagers: Manager[] = [];
-
-      if (managerRes.ok) {
-        const response = await managerRes.json();
-        const users = response.success ? response.data : (Array.isArray(response) ? response : []);
-        if (Array.isArray(users)) {
-          const transformed = users.map((user: any) => ({
-            id: user.id.toString(),
-            fullName: user.full_name || user.username,
-            email: user.email,
-            role: user.role,
-            companyName: user.company_name || 'Restaurant Manager'
-          }));
-          allManagers = [...allManagers, ...transformed];
+      for (const [res, defaultCompany] of [[managerRes, 'Restaurant Manager'], [foodcourtRes, 'Foodcourt Manager'], [brandRes, 'Brand Manager']] as [Response, string][]) {
+        if (res.ok) {
+          const response = await res.json();
+          const users = response.success ? response.data : (Array.isArray(response) ? response : []);
+          if (Array.isArray(users)) {
+            const transformed = users.map((user: any) => ({
+              id: user.id.toString(),
+              fullName: user.full_name || user.username,
+              email: user.email,
+              role: user.role,
+              companyName: user.company_name || defaultCompany
+            }));
+            allManagers = [...allManagers, ...transformed];
+          }
         }
       }
-
-      if (foodcourtRes.ok) {
-        const response = await foodcourtRes.json();
-        const users = response.success ? response.data : (Array.isArray(response) ? response : []);
-        if (Array.isArray(users)) {
-          const transformed = users.map((user: any) => ({
-            id: user.id.toString(),
-            fullName: user.full_name || user.username,
-            email: user.email,
-            role: user.role,
-            companyName: user.company_name || 'Foodcourt Manager'
-          }));
-          allManagers = [...allManagers, ...transformed];
-        }
-      }
-
-      if (brandRes.ok) {
-        const response = await brandRes.json();
-        const users = response.success ? response.data : (Array.isArray(response) ? response : []);
-        if (Array.isArray(users)) {
-          const transformed = users.map((user: any) => ({
-            id: user.id.toString(),
-            fullName: user.full_name || user.username,
-            email: user.email,
-            role: user.role,
-            companyName: user.company_name || 'Brand Manager'
-          }));
-          allManagers = [...allManagers, ...transformed];
-        }
-      }
-
       setManagers(allManagers);
     } catch (error) {
       console.error('Error fetching managers:', error);
@@ -1207,15 +552,10 @@ const BrandInvoicesPage: React.FC = () => {
     try {
       const token = getAuthToken();
       const response = await fetch('/api/restaurants', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched restaurants:', data);
-        // Transform API data to match interface
         const transformedRestaurants = data.map((restaurant: any) => ({
           id: restaurant.id.toString(),
           name: restaurant.name,
@@ -1224,9 +564,7 @@ const BrandInvoicesPage: React.FC = () => {
           address: restaurant.address || ''
         }));
         setRestaurants(transformedRestaurants);
-        console.log('Transformed restaurants:', transformedRestaurants);
       } else {
-        console.error('Failed to fetch restaurants');
         setRestaurants([]);
       }
     } catch (error) {
@@ -1238,76 +576,34 @@ const BrandInvoicesPage: React.FC = () => {
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     setShowSearchDropdown(true);
-
-    if (query.length < 2) {
-      setSearchResults({managers: [], restaurants: []});
-      return;
-    }
-
-    console.log('Searching with query:', query);
-    console.log('Available restaurants:', restaurants);
-
-    // Brand General/Foodcourt General only search restaurants (not managers)
-    // They can only issue invoices to restaurants under their management
+    if (query.length < 2) { setSearchResults({managers: [], restaurants: []}); return; }
     const filteredRestaurants = restaurants.filter(restaurant =>
       restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
     );
-
-    console.log('Filtered restaurants:', filteredRestaurants);
-
-    setSearchResults({
-      managers: [], // Brand General doesn't search managers
-      restaurants: filteredRestaurants.slice(0, 5)
-    });
+    setSearchResults({ managers: [], restaurants: filteredRestaurants.slice(0, 5) });
   };
 
   const handleEditSearch = (query: string) => {
     setEditSearchQuery(query);
     setShowEditSearchDropdown(true);
-
-    if (query.length < 2) {
-      setEditSearchResults({managers: [], restaurants: []});
-      return;
-    }
-
-    // Brand General/Foodcourt General only search restaurants (not managers)
+    if (query.length < 2) { setEditSearchResults({managers: [], restaurants: []}); return; }
     const filteredRestaurants = restaurants.filter(restaurant =>
       restaurant.name && restaurant.name.toLowerCase().includes(query.toLowerCase())
     );
-
-    setEditSearchResults({
-      managers: [], // Brand General doesn't search managers
-      restaurants: filteredRestaurants.slice(0, 5)
-    });
+    setEditSearchResults({ managers: [], restaurants: filteredRestaurants.slice(0, 5) });
   };
 
   const handleEditTargetSelect = (type: 'manager' | 'restaurant', data: Manager | Restaurant) => {
     setEditSelectedTarget({type, data});
     setEditSearchQuery(type === 'manager' ? (data as Manager).fullName : (data as Restaurant).name);
     setShowEditSearchDropdown(false);
-
-    // Update editInvoice with new target data
     if (type === 'manager') {
       const manager = data as Manager;
-      setEditInvoice({
-        ...editInvoice,
-        managerId: manager.id,
-        managerName: manager.fullName,
-        companyName: manager.companyName || '',
-        restaurantId: '',
-        restaurantName: ''
-      });
+      setEditInvoice({ ...editInvoice, managerId: manager.id, managerName: manager.fullName, companyName: manager.companyName || '', restaurantId: '', restaurantName: '' });
     } else {
       const restaurant = data as Restaurant;
       const manager = managers.find(m => m.id === restaurant.admin_id);
-      setEditInvoice({
-        ...editInvoice,
-        managerId: manager?.id || '',
-        managerName: manager?.fullName || '',
-        companyName: manager?.companyName || '',
-        restaurantId: restaurant.id,
-        restaurantName: restaurant.name
-      });
+      setEditInvoice({ ...editInvoice, managerId: manager?.id || '', managerName: manager?.fullName || '', companyName: manager?.companyName || '', restaurantId: restaurant.id, restaurantName: restaurant.name });
     }
   };
 
@@ -1337,118 +633,57 @@ const BrandInvoicesPage: React.FC = () => {
     setShowSearchDropdown(false);
     setSearchQuery(type === 'manager' ? (data as Manager).fullName : (data as Restaurant).name);
     setPaymentMethodWarning(null);
-
-    // Auto-populate invoice data
     if (type === 'manager') {
       const manager = data as Manager;
       const currency = operationSettings.currency || 'MYR';
-      setNewInvoice({
-        ...newInvoice,
-        managerId: manager.id,
-        managerName: manager.fullName,
-        companyName: manager.companyName || '',
-        restaurantId: '',
-        restaurantName: '',
-        currency
-      });
+      setNewInvoice({ ...newInvoice, managerId: manager.id, managerName: manager.fullName, companyName: manager.companyName || '', restaurantId: '', restaurantName: '', currency });
       await checkBrandPaymentMethods(currency);
     } else {
       const restaurant = data as Restaurant;
       const manager = managers.find(m => m.id === restaurant.admin_id);
-      // Get restaurant currency (convert RM to MYR)
       let currency = (restaurant as any).currency || 'MYR';
       if (currency === 'RM') currency = 'MYR';
-      setNewInvoice({
-        ...newInvoice,
-        restaurantId: restaurant.id,
-        restaurantName: restaurant.name,
-        managerId: restaurant.admin_id,
-        managerName: manager ? manager.fullName : '',
-        companyName: restaurant.name,
-        currency: currency
-      });
+      setNewInvoice({ ...newInvoice, restaurantId: restaurant.id, restaurantName: restaurant.name, managerId: restaurant.admin_id, managerName: manager ? manager.fullName : '', companyName: restaurant.name, currency });
       await checkBrandPaymentMethods(currency);
     }
   };
 
   const fetchCompanySettings = async () => {
     try {
-      // Brand General/Manager: 자신의 브랜드 회사정보를 사용
       const token = getAuthToken();
       const brandResponse = await fetch('/api/brands/company-info', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
-
       if (brandResponse.ok) {
         const brandData = await brandResponse.json();
         setCompanySettings({
           companyName: brandData.company_name || brandData.name || '',
-          address: brandData.address || '',
-          city: brandData.city || '',
-          state: brandData.state || '',
-          postalCode: brandData.postal_code || '',
-          country: brandData.country || '',
-          phone: brandData.phone || '',
-          email: brandData.email || '',
-          website: brandData.website || '',
-          taxNumber: brandData.tax_no || '',
-          registrationNumber: brandData.registration_no || '',
+          address: brandData.address || '', city: brandData.city || '', state: brandData.state || '',
+          postalCode: brandData.postal_code || '', country: brandData.country || '',
+          phone: brandData.phone || '', email: brandData.email || '', website: brandData.website || '',
+          taxNumber: brandData.tax_no || '', registrationNumber: brandData.registration_no || '',
           companyLogo: brandData.logo_url || '',
-          bankName: brandData.bank_name || '',
-          bankAccount: brandData.bank_account || '',
+          bankName: brandData.bank_name || '', bankAccount: brandData.bank_account || '',
           bankAccountName: brandData.bank_account_name || ''
         });
         return;
       }
-
-      // Fallback: 시스템 관리자 설정 사용
       const response = await fetch('/api/admin/settings');
       if (response.ok) {
         const data = await response.json();
         setCompanySettings(data);
       } else {
-        console.warn('Company settings not found');
-        setCompanySettings({
-          companyName: '',
-          address: '',
-          city: '',
-          state: '',
-          postalCode: '',
-          country: '',
-          phone: '',
-          email: '',
-          website: '',
-          taxNumber: '',
-          registrationNumber: '',
-          companyLogo: ''
-        });
+        setCompanySettings({ companyName: '', address: '', city: '', state: '', postalCode: '', country: '', phone: '', email: '', website: '', taxNumber: '', registrationNumber: '', companyLogo: '' });
       }
     } catch (error) {
       console.error('Error fetching company settings:', error);
-      setCompanySettings({
-        companyName: '',
-        address: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: '',
-        phone: '',
-        email: '',
-        website: '',
-        taxNumber: '',
-        registrationNumber: '',
-        companyLogo: ''
-      });
+      setCompanySettings({ companyName: '', address: '', city: '', state: '', postalCode: '', country: '', phone: '', email: '', website: '', taxNumber: '', registrationNumber: '', companyLogo: '' });
     }
   };
 
   // Generate invoice HTML content (shared for PDF, Print, Email)
   const generateInvoiceHTML = (invoice: Invoice) => {
-    // Prefer issuerInfo from API (has bank info from payment_settings).
-    // Fall back to local companySettings only when issuerInfo absent.
+    const isReceivedInvoice = activeTab === 'to_pay' || activeTab === 'paid';
     const hasIssuerInfo = !!invoice.issuerInfo;
     const displayCompany = hasIssuerInfo ? {
       companyName: invoice.issuerInfo?.name || companySettings?.companyName,
@@ -1518,18 +753,15 @@ const BrandInvoicesPage: React.FC = () => {
         .status-overdue { background: #FEE2E2; color: #DC2626; }
         .status-cancelled { background: #FEF2F2; color: #DC2626; }
         .status-draft { background: #F3F4F6; color: #6B7280; }
-
         .billing-info { display: flex; justify-content: space-between; margin-bottom: 24px; }
         .bill-to-section { flex: 1; }
         .section-label { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
         .customer-name { font-size: 15px; font-weight: 600; color: #0A2540; }
         .customer-details { font-size: 13px; color: #6B7280; margin-top: 4px; }
-
         .dates-section { text-align: right; }
         .date-row { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px; font-size: 13px; }
         .date-label { color: #6B7280; }
         .date-value { color: #0A2540; font-weight: 500; min-width: 140px; }
-
         .items-section { margin-bottom: 24px; }
         .items-table { width: 100%; border-collapse: collapse; }
         .items-table th { text-align: left; padding: 12px 8px; font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; border-bottom: 2px solid #E5E7EB; }
@@ -1539,23 +771,18 @@ const BrandInvoicesPage: React.FC = () => {
         .items-table td.text-center { text-align: center; }
         .items-table td.text-right { text-align: right; white-space: nowrap; }
         .items-table th.text-right { white-space: nowrap; }
-
         .summary-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
         .summary-box { width: 280px; }
         .summary-row { display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
         .summary-row.subtotal { color: #6B7280; }
         .summary-row.tax { color: #6B7280; }
         .summary-row.total { background: #F8FAFC; border-radius: 6px; font-weight: 700; font-size: 16px; color: #0A2540; margin-top: 8px; }
-
         .bank-section { background: #F8FAFC; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
         .bank-title { font-size: 12px; font-weight: 600; color: #6B7280; margin-bottom: 8px; text-transform: uppercase; }
         .bank-details { font-size: 13px; color: #374151; line-height: 1.6; }
-
         .registration-info { font-size: 12px; color: #9CA3AF; text-align: center; margin-top: 16px; }
-
         .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; }
         .footer-text { font-size: 12px; color: #6B7280; margin-bottom: 4px; }
-
         ${INVOICE_PRINT_CSS}
     </style>
 </head>
@@ -1579,7 +806,6 @@ const BrandInvoicesPage: React.FC = () => {
                 <span class="invoice-status ${getStatusClass(invoice.status)}">${getStatusText(invoice.status)}</span>
             </div>
         </div>
-
         <div class="billing-info">
             <div class="bill-to-section">
                 <div class="section-label">${t('brand:brandInvoicesPage.billTo')}</div>
@@ -1596,231 +822,92 @@ const BrandInvoicesPage: React.FC = () => {
                 `}
             </div>
             <div class="dates-section">
-                <div class="date-row">
-                    <span class="date-label">Billing Period:</span>
-                    <span class="date-value">${invoice.billingPeriod || '-'}</span>
-                </div>
-                <div class="date-row">
-                    <span class="date-label">Issue Date:</span>
-                    <span class="date-value">${formatDate(invoice.issueDate)}</span>
-                </div>
-                <div class="date-row">
-                    <span class="date-label">Due Date:</span>
-                    <span class="date-value">${formatDate(invoice.dueDate)}</span>
-                </div>
-                ${invoice.paidDate ? `
-                <div class="date-row">
-                    <span class="date-label">Paid Date:</span>
-                    <span class="date-value">${formatDate(invoice.paidDate)}</span>
-                </div>
-                ` : ''}
+                <div class="date-row"><span class="date-label">Billing Period:</span><span class="date-value">${invoice.billingPeriod || '-'}</span></div>
+                <div class="date-row"><span class="date-label">Issue Date:</span><span class="date-value">${formatDate(invoice.issueDate)}</span></div>
+                <div class="date-row"><span class="date-label">Due Date:</span><span class="date-value">${formatDate(invoice.dueDate)}</span></div>
+                ${invoice.paidDate ? `<div class="date-row"><span class="date-label">Paid Date:</span><span class="date-value">${formatDate(invoice.paidDate)}</span></div>` : ''}
             </div>
         </div>
-
         <div class="items-section">
             <div class="section-label">${t('brand:brandInvoicesPage.items')}</div>
             <table class="items-table">
-                <thead>
-                    <tr>
-                        <th>${t('brand:brandInvoicesPage.description')}</th>
-                        <th class="text-center">${t('brand:brandInvoicesPage.qty')}</th>
-                        <th class="text-right">${t('brand:brandInvoicesPage.unitPrice')}</th>
-                        <th class="text-right">${t('brand:brandInvoicesPage.amount')}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${invoice.items.map(item => `
-                    <tr>
-                        <td>${item.description}</td>
-                        <td class="text-center">${item.quantity}</td>
-                        <td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
-                        <td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td>
-                    </tr>
-                    `).join('')}
-                </tbody>
+                <thead><tr><th>${t('brand:brandInvoicesPage.description')}</th><th class="text-center">${t('brand:brandInvoicesPage.qty')}</th><th class="text-right">${t('brand:brandInvoicesPage.unitPrice')}</th><th class="text-right">${t('brand:brandInvoicesPage.amount')}</th></tr></thead>
+                <tbody>${invoice.items.map(item => `<tr><td>${item.description}</td><td class="text-center">${item.quantity}</td><td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td><td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td></tr>`).join('')}</tbody>
             </table>
         </div>
-
         <div class="summary-section">
             <div class="summary-box">
-                <div class="summary-row subtotal">
-                    <span>Subtotal:</span>
-                    <span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span>
-                </div>
-                ${invoice.discountType && invoice.discountType !== 'none' && invoice.discountAmount > 0 ? `
-                <div class="summary-row tax" style="color: #15803D;">
-                    <span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span>
-                    <span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span>
-                </div>
-                ` : ''}
-                ${(invoice.additionalCharges || []).map(charge => `
-                <div class="summary-row tax">
-                    <span>${charge.name} (${charge.rate}%):</span>
-                    <span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span>
-                </div>
-                `).join('')}
-                <div class="summary-row total">
-                    <span>Total:</span>
-                    <span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span>
-                </div>
+                <div class="summary-row subtotal"><span>Subtotal:</span><span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span></div>
+                ${invoice.discountType && invoice.discountType !== 'none' && (invoice.discountAmount ?? 0) > 0 ? `<div class="summary-row tax" style="color: #15803D;"><span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span><span>-${formatCurrency(invoice.discountAmount!, invoice.currency || 'MYR')}</span></div>` : ''}
+                ${(invoice.additionalCharges || []).map(charge => `<div class="summary-row tax"><span>${charge.name} (${charge.rate}%):</span><span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span></div>`).join('')}
+                <div class="summary-row total"><span>Total:</span><span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span></div>
             </div>
         </div>
-
-        ${displayCompany.bankName ? `
-        <div class="bank-section">
-            <div class="bank-title">${t('brand:brandInvoicesPage.paymentDetails')}</div>
-            <div class="bank-details">
-                <strong>Bank:</strong> ${displayCompany.bankName}<br>
-                <strong>Account Name:</strong> ${displayCompany.bankAccountName || '-'}<br>
-                <strong>Account Number:</strong> ${displayCompany.bankAccount || '-'}
-                ${displayCompany.swiftCode ? `<br><strong>SWIFT Code:</strong> ${displayCompany.swiftCode}` : ''}
-            </div>
-        </div>
-        ` : ''}
-
-        ${(displayCompany.taxNumber || displayCompany.registrationNumber) ? `
-        <div class="registration-info">
-            ${displayCompany.registrationNumber ? `Reg No: ${displayCompany.registrationNumber}` : ''}
-            ${displayCompany.registrationNumber && displayCompany.taxNumber ? ' | ' : ''}
-            ${displayCompany.taxNumber ? `Tax No: ${displayCompany.taxNumber}` : ''}
-        </div>
-        ` : ''}
-
-        <div class="footer">
-            <div class="footer-text">${t('brand:brandInvoicesPage.thankYouForYourBusiness')}</div>
-            <div class="footer-text">${t('brand:brandInvoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div>
-        </div>
+        ${displayCompany.bankName ? `<div class="bank-section"><div class="bank-title">${t('brand:brandInvoicesPage.paymentDetails')}</div><div class="bank-details"><strong>Bank:</strong> ${displayCompany.bankName}<br><strong>Account Name:</strong> ${displayCompany.bankAccountName || '-'}<br><strong>Account Number:</strong> ${displayCompany.bankAccount || '-'}${displayCompany.swiftCode ? `<br><strong>SWIFT Code:</strong> ${displayCompany.swiftCode}` : ''}</div></div>` : ''}
+        ${(displayCompany.taxNumber || displayCompany.registrationNumber) ? `<div class="registration-info">${displayCompany.registrationNumber ? `Reg No: ${displayCompany.registrationNumber}` : ''}${displayCompany.registrationNumber && displayCompany.taxNumber ? ' | ' : ''}${displayCompany.taxNumber ? `Tax No: ${displayCompany.taxNumber}` : ''}</div>` : ''}
+        <div class="footer"><div class="footer-text">${t('brand:brandInvoicesPage.thankYouForYourBusiness')}</div><div class="footer-text">${t('brand:brandInvoicesPage.thisIsAComputergeneratedInvoiceAndDoesNotRequireASignature')}</div></div>
     </div>
 </body>
 </html>`;
   };
 
-  // Download invoice as PDF file
   const generateInvoicePDF = async (invoice: Invoice) => {
-    // For received invoices, use issuerInfo; for issued invoices, use companySettings
     const hasCompanyInfo = ((activeTab === 'to_pay' || activeTab === 'paid') && invoice.issuerInfo) || companySettings;
-    if (!hasCompanyInfo) {
-      setSuccessMessage('Company settings not loaded. Please try again.');
-      setShowSuccessModal(true);
-      return;
-    }
-
+    if (!hasCompanyInfo) { setSuccessMessage('Company settings not loaded. Please try again.'); setShowSuccessModal(true); return; }
     try {
       const invoiceHTML = generateInvoiceHTML(invoice);
-
-      // Create iframe for PDF generation (prevents layout shifts)
       const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.left = '-10000px';
-      iframe.style.top = '-10000px';
-      iframe.style.width = '800px';
-      iframe.style.height = '1200px';
-      iframe.style.visibility = 'hidden';
-      iframe.style.pointerEvents = 'none';
+      iframe.style.position = 'fixed'; iframe.style.left = '-10000px'; iframe.style.top = '-10000px';
+      iframe.style.width = '800px'; iframe.style.height = '1200px'; iframe.style.visibility = 'hidden'; iframe.style.pointerEvents = 'none';
       document.body.appendChild(iframe);
-
-      // Write HTML to iframe
       const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) {
-        document.body.removeChild(iframe);
-        throw new Error('Could not access iframe document');
-      }
-      iframeDoc.open();
-      iframeDoc.write(invoiceHTML);
-      iframeDoc.close();
-
-      try {
-        await renderIframeToPdf(iframe, `Invoice-${invoice.invoiceNumber}.pdf`);
-      } finally {
-        document.body.removeChild(iframe);
-      }
+      if (!iframeDoc) { document.body.removeChild(iframe); throw new Error('Could not access iframe document'); }
+      iframeDoc.open(); iframeDoc.write(invoiceHTML); iframeDoc.close();
+      try { await renderIframeToPdf(iframe, `Invoice-${invoice.invoiceNumber}.pdf`); } finally { document.body.removeChild(iframe); }
     } catch (error) {
       console.error('Error generating PDF:', error);
-      setSuccessMessage('Failed to generate PDF. Please try again.');
-      setShowSuccessModal(true);
+      setSuccessMessage('Failed to generate PDF. Please try again.'); setShowSuccessModal(true);
     }
   };
 
-  // Print invoice directly
   const handlePrintInvoice = (invoice: Invoice) => {
-    // For received invoices, use issuerInfo; for issued invoices, use companySettings
     const hasCompanyInfo = ((activeTab === 'to_pay' || activeTab === 'paid') && invoice.issuerInfo) || companySettings;
-    if (!hasCompanyInfo) {
-      setSuccessMessage('Company settings not loaded. Please try again.');
-      setShowSuccessModal(true);
-      return;
-    }
-
+    if (!hasCompanyInfo) { setSuccessMessage('Company settings not loaded. Please try again.'); setShowSuccessModal(true); return; }
     const invoiceHTML = generateInvoiceHTML(invoice);
     const printWindow = window.open('', '_blank', 'width=800,height=600');
-    if (printWindow) {
-      printWindow.document.write(invoiceHTML);
-      printWindow.document.close();
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    }
+    if (printWindow) { printWindow.document.write(invoiceHTML); printWindow.document.close(); setTimeout(() => { printWindow.print(); }, 250); }
   };
 
-  // Open email modal with default recipient based on payer type
   const handleOpenEmailModal = async (invoice: Invoice) => {
     setEmailInvoice(invoice);
-
-    // Get default email based on payer type
     let defaultEmail = '';
-
     if (invoice.payerType === 'restaurant' && invoice.restaurantId) {
-      // Find restaurant email
       const restaurant = restaurants.find(r => r.id === invoice.restaurantId);
-      if (restaurant?.email) {
-        defaultEmail = restaurant.email;
-      }
+      if (restaurant?.email) defaultEmail = restaurant.email;
     } else if (invoice.payerType === 'foodcourt_manager' || invoice.payerType === 'brand_manager') {
-      // Find manager email
       const manager = managers.find(m => m.id === invoice.managerId);
-      if (manager?.email) {
-        defaultEmail = manager.email;
-      }
+      if (manager?.email) defaultEmail = manager.email;
     }
-
-    // If no specific email found, try to get from the invoice customer
     if (!defaultEmail && invoice.managerId) {
       const manager = managers.find(m => m.id === invoice.managerId);
-      if (manager?.email) {
-        defaultEmail = manager.email;
-      }
+      if (manager?.email) defaultEmail = manager.email;
     }
-
     setEmailRecipient(defaultEmail);
     setShowEmailModal(true);
   };
 
-  // Send invoice via email
   const handleSendInvoiceEmail = async () => {
-    if (!emailInvoice || !emailRecipient) {
-      setSuccessMessage('Please enter a valid email address.');
-      setShowSuccessModal(true);
-      return;
-    }
-
+    if (!emailInvoice || !emailRecipient) { setSuccessMessage('Please enter a valid email address.'); setShowSuccessModal(true); return; }
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${emailInvoice.id}/send-email`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          recipientEmail: emailRecipient
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ recipientEmail: emailRecipient })
       });
-
       if (response.ok) {
         setSuccessMessage(`Invoice sent successfully to ${emailRecipient}`);
-        setShowEmailModal(false);
-        setEmailInvoice(null);
-        setEmailRecipient('');
+        setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient('');
       } else {
         const data = await response.json();
         setSuccessMessage(data.message || data.error || 'Failed to send invoice email.');
@@ -1828,62 +915,29 @@ const BrandInvoicesPage: React.FC = () => {
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Error sending invoice email:', error);
-      setSuccessMessage('Failed to send invoice email. Please try again.');
-      setShowSuccessModal(true);
+      setSuccessMessage('Failed to send invoice email. Please try again.'); setShowSuccessModal(true);
     }
   };
 
   const resetInvoiceForm = () => {
-    setNewInvoice({
-      managerId: '',
-      managerName: '',
-      companyName: '',
-      restaurantId: '',
-      restaurantName: '',
-      amount: '',
-      tax: '0',
-      total: '0',
-      description: '',
-      dueDate: '',
-      planType: 'professional',
-      billingCycle: 'monthly',
-      invoiceCategory: 'service',
-      customDescription: '',
-      serviceDescription: '',
-      currency: 'MYR',
-      discountType: 'none' as 'none' | 'percentage' | 'fixed',
-      discountValue: '',
-      discountReason: ''
-    });
-    setSelectedTarget(null);
-    setSearchQuery('');
-    setShowSearchDropdown(false);
-    setPayerMode('member');
-    setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
+    setNewInvoice({ managerId: '', managerName: '', companyName: '', restaurantId: '', restaurantName: '', amount: '', tax: '0', total: '0', description: '', dueDate: '', planType: 'professional', billingCycle: 'monthly', invoiceCategory: 'service', customDescription: '', serviceDescription: '', currency: 'MYR', discountType: 'none' as 'none' | 'percentage' | 'fixed', discountValue: '', discountReason: '' });
+    setSelectedTarget(null); setSearchQuery(''); setShowSearchDropdown(false);
+    setPayerMode('member'); setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
   };
 
-  // Helper functions - must be defined before filteredInvoices
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-MY');
+    return formatDateTime(dateString, operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
-  // Check if invoice is overdue based on due_date
-  // Only pending_payment can be overdue (not paid, cancelled, draft, or payment_submitted)
   const isInvoiceOverdue = (invoice: Invoice): boolean => {
-    // Only pending_payment status can become overdue
-    if (invoice.status !== 'pending_payment') {
-      return false;
-    }
+    if (invoice.status !== 'pending_payment') return false;
     const now = new Date();
     const dueDate = new Date(invoice.dueDate);
     return dueDate < now;
   };
 
-  // Get effective status (considering overdue)
   const getEffectiveStatus = (invoice: Invoice): 'draft' | 'pending_payment' | 'payment_submitted' | 'paid' | 'overdue' | 'cancelled' | 'active' | 'inactive' | '' => {
-    if (isInvoiceOverdue(invoice)) {
-      return 'overdue';
-    }
+    if (isInvoiceOverdue(invoice)) return 'overdue';
     return invoice.status;
   };
 
@@ -1918,113 +972,56 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  // Universal search filter with date range
+  // Filtered invoices
   const filteredInvoices = invoices.filter(invoice => {
-    // Universal search - search across all visible fields
     const term = searchTerm.toLowerCase();
     const statusText = getStatusDisplay(invoice.status).toLowerCase();
     const typeText = getTypeDisplay(invoice.type || '').toLowerCase();
     const payerText = getPayerDisplay(invoice.payerType || '').toLowerCase();
-
-    const matchesSearch = !searchTerm ||
-      (invoice.companyName || '').toLowerCase().includes(term) ||
-      (invoice.invoiceNumber || '').toLowerCase().includes(term) ||
-      (invoice.managerName || '').toLowerCase().includes(term) ||
-      (invoice.restaurantName || '').toLowerCase().includes(term) ||
-      statusText.includes(term) ||
-      typeText.includes(term) ||
-      payerText.includes(term) ||
-      (invoice.categoryDisplayName || '').toLowerCase().includes(term) ||
-      (invoice.planType || '').toLowerCase().includes(term);
-
-    // Date range filter
+    const matchesSearch = !searchTerm || (invoice.companyName || '').toLowerCase().includes(term) || (invoice.invoiceNumber || '').toLowerCase().includes(term) || (invoice.managerName || '').toLowerCase().includes(term) || (invoice.restaurantName || '').toLowerCase().includes(term) || statusText.includes(term) || typeText.includes(term) || payerText.includes(term) || (invoice.categoryDisplayName || '').toLowerCase().includes(term) || (invoice.planType || '').toLowerCase().includes(term);
     let matchesDateRange = true;
     if (dateRange.start && dateRange.end) {
       const invoiceDate = new Date(invoice.issueDate);
-      const startDate = new Date(dateRange.start);
-      const endDate = new Date(dateRange.end);
-
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
+      const startDate = new Date(dateRange.start); const endDate = new Date(dateRange.end);
+      startDate.setHours(0, 0, 0, 0); endDate.setHours(23, 59, 59, 999);
       matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
     }
-
     return matchesSearch && matchesDateRange;
-  }).sort((a, b) => {
-    // Sort by issue date descending (newest first)
-    const dateA = new Date(a.issueDate).getTime();
-    const dateB = new Date(b.issueDate).getTime();
-    return dateB - dateA;
-  });
+  }).sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
 
-  // Stats - Combined totals (issued + to_pay)
   const allInvoices = [...invoices, ...invoicesToPay];
   const totalIssuedCount = invoices.length;
   const totalToPayCount = invoicesToPay.length;
   const overdueInvoices = allInvoices.filter(i => isInvoiceOverdue(i)).length;
   const pendingInvoices = allInvoices.filter(i => i.status === 'pending_payment' || i.status === 'payment_submitted').length;
 
-  // Filtered invoices to pay with search and date range
   const filteredInvoicesToPay = invoicesToPay.filter(invoice => {
-    // Search filter only — no date filter for to-pay (unpaid invoices should always be visible)
     if (!toPaySearchTerm) return true;
     const term = toPaySearchTerm.toLowerCase();
     const statusText = getStatusDisplay(invoice.status).toLowerCase();
-    return (invoice.invoiceNumber || '').toLowerCase().includes(term) ||
-      (invoice.issuerName || '').toLowerCase().includes(term) ||
-      (invoice.restaurantName || '').toLowerCase().includes(term) ||
-      statusText.includes(term) ||
-      (invoice.categoryDisplayName || '').toLowerCase().includes(term) ||
-      (invoice.planType || '').toLowerCase().includes(term);
-  }).sort((a, b) => {
-    // Sort by issue date descending (newest first)
-    const dateA = new Date(a.issueDate).getTime();
-    const dateB = new Date(b.issueDate).getTime();
-    return dateB - dateA;
-  });
+    return (invoice.invoiceNumber || '').toLowerCase().includes(term) || (invoice.issuerName || '').toLowerCase().includes(term) || (invoice.restaurantName || '').toLowerCase().includes(term) || statusText.includes(term) || (invoice.categoryDisplayName || '').toLowerCase().includes(term) || (invoice.planType || '').toLowerCase().includes(term);
+  }).sort((a, b) => new Date(b.issueDate).getTime() - new Date(a.issueDate).getTime());
 
-  // Paid invoices with search and date range filter
   const filteredPaidInvoices = paidInvoicesList.filter(invoice => {
     const term = paidSearchTerm.toLowerCase();
-    const matchesSearch = !paidSearchTerm ||
-      invoice.invoiceNumber.toLowerCase().includes(term) ||
-      (invoice.issuerName || '').toLowerCase().includes(term) ||
-      (invoice.restaurantName || '').toLowerCase().includes(term) ||
-      (invoice.categoryDisplayName || '').toLowerCase().includes(term) ||
-      (invoice.planType || '').toLowerCase().includes(term);
-
+    const matchesSearch = !paidSearchTerm || invoice.invoiceNumber.toLowerCase().includes(term) || (invoice.issuerName || '').toLowerCase().includes(term) || (invoice.restaurantName || '').toLowerCase().includes(term) || (invoice.categoryDisplayName || '').toLowerCase().includes(term) || (invoice.planType || '').toLowerCase().includes(term);
     let matchesDateRange = true;
     if (paidDateRange.start && paidDateRange.end) {
       const invoiceDate = new Date(invoice.paidDate || invoice.issueDate);
-      const startDate = new Date(paidDateRange.start);
-      const endDate = new Date(paidDateRange.end);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
+      const startDate = new Date(paidDateRange.start); const endDate = new Date(paidDateRange.end);
+      startDate.setHours(0, 0, 0, 0); endDate.setHours(23, 59, 59, 999);
       matchesDateRange = invoiceDate >= startDate && invoiceDate <= endDate;
     }
-
     return matchesSearch && matchesDateRange;
-  }).sort((a, b) => {
-    const dateA = new Date(a.paidDate || a.issueDate).getTime();
-    const dateB = new Date(b.paidDate || b.issueDate).getTime();
-    return dateB - dateA;
-  });
+  }).sort((a, b) => new Date(b.paidDate || b.issueDate).getTime() - new Date(a.paidDate || a.issueDate).getTime());
 
-  const handleCreateInvoice = () => {
-    resetInvoiceForm();
-    setShowCreateInvoiceModal(true);
-  };
+  const handleCreateInvoice = () => { resetInvoiceForm(); setShowCreateInvoiceModal(true); };
 
   const handleLinkSearch = (query: string) => {
     setLinkSearchQuery(query);
-    if (!query.trim()) {
-      setLinkSearchResults({managers: [], restaurants: []});
-      return;
-    }
+    if (!query.trim()) { setLinkSearchResults({managers: [], restaurants: []}); return; }
     const q = query.toLowerCase();
-    const filteredRestaurants = restaurants.filter(r =>
-      r.name.toLowerCase().includes(q) || (r.address && r.address.toLowerCase().includes(q))
-    ).slice(0, 5);
+    const filteredRestaurants = restaurants.filter(r => r.name.toLowerCase().includes(q) || (r.address && r.address.toLowerCase().includes(q))).slice(0, 5);
     setLinkSearchResults({managers: [], restaurants: filteredRestaurants});
   };
 
@@ -2033,20 +1030,15 @@ const BrandInvoicesPage: React.FC = () => {
     try {
       const token = getAuthToken();
       const linkData: any = { payer_type: 'restaurant' };
-      if (targetType === 'restaurant') {
-        linkData.restaurant_id = (targetData as Restaurant).id;
-      }
+      if (targetType === 'restaurant') { linkData.restaurant_id = (targetData as Restaurant).id; }
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/link-account`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(linkData)
       });
       if (response.ok) {
-        await fetchInvoices();
-        setShowLinkAccountModal(false);
-        setShowViewModal(false);
-        setSuccessMessage('Invoice linked to member account successfully.');
-        setShowSuccessModal(true);
+        await fetchInvoices(); setShowLinkAccountModal(false); setShowViewModal(false);
+        setSuccessMessage('Invoice linked to member account successfully.'); setShowSuccessModal(true);
       } else {
         const errorData = await response.json();
         alert(`Failed to link account: ${errorData.message || 'Unknown error'}`);
@@ -2057,446 +1049,215 @@ const BrandInvoicesPage: React.FC = () => {
     }
   };
 
-  const handleViewInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setShowViewModal(true);
-  };
+  const handleViewInvoice = (invoice: Invoice) => { setSelectedInvoice(invoice); setShowViewModal(true); };
 
   const handleEditInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-
-    // Format date to yyyy-MM-dd for input type="date"
-    const formatDateForInput = (dateStr: string | undefined) => {
-      if (!dateStr) return '';
-      const date = new Date(dateStr);
-      return date.toISOString().split('T')[0];
-    };
-
-    // Set up editInvoice with all Create Invoice fields
+    const formatDateForInput = (dateStr: string | undefined) => { if (!dateStr) return ''; const date = new Date(dateStr); return date.toISOString().split('T')[0]; };
     setEditInvoice({
-      managerId: invoice.managerId,
-      managerName: invoice.managerName,
-      companyName: invoice.companyName || '',
-      restaurantId: invoice.restaurantId || '',
-      restaurantName: invoice.restaurantName || '',
-      amount: invoice.amount.toString(),
-      tax: invoice.tax.toString(),
-      total: invoice.total.toString(),
-      dueDate: formatDateForInput(invoice.dueDate),
-      status: invoice.status,
-      planType: invoice.planType,
-      billingCycle: 'monthly', // Default, can be derived from planType
-      description: invoice.items?.[0]?.description || '',
-      payerType: invoice.payerType || 'restaurant',
-      payerId: invoice.payerId || '',
-      invoiceCategory: invoice.invoiceCategory || 'service',
-      customDescription: invoice.customDescription || '',
-      serviceDescription: invoice.serviceDescription || '',
-      currency: invoice.currency || 'MYR',
-      items: invoice.items
+      managerId: invoice.managerId, managerName: invoice.managerName, companyName: invoice.companyName || '',
+      restaurantId: invoice.restaurantId || '', restaurantName: invoice.restaurantName || '',
+      amount: invoice.amount.toString(), tax: invoice.tax.toString(), total: invoice.total.toString(),
+      dueDate: formatDateForInput(invoice.dueDate), status: invoice.status, planType: invoice.planType,
+      billingCycle: 'monthly', description: invoice.items?.[0]?.description || '',
+      payerType: invoice.payerType || 'restaurant', payerId: invoice.payerId || '',
+      invoiceCategory: invoice.invoiceCategory || 'service', customDescription: invoice.customDescription || '',
+      serviceDescription: invoice.serviceDescription || '', currency: invoice.currency || 'MYR', items: invoice.items
     });
-
-    // Set up edit target selection
     if (invoice.restaurantId) {
       const restaurant = restaurants.find(r => r.id === invoice.restaurantId);
-      if (restaurant) {
-        setEditSelectedTarget({type: 'restaurant', data: restaurant});
-        setEditSearchQuery(restaurant.name);
-      }
+      if (restaurant) { setEditSelectedTarget({type: 'restaurant', data: restaurant}); setEditSearchQuery(restaurant.name); }
     } else if (invoice.managerId) {
       const manager = managers.find(m => m.id === invoice.managerId);
-      if (manager) {
-        setEditSelectedTarget({type: 'manager', data: manager});
-        setEditSearchQuery(manager.fullName);
-      }
+      if (manager) { setEditSelectedTarget({type: 'manager', data: manager}); setEditSearchQuery(manager.fullName); }
     }
-
-    setEditModificationReason('');
-    setShowEditModal(true);
+    setEditModificationReason(''); setShowEditModal(true);
   };
 
-  const handleSendInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setShowSendConfirmModal(true);
-  };
+  const handleSendInvoice = (invoice: Invoice) => { setSelectedInvoice(invoice); setShowSendConfirmModal(true); };
 
   const confirmSendInvoice = async () => {
     if (!selectedInvoice) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status: 'pending_payment'
-        })
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'pending_payment' })
       });
-
-      if (response.ok) {
-        // Refresh invoices list
-        await fetchInvoices();
-        setShowSendConfirmModal(false);
-        setSelectedInvoice(null);
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to send invoice: ${errorData.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error sending invoice:', error);
-      alert('Error sending invoice. Please try again.');
-    }
+      if (response.ok) { await fetchInvoices(); setShowSendConfirmModal(false); setSelectedInvoice(null); }
+      else { const errorData = await response.json(); alert(`Failed to send invoice: ${errorData.error || 'Unknown error'}`); }
+    } catch (error) { console.error('Error sending invoice:', error); alert('Error sending invoice. Please try again.'); }
   };
 
   const handleSaveEdit = async () => {
     if (!selectedInvoice || !editInvoice) return;
-
-    if (selectedInvoice.type === 'automatic' && !editModificationReason.trim()) {
-      setSuccessMessage('Please enter a reason for modifying this invoice.');
-      setShowSuccessModal(true);
-      return;
-    }
-
+    if (selectedInvoice.type === 'automatic' && !editModificationReason.trim()) { setSuccessMessage('Please enter a reason for modifying this invoice.'); setShowSuccessModal(true); return; }
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
-          amount: parseFloat(editInvoice.amount),
-          tax: parseFloat(editInvoice.tax),
-          total: parseFloat(editInvoice.total),
-          dueDate: editInvoice.dueDate,
-          status: editInvoice.status,
-          payerType: editInvoice.payerType,
-          payerId: editInvoice.payerId,
+          amount: parseFloat(editInvoice.amount), tax: parseFloat(editInvoice.tax), total: parseFloat(editInvoice.total),
+          dueDate: editInvoice.dueDate, status: editInvoice.status, payerType: editInvoice.payerType, payerId: editInvoice.payerId,
           items: editInvoice.items,
           discountType: editInvoice.discountType !== 'none' ? editInvoice.discountType : null,
           discountValue: editInvoice.discountType !== 'none' ? parseFloat(editInvoice.discountValue) || 0 : null,
-          discountAmount: (() => {
-            const amt = parseFloat(editInvoice.amount) || 0;
-            const dv = parseFloat(editInvoice.discountValue) || 0;
-            if (editInvoice.discountType === 'percentage') return amt * (dv / 100);
-            if (editInvoice.discountType === 'fixed') return dv;
-            return null;
-          })(),
+          discountAmount: (() => { const amt = parseFloat(editInvoice.amount) || 0; const dv = parseFloat(editInvoice.discountValue) || 0; if (editInvoice.discountType === 'percentage') return amt * (dv / 100); if (editInvoice.discountType === 'fixed') return dv; return null; })(),
           discountReason: editInvoice.discountReason || null,
           subtotal: editInvoice.discountType !== 'none' ? parseFloat(editInvoice.amount) || 0 : null,
-          additionalCharges: (() => {
-            const amt = parseFloat(editInvoice.amount) || 0;
-            const dv = parseFloat(editInvoice.discountValue) || 0;
-            const da = editInvoice.discountType === 'percentage' ? amt * (dv / 100) : editInvoice.discountType === 'fixed' ? dv : 0;
-            const afterDiscount = Math.max(0, amt - da);
-            const editCharges = getChargesForCurrency(editInvoice.currency || '');
-            return editCharges
-              .filter((c: any) => c.enabled && c.name && c.rate > 0)
-              .map((c: any) => ({ name: c.name, rate: c.rate, amount: Math.round(afterDiscount * c.rate / 100 * 100) / 100 }));
-          })(),
+          additionalCharges: (() => { const amt = parseFloat(editInvoice.amount) || 0; const dv = parseFloat(editInvoice.discountValue) || 0; const da = editInvoice.discountType === 'percentage' ? amt * (dv / 100) : editInvoice.discountType === 'fixed' ? dv : 0; const afterDiscount = Math.max(0, amt - da); const editCharges = getChargesForCurrency(editInvoice.currency || ''); return editCharges.filter((c: any) => c.enabled && c.name && c.rate > 0).map((c: any) => ({ name: c.name, rate: c.rate, amount: Math.round(afterDiscount * c.rate / 100 * 100) / 100 })); })(),
           modificationReason: editModificationReason.trim() || undefined
         }),
       });
-
-      if (response.ok) {
-        await fetchInvoices();
-        setShowEditModal(false);
-        setSelectedInvoice(null);
-        setEditInvoice(null);
-        setSuccessMessage('Invoice updated successfully!');
-        setShowSuccessModal(true);
-      } else {
-        const errorData = await response.json();
-        setSuccessMessage(`Failed to update invoice: ${errorData.error || 'Unknown error'}`);
-        setShowSuccessModal(true);
-      }
-    } catch (error) {
-      console.error('Error updating invoice:', error);
-      setSuccessMessage('Error updating invoice. Please try again.');
-      setShowSuccessModal(true);
-    }
+      if (response.ok) { await fetchInvoices(); setShowEditModal(false); setSelectedInvoice(null); setEditInvoice(null); setSuccessMessage('Invoice updated successfully!'); setShowSuccessModal(true); }
+      else { const errorData = await response.json(); setSuccessMessage(`Failed to update invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true); }
+    } catch (error) { console.error('Error updating invoice:', error); setSuccessMessage('Error updating invoice. Please try again.'); setShowSuccessModal(true); }
   };
 
   const handleSubmitInvoice = async () => {
-    if (payerMode === 'member' && (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate)) {
-      alert('Please select a restaurant, enter amount, and set due date.');
-      return;
-    }
-    if (payerMode === 'external' && (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)) {
-      alert('Please fill in name, email, amount, and due date.');
-      return;
-    }
-
+    if (payerMode === 'member' && (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate)) { alert('Please select a restaurant, enter amount, and set due date.'); return; }
+    if (payerMode === 'external' && (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)) { alert('Please fill in name, email, amount, and due date.'); return; }
     try {
       const amount = parseFloat(newInvoice.amount);
-
-      // Calculate discount
       const discountVal = parseFloat(newInvoice.discountValue) || 0;
       const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
       const afterDiscount = Math.max(0, amount - discountAmt);
-
-      // Calculate additional charges from payment settings (on discounted amount)
-      const calculatedCharges = additionalCharges
-        .filter(charge => charge.enabled && charge.name && charge.rate > 0)
-        .map(charge => ({
-          name: charge.name,
-          rate: charge.rate,
-          amount: Math.round(afterDiscount * charge.rate / 100 * 100) / 100
-        }));
-
+      const calculatedCharges = additionalCharges.filter(charge => charge.enabled && charge.name && charge.rate > 0).map(charge => ({ name: charge.name, rate: charge.rate, amount: Math.round(afterDiscount * charge.rate / 100 * 100) / 100 }));
       const totalChargesAmount = calculatedCharges.reduce((sum, c) => sum + c.amount, 0);
       const total = afterDiscount + totalChargesAmount;
-
-      // Prepare data for API
-      let description = '';
-      if (newInvoice.invoiceCategory === 'others') {
-        description = newInvoice.customDescription || '';
-      } else {
-        description = newInvoice.serviceDescription || '';
-      }
-
-      // Prepare customer information based on target type
-      let customerName = '';
-      let customerAddress = '';
-      let companyName = '';
-      let restaurantName = '';
-
+      let description = newInvoice.invoiceCategory === 'others' ? (newInvoice.customDescription || '') : (newInvoice.serviceDescription || '');
+      let customerName = '', customerAddress = '', companyNameVal = '', restaurantName = '';
       if (payerMode === 'external') {
-        customerName = externalPayer.name;
-        companyName = externalPayer.company || externalPayer.name;
-        const addressParts = [];
-        if (externalPayer.address) addressParts.push(externalPayer.address);
-        if (externalPayer.phone) addressParts.push(`Phone: ${externalPayer.phone}`);
-        if (externalPayer.email) addressParts.push(`Email: ${externalPayer.email}`);
+        customerName = externalPayer.name; companyNameVal = externalPayer.company || externalPayer.name;
+        const addressParts = []; if (externalPayer.address) addressParts.push(externalPayer.address); if (externalPayer.phone) addressParts.push(`Phone: ${externalPayer.phone}`); if (externalPayer.email) addressParts.push(`Email: ${externalPayer.email}`);
         customerAddress = addressParts.join('\n');
       } else if (selectedTarget?.type === 'restaurant') {
         const restaurant = selectedTarget.data as Restaurant;
-        customerName = restaurant.name;
-        restaurantName = restaurant.name;
-        companyName = restaurant.name;
-
-        // Build full address from restaurant data
-        const addressParts = [];
-        if (restaurant.address) addressParts.push(restaurant.address);
-        if (restaurant.phone) addressParts.push(`Phone: ${restaurant.phone}`);
-        if (restaurant.email) addressParts.push(`Email: ${restaurant.email}`);
+        customerName = restaurant.name; restaurantName = restaurant.name; companyNameVal = restaurant.name;
+        const addressParts = []; if (restaurant.address) addressParts.push(restaurant.address); if (restaurant.phone) addressParts.push(`Phone: ${restaurant.phone}`); if (restaurant.email) addressParts.push(`Email: ${restaurant.email}`);
         customerAddress = addressParts.join('\n');
       } else if (selectedTarget?.type === 'manager') {
         const manager = selectedTarget.data as Manager;
-        customerName = manager.fullName;
-        companyName = manager.companyName || manager.fullName;
-
-        // Build address from manager data
-        const addressParts = [];
-        if (manager.companyName) addressParts.push(manager.companyName);
-        if (manager.email) addressParts.push(`Email: ${manager.email}`);
+        customerName = manager.fullName; companyNameVal = manager.companyName || manager.fullName;
+        const addressParts = []; if (manager.companyName) addressParts.push(manager.companyName); if (manager.email) addressParts.push(`Email: ${manager.email}`);
         customerAddress = addressParts.join('\n');
       }
-
-      // Determine payer_type and payer_id based on selected target
-      let payerType = 'restaurant';
-      let payerId: number | null = null;
-
-      if (payerMode === 'external') {
-        payerType = 'external';
-      } else if (selectedTarget?.type === 'restaurant') {
-        const restaurant = selectedTarget.data as Restaurant;
-        payerType = 'restaurant';
-        payerId = parseInt(restaurant.id);
-      }
-
+      let payerType = 'restaurant'; let payerId: number | null = null;
+      if (payerMode === 'external') { payerType = 'external'; }
+      else if (selectedTarget?.type === 'restaurant') { payerType = 'restaurant'; payerId = parseInt((selectedTarget.data as Restaurant).id); }
       const invoiceData: any = {
         restaurant_id: payerMode === 'external' ? null : (selectedTarget?.type === 'restaurant' ? (selectedTarget.data as Restaurant).id : null),
-        customer_name: customerName,
-        customer_address: customerAddress,
-        company_name: companyName,
-        restaurant_name: restaurantName,
-        type: 'manual',
-        billing_period_start: null,
-        billing_period_end: null,
-        due_date: new Date(newInvoice.dueDate).toISOString(),
-        total_amount: total,
-        subtotal_before_discount: discountAmt > 0 ? amount : null,
-        discount_type: newInvoice.discountType !== 'none' ? newInvoice.discountType : null,
-        discount_value: discountAmt > 0 ? discountVal : null,
-        discount_amount: discountAmt > 0 ? discountAmt : null,
-        discount_reason: newInvoice.discountReason || null,
-        currency: newInvoice.currency || 'MYR',
-        status: 'draft',
-        notes: description,
-        issued_by: user?.id || 1,
-        issued_at: new Date().toISOString(),
-        issuer_type: 'brand',
-        issuer_id: user?.brand_id || null,
-        payer_type: payerType,
-        payer_id: payerId,
-        invoice_category: newInvoice.invoiceCategory || 'service',
+        customer_name: customerName, customer_address: customerAddress, company_name: companyNameVal, restaurant_name: restaurantName,
+        type: 'manual', billing_period_start: null, billing_period_end: null, due_date: new Date(newInvoice.dueDate).toISOString(),
+        total_amount: total, subtotal_before_discount: discountAmt > 0 ? amount : null,
+        discount_type: newInvoice.discountType !== 'none' ? newInvoice.discountType : null, discount_value: discountAmt > 0 ? discountVal : null,
+        discount_amount: discountAmt > 0 ? discountAmt : null, discount_reason: newInvoice.discountReason || null,
+        currency: newInvoice.currency || 'MYR', status: 'draft', notes: description, issued_by: user?.id || 1,
+        issued_at: new Date().toISOString(), issuer_type: 'brand', issuer_id: user?.brand_id || null,
+        payer_type: payerType, payer_id: payerId, invoice_category: newInvoice.invoiceCategory || 'service',
         custom_description: newInvoice.invoiceCategory === 'others' ? newInvoice.customDescription : null,
         service_description: newInvoice.invoiceCategory !== 'others' ? newInvoice.serviceDescription : null,
         additional_charges: calculatedCharges
       };
-
       if (payerMode === 'external') {
-        invoiceData.external_payer_name = externalPayer.name;
-        invoiceData.external_payer_email = externalPayer.email;
-        invoiceData.external_payer_phone = externalPayer.phone || null;
-        invoiceData.external_payer_company = externalPayer.company || null;
-        invoiceData.external_payer_address = externalPayer.address || null;
-        invoiceData.external_payer_tax_id = externalPayer.tax_id || null;
+        invoiceData.external_payer_name = externalPayer.name; invoiceData.external_payer_email = externalPayer.email;
+        invoiceData.external_payer_phone = externalPayer.phone || null; invoiceData.external_payer_company = externalPayer.company || null;
+        invoiceData.external_payer_address = externalPayer.address || null; invoiceData.external_payer_tax_id = externalPayer.tax_id || null;
       }
-
-      const items = [{
-        item_type: newInvoice.invoiceCategory,
-        description: description,
-        calculation_method: 'fixed',
-        fixed_amount: amount,
-        calculated_amount: amount,
-        tax_rate: 0,
-        tax_amount: 0,
-        total_amount: amount
-      }];
-
+      const items = [{ item_type: newInvoice.invoiceCategory, description, calculation_method: 'fixed', fixed_amount: amount, calculated_amount: amount, tax_rate: 0, tax_amount: 0, total_amount: amount }];
       const token = getAuthToken();
-      const response = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          invoice_data: invoiceData,
-          items: items
-        })
-      });
-
-      if (response.ok) {
-        // Refresh invoices list
-        await fetchInvoices();
-        setShowCreateInvoiceModal(false);
-        resetInvoiceForm();
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to create invoice: ${errorData.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error creating invoice:', error);
-      alert('Error creating invoice. Please try again.');
-    }
+      const response = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ invoice_data: invoiceData, items }) });
+      if (response.ok) { await fetchInvoices(); setShowCreateInvoiceModal(false); resetInvoiceForm(); }
+      else { const errorData = await response.json(); alert(`Failed to create invoice: ${errorData.error || 'Unknown error'}`); }
+    } catch (error) { console.error('Error creating invoice:', error); alert('Error creating invoice. Please try again.'); }
   };
 
-  const handleConfirmPayment = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setShowPaymentConfirmModal(true);
-  };
+  const handleConfirmPayment = (invoice: Invoice) => { setSelectedInvoice(invoice); setShowPaymentConfirmModal(true); };
 
   const handleMarkAsPaid = async () => {
     if (!selectedInvoice) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status: 'paid',
-          paid_at: new Date().toISOString()
-        })
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'paid', paid_at: new Date().toISOString() })
       });
-
-      if (response.ok) {
-        // Refresh invoices list
-        await fetchInvoices();
-        setShowPaymentConfirmModal(false);
-        setSelectedInvoice(null);
-        window.dispatchEvent(new Event('refreshBadgeCounts'));
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to update payment status: ${errorData.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error updating payment status:', error);
-      alert('Error updating payment status. Please try again.');
-    }
+      if (response.ok) { await fetchInvoices(); setShowPaymentConfirmModal(false); setSelectedInvoice(null); window.dispatchEvent(new Event('refreshBadgeCounts')); }
+      else { const errorData = await response.json(); alert(`Failed to update payment status: ${errorData.error || 'Unknown error'}`); }
+    } catch (error) { console.error('Error updating payment status:', error); alert('Error updating payment status. Please try again.'); }
   };
 
-  const confirmResendInvoice = () => {
-    if (!selectedInvoice) return;
+  const confirmResendInvoice = () => { if (!selectedInvoice) return; setShowResendConfirmModal(false); setSelectedInvoice(null); };
 
-    setShowResendConfirmModal(false);
-    setSelectedInvoice(null);
-  };
-
-  const handleDeleteInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setShowDeleteConfirmModal(true);
-  };
+  const handleDeleteInvoice = (invoice: Invoice) => { setSelectedInvoice(invoice); setShowDeleteConfirmModal(true); };
 
   const confirmCancelInvoice = async () => {
     if (!selectedInvoice) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          status: 'cancelled'
-        })
+        method: 'PATCH', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'cancelled' })
       });
-
-      if (response.ok) {
-        // Refresh invoices list
-        await fetchInvoices();
-        setShowCancelConfirmModal(false);
-        setSelectedInvoice(null);
-        window.dispatchEvent(new Event('refreshBadgeCounts'));
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to cancel invoice: ${errorData.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error cancelling invoice:', error);
-      alert('Error cancelling invoice. Please try again.');
-    }
+      if (response.ok) { await fetchInvoices(); setShowCancelConfirmModal(false); setSelectedInvoice(null); window.dispatchEvent(new Event('refreshBadgeCounts')); }
+      else { const errorData = await response.json(); alert(`Failed to cancel invoice: ${errorData.error || 'Unknown error'}`); }
+    } catch (error) { console.error('Error cancelling invoice:', error); alert('Error cancelling invoice. Please try again.'); }
   };
 
   const confirmDeleteInvoice = async () => {
     if (!selectedInvoice) return;
-
     try {
       const token = getAuthToken();
       const response = await fetch(`/api/invoices/${selectedInvoice.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+        method: 'DELETE', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
       });
+      if (response.ok) { await fetchInvoices(); setShowDeleteConfirmModal(false); setSelectedInvoice(null); window.dispatchEvent(new Event('refreshBadgeCounts')); }
+      else { const errorData = await response.json(); alert(`Failed to delete invoice: ${errorData.error || 'Unknown error'}`); }
+    } catch (error) { console.error('Error deleting invoice:', error); alert('Error deleting invoice. Please try again.'); }
+  };
 
-      if (response.ok) {
-        // Refresh invoices list
-        await fetchInvoices();
-        setShowDeleteConfirmModal(false);
-        setSelectedInvoice(null);
-        window.dispatchEvent(new Event('refreshBadgeCounts'));
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to delete invoice: ${errorData.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error deleting invoice:', error);
-      alert('Error deleting invoice. Please try again.');
+  // Render helper for invoice action buttons
+  const renderInvoiceActions = (invoice: Invoice, isToPayTab = false) => {
+    if (isToPayTab) {
+      return (
+        <ActionButtons>
+          <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
+          {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
+            <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>{t('brand:brandInvoicesPage.pay')}</LocalActionButton>
+          )}
+          {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
+            <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>{t('brand:brandInvoicesPage.confirm')}</LocalActionButton>
+          )}
+          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </LocalActionButton>
+          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </LocalActionButton>
+          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Email Invoice">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </LocalActionButton>
+        </ActionButtons>
+      );
     }
+
+    // Issued tab actions
+    const pdfBtn = <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>;
+    const printBtn = <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>;
+    const emailBtn = <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Send Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></LocalActionButton>;
+    const deleteBtn = <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice"><IconSymbol>×</IconSymbol></LocalIconButton>;
+
+    return (
+      <ActionButtons>
+        <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
+        {invoice.status === 'draft' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton><LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg></LocalActionButton>{deleteBtn}</>)}
+        {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>{pdfBtn}{printBtn}{emailBtn}{deleteBtn}</>)}
+        {invoice.status === 'payment_submitted' && (<>{invoice.hasPaymentInfo && (<LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('brand:brandInvoicesPage.confirm')}</LocalActionButton>)}{pdfBtn}{printBtn}{emailBtn}</>)}
+        {invoice.status === 'overdue' && (<><LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>{pdfBtn}{printBtn}{emailBtn}{deleteBtn}</>)}
+        {invoice.status === 'paid' && (<>{pdfBtn}{printBtn}</>)}
+        {invoice.status === 'cancelled' && pdfBtn}
+      </ActionButtons>
+    );
   };
 
   return (
@@ -2504,2040 +1265,352 @@ const BrandInvoicesPage: React.FC = () => {
       <Container>
         <Header>
           <Title>{t('brand:brandInvoicesPage.invoices')}</Title>
-          <ActionSection>
-          </ActionSection>
+          <ActionSection></ActionSection>
         </Header>
         <Content>
 
-        {/* Stats - Combined totals shown on all tabs */}
         <StatsGrid>
-          <StatCard color="#059669">
-            <StatValue>{totalIssuedCount}</StatValue>
-            <StatLabel>{t('brand:brandInvoicesPage.issued')}</StatLabel>
-            <StatDescription>{t('brand:brandInvoicesPage.invoicesYouSent')}</StatDescription>
-          </StatCard>
-          <StatCard color="#2563EB">
-            <StatValue>{totalToPayCount}</StatValue>
-            <StatLabel>{t('brand:brandInvoicesPage.toPay')}</StatLabel>
-            <StatDescription>{t('brand:brandInvoicesPage.invoicesReceived')}</StatDescription>
-          </StatCard>
-          <StatCard color="#F59E0B">
-            <StatValue>{pendingInvoices}</StatValue>
-            <StatLabel>{t('brand:brandInvoicesPage.pending')}</StatLabel>
-            <StatDescription>{t('brand:brandInvoicesPage.awaitingPayment')}</StatDescription>
-          </StatCard>
-          <StatCard color="#DC2626">
-            <StatValue>{overdueInvoices}</StatValue>
-            <StatLabel>{t('brand:brandInvoicesPage.overdue')}</StatLabel>
-            <StatDescription>{t('brand:brandInvoicesPage.requiresAttention')}</StatDescription>
-          </StatCard>
+          <StatCard color="#059669"><StatValue>{totalIssuedCount}</StatValue><StatLabel>{t('brand:brandInvoicesPage.issued')}</StatLabel><StatDescription>{t('brand:brandInvoicesPage.invoicesYouSent')}</StatDescription></StatCard>
+          <StatCard color="#2563EB"><StatValue>{totalToPayCount}</StatValue><StatLabel>{t('brand:brandInvoicesPage.toPay')}</StatLabel><StatDescription>{t('brand:brandInvoicesPage.invoicesReceived')}</StatDescription></StatCard>
+          <StatCard color="#F59E0B"><StatValue>{pendingInvoices}</StatValue><StatLabel>{t('brand:brandInvoicesPage.pending')}</StatLabel><StatDescription>{t('brand:brandInvoicesPage.awaitingPayment')}</StatDescription></StatCard>
+          <StatCard color="#DC2626"><StatValue>{overdueInvoices}</StatValue><StatLabel>{t('brand:brandInvoicesPage.overdue')}</StatLabel><StatDescription>{t('brand:brandInvoicesPage.requiresAttention')}</StatDescription></StatCard>
         </StatsGrid>
 
         <Tabs>
-          <CommonTab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
-            Invoices to Pay<TabBadge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length} variant="warning" />
-          </CommonTab>
-          <CommonTab active={activeTab === 'paid'} onClick={() => handleTabChange('paid')}>
-            Paid Invoices<TabBadge count={paidInvoicesList.length} />
-          </CommonTab>
-          <CommonTab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
-            Issued Invoices<TabBadge count={invoices.length} />
-          </CommonTab>
-          <CommonTab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
-            Categories<TabBadge count={invoiceCategories.length} />
-          </CommonTab>
+          <CommonTab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>Invoices to Pay<TabBadge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length} variant="warning" /></CommonTab>
+          <CommonTab active={activeTab === 'paid'} onClick={() => handleTabChange('paid')}>Paid Invoices<TabBadge count={paidInvoicesList.length} /></CommonTab>
+          <CommonTab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>Issued Invoices<TabBadge count={invoices.length} /></CommonTab>
+          <CommonTab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>Categories<TabBadge count={invoiceCategories.length} /></CommonTab>
         </Tabs>
 
+        {/* Issued Tab */}
         {activeTab === 'issued' && (
           <>
-        <FilterBarWrapper>
-          <DatePeriodFilter
-            activePeriod={activePeriod}
-            dateRange={dateRange}
-            isCustomDateRange={isCustomDateRange}
-            onPeriodChange={handlePeriodChange}
-            onCalendarRangeSelect={handleCalendarRangeSelect}
-          >
-            <SearchInput
-              placeholder="Search invoice, status, company, type..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </DatePeriodFilter>
-          <FiltersRight>
-            <Button variant="primary" onClick={handleCreateInvoice}>{t('brand:brandInvoicesPage.createInvoice')}</Button>
-          </FiltersRight>
-        </FilterBarWrapper>
-
-        <DataTableContainer>
-          <DataTable>
-            <DataTableHead>
-              <tr>
-                <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.customer')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.period')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.issued')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.due')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
-              </tr>
-            </DataTableHead>
-            <tbody>
+            <FilterBarWrapper>
+              <DatePeriodFilter activePeriod={activePeriod} dateRange={dateRange} isCustomDateRange={isCustomDateRange} onPeriodChange={handlePeriodChange} onCalendarRangeSelect={handleCalendarRangeSelect}>
+                <SearchInput placeholder="Search invoice, status, company, type..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              </DatePeriodFilter>
+              <FiltersRight><Button variant="primary" onClick={handleCreateInvoice}>{t('brand:brandInvoicesPage.createInvoice')}</Button></FiltersRight>
+            </FilterBarWrapper>
+            <DataTableContainer><DataTable><DataTableHead><tr>
+              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.customer')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.period')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.issued')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.due')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
+            </tr></DataTableHead><tbody>
               {filteredInvoices.map(invoice => (
                 <DataTableRow key={invoice.id}>
-                  <DataTableCell data-label="Invoice" align="left">
-                    <InvoiceInfo>
-                      <InvoiceNumber>
-                        {invoice.invoiceNumber}
-                        {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}
-                      </InvoiceNumber>
-                      <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
-                    </InvoiceInfo>
-                  </DataTableCell>
-                  <DataTableCell data-label="Customer" align="left">
-                    <InvoiceInfo>
-                      <InvoiceNumber>
-                        {invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}
-                        {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.nonmember')}</span>}
-                      </InvoiceNumber>
-                      <CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
-                    </InvoiceInfo>
-                  </DataTableCell>
+                  <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
+                  <DataTableCell data-label="Customer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}{invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.nonmember')}</span>}</InvoiceNumber><CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName></InvoiceInfo></DataTableCell>
                   <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
                   <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
                   <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
-                  <DataTableCell data-label="Status" align="center">
-                    <StatusBadge status={getEffectiveStatus(invoice)}>
-                      {getStatusDisplay(getEffectiveStatus(invoice))}
-                    </StatusBadge>
-                    {invoice.isModified && (
-                      <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.modified')}</span>
-                    )}
-                  </DataTableCell>
+                  <DataTableCell data-label="Status" align="center"><StatusBadge status={getEffectiveStatus(invoice)}>{getStatusDisplay(getEffectiveStatus(invoice))}</StatusBadge>{invoice.isModified && (<span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.modified')}</span>)}</DataTableCell>
+                  <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="" mobileFullWidth>{renderInvoiceActions(invoice)}</DataTableCell>
+                </DataTableRow>
+              ))}
+              {filteredInvoices.length === 0 && (<DataTableRow><DataTableCell colSpan={9}><DataTableEmpty><div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.noInvoicesFound')}</div><div style={{ fontSize: '14px' }}>{invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}</div></DataTableEmpty></DataTableCell></DataTableRow>)}
+            </tbody></DataTable></DataTableContainer>
+          </>
+        )}
+
+        {/* To Pay Tab */}
+        {activeTab === 'to_pay' && (
+          <>
+            <DatePeriodFilter activePeriod={toPayActivePeriod} dateRange={toPayDateRange} isCustomDateRange={toPayIsCustomDateRange} onPeriodChange={handleToPayPeriodChange} onCalendarRangeSelect={handleToPayCalendarRangeSelect}>
+              <SearchInput placeholder="Search invoice, status, issuer..." value={toPaySearchTerm} onChange={(e) => setToPaySearchTerm(e.target.value)} />
+            </DatePeriodFilter>
+            <DataTableContainer><DataTable><DataTableHead><tr>
+              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.issuer')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.period')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.issued')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.due')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
+            </tr></DataTableHead><tbody>
+              {filteredInvoicesToPay.length > 0 ? filteredInvoicesToPay.map(invoice => (
+                <DataTableRow key={invoice.id}>
+                  <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
+                  <DataTableCell data-label="Issuer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber><CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName></InvoiceInfo></DataTableCell>
+                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                  <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
+                  <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
+                  <DataTableCell data-label="Status" align="center"><StatusBadge status={getEffectiveStatus(invoice)}>{getStatusDisplay(getEffectiveStatus(invoice))}</StatusBadge>{invoice.isModified && (<span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.modified')}</span>)}</DataTableCell>
+                  <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label="" mobileFullWidth>{renderInvoiceActions(invoice, true)}</DataTableCell>
+                </DataTableRow>
+              )) : (<DataTableRow><DataTableCell colSpan={9}><DataTableEmpty>{t('brand:brandInvoicesPage.noInvoicesToPay')}</DataTableEmpty></DataTableCell></DataTableRow>)}
+            </tbody></DataTable></DataTableContainer>
+          </>
+        )}
+
+        {/* Paid Tab */}
+        {activeTab === 'paid' && (
+          <>
+            <DatePeriodFilter activePeriod={paidActivePeriod} dateRange={paidDateRange} isCustomDateRange={paidIsCustomDateRange} onPeriodChange={handlePaidPeriodChange} onCalendarRangeSelect={handlePaidCalendarRangeSelect}>
+              <SearchInput placeholder="Search invoice, issuer, restaurant..." value={paidSearchTerm} onChange={(e) => setPaidSearchTerm(e.target.value)} />
+            </DatePeriodFilter>
+            <DataTableContainer><DataTable><DataTableHead><tr>
+              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.issuer')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.period')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.paidDate')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
+            </tr></DataTableHead><tbody>
+              {filteredPaidInvoices.length > 0 ? filteredPaidInvoices.map(invoice => (
+                <DataTableRow key={invoice.id}>
+                  <DataTableCell data-label="Invoice" align="left"><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></DataTableCell>
+                  <DataTableCell data-label="Issuer" align="left"><InvoiceInfo><InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber><CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName></InvoiceInfo></DataTableCell>
+                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                  <DataTableCell data-label="Paid" align="center" style={{ fontSize: '13px' }}>{invoice.paidDate ? formatDate(invoice.paidDate) : formatDate(invoice.issueDate)}</DataTableCell>
+                  <DataTableCell data-label="Status" align="center"><StatusBadge status="paid">{t('brand:brandInvoicesPage.paid')}</StatusBadge></DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>
                     <ActionButtons>
                       <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
-                      {invoice.status === 'draft' && (
-                        <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>
-                          <LocalActionButton variant="success" onClick={() => handleSendInvoice(invoice)} title="Send Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="22" y1="2" x2="11" y2="13"/>
-                              <polygon points="22,2 15,22 11,13 2,9 22,2"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
-                            <IconSymbol>×</IconSymbol>
-                          </LocalIconButton>
-                        </>
-                      )}
-                      {(invoice.status === 'pending_payment' || invoice.status === '' || !invoice.status) && (
-                        <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                              <polyline points="7,10 12,15 17,10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="6,9 6,2 18,2 18,9"/>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                              <rect x="6" y="14" width="12" height="8"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Send Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                              <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
-                            <IconSymbol>×</IconSymbol>
-                          </LocalIconButton>
-                        </>
-                      )}
-                      {invoice.status === 'payment_submitted' && (
-                        <>
-                          {invoice.hasPaymentInfo && (
-                            <LocalActionButton variant="primary" onClick={() => handleConfirmPayment(invoice)}>{t('brand:brandInvoicesPage.confirm')}</LocalActionButton>
-                          )}
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                              <polyline points="7,10 12,15 17,10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="6,9 6,2 18,2 18,9"/>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                              <rect x="6" y="14" width="12" height="8"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                              <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                          </LocalActionButton>
-                        </>
-                      )}
-                      {invoice.status === 'overdue' && (
-                        <>
-                          <LocalActionButton onClick={() => handleEditInvoice(invoice)}>{t('brand:brandInvoicesPage.edit')}</LocalActionButton>
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                              <polyline points="7,10 12,15 17,10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="6,9 6,2 18,2 18,9"/>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                              <rect x="6" y="14" width="12" height="8"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Resend Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                              <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalIconButton onClick={() => handleDeleteInvoice(invoice)} title="Delete Invoice">
-                            <IconSymbol>×</IconSymbol>
-                          </LocalIconButton>
-                        </>
-                      )}
-                      {invoice.status === 'paid' && (
-                        <>
-                          <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                              <polyline points="7,10 12,15 17,10"/>
-                              <line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
-                          </LocalActionButton>
-                          <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="6,9 6,2 18,2 18,9"/>
-                              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                              <rect x="6" y="14" width="12" height="8"/>
-                            </svg>
-                          </LocalActionButton>
-                        </>
-                      )}
-                      {invoice.status === 'cancelled' && (
-                        <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download Invoice">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7,10 12,15 17,10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                          </svg>
-                        </LocalActionButton>
-                      )}
+                      <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></LocalActionButton>
+                      <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,9 6,2 18,2 18,9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></LocalActionButton>
                     </ActionButtons>
                   </DataTableCell>
                 </DataTableRow>
-              ))}
-
-              {filteredInvoices.length === 0 && (
-                <DataTableRow>
-                  <DataTableCell colSpan={9}>
-                    <DataTableEmpty>
-                      <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.noInvoicesFound')}</div>
-                      <div style={{ fontSize: '14px' }}>
-                        {invoices.length === 0 ? 'Create your first invoice to get started' : 'Try adjusting your filters'}
-                      </div>
-                    </DataTableEmpty>
-                  </DataTableCell>
-                </DataTableRow>
-              )}
-            </tbody>
-          </DataTable>
-        </DataTableContainer>
+              )) : (<DataTableRow><DataTableCell colSpan={8}><DataTableEmpty>{t('brand:brandInvoicesPage.noPaidInvoicesYet')}</DataTableEmpty></DataTableCell></DataTableRow>)}
+            </tbody></DataTable></DataTableContainer>
           </>
         )}
 
-        {activeTab === 'to_pay' && (
-          <>
-            <DatePeriodFilter
-              activePeriod={toPayActivePeriod}
-              dateRange={toPayDateRange}
-              isCustomDateRange={toPayIsCustomDateRange}
-              onPeriodChange={handleToPayPeriodChange}
-              onCalendarRangeSelect={handleToPayCalendarRangeSelect}
-            >
-              <SearchInput
-                placeholder="Search invoice, status, issuer..."
-                value={toPaySearchTerm}
-                onChange={(e) => setToPaySearchTerm(e.target.value)}
-              />
-            </DatePeriodFilter>
-
-            <DataTableContainer>
-              <DataTable>
-                <DataTableHead>
-                  <tr>
-                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.issuer')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.period')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.issued')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.due')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
-                  </tr>
-                </DataTableHead>
-                <tbody>
-                  {filteredInvoicesToPay.length > 0 ? (
-                    filteredInvoicesToPay.map(invoice => (
-                      <DataTableRow key={invoice.id}>
-                        <DataTableCell data-label="Invoice" align="left">
-                          <InvoiceInfo>
-                            <InvoiceNumber>
-                              {invoice.invoiceNumber}
-                              {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}
-                            </InvoiceNumber>
-                            <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
-                          </InvoiceInfo>
-                        </DataTableCell>
-                        <DataTableCell data-label="Issuer" align="left">
-                          <InvoiceInfo>
-                            <InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber>
-                            <CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName>
-                          </InvoiceInfo>
-                        </DataTableCell>
-                        <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
-                        <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
-                        <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
-                        <DataTableCell data-label="Status" align="center">
-                          <StatusBadge status={getEffectiveStatus(invoice)}>
-                            {getStatusDisplay(getEffectiveStatus(invoice))}
-                          </StatusBadge>
-                          {invoice.isModified && (
-                            <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.modified')}</span>
-                          )}
-                        </DataTableCell>
-                        <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
-                        <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
-                        <DataTableCell data-label="" mobileFullWidth>
-                          <ActionButtons>
-                            <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
-
-                            {/* Pay button for pending/overdue/sent invoices (not for free) */}
-                            {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
-                              <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>{t('brand:brandInvoicesPage.pay')}</LocalActionButton>
-                            )}
-
-                            {/* Confirm button for free invoices */}
-                            {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
-                              <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>{t('brand:brandInvoicesPage.confirm')}</LocalActionButton>
-                            )}
-
-                            {/* Download PDF */}
-                            <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7,10 12,15 17,10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                              </svg>
-                            </LocalActionButton>
-
-                            {/* Print */}
-                            <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="6,9 6,2 18,2 18,9"/>
-                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                                <rect x="6" y="14" width="12" height="8"/>
-                              </svg>
-                            </LocalActionButton>
-
-                            {/* Email - for received invoices */}
-                            <LocalActionButton variant="email" onClick={() => handleOpenEmailModal(invoice)} title="Email Invoice">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                <polyline points="22,6 12,13 2,6"/>
-                              </svg>
-                            </LocalActionButton>
-                          </ActionButtons>
-                        </DataTableCell>
-                      </DataTableRow>
-                    ))
-                  ) : (
-                    <DataTableRow>
-                      <DataTableCell colSpan={9}>
-                        <DataTableEmpty>{t('brand:brandInvoicesPage.noInvoicesToPay')}</DataTableEmpty>
-                      </DataTableCell>
-                    </DataTableRow>
-                  )}
-                </tbody>
-              </DataTable>
-            </DataTableContainer>
-          </>
-        )}
-
-        {activeTab === 'paid' && (
-          <>
-            <DatePeriodFilter
-              activePeriod={paidActivePeriod}
-              dateRange={paidDateRange}
-              isCustomDateRange={paidIsCustomDateRange}
-              onPeriodChange={handlePaidPeriodChange}
-              onCalendarRangeSelect={handlePaidCalendarRangeSelect}
-            >
-              <SearchInput
-                placeholder="Search invoice, issuer, restaurant..."
-                value={paidSearchTerm}
-                onChange={(e) => setPaidSearchTerm(e.target.value)}
-              />
-            </DatePeriodFilter>
-
-            <DataTableContainer>
-              <DataTable>
-                <DataTableHead>
-                  <tr>
-                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.invoice')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.issuer')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.period')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.paidDate')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{t('brand:brandInvoicesPage.status')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.amount')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">{t('brand:brandInvoicesPage.total')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{t('brand:brandInvoicesPage.actions')}</DataTableHeaderCell>
-                  </tr>
-                </DataTableHead>
-                <tbody>
-                  {filteredPaidInvoices.length > 0 ? (
-                    filteredPaidInvoices.map(invoice => (
-                      <DataTableRow key={invoice.id}>
-                        <DataTableCell data-label="Invoice" align="left">
-                          <InvoiceInfo>
-                            <InvoiceNumber>
-                              {invoice.invoiceNumber}
-                              {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('brand:brandInvoicesPage.auto')}</AutoBadge>}
-                            </InvoiceNumber>
-                            <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
-                          </InvoiceInfo>
-                        </DataTableCell>
-                        <DataTableCell data-label="Issuer" align="left">
-                          <InvoiceInfo>
-                            <InvoiceNumber>{invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}</InvoiceNumber>
-                            <CompanyName>{invoice.restaurantName && invoice.restaurantName !== 'Unknown' ? `For: ${invoice.restaurantName}` : ''}</CompanyName>
-                          </InvoiceInfo>
-                        </DataTableCell>
-                        <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
-                        <DataTableCell data-label="Paid" align="center" style={{ fontSize: '13px' }}>{invoice.paidDate ? formatDate(invoice.paidDate) : formatDate(invoice.issueDate)}</DataTableCell>
-                        <DataTableCell data-label="Status" align="center">
-                          <StatusBadge status="paid">{t('brand:brandInvoicesPage.paid')}</StatusBadge>
-                        </DataTableCell>
-                        <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
-                        <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
-                        <DataTableCell data-label="" mobileFullWidth>
-                          <ActionButtons>
-                            <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>{t('brand:brandInvoicesPage.view')}</LocalActionButton>
-                            <LocalActionButton onClick={() => generateInvoicePDF(invoice)} title="Download PDF">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7,10 12,15 17,10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                              </svg>
-                            </LocalActionButton>
-                            <LocalActionButton onClick={() => handlePrintInvoice(invoice)} title="Print Invoice">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="6,9 6,2 18,2 18,9"/>
-                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                                <rect x="6" y="14" width="12" height="8"/>
-                              </svg>
-                            </LocalActionButton>
-                          </ActionButtons>
-                        </DataTableCell>
-                      </DataTableRow>
-                    ))
-                  ) : (
-                    <DataTableRow>
-                      <DataTableCell colSpan={8}>
-                        <DataTableEmpty>{t('brand:brandInvoicesPage.noPaidInvoicesYet')}</DataTableEmpty>
-                      </DataTableCell>
-                    </DataTableRow>
-                  )}
-                </tbody>
-              </DataTable>
-            </DataTableContainer>
-          </>
-        )}
-
+        {/* Categories Tab */}
         {activeTab === 'categories' && (
-          <div style={{ padding: '24px 0' }}>
-            <HeaderRow>
-              <div>
-                <SectionTitle>{t('brand:brandInvoicesPage.invoiceCategories')}</SectionTitle>
-                <p style={{ color: '#6B7280', fontSize: '14px', margin: '8px 0 0 0' }}>
-                  Manage invoice categories for organizing different types of charges.
-                </p>
-              </div>
-              <Button variant="primary" onClick={() => {
-                setEditingCategory(null);
-                setCategoryFormData({ name: '', code: '', description: '' });
-                setShowCategoryModal(true);
-              }}>
-                Add Category
-              </Button>
-            </HeaderRow>
-
-            {invoiceCategories.length === 0 ? (
-              <CategoryEmptyState>
-                <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', margin: '0 0 8px 0' }}>{t('brand:brandInvoicesPage.noCategoriesYet')}</h4>
-                <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 16px 0' }}>{t('brand:brandInvoicesPage.createYourFirstInvoiceCategoryToOrganizeCharges')}</p>
-                <Button variant="primary" onClick={() => {
-                  setEditingCategory(null);
-                  setCategoryFormData({ name: '', code: '', description: '' });
-                  setShowCategoryModal(true);
-                }}>{t('brand:brandInvoicesPage.addCategory')}</Button>
-              </CategoryEmptyState>
-            ) : (
-              <CategoryGrid>
-                {invoiceCategories.map(category => (
-                  <CategoryCard key={category.id} isActive={category.is_active}>
-                    <CategoryIcon>
-                      {category.name.charAt(0).toUpperCase()}
-                    </CategoryIcon>
-                    <CategoryInfo>
-                      <CategoryName>
-                        {category.name}
-                        <CategoryStatusBadge active={category.is_active}>
-                          {category.is_active ? 'Active' : 'Inactive'}
-                        </CategoryStatusBadge>
-                      </CategoryName>
-                      <CategoryMeta>
-                        <span>Code: <strong>{category.code}</strong></span>
-                        {category.description && <span>{category.description}</span>}
-                      </CategoryMeta>
-                    </CategoryInfo>
-                    <CategoryActions>
-                      <CategoryIconButton onClick={() => {
-                        setEditingCategory(category);
-                        setCategoryFormData({
-                          name: category.name,
-                          code: category.code,
-                          description: category.description || ''
-                        });
-                        setShowCategoryModal(true);
-                      }} title="Edit Category">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </CategoryIconButton>
-                      <CategoryIconButton onClick={() => {
-                        setCategoryToDelete(category);
-                        setDeleteCategoryModalOpen(true);
-                      }} title="Delete Category">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3,6 5,6 21,6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
-                      </CategoryIconButton>
-                    </CategoryActions>
-                  </CategoryCard>
-                ))}
-              </CategoryGrid>
-            )}
-          </div>
+          <BrandInvoiceCategoryManager
+            invoiceCategories={invoiceCategories}
+            showCategoryModal={showCategoryModal}
+            setShowCategoryModal={setShowCategoryModal}
+            editingCategory={editingCategory}
+            setEditingCategory={setEditingCategory}
+            categoryFormData={categoryFormData}
+            setCategoryFormData={setCategoryFormData}
+            savingCategory={savingCategory}
+            deleteCategoryModalOpen={deleteCategoryModalOpen}
+            setDeleteCategoryModalOpen={setDeleteCategoryModalOpen}
+            categoryToDelete={categoryToDelete}
+            setCategoryToDelete={setCategoryToDelete}
+            handleCloseCategoryModal={handleCloseCategoryModal}
+            handleDeleteCategoryConfirm={handleDeleteCategoryConfirm}
+          />
         )}
 
         {/* Payment Submit Modal */}
         {showPaymentSubmitModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>{t('brand:brandInvoicesPage.cancel')}</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
-
-                <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
-                  <p style={{ margin: '0', fontSize: '20px', fontWeight: '700', color: '#0A2540' }}>
-                    {formatCurrency(selectedInvoice.total, selectedInvoice.currency)}
-                  </p>
-                </div>
-
-                {loadingPaymentMethods ? (
-                  <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>{t('brand:brandInvoicesPage.loadingPaymentMethods')}</div>
-                ) : availablePaymentMethods.length === 0 ? (
-                  <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
-                    <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>
-                      Payment Not Available
-                    </p>
-                    {selectedInvoice.issuerType === 'system_admin' ? (
-                      <p style={{ margin: 0, color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
-                        <strong>{t('brand:brandInvoicesPage.systemAdmin')}</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the system administrator.
-                      </p>
-                    ) : (
-                      <>
-                        <p style={{ margin: '0 0 12px 0', color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>
-                          No payment methods configured for <strong>{getCurrencySymbol(selectedInvoice.currency || 'MYR')}</strong>. Please set up your payment settings first.
-                        </p>
-                        <button
-                          onClick={() => { setShowPaymentSubmitModal(false); window.location.href = '/pos/brand/payment-settings'; }}
-                          style={{ padding: '8px 16px', background: '#EF4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-                        >
-                          Go to Payment Settings
-                        </button>
-                      </>
-                    )}
+          <CommonModal isOpen={true} onClose={() => setShowPaymentSubmitModal(false)} title="Submit Payment" footer={<><div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}><Button variant="secondary" onClick={() => { setShowPaymentSubmitModal(false); setPaymentSubmitError(null); }}>{t('brand:brandInvoicesPage.cancel')}</Button> {paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && ( <Button variant="success" onClick={handleSubmitPayment} disabled={!paymentData.paymentMethod || loadingPaymentMethods || isSubmittingPayment || (!paymentData.transactionId && !paymentData.receiptImage)} > {isSubmittingPayment ? 'Submitting...' : 'Submit Payment'} </Button> )} </div> {paymentSubmitError && ( <StatusMessage type="error" style={{ marginTop: '12px', wordBreak: 'break-word' }}> {paymentSubmitError} </StatusMessage> )}</>}>
+            <div style={{ marginBottom: '20px', padding: '16px', background: '#F8FAFC', borderRadius: '8px' }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6B7280' }}>Invoice: <strong>{selectedInvoice.invoiceNumber}</strong></p>
+              <p style={{ margin: '0', fontSize: '20px', fontWeight: '700', color: '#0A2540' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency)}</p>
+            </div>
+            {loadingPaymentMethods ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>{t('brand:brandInvoicesPage.loadingPaymentMethods')}</div>
+            ) : availablePaymentMethods.length === 0 ? (
+              <div style={{ padding: '20px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px' }}>
+                <p style={{ margin: '0 0 8px 0', fontWeight: '600', color: '#92400E', fontSize: '15px' }}>Payment Not Available</p>
+                {selectedInvoice.issuerType === 'system_admin' ? (
+                  <p style={{ margin: 0, color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}><strong>{t('brand:brandInvoicesPage.systemAdmin')}</strong> has not configured payment methods for <strong>{selectedInvoice.currency || 'MYR'}</strong> yet. Please contact the system administrator.</p>
+                ) : (<><p style={{ margin: '0 0 12px 0', color: '#92400E', fontSize: '14px', lineHeight: '1.5' }}>No payment methods configured for <strong>{getCurrencySymbol(selectedInvoice.currency || 'MYR')}</strong>. Please set up your payment settings first.</p><button onClick={() => { setShowPaymentSubmitModal(false); window.location.href = '/pos/brand/payment-settings'; }} style={{ padding: '8px 16px', background: '#EF4444', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>Go to Payment Settings</button></>)}
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: '20px' }}>
+                  <FormLabel>Payment Method *</FormLabel>
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(availablePaymentMethods.length, 3)}, 1fr)`, gap: '10px', marginTop: '8px' }}>
+                    {availablePaymentMethods.map(method => (
+                      <button key={method.id} onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setPaymentSubmitError(null); }}
+                        style={{ padding: '12px 16px', minHeight: '44px', borderRadius: '8px', border: `1px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E6EBF1'}`, background: paymentData.paymentMethod === method.id ? 'rgba(99, 91, 255, 0.1)' : 'white', color: paymentData.paymentMethod === method.id ? '#635BFF' : '#374151', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s', textAlign: 'center' }}>{method.name}</button>
+                    ))}
                   </div>
-                ) : (
+                </div>
+                {paymentData.paymentMethod === 'stripe' && selectedInvoice && (
+                  <StripePaymentForm invoiceId={selectedInvoice.id} onSuccess={() => { setShowPaymentSubmitModal(false); setSelectedInvoice(null); setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' }); setSuccessMessage('Payment submitted successfully! The issuer will review and confirm your payment.'); setShowSuccessModal(true); fetchInvoicesToPay(); fetchPaidInvoices(); window.dispatchEvent(new Event('refreshBadgeCounts')); }} onError={() => {}} />
+                )}
+                {paymentData.paymentMethod === 'bank_transfer' && (() => { const m = availablePaymentMethods.find(m => m.id === 'bank_transfer'); return m ? (<div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', fontSize: '14px', lineHeight: '1.8' }}><h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.bankTransferDetails')}</h4><p style={{ margin: '0' }}><strong>Bank:</strong> {m.bankName}</p><p style={{ margin: '0' }}><strong>Account Number:</strong> {m.accountNumber}</p><p style={{ margin: '0' }}><strong>Account Name:</strong> {m.accountName}</p></div>) : null; })()}
+                {paymentData.paymentMethod === 'qr_payment' && (() => { const m = availablePaymentMethods.find(m => m.id === 'qr_payment'); return m ? (<div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}><h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.qrPayment')}</h4>{m.qrImage && <img src={m.qrImage} alt="Payment QR Code" style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #E5E7EB', borderRadius: '8px' }} />}{m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{m.qrDescription}</p>}</div>) : null; })()}
+                {paymentData.paymentMethod && paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
                   <>
-                    {/* Payment Method Selection - Card Style */}
-                    <div style={{ marginBottom: '20px' }}>
-                      <FormLabel>Payment Method *</FormLabel>
-                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(availablePaymentMethods.length, 3)}, 1fr)`, gap: '10px', marginTop: '8px' }}>
-                        {availablePaymentMethods.map(method => (
-                          <button
-                            key={method.id}
-                            onClick={() => { setPaymentData(prev => ({ ...prev, paymentMethod: method.id })); setPaymentSubmitError(null); }}
-                            style={{
-                              padding: '12px 16px', minHeight: '44px',
-                              borderRadius: '8px',
-                              border: `1px solid ${paymentData.paymentMethod === method.id ? '#635BFF' : '#E6EBF1'}`,
-                              background: paymentData.paymentMethod === method.id ? 'rgba(99, 91, 255, 0.1)' : 'white',
-                              color: paymentData.paymentMethod === method.id ? '#635BFF' : '#374151',
-                              fontSize: '14px', fontWeight: '500',
-                              cursor: 'pointer', transition: 'all 0.15s',
-                              textAlign: 'center'
-                            }}
-                          >
-                            {method.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Stripe Card Payment Form */}
-                    {paymentData.paymentMethod === 'stripe' && selectedInvoice && (
-                      <StripePaymentForm
-                        invoiceId={selectedInvoice.id}
-                        onSuccess={() => {
-                          setShowPaymentSubmitModal(false);
-                          setSelectedInvoice(null);
-                          setPaymentData({ paymentMethod: 'bank_transfer', transactionId: '', notes: '', receiptImage: '' });
-                          setSuccessMessage('Payment submitted successfully! The issuer will review and confirm your payment.');
-                          setShowSuccessModal(true);
-                          fetchInvoicesToPay();
-                          fetchPaidInvoices();
-                          window.dispatchEvent(new Event('refreshBadgeCounts'));
-                        }}
-                        onError={() => {}}
-                      />
-                    )}
-
-                    {/* Bank Transfer Details */}
-                    {paymentData.paymentMethod === 'bank_transfer' && (() => {
-                      const m = availablePaymentMethods.find(m => m.id === 'bank_transfer');
-                      return m ? (
-                        <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', fontSize: '14px', lineHeight: '1.8' }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.bankTransferDetails')}</h4>
-                          <p style={{ margin: '0' }}><strong>Bank:</strong> {m.bankName}</p>
-                          <p style={{ margin: '0' }}><strong>Account Number:</strong> {m.accountNumber}</p>
-                          <p style={{ margin: '0' }}><strong>Account Name:</strong> {m.accountName}</p>
-                        </div>
-                      ) : null;
-                    })()}
-
-                    {/* QR Payment Details */}
-                    {paymentData.paymentMethod === 'qr_payment' && (() => {
-                      const m = availablePaymentMethods.find(m => m.id === 'qr_payment');
-                      return m ? (
-                        <div style={{ padding: '16px', background: '#EFF6FF', borderRadius: '8px', marginBottom: '16px', textAlign: 'center' }}>
-                          <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '600', color: '#1E40AF' }}>{t('brand:brandInvoicesPage.qrPayment')}</h4>
-                          {m.qrImage && <img src={m.qrImage} alt="Payment QR Code" style={{ maxWidth: '200px', maxHeight: '200px', border: '1px solid #E5E7EB', borderRadius: '8px' }} />}
-                          {m.qrDescription && <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#6B7280' }}>{m.qrDescription}</p>}
-                        </div>
-                      ) : null;
-                    })()}
-
-                    {/* Manual payment fields (bank_transfer, qr_payment only) */}
-                    {paymentData.paymentMethod && paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
-                      <>
-                        <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                          <span style={{ fontWeight: '600', flexShrink: 0 }}>*</span>
-                          <span>{t('brand:brandInvoicesPage.pleaseProvideEitherA')}<strong>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</strong> or upload a <strong>{t('brand:brandInvoicesPage.paymentReceiptImage')}</strong> to submit your payment.</span>
-                        </div>
-                        <FormGroup>
-                          <FormLabel>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</FormLabel>
-                          <FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} />
-                        </FormGroup>
-                        <FormGroup>
-                          <FormLabel>{t('brand:brandInvoicesPage.paymentReceiptImage')}</FormLabel>
-                          <div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC', cursor: 'pointer', position: 'relative' }}>
-                            {paymentData.receiptImage ? (
-                              <div>
-                                <img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} />
-                                <div>
-                                  <button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('brand:brandInvoicesPage.removeImage')}</button>
-                                </div>
-                              </div>
-                            ) : (
-                              <label style={{ cursor: 'pointer', display: 'block' }}>
-                                <input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ display: 'none' }} />
-                                <div style={{ color: '#6B7280', fontSize: '14px' }}>
-                                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div>
-                                  <div>{t('brand:brandInvoicesPage.clickToUploadPaymentReceipt')}</div>
-                                  <div style={{ fontSize: '12px', marginTop: '4px' }}>{t('brand:brandInvoicesPage.supportsJpgPngMax5mb')}</div>
-                                </div>
-                              </label>
-                            )}
-                          </div>
-                        </FormGroup>
-                        <FormGroup>
-                          <FormLabel>{t('brand:brandInvoicesPage.notesOptional')}</FormLabel>
-                          <FormTextarea placeholder="Any additional information about the payment..." value={paymentData.notes} onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))} />
-                        </FormGroup>
-                      </>
-                    )}
+                    <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}><span style={{ fontWeight: '600', flexShrink: 0 }}>*</span><span>{t('brand:brandInvoicesPage.pleaseProvideEitherA')}<strong>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</strong> or upload a <strong>{t('brand:brandInvoicesPage.paymentReceiptImage')}</strong> to submit your payment.</span></div>
+                    <FormGroup><FormLabel>{t('brand:brandInvoicesPage.transactionIdReferenceNumber')}</FormLabel><FormInput type="text" placeholder="Enter transaction ID or reference number" value={paymentData.transactionId} onChange={(e) => setPaymentData(prev => ({ ...prev, transactionId: e.target.value }))} /></FormGroup>
+                    <FormGroup><FormLabel>{t('brand:brandInvoicesPage.paymentReceiptImage')}</FormLabel><div style={{ border: '2px dashed #E6EBF1', borderRadius: '8px', padding: '20px', textAlign: 'center', background: paymentData.receiptImage ? '#F0FDF4' : '#FAFBFC', cursor: 'pointer', position: 'relative' }}>{paymentData.receiptImage ? (<div><img src={paymentData.receiptImage} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '12px' }} /><div><button type="button" onClick={() => setPaymentData(prev => ({ ...prev, receiptImage: '' }))} style={{ background: '#EF4444', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>{t('brand:brandInvoicesPage.removeImage')}</button></div></div>) : (<label style={{ cursor: 'pointer', display: 'block' }}><input type="file" accept="image/*" onChange={handleReceiptImageUpload} style={{ display: 'none' }} /><div style={{ color: '#6B7280', fontSize: '14px' }}><div style={{ fontSize: '24px', marginBottom: '8px' }}>+</div><div>{t('brand:brandInvoicesPage.clickToUploadPaymentReceipt')}</div><div style={{ fontSize: '12px', marginTop: '4px' }}>{t('brand:brandInvoicesPage.supportsJpgPngMax5mb')}</div></div></label>)}</div></FormGroup>
+                    <FormGroup><FormLabel>{t('brand:brandInvoicesPage.notesOptional')}</FormLabel><FormTextarea placeholder="Any additional information about the payment..." value={paymentData.notes} onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))} /></FormGroup>
                   </>
                 )}
-              
+              </>
+            )}
           </CommonModal>
         )}
-
-        {/* Legacy Category Modal - kept for compatibility */}
-        {showCategoryModal && (
-                    <CommonModal isOpen={true} onClose={handleCloseCategoryModal} title={editingCategory ? 'Edit Category' : 'Add Category'} footer={<><Button variant="secondary" type="button" onClick={handleCloseCategoryModal}>{t('brand:brandInvoicesPage.cancel')}</Button><Button variant="primary" type="submit" disabled={savingCategory || !categoryFormData.name || !categoryFormData.code}> {savingCategory ? 'Saving...' : (editingCategory ? 'Update' : 'Create')} </Button></>}>
-
-                  <FormGroup>
-                    <FormLabel>Name *</FormLabel>
-                    <FormInput
-                      value={categoryFormData.name}
-                      onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
-                      placeholder="e.g., Hardware"
-                      required
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Code *</FormLabel>
-                    <FormInput
-                      value={categoryFormData.code}
-                      onChange={(e) => setCategoryFormData({ ...categoryFormData, code: e.target.value })}
-                      placeholder="e.g., hardware"
-                      required
-                      disabled={editingCategory?.is_system}
-                    />
-                    <small style={{ color: '#6B7280', fontSize: '12px' }}>
-                      Unique identifier used in the system. Use lowercase letters and underscores.
-                    </small>
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>{t('brand:brandInvoicesPage.description')}</FormLabel>
-                    <FormTextarea
-                      value={categoryFormData.description}
-                      onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
-                      placeholder="Brief description of this category"
-                      rows={3}
-                    />
-                  </FormGroup>
-                
-          </CommonModal>
-        )}
-
-        {/* Delete Category Confirmation Modal */}
-        <ConfirmModal
-          isOpen={deleteCategoryModalOpen}
-          onCancel={() => setDeleteCategoryModalOpen(false)}
-          onConfirm={handleDeleteCategoryConfirm}
-          title="Delete Category"
-          message={`Are you sure you want to delete "${categoryToDelete?.name}"? This action cannot be undone.`}
-          confirmText="Delete"
-          cancelText="Cancel"
-          type="danger"
-        />
 
         {/* Create Invoice Modal */}
         {showCreateInvoiceModal && (
-                    <CommonModal isOpen={true} onClose={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }} title="Create Invoice" footer={<><Button variant="secondary" onClick={() => { setShowCreateInvoiceModal(false); resetInvoiceForm(); }}> Cancel </Button> {paymentMethodWarning && ( <div style={{ padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', fontSize: '13px', color: '#92400E', marginBottom: '12px', flex: '1 1 100%' }}> {paymentMethodWarning} </div> )} <Button variant="primary" onClick={handleSubmitInvoice} disabled={payerMode === 'member' ? (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate) : (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)} > Create Invoice </Button></>}>
-
-                <FormGroup>
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', border: '1px solid ' + (payerMode === 'member' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: payerMode === 'member' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="payerMode" value="member" checked={payerMode === 'member'} onChange={() => { setPayerMode('member'); setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' }); }} />
-                      Existing Member
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', border: '1px solid ' + (payerMode === 'external' ? '#635BFF' : '#E6EBF1'), borderRadius: '8px', cursor: 'pointer', background: payerMode === 'external' ? '#F0F0FF' : 'white', flex: 1 }}>
-                      <input type="radio" name="payerMode" value="external" checked={payerMode === 'external'} onChange={() => { setPayerMode('external'); setSelectedTarget(null); setSearchQuery(''); }} />
-                      Non-Member
-                    </label>
-                  </div>
-
-                  {payerMode === 'member' ? (
-                    <>
-                  <FormLabel>Search Restaurant *</FormLabel>
-                  <div style={{position: 'relative'}}>
-                    <FormInput
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      onFocus={() => setShowSearchDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
-                      placeholder="Type to search for restaurants"
-                      required
-                    />
-                    {showSearchDropdown && (searchResults.managers.length > 0 || searchResults.restaurants.length > 0) && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'white',
-                        border: '1px solid #E6EBF1',
-                        borderRadius: '8px',
-                        maxHeight: '300px',
-                        overflowY: 'auto',
-                        zIndex: 1000,
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                      }}>
-                        {searchResults.managers.length > 0 && (
-                          <div>
-                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
-                              MANAGERS
-                            </div>
-                            {searchResults.managers.map(manager => (
-                              <div
-                                key={manager.id}
-                                onClick={() => selectTarget('manager', manager)}
-                                style={{
-                                  padding: '12px',
-                                  cursor: 'pointer',
-                                  borderBottom: '1px solid #F3F4F6',
-                                  transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                              >
-                                <div style={{fontWeight: '500', color: '#0A2540'}}>{manager.fullName}</div>
-                                <div style={{fontSize: '13px', color: '#6B7280'}}>{manager.companyName || manager.email}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {searchResults.restaurants.length > 0 && (
-                          <div>
-                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
-                              RESTAURANTS
-                            </div>
-                            {searchResults.restaurants.map(restaurant => {
-                              const manager = managers.find(m => m.id === restaurant.admin_id);
-                              return (
-                                <div
-                                  key={restaurant.id}
-                                  onClick={() => selectTarget('restaurant', restaurant)}
-                                  style={{
-                                    padding: '12px',
-                                    cursor: 'pointer',
-                                    borderBottom: '1px solid #F3F4F6',
-                                    transition: 'background 0.2s'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                                >
-                                  <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
-                                  <div style={{fontSize: '13px', color: '#6B7280'}}>Manager: {manager?.fullName || 'Unknown'}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {selectedTarget && (
-                    <div style={{
-                      marginTop: '8px',
-                      padding: '12px',
-                      background: '#F0F7FF',
-                      border: '1px solid #B3D9FF',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div>
-                        <div style={{fontWeight: '500', color: '#0A2540'}}>
-                          {selectedTarget.type === 'manager'
-                            ? (selectedTarget.data as Manager).fullName
-                            : (selectedTarget.data as Restaurant).name}
-                        </div>
-                        <div style={{fontSize: '13px', color: '#6B7280'}}>
-                          {selectedTarget.type === 'manager'
-                            ? `${(selectedTarget.data as Manager).companyName} • Manager`
-                            : `${(selectedTarget.data as Restaurant).address || 'No address'} • Restaurant`}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedTarget(null);
-                          setSearchQuery('');
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#6B7280',
-                          cursor: 'pointer',
-                          fontSize: '18px',
-                          lineHeight: '1',
-                          padding: '4px'
-                        }}
-                        title="Remove selection"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                    </>
-                  ) : (
-                    <>
-                      <FormLabel>{t('brand:brandInvoicesPage.nonmemberDetails')}</FormLabel>
-                      <FormRow>
-                        <FormGroup>
-                          <FormLabel>Name *</FormLabel>
-                          <FormInput type="text" value={externalPayer.name} onChange={(e) => setExternalPayer({...externalPayer, name: e.target.value})} placeholder="Full name" required />
-                        </FormGroup>
-                        <FormGroup>
-                          <FormLabel>Email *</FormLabel>
-                          <FormInput type="email" value={externalPayer.email} onChange={(e) => setExternalPayer({...externalPayer, email: e.target.value})} placeholder="Email address" required />
-                        </FormGroup>
-                      </FormRow>
-                      <FormRow>
-                        <FormGroup>
-                          <FormLabel>{t('brand:brandInvoicesPage.phone')}</FormLabel>
-                          <FormInput type="text" value={externalPayer.phone} onChange={(e) => setExternalPayer({...externalPayer, phone: e.target.value})} placeholder="Phone number" />
-                        </FormGroup>
-                        <FormGroup>
-                          <FormLabel>{t('brand:brandInvoicesPage.company')}</FormLabel>
-                          <FormInput type="text" value={externalPayer.company} onChange={(e) => setExternalPayer({...externalPayer, company: e.target.value})} placeholder="Company name" />
-                        </FormGroup>
-                      </FormRow>
-                      <FormRow>
-                        <FormGroup>
-                          <FormLabel>{t('brand:brandInvoicesPage.address')}</FormLabel>
-                          <FormInput type="text" value={externalPayer.address} onChange={(e) => setExternalPayer({...externalPayer, address: e.target.value})} placeholder="Address" />
-                        </FormGroup>
-                        <FormGroup>
-                          <FormLabel>{t('brand:brandInvoicesPage.taxId')}</FormLabel>
-                          <FormInput type="text" value={externalPayer.tax_id} onChange={(e) => setExternalPayer({...externalPayer, tax_id: e.target.value})} placeholder="Tax ID" />
-                        </FormGroup>
-                      </FormRow>
-                    </>
-                  )}
-                </FormGroup>
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>Amount (RM) *</FormLabel>
-                    <FormInput
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={newInvoice.amount}
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        const discountVal = parseFloat(newInvoice.discountValue) || 0;
-                        const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : newInvoice.discountType === 'fixed' ? discountVal : 0;
-                        const afterDiscount = Math.max(0, amount - discountAmt);
-                        const totalChargeRate = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + c.rate, 0);
-                        const tax = afterDiscount * (totalChargeRate / 100);
-                        const total = afterDiscount + tax;
-                        setNewInvoice({ ...newInvoice, amount: e.target.value, tax: tax.toFixed(2), total: total.toFixed(2) });
-                      }}
-                      placeholder="0.00"
-                      required
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>Due Date *</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={newInvoice.dueDate}
-                      onChange={(e) => setNewInvoice({...newInvoice, dueDate: e.target.value})}
-                      required
-                      min={new Date().toISOString().split('T')[0]}
-                    />
-                  </FormGroup>
-                </FormRow>
-
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>{t('brand:brandInvoicesPage.discount')}</FormLabel>
-                    <FormSelect
-                      value={newInvoice.discountType}
-                      onChange={(e) => {
-                        const dtype = e.target.value as 'none' | 'percentage' | 'fixed';
-                        const amount = parseFloat(newInvoice.amount) || 0;
-                        const discountVal = dtype === 'none' ? 0 : (parseFloat(newInvoice.discountValue) || 0);
-                        const discountAmt = dtype === 'percentage' ? amount * (discountVal / 100) : dtype === 'fixed' ? discountVal : 0;
-                        const afterDiscount = Math.max(0, amount - discountAmt);
-                        const totalChargeRate = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + c.rate, 0);
-                        const tax = afterDiscount * (totalChargeRate / 100);
-                        const total = afterDiscount + tax;
-                        setNewInvoice({ ...newInvoice, discountType: dtype, discountValue: dtype === 'none' ? '' : newInvoice.discountValue, tax: tax.toFixed(2), total: total.toFixed(2) });
-                      }}
-                    >
-                      <option value="none">{t('brand:brandInvoicesPage.noDiscount')}</option>
-                      <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">{t('brand:brandInvoicesPage.fixedAmount')}</option>
-                    </FormSelect>
-                  </FormGroup>
-                  {newInvoice.discountType !== 'none' && (
-                    <FormGroup>
-                      <FormLabel>{newInvoice.discountType === 'percentage' ? 'Discount (%)' : 'Discount Amount'}</FormLabel>
-                      <FormInput
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max={newInvoice.discountType === 'percentage' ? '100' : undefined}
-                        value={newInvoice.discountValue}
-                        onChange={(e) => {
-                          const amount = parseFloat(newInvoice.amount) || 0;
-                          const discountVal = parseFloat(e.target.value) || 0;
-                          const discountAmt = newInvoice.discountType === 'percentage' ? amount * (discountVal / 100) : discountVal;
-                          const afterDiscount = Math.max(0, amount - discountAmt);
-                          const totalChargeRate = additionalCharges.filter(c => c.enabled && c.rate > 0).reduce((sum, c) => sum + c.rate, 0);
-                          const tax = afterDiscount * (totalChargeRate / 100);
-                          const total = afterDiscount + tax;
-                          setNewInvoice({ ...newInvoice, discountValue: e.target.value, tax: tax.toFixed(2), total: total.toFixed(2) });
-                        }}
-                        placeholder="0"
-                      />
-                    </FormGroup>
-                  )}
-                  {newInvoice.discountType !== 'none' && (
-                    <FormGroup>
-                      <FormLabel>{t('brand:brandInvoicesPage.discountReason')}</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={newInvoice.discountReason}
-                        onChange={(e) => setNewInvoice({ ...newInvoice, discountReason: e.target.value })}
-                        placeholder="e.g. Loyalty discount"
-                      />
-                    </FormGroup>
-                  )}
-                </FormRow>
-
-                <FormGroup>
-                  <FormLabel>{t('brand:brandInvoicesPage.invoiceCategory')}</FormLabel>
-                  <FormSelect
-                    value={newInvoice.invoiceCategory || 'service'}
-                    onChange={(e) => setNewInvoice({...newInvoice, invoiceCategory: e.target.value})}
-                  >
-                    {invoiceCategories.length > 0 ? (
-                      invoiceCategories
-                        .filter(cat => cat.code !== 'subscription')
-                        .map(cat => (
-                          <option key={cat.id} value={cat.code}>{cat.name}</option>
-                        ))
-                    ) : (
-                      <>
-                        <option value="service">{t('brand:brandInvoicesPage.service')}</option>
-                        <option value="consulting">{t('brand:brandInvoicesPage.consulting')}</option>
-                        <option value="others">{t('brand:brandInvoicesPage.others')}</option>
-                      </>
-                    )}
-                  </FormSelect>
-                </FormGroup>
-
-                {/* Show item/description input for all categories */}
-                <FormGroup>
-                  <FormLabel>{t('brand:brandInvoicesPage.itemdescription')}</FormLabel>
-                  <FormTextarea
-                    value={newInvoice.invoiceCategory === 'others' ? (newInvoice.customDescription || '') : (newInvoice.serviceDescription || '')}
-                    onChange={(e) => {
-                      if (newInvoice.invoiceCategory === 'others') {
-                        setNewInvoice({...newInvoice, customDescription: e.target.value});
-                      } else {
-                        setNewInvoice({...newInvoice, serviceDescription: e.target.value});
-                      }
-                    }}
-                    placeholder={`Enter ${newInvoice.invoiceCategory || 'service'} description...`}
-                    rows={3}
-                  />
-                </FormGroup>
-                <InvoiceSummary>
-                  <SummaryRow>
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(parseFloat(newInvoice.amount || '0'), newInvoice.currency || operationSettings.currency)}</span>
-                  </SummaryRow>
-                  {newInvoice.discountType !== 'none' && parseFloat(newInvoice.discountValue || '0') > 0 && (() => {
-                    const amt = parseFloat(newInvoice.amount || '0');
-                    const dv = parseFloat(newInvoice.discountValue || '0');
-                    const discountAmt = newInvoice.discountType === 'percentage' ? amt * (dv / 100) : dv;
-                    return (
-                      <SummaryRow>
-                        <span style={{ color: '#15803D' }}>Discount{newInvoice.discountType === 'percentage' ? ` (${dv}%)` : ''}:</span>
-                        <span style={{ color: '#15803D' }}>-{formatCurrency(discountAmt, newInvoice.currency || operationSettings.currency)}</span>
-                      </SummaryRow>
-                    );
-                  })()}
-                  {additionalCharges.filter(c => c.enabled && c.rate > 0).map((charge, idx) => {
-                    const amt = parseFloat(newInvoice.amount || '0');
-                    const dv = parseFloat(newInvoice.discountValue || '0');
-                    const discountAmt = newInvoice.discountType === 'percentage' ? amt * (dv / 100) : newInvoice.discountType === 'fixed' ? dv : 0;
-                    const afterDiscount = Math.max(0, amt - discountAmt);
-                    const chargeAmount = afterDiscount * (charge.rate / 100);
-                    return (
-                      <SummaryRow key={idx}>
-                        <span>{charge.name} ({charge.rate}%):</span>
-                        <span>{formatCurrency(chargeAmount, newInvoice.currency || operationSettings.currency)}</span>
-                      </SummaryRow>
-                    );
-                  })}
-                  {additionalCharges.filter(c => c.enabled && c.rate > 0).length === 0 && (
-                    <SummaryRow>
-                      <span>Additional Charges:</span>
-                      <span>{formatCurrency(0, newInvoice.currency || operationSettings.currency)}</span>
-                    </SummaryRow>
-                  )}
-                  <SummaryRow highlight>
-                    <span>Total:</span>
-                    <span><strong>{formatCurrency(parseFloat(newInvoice.total || '0'), newInvoice.currency || operationSettings.currency)}</strong></span>
-                  </SummaryRow>
-                </InvoiceSummary>
-              
-          </CommonModal>
+          <BrandInvoiceCreateModal
+            newInvoice={newInvoice} setNewInvoice={setNewInvoice}
+            payerMode={payerMode} setPayerMode={setPayerMode}
+            externalPayer={externalPayer} setExternalPayer={setExternalPayer}
+            selectedTarget={selectedTarget} setSelectedTarget={setSelectedTarget}
+            searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+            searchResults={searchResults} showSearchDropdown={showSearchDropdown} setShowSearchDropdown={setShowSearchDropdown}
+            handleSearch={handleSearch} selectTarget={selectTarget} managers={managers}
+            invoiceCategories={invoiceCategories} additionalCharges={additionalCharges}
+            operationSettings={operationSettings} paymentMethodWarning={paymentMethodWarning}
+            onClose={() => setShowCreateInvoiceModal(false)} onSubmit={handleSubmitInvoice} resetInvoiceForm={resetInvoiceForm}
+          />
         )}
 
         {/* View Invoice Modal */}
-        {showViewModal && selectedInvoice && (() => {
-          // Prefer issuerInfo (has bank details from payment_settings), fall back to companySettings.
-          const hasIssuerInfo = !!selectedInvoice.issuerInfo;
-          const displayCompany = hasIssuerInfo ? {
-            companyName: selectedInvoice.issuerInfo?.name || companySettings?.companyName,
-            companyLogo: selectedInvoice.issuerInfo?.logoUrl || companySettings?.companyLogo,
-            address: selectedInvoice.issuerInfo?.address || companySettings?.address,
-            city: selectedInvoice.issuerInfo?.city || companySettings?.city,
-            state: selectedInvoice.issuerInfo?.state || companySettings?.state,
-            postalCode: selectedInvoice.issuerInfo?.postalCode || companySettings?.postalCode,
-            country: selectedInvoice.issuerInfo?.country || companySettings?.country,
-            phone: selectedInvoice.issuerInfo?.phone || companySettings?.phone,
-            email: selectedInvoice.issuerInfo?.email || companySettings?.email,
-            bankName: selectedInvoice.issuerInfo?.bankName || companySettings?.bankName,
-            bankAccount: selectedInvoice.issuerInfo?.bankAccount || companySettings?.bankAccount,
-            bankAccountName: selectedInvoice.issuerInfo?.bankAccountName || companySettings?.bankAccountName,
-            swiftCode: selectedInvoice.issuerInfo?.swiftCode || '',
-            taxNumber: selectedInvoice.issuerInfo?.taxId || companySettings?.taxNumber,
-            registrationNumber: selectedInvoice.issuerInfo?.businessRegistration || companySettings?.registrationNumber
-          } : companySettings;
-
-          return (
-                    <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<><Button variant="secondary" onClick={() => setShowViewModal(false)}>{t('brand:brandInvoicesPage.close')}</Button></>}>
-
-                {/* Invoice Header with Company Info */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #E5E7EB' }}>
-                  <div style={{ flex: '0 0 55%' }}>
-                    {displayCompany?.companyLogo && (
-                      <img src={displayCompany.companyLogo} alt="Company Logo" style={{ maxHeight: '60px', marginBottom: '8px' }} />
-                    )}
-                    <div style={{ fontSize: displayCompany?.companyLogo ? '16px' : '20px', fontWeight: '700', color: '#0A2540', marginBottom: '8px' }}>
-                      {displayCompany?.companyName || 'Company Name'}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
-                      {displayCompany?.address && <div>{displayCompany.address}</div>}
-                      {(displayCompany?.city || displayCompany?.state || displayCompany?.postalCode) && (
-                        <div>{[displayCompany?.city, displayCompany?.state, displayCompany?.postalCode].filter(Boolean).join(', ')}</div>
-                      )}
-                      {displayCompany?.country && <div>{displayCompany.country}</div>}
-                      {displayCompany?.phone && <div>Tel: {displayCompany.phone}</div>}
-                      {displayCompany?.email && <div>Email: {displayCompany.email}</div>}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#635BFF', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.invoice')}</div>
-                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.invoiceNumber}</div>
-                    <StatusBadge status={selectedInvoice.status} style={{ marginTop: '8px' }}>
-                      {getStatusDisplay(selectedInvoice.status)}
-                    </StatusBadge>
-                    {selectedInvoice.isModified && (
-                      <span style={{ display: 'inline-block', marginTop: '4px', padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px' }}>{t('brand:brandInvoicesPage.modified')}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bill To + Dates Section (Side by Side) */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
-                  {/* Bill To - For received invoices (to_pay), show logged-in user's company (companySettings) */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('brand:brandInvoicesPage.billTo')}</div>
-                    {isReceivedInvoice ? (
-                      <>
-                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{companySettings?.companyName || 'Your Company'}</div>
-                        {companySettings?.address && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{companySettings.address}</div>
-                        )}
-                        {(companySettings?.city || companySettings?.state || companySettings?.postalCode) && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                            {[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}
-                          </div>
-                        )}
-                        {companySettings?.country && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{companySettings.country}</div>
-                        )}
-                        {companySettings?.email && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{companySettings.email}</div>
-                        )}
-                      </>
-                    ) : selectedInvoice.payerType === 'external' ? (
-                      <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.externalPayerName || selectedInvoice.customerName}</div>
-                          <span style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px' }}>{t('brand:brandInvoicesPage.nonmember')}</span>
-                        </div>
-                        {selectedInvoice.externalPayerCompany && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Company: {selectedInvoice.externalPayerCompany}</div>
-                        )}
-                        {selectedInvoice.externalPayerEmail && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Email: {selectedInvoice.externalPayerEmail}</div>
-                        )}
-                        {selectedInvoice.externalPayerPhone && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Phone: {selectedInvoice.externalPayerPhone}</div>
-                        )}
-                        {selectedInvoice.externalPayerAddress && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.externalPayerAddress}</div>
-                        )}
-                        {selectedInvoice.externalPayerTaxId && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Tax ID: {selectedInvoice.externalPayerTaxId}</div>
-                        )}
-                        <button
-                          onClick={() => { setShowLinkAccountModal(true); setLinkSearchQuery(''); setLinkSearchResults({managers: [], restaurants: []}); }}
-                          style={{ marginTop: '10px', padding: '6px 14px', fontSize: '12px', fontWeight: 600, color: '#635BFF', background: '#F0F0FF', border: '1px solid #635BFF', borderRadius: '6px', cursor: 'pointer' }}
-                        >
-                          Link to Member Account
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{selectedInvoice.customerName}</div>
-                        {selectedInvoice.customerAddress && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{selectedInvoice.customerAddress}</div>
-                        )}
-                        {selectedInvoice.payerType === 'restaurant' && selectedInvoice.restaurantName && selectedInvoice.restaurantName !== 'Unknown' && (
-                          <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>Restaurant: {selectedInvoice.restaurantName}</div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  {/* Dates */}
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#6B7280' }}>Billing Period:</span>
-                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{selectedInvoice.billingPeriod || '-'}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#6B7280' }}>Issue Date:</span>
-                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.issueDate)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                      <span style={{ color: '#6B7280' }}>Due Date:</span>
-                      <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.dueDate)}</span>
-                    </div>
-                    {selectedInvoice.paidDate && (
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '6px', fontSize: '13px' }}>
-                        <span style={{ color: '#6B7280' }}>Paid Date:</span>
-                        <span style={{ color: '#0A2540', fontWeight: '500', minWidth: '140px' }}>{formatDate(selectedInvoice.paidDate)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Items Table */}
-                <div style={{ marginBottom: '24px' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '12px', textTransform: 'uppercase' }}>{t('brand:brandInvoicesPage.items')}</div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid #E5E7EB' }}>
-                        <th style={{ textAlign: 'left', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('brand:brandInvoicesPage.description')}</th>
-                        <th style={{ textAlign: 'center', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('brand:brandInvoicesPage.qty')}</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('brand:brandInvoicesPage.unitPrice')}</th>
-                        <th style={{ textAlign: 'right', padding: '12px 8px', fontSize: '12px', fontWeight: '600', color: '#6B7280' }}>{t('brand:brandInvoicesPage.amount')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedInvoice.items.map((item, index) => (
-                        <tr key={index} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151' }}>{item.description}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
-                          <td style={{ padding: '12px 8px', fontSize: '14px', color: '#374151', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Summary */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-                  <div style={{ width: '280px' }}>
-                    <InvoiceSummary>
-                      <SummaryRow>
-                        <span>Subtotal:</span>
-                        <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
-                      </SummaryRow>
-                      {selectedInvoice.discountType && selectedInvoice.discountType !== 'none' && selectedInvoice.discountAmount > 0 && (
-                        <SummaryRow>
-                          <span style={{color: '#15803D'}}>Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:</span>
-                          <span style={{color: '#15803D'}}>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
-                        </SummaryRow>
-                      )}
-                      {(selectedInvoice.additionalCharges || []).map((charge: any, idx: number) => (
-                        <SummaryRow key={idx}>
-                          <span>{charge.name} ({charge.rate}%):</span>
-                          <span>{formatCurrency(charge.amount, selectedInvoice.currency || 'MYR')}</span>
-                        </SummaryRow>
-                      ))}
-                      {(selectedInvoice.additionalCharges || []).length === 0 && selectedInvoice.tax > 0 && (
-                        <SummaryRow>
-                          <span>Tax:</span>
-                          <span>{formatCurrency(selectedInvoice.tax, selectedInvoice.currency || 'MYR')}</span>
-                        </SummaryRow>
-                      )}
-                      <SummaryRow highlight>
-                        <span>Total:</span>
-                        <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>
-                      </SummaryRow>
-                    </InvoiceSummary>
-                  </div>
-                </div>
-
-                {/* Bank Details (if company has bank info) */}
-                {displayCompany?.bankName && (
-                  <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('brand:brandInvoicesPage.paymentDetails')}</div>
-                    <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
-                      <div><strong>Bank:</strong> {displayCompany.bankName}</div>
-                      <div><strong>Account Name:</strong> {displayCompany.bankAccountName || '-'}</div>
-                      <div><strong>Account Number:</strong> {displayCompany.bankAccount || '-'}</div>
-                      {displayCompany.swiftCode && <div><strong>SWIFT Code:</strong> {displayCompany.swiftCode}</div>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Registration Info */}
-                {(displayCompany?.taxNumber || displayCompany?.registrationNumber) && (
-                  <div style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', marginTop: '16px' }}>
-                    {displayCompany?.registrationNumber && <span>Reg No: {displayCompany.registrationNumber}</span>}
-                    {displayCompany?.registrationNumber && displayCompany?.taxNumber && <span> | </span>}
-                    {displayCompany?.taxNumber && <span>Tax No: {displayCompany.taxNumber}</span>}
-                  </div>
-                )}
-
-                {/* Modification History in View Modal */}
-                {selectedInvoice.isModified && Array.isArray(selectedInvoice.modificationHistory) && selectedInvoice.modificationHistory.length > 0 && (
-                  <div style={{ marginTop: '20px', padding: '16px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#92400E', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.modificationHistory')}</div>
-                    {(selectedInvoice.modificationHistory as any[]).map((mod: any, idx: number) => {
-                      const ts = mod.modified_at || mod.timestamp;
-                      const who = mod.modified_by_name || (mod.reason === 'payment_settings_updated' ? 'System (payment settings)' : mod.reason === 'subscription_updated' ? 'System (subscription)' : 'System');
-                      const isLast = idx >= (selectedInvoice.modificationHistory as any[]).length - 1;
-                      return (
-                        <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: isLast ? '0' : '10px', paddingBottom: isLast ? '0' : '10px', borderBottom: isLast ? 'none' : '1px solid #FDE68A' }}>
-                          <div style={{ fontWeight: 500 }}>{ts ? new Date(ts).toLocaleString() : ''}{who ? ` - ${who}` : ''}</div>
-                          {mod.reason && <div style={{ marginTop: '3px' }}>Reason: {mod.reason}</div>}
-                          {mod.changes && typeof mod.changes === 'object' && Object.keys(mod.changes).length > 0 && (
-                            <div style={{ marginTop: '3px', color: '#92400E' }}>
-                              {Object.entries(mod.changes).map(([field, change]: [string, any]) => (
-                                <div key={field}>{field}: {String(change?.from)} → {String(change?.to)}</div>
-                              ))}
-                            </div>
-                          )}
-                          {!mod.changes && (mod.before || mod.after) && (
-                            <div style={{ marginTop: '3px', color: '#92400E' }}>
-                              {mod.before?.total_amount !== undefined && mod.after?.total_amount !== undefined && (
-                                <div>total: {String(mod.before.total_amount)} → {String(mod.after.total_amount)}</div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              
-          </CommonModal>
-          );
-        })()}
-
-        {/* Link Account Modal */}
-        {showLinkAccountModal && selectedInvoice && (
-          <CommonModal isOpen={true} onClose={() => setShowLinkAccountModal(false)} title="Link to Member Account" footer={<Button variant="secondary" onClick={() => setShowLinkAccountModal(false)}>{t('brand:brandInvoicesPage.cancel')}</Button>}>
-            <FormGroup>
-              <FormLabel>Search Restaurant *</FormLabel>
-              <div style={{position: 'relative'}}>
-                <FormInput
-                  type="text"
-                  value={linkSearchQuery}
-                  onChange={(e) => handleLinkSearch(e.target.value)}
-                  onFocus={() => setShowLinkSearchDropdown(true)}
-                  onBlur={() => setTimeout(() => setShowLinkSearchDropdown(false), 200)}
-                  placeholder="Type to search for restaurants"
-                />
-                {showLinkSearchDropdown && linkSearchResults.restaurants.length > 0 && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #E6EBF1', borderRadius: '8px', maxHeight: '300px', overflowY: 'auto', zIndex: 1000, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                    <div>
-                      <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>{t('brand:brandInvoicesPage.restaurants')}</div>
-                      {linkSearchResults.restaurants.map(restaurant => (
-                        <div key={restaurant.id} onClick={() => handleLinkAccount('restaurant', restaurant)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
-                          <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
-                          <div style={{fontSize: '13px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div style={{ marginTop: '12px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', fontSize: '13px', color: '#92400E' }}>
-                This will convert the non-member invoice to a member invoice and link it to the selected restaurant.
-              </div>
-            </FormGroup>
-          </CommonModal>
-        )}
-
-        {/* Payment Confirmation Modal */}
-        {showPaymentConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
-
-                <FormGroup>
-                  <FormLabel>{t('brand:brandInvoicesPage.paymentConfirmation')}</FormLabel>
-                  <InvoiceSummary>
-                    <SummaryRow>
-                      <span>Manager:</span>
-                      <span>{selectedInvoice.managerName}</span>
-                    </SummaryRow>
-                    <SummaryRow>
-                      <span>Company:</span>
-                      <span>{selectedInvoice.companyName}</span>
-                    </SummaryRow>
-                    <SummaryRow>
-                      <span>Invoice Number:</span>
-                      <span>{selectedInvoice.invoiceNumber}</span>
-                    </SummaryRow>
-                    <SummaryRow>
-                      <span>Due Date:</span>
-                      <span>{formatDate(selectedInvoice.dueDate)}</span>
-                    </SummaryRow>
-                    <SummaryRow highlight>
-                      <span><strong>Payment Amount:</strong></span>
-                      <span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span>
-                    </SummaryRow>
-                  </InvoiceSummary>
-                </FormGroup>
-
-                {/* Customer's Payment Information */}
-                {(selectedInvoice.paymentMethod || selectedInvoice.receiptUrl || selectedInvoice.transactionId) && (
-                  <FormGroup>
-                    <FormLabel>{t('brand:brandInvoicesPage.customersPaymentInformation')}</FormLabel>
-                    <div style={{
-                      background: '#EFF6FF',
-                      border: '1px solid #3B82F6',
-                      borderRadius: '8px',
-                      padding: '16px'
-                    }}>
-                      <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
-                        {selectedInvoice.paymentMethod && (
-                          <p style={{ margin: '0 0 8px 0' }}>
-                            <strong>Payment Method:</strong> {
-                              selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
-                              selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' :
-                              selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' :
-                              selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' :
-                              selectedInvoice.paymentMethod
-                            }
-                          </p>
-                        )}
-                        {selectedInvoice.transactionId && (
-                          <p style={{ margin: '0 0 8px 0' }}>
-                            <strong>Transaction ID:</strong> {selectedInvoice.transactionId}
-                          </p>
-                        )}
-                      </div>
-                      {selectedInvoice.receiptUrl && (
-                        <div style={{ marginTop: '12px' }}>
-                          <p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p>
-                          <div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}>
-                            <img
-                              src={selectedInvoice.receiptUrl}
-                              alt="Payment Receipt"
-                              style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }}
-                              onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')}
-                            />
-                            <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>{t('brand:brandInvoicesPage.clickImageToViewFullSize')}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </FormGroup>
-                )}
-
-                <div style={{
-                  background: '#FEF3C7',
-                  border: '1px solid #F59E0B',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  margin: '16px 0'
-                }}>
-                  <p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}>
-                    <strong>{t('brand:brandInvoicesPage.confirmPaymentReceipt')}</strong><br />
-                    Only mark this invoice as paid if you have received and verified the payment.
-                    This action will update the invoice status to "Paid".
-                  </p>
-                </div>
-
-                <FormGroup>
-                  <FormLabel>{t('brand:brandInvoicesPage.statusChange')}</FormLabel>
-                  <div style={{
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    color: '#374151',
-                    background: '#F8FAFC',
-                    padding: '12px',
-                    borderRadius: '6px'
-                  }}>
-                    Payment Submitted → Paid<br />
-                    Paid Date: {new Date().toLocaleDateString('en-MY')}
-                  </div>
-                </FormGroup>
-              
-          </CommonModal>
+        {showViewModal && selectedInvoice && (
+          <BrandInvoiceViewModal
+            invoice={selectedInvoice} companySettings={companySettings} operationSettings={operationSettings}
+            formatDate={formatDate} getStatusDisplay={getStatusDisplay} onClose={() => setShowViewModal(false)}
+            showLinkAccountModal={showLinkAccountModal} setShowLinkAccountModal={setShowLinkAccountModal}
+            linkSearchQuery={linkSearchQuery} setLinkSearchQuery={setLinkSearchQuery}
+            linkSearchResults={linkSearchResults} setLinkSearchResults={setLinkSearchResults}
+            showLinkSearchDropdown={showLinkSearchDropdown} setShowLinkSearchDropdown={setShowLinkSearchDropdown}
+            handleLinkSearch={handleLinkSearch} handleLinkAccount={handleLinkAccount}
+          />
         )}
 
         {/* Edit Invoice Modal */}
         {showEditModal && selectedInvoice && editInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowEditModal(false)} title={`Edit Invoice - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowEditModal(false)}> Cancel </Button><Button variant="primary" onClick={handleSaveEdit}> Save Changes </Button></>}>
-
-                <FormGroup>
-                  <FormLabel>Search Restaurant *</FormLabel>
-                  <div style={{position: 'relative'}}>
-                    <FormInput
-                      type="text"
-                      value={editSearchQuery}
-                      onChange={(e) => handleEditSearch(e.target.value)}
-                      onFocus={() => setShowEditSearchDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowEditSearchDropdown(false), 200)}
-                      placeholder="Type to search for restaurants"
-                      required
-                    />
-                    {showEditSearchDropdown && (editSearchResults.managers.length > 0 || editSearchResults.restaurants.length > 0) && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'white',
-                        border: '1px solid #E6EBF1',
-                        borderRadius: '8px',
-                        maxHeight: '300px',
-                        overflowY: 'auto',
-                        zIndex: 1000,
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                      }}>
-                        {editSearchResults.managers.length > 0 && (
-                          <div>
-                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
-                              MANAGERS
-                            </div>
-                            {editSearchResults.managers.map(manager => (
-                              <div
-                                key={manager.id}
-                                onClick={() => handleEditTargetSelect('manager', manager)}
-                                style={{
-                                  padding: '12px',
-                                  cursor: 'pointer',
-                                  borderBottom: '1px solid #F3F4F6',
-                                  transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                              >
-                                <div style={{fontWeight: '500', color: '#0A2540'}}>{manager.fullName}</div>
-                                <div style={{fontSize: '13px', color: '#6B7280'}}>{manager.companyName || manager.email}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {editSearchResults.restaurants.length > 0 && (
-                          <div>
-                            <div style={{padding: '8px 12px', background: '#F8FAFC', fontSize: '12px', fontWeight: '600', color: '#6B7280'}}>
-                              RESTAURANTS
-                            </div>
-                            {editSearchResults.restaurants.map(restaurant => {
-                              const manager = managers.find(m => m.id === restaurant.admin_id);
-                              return (
-                                <div
-                                  key={restaurant.id}
-                                  onClick={() => handleEditTargetSelect('restaurant', restaurant)}
-                                  style={{
-                                    padding: '12px',
-                                    cursor: 'pointer',
-                                    borderBottom: '1px solid #F3F4F6',
-                                    transition: 'background 0.2s'
-                                  }}
-                                  onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                                  onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                                >
-                                  <div style={{fontWeight: '500', color: '#0A2540'}}>{restaurant.name}</div>
-                                  <div style={{fontSize: '13px', color: '#6B7280'}}>
-                                    {manager ? `Manager: ${manager.fullName}` : 'No manager assigned'} • {restaurant.address || 'No address'}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {editSelectedTarget && (
-                    <div style={{
-                      marginTop: '8px',
-                      padding: '12px',
-                      background: '#F0F7FF',
-                      border: '1px solid #B3D9FF',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div>
-                        <div style={{fontWeight: '500', color: '#0A2540'}}>
-                          {editSelectedTarget.type === 'manager'
-                            ? (editSelectedTarget.data as Manager).fullName
-                            : (editSelectedTarget.data as Restaurant).name}
-                        </div>
-                        <div style={{fontSize: '13px', color: '#6B7280'}}>
-                          {editSelectedTarget.type === 'manager'
-                            ? `${(editSelectedTarget.data as Manager).companyName} • Manager`
-                            : `${(editSelectedTarget.data as Restaurant).address || 'No address'} • Restaurant`}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setEditSelectedTarget(null);
-                          setEditSearchQuery('');
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#6B7280',
-                          cursor: 'pointer',
-                          fontSize: '16px',
-                          padding: '4px'
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                </FormGroup>
-
-                <FormRow>
-                  <FormGroup>
-                    <FormLabel>{t('brand:brandInvoicesPage.amountRm')}</FormLabel>
-                    <FormInput
-                      type="number"
-                      value={editInvoice.amount}
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        // Calculate total charges from enabled additional charges for this currency
-                        const editCharges = getChargesForCurrency(editInvoice.currency || '');
-                        const totalChargeRate = editCharges
-                          .filter(c => c.enabled && c.rate > 0)
-                          .reduce((sum, c) => sum + c.rate, 0);
-                        const tax = amount * (totalChargeRate / 100);
-                        const total = amount + tax;
-                        setEditInvoice({
-                          ...editInvoice,
-                          amount: e.target.value,
-                          tax: tax.toFixed(2),
-                          total: total.toFixed(2)
-                        });
-                      }}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>{t('brand:brandInvoicesPage.dueDate')}</FormLabel>
-                    <FormInput
-                      type="date"
-                      value={editInvoice.dueDate}
-                      onChange={(e) => setEditInvoice({...editInvoice, dueDate: e.target.value})}
-                    />
-                  </FormGroup>
-                </FormRow>
-
-                <FormGroup>
-                  <FormLabel>{t('brand:brandInvoicesPage.status')}</FormLabel>
-                  <FormSelect
-                    value={editInvoice.status}
-                    onChange={(e) => setEditInvoice({...editInvoice, status: e.target.value})}
-                  >
-                    <option value="draft">{t('brand:brandInvoicesPage.draft')}</option>
-                    <option value="pending_payment">{t('brand:brandInvoicesPage.pendingPayment')}</option>
-                    <option value="payment_submitted">{t('brand:brandInvoicesPage.paymentSubmitted')}</option>
-                    <option value="paid">{t('brand:brandInvoicesPage.paid')}</option>
-                    <option value="overdue">{t('brand:brandInvoicesPage.overdue')}</option>
-                    <option value="cancelled">{t('brand:brandInvoicesPage.cancelled')}</option>
-                  </FormSelect>
-                </FormGroup>
-                <FormGroup>
-                  <FormLabel>{t('brand:brandInvoicesPage.invoiceCategory')}</FormLabel>
-                  <FormSelect
-                    value={editInvoice.invoiceCategory || 'service'}
-                    onChange={(e) => setEditInvoice({...editInvoice, invoiceCategory: e.target.value})}
-                  >
-                    {invoiceCategories.length > 0 ? (
-                      invoiceCategories
-                        .filter(cat => cat.code !== 'subscription')
-                        .map(cat => (
-                          <option key={cat.id} value={cat.code}>{cat.name}</option>
-                        ))
-                    ) : (
-                      <>
-                        <option value="service">{t('brand:brandInvoicesPage.service')}</option>
-                        <option value="consulting">{t('brand:brandInvoicesPage.consulting')}</option>
-                        <option value="others">{t('brand:brandInvoicesPage.others')}</option>
-                      </>
-                    )}
-                  </FormSelect>
-                </FormGroup>
-
-                {editInvoice.invoiceCategory === 'others' && (
-                  <FormGroup>
-                    <FormLabel>{t('brand:brandInvoicesPage.planitem')}</FormLabel>
-                    <FormTextarea
-                      value={editInvoice.customDescription || ''}
-                      onChange={(e) => setEditInvoice({...editInvoice, customDescription: e.target.value})}
-                      rows={3}
-                    />
-                  </FormGroup>
-                )}
-
-                {((editInvoice.invoiceCategory || 'service') === 'service' || editInvoice.invoiceCategory === 'consulting') && (
-                  <FormGroup>
-                    <FormLabel>{t('brand:brandInvoicesPage.planitem')}</FormLabel>
-                    <FormTextarea
-                      value={editInvoice.serviceDescription || ''}
-                      onChange={(e) => setEditInvoice({...editInvoice, serviceDescription: e.target.value})}
-                      rows={3}
-                    />
-                  </FormGroup>
-                )}
-
-                <InvoiceSummary>
-                  <SummaryRow>
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(parseFloat(editInvoice.amount || '0'), editInvoice.currency || 'MYR')}</span>
-                  </SummaryRow>
-                  {getChargesForCurrency(editInvoice.currency || '').filter(c => c.enabled && c.rate > 0).map((charge, idx) => {
-                    const chargeAmount = parseFloat(editInvoice.amount || '0') * (charge.rate / 100);
-                    return (
-                      <SummaryRow key={idx}>
-                        <span>{charge.name} ({charge.rate}%):</span>
-                        <span>{formatCurrency(chargeAmount, editInvoice.currency || 'MYR')}</span>
-                      </SummaryRow>
-                    );
-                  })}
-                  <SummaryRow highlight>
-                    <span>Total:</span>
-                    <span><strong>{formatCurrency(parseFloat(editInvoice.total || '0'), editInvoice.currency || 'MYR')}</strong></span>
-                  </SummaryRow>
-                </InvoiceSummary>
-
-                {/* Modification Reason */}
-                <FormGroup style={{ marginTop: '16px' }}>
-                  <FormLabel>Modification Reason {selectedInvoice?.type === 'automatic' && <span style={{ color: '#EF4444' }}>*</span>}</FormLabel>
-                  <FormTextarea
-                    value={editModificationReason}
-                    onChange={(e) => setEditModificationReason(e.target.value)}
-                    placeholder="Enter reason for modification..."
-                    rows={2}
-                  />
-                </FormGroup>
-
-                {Array.isArray(selectedInvoice?.modificationHistory) && selectedInvoice.modificationHistory.length > 0 && (
-                  <div style={{ marginTop: '16px', padding: '12px', background: '#FEF3C7', borderRadius: '8px', border: '1px solid #FDE68A' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#92400E', marginBottom: '8px' }}>{t('brand:brandInvoicesPage.modificationHistory')}</div>
-                    {(selectedInvoice.modificationHistory as any[]).map((mod: any, idx: number) => {
-                      const ts = mod.modified_at || mod.timestamp;
-                      const who = mod.modified_by_name || (mod.reason === 'payment_settings_updated' ? 'System (payment settings)' : mod.reason === 'subscription_updated' ? 'System (subscription)' : 'System');
-                      const isLast = idx >= (selectedInvoice.modificationHistory as any[]).length - 1;
-                      return (
-                      <div key={idx} style={{ fontSize: '12px', color: '#78350F', marginBottom: isLast ? '0' : '8px', paddingBottom: isLast ? '0' : '8px', borderBottom: isLast ? 'none' : '1px solid #FDE68A' }}>
-                        <div style={{ fontWeight: 500 }}>{ts ? new Date(ts).toLocaleString() : ''}{who ? ` - ${who}` : ''}</div>
-                        {mod.reason && <div style={{ marginTop: '2px' }}>Reason: {mod.reason}</div>}
-                        {mod.changes && typeof mod.changes === 'object' && Object.keys(mod.changes).length > 0 && (
-                          <div style={{ marginTop: '2px', color: '#92400E' }}>
-                            {Object.entries(mod.changes).map(([field, change]: [string, any]) => (
-                              <span key={field} style={{ marginRight: '8px' }}>{field}: {String(change?.from)} → {String(change?.to)}</span>
-                            ))}
-                          </div>
-                        )}
-                        {!mod.changes && (mod.before || mod.after) && (
-                          <div style={{ marginTop: '2px', color: '#92400E' }}>
-                            {mod.before?.total_amount !== undefined && mod.after?.total_amount !== undefined && (
-                              <span style={{ marginRight: '8px' }}>total: {String(mod.before.total_amount)} → {String(mod.after.total_amount)}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      );
-                    })}
-                  </div>
-                )}
-              
-          </CommonModal>
+          <BrandInvoiceEditModal
+            selectedInvoice={selectedInvoice} editInvoice={editInvoice} setEditInvoice={setEditInvoice}
+            editModificationReason={editModificationReason} setEditModificationReason={setEditModificationReason}
+            editSearchQuery={editSearchQuery} editSearchResults={editSearchResults}
+            showEditSearchDropdown={showEditSearchDropdown} setShowEditSearchDropdown={setShowEditSearchDropdown}
+            editSelectedTarget={editSelectedTarget} setEditSelectedTarget={setEditSelectedTarget}
+            setEditSearchQuery={setEditSearchQuery} handleEditSearch={handleEditSearch}
+            handleEditTargetSelect={handleEditTargetSelect} managers={managers}
+            invoiceCategories={invoiceCategories} getChargesForCurrency={getChargesForCurrency}
+            operationSettings={operationSettings} onClose={() => setShowEditModal(false)} onSave={handleSaveEdit}
+          />
         )}
 
         {/* Send Invoice Confirmation Modal */}
         {showSendConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowSendConfirmModal(false)} title="Send Invoice" footer={<><Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}> Cancel </Button><Button variant="success" onClick={confirmSendInvoice}> Confirm </Button></>}>
-
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#0A2540',
-                    marginBottom: '12px'
-                  }}>{t('brand:brandInvoicesPage.sendInvoice')}</h3>
-                  <p style={{
-                    fontSize: '14px',
-                    color: '#6B7280',
-                    marginBottom: '20px',
-                    lineHeight: '1.6'
-                  }}>
-                    Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?
-                  </p>
-                  <div style={{
-                    background: '#F8FAFC',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    border: '1px solid #E6EBF1'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Invoice:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Recipient:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.restaurantName || selectedInvoice.customerName}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Company:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.customerName || selectedInvoice.restaurantName}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
-                    </div>
-                  </div>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowSendConfirmModal(false)} title="Send Invoice" footer={<><Button variant="secondary" onClick={() => setShowSendConfirmModal(false)}> Cancel </Button><Button variant="success" onClick={confirmSendInvoice}> Confirm </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.sendInvoice')}</h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>Are you sure you want to send invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?</p>
+              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Recipient:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName || selectedInvoice.restaurantName || selectedInvoice.customerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Company:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.customerName || selectedInvoice.restaurantName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>Amount:</span><span style={{ fontWeight: '600', color: '#059669' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
+              </div>
+            </div>
           </CommonModal>
         )}
 
         {/* Resend Invoice Confirmation Modal */}
         {showResendConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowResendConfirmModal(false)} title="Resend Invoice" footer={<><Button variant="secondary" onClick={() => setShowResendConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={confirmResendInvoice}> Resend Invoice </Button></>}>
-
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#0A2540',
-                    marginBottom: '12px'
-                  }}>{t('brand:brandInvoicesPage.resendInvoice')}</h3>
-                  <p style={{
-                    fontSize: '14px',
-                    color: '#6B7280',
-                    marginBottom: '20px',
-                    lineHeight: '1.6'
-                  }}>
-                    Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?
-                  </p>
-                  <div style={{
-                    background: '#FEF3C7',
-                    padding: '12px',
-                    borderRadius: '6px',
-                    border: '1px solid #F59E0B',
-                    fontSize: '13px',
-                    color: '#92400E'
-                  }}>
-                    This will send another copy of the invoice to the restaurant's email.
-                  </div>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowResendConfirmModal(false)} title="Resend Invoice" footer={<><Button variant="secondary" onClick={() => setShowResendConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={confirmResendInvoice}> Resend Invoice </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.resendInvoice')}</h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>Resend invoice <strong>{selectedInvoice.invoiceNumber}</strong> to <strong>{selectedInvoice.restaurantName || selectedInvoice.customerName}</strong>?</p>
+              <div style={{ background: '#FEF3C7', padding: '12px', borderRadius: '6px', border: '1px solid #F59E0B', fontSize: '13px', color: '#92400E' }}>This will send another copy of the invoice to the restaurant's email.</div>
+            </div>
           </CommonModal>
         )}
 
         {/* Cancel Invoice Confirmation Modal */}
         {showCancelConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Cancel Invoice </Button></>}>
-
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#0A2540',
-                    marginBottom: '12px'
-                  }}>{t('brand:brandInvoicesPage.cancelInvoice')}</h3>
-                  <p style={{ 
-                    fontSize: '14px', 
-                    color: '#6B7280', 
-                    marginBottom: '20px',
-                    lineHeight: '1.6' 
-                  }}>
-                    Are you sure you want to cancel invoice <strong>{selectedInvoice.invoiceNumber}</strong>?
-                  </p>
-                  <div style={{
-                    background: '#FEE2E2',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    border: '1px solid #FCA5A5',
-                    marginBottom: '16px'
-                  }}>
-                    <p style={{ 
-                      margin: 0, 
-                      color: '#991B1B', 
-                      fontSize: '14px', 
-                      fontWeight: '500'
-                    }}>
-                      <strong>⚠️ This action cannot be undone</strong>
-                    </p>
-                    <p style={{ 
-                      margin: '8px 0 0 0', 
-                      color: '#7F1D1D', 
-                      fontSize: '13px'
-                    }}>
-                      The invoice will be marked as cancelled and cannot be sent or processed for payment.
-                    </p>
-                  </div>
-                  <div style={{
-                    background: '#F8FAFC',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    border: '1px solid #E6EBF1'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Invoice:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ color: '#6B7280' }}>Manager:</span>
-                      <span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#6B7280' }}>Amount:</span>
-                      <span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span>
-                    </div>
-                  </div>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowCancelConfirmModal(false)} title="Cancel Invoice" footer={<><Button variant="secondary" onClick={() => setShowCancelConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmCancelInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Cancel Invoice </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.cancelInvoice')}</h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '20px', lineHeight: '1.6' }}>Are you sure you want to cancel invoice <strong>{selectedInvoice.invoiceNumber}</strong>?</p>
+              <div style={{ background: '#FEE2E2', padding: '16px', borderRadius: '8px', border: '1px solid #FCA5A5', marginBottom: '16px' }}><p style={{ margin: 0, color: '#991B1B', fontSize: '14px', fontWeight: '500' }}><strong>This action cannot be undone</strong></p><p style={{ margin: '8px 0 0 0', color: '#7F1D1D', fontSize: '13px' }}>The invoice will be marked as cancelled and cannot be sent or processed for payment.</p></div>
+              <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '8px', border: '1px solid #E6EBF1' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Invoice:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.invoiceNumber}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}><span style={{ color: '#6B7280' }}>Manager:</span><span style={{ fontWeight: '500' }}>{selectedInvoice.managerName}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#6B7280' }}>Amount:</span><span style={{ fontWeight: '600', color: '#DC2626' }}>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</span></div>
+              </div>
+            </div>
           </CommonModal>
         )}
 
         {/* Delete Invoice Confirmation Modal */}
         {showDeleteConfirmModal && selectedInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Delete Invoice </Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowDeleteConfirmModal(false)} title="Delete Invoice" footer={<><Button variant="secondary" onClick={() => setShowDeleteConfirmModal(false)}> Keep Invoice </Button><Button variant="primary" onClick={confirmDeleteInvoice} style={{ background: '#EF4444', borderColor: '#EF4444' }} > Delete Invoice </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0A2540', marginBottom: '12px' }}>{t('brand:brandInvoicesPage.deleteInvoice')}</h3>
+              <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.5' }}>Are you sure you want to permanently delete invoice <strong>#{selectedInvoice.invoiceNumber}</strong>?<br />This action cannot be undone.</p>
+            </div>
+          </CommonModal>
+        )}
 
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <h3 style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#0A2540',
-                    marginBottom: '12px'
-                  }}>{t('brand:brandInvoicesPage.deleteInvoice')}</h3>
-                  <p style={{
-                    fontSize: '14px',
-                    color: '#6B7280',
-                    lineHeight: '1.5'
-                  }}>
-                    Are you sure you want to permanently delete invoice <strong>#{selectedInvoice.invoiceNumber}</strong>?
-                    <br />This action cannot be undone.
-                  </p>
+        {/* Payment Confirmation Modal */}
+        {showPaymentConfirmModal && selectedInvoice && (
+          <CommonModal isOpen={true} onClose={() => setShowPaymentConfirmModal(false)} title={`Confirm Payment - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={() => setShowPaymentConfirmModal(false)}> Cancel </Button><Button variant="primary" onClick={handleMarkAsPaid}> Confirm Payment Received </Button></>}>
+            <FormGroup>
+              <FormLabel>{t('brand:brandInvoicesPage.paymentConfirmation')}</FormLabel>
+              <InvoiceSummary>
+                <SummaryRow><span>Manager:</span><span>{selectedInvoice.managerName}</span></SummaryRow>
+                <SummaryRow><span>Company:</span><span>{selectedInvoice.companyName}</span></SummaryRow>
+                <SummaryRow><span>Invoice Number:</span><span>{selectedInvoice.invoiceNumber}</span></SummaryRow>
+                <SummaryRow><span>Due Date:</span><span>{formatDate(selectedInvoice.dueDate)}</span></SummaryRow>
+                <SummaryRow highlight><span><strong>Payment Amount:</strong></span><span><strong>{formatCurrency(selectedInvoice.total, selectedInvoice.currency || 'MYR')}</strong></span></SummaryRow>
+              </InvoiceSummary>
+            </FormGroup>
+            {(selectedInvoice.paymentMethod || selectedInvoice.receiptUrl || selectedInvoice.transactionId) && (
+              <FormGroup>
+                <FormLabel>{t('brand:brandInvoicesPage.customersPaymentInformation')}</FormLabel>
+                <div style={{ background: '#EFF6FF', border: '1px solid #3B82F6', borderRadius: '8px', padding: '16px' }}>
+                  <div style={{ fontSize: '14px', lineHeight: '1.8' }}>
+                    {selectedInvoice.paymentMethod && (<p style={{ margin: '0 0 8px 0' }}><strong>Payment Method:</strong> {selectedInvoice.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : selectedInvoice.paymentMethod === 'qr_payment' ? 'QR Payment' : selectedInvoice.paymentMethod === 'stripe' ? 'Stripe' : selectedInvoice.paymentMethod === 'paypal' ? 'PayPal' : selectedInvoice.paymentMethod}</p>)}
+                    {selectedInvoice.transactionId && (<p style={{ margin: '0 0 8px 0' }}><strong>Transaction ID:</strong> {selectedInvoice.transactionId}</p>)}
+                  </div>
+                  {selectedInvoice.receiptUrl && (<div style={{ marginTop: '12px' }}><p style={{ margin: '0 0 8px 0', fontWeight: '600', fontSize: '14px' }}>Payment Receipt:</p><div style={{ textAlign: 'center', background: 'white', padding: '12px', borderRadius: '8px' }}><img src={selectedInvoice.receiptUrl} alt="Payment Receipt" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', cursor: 'pointer' }} onClick={() => window.open(selectedInvoice.receiptUrl, '_blank')} /><p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#6B7280' }}>{t('brand:brandInvoicesPage.clickImageToViewFullSize')}</p></div></div>)}
                 </div>
-              
+              </FormGroup>
+            )}
+            <div style={{ background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', padding: '16px', margin: '16px 0' }}><p style={{ margin: 0, color: '#92400E', fontSize: '14px' }}><strong>{t('brand:brandInvoicesPage.confirmPaymentReceipt')}</strong><br />Only mark this invoice as paid if you have received and verified the payment. This action will update the invoice status to "Paid".</p></div>
+            <FormGroup>
+              <FormLabel>{t('brand:brandInvoicesPage.statusChange')}</FormLabel>
+              <div style={{ fontSize: '14px', lineHeight: '1.6', color: '#374151', background: '#F8FAFC', padding: '12px', borderRadius: '6px' }}>Payment Submitted → Paid<br />Paid Date: {formatDateTime(new Date(), operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' })}</div>
+            </FormGroup>
           </CommonModal>
         )}
 
         {/* Email Invoice Modal */}
         {showEmailModal && emailInvoice && (
-                    <CommonModal isOpen={true} onClose={() => setShowEmailModal(false)} title="Send Invoice via Email" footer={<><Button variant="secondary" onClick={() => { setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient(''); }}> Cancel </Button><Button variant="primary" onClick={handleSendInvoiceEmail} disabled={!emailRecipient || !emailRecipient.includes('@')} > Send Email </Button></>}>
-
-                <FormGroup>
-                  <FormLabel>{t('brand:brandInvoicesPage.invoice')}</FormLabel>
-                  <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}>
-                    <div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div>
-                    <div style={{ fontSize: '13px', color: '#6B7280' }}>{emailInvoice.customerName}</div>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#635BFF', marginTop: '8px' }}>
-                      {formatCurrency(emailInvoice.total, emailInvoice.currency || 'MYR')}
-                    </div>
-                  </div>
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>Recipient Email *</FormLabel>
-                  <FormInput
-                    type="email"
-                    value={emailRecipient}
-                    onChange={(e) => setEmailRecipient(e.target.value)}
-                    placeholder="Enter recipient email address"
-                    required
-                    style={{ maxWidth: '100%' }}
-                  />
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>
-                    {emailRecipient ? (
-                      <>Default email for {emailInvoice.payerType === 'restaurant' ? 'Restaurant' :
-                       emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' :
-                       emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'}</>
-                    ) : (
-                      <>Enter the {emailInvoice.payerType === 'restaurant' ? 'restaurant' :
-                       emailInvoice.payerType === 'foodcourt_manager' ? 'foodcourt manager' :
-                       emailInvoice.payerType === 'brand_manager' ? 'brand manager' : 'customer'} email address</>
-                    )}
-                  </div>
-                </FormGroup>
-
-                <div style={{
-                  background: '#F0F9FF',
-                  border: '1px solid #0EA5E9',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  marginTop: '16px'
-                }}>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#0369A1' }}>
-                    The invoice will be sent to the recipient email address using the system email settings.
-                  </p>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowEmailModal(false)} title="Send Invoice via Email" footer={<><Button variant="secondary" onClick={() => { setShowEmailModal(false); setEmailInvoice(null); setEmailRecipient(''); }}> Cancel </Button><Button variant="primary" onClick={handleSendInvoiceEmail} disabled={!emailRecipient || !emailRecipient.includes('@')} > Send Email </Button></>}>
+            <FormGroup>
+              <FormLabel>{t('brand:brandInvoicesPage.invoice')}</FormLabel>
+              <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '6px', marginBottom: '16px' }}><div style={{ fontWeight: '600', color: '#0A2540', marginBottom: '4px' }}>{emailInvoice.invoiceNumber}</div><div style={{ fontSize: '13px', color: '#6B7280' }}>{emailInvoice.customerName}</div><div style={{ fontSize: '14px', fontWeight: '600', color: '#635BFF', marginTop: '8px' }}>{formatCurrency(emailInvoice.total, emailInvoice.currency || 'MYR')}</div></div>
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Recipient Email *</FormLabel>
+              <FormInput type="email" value={emailRecipient} onChange={(e) => setEmailRecipient(e.target.value)} placeholder="Enter recipient email address" required style={{ maxWidth: '100%' }} />
+              <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{emailRecipient ? (<>Default email for {emailInvoice.payerType === 'restaurant' ? 'Restaurant' : emailInvoice.payerType === 'foodcourt_manager' ? 'Foodcourt Manager' : emailInvoice.payerType === 'brand_manager' ? 'Brand Manager' : 'Customer'}</>) : (<>Enter the {emailInvoice.payerType === 'restaurant' ? 'restaurant' : emailInvoice.payerType === 'foodcourt_manager' ? 'foodcourt manager' : emailInvoice.payerType === 'brand_manager' ? 'brand manager' : 'customer'} email address</>)}</div>
+            </FormGroup>
+            <div style={{ background: '#F0F9FF', border: '1px solid #0EA5E9', borderRadius: '8px', padding: '12px', marginTop: '16px' }}><p style={{ margin: 0, fontSize: '13px', color: '#0369A1' }}>The invoice will be sent to the recipient email address using the system email settings.</p></div>
           </CommonModal>
         )}
 
         {/* Success Modal */}
         {showSuccessModal && (
-                    <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" footer={<><Button variant="primary" onClick={() => setShowSuccessModal(false)}> OK </Button></>}>
-
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <p style={{
-                    fontSize: '16px',
-                    color: '#0A2540',
-                    marginBottom: '8px',
-                    fontWeight: '500'
-                  }}>{successMessage}</p>
-                </div>
-              
+          <CommonModal isOpen={true} onClose={() => setShowSuccessModal(false)} title="Success" footer={<><Button variant="primary" onClick={() => setShowSuccessModal(false)}> OK </Button></>}>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}><p style={{ fontSize: '16px', color: '#0A2540', marginBottom: '8px', fontWeight: '500' }}>{successMessage}</p></div>
           </CommonModal>
         )}
 
-        {/* Download Success Modal */}
         </Content>
       </Container>
     </>

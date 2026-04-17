@@ -16,7 +16,7 @@ router.get('/:foodcourtId/units', authenticateToken, async (req, res, next) => {
       include: [{
         model: Contract,
         as: 'currentContract',
-        attributes: ['id', 'applicant_name', 'stage', 'start_date', 'end_date'],
+        attributes: ['id', 'applicant_company_name', 'applicant_contact_person', 'stage', 'start_date', 'end_date'],
         required: false
       }],
       order: [['unit_number', 'ASC']]

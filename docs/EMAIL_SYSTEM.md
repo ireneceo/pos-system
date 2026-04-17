@@ -62,9 +62,9 @@
 | 2 | 가입 알림 | 셀프 가입 완료 | System Admin 전원 | `notifyAdminNewSignup()` + `emailLayout()` | ✅ |
 | 3 | 비밀번호 리셋 (관리자) | 비번 찾기 요청 | 해당 사용자 | `passwordResetEmail()` | ✅ |
 | 4 | Contact 문의 답변 | 어드민 답변 작성 | 문의자 | `public.js` 답변 메일 + `emailLayout()` | ✅ |
-| 5 | **Contact 문의 알림** | 랜딩페이지 문의 | **System Admin** | - | ❌ **미구현** |
-| 6 | **구독 Trial 만료 알림** | subscriptionScheduler | 해당 유저 | - | ❌ **미구현** |
-| 7 | **구독 Suspended 전환 알림** | subscriptionScheduler | 해당 유저 | - | ❌ **미구현** |
+| 5 | Contact 문의 알림 | 랜딩페이지 문의 | System Admin 전원 | `sendNotificationBatch` (inquiry_received) | ✅ |
+| 6 | 구독 Trial 만료 알림 | subscriptionScheduler | 해당 유저 (Restaurant + Entity) | `sendSubscriptionEmail` / `sendEntitySubscriptionEmail` | ✅ |
+| 7 | 구독 Suspended 전환 알림 | subscriptionScheduler | 해당 유저 (Restaurant + Entity) | `sendSubscriptionEmail` / `sendEntitySubscriptionEmail` | ✅ |
 
 ### B. Issuer 메일 (발행자 SMTP) — 발행자가 자기 이름으로 보내는 메일
 
@@ -73,7 +73,7 @@
 | 8 | POS 인보이스 | 스케줄러 2AM / 수동 | System Admin | 레스토랑 email | `generateInvoiceNotificationEmail()` | ✅ |
 | 9 | Brand/FC 인보이스 | 스케줄러 2AM | Brand/Foodcourt | 레스토랑 email | `entityPlanInvoiceEmail()` | ✅ |
 | 10 | 레스토랑 생성 Welcome | Admin이 레스토랑 생성 | System Admin/Brand/FC | Restaurant Admin | `welcomeEmail()` | ✅ |
-| 11 | **인보이스 연체 리마인더** | 스케줄러 (D+3, D+7, D+14) | 각 발행자 | Restaurant Admin/Owner | - | ❌ **미구현** |
+| 11 | 인보이스 연체 리마인더 | subscriptionScheduler (D+3, D+7, D+14) | 각 발행자 (Issuer SMTP) | Restaurant email | `processOverdueReminders` | ✅ |
 | 12 | **구독 만료 임박** | 스케줄러 (D-7, D-3, D-1) | 각 발행자 | 해당 유저 | - | ❌ 미구현 (추후) |
 
 ### C. Receiver 메일 (수신자 SMTP → Platform fallback) — 알림 메일

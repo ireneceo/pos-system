@@ -6,6 +6,7 @@ import { useMobileOrder } from '../contexts/MobileOrderContext';
 import { useCustomer } from '../../contexts/CustomerContext';
 import { formatCurrency } from '../../utils/currency';
 import { mobileFetch } from '../utils/mobileApi';
+import { formatDateTime as tzFormatDateTime } from '../../utils/timezone';
 
 const OrdersContainer = styled.div`
   display: flex;
@@ -297,20 +298,12 @@ const OrdersPage: React.FC = () => {
     const date = new Date(dateString);
     const today = new Date();
     const isToday = date.toDateString() === today.toDateString();
-    
+
     if (isToday) {
-      return `Today at ${date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit' 
-      })}`;
+      return `Today at ${tzFormatDateTime(dateString, null, { year: undefined, month: undefined, day: undefined })}`;
     }
-    
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      hour: 'numeric', 
-      minute: '2-digit' 
-    });
+
+    return tzFormatDateTime(dateString, null, { year: undefined });
   };
 
   const getStatusText = (status: string) => {

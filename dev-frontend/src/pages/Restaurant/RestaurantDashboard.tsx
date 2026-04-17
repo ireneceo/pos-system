@@ -9,14 +9,17 @@ import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
+import { formatDateTime } from '../../utils/timezone';
 import { formatPaymentDisplay } from '../../constants';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 interface DashboardData {
   restaurant: {
     id: string | number;
     name: string;
+    branch_name?: string;
     planType: string;
     status: string;
     subscriptionStart?: string;
@@ -648,7 +651,7 @@ const RestaurantDashboard: React.FC = () => {
         <Header>
           <Title>{t('settings:restaurantDashboard.restaurantDashboard')}</Title>
           <Subtitle>
-            <span>{restaurant.name} • {restaurant.planType}</span>
+            <span>{getRestaurantDisplayName(restaurant)} • {restaurant.planType}</span>
             {(() => {
               const endDate = restaurant.subscriptionEnd ? new Date(restaurant.subscriptionEnd) : null;
               const now = new Date();
@@ -793,16 +796,16 @@ const RestaurantDashboard: React.FC = () => {
                               cursor: 'pointer',
                               transition: 'opacity 0.2s'
                             }}
-                            title={`${dateObj.toLocaleDateString()}: RM ${data.revenue.toLocaleString()}`}
+                            title={`${formatDateTime(dateObj, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}: RM ${data.revenue.toLocaleString()}`}
                             onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
                             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                           />
                           <div style={{ fontSize: '11px', color: '#6B7280', textAlign: 'center' }}>
                             {timePeriod === 'week'
-                              ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                              ? formatDateTime(dateObj, null, { month: 'short', day: 'numeric' })
                               : timePeriod === 'month'
                               ? `Week ${index + 1}`
-                              : dateObj.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+                              : formatDateTime(dateObj, null, { month: 'short', year: '2-digit' })
                             }
                           </div>
                           <div style={{ fontSize: '10px', color: '#6B7280', textAlign: 'center' }}>
@@ -1036,7 +1039,7 @@ const RestaurantDashboard: React.FC = () => {
                       </Td>
                       <Td>
                         <TimeInfo>
-                          {new Date(order.order_date).toLocaleString('en-US', {
+                          {formatDateTime(order.order_date, null, {
                             month: 'short',
                             day: 'numeric',
                             hour: '2-digit',

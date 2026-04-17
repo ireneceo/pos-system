@@ -6,6 +6,28 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-17
+- Contract Information 레이아웃 재구성 — 2열×3행 6필드 (Number/Type/Period/SigningDate/Duration/Remarks)
+- Contract Franchise/Tenancy Terms 통화 심볼 표시 (`RM 5,000.00` 형식) + Security Deposit 필드 재확인
+- Contract Applicant Information 분리 — "Name" 하나 → "Company Name" + "Contact Person" 2개
+- ContractDetail 자동저장 실패(빨간 !) fix — whitelist 필드만 PUT
+- Link Restaurant 검색 수정 — 백엔드 search/limit 쿼리 지원
+- Brand General Dashboard — Active Contracts 위젯 신규 (총 개수 + 최근 5개 목록 + View all)
+- Date Input 전면 통일 — `<input type="date">` 42곳 제거, DateField/DateRangeField 컴포넌트 신규 (25개 파일 적용)
+- C-6 거대 컴포넌트 분할 — LiveOrders/Admin·Brand·Foodcourt Invoices 4개 파일 17,452→7,015줄 (60% 감소)
+
+### 2026-04-16
+- 모바일 주문 영수증 다운로드 (PNG) + 공유 (WhatsApp/Telegram/Web Share) 기능 추가
+- 모바일 주문 API 응답에 재무 데이터 + 레스토랑 정보(사업자번호/세금번호) 포함
+- branch_name 표시 전수 점검 — 25개 파일 일괄 `getRestaurantDisplayName()` 유틸 적용
+- Recipe 이미지 base64 → 파일 전환 (3건 마이그레이션)
+- N:M 조인 테이블 DROP — `brand_product_brands`, `supplier_brands` 삭제 + 죽은 코드 제거
+- 구독 전환 이메일 보강 — Active→Overdue, Entity(Brand/Foodcourt/Owner) 전환 알림 추가
+- 인보이스 연체 리마인더 — D+3/D+7/D+14 발행자 SMTP로 자동 발송
+- 타임존 전체 적용 — `toLocaleString` 계열 ~200곳 유틸로 교체 (~74파일)
+- nginx 권한 수정 — 500 에러 해결
+- `/기능설계` 스킬 신규 추가 (대규모 기능 개발용 6단계 체계)
+
 ### 2026-04-15
 - 모바일 주문 카테고리 전환 시 전체 페이지 리로딩 현상 제거 (inline fetch, isLoading 상태 토글 생략)
 - 모바일 이미지 파이프라인 전면 재작성 — base64 저장 구조를 파일 URL 로 전환, 운영 DB `products.image` 35.4MB → 0.01MB (289건 sharp 변환)

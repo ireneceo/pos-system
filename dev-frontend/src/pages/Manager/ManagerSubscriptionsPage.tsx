@@ -4,6 +4,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI/S
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
+import { formatDateTime } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
 
 interface Subscription {
@@ -514,7 +515,7 @@ const ManagerSubscriptionsPage: React.FC = () => {
                       {subscription.status}
                     </StatusBadge>
                     <NextBilling>
-                      Next billing: {new Date(subscription.nextBilling).toLocaleDateString()}
+                      Next billing: {formatDateTime(subscription.nextBilling, null, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                     </NextBilling>
                   </StatusSection>
 

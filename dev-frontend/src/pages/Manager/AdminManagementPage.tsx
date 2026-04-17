@@ -10,6 +10,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { formatDate as formatDateTz } from '../../utils/timezone';
 interface Staff {
   id: number;
   username: string;
@@ -892,7 +893,7 @@ const ManagerAdminManagementPage: React.FC = () => {
             <ViewRow>
               <ViewField>
                 <ViewLabel>{t('admin:adminManagementPage.joined')}</ViewLabel>
-                <ViewValue>{viewStaff.createdAt ? new Date(viewStaff.createdAt).toLocaleDateString() : '-'}</ViewValue>
+                <ViewValue>{viewStaff.createdAt ? formatDateTz(viewStaff.createdAt, null) : '-'}</ViewValue>
               </ViewField>
             </ViewRow>
           </ViewSection>

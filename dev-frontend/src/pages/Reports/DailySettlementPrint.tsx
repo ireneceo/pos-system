@@ -7,6 +7,7 @@ import { formatCurrency } from '../../utils/currency';
 import { getPaymentMethodLabel } from '../../constants';
 import { printSettlementReport } from '../../utils/billPrint';
 import { useTranslation } from 'react-i18next';
+import DateField from '../../components/Common/DateField';
 
 import { getAuthToken } from '../../utils/auth';
 // ─── Types ───────────────────────────────────────────────────────
@@ -753,12 +754,13 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
           >
             Yesterday
           </QuickDateBtn>
-          <DateInput
-            type="date"
-            value={selectedDate}
-            max={today}
-            onChange={(e) => handleDateChange(e.target.value)}
-          />
+          <div style={{ minWidth: '180px' }}>
+            <DateField
+              value={selectedDate}
+              max={today}
+              onChange={(v) => handleDateChange(v)}
+            />
+          </div>
         </DateSelector>
 
         {/* Receipt content */}

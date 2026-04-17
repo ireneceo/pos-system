@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Supplier, Restaurant, SupplierCategory, SupplierBrand, Brand } = require('../models');
+const { Supplier, Restaurant, SupplierCategory, Brand } = require('../models');
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { isBrandManager } = require('../middleware/recipeAuth');
 const { requireBGScope, applyBGFilter, assertBGOwnsRow } = require('../middleware/brandScope');
@@ -182,9 +182,6 @@ router.delete('/suppliers/:supplierId', authenticateToken, requireBGScope, async
     }
     if (!assertBGOwnsRow(supplier, req, res)) return;
 
-    // Legacy N:M cleanup (best-effort)
-    await SupplierBrand.destroy({ where: { supplier_id: supplierId } }).catch(() => {});
-
     await supplier.destroy();
 
     res.json({ success: true, message: 'Supplier deleted' });
@@ -194,64 +191,7 @@ router.delete('/suppliers/:supplierId', authenticateToken, requireBGScope, async
   }
 });
 
-/**
- * POST /api/suppliers/:supplierId/brands
- * 공급업체에 브랜드 연결 추가
- */
-router.post('/suppliers/:supplierId/brands', authenticateToken, async (req, res) => {
-  try {
-    const { supplierId } = req.params;
-    const { brand_id } = req.body;
-    const userRole = req.user.role;
-
-    if (userRole !== 'Brand General' && userRole !== 'Brand Manager' && userRole !== 'System Admin') {
-      return res.status(403).json({ error: '권한이 없습니다' });
-    }
-
-    // 이미 연결되어 있는지 확인
-    const existing = await SupplierBrand.findOne({
-      where: { supplier_id: supplierId, brand_id: brand_id }
-    });
-
-    if (existing) {
-      return res.status(400).json({ error: '이미 연결된 브랜드입니다' });
-    }
-
-    await SupplierBrand.create({
-      supplier_id: supplierId,
-      brand_id: brand_id
-    });
-
-    res.json({ success: true, message: '브랜드가 연결되었습니다' });
-  } catch (error) {
-    console.error('Add supplier brand error:', error);
-    res.status(500).json({ error: '브랜드 연결 실패' });
-  }
-});
-
-/**
- * DELETE /api/suppliers/:supplierId/brands/:brandId
- * 공급업체에서 브랜드 연결 해제
- */
-router.delete('/suppliers/:supplierId/brands/:brandId', authenticateToken, async (req, res) => {
-  try {
-    const { supplierId, brandId } = req.params;
-    const userRole = req.user.role;
-
-    if (userRole !== 'Brand General' && userRole !== 'Brand Manager' && userRole !== 'System Admin') {
-      return res.status(403).json({ error: '권한이 없습니다' });
-    }
-
-    await SupplierBrand.destroy({
-      where: { supplier_id: supplierId, brand_id: brandId }
-    });
-
-    res.json({ success: true, message: '브랜드 연결이 해제되었습니다' });
-  } catch (error) {
-    console.error('Remove supplier brand error:', error);
-    res.status(500).json({ error: '브랜드 연결 해제 실패' });
-  }
-});
+// N:M supplier-brand routes removed (migrated to owner_user_id, tables dropped 2026-04-16)
 
 // ============================================
 // Legacy Brand Suppliers API (하위 호환)
