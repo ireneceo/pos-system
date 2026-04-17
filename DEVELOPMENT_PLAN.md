@@ -65,12 +65,30 @@
 - 이번 세션 전체 16건 변경 (Contract Management Enhancement 설계 + 구현 완료 후 일괄 배포)
 
 ### 진행 중인 다음 작업 (Contract Management Enhancement — /기능설계 스킬 적용)
-- **1단계: 기능 정의** 완료 → Irene 승인 대기
-- Irene 공유 실제 계약서 2건 기반:
-  - 푸드코트 입점 (Tropicana): Unit Size/Rent Schedule/Service Charge/Cleaning/Fit-out 등
-  - 브랜드 가맹 (K-DINE with MIN): 양쪽 사업자번호/로열티/독점권/12개 지원업무 등
-- Gap 분석: 당사자 5개, Tenancy 10개, Franchise 8개 필드 부족
-- Phase 1 (당사자 정보) → Phase 2 (재무 확장) → Phase 3 (조항 구조화) 순차
+- **1~4단계 설계 완료** + 30년차 3개 관점 검증 반영 → **구현은 다음 세션**
+- 설계 문서: `/var/www/docs/CONTRACT_MANAGEMENT_SYSTEM.md` "Contract Management Enhancement (2026-04-17 설계)" 섹션
+
+**Irene 승인 결정:**
+- 옵션 A (단일 Contract 모델 + entityType 분기)
+- Phase 1 → 2 → 3 순차
+- 기존 24건 NULL 유지, 대표자 JSON 배열 (1명), 계좌정보 JSON
+
+**30년차 검증으로 추가된 Critical 보완 6건:**
+1. `issuer_sync_with_master` 토글 (Brand/Foodcourt 마스터 동기화 ON/OFF)
+2. `financial_terms` JSON 스키마 validate 훅
+3. Support Services → `contract_tasks` 자동 생성 (Setup Stage 진입 시)
+4. `legal_terms JSON` 컬럼 추가 (준거법/분쟁해결/언어)
+5. Percentage Rent 월별 자동 청구 반영은 **비범위** (Phase 4)
+6. **탭 인터페이스** 도입 (Parties / Contract / Setup / Documents 4개 탭) — 13개 섹션 스크롤 지옥 해결
+
+**다음 세션 시작 가이드 프롬프트:**
+```
+Contract Management Enhancement 구현 시작.
+/var/www/.claude/session-state.md 읽어줘.
+그리고 /var/www/docs/CONTRACT_MANAGEMENT_SYSTEM.md 의
+"Contract Management Enhancement (2026-04-17 설계)" 섹션 읽어줘.
+Phase 1부터 구현 시작.
+```
 
 ---
 

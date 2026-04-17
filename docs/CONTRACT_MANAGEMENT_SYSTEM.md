@@ -703,3 +703,378 @@ Frontend:
 18. Renewal alert system (email + page banner)
 19. Dashboard alert integration (expiring contracts, pending proposals)
 20. Checklist template settings
+
+---
+
+# Contract Management Enhancement (2026-04-17 설계)
+
+> **Design Status:** 1~4단계 완료, Irene 승인, 구현은 별도 세션
+> **실무 계약서 기반 보완 작업** — K-DINE 가맹계약 + Tropicana 입점계약 참조
+
+## 1. 기능 정의 (Stage 1)
+
+| 항목 | 내용 |
+|------|------|
+| 목적 | 실무 계약서 수준의 재무/운영 조건을 폼에 완전 반영. 추후 PDF 계약서 자동 생성 기반 마련 |
+| 사용자 | Brand General (가맹본부), Foodcourt General (푸드코트 운영사) |
+| 분리 전략 | **옵션 A**: 단일 Contract 모델 + entityType 분기 UI (코드 공유 극대화) |
+| Phase 분할 | **3단계 순차**: Phase 1 당사자 정보 → Phase 2 재무 조건 → Phase 3 조항 구조화 |
+| 비범위 | PDF 출력, 전자서명, 가맹점/입점자 로그인 포털 (모두 미래 Phase) |
+
+### 설계 결정 (Irene 확정)
+- 기존 24건 계약: 신규 필드 **NULL로 두고** 사용자가 편집
+- 대표자 저장 구조: **JSON 배열** (현재는 1명만, 확장 가능성 열어둠)
+- 계좌정보 저장: **JSON** (`{ bank, account, holder, swift?, currency? }`)
+
+## 2. API 설계 (Stage 2)
+
+### 기존 엔드포인트 재활용 — body/response 확장만
+
+**`PUT /api/contracts/:id`** — whitelist 필드 확장:
+
+```
+Phase 1 (당사자/발행자 정보):
+- applicant_business_registration, applicant_website, applicant_bank_info (JSON), applicant_representatives (JSON 배열)
+- issuer_company_name, issuer_business_registration, issuer_website, issuer_bank_info, issuer_representatives
+
+Phase 2 (재무 조건) — financial_terms JSON 키 확장:
+- Tenancy: unit_size_sqft, rent_schedule[], percentage_rent{rate, compare_against, higher_applies}, fit_out_period_days, handover_date, commencement_date
+- Franchise: franchise_fee_original, franchise_fee_discount_reason, system_setup_fee, system_monthly_fee, initial_supply_package_included, royalty_payment{due_day, grace_days, late_interest_pct}, training_additional_cost_note
+
+Phase 3 (계약 조항) — 신규 컬럼:
+- special_conditions (JSON 배열): [{title, content}]
+- renewal_policy (JSON): {type, notice_months, rent_policy, terms_changeable, renewal_period_years}
+- exclusivity_terms (JSON, Brand만): {is_exclusive, territory_detail, sales_target, revocation_conditions[]}
+- support_services (JSON 배열): [{code, title, included, notes}]
+```
+
+### 신규 엔드포인트 (1개)
+
+**`GET /api/contracts/support-services/template?entity_type=brand|foodcourt`**
+- 용도: 신규 계약 작성 시 12개 기본 지원업무 체크리스트 프리필
+- 역할: Brand General / Foodcourt General / System Admin
+- 응답: `{ success: true, data: [{code, title, description?}] }`
+
+### 보안/응답 포맷
+- 모든 엔드포인트: `authenticateToken + checkContractAccess` (entity_id 자동 격리)
+- 응답 포맷: `{ success, data }` / `{ success: false, message }` 표준 유지
+
+## 3. DB 스키마 (Stage 3)
+
+### `contracts` 테이블 ALTER
+
+**Phase 1 (당사자 + 발행자 정보):**
+```sql
+ALTER TABLE contracts
+  ADD COLUMN applicant_business_registration VARCHAR(100) NULL AFTER applicant_contact_person,
+  ADD COLUMN applicant_website VARCHAR(300) NULL AFTER applicant_business_registration,
+  ADD COLUMN applicant_bank_info JSON NULL AFTER applicant_website,
+  ADD COLUMN applicant_representatives JSON NULL AFTER applicant_bank_info,
+  ADD COLUMN issuer_company_name VARCHAR(200) NULL,
+  ADD COLUMN issuer_business_registration VARCHAR(100) NULL,
+  ADD COLUMN issuer_website VARCHAR(300) NULL,
+  ADD COLUMN issuer_bank_info JSON NULL,
+  ADD COLUMN issuer_representatives JSON NULL;
+```
+
+**Phase 2**: ALTER 없음 (`financial_terms` JSON 키 확장)
+- 모델 `beforeValidate` 훅으로 기본값 채우기
+- unit_size_sqft는 `FoodcourtUnit` 테이블에도 있지만, Contract 시점 스냅샷으로 중복 저장 (unit 정보 변경 시에도 계약 보호)
+
+**Phase 3 (계약 조항):**
+```sql
+ALTER TABLE contracts
+  ADD COLUMN special_conditions JSON NULL,
+  ADD COLUMN renewal_policy JSON NULL,
+  ADD COLUMN exclusivity_terms JSON NULL,
+  ADD COLUMN support_services JSON NULL;
+```
+
+### 모델 (`models/Contract.js`) 추가 필드
+
+```js
+applicant_business_registration: { type: DataTypes.STRING(100), allowNull: true },
+applicant_website: { type: DataTypes.STRING(300), allowNull: true },
+applicant_bank_info: { type: DataTypes.JSON, allowNull: true },
+applicant_representatives: { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
+issuer_company_name: { type: DataTypes.STRING(200), allowNull: true },
+issuer_business_registration: { type: DataTypes.STRING(100), allowNull: true },
+issuer_website: { type: DataTypes.STRING(300), allowNull: true },
+issuer_bank_info: { type: DataTypes.JSON, allowNull: true },
+issuer_representatives: { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
+special_conditions: { type: DataTypes.JSON, allowNull: true, defaultValue: [] },
+renewal_policy: { type: DataTypes.JSON, allowNull: true },
+exclusivity_terms: { type: DataTypes.JSON, allowNull: true },
+support_services: { type: DataTypes.JSON, allowNull: true, defaultValue: [] }
+```
+
+### 기존 24건 마이그레이션
+- 신규 필드 전부 **NULL / 빈 배열 기본값** 유지
+- 사용자가 필요 시 편집으로 보완
+
+### 신규 테이블 없음
+- `support_services`는 Contract 내 JSON 배열 (별도 테이블 불필요)
+- 기존 `contract_tasks`는 Setup Stage 일반 태스크용으로 유지
+
+## 4. UI 흐름 (Stage 4)
+
+### 섹션 순서 (위→아래)
+
+1. Header + Stage Bar (기존)
+2. **Applicant Information** (Phase 1 확장)
+3. **Issuer Information** (Phase 1 신규, Brand/Foodcourt 정보 자동 프리필)
+4. Link Restaurant (기존)
+5. Contract Information (기존 — Number/Type/Period/SigningDate/Duration/Remarks 6필드)
+6. **Franchise Terms / Tenancy Terms** (Phase 2 확장)
+7. **Special Conditions** (Phase 3 신규)
+8. **Renewal Policy** (Phase 3 신규)
+9. **Exclusivity** (Phase 3 신규, Brand만)
+10. **Support Services Checklist** (Phase 3 신규, 12개 지원업무)
+11. Documents (기존)
+12. Setup Checklist (기존 tasks, Support services와 별개)
+13. Notes & Comments (기존)
+
+### Phase 1: Applicant / Issuer 섹션 레이아웃
+
+**Applicant Information (확장):**
+| 컬럼 1 | 컬럼 2 |
+|--------|--------|
+| Company Name | Business Registration |
+| Contact Person | Position |
+| Email | Phone |
+| Website | Business Type |
+| Address (span 2) | |
+| Bank Info (Bank / Account / Holder) (span 2) | |
+| Representative (Name / ID Number) (span 2) | |
+
+**Issuer Information (신규):** 동일 구조
+- 초기 로딩 시 Brand/Foodcourt 엔티티 데이터로 자동 프리필 배너
+- 사용자 편집 가능 (계약 시점 스냅샷)
+
+### Phase 2: 재무 섹션 레이아웃
+
+**Tenancy Terms (푸드코트):**
+- **Unit**: Unit Number (read-only) | Unit Size (sqft)
+- **Rent Schedule**: 연도별 동적 테이블 (+Row 버튼) — Year / Base Rent / Service Charge psf / Cleaning
+- **Percentage Rent**: Rate [%] + compare_against (Gross/Base) + ☑ Higher applies
+- **Key Dates**: Handover Date | Commencement Date | Fit-Out Period [days]
+- **Others**: Security Deposit | Min Guarantee | Operating Hours
+
+**Franchise Terms (브랜드):**
+- **Initial Fees**: Franchise Fee | Original Price | Discount Reason + Security Deposit
+- **System**: Setup Fee | Monthly Fee + ☑ Supply Package Included + Note
+- **Royalty**: Rate % | Due Day | Grace Days | Late Interest % annual
+- **Marketing & Training**: Marketing Fund % | Training Additional Note
+- **Territory**: Text field
+
+### Phase 3: 조항 섹션 레이아웃
+
+- **Special Conditions**: 동적 리스트 (+Add) — Title / Content (textarea) / Delete icon
+- **Renewal Policy**: Type (select) | Notice Period | Rent Policy (select) | ☑ Terms Changeable | Initial/Renewal Term (years)
+- **Exclusivity (Brand)**: ☑ Exclusive + Territory Detail + Sales Target + Revocation Conditions 리스트
+- **Support Services**: 12개 프리필 체크리스트 — ☑ Included / Title / Notes
+
+### 신규 공통 컴포넌트
+
+| 컴포넌트 | 용도 |
+|----------|------|
+| `BankInfoField` | Bank/Account/Holder 한 세트 입력 (JSON 저장) |
+| `RepresentativeField` | Name/ID Number/Position 한 세트 입력 |
+| `RentScheduleEditor` | 연도별 임대료 동적 테이블 |
+| `ConditionListEditor` | Special Conditions 동적 리스트 (title + content) |
+| `SupportServicesChecklist` | 12개 체크리스트 컴포넌트 |
+
+### UI 원칙
+- UI_DESIGN_GUIDE.md 준수 (alert/성공메시지 금지, 이모지 금지)
+- AutoSaveField로 모든 필드 자동 저장
+- entityType === 'brand' / 'foodcourt' 분기 렌더
+- 기존 DateField/DateRangeField/CurrencyInput/PercentInput 재사용
+
+## 5. 보완 사항 (30년차 검증 반영)
+
+### Critical (반드시 반영)
+
+**C1. Issuer 정보 동기화 전략**
+- Contract 생성 시: Brand/Foodcourt 마스터에서 자동 프리필
+- Contract 편집 폼 상단에 토글: **☑ Keep in sync with Brand/Foodcourt master** (기본 on)
+  - on: Brand 정보 수정 시 이 Contract의 issuer_* 자동 업데이트
+  - off: Contract 독립 스냅샷 (법적 보호용)
+- 기존 계약: 기본 off (이미 저장된 데이터 보호)
+- 구현: `Contract.issuer_sync_with_master: BOOLEAN DEFAULT true`
+
+**C2. financial_terms JSON 스키마 검증**
+- `Contract.js`에 `validate` 훅 추가:
+  ```js
+  validate: {
+    financialTermsSchema() {
+      const ft = this.financial_terms || {};
+      if (ft.rent_schedule && !Array.isArray(ft.rent_schedule)) throw new Error('rent_schedule must be array');
+      if (ft.percentage_rent) {
+        const pr = ft.percentage_rent;
+        if (pr.rate != null && (pr.rate < 0 || pr.rate > 100)) throw new Error('percentage_rent.rate out of range');
+      }
+      // ... 각 키별 검증
+    }
+  }
+  ```
+- API 레벨 validator (`express-validator`)도 병행 (400 응답 빠르게)
+
+**C3. Support Services ↔ Contract Tasks 연동**
+- 설계 확장:
+  - `support_services[i].included: true` 항목은 **Setup Stage 진입 시** `contract_tasks`에 자동 생성
+  - 생성된 task의 `source_type: 'support_service'`, `source_code: <service code>` 필드로 역추적
+  - 이렇게 하면 "계약에 포함된 지원업무"와 "실제 진행 상태"가 분리되어 관리됨
+- 기존 `contract_tasks` 모델에 `source_type`, `source_code` 컬럼 추가 필요
+
+**C4. 법적 조항 섹션 추가 (`legal_terms`)**
+- 신규 JSON 컬럼:
+  ```sql
+  ALTER TABLE contracts ADD COLUMN legal_terms JSON NULL;
+  ```
+- 구조:
+  ```json
+  {
+    "governing_law": "Malaysia",
+    "dispute_resolution": "arbitration",  // arbitration | court | mediation
+    "arbitration_venue": "KLRCA, Kuala Lumpur",
+    "arbitration_language": "English",
+    "contract_language": "English",  // 번역본 있어도 영어 원본 우선
+    "notice_delivery_methods": ["registered_mail", "email"],
+    "notice_email_response_hours": 24
+  }
+  ```
+- UI 섹션 "Legal Terms" 신규 (Contract 탭 하단)
+
+**C5. Percentage Rent 범위 명시**
+- 이번 Phase에서는 **정보 저장만**. 인보이스 자동 반영은 **Phase 4 (별도 세션, 비범위)**
+- 설계 문서 "비범위"에 추가: "Percentage Rent의 월별 자동 청구 반영"
+
+**C6. 탭 인터페이스 도입 (UI 필수)**
+
+섹션 순서 재구성 — **4개 탭**:
+
+```
+┌─────────────────────────────────────┐
+│ Header + Stage Bar                  │
+├─────────────────────────────────────┤
+│ [Parties] [Contract] [Setup] [Docs] │
+├─────────────────────────────────────┤
+│ (선택 탭 내용)                       │
+└─────────────────────────────────────┘
+```
+
+| 탭 | 포함 섹션 |
+|----|-----------|
+| **Parties** | Applicant Information, Issuer Information, Link Restaurant |
+| **Contract** | Contract Information (6필드), Financial Terms, Special Conditions, Renewal Policy, Exclusivity (Brand만), Legal Terms |
+| **Setup** | Support Services Checklist, Setup Tasks (기존) |
+| **Documents** | Documents, Notes & Comments, History |
+
+각 탭 진입 시 스크롤 리셋. 탭 상태 URL 쿼리 sync (`?tab=contract`).
+
+### Important (반영 권장)
+
+**I1. `rent_schedule[].year`는 상대 연도** (계약 시작일 기준 1, 2, 3...)
+- 절대 연도 아님. 계약 연장 시에도 year는 reset되지 않고 누적 (3년 계약 후 갱신 시 Year 4, 5, 6)
+- 유틸 함수 `getCurrentContractYear(startDate, today)` 추가 필요
+
+**I2. Support Services 카테고리 그룹핑**
+- 12개 항목을 4개 그룹으로:
+  - **Initial Setup** (5): brand_rights, market_research, operation_manual, opening_support, supply_package
+  - **Operations** (3): kitchen_setup, order_ordering_system, custom_order_process
+  - **Training** (2): recipe_training, intensive_training
+  - **Design** (2): brand_design, pos_setup
+
+**I3. Rent Schedule 모바일 카드 변환**
+- 데스크톱: 테이블 (Year | Base Rent | Service Charge | Cleaning)
+- 모바일 (@media ≤ 768px): 연도별 카드 (각 카드에 라벨+값 세로 배치)
+
+**I4. Read-only 모드 개선**
+- `isEditable === false`일 때:
+  - Input 대신 definition list (dl/dt/dd) 렌더
+  - 값 없는 필드는 "—" 표시
+  - 편집 아이콘 숨김
+
+**I5. 빈 상태 디자인**
+- Special Conditions 빈 배열 → "No special conditions" + `+ Add First Condition` CTA 버튼
+- Representatives 빈 배열 → "No representatives" + `+ Add Representative` CTA 버튼
+
+### Nice-to-have (확장 시)
+
+- **N1. Percentage Rent 프리셋**: 4개 프리셋 버튼 ("Base only / Percentage only / Higher of two / Lower of two")
+- **N2. 12개 service code 표준 리스트**: 영문 code + i18n 키 매핑 테이블 (`docs/CONTRACT_SUPPORT_SERVICES.md` 별도 문서)
+- **N3. Termination Terms**: Phase 4로 미룸. deposit_forfeiture_conditions, return_items[], settlement_terms 등
+- **N4. i18n 키 사전 정의**: 신규 필드 20+ 개 한국어/중국어/말레이 번역 키 목록 (구현 전 locales/*.json 업데이트)
+
+## 6. 업데이트된 DB 스키마 요약
+
+### Phase 1 ALTER (Critical C1 반영)
+```sql
+ALTER TABLE contracts
+  ADD COLUMN applicant_business_registration VARCHAR(100) NULL,
+  ADD COLUMN applicant_website VARCHAR(300) NULL,
+  ADD COLUMN applicant_bank_info JSON NULL,
+  ADD COLUMN applicant_representatives JSON NULL,
+  ADD COLUMN issuer_company_name VARCHAR(200) NULL,
+  ADD COLUMN issuer_business_registration VARCHAR(100) NULL,
+  ADD COLUMN issuer_website VARCHAR(300) NULL,
+  ADD COLUMN issuer_bank_info JSON NULL,
+  ADD COLUMN issuer_representatives JSON NULL,
+  ADD COLUMN issuer_sync_with_master BOOLEAN DEFAULT true;
+```
+
+### Phase 3 ALTER (Critical C4 반영)
+```sql
+ALTER TABLE contracts
+  ADD COLUMN special_conditions JSON NULL,
+  ADD COLUMN renewal_policy JSON NULL,
+  ADD COLUMN exclusivity_terms JSON NULL,
+  ADD COLUMN support_services JSON NULL,
+  ADD COLUMN legal_terms JSON NULL;
+
+ALTER TABLE contract_tasks
+  ADD COLUMN source_type ENUM('manual', 'support_service', 'setup_template') DEFAULT 'manual',
+  ADD COLUMN source_code VARCHAR(50) NULL;
+```
+
+## 7. 구현 계획 (Stage 5 — 다음 세션)
+
+**Phase 1 (당사자 + Issuer + sync 토글 + Parties 탭)**
+- DB ALTER 실행
+- `Contract.js` 모델 확장 + validate 훅 기초
+- `contracts.js` whitelist 확장 + prefill 로직 (create 시 Brand/Foodcourt 정보 자동 채움)
+- `ContractDetail.tsx` 탭 인터페이스 도입 + Parties 탭 구현
+- 신규 컴포넌트: `BankInfoField`, `RepresentativeField`, `SyncMasterToggle`
+
+**Phase 2 (재무 확장 + Contract 탭 정비)**
+- `financial_terms` validate 훅 완성
+- Contract 탭 내 Financial Terms 재구성
+- 신규 컴포넌트: `RentScheduleEditor`, `PercentageRentField`
+
+**Phase 3 (조항 + Setup 탭)**
+- Phase 3 ALTER 실행 (special_conditions, renewal_policy, exclusivity_terms, support_services, legal_terms + contract_tasks source_type/code)
+- Support Services ↔ contract_tasks 연동 로직 (Setup stage 진입 훅)
+- Contract 탭에 Special Conditions / Renewal / Exclusivity / Legal Terms 섹션 추가
+- Setup 탭 구성
+- 신규 컴포넌트: `ConditionListEditor`, `SupportServicesChecklist`, `LegalTermsEditor`
+
+## 8. 테스트 시나리오 (Stage 6 — 구현 후 작성)
+
+각 Phase별 최소:
+- Write→Read 왕복 (모든 신규 필드 + JSON 구조)
+- 기존 24건 계약의 NULL/defaultValue 처리 확인
+- Brand/Foodcourt entityType별 UI 렌더 분기
+- issuer_sync_with_master 토글 동작 (on/off 모두)
+- Support Services → contract_tasks 자동 생성 검증
+- financial_terms validate 훅 (잘못된 값 400 응답)
+- 권한: cross-tenant 접근 차단 (`checkContractAccess`)
+- 탭 라우팅: URL ?tab=xxx 쿼리 sync
+
+## 9. 비범위 (명확히 제외)
+
+- **PDF 계약서 자동 생성** (Phase 4 별도 세션)
+- **Percentage Rent 월별 인보이스 자동 반영** (Phase 4)
+- **전자서명 / 외부 eSign 연동**
+- **가맹점/입점자 로그인 포털**
+- **Termination Terms 상세 조항** (Phase 4)
+- **12개 Support Services code 표준 목록 완성** (구현 시 `docs/CONTRACT_SUPPORT_SERVICES.md` 별도 정리)

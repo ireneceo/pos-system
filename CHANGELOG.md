@@ -7,6 +7,7 @@
 ## [Unreleased] — 미배포 (개발서버만)
 
 ### 2026-04-17
+- Contract Management Enhancement 설계 완료 (4단계 + 30년차 3개 관점 검증 반영) — 구현은 다음 세션. 주요 보완: issuer 마스터 동기화 토글, financial_terms JSON 검증, Support Services↔Tasks 연동, legal_terms 컬럼, 4탭 인터페이스 도입
 - Contract Information 레이아웃 재구성 — 2열×3행 6필드 (Number/Type/Period/SigningDate/Duration/Remarks)
 - Contract Franchise/Tenancy Terms 통화 심볼 표시 (`RM 5,000.00` 형식) + Security Deposit 필드 재확인
 - Contract Applicant Information 분리 — "Name" 하나 → "Company Name" + "Contact Person" 2개
