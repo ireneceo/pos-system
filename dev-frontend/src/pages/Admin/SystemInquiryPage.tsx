@@ -631,6 +631,24 @@ const SystemInquiryPage: React.FC = () => {
     window.dispatchEvent(new Event('refreshBadgeCounts'));
   };
 
+  const handleCloseTicketFromModal = async () => {
+    if (!selectedTicket) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/support-tickets/${selectedTicket.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'closed' })
+      });
+      if (res.ok) {
+        setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'closed' as SupportTicket['status'] } : t));
+        setShowViewTicketModal(false);
+        setSelectedTicket(null);
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
+      }
+    } catch (err) { /* silent */ }
+  };
+
   const handleStatusChange = async (newStatus: string) => {
     if (!selectedTicket) return;
     setDetailStatus(newStatus);
@@ -928,11 +946,11 @@ const SystemInquiryPage: React.FC = () => {
             isOpen={true}
             onClose={() => setShowViewTicketModal(false)}
             title="Inquiry Details"
-            footer={
-              <Button variant="secondary" onClick={() => setShowViewTicketModal(false)}>
-                Close
+            footer={selectedTicket.status !== 'closed' ? (
+              <Button variant="primary" onClick={handleCloseTicketFromModal}>
+                Close Ticket
               </Button>
-            }
+            ) : undefined}
           >
                 <div style={{ display: 'grid', gap: '20px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>

@@ -6,6 +6,15 @@ import AutoSaveField from '../Common/AutoSaveField';
 import CommentSection from '../Common/CommentSection';
 import DateField from '../Common/DateField';
 import DateRangeField from '../Common/DateRangeField';
+import { Tabs, Tab } from '../Common/TabComponents';
+import BankInfoField from './BankInfoField';
+import RepresentativeField from './RepresentativeField';
+import SyncMasterToggle from './SyncMasterToggle';
+import RentScheduleEditor from './RentScheduleEditor';
+import PercentageRentField from './PercentageRentField';
+import ConditionListEditor from './ConditionListEditor';
+import SupportServicesChecklist from './SupportServicesChecklist';
+import LegalTermsEditor from './LegalTermsEditor';
 import { useAuth } from '../../contexts/AuthContext';
 
 import { getAuthToken } from '../../utils/auth';
@@ -40,7 +49,24 @@ const DetailHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-left: auto;
+`;
+
+const TitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 `;
 
 const DetailTitle = styled.h2`
@@ -80,6 +106,47 @@ const SectionTitle = styled.h3`
   border-bottom: 1px solid #F3F4F6;
 `;
 
+const RequiredHint = styled.div`
+  font-size: 12px;
+  color: #6B7C93;
+  background: #FEF3C7;
+  border: 1px solid #FDE68A;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  &::before {
+    content: '* ';
+    color: #DC2626;
+    font-weight: 700;
+  }
+`;
+
+const SubsectionTitle = styled.h4`
+  font-size: 12px;
+  font-weight: 600;
+  color: #635BFF;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 20px 0 12px 0;
+  &:first-of-type { margin-top: 0; }
+`;
+
+const CheckboxInline = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #0A2540;
+  padding: 10px 12px;
+  background: #F8FAFC;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  width: fit-content;
+  &:hover { border-color: #C7D2FE; }
+`;
+
 const FormGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -97,10 +164,17 @@ const FormGroup = styled.div`
   gap: 4px;
 `;
 
-const Label = styled.label`
+const Label = styled.label<{ required?: boolean }>`
   font-size: 12px;
   font-weight: 500;
   color: #6B7C93;
+  ${p => p.required && `
+    &::after {
+      content: ' *';
+      color: #DC2626;
+      font-weight: 700;
+    }
+  `}
 `;
 
 const Input = styled.input`
@@ -366,6 +440,39 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
   const [searchingRestaurant, setSearchingRestaurant] = useState(false);
   const searchTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  const validTabs = ['parties', 'contract', 'setup', 'documents'] as const;
+  type TabKey = typeof validTabs[number];
+  const readTabFromUrl = (): TabKey => {
+    try {
+      const q = new URLSearchParams(window.location.search).get('tab');
+      if (q && (validTabs as readonly string[]).includes(q)) return q as TabKey;
+    } catch {}
+    return 'parties';
+  };
+  const [activeTab, setActiveTab] = useState<TabKey>(readTabFromUrl());
+  const [supportServicesTemplate, setSupportServicesTemplate] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/contracts/support-services/template?entity_type=${entityType}`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) setSupportServicesTemplate(data.data);
+      } catch {}
+    })();
+  }, [entityType]);
+  const changeTab = (tab: TabKey) => {
+    setActiveTab(tab);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.replaceState({}, '', url.toString());
+      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    } catch {}
+  };
+
   const getToken = () => getAuthToken();
   const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
@@ -399,6 +506,13 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       'applicant_company_name', 'applicant_contact_person',
       'applicant_email', 'applicant_phone',
       'applicant_business_type', 'applicant_location', 'applicant_notes',
+      'applicant_business_registration', 'applicant_website',
+      'applicant_bank_info', 'applicant_representatives',
+      'issuer_company_name', 'issuer_business_registration',
+      'issuer_website', 'issuer_bank_info', 'issuer_representatives',
+      'issuer_sync_with_master',
+      'special_conditions', 'renewal_policy', 'exclusivity_terms',
+      'support_services', 'legal_terms',
       'contract_number', 'contract_type', 'start_date', 'end_date',
       'duration_months', 'signing_date', 'financial_terms',
       'renewal_type', 'renewal_alert_months', 'termination_notice_months',
@@ -429,6 +543,12 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       if (data.success) {
         await fetchContract();
       } else {
+        const msg = (data.message || 'Stage transition failed').toLowerCase();
+        // Route the user to the tab where the missing field lives
+        if (msg.includes('document')) changeTab('documents');
+        else if (msg.includes('contract number') || msg.includes('date') || msg.includes('period')) changeTab('contract');
+        else if (msg.includes('task')) changeTab('setup');
+        else if (msg.includes('applicant') || msg.includes('restaurant')) changeTab('parties');
         setFormError(data.message || 'Stage transition failed');
       }
     } catch {
@@ -584,6 +704,30 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
     active: t('detail.startOperations', 'Start Operations')
   };
 
+  // Compute required-field gaps for next-stage gating
+  const getMissingForNextStage = (): string[] => {
+    const missing: string[] = [];
+    if (nextStage === 'contracting') {
+      if (!form.applicant_company_name) missing.push(t('detail.applicantCompanyName', 'Applicant Company Name') as string);
+    } else if (nextStage === 'setup') {
+      if (!form.contract_number) missing.push(t('detail.contractNumber', 'Contract Number') as string);
+      if (!form.start_date) missing.push(t('detail.startDate', 'Start Date') as string);
+      if (!form.end_date) missing.push(t('detail.endDate', 'End Date') as string);
+      if (!contract.documents || contract.documents.length === 0) missing.push(t('detail.documents', 'Documents') as string);
+    } else if (nextStage === 'active') {
+      if (!contract.restaurant_id) missing.push(t('detail.linkedRestaurant', 'Linked Restaurant') as string);
+      if (contract.tasks && contract.tasks.some((t: any) => !t.is_completed)) {
+        missing.push(t('detail.pendingSetupTasks', 'Pending Setup Tasks') as string);
+      }
+    }
+    return missing;
+  };
+  const missingRequired = nextStage ? getMissingForNextStage() : [];
+  const nextDisabled = missingRequired.length > 0;
+  const nextDisabledTitle = nextDisabled
+    ? `${t('detail.requiredMissing', 'Required:')} ${missingRequired.join(', ')}`
+    : undefined;
+
   const formatHistoryAction = (action: string) => {
     const map: Record<string, string> = {
       created: 'Created',
@@ -604,8 +748,23 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       <BackLink onClick={onBack}>&larr; {t('detail.backToList', 'Back to list')}</BackLink>
 
       <DetailHeader>
-        <DetailTitle>{contract.restaurant?.name || contract.applicant_company_name || contract.applicant_name}{contract.restaurant?.branch_name && <span style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', marginLeft: '8px' }}>({contract.restaurant.branch_name})</span>}</DetailTitle>
-        <StageBadge bg={badge.bg} color={badge.color}>{contract.stage}</StageBadge>
+        <TitleRow>
+          <DetailTitle>{contract.restaurant?.name || contract.applicant_company_name || contract.applicant_name}{contract.restaurant?.branch_name && <span style={{ fontSize: '14px', fontWeight: 500, color: '#6B7C93', marginLeft: '8px' }}>({contract.restaurant.branch_name})</span>}</DetailTitle>
+          <StageBadge bg={badge.bg} color={badge.color}>{contract.stage}</StageBadge>
+        </TitleRow>
+        <HeaderActions>
+          {nextStage && (
+            <Btn variant="primary" onClick={() => handleStageTransition(nextStage)} disabled={nextDisabled} title={nextDisabledTitle}>
+              {nextStageLabels[nextStage]} &rarr;
+            </Btn>
+          )}
+          {contract.stage === 'active' && (
+            <>
+              <Btn variant="primary" onClick={handleRenew}>{t('detail.renewContract', 'Renew Contract')}</Btn>
+              <Btn variant="danger" onClick={() => setTerminateModal(true)}>{t('detail.terminateContract', 'Terminate Contract')}</Btn>
+            </>
+          )}
+        </HeaderActions>
       </DetailHeader>
 
       {!['terminated', 'renewed', 'expired'].includes(contract.stage) && (
@@ -614,6 +773,14 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
 
       {formError && <ErrorMsg>{formError}</ErrorMsg>}
 
+      <Tabs style={{ marginBottom: 20 }}>
+        <Tab active={activeTab === 'parties'} onClick={() => changeTab('parties')}>{t('detail.tabParties', 'Parties')}</Tab>
+        <Tab active={activeTab === 'contract'} onClick={() => changeTab('contract')}>{t('detail.tabContract', 'Contract')}</Tab>
+        <Tab active={activeTab === 'setup'} onClick={() => changeTab('setup')}>{t('detail.tabSetup', 'Setup')}</Tab>
+        <Tab active={activeTab === 'documents'} onClick={() => changeTab('documents')}>{t('detail.tabDocuments', 'Documents')}</Tab>
+      </Tabs>
+
+      {activeTab === 'parties' && <>
       {/* Applicant Information */}
       <Section>
         <SectionTitle>{t('detail.applicantInfo', 'Applicant Information')}</SectionTitle>
@@ -653,6 +820,91 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
             <AutoSaveField onSave={handleAutoSave}>
               <Input value={form.applicant_location || ''} onChange={e => updateField('applicant_location', e.target.value)} disabled={!isEditable} />
             </AutoSaveField>
+          </FormGroup>
+          <FormGroup>
+            <Label>{t('detail.businessRegistration', 'Business Registration')}</Label>
+            <AutoSaveField onSave={handleAutoSave}>
+              <Input value={form.applicant_business_registration || ''} onChange={e => updateField('applicant_business_registration', e.target.value)} disabled={!isEditable} />
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup>
+            <Label>{t('detail.website', 'Website')}</Label>
+            <AutoSaveField onSave={handleAutoSave}>
+              <Input value={form.applicant_website || ''} onChange={e => updateField('applicant_website', e.target.value)} disabled={!isEditable} />
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup style={{ gridColumn: '1 / -1' }}>
+            <Label>{t('detail.bankInfo', 'Bank Info')}</Label>
+            <BankInfoField
+              value={form.applicant_bank_info}
+              onChange={v => updateField('applicant_bank_info', v)}
+              onSave={handleAutoSave}
+              disabled={!isEditable}
+            />
+          </FormGroup>
+          <FormGroup style={{ gridColumn: '1 / -1' }}>
+            <Label>{t('detail.representatives', 'Representatives')}</Label>
+            <RepresentativeField
+              value={form.applicant_representatives}
+              onChange={v => updateField('applicant_representatives', v)}
+              onSave={handleAutoSave}
+              disabled={!isEditable}
+            />
+          </FormGroup>
+        </FormGrid>
+      </Section>
+
+      {/* Issuer Information */}
+      <Section>
+        <SectionTitle>{t('detail.issuerInfo', 'Issuer Information')}</SectionTitle>
+        <div style={{ marginBottom: 16 }}>
+          <SyncMasterToggle
+            checked={form.issuer_sync_with_master !== false}
+            onChange={v => {
+              updateField('issuer_sync_with_master', v);
+              setTimeout(() => { handleAutoSave(); }, 0);
+            }}
+            disabled={!isEditable}
+            label={t('detail.syncWithMaster', `Keep in sync with ${entityType === 'brand' ? 'Brand' : 'Foodcourt'} master`) as string}
+            hint={t('detail.syncWithMasterHint', 'When on, issuer fields auto-update from master entity. Turn off to lock this contract as independent snapshot.') as string}
+          />
+        </div>
+        <FormGrid>
+          <FormGroup>
+            <Label>{t('detail.companyName', 'Company Name')}</Label>
+            <AutoSaveField onSave={handleAutoSave}>
+              <Input value={form.issuer_company_name || ''} onChange={e => updateField('issuer_company_name', e.target.value)} disabled={!isEditable} />
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup>
+            <Label>{t('detail.businessRegistration', 'Business Registration')}</Label>
+            <AutoSaveField onSave={handleAutoSave}>
+              <Input value={form.issuer_business_registration || ''} onChange={e => updateField('issuer_business_registration', e.target.value)} disabled={!isEditable} />
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup>
+            <Label>{t('detail.website', 'Website')}</Label>
+            <AutoSaveField onSave={handleAutoSave}>
+              <Input value={form.issuer_website || ''} onChange={e => updateField('issuer_website', e.target.value)} disabled={!isEditable} />
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup style={{ gridColumn: '1 / -1' }}>
+            <Label>{t('detail.bankInfo', 'Bank Info')}</Label>
+            <BankInfoField
+              value={form.issuer_bank_info}
+              onChange={v => updateField('issuer_bank_info', v)}
+              onSave={handleAutoSave}
+              disabled={!isEditable}
+            />
+          </FormGroup>
+          <FormGroup style={{ gridColumn: '1 / -1' }}>
+            <Label>{t('detail.representatives', 'Representatives')}</Label>
+            <RepresentativeField
+              value={form.issuer_representatives}
+              onChange={v => updateField('issuer_representatives', v)}
+              onSave={handleAutoSave}
+              disabled={!isEditable}
+            />
           </FormGroup>
         </FormGrid>
       </Section>
@@ -704,16 +956,23 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           </div>
         )}
       </Section>
+      </>}
 
+      {activeTab === 'contract' && <>
       {/* Contract Info */}
       {['contracting', 'setup', 'active', 'terminated', 'renewed'].includes(contract.stage) && (
         <Section>
           <SectionTitle>{t('detail.contractInfo', 'Contract Information')}</SectionTitle>
+          {contract.stage === 'contracting' && (
+            <RequiredHint>
+              {t('detail.requiredForSetup', 'Fields marked * are required before moving to Setup stage.')}
+            </RequiredHint>
+          )}
           <FormGrid>
             <FormGroup>
-              <Label>{t('detail.contractNumber', 'Contract Number')}</Label>
+              <Label required>{t('detail.contractNumber', 'Contract Number')}</Label>
               <AutoSaveField onSave={handleAutoSave}>
-                <Input value={form.contract_number || ''} onChange={e => updateField('contract_number', e.target.value)} disabled={!isEditable} />
+                <Input value={form.contract_number || ''} onChange={e => updateField('contract_number', e.target.value)} disabled={!isEditable} placeholder={t('detail.contractNumberPlaceholder', 'e.g. FRN-2026-001') as string} />
               </AutoSaveField>
             </FormGroup>
             <FormGroup>
@@ -739,7 +998,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               </AutoSaveField>
             </FormGroup>
             <FormGroup>
-              <Label>{t('detail.contractPeriod', 'Contract Period')}</Label>
+              <Label required>{t('detail.contractPeriod', 'Contract Period')}</Label>
               <AutoSaveField onSave={handleAutoSave} debounceMs={300}>
                 <DateRangeField
                   startDate={form.start_date}
@@ -782,13 +1041,27 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       {/* Financial Terms */}
       <Section>
         <SectionTitle>{entityType === 'brand' ? t('detail.franchiseTerms', 'Franchise Terms') : t('detail.tenancyTerms', 'Tenancy Terms')}</SectionTitle>
-        <FormGrid>
-          {entityType === 'brand' ? (
-            <>
+        {entityType === 'brand' ? (
+          <>
+            {/* Initial Fees */}
+            <SubsectionTitle>{t('detail.initialFees', 'Initial Fees')}</SubsectionTitle>
+            <FormGrid>
               <FormGroup>
                 <Label>{t('detail.franchiseFee', 'Franchise Fee')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>
                   <CurrencyInput currency={entityCurrency} value={form.financial_terms?.franchise_fee} onChange={v => updateFinancialTerm('franchise_fee', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.franchiseFeeOriginal', 'Original Price')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.franchise_fee_original} onChange={v => updateFinancialTerm('franchise_fee_original', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup style={{ gridColumn: '1 / -1' }}>
+                <Label>{t('detail.discountReason', 'Discount Reason')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <Input value={form.financial_terms?.franchise_fee_discount_reason || ''} onChange={e => updateFinancialTerm('franchise_fee_discount_reason', e.target.value)} disabled={!isEditable} placeholder={t('detail.discountReasonHint', 'Optional — e.g. early-bird, strategic partner') as string} />
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
@@ -797,12 +1070,80 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                   <CurrencyInput currency={entityCurrency} value={form.financial_terms?.security_deposit} onChange={v => updateFinancialTerm('security_deposit', v)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
+            </FormGrid>
+
+            {/* System Fees */}
+            <SubsectionTitle>{t('detail.systemFees', 'System')}</SubsectionTitle>
+            <FormGrid>
               <FormGroup>
-                <Label>{t('detail.royaltyPercent', 'Royalty (%)')}</Label>
+                <Label>{t('detail.systemSetupFee', 'Setup Fee')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.system_setup_fee} onChange={v => updateFinancialTerm('system_setup_fee', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.systemMonthlyFee', 'Monthly Fee')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.system_monthly_fee} onChange={v => updateFinancialTerm('system_monthly_fee', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup style={{ gridColumn: '1 / -1' }}>
+                <CheckboxInline>
+                  <input type="checkbox" style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+                    checked={!!form.financial_terms?.initial_supply_package_included}
+                    onChange={e => { updateFinancialTerm('initial_supply_package_included', e.target.checked); setTimeout(() => handleAutoSave(), 0); }}
+                    disabled={!isEditable} />
+                  {t('detail.supplyPackageIncluded', 'Initial supply package included')}
+                </CheckboxInline>
+              </FormGroup>
+              <FormGroup style={{ gridColumn: '1 / -1' }}>
+                <Label>{t('detail.trainingAdditionalCostNote', 'Training / Additional Cost Note')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <TextArea rows={2} value={form.financial_terms?.training_additional_cost_note || ''} onChange={e => updateFinancialTerm('training_additional_cost_note', e.target.value)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+            </FormGrid>
+
+            {/* Royalty */}
+            <SubsectionTitle>{t('detail.royalty', 'Royalty')}</SubsectionTitle>
+            <FormGrid>
+              <FormGroup>
+                <Label>{t('detail.royaltyPercent', 'Rate (%)')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>
                   <PercentInput value={form.financial_terms?.royalty_value} onChange={v => updateFinancialTerm('royalty_value', v)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.royaltyDueDay', 'Due Day (1-31)')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <Input type="number" min="1" max="31" inputMode="numeric"
+                    value={form.financial_terms?.royalty_payment?.due_day ?? ''}
+                    onChange={e => updateFinancialTerm('royalty_payment', { ...(form.financial_terms?.royalty_payment || {}), due_day: e.target.value })}
+                    disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.royaltyGraceDays', 'Grace Days')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <Input type="number" min="0" inputMode="numeric"
+                    value={form.financial_terms?.royalty_payment?.grace_days ?? ''}
+                    onChange={e => updateFinancialTerm('royalty_payment', { ...(form.financial_terms?.royalty_payment || {}), grace_days: e.target.value })}
+                    disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.royaltyLateInterest', 'Late Interest (% annual)')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <PercentInput value={form.financial_terms?.royalty_payment?.late_interest_pct}
+                    onChange={v => updateFinancialTerm('royalty_payment', { ...(form.financial_terms?.royalty_payment || {}), late_interest_pct: v })}
+                    disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+            </FormGrid>
+
+            {/* Marketing & Territory */}
+            <SubsectionTitle>{t('detail.marketingTerritory', 'Marketing & Territory')}</SubsectionTitle>
+            <FormGrid>
               <FormGroup>
                 <Label>{t('detail.marketingFundPercent', 'Marketing Fund (%)')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>
@@ -815,25 +1156,80 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                   <Input value={form.financial_terms?.territory || ''} onChange={e => updateFinancialTerm('territory', e.target.value)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
-            </>
-          ) : (
-            <>
+            </FormGrid>
+          </>
+        ) : (
+          <>
+            {/* Unit */}
+            <SubsectionTitle>{t('detail.unit', 'Unit')}</SubsectionTitle>
+            <FormGrid>
               <FormGroup>
-                <Label>{t('detail.baseRent', 'Base Rent (monthly)')}</Label>
+                <Label>{t('detail.unitNumber', 'Unit Number')}</Label>
+                <Input value={contract.unit?.unit_number || '—'} disabled readOnly />
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.unitSizeSqft', 'Unit Size (sqft)')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>
-                  <CurrencyInput currency={entityCurrency} value={form.financial_terms?.base_rent} onChange={v => updateFinancialTerm('base_rent', v)} disabled={!isEditable} />
+                  <Input type="number" min="0" step="0.01" inputMode="decimal"
+                    value={form.financial_terms?.unit_size_sqft ?? ''}
+                    onChange={e => updateFinancialTerm('unit_size_sqft', e.target.value)}
+                    disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
+            </FormGrid>
+
+            {/* Rent Schedule */}
+            <SubsectionTitle>{t('detail.rentSchedule', 'Rent Schedule')}</SubsectionTitle>
+            <RentScheduleEditor
+              value={form.financial_terms?.rent_schedule}
+              onChange={v => updateFinancialTerm('rent_schedule', v)}
+              onSave={handleAutoSave}
+              disabled={!isEditable}
+              currency={entityCurrency}
+            />
+
+            {/* Percentage Rent */}
+            <SubsectionTitle>{t('detail.percentageRent', 'Percentage Rent')}</SubsectionTitle>
+            <PercentageRentField
+              value={form.financial_terms?.percentage_rent}
+              onChange={v => updateFinancialTerm('percentage_rent', v)}
+              onSave={handleAutoSave}
+              disabled={!isEditable}
+            />
+
+            {/* Key Dates */}
+            <SubsectionTitle>{t('detail.keyDates', 'Key Dates')}</SubsectionTitle>
+            <FormGrid>
+              <FormGroup>
+                <Label>{t('detail.handoverDate', 'Handover Date')}</Label>
+                <AutoSaveField onSave={handleAutoSave} debounceMs={300}>
+                  <DateField value={form.financial_terms?.handover_date} onChange={v => updateFinancialTerm('handover_date', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.commencementDate', 'Commencement Date')}</Label>
+                <AutoSaveField onSave={handleAutoSave} debounceMs={300}>
+                  <DateField value={form.financial_terms?.commencement_date} onChange={v => updateFinancialTerm('commencement_date', v)} disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+              <FormGroup>
+                <Label>{t('detail.fitOutPeriodDays', 'Fit-Out Period (days)')}</Label>
+                <AutoSaveField onSave={handleAutoSave}>
+                  <Input type="number" min="0" inputMode="numeric"
+                    value={form.financial_terms?.fit_out_period_days ?? ''}
+                    onChange={e => updateFinancialTerm('fit_out_period_days', e.target.value)}
+                    disabled={!isEditable} />
+                </AutoSaveField>
+              </FormGroup>
+            </FormGrid>
+
+            {/* Others */}
+            <SubsectionTitle>{t('detail.others', 'Others')}</SubsectionTitle>
+            <FormGrid>
               <FormGroup>
                 <Label>{t('detail.securityDeposit', 'Security Deposit')}</Label>
                 <AutoSaveField onSave={handleAutoSave}>
                   <CurrencyInput currency={entityCurrency} value={form.financial_terms?.security_deposit} onChange={v => updateFinancialTerm('security_deposit', v)} disabled={!isEditable} />
-                </AutoSaveField>
-              </FormGroup>
-              <FormGroup>
-                <Label>{t('detail.revenueSharePercent', 'Revenue Share (%)')}</Label>
-                <AutoSaveField onSave={handleAutoSave}>
-                  <PercentInput value={form.financial_terms?.revenue_share_percent} onChange={v => updateFinancialTerm('revenue_share_percent', v)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
               <FormGroup>
@@ -854,9 +1250,159 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                   <Input value={form.financial_terms?.operating_hours || ''} onChange={e => updateFinancialTerm('operating_hours', e.target.value)} disabled={!isEditable} />
                 </AutoSaveField>
               </FormGroup>
-            </>
-          )}
+            </FormGrid>
+          </>
+        )}
+      </Section>
+
+      {/* Special Conditions */}
+      <Section>
+        <SectionTitle>{t('detail.specialConditions', 'Special Conditions')}</SectionTitle>
+        <ConditionListEditor
+          value={form.special_conditions}
+          onChange={v => updateField('special_conditions', v)}
+          onSave={handleAutoSave}
+          disabled={!isEditable}
+          addLabel={t('detail.addCondition', '+ Add Condition') as string}
+          emptyLabel={t('detail.noSpecialConditions', 'No special conditions') as string}
+        />
+      </Section>
+
+      {/* Renewal Policy */}
+      <Section>
+        <SectionTitle>{t('detail.renewalPolicy', 'Renewal Policy')}</SectionTitle>
+        <FormGrid>
+          <FormGroup>
+            <Label>{t('detail.renewalType', 'Type')}</Label>
+            <AutoSaveField onSave={handleAutoSave} type="select" debounceMs={300}>
+              <Select
+                value={form.renewal_policy?.type || ''}
+                onChange={e => updateField('renewal_policy', { ...(form.renewal_policy || {}), type: e.target.value })}
+                disabled={!isEditable}
+              >
+                <option value="">{t('detail.select', 'Select...')}</option>
+                <option value="auto">Auto Renewal</option>
+                <option value="manual">Manual Renewal</option>
+                <option value="none">No Renewal</option>
+              </Select>
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup>
+            <Label>{t('detail.noticeMonths', 'Notice Period (months)')}</Label>
+            <AutoSaveField onSave={handleAutoSave}>
+              <Input type="number" min="0" inputMode="numeric"
+                value={form.renewal_policy?.notice_months ?? ''}
+                onChange={e => updateField('renewal_policy', { ...(form.renewal_policy || {}), notice_months: e.target.value })}
+                disabled={!isEditable} />
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup>
+            <Label>{t('detail.renewalRentPolicy', 'Rent Policy at Renewal')}</Label>
+            <AutoSaveField onSave={handleAutoSave} type="select" debounceMs={300}>
+              <Select
+                value={form.renewal_policy?.rent_policy || ''}
+                onChange={e => updateField('renewal_policy', { ...(form.renewal_policy || {}), rent_policy: e.target.value })}
+                disabled={!isEditable}
+              >
+                <option value="">{t('detail.select', 'Select...')}</option>
+                <option value="same">Same as current</option>
+                <option value="market">Market rate</option>
+                <option value="negotiated">Negotiated</option>
+              </Select>
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup>
+            <Label>{t('detail.renewalPeriodYears', 'Renewal Term (years)')}</Label>
+            <AutoSaveField onSave={handleAutoSave}>
+              <Input type="number" min="0" inputMode="numeric"
+                value={form.renewal_policy?.renewal_period_years ?? ''}
+                onChange={e => updateField('renewal_policy', { ...(form.renewal_policy || {}), renewal_period_years: e.target.value })}
+                disabled={!isEditable} />
+            </AutoSaveField>
+          </FormGroup>
+          <FormGroup style={{ gridColumn: '1 / -1' }}>
+            <CheckboxInline>
+              <input type="checkbox" style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+                checked={!!form.renewal_policy?.terms_changeable}
+                onChange={e => {
+                  updateField('renewal_policy', { ...(form.renewal_policy || {}), terms_changeable: e.target.checked });
+                  setTimeout(() => handleAutoSave(), 0);
+                }}
+                disabled={!isEditable} />
+              {t('detail.termsChangeable', 'Terms can be re-negotiated at renewal')}
+            </CheckboxInline>
+          </FormGroup>
         </FormGrid>
+      </Section>
+
+      {/* Exclusivity (Brand only) */}
+      {entityType === 'brand' && (
+        <Section>
+          <SectionTitle>{t('detail.exclusivity', 'Exclusivity')}</SectionTitle>
+          <FormGrid>
+            <FormGroup style={{ gridColumn: '1 / -1' }}>
+              <CheckboxInline>
+                <input type="checkbox" style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+                  checked={!!form.exclusivity_terms?.is_exclusive}
+                  onChange={e => {
+                    updateField('exclusivity_terms', { ...(form.exclusivity_terms || {}), is_exclusive: e.target.checked });
+                    setTimeout(() => handleAutoSave(), 0);
+                  }}
+                  disabled={!isEditable} />
+                {t('detail.isExclusive', 'Exclusive territory granted')}
+              </CheckboxInline>
+            </FormGroup>
+            {form.exclusivity_terms?.is_exclusive && (
+              <>
+                <FormGroup style={{ gridColumn: '1 / -1' }}>
+                  <Label>{t('detail.territoryDetail', 'Territory Detail')}</Label>
+                  <AutoSaveField onSave={handleAutoSave}>
+                    <TextArea rows={2}
+                      value={form.exclusivity_terms?.territory_detail || ''}
+                      onChange={e => updateField('exclusivity_terms', { ...(form.exclusivity_terms || {}), territory_detail: e.target.value })}
+                      disabled={!isEditable} />
+                  </AutoSaveField>
+                </FormGroup>
+                <FormGroup style={{ gridColumn: '1 / -1' }}>
+                  <Label>{t('detail.salesTarget', 'Sales Target (for maintaining exclusivity)')}</Label>
+                  <AutoSaveField onSave={handleAutoSave}>
+                    <Input value={form.exclusivity_terms?.sales_target || ''}
+                      onChange={e => updateField('exclusivity_terms', { ...(form.exclusivity_terms || {}), sales_target: e.target.value })}
+                      disabled={!isEditable} placeholder={t('detail.salesTargetHint', 'e.g. MYR 500,000 per year') as string} />
+                  </AutoSaveField>
+                </FormGroup>
+              </>
+            )}
+          </FormGrid>
+        </Section>
+      )}
+
+      {/* Legal Terms */}
+      <Section>
+        <SectionTitle>{t('detail.legalTerms', 'Legal Terms')}</SectionTitle>
+        <LegalTermsEditor
+          value={form.legal_terms}
+          onChange={v => updateField('legal_terms', v)}
+          onSave={handleAutoSave}
+          disabled={!isEditable}
+        />
+      </Section>
+      </>}
+
+      {activeTab === 'setup' && <>
+      {/* Support Services */}
+      <Section>
+        <SectionTitle>{t('detail.supportServices', 'Support Services')}</SectionTitle>
+        <div style={{ fontSize: 12, color: '#6B7C93', marginBottom: 12 }}>
+          {t('detail.supportServicesHint', 'Check services included in this contract. Checked items will auto-generate tasks when you enter the Setup stage.')}
+        </div>
+        <SupportServicesChecklist
+          value={form.support_services}
+          onChange={v => updateField('support_services', v)}
+          onSave={handleAutoSave}
+          disabled={!isEditable}
+          template={supportServicesTemplate}
+        />
       </Section>
 
       {/* Setup Checklist */}
@@ -896,10 +1442,17 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           )}
         </Section>
       )}
+      </>}
 
+      {activeTab === 'documents' && <>
       {/* Documents */}
       <Section>
         <SectionTitle>{t('detail.documents', 'Documents')}</SectionTitle>
+        {contract.stage === 'contracting' && (!contract.documents || contract.documents.length === 0) && (
+          <RequiredHint>
+            {t('detail.documentsRequiredForSetup', 'At least one document is required before moving to Setup stage.')}
+          </RequiredHint>
+        )}
         {isEditable && (
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', fontWeight: 500, color: '#374151', cursor: 'pointer', transition: 'all 0.15s' }}>
@@ -999,11 +1552,12 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           ))}
         </Section>
       )}
+      </>}
 
-      {/* Action Buttons */}
+      {/* Action Buttons (mirrors header) */}
       <ButtonRow>
         {nextStage && (
-          <Btn variant="primary" onClick={() => handleStageTransition(nextStage)}>
+          <Btn variant="primary" onClick={() => handleStageTransition(nextStage)} disabled={nextDisabled} title={nextDisabledTitle}>
             {nextStageLabels[nextStage]} &rarr;
           </Btn>
         )}
@@ -1014,6 +1568,11 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           </>
         )}
       </ButtonRow>
+      {nextStage && nextDisabled && (
+        <div style={{ fontSize: 12, color: '#DC2626', textAlign: 'right', marginTop: 8 }}>
+          {nextDisabledTitle}
+        </div>
+      )}
 
       {/* Terminate Modal */}
       {terminateModal && (

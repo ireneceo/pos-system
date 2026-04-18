@@ -204,6 +204,59 @@ import {
 <Button size="large">Large</Button>   // padding: 16px 28px
 ```
 
+### 4.3 주요 액션 버튼 배치 (필수)
+
+**규칙:** 상세 페이지의 주요 진행 액션 (예: Proceed, Submit, Save & Continue) 버튼은 **반드시 상단과 하단 양쪽에 배치**한다.
+
+**이유:**
+- 긴 폼 스크롤 시 사용자가 하단 버튼에 도달하기 번거로움
+- 상단 헤더의 액션 버튼은 즉시 발견 가능
+- 전형적인 모바일 UX 패턴
+
+**패턴:**
+```jsx
+// 헤더 내 우측에 ActionRow 배치
+<DetailHeader>
+  <DetailTitle>...</DetailTitle>
+  <HeaderActions>
+    {primaryAction && <Button variant="primary" onClick={...}>Proceed to Setup →</Button>}
+  </HeaderActions>
+</DetailHeader>
+
+// 페이지 하단에도 동일 버튼
+<ButtonRow>
+  {primaryAction && <Button variant="primary" onClick={...}>Proceed to Setup →</Button>}
+</ButtonRow>
+```
+
+### 4.4 필수 항목 미입력 시 버튼 비활성화 (필수)
+
+**규칙:** 필수 필드 미입력 상태에서 진행/저장 버튼은 반드시 `disabled` 상태로 유지한다. 클릭 후 에러 메시지를 보여주는 패턴 **금지**.
+
+**이유:**
+- 클릭 후 실패는 사용자를 혼란스럽게 함
+- Disabled 상태는 "왜 누를 수 없는지"를 자연스럽게 유도
+- 접근성 표준 (WAI-ARIA)
+
+**패턴:**
+```jsx
+const missingRequired = !form.contract_number || !form.start_date || !form.end_date;
+
+<Button
+  variant="primary"
+  onClick={handleProceed}
+  disabled={missingRequired}
+  title={missingRequired ? 'Contract Number, Start Date, End Date required' : undefined}
+>
+  Proceed to Setup →
+</Button>
+```
+
+- `disabled` 시 CSS opacity 0.5 + cursor: not-allowed (Button 컴포넌트 기본 제공)
+- 가능하면 `title` tooltip으로 왜 비활성화인지 설명
+- 여러 필수 필드는 체크 함수로 묶어서 `missingRequired` 플래그 계산
+- Label 옆 빨간 `*` 표시와 세트로 작동 (필수 필드 시각적 마킹)
+
 ---
 
 ## 5. 모달 사용

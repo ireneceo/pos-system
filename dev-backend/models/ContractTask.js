@@ -36,6 +36,14 @@ ContractTask.init({
   sort_order: {
     type: DataTypes.INTEGER,
     defaultValue: 0
+  },
+  source_type: {
+    type: DataTypes.ENUM('manual', 'support_service', 'setup_template'),
+    defaultValue: 'manual'
+  },
+  source_code: {
+    type: DataTypes.STRING(50),
+    allowNull: true
   }
 }, {
   sequelize: database.sequelize,

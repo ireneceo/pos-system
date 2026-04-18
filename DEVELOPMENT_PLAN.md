@@ -1,8 +1,71 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-17 (모바일 영수증 + 전수 리팩토링 + Contract UX 개선)
+> **최종 업데이트:** 2026-04-18 (Contract Management Enhancement 전체 구현 + Inquiry 버그 수정 + UI 가이드 확장)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: Contract Management Enhancement + Inquiry UX 수정 (2026-04-18)
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Contract Phase 1 — 당사자/발행자 정보 + 4탭 UI | contracts 10컬럼 ADD (applicant/issuer 각 business_reg/website/bank_info/representatives + issuer_sync_with_master). ContractDetail에 Parties/Contract/Setup/Documents 4탭 도입. Issuer 섹션 신규. 신규 컴포넌트 3개: BankInfoField, RepresentativeField, SyncMasterToggle | ✅ |
+| 2 | Contract Phase 1.5 — Issuer 자동 sync 훅 | Brand/Foodcourt afterUpdate 훅 — 관련 필드(company_name/registration_no/website/bank_*) 변경 시 issuer_sync_with_master=true + stage ∈ proposal/contracting/setup 인 계약에만 자동 전파 (active/terminated/renewed는 법적 스냅샷 보호) | ✅ |
+| 3 | Contract Phase 2 — 재무 조건 확장 + validate 훅 | financialTermsSchema() 훅 — rent_schedule 배열/year 1-50, percentage_rent.rate 0-100 + compare_against enum, royalty_payment.due_day 1-31 검증. 신규 컴포넌트 2개: RentScheduleEditor (데스크톱 테이블 + 모바일 카드), PercentageRentField. Financial Terms 재구성 (Tenancy: Unit/Rent Schedule/Percentage Rent/Key Dates/Others, Franchise: Initial Fees/System/Royalty/Marketing & Territory) | ✅ |
+| 4 | Contract Phase 3 — 조항 + Support Services | contracts 5 JSON 컬럼 ADD (special_conditions/renewal_policy/exclusivity_terms/support_services/legal_terms). contract_tasks ADD source_type ENUM, source_code. GET /contracts/support-services/template 엔드포인트. Setup stage 진입 시 support_services[].included=true 항목 → contract_tasks 자동 생성. 신규 컴포넌트 3개: ConditionListEditor, SupportServicesChecklist (4그룹), LegalTermsEditor (dispute_resolution 조건부 표시) | ✅ |
+| 5 | Required Field UX — 필수 표시 + disabled 버튼 | Label `*` 빨간 표시, RequiredHint 노란 배너, stage 전환 에러에 missing[] 배열 반환, 누락 필드명 구체화 ("Contract Number, Contract Period (start date)..."). 프론트: missingRequired 계산 → 상단+하단 버튼 disabled + title tooltip | ✅ |
+| 6 | Contract Detail 액션 버튼 상단 미러링 | HeaderActions styled 컴포넌트 신규 — 제목 옆 우측에 nextStage/Renew/Terminate 버튼 배치. 긴 스크롤 없이 즉시 액션 가능. 하단 ButtonRow와 동일 disabled 상태 동기화 | ✅ |
+| 7 | Inquiry Close 버튼 PATCH→PUT 버그 수정 | Brand/Foodcourt OperationInquiryPage 의 TicketCard 인라인 Close 버튼이 PATCH를 호출했지만 백엔드는 PUT만 받음 (silent catch로 실패). PUT으로 수정 | ✅ |
+| 8 | Inquiry 모달 Close → Close Ticket UX 변경 | 상단 우측 X = 모달 닫기 (유지), 하단 Close 버튼 = 티켓 상태 closed로 변경. 11개 페이지 일괄 적용 (Operation × 5 + System × 6). 이미 closed 상태면 footer 숨김 | ✅ |
+| 9 | UI_DESIGN_GUIDE 4.3/4.4 신규 섹션 | "주요 액션 버튼 배치 (상단+하단 필수)" + "필수 미입력 시 버튼 비활성화" 규칙 명문화. 앞으로 모든 상세 페이지에 자동 적용 | ✅ |
+| 10 | 검증 스킬 8단계 UI/UX 품질 확장 | 8-A 디자인 시스템 / 8-B 트렌드 디테일 / 8-C 기능 적합성 / 8-D 반응형 / 8-E i18n / 8-F 접근성 / 8-G 실제 확인 방법 — 7개 서브카테고리로 세분화 | ✅ |
+
+### DB 변경 (dev 적용, 운영 배포 대기)
+- `contracts` 테이블: applicant_business_registration, applicant_website, applicant_bank_info (JSON), applicant_representatives (JSON), issuer_company_name, issuer_business_registration, issuer_website, issuer_bank_info (JSON), issuer_representatives (JSON), issuer_sync_with_master (BOOL), special_conditions (JSON), renewal_policy (JSON), exclusivity_terms (JSON), support_services (JSON), legal_terms (JSON) — **총 15개 컬럼 ADD**
+- `contract_tasks` 테이블: source_type ENUM('manual','support_service','setup_template'), source_code VARCHAR(50) — **2개 컬럼 ADD**
+
+### 수정된 파일
+
+**백엔드**
+- `models/Contract.js` — 15 컬럼 + 4개 validate 훅
+- `models/ContractTask.js` — source_type/source_code
+- `models/index.js` — Brand/Foodcourt afterUpdate 훅 (syncIssuerToContracts)
+- `routes/contracts.js` — buildIssuerSnapshot 헬퍼, GET template, PUT whitelist +15, POST prefill, Setup stage 자동 task 생성, stage 에러 missing[] 배열
+- `utils/contractSupportServices.js` (신규) — Brand 12 + Foodcourt 12 서비스 카탈로그
+
+**프론트엔드 신규 컴포넌트 (8개)**
+- `components/Contract/BankInfoField.tsx`
+- `components/Contract/RepresentativeField.tsx`
+- `components/Contract/SyncMasterToggle.tsx`
+- `components/Contract/RentScheduleEditor.tsx`
+- `components/Contract/PercentageRentField.tsx`
+- `components/Contract/ConditionListEditor.tsx`
+- `components/Contract/SupportServicesChecklist.tsx`
+- `components/Contract/LegalTermsEditor.tsx`
+
+**프론트엔드 수정**
+- `components/Contract/ContractDetail.tsx` — 4탭 + 8섹션 신규 + HeaderActions + disabled 로직
+- `pages/{Admin,Brand,Foodcourt,Manager,Owner,Restaurant}/{Operation,System}InquiryPage.tsx` — 11개 파일 모달 footer UX + PATCH→PUT
+
+**문서**
+- `dev-frontend/UI_DESIGN_GUIDE.md` — 4.3/4.4 신규 섹션
+- `.claude/commands/검증.md` — 8단계 UI/UX 서브카테고리 7개
+
+### 검증 결과
+- 빌드: exit 0 (여러 차례 재빌드)
+- state-hydration-check: 0 warnings
+- API Write/Read: Phase 1/1.5/2/3 전부 실제 호출로 round-trip 통과, 크로스테넌트 격리 확인
+- health-check: **40/40 통과** (최종)
+- 페이지 5개 렌더링 HTML 200
+
+### 운영 배포 대기 (Irene 본인 `/배포`)
+- 15 contract 컬럼 + 2 contract_task 컬럼 ALTER
+- 8개 신규 컴포넌트
+- 11개 Inquiry 페이지 수정
+- ContractDetail.tsx 대규모 재구성
 
 ---
 

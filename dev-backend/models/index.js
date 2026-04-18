@@ -566,6 +566,57 @@ Foodcourt.hasMany(WorkManual, { foreignKey: 'foodcourt_id', as: 'workManuals' })
 WorkManual.belongsTo(WorkManualCategory, { foreignKey: 'category_id', as: 'category' });
 WorkManualCategory.hasMany(WorkManual, { foreignKey: 'category_id', as: 'manuals' });
 
+// ============================================
+// Contract Issuer Auto-Sync Hooks (Phase 1.5)
+// ============================================
+// When Brand/Foodcourt master info changes, propagate to contracts
+// that have issuer_sync_with_master=true. Non-active contracts only
+// (stage: proposal/contracting/setup) — active/terminated/renewed/expired
+// contracts are legal snapshots and must not mutate.
+// ============================================
+const SYNC_STAGES = ['proposal', 'contracting', 'setup'];
+const buildIssuerPayloadFromMaster = (m) => ({
+  issuer_company_name: m.company_name || m.name || null,
+  issuer_business_registration: m.registration_no || null,
+  issuer_website: m.website || null,
+  issuer_bank_info: (m.bank_name || m.bank_account || m.bank_account_name) ? {
+    bank: m.bank_name || null,
+    account: m.bank_account || null,
+    holder: m.bank_account_name || null
+  } : null
+});
+
+const syncIssuerToContracts = async (entityType, entityId, master) => {
+  try {
+    const payload = buildIssuerPayloadFromMaster(master);
+    await Contract.update(payload, {
+      where: {
+        entity_type: entityType,
+        entity_id: entityId,
+        issuer_sync_with_master: true,
+        stage: SYNC_STAGES
+      },
+      hooks: false
+    });
+  } catch (err) {
+    console.error(`[ContractSync] Failed to sync issuer for ${entityType}:${entityId}`, err.message);
+  }
+};
+
+Brand.addHook('afterUpdate', async (brand) => {
+  const relevant = ['company_name', 'name', 'registration_no', 'website',
+                    'bank_name', 'bank_account', 'bank_account_name'];
+  if (!relevant.some(f => brand.changed(f))) return;
+  await syncIssuerToContracts('brand', brand.id, brand);
+});
+
+Foodcourt.addHook('afterUpdate', async (foodcourt) => {
+  const relevant = ['company_name', 'name', 'registration_no', 'website',
+                    'bank_name', 'bank_account', 'bank_account_name'];
+  if (!relevant.some(f => foodcourt.changed(f))) return;
+  await syncIssuerToContracts('foodcourt', foodcourt.id, foodcourt);
+});
+
 module.exports = {
   User,
   Restaurant,

@@ -4,6 +4,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { Contract, ContractDocument, ContractTask, ContractNote, ContractHistory, ContractPlan,
         FoodcourtUnit, Restaurant, Brand, Foodcourt, User, EntityPlan } = require('../models');
 const { Op } = require('sequelize');
+const { getTemplate: getSupportServicesTemplate, findServiceTitle } = require('../utils/contractSupportServices');
 
 // Helper: get entity info from user
 const getUserEntity = (user) => {
@@ -38,6 +39,25 @@ const checkContractAccess = async (req, res) => {
   return contract;
 };
 
+// Helper: build issuer snapshot from Brand/Foodcourt master
+const buildIssuerSnapshot = async (entityType, entityId) => {
+  if (!entityType || !entityId) return {};
+  const model = entityType === 'brand' ? Brand : Foodcourt;
+  const master = await model.findByPk(entityId);
+  if (!master) return {};
+  const m = master.toJSON ? master.toJSON() : master;
+  return {
+    issuer_company_name: m.company_name || m.name || null,
+    issuer_business_registration: m.registration_no || null,
+    issuer_website: m.website || null,
+    issuer_bank_info: (m.bank_name || m.bank_account || m.bank_account_name) ? {
+      bank: m.bank_name || null,
+      account: m.bank_account || null,
+      holder: m.bank_account_name || null
+    } : null
+  };
+};
+
 // Helper: log history
 const logHistory = async (contractId, action, fromValue, toValue, details, userId) => {
   await ContractHistory.create({
@@ -49,6 +69,15 @@ const logHistory = async (contractId, action, fromValue, toValue, details, userI
     changed_by: userId
   });
 };
+
+// ============================================
+// Support Services template (Phase 3)
+// ============================================
+
+router.get('/support-services/template', authenticateToken, async (req, res) => {
+  const entityType = req.query.entity_type === 'foodcourt' ? 'foodcourt' : 'brand';
+  res.json({ success: true, data: getSupportServicesTemplate(entityType) });
+});
 
 // ============================================
 // Contract CRUD
@@ -197,6 +226,8 @@ router.post('/', authenticateToken, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Only Brand/Foodcourt General can create contracts' });
     }
 
+    const issuerSnapshot = await buildIssuerSnapshot(entity.entity_type, entity.entity_id);
+
     const contract = await Contract.create({
       entity_type: entity.entity_type,
       entity_id: entity.entity_id,
@@ -208,6 +239,12 @@ router.post('/', authenticateToken, async (req, res, next) => {
       applicant_business_type: req.body.applicant_business_type,
       applicant_location: req.body.applicant_location,
       applicant_notes: req.body.applicant_notes,
+      applicant_business_registration: req.body.applicant_business_registration,
+      applicant_website: req.body.applicant_website,
+      applicant_bank_info: req.body.applicant_bank_info,
+      applicant_representatives: req.body.applicant_representatives || [],
+      ...issuerSnapshot,
+      issuer_sync_with_master: req.body.issuer_sync_with_master !== false,
       contract_type: req.body.contract_type,
       financial_terms: req.body.financial_terms || {},
       renewal_type: req.body.renewal_type || 'manual',
@@ -241,6 +278,13 @@ router.put('/:id', authenticateToken, async (req, res, next) => {
       'applicant_company_name', 'applicant_contact_person',
       'applicant_email', 'applicant_phone',
       'applicant_business_type', 'applicant_location', 'applicant_notes',
+      'applicant_business_registration', 'applicant_website',
+      'applicant_bank_info', 'applicant_representatives',
+      'issuer_company_name', 'issuer_business_registration',
+      'issuer_website', 'issuer_bank_info', 'issuer_representatives',
+      'issuer_sync_with_master',
+      'special_conditions', 'renewal_policy', 'exclusivity_terms',
+      'support_services', 'legal_terms',
       'contract_number', 'contract_type', 'start_date', 'end_date',
       'duration_months', 'signing_date', 'financial_terms',
       'renewal_type', 'renewal_alert_months', 'termination_notice_months',
@@ -309,28 +353,62 @@ router.put('/:id/stage', authenticateToken, async (req, res, next) => {
     if (stage === 'contracting') {
       // Proposal terms should be filled — minimal check
       if (!contract.applicant_company_name) {
-        return res.status(400).json({ success: false, message: 'Applicant company name is required before proceeding' });
+        return res.status(400).json({ success: false, message: 'Applicant Company Name is required before Contracting', missing: ['Applicant Company Name'] });
       }
     }
 
     if (stage === 'setup') {
-      if (!contract.contract_number || !contract.start_date || !contract.end_date) {
-        return res.status(400).json({ success: false, message: 'Contract number, start date, and end date are required' });
+      const missing = [];
+      if (!contract.contract_number) missing.push('Contract Number');
+      if (!contract.start_date) missing.push('Contract Period (start date)');
+      if (!contract.end_date) missing.push('Contract Period (end date)');
+      if (missing.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Required before Setup: ${missing.join(', ')}`,
+          missing
+        });
       }
       const docCount = await ContractDocument.count({ where: { contract_id: contract.id } });
       if (docCount < 1) {
-        return res.status(400).json({ success: false, message: 'At least 1 document is required' });
+        return res.status(400).json({ success: false, message: 'At least 1 document is required before Setup', missing: ['Document'] });
+      }
+
+      // Auto-generate tasks from support_services where included=true.
+      // Skip services that already have a task (idempotent).
+      const services = Array.isArray(contract.support_services) ? contract.support_services : [];
+      const includedCodes = services.filter(s => s && s.included && s.code).map(s => s.code);
+      if (includedCodes.length > 0) {
+        const existing = await ContractTask.findAll({
+          where: { contract_id: contract.id, source_type: 'support_service', source_code: includedCodes },
+          attributes: ['source_code']
+        });
+        const existingSet = new Set(existing.map(t => t.source_code));
+        const toCreate = includedCodes.filter(code => !existingSet.has(code));
+        let maxOrder = (await ContractTask.max('sort_order', { where: { contract_id: contract.id } })) || 0;
+        for (const code of toCreate) {
+          const svc = services.find(s => s.code === code);
+          maxOrder += 1;
+          await ContractTask.create({
+            contract_id: contract.id,
+            title: (svc && svc.title) || findServiceTitle(contract.entity_type, code),
+            description: (svc && svc.notes) || null,
+            sort_order: maxOrder,
+            source_type: 'support_service',
+            source_code: code
+          });
+        }
       }
     }
 
     if (stage === 'active') {
       if (!contract.restaurant_id) {
-        return res.status(400).json({ success: false, message: 'Restaurant must be linked before going Active' });
+        return res.status(400).json({ success: false, message: 'Restaurant must be linked before going Active', missing: ['Linked Restaurant'] });
       }
       const tasks = await ContractTask.findAll({ where: { contract_id: contract.id } });
       const incomplete = tasks.filter(t => !t.is_completed);
       if (incomplete.length > 0) {
-        return res.status(400).json({ success: false, message: `${incomplete.length} setup tasks are incomplete` });
+        return res.status(400).json({ success: false, message: `${incomplete.length} setup task(s) are incomplete`, missing: ['Setup Tasks'] });
       }
 
       // Update foodcourt unit status

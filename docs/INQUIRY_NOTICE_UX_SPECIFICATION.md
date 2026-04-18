@@ -132,6 +132,22 @@ Inquiry Target: [Dropdown]
 - **Restaurant Admin/Staff**: Sees tickets where `requesterId` = own user ID
 - **System Admin**: Sees all tickets (monitoring only, no action)
 
+### Detail Modal UX (확정 2026-04-18)
+
+**버튼 의미 명확화:**
+
+| 위치 | 동작 |
+|------|------|
+| 우측 상단 X | 모달 닫기 (티켓 상태 변경 없음) |
+| 하단 Close Ticket 버튼 (primary) | 티켓 `status` 를 `closed`로 변경 후 모달 닫기. 이미 closed/resolved 상태면 이 버튼 숨김 |
+| 카드(리스트)의 인라인 Close 버튼 | 티켓 즉시 close (모달 없이). `activeTab === 'active'` 일 때만 표시 |
+
+**API:** 두 API 모두 **`PUT`** 메서드 사용 (`PATCH`는 지원되지 않음)
+- `PUT /api/operation-tickets/:id` body: `{ status: 'closed' }`
+- `PUT /api/support-tickets/:id` body: `{ status: 'closed' }`
+
+**공통 헬퍼 함수:** 각 페이지에 `handleCloseTicketFromModal()` — PUT 성공 시 로컬 state 업데이트 + 모달 닫기 + `window.dispatchEvent('refreshBadgeCounts')`
+
 ---
 
 ## 4. Notices

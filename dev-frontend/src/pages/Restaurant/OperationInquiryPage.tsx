@@ -511,6 +511,23 @@ const OperationInquiryPage: React.FC = () => {
     } catch (e) { console.error('Error fetching unread counts:', e); }
   };
 
+  const handleCloseTicketFromModal = async () => {
+    if (!selectedTicket) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/operation-tickets/${selectedTicket.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status: 'closed' })
+      });
+      if (res.ok) {
+        setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'closed' as OperationTicket['status'] } : t));
+        setSelectedTicket(null);
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
+      }
+    } catch (err) { /* silent */ }
+  };
+
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          ticket.ticketNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -713,11 +730,11 @@ const OperationInquiryPage: React.FC = () => {
               onClose={() => setSelectedTicket(null)}
               title={selectedTicket.ticketNumber}
               size="large"
-              footer={
-                <Button variant="secondary" onClick={() => setSelectedTicket(null)}>
-                  Close
+              footer={selectedTicket.status !== 'closed' ? (
+                <Button variant="primary" onClick={handleCloseTicketFromModal}>
+                  Close Ticket
                 </Button>
-              }
+              ) : undefined}
             >
                   <div style={{ marginBottom: '16px' }}>
                     <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540', marginBottom: '8px', wordBreak: 'break-word' }}>{selectedTicket.subject}</div>

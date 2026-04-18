@@ -434,6 +434,22 @@ const OperationInquiryPage: React.FC = () => {
     window.dispatchEvent(new Event('refreshBadgeCounts'));
   };
 
+  const handleCloseTicketFromModal = async () => {
+    if (!selectedTicket) return;
+    try {
+      const res = await fetch(`/api/operation-tickets/${selectedTicket.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'closed' })
+      });
+      if (res.ok) {
+        await fetchTickets();
+        setSelectedTicket(null);
+        window.dispatchEvent(new Event('refreshBadgeCounts'));
+      }
+    } catch (err) { /* silent */ }
+  };
+
   const handleUpdateStatus = async () => {
     if (!selectedTicket) return;
 
@@ -554,7 +570,7 @@ const OperationInquiryPage: React.FC = () => {
 
           {/* Detail Modal */}
           {selectedTicket && (
-            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={<><Button variant="secondary" onClick={() => setSelectedTicket(null)}>{t('admin:operationInquiryPage.close')}</Button></>}>
+            <CommonModal isOpen={true} onClose={() => setSelectedTicket(null)} title={selectedTicket.ticketNumber} size="large" footer={selectedTicket.status !== 'closed' ? <Button variant="primary" onClick={handleCloseTicketFromModal}>{t('admin:operationInquiryPage.closeTicket', 'Close Ticket')}</Button> : undefined}>
                   <InfoBox>
                     <InfoRow>
                       <InfoLabel>{t('admin:operationInquiryPage.subject')}</InfoLabel>

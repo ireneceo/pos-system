@@ -6,6 +6,18 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-18
+- Contract Management Enhancement Phase 1 구현 — 당사자/발행자 정보 확장 + 4탭 UI (Parties/Contract/Setup/Documents), 신규 컴포넌트 3개 (BankInfoField, RepresentativeField, SyncMasterToggle)
+- Contract Phase 1.5 — Brand/Foodcourt 마스터 정보 수정 시 issuer_sync_with_master=true 계약(proposal/contracting/setup 단계만) 자동 전파 훅
+- Contract Phase 2 — Tenancy/Franchise 재무 조건 확장, RentScheduleEditor(연도별, 모바일 카드 뷰) + PercentageRentField 컴포넌트, financial_terms JSON 스키마 validate 훅
+- Contract Phase 3 — 계약 조항 5종 JSON 컬럼 추가 (special_conditions/renewal_policy/exclusivity_terms/support_services/legal_terms), Support Services 카탈로그 (Brand/Foodcourt 각 12개), Setup 단계 진입 시 체크된 지원업무 항목 자동 태스크 생성, 신규 컴포넌트 3개 (ConditionListEditor, SupportServicesChecklist, LegalTermsEditor)
+- Contract 필수 필드 UX — 라벨에 빨간 `*` 표시 + 필수 미입력 시 상단/하단 "Proceed" 버튼 disabled + tooltip + 단계 전환 에러에 누락 필드명 구체화
+- Contract Detail 상단 HeaderActions — 긴 스크롤 없이 상단에서도 "Proceed to X" / "Renew" / "Terminate" 액션 가능 (하단 버튼과 동기화)
+- Inquiry Close 버튼 버그 수정 — Brand/Foodcourt Operation Inquiry 카드의 Close 버튼 PATCH → PUT 메서드 변경 (silent fail 해소)
+- Inquiry 모달 Close 버튼 UX 변경 — 우측 상단 X = 모달 닫기, 하단 Close Ticket 버튼 = 티켓 상태 closed로 변경 (이미 closed/resolved면 버튼 숨김). 11개 Inquiry 페이지 전체 적용 (Operation × 5 + System × 6)
+- UI_DESIGN_GUIDE 4.3/4.4 신규 섹션 — 주요 액션 버튼 상단/하단 양쪽 배치 규칙 + 필수 미입력 시 버튼 비활성화 규칙 명문화
+- `/검증` 스킬 8단계 UI/UX 품질 확장 — 7개 서브카테고리 (디자인 시스템/트렌드 디테일/기능 적합성/반응형/i18n/접근성/실제 확인 방법)
+
 ### 2026-04-17
 - Contract Management Enhancement 설계 완료 (4단계 + 30년차 3개 관점 검증 반영) — 구현은 다음 세션. 주요 보완: issuer 마스터 동기화 토글, financial_terms JSON 검증, Support Services↔Tasks 연동, legal_terms 컬럼, 4탭 인터페이스 도입
 - Contract Information 레이아웃 재구성 — 2열×3행 6필드 (Number/Type/Period/SigningDate/Duration/Remarks)
