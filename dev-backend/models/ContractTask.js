@@ -25,6 +25,12 @@ ContractTask.init({
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  is_required: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    comment: 'When true, this task must be completed before Setup→Active stage transition'
+  },
   completed_by: {
     type: DataTypes.INTEGER,
     allowNull: true

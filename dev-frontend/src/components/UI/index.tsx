@@ -4,6 +4,7 @@ export * from './CommonStyles';
 export * from './Tabs';
 export * from './Modal';
 export * from './SelectComponents';
+export * from './FormAccordion';
 
 // Explicitly export AlertMessage and Save Button components
 export {

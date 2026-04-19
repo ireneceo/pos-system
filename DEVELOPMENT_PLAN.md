@@ -1,8 +1,72 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-18 (Contract Management Enhancement 전체 구현 + Inquiry 버그 수정 + UI 가이드 확장)
+> **최종 업데이트:** 2026-04-19 (v3.14 배포 + Contract Pipeline 카드 UX + Accordion 전환 + P0/P1 필수 필드 갭 보완)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: Sidebar 실시간 뱃지 + Contract UX 대개편 + P0/P1 필수 필드 (2026-04-19)
+
+### 배경
+- 2026-04-19 오전 운영 배포 완료 (v3.14 기준 + 이번 세션 이전까지의 누적 변경 포함, smoke 10/10 pass)
+- 배포 후 Contract 상세 페이지 UX 문제 인지 (Tab 구조에서 필수 필드가 다른 탭에 숨어 버튼 disabled 사유 불명), 필수 필드 정의 자체에도 실무 갭 존재
+- 30년차 UX 관점으로 Tab → Accordion 전환 결정, 동시에 필수 필드 정의 전면 재검토
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Sidebar 실시간 뱃지 갱신 | `MainLayout.tsx` 전역 소켓 리스너 `order-created/items-added/updated` 에 `fetchBadgeCounts()` 추가. 기존 15초 polling 지연 → 즉시 반영 | ✅ |
+| 2 | Contract 리스트 카드 UX — 금액/잔여기간/위치 | 공용 헬퍼 `utils/contractBillable.ts` (getBillableSummary — plans 우선 financial_terms fallback / getRemainingInfo — expired/warning/normal). ContractPipeline 카드에 금액 블록 + Foodcourt 유닛/location_description + 잔여 태그 | ✅ |
+| 3 | ContractPipeline 레이아웃 정렬 | Column 회색 배경 제거, gap 8px, width 100%, margin 0 — 상단 StatsGrid 와 좌우 full 정렬 | ✅ |
+| 4 | Contract Detail Tab → Smart Accordion | 4탭(Parties/Contract/Setup/Documents)을 `FormAccordion`+`FormAccordionSection` 신규 컴포넌트로 전환. 섹션별 상태 배지 (✓ Complete / ⚠ N required / — Optional), RequiredBanner 집계 + chip click→scroll, ReadyBanner 초록 표시, 버튼 disabled 제거 (클릭시 자동 펼침+스크롤) | ✅ |
+| 5 | Accordion 디자인 정리 | 외곽 rounded 박스 제거 → 섹션 사이 선 구분만. Auto-expand 제거 (사용자가 직접 펼침). URL ?section= 왕복 지원, 카드 클릭시 초기화 | ✅ |
+| 6 | Notes & Comments 제목/구분선 중복 제거 | `CommentSection` `titleText` prop + `$embedded` 스타일 전환 — 외부 제목 없애고 "Notes & Comments (N)" 단일로 통합, border 2개→1개 | ✅ |
+| 7 | Documents 필수 제거 | 외부 DMS 사용 고려 — Contracting→Setup 전환 시 Documents 필수 체크 제거 (backend + frontend + hint 메시지) | ✅ |
+| 8 | P0 #1 Foodcourt `unit_id` 필수 | Contracting→Setup 시 entity_type='foodcourt' && !unit_id 검증. UI에 Unit 섹션 data-field-key + 안내 메시지 | ✅ |
+| 9 | P0 #2 Applicant 식별 OR 조건 | `applicant_company_name` OR `applicant_contact_person` — 개인 자영업자 대응. 새 i18n 키 `applicantIdentifier` | ✅ |
+| 10 | P0 #3 `contract_tasks.is_required` | DB 컬럼 ADD (BOOL NOT NULL DEFAULT 1), 모델/라우트 POST/PUT whitelist. Setup→Active 시 `is_required=true` task만 완료 요구. SetupChecklist UI 에 Required/Optional 토글 + 색상 배지 | ✅ |
+| 11 | P1 필드 하이라이트 visual | DetailContainer CSS inject (field-error 빨간 테두리 / field-highlight 보라 pulse / field-error-msg 인라인 메시지). `openSectionAndScroll` data-field-key 우선 타겟. attemptedSave 상태 기반 `fieldShellClass` 헬퍼. 필수 5곳 적용 | ✅ |
+| 12 | i18n 4개국어 13키 | en/ko/zh/ms contract.json 모두 신규 키 (banner/section/task/applicant/unit 관련). `npm run i18n:verify` Errors 0 | ✅ |
+| 13 | 설계 문서 최신화 | `docs/CONTRACT_DETAIL_UX.md` — 실제 구현 기준 2.3/2.4 동작 규칙, 섹션 매핑, 시나리오 5.2/5.3 업데이트 | ✅ |
+
+### DB 변경 (dev 적용, 운영 배포 대기)
+- `contract_tasks.is_required TINYINT(1) NOT NULL DEFAULT 1` ADD
+
+### 수정된 파일
+
+**백엔드**
+- `models/ContractTask.js` — is_required 필드
+- `routes/contracts.js` — 스테이지 전환 조건 (applicant OR, foodcourt unit_id, is_required task filter, Documents 제거), POST/PUT task whitelist
+
+**프론트엔드 신규**
+- `components/UI/FormAccordion.tsx` — 재사용 Accordion 컴포넌트
+- `utils/contractBillable.ts` — 청구 요약 + 잔여기간 헬퍼
+
+**프론트엔드 수정**
+- `components/Contract/ContractDetail.tsx` — Tab 제거, Accordion 래퍼, RequiredBanner/ReadyBanner, getSectionRequirements 확장, fieldShellClass + data-field-key 적용, SetupChecklist Required 토글
+- `components/Contract/ContractPipeline.tsx` — 카드 금액 블록 + 잔여기간 + Foodcourt 위치 + 레이아웃 정렬
+- `components/Contract/ContractManagementPage.tsx` — 카드 클릭시 URL `?section=` 초기화
+- `components/Common/CommentSection.tsx` — titleText prop + $embedded 스타일
+- `components/Layout/MainLayout.tsx` — 소켓 핸들러에 fetchBadgeCounts
+- `components/UI/index.tsx` — FormAccordion export
+- `public/locales/{en,ko,zh,ms}/contract.json` — 13 키
+
+**문서**
+- `docs/CONTRACT_DETAIL_UX.md` — 설계 문서 최신화
+
+### 검증 결과
+- state-hydration-check **0 warnings**
+- 빌드 **exit 0** (여러 차례), 신규 타입에러 0
+- API E2E — P0/P1 시나리오 **23 pass / 0 fail** (applicant OR, unit_id, is_required task, field shape)
+- health-check **40/40 통과**
+- `npm run i18n:verify` **Errors 0**
+- 페이지 렌더링 — `/pos/brand/franchise` 200, `/pos/foodcourt/tenancy` 200
+
+### 운영 배포 대기 (Irene 본인 `/배포`)
+- DB: `contract_tasks.is_required` ADD
+- 코드: 이번 세션 전체 변경 + `Tab → Accordion` 구조 전환
 
 ---
 
@@ -212,10 +276,12 @@ Phase 1부터 구현 시작.
 - 이메일 엔티티 브랜딩은 dev 검증 완료, **운영 배포 대기 (Irene 본인 실행 예정)**
 
 ### 후속 과제 (다음 세션)
-- 고객 회원가입 환영/이메일 인증 플로우 (현재 미구현)
-- 주문 확인 / 영수증 메일 (현재 미구현, 구현 시 레스토랑 SMTP 우선 + 플랫폼 fallback)
 - Brand/Foodcourt 산하 사용자 대상 notification 메일도 수신자 entity 브랜딩 실운영 확인
 - Product 이미지 외 다른 이미지 경로 (Brand logo, Foodcourt logo 등) 가 base64 로 저장되는 곳 없는지 감사
+
+### 개발 안 하기로 결정 (2026-04-19 Irene 확정)
+- 고객 회원가입 환영/이메일 인증 — 레스토랑 고객은 전화번호 기반 인증이라 불필요
+- 주문 확인 / 영수증 메일 — 이미 WhatsApp/Telegram/텍스트 공유 + PNG 영수증 다운로드로 완성 (mobile/components/common/ReceiptShare.tsx)
 
 ---
 

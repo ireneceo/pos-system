@@ -6,6 +6,22 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-19
+- Sidebar 실시간 뱃지 갱신 — 전역 소켓 이벤트 `order-created/items-added/updated`에 뱃지 재조회 호출 추가 (기존 15초 polling 대기 → 즉시 반영)
+- Contract 리스트 카드 UX — 금액 요약 블록 (플랜 연결시 플랜 값, 미연결시 financial_terms + "pending plan" 힌트), 잔여기간 태그 (expired/warning/normal), Foodcourt 카드 유닛/location_description 표시. 공용 헬퍼 `utils/contractBillable.ts` 신규 (getBillableSummary, getRemainingInfo)
+- Contract 리스트 파이프라인 레이아웃 정렬 — Column 회색 배경 제거, gap 8px, width 100% — 상단 StatsGrid 와 좌우 full 정렬
+- Contract Detail Tab → Smart Accordion 전환 — Parties/Contract/Setup/Documents 4개 섹션 아코디언화. `FormAccordion`+`FormAccordionSection` 신규 컴포넌트, 섹션별 상태 배지 (✓ Complete / ⚠ N required), RequiredBanner 집계 + chip click→scroll, ReadyBanner 초록 안내, 외곽 박스 제거 (선 구분만)
+- Contract Detail 필드 하이라이트 — 필수 부족 필드 빨간 테두리 + 인라인 에러 메시지, chip 클릭시 보라 pulse 애니메이션 (1.2s × 2회) 및 smooth scroll
+- 버튼 정책 전환 — "필수 부족 시 disabled" → "클릭 허용 + 자동 섹션 펼침/스크롤". UI_DESIGN_GUIDE 4.4 개정
+- Notes & Comments 제목/구분선 중복 제거 — CommentSection `titleText` prop + `$embedded` 스타일 (외부 제목 없애고 "Notes & Comments (N)" 단일로 통합)
+- Documents 필수 제거 — 외부 DMS 사용 가능 반영. Contracting→Setup 전환 시 Documents 업로드 강제 요건 삭제
+- P0 #1 Foodcourt `unit_id` 필수 — Contracting→Setup 시 entity_type='foodcourt' && !unit_id 검증 추가 (기존 허점 보완)
+- P0 #2 Applicant 식별 OR 조건 — `applicant_company_name` 또는 `applicant_contact_person` 중 하나만 있으면 통과 (개인 자영업자 대응)
+- P0 #3 `contract_tasks.is_required` 필드 신규 — Setup→Active 전환 시 `is_required=true` task만 완료 요구. Marketing 지원 등 진행형 task 유연성 확보. SetupChecklist UI 에 Required/Optional 토글
+- i18n 4개국어 13키 추가 (en/ko/zh/ms) — banner/section/applicant/unit/task 관련
+- Accordion 패턴 UI_DESIGN_GUIDE 14장 신설
+- 설계 문서 `docs/CONTRACT_DETAIL_UX.md` 실제 구현 기준으로 최신화
+
 ### 2026-04-18
 - Contract Management Enhancement Phase 1 구현 — 당사자/발행자 정보 확장 + 4탭 UI (Parties/Contract/Setup/Documents), 신규 컴포넌트 3개 (BankInfoField, RepresentativeField, SyncMasterToggle)
 - Contract Phase 1.5 — Brand/Foodcourt 마스터 정보 수정 시 issuer_sync_with_master=true 계약(proposal/contracting/setup 단계만) 자동 전파 훅

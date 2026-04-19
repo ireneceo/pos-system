@@ -114,6 +114,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
     setSearchParams(prev => {
       const p = new URLSearchParams(prev);
       if (id) { p.set('id', String(id)); } else { p.delete('id'); }
+      p.delete('section');
       return p;
     }, { replace: true });
   };

@@ -229,33 +229,50 @@ import {
 </ButtonRow>
 ```
 
-### 4.4 필수 항목 미입력 시 버튼 비활성화 (필수)
+### 4.4 필수 항목 미입력 — "클릭 허용 + 자동 안내" 패턴 (2026-04-19 개정)
 
-**규칙:** 필수 필드 미입력 상태에서 진행/저장 버튼은 반드시 `disabled` 상태로 유지한다. 클릭 후 에러 메시지를 보여주는 패턴 **금지**.
+**규칙:** 필수 필드 미입력 상태에서도 진행/저장 버튼은 **활성 상태 유지**. 클릭 시 자동으로 해당 섹션을 펼치고 누락 필드로 스크롤 + 시각 하이라이트를 띄운다.
 
-**이유:**
-- 클릭 후 실패는 사용자를 혼란스럽게 함
-- Disabled 상태는 "왜 누를 수 없는지"를 자연스럽게 유도
-- 접근성 표준 (WAI-ARIA)
+**이전 정책 (disabled + tooltip) 폐기 이유:**
+- 여러 섹션/탭이 있는 폼에서 사용자가 "왜 disabled인지" 파악 불가 (누락 필드가 다른 영역에 숨어 있음)
+- Tooltip은 hover/long-press 로만 노출되어 모바일 환경에서 발견 어려움
+- 클릭 후 안내 패턴이 visibility of system status (Nielsen #1) 측면에서 우수
 
 **패턴:**
 ```jsx
-const missingRequired = !form.contract_number || !form.start_date || !form.end_date;
+const sectionReqs = getSectionRequirements(form, contract, nextStage);
+// 배너에 부족 필드 집계 표시 (상시 노출)
+{sectionReqs.length > 0 && (
+  <RequiredBanner>
+    ⚠ {sectionReqs.length} required
+    {groupBySection(sectionReqs).map(g => (
+      <Chip onClick={() => openSectionAndScroll(g.section, g.firstField)}>
+        {g.label} ({g.count})
+      </Chip>
+    ))}
+  </RequiredBanner>
+)}
 
-<Button
-  variant="primary"
-  onClick={handleProceed}
-  disabled={missingRequired}
-  title={missingRequired ? 'Contract Number, Start Date, End Date required' : undefined}
->
+<Button onClick={() => {
+  if (sectionReqs.length > 0) {
+    setAttemptedSave(true);
+    openSectionAndScroll(sectionReqs[0].section, sectionReqs[0].fieldKey);
+    return;
+  }
+  handleProceed();
+}}>
   Proceed to Setup →
 </Button>
 ```
 
-- `disabled` 시 CSS opacity 0.5 + cursor: not-allowed (Button 컴포넌트 기본 제공)
-- 가능하면 `title` tooltip으로 왜 비활성화인지 설명
-- 여러 필수 필드는 체크 함수로 묶어서 `missingRequired` 플래그 계산
-- Label 옆 빨간 `*` 표시와 세트로 작동 (필수 필드 시각적 마킹)
+**필수 시각 요소:**
+- Label 옆 빨간 `*` 표시 (시각적 마킹)
+- **RequiredBanner 상단 노출** — 부족 필드 전체 집계 + 섹션별 chip 네비게이션
+- **attemptedSave 상태**: true 시 미입력 필드 `field-error` 클래스 → 빨간 테두리 + `field-error-msg` 인라인 메시지
+- **field-highlight 클래스**: chip 클릭 대상 필드에 1.2s × 2회 보라 pulse 애니메이션
+- `data-field-key="xxx"` 속성으로 scroll target 지정
+
+**실제 구현 참조:** `components/Contract/ContractDetail.tsx` — FormAccordion + RequiredBanner + fieldShellClass 조합 패턴
 
 ---
 
@@ -594,5 +611,45 @@ import AutoSaveField from '../../components/Common/AutoSaveField';
 
 ---
 
-**마지막 업데이트:** 2025-12-30
-**기준 파일:** Admin Pages (RestaurantsPage.tsx, PlansPage.tsx, ManagersPage.tsx)
+**마지막 업데이트:** 2026-04-19 (4.4 개정 — "클릭 허용 + 자동 안내" 패턴 / Accordion 패턴 규정 추가)
+**기준 파일:** Admin Pages (RestaurantsPage.tsx, PlansPage.tsx, ManagersPage.tsx), Contract Detail (ContractDetail.tsx + FormAccordion)
+
+---
+
+## 14. 다중 섹션 폼 — Accordion 패턴 (2026-04-19)
+
+**규칙:** 계약서·상세 프로파일·설정 같이 "하나의 대상을 여러 섹션으로 편집"하는 페이지는 **Tab 대신 Accordion** 사용.
+
+**Tab vs Accordion 선택 기준:**
+- **Tab**: 서로 독립적인 맥락 (예: Admin 메뉴 카테고리, Settings 대분류)
+- **Accordion**: 하나의 문서/대상을 분할 편집 (예: 계약서, 프로파일, 상세 폼)
+
+**이유:**
+- Tab은 다른 섹션의 필수 필드 상태를 숨김 → "버튼 왜 disabled" 혼란
+- 계약서는 사용자 멘탈 모델상 단일 문서 → 전체 진행도를 한눈에 봐야 함
+
+**사용:**
+```jsx
+import { FormAccordion, FormAccordionSection } from 'components/UI';
+
+<FormAccordion expanded={expandedSet} onChange={setExpandedSet}>
+  <FormAccordionSection
+    id="parties"
+    title="Parties"
+    status="required"        // complete | required | optional | empty
+    statusLabel="⚠ 2 required"
+  >
+    ...sections inside...
+  </FormAccordionSection>
+</FormAccordion>
+```
+
+**동작 규칙:**
+- 진입 시 모든 섹션 접힘 (auto-expand 금지 — 사용자가 직접 선택)
+- 동시 펼침 허용 (exclusive 아님)
+- URL `?section=foo,bar` 로 상태 기록
+- 외곽 박스 없음, 섹션 사이 `border-bottom 1px` 만
+- 안쪽 `<Section>` 카드가 자기 영역 제공 (중첩 박스 금지)
+- 섹션 상태 배지 색: complete=#D1FAE5/#065F46, required=#FEF3C7/#92400E, optional/empty=투명
+
+**참조 구현:** `components/Contract/ContractDetail.tsx`

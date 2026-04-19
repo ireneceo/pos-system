@@ -111,12 +111,18 @@ router.get('/', authenticateToken, async (req, res, next) => {
       ];
     }
 
+    const { EntityPlanPrice } = require('../models');
     const contracts = await Contract.findAll({
       where,
       include: [
         { model: Restaurant, as: 'restaurant', attributes: ['id', 'name'] },
         { model: User, as: 'creator', attributes: ['id', 'full_name'] },
-        { model: FoodcourtUnit, as: 'unit', attributes: ['id', 'unit_number', 'size_value', 'size_unit'] }
+        { model: FoodcourtUnit, as: 'unit', attributes: ['id', 'unit_number', 'size_value', 'size_unit', 'location_description'] },
+        { model: ContractPlan, as: 'plans', include: [
+          { model: EntityPlan, as: 'entityPlan', include: [
+            { model: EntityPlanPrice, as: 'prices' }
+          ]}
+        ]}
       ],
       order: [['created_at', 'DESC']],
       subQuery: false
@@ -148,7 +154,12 @@ router.get('/', authenticateToken, async (req, res, next) => {
           include: [
             { model: Restaurant, as: 'restaurant', attributes: ['id', 'name'] },
             { model: User, as: 'creator', attributes: ['id', 'full_name'] },
-            { model: FoodcourtUnit, as: 'unit', attributes: ['id', 'unit_number', 'size_value', 'size_unit'] }
+            { model: FoodcourtUnit, as: 'unit', attributes: ['id', 'unit_number', 'size_value', 'size_unit', 'location_description'] },
+            { model: ContractPlan, as: 'plans', include: [
+              { model: EntityPlan, as: 'entityPlan', include: [
+                { model: EntityPlanPrice, as: 'prices' }
+              ]}
+            ]}
           ]
         });
         result = [...contracts, ...additional];
@@ -351,9 +362,13 @@ router.put('/:id/stage', authenticateToken, async (req, res, next) => {
 
     // Validate requirements per stage
     if (stage === 'contracting') {
-      // Proposal terms should be filled — minimal check
-      if (!contract.applicant_company_name) {
-        return res.status(400).json({ success: false, message: 'Applicant Company Name is required before Contracting', missing: ['Applicant Company Name'] });
+      // Applicant identifier: company_name OR contact_person (P0 #2 — 개인 자영업자 대응)
+      if (!contract.applicant_company_name && !contract.applicant_contact_person) {
+        return res.status(400).json({
+          success: false,
+          message: 'Applicant Company Name or Contact Person is required before Contracting',
+          missing: ['Applicant Company Name or Contact Person']
+        });
       }
     }
 
@@ -362,6 +377,10 @@ router.put('/:id/stage', authenticateToken, async (req, res, next) => {
       if (!contract.contract_number) missing.push('Contract Number');
       if (!contract.start_date) missing.push('Contract Period (start date)');
       if (!contract.end_date) missing.push('Contract Period (end date)');
+      // Foodcourt: unit_id 필수 (P0 #1 — 입점 유닛 지정)
+      if (contract.entity_type === 'foodcourt' && !contract.unit_id) {
+        missing.push('Unit');
+      }
       if (missing.length > 0) {
         return res.status(400).json({
           success: false,
@@ -369,10 +388,8 @@ router.put('/:id/stage', authenticateToken, async (req, res, next) => {
           missing
         });
       }
-      const docCount = await ContractDocument.count({ where: { contract_id: contract.id } });
-      if (docCount < 1) {
-        return res.status(400).json({ success: false, message: 'At least 1 document is required before Setup', missing: ['Document'] });
-      }
+      // Documents are encouraged but not required to move to Setup — often
+      // stored in external DMS (Dropbox/Google Drive) or uploaded later.
 
       // Auto-generate tasks from support_services where included=true.
       // Skip services that already have a task (idempotent).
@@ -405,10 +422,15 @@ router.put('/:id/stage', authenticateToken, async (req, res, next) => {
       if (!contract.restaurant_id) {
         return res.status(400).json({ success: false, message: 'Restaurant must be linked before going Active', missing: ['Linked Restaurant'] });
       }
+      // P0 #3 — 필수(is_required) task만 완료 요구. is_required=false 는 자유
       const tasks = await ContractTask.findAll({ where: { contract_id: contract.id } });
-      const incomplete = tasks.filter(t => !t.is_completed);
-      if (incomplete.length > 0) {
-        return res.status(400).json({ success: false, message: `${incomplete.length} setup task(s) are incomplete`, missing: ['Setup Tasks'] });
+      const incompleteRequired = tasks.filter(t => t.is_required && !t.is_completed);
+      if (incompleteRequired.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `${incompleteRequired.length} required setup task(s) are incomplete`,
+          missing: ['Setup Tasks']
+        });
       }
 
       // Update foodcourt unit status
@@ -612,7 +634,8 @@ router.post('/:id/tasks', authenticateToken, async (req, res, next) => {
       contract_id: contract.id,
       title: req.body.title,
       description: req.body.description,
-      sort_order: (maxOrder || 0) + 1
+      sort_order: (maxOrder || 0) + 1,
+      is_required: req.body.is_required !== undefined ? !!req.body.is_required : true
     });
     res.status(201).json({ success: true, data: task });
   } catch (error) {
@@ -643,6 +666,7 @@ router.put('/:id/tasks/:taskId', authenticateToken, async (req, res, next) => {
       }
     }
     if (req.body.sort_order !== undefined) updates.sort_order = req.body.sort_order;
+    if (req.body.is_required !== undefined) updates.is_required = !!req.body.is_required;
 
     await task.update(updates);
     res.json({ success: true, data: task });

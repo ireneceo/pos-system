@@ -72,7 +72,20 @@
     "startOperations": "Start Operations",
     "renewContract": "Renew Contract",
     "terminateContract": "Terminate Contract",
-    "terminationReasonPrompt": "Enter termination reason:"
+    "terminationReasonPrompt": "Enter termination reason:",
+    "bannerRequired": "required field(s) missing",
+    "bannerReady": "Ready to move to",
+    "sectionRequired": "required",
+    "sectionComplete": "✓ Complete",
+    "applicantIdentifier": "Applicant Company Name or Contact Person",
+    "linkedUnit": "Linked Unit",
+    "required": "Required",
+    "optional": "Optional",
+    "requiredTaskTooltip": "Required task — must be completed before Active",
+    "optionalTaskTooltip": "Optional task — can be completed later",
+    "isRequired": "is required",
+    "contractPeriodRequired": "Contract Period is required",
+    "unitAssignHint": "Assign via Foodcourt Units page"
   },
   "common": {
     "loading": "Loading..."

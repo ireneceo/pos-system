@@ -72,7 +72,20 @@
     "startOperations": "开始运营",
     "renewContract": "续约",
     "terminateContract": "终止合同",
-    "terminationReasonPrompt": "请输入终止原因："
+    "terminationReasonPrompt": "请输入终止原因：",
+    "bannerRequired": "个必填项缺失",
+    "bannerReady": "可进入下一阶段",
+    "sectionRequired": "必填",
+    "sectionComplete": "✓ 完成",
+    "applicantIdentifier": "公司名称或联系人",
+    "linkedUnit": "关联单位",
+    "required": "必填",
+    "optional": "可选",
+    "requiredTaskTooltip": "必填任务 — 进入 Active 前必须完成",
+    "optionalTaskTooltip": "可选任务 — 可稍后完成",
+    "isRequired": "为必填项",
+    "contractPeriodRequired": "合同期限为必填项",
+    "unitAssignHint": "在美食广场单位页面分配"
   },
   "common": {
     "loading": "加载中..."

@@ -6,7 +6,7 @@ import AutoSaveField from '../Common/AutoSaveField';
 import CommentSection from '../Common/CommentSection';
 import DateField from '../Common/DateField';
 import DateRangeField from '../Common/DateRangeField';
-import { Tabs, Tab } from '../Common/TabComponents';
+import { FormAccordion, FormAccordionSection } from '../UI/FormAccordion';
 import BankInfoField from './BankInfoField';
 import RepresentativeField from './RepresentativeField';
 import SyncMasterToggle from './SyncMasterToggle';
@@ -32,6 +32,34 @@ interface ContractDetailProps {
 
 const DetailContainer = styled.div`
   width: 100%;
+
+  .field-shell {
+    scroll-margin-top: 80px;
+  }
+  .field-shell.field-error input,
+  .field-shell.field-error select,
+  .field-shell.field-error textarea {
+    border-color: #DC2626;
+    box-shadow: 0 0 0 1px #DC2626;
+  }
+  .field-shell.field-error .field-error-msg {
+    display: block;
+  }
+  .field-shell .field-error-msg {
+    display: none;
+    color: #DC2626;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .field-shell.field-highlight {
+    animation: purpleFieldPulse 1.2s ease-out 2;
+    border-radius: 6px;
+  }
+  @keyframes purpleFieldPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(99, 91, 255, 0.45); }
+    70%  { box-shadow: 0 0 0 10px rgba(99, 91, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(99, 91, 255, 0); }
+  }
 `;
 
 const BackLink = styled.button`
@@ -60,6 +88,64 @@ const HeaderActions = styled.div`
   align-items: center;
   flex-wrap: wrap;
   margin-left: auto;
+`;
+
+const RequiredBanner = styled.div`
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+`;
+
+const RequiredIcon = styled.span`
+  font-size: 16px;
+  color: #B45309;
+`;
+
+const RequiredText = styled.span`
+  font-size: 14px;
+  color: #78350F;
+  font-weight: 600;
+`;
+
+const RequiredChips = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+`;
+
+const RequiredChip = styled.button`
+  background: #fff;
+  border: 1px solid #FCD34D;
+  color: #92400E;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #FEF3C7;
+    border-color: #D97706;
+  }
+`;
+
+const ReadyBanner = styled.div`
+  background: #D1FAE5;
+  border: 1px solid #6EE7B7;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: #065F46;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
 `;
 
 const TitleRow = styled.div`
@@ -440,16 +526,21 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
   const [searchingRestaurant, setSearchingRestaurant] = useState(false);
   const searchTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const validTabs = ['parties', 'contract', 'setup', 'documents'] as const;
-  type TabKey = typeof validTabs[number];
-  const readTabFromUrl = (): TabKey => {
+  const validSections = ['parties', 'contract', 'setup', 'documents'] as const;
+  type SectionKey = typeof validSections[number];
+  const readSectionsFromUrl = (): Set<SectionKey> => {
     try {
-      const q = new URLSearchParams(window.location.search).get('tab');
-      if (q && (validTabs as readonly string[]).includes(q)) return q as TabKey;
+      const q = new URLSearchParams(window.location.search).get('section');
+      if (q) {
+        const arr = q.split(',').filter(s => (validSections as readonly string[]).includes(s));
+        if (arr.length > 0) return new Set(arr as SectionKey[]);
+      }
     } catch {}
-    return 'parties';
+    return new Set();
   };
-  const [activeTab, setActiveTab] = useState<TabKey>(readTabFromUrl());
+  const [expandedSections, setExpandedSections] = useState<Set<SectionKey>>(readSectionsFromUrl());
+  const [attemptedSave, setAttemptedSave] = useState(false);
+  const [highlightField, setHighlightField] = useState<string | null>(null);
   const [supportServicesTemplate, setSupportServicesTemplate] = useState<any[]>([]);
 
   useEffect(() => {
@@ -463,15 +554,43 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       } catch {}
     })();
   }, [entityType]);
-  const changeTab = (tab: TabKey) => {
-    setActiveTab(tab);
+  const syncSectionsToUrl = useCallback((next: Set<SectionKey>) => {
     try {
       const url = new URL(window.location.href);
-      url.searchParams.set('tab', tab);
+      url.searchParams.delete('tab');
+      if (next.size > 0) url.searchParams.set('section', Array.from(next).join(','));
+      else url.searchParams.delete('section');
       window.history.replaceState({}, '', url.toString());
-      window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     } catch {}
-  };
+  }, []);
+
+  const handleSectionsChange = useCallback((next: Set<string>) => {
+    const casted = next as Set<SectionKey>;
+    setExpandedSections(casted);
+    syncSectionsToUrl(casted);
+  }, [syncSectionsToUrl]);
+
+  const openSectionAndScroll = useCallback((section: SectionKey, fieldKey?: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      next.add(section);
+      syncSectionsToUrl(next);
+      return next;
+    });
+    setTimeout(() => {
+      if (fieldKey) {
+        const fieldEl = document.querySelector(`[data-field-key="${fieldKey}"]`);
+        if (fieldEl) {
+          fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setHighlightField(fieldKey);
+          setTimeout(() => setHighlightField(null), 2500);
+          return;
+        }
+      }
+      const el = document.getElementById(`section-${section}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }, [syncSectionsToUrl]);
 
   const getToken = () => getAuthToken();
   const headers = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
@@ -496,6 +615,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
 
   // Keep formRef in sync
   React.useEffect(() => { formRef.current = form; }, [form]);
+
 
   const handleAutoSave = async () => {
     setFormError(null);
@@ -573,6 +693,16 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       await fetch(`/api/contracts/${contractId}/tasks/${taskId}`, {
         method: 'PUT', headers: headers(),
         body: JSON.stringify({ is_completed: !isCompleted })
+      });
+      await fetchContract();
+    } catch {}
+  };
+
+  const handleToggleTaskRequired = async (taskId: number, isRequired: boolean) => {
+    try {
+      await fetch(`/api/contracts/${contractId}/tasks/${taskId}`, {
+        method: 'PUT', headers: headers(),
+        body: JSON.stringify({ is_required: !isRequired })
       });
       await fetchContract();
     } catch {}
@@ -704,26 +834,57 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
     active: t('detail.startOperations', 'Start Operations')
   };
 
-  // Compute required-field gaps for next-stage gating
-  const getMissingForNextStage = (): string[] => {
-    const missing: string[] = [];
+  // Compute required-field gaps per section for next-stage gating
+  interface SectionReq { section: SectionKey; fieldKey: string; label: string; }
+  const getSectionRequirements = (): SectionReq[] => {
+    const out: SectionReq[] = [];
     if (nextStage === 'contracting') {
-      if (!form.applicant_company_name) missing.push(t('detail.applicantCompanyName', 'Applicant Company Name') as string);
+      // P0 #2 — applicant identifier: company_name OR contact_person
+      if (!form.applicant_company_name && !form.applicant_contact_person) {
+        out.push({ section: 'parties', fieldKey: 'applicant_company_name', label: t('detail.applicantIdentifier', 'Applicant Company Name or Contact Person') as string });
+      }
     } else if (nextStage === 'setup') {
-      if (!form.contract_number) missing.push(t('detail.contractNumber', 'Contract Number') as string);
-      if (!form.start_date) missing.push(t('detail.startDate', 'Start Date') as string);
-      if (!form.end_date) missing.push(t('detail.endDate', 'End Date') as string);
-      if (!contract.documents || contract.documents.length === 0) missing.push(t('detail.documents', 'Documents') as string);
+      if (!form.contract_number) out.push({ section: 'contract', fieldKey: 'contract_number', label: t('detail.contractNumber', 'Contract Number') as string });
+      if (!form.start_date) out.push({ section: 'contract', fieldKey: 'start_date', label: t('detail.startDate', 'Start Date') as string });
+      if (!form.end_date) out.push({ section: 'contract', fieldKey: 'end_date', label: t('detail.endDate', 'End Date') as string });
+      // P0 #1 — Foodcourt: unit_id 필수 (unit 정보는 Contract 섹션 Tenancy Terms 안에 있음)
+      if (contract.entity_type === 'foodcourt' && !contract.unit_id) {
+        out.push({ section: 'contract', fieldKey: 'unit_id', label: t('detail.linkedUnit', 'Linked Unit') as string });
+      }
     } else if (nextStage === 'active') {
-      if (!contract.restaurant_id) missing.push(t('detail.linkedRestaurant', 'Linked Restaurant') as string);
-      if (contract.tasks && contract.tasks.some((t: any) => !t.is_completed)) {
-        missing.push(t('detail.pendingSetupTasks', 'Pending Setup Tasks') as string);
+      if (!contract.restaurant_id) out.push({ section: 'parties', fieldKey: 'link_restaurant', label: t('detail.linkedRestaurant', 'Linked Restaurant') as string });
+      // P0 #3 — 필수(is_required) task 만 체크
+      if (contract.tasks && contract.tasks.some((tk: any) => tk.is_required !== false && !tk.is_completed)) {
+        out.push({ section: 'setup', fieldKey: 'setup_tasks', label: t('detail.pendingSetupTasks', 'Pending Setup Tasks') as string });
       }
     }
-    return missing;
+    return out;
   };
-  const missingRequired = nextStage ? getMissingForNextStage() : [];
+  const sectionRequirements = nextStage ? getSectionRequirements() : [];
+  const missingRequired = sectionRequirements.map(r => r.label);
+
+  const requirementsBySection: Record<SectionKey, SectionReq[]> = {
+    parties: sectionRequirements.filter(r => r.section === 'parties'),
+    contract: sectionRequirements.filter(r => r.section === 'contract'),
+    setup: sectionRequirements.filter(r => r.section === 'setup'),
+    documents: sectionRequirements.filter(r => r.section === 'documents')
+  };
+  const sectionStatus = (sec: SectionKey): { status: 'complete' | 'required' | 'optional' | 'empty'; label: string } => {
+    const reqs = requirementsBySection[sec];
+    if (reqs.length > 0) return { status: 'required', label: `${reqs.length} ${t('detail.sectionRequired', 'required')}` };
+    if (!nextStage) return { status: 'optional', label: '' };
+    return { status: 'complete', label: t('detail.sectionComplete', '✓ Complete') as string };
+  };
+
   const nextDisabled = missingRequired.length > 0;
+
+  const missingFieldKeys = new Set(sectionRequirements.map(r => r.fieldKey));
+  const fieldShellClass = (key: string): string => {
+    const cls = ['field-shell'];
+    if (attemptedSave && missingFieldKeys.has(key)) cls.push('field-error');
+    if (highlightField === key) cls.push('field-highlight');
+    return cls.join(' ');
+  };
   const nextDisabledTitle = nextDisabled
     ? `${t('detail.requiredMissing', 'Required:')} ${missingRequired.join(', ')}`
     : undefined;
@@ -754,7 +915,17 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         </TitleRow>
         <HeaderActions>
           {nextStage && (
-            <Btn variant="primary" onClick={() => handleStageTransition(nextStage)} disabled={nextDisabled} title={nextDisabledTitle}>
+            <Btn variant="primary" onClick={() => {
+              if (nextDisabled) {
+                setAttemptedSave(true);
+                if (sectionRequirements.length > 0) {
+                  const first = sectionRequirements[0];
+                  openSectionAndScroll(first.section, first.fieldKey);
+                }
+                return;
+              }
+              handleStageTransition(nextStage);
+            }} title={nextDisabledTitle}>
               {nextStageLabels[nextStage]} &rarr;
             </Btn>
           )}
@@ -773,25 +944,51 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
 
       {formError && <ErrorMsg>{formError}</ErrorMsg>}
 
-      <Tabs style={{ marginBottom: 20 }}>
-        <Tab active={activeTab === 'parties'} onClick={() => changeTab('parties')}>{t('detail.tabParties', 'Parties')}</Tab>
-        <Tab active={activeTab === 'contract'} onClick={() => changeTab('contract')}>{t('detail.tabContract', 'Contract')}</Tab>
-        <Tab active={activeTab === 'setup'} onClick={() => changeTab('setup')}>{t('detail.tabSetup', 'Setup')}</Tab>
-        <Tab active={activeTab === 'documents'} onClick={() => changeTab('documents')}>{t('detail.tabDocuments', 'Documents')}</Tab>
-      </Tabs>
+      {sectionRequirements.length > 0 && (
+        <RequiredBanner>
+          <RequiredIcon>⚠</RequiredIcon>
+          <RequiredText>
+            {sectionRequirements.length} {t('detail.bannerRequired', 'required field(s) missing')}
+          </RequiredText>
+          <RequiredChips>
+            {(['parties', 'contract', 'setup', 'documents'] as SectionKey[]).map(sec => {
+              const reqs = requirementsBySection[sec];
+              if (reqs.length === 0) return null;
+              const labels: Record<SectionKey, string> = {
+                parties: t('detail.tabParties', 'Parties') as string,
+                contract: t('detail.tabContract', 'Contract') as string,
+                setup: t('detail.tabSetup', 'Setup') as string,
+                documents: t('detail.tabDocuments', 'Documents') as string
+              };
+              return (
+                <RequiredChip key={sec} onClick={() => openSectionAndScroll(sec, reqs[0]?.fieldKey)}>
+                  {labels[sec]} ({reqs.length})
+                </RequiredChip>
+              );
+            })}
+          </RequiredChips>
+        </RequiredBanner>
+      )}
+      {nextStage && sectionRequirements.length === 0 && (
+        <ReadyBanner>
+          ✓ {t('detail.bannerReady', 'Ready to move to')} {nextStageLabels[nextStage]?.replace(/^Proceed to |^Start /i, '') || nextStage}
+        </ReadyBanner>
+      )}
 
-      {activeTab === 'parties' && <>
+      <FormAccordion expanded={expandedSections as Set<string>} onChange={handleSectionsChange}>
+      <FormAccordionSection id="parties" title={t('detail.tabParties', 'Parties') as string} status={sectionStatus('parties').status} statusLabel={sectionStatus('parties').label}>
       {/* Applicant Information */}
       <Section>
         <SectionTitle>{t('detail.applicantInfo', 'Applicant Information')}</SectionTitle>
         <FormGrid>
-          <FormGroup>
+          <FormGroup data-field-key="applicant_company_name" className={fieldShellClass('applicant_company_name')}>
             <Label>{t('detail.companyName', 'Company Name')}</Label>
             <AutoSaveField onSave={handleAutoSave}>
               <Input value={form.applicant_company_name || ''} onChange={e => updateField('applicant_company_name', e.target.value)} disabled={!isEditable} />
             </AutoSaveField>
+            <div className="field-error-msg">{t('detail.applicantIdentifier', 'Applicant Company Name or Contact Person')}</div>
           </FormGroup>
-          <FormGroup>
+          <FormGroup data-field-key="applicant_contact_person" className={fieldShellClass('applicant_company_name')}>
             <Label>{t('detail.contactPerson', 'Contact Person')}</Label>
             <AutoSaveField onSave={handleAutoSave}>
               <Input value={form.applicant_contact_person || ''} onChange={e => updateField('applicant_contact_person', e.target.value)} disabled={!isEditable} />
@@ -910,7 +1107,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       </Section>
 
       {/* Link Restaurant */}
-      <Section>
+      <Section data-field-key="link_restaurant" className={fieldShellClass('link_restaurant')}>
         <SectionTitle>{t('detail.linkRestaurant', 'Link Restaurant')}</SectionTitle>
         {contract.restaurant ? (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F0FDF4', borderRadius: '8px', border: '1px solid #BBF7D0' }}>
@@ -956,9 +1153,8 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           </div>
         )}
       </Section>
-      </>}
-
-      {activeTab === 'contract' && <>
+      </FormAccordionSection>
+      <FormAccordionSection id="contract" title={t('detail.tabContract', 'Contract') as string} status={sectionStatus('contract').status} statusLabel={sectionStatus('contract').label}>
       {/* Contract Info */}
       {['contracting', 'setup', 'active', 'terminated', 'renewed'].includes(contract.stage) && (
         <Section>
@@ -969,11 +1165,12 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
             </RequiredHint>
           )}
           <FormGrid>
-            <FormGroup>
+            <FormGroup data-field-key="contract_number" className={fieldShellClass('contract_number')}>
               <Label required>{t('detail.contractNumber', 'Contract Number')}</Label>
               <AutoSaveField onSave={handleAutoSave}>
                 <Input value={form.contract_number || ''} onChange={e => updateField('contract_number', e.target.value)} disabled={!isEditable} placeholder={t('detail.contractNumberPlaceholder', 'e.g. FRN-2026-001') as string} />
               </AutoSaveField>
+              <div className="field-error-msg">{t('detail.contractNumber', 'Contract Number')} {t('detail.isRequired', 'is required')}</div>
             </FormGroup>
             <FormGroup>
               <Label>{t('detail.contractType', 'Contract Type')}</Label>
@@ -997,7 +1194,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                 </Select>
               </AutoSaveField>
             </FormGroup>
-            <FormGroup>
+            <FormGroup data-field-key="start_date" className={[fieldShellClass('start_date'), highlightField === 'end_date' ? 'field-highlight' : '', (attemptedSave && missingFieldKeys.has('end_date')) ? 'field-error' : ''].filter(Boolean).join(' ')}>
               <Label required>{t('detail.contractPeriod', 'Contract Period')}</Label>
               <AutoSaveField onSave={handleAutoSave} debounceMs={300}>
                 <DateRangeField
@@ -1011,6 +1208,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                   placeholder={t('detail.selectContractPeriod', 'Select start and end date') as string}
                 />
               </AutoSaveField>
+              <div className="field-error-msg">{t('detail.contractPeriodRequired', 'Contract Period is required')}</div>
             </FormGroup>
             <FormGroup>
               <Label>{t('detail.signingDate', 'Signing Date')}</Label>
@@ -1041,6 +1239,15 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       {/* Financial Terms */}
       <Section>
         <SectionTitle>{entityType === 'brand' ? t('detail.franchiseTerms', 'Franchise Terms') : t('detail.tenancyTerms', 'Tenancy Terms')}</SectionTitle>
+        {Array.isArray(form.plans) && form.plans.length > 0 ? (
+          <div style={{ padding: '10px 14px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 6, fontSize: 13, color: '#065F46', marginBottom: 16 }}>
+            <strong>{t('detail.planLinked', 'Billing plan linked')}</strong> — {t('detail.planLinkedHint', 'Actual invoices are generated from the subscription plan(s) below. Values in this section are reference terms captured during negotiation.')}
+          </div>
+        ) : (
+          <div style={{ padding: '10px 14px', background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 6, fontSize: 13, color: '#78350F', marginBottom: 16 }}>
+            <strong>{t('detail.pendingPlan', 'No billing plan linked')}</strong> — {t('detail.pendingPlanHint', 'These are negotiated reference terms. Link a subscription plan to begin actual invoicing.')}
+          </div>
+        )}
         {entityType === 'brand' ? (
           <>
             {/* Initial Fees */}
@@ -1162,10 +1369,11 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           <>
             {/* Unit */}
             <SubsectionTitle>{t('detail.unit', 'Unit')}</SubsectionTitle>
-            <FormGrid>
+            <FormGrid data-field-key="unit_id" className={fieldShellClass('unit_id')}>
               <FormGroup>
-                <Label>{t('detail.unitNumber', 'Unit Number')}</Label>
+                <Label required={!contract.unit_id}>{t('detail.unitNumber', 'Unit Number')}</Label>
                 <Input value={contract.unit?.unit_number || '—'} disabled readOnly />
+                <div className="field-error-msg">{t('detail.unitAssignHint', 'Assign via Foodcourt Units page')}</div>
               </FormGroup>
               <FormGroup>
                 <Label>{t('detail.unitSizeSqft', 'Unit Size (sqft)')}</Label>
@@ -1387,9 +1595,8 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           disabled={!isEditable}
         />
       </Section>
-      </>}
-
-      {activeTab === 'setup' && <>
+      </FormAccordionSection>
+      <FormAccordionSection id="setup" title={t('detail.tabSetup', 'Setup') as string} status={sectionStatus('setup').status} statusLabel={sectionStatus('setup').label}>
       {/* Support Services */}
       <Section>
         <SectionTitle>{t('detail.supportServices', 'Support Services')}</SectionTitle>
@@ -1407,9 +1614,11 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
 
       {/* Setup Checklist */}
       {['setup', 'active'].includes(contract.stage) && (
-        <Section>
+        <Section data-field-key="setup_tasks" className={fieldShellClass('setup_tasks')}>
           <SectionTitle>{t('detail.setupChecklist', 'Setup Checklist')}</SectionTitle>
-          {contract.tasks?.map((task: any) => (
+          {contract.tasks?.map((task: any) => {
+            const isReq = task.is_required !== false;
+            return (
             <CheckItem key={task.id}>
               <input
                 type="checkbox"
@@ -1425,9 +1634,23 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
               }}>
                 {task.title}
               </span>
+              {contract.stage === 'setup' && (
+                <label
+                  title={isReq ? t('detail.requiredTaskTooltip', 'Required task — must be completed before Active') as string : t('detail.optionalTaskTooltip', 'Optional task — can be completed later') as string}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '11px', color: isReq ? '#92400E' : '#9CA3AF', cursor: 'pointer', padding: '2px 8px', borderRadius: 10, background: isReq ? '#FEF3C7' : '#F3F4F6', fontWeight: 600 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isReq}
+                    onChange={() => handleToggleTaskRequired(task.id, isReq)}
+                    style={{ width: 12, height: 12, margin: 0 }}
+                  />
+                  {isReq ? t('detail.required', 'Required') : t('detail.optional', 'Optional')}
+                </label>
+              )}
               {task.completed_at && <NoteMeta>{tzFormatDate(task.completed_at, null)}</NoteMeta>}
             </CheckItem>
-          ))}
+          );})}
           {contract.stage === 'setup' && (
             <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
               <Input
@@ -1442,17 +1665,11 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           )}
         </Section>
       )}
-      </>}
-
-      {activeTab === 'documents' && <>
+      </FormAccordionSection>
+      <FormAccordionSection id="documents" title={t('detail.tabDocuments', 'Documents') as string} status={sectionStatus('documents').status} statusLabel={sectionStatus('documents').label}>
       {/* Documents */}
       <Section>
         <SectionTitle>{t('detail.documents', 'Documents')}</SectionTitle>
-        {contract.stage === 'contracting' && (!contract.documents || contract.documents.length === 0) && (
-          <RequiredHint>
-            {t('detail.documentsRequiredForSetup', 'At least one document is required before moving to Setup stage.')}
-          </RequiredHint>
-        )}
         {isEditable && (
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', fontWeight: 500, color: '#374151', cursor: 'pointer', transition: 'all 0.15s' }}>
@@ -1521,14 +1738,16 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           </div>
         )}
       </Section>
+      </FormAccordionSection>
+      </FormAccordion>
 
       {/* Comments (replaces Notes) */}
       <Section>
-        <SectionTitle>{t('detail.notesComments', 'Notes & Comments')}</SectionTitle>
         <CommentSection
           entityType="contract"
           entityId={String(contractId)}
           currentUserId={user?.id}
+          titleText={t('detail.notesComments', 'Notes & Comments') as string}
         />
       </Section>
 
@@ -1552,12 +1771,21 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           ))}
         </Section>
       )}
-      </>}
 
       {/* Action Buttons (mirrors header) */}
       <ButtonRow>
         {nextStage && (
-          <Btn variant="primary" onClick={() => handleStageTransition(nextStage)} disabled={nextDisabled} title={nextDisabledTitle}>
+          <Btn variant="primary" onClick={() => {
+            if (nextDisabled) {
+              setAttemptedSave(true);
+              if (sectionRequirements.length > 0) {
+                const first = sectionRequirements[0];
+                openSectionAndScroll(first.section, first.fieldKey);
+              }
+              return;
+            }
+            handleStageTransition(nextStage);
+          }} title={nextDisabledTitle}>
             {nextStageLabels[nextStage]} &rarr;
           </Btn>
         )}

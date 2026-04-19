@@ -635,19 +635,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       });
     };
 
-    socket.on('order-created', () => playIfNotOnSoundPage());
-    socket.on('order-items-added', () => playIfNotOnSoundPage());
+    socket.on('order-created', () => { playIfNotOnSoundPage(); fetchBadgeCounts(); });
+    socket.on('order-items-added', () => { playIfNotOnSoundPage(); fetchBadgeCounts(); });
 
     // 주문 상태 변경 시 소리 중지 (전역)
     socket.on('order-updated', () => {
       import('../../utils/notificationSound').then(({ stopRepeatingSound }) => stopRepeatingSound());
+      fetchBadgeCounts();
     });
 
     return () => {
       socket.disconnect();
       globalSocketRef.current = null;
     };
-  }, [userRestaurantId, isOrderRole]);
+  }, [userRestaurantId, isOrderRole, fetchBadgeCounts]);
 
   const handleLogout = () => {
     logout();

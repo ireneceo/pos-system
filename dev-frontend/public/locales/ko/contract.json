@@ -72,7 +72,20 @@
     "startOperations": "운영 시작",
     "renewContract": "계약 갱신",
     "terminateContract": "계약 해지",
-    "terminationReasonPrompt": "해지 사유를 입력하세요:"
+    "terminationReasonPrompt": "해지 사유를 입력하세요:",
+    "bannerRequired": "개 필수 항목 누락",
+    "bannerReady": "다음 단계로 진행 가능",
+    "sectionRequired": "필수",
+    "sectionComplete": "✓ 완료",
+    "applicantIdentifier": "회사명 또는 담당자명",
+    "linkedUnit": "연결된 유닛",
+    "required": "필수",
+    "optional": "선택",
+    "requiredTaskTooltip": "필수 작업 — Active 전환 전 완료 필요",
+    "optionalTaskTooltip": "선택 작업 — 나중에 완료해도 됨",
+    "isRequired": "은(는) 필수입니다",
+    "contractPeriodRequired": "계약 기간은 필수입니다",
+    "unitAssignHint": "푸드코트 유닛 페이지에서 지정"
   },
   "common": {
     "loading": "로딩 중..."

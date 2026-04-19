@@ -2,9 +2,11 @@ import React from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { formatDate as formatDateTz } from '../../utils/timezone';
+import { getBillableSummary, getRemainingInfo } from '../../utils/contractBillable';
 
 interface Contract {
   id: number;
+  entity_type?: 'brand' | 'foodcourt' | string;
   applicant_company_name?: string;
   applicant_contact_person?: string;
   applicant_name?: string; // legacy fallback
@@ -21,8 +23,9 @@ interface Contract {
   created_at: string;
   createdAt?: string;
   tasks?: { is_completed: boolean }[];
-  unit?: { unit_number: string } | null;
+  unit?: { unit_number: string; size_value?: number; size_unit?: string; location_description?: string | null } | null;
   financial_terms?: any;
+  plans?: any[];
 }
 
 interface ContractPipelineProps {
@@ -43,33 +46,32 @@ const STAGE_THEME: Record<string, { header: string; headerText: string; border: 
 const PipelineGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  min-height: 350px;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
 
   @media (max-width: 1024px) {
     grid-template-columns: repeat(2, 1fr);
   }
   @media (max-width: 600px) {
     grid-template-columns: 1fr;
-    min-height: auto;
   }
 `;
 
 const Column = styled.div`
-  background: #F8FAFC;
-  border-radius: 8px;
-  padding: 12px;
-  min-height: 250px;
+  background: transparent;
+  padding: 0;
+  min-width: 0;
 `;
 
 const ColumnHeader = styled.div<{ bg: string; textColor: string }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: ${p => p.bg};
   border-radius: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   font-weight: 600;
   font-size: 13px;
   color: ${p => p.textColor};
@@ -87,8 +89,8 @@ const Card = styled.div<{ borderColor: string }>`
   background: #fff;
   border: 1px solid ${p => p.borderColor};
   border-radius: 6px;
-  padding: 12px 14px;
-  margin-bottom: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
   cursor: pointer;
   transition: box-shadow 0.15s;
 
@@ -99,22 +101,24 @@ const Card = styled.div<{ borderColor: string }>`
 
 const CardName = styled.div`
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   color: #0A2540;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  line-height: 1.3;
 `;
 
 const CardSub = styled.div`
-  font-size: 12px;
+  font-size: 11px;
   color: #6B7C93;
-  margin-top: 2px;
+  margin-top: 1px;
+  line-height: 1.35;
 `;
 
 const CardMeta = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 6px;
 `;
 
 const CardTag = styled.span<{ bg?: string; color?: string }>`
@@ -127,10 +131,54 @@ const CardTag = styled.span<{ bg?: string; color?: string }>`
 `;
 
 const CardRestaurant = styled.div`
-  font-size: 12px;
+  font-size: 11px;
   color: #059669;
   font-weight: 500;
+  margin-top: 2px;
+`;
+
+const BillableRow = styled.div<{ pending: boolean }>`
+  font-size: 11px;
   margin-top: 4px;
+  color: ${p => p.pending ? '#94A3B8' : '#0A2540'};
+  font-style: ${p => p.pending ? 'italic' : 'normal'};
+  line-height: 1.35;
+`;
+
+const BillableLabel = styled.span`
+  color: #6B7C93;
+  font-weight: 500;
+`;
+
+const BillableAmount = styled.span`
+  font-weight: 600;
+  margin-left: 4px;
+`;
+
+const BillableHint = styled.span`
+  font-size: 11px;
+  color: #94A3B8;
+  margin-left: 6px;
+`;
+
+const LocationRow = styled.div`
+  font-size: 11px;
+  color: #475569;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const LocationIcon = styled.span`
+  color: #64748B;
+  font-size: 11px;
+`;
+
+const RemainingTag = styled(CardTag as any)<{ severity: 'expired' | 'warning' | 'normal' }>`
+  ${p => p.severity === 'expired' && `background: #FEE2E2; color: #B91C1C;`}
+  ${p => p.severity === 'warning' && `background: #FEF3C7; color: #B45309;`}
+  ${p => p.severity === 'normal' && `background: #E0E7FF; color: #3730A3;`}
 `;
 
 const ViewAll = styled.div`
@@ -175,13 +223,42 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
               <span>{stageLabels[stage]}</span>
               <Count>{list.length}</Count>
             </ColumnHeader>
-            {list.slice(0, showMax).map(c => (
+            {list.slice(0, showMax).map(c => {
+              const billable = getBillableSummary({ ...c, entity_type: c.entity_type || entityType }, 2);
+              const remaining = getRemainingInfo(c.end_date);
+              const unitLocation = entityType === 'foodcourt' && c.unit?.location_description;
+              const unitSize = entityType === 'foodcourt' && c.unit?.size_value ? `${c.unit.size_value} ${c.unit.size_unit || 'sqft'}` : null;
+
+              return (
               <Card key={c.id} borderColor={theme.border} onClick={() => onCardClick(c.id)}>
                 <CardName>{c.applicant_company_name || c.applicant_name || '-'}</CardName>
                 {c.applicant_contact_person && <CardSub>{c.applicant_contact_person}</CardSub>}
                 {c.restaurant && <CardRestaurant>{c.restaurant.name}{c.restaurant.branch_name ? ` (${c.restaurant.branch_name})` : ''}</CardRestaurant>}
                 {c.applicant_phone && <CardSub>{c.applicant_phone}</CardSub>}
                 {c.applicant_location && <CardSub>{c.applicant_location}</CardSub>}
+
+                {unitLocation && (
+                  <LocationRow>
+                    <LocationIcon>◆</LocationIcon>
+                    <span>Unit {c.unit?.unit_number}{unitSize ? ` · ${unitSize}` : ''}</span>
+                  </LocationRow>
+                )}
+                {unitLocation && <CardSub>{c.unit?.location_description}</CardSub>}
+
+                {billable.items.length > 0 && (
+                  <BillableRow pending={billable.source === 'terms'}>
+                    {billable.items.map((it, i) => (
+                      <React.Fragment key={i}>
+                        {i > 0 && <span style={{ color: '#CBD5E1' }}> · </span>}
+                        <BillableLabel>{it.label}:</BillableLabel>
+                        <BillableAmount>{it.amount}</BillableAmount>
+                      </React.Fragment>
+                    ))}
+                    {billable.moreCount > 0 && <BillableHint>+{billable.moreCount} more</BillableHint>}
+                    {billable.source === 'terms' && <BillableHint>(pending plan)</BillableHint>}
+                  </BillableRow>
+                )}
+
                 <CardMeta>
                   {c.contract_type && (
                     <CardTag bg="#EEF2FF" color="#4338CA">{c.contract_type}</CardTag>
@@ -200,10 +277,16 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
                   {entityType === 'foodcourt' && c.unit && (
                     <CardTag bg="#ECFDF5" color="#059669">Unit {c.unit.unit_number}</CardTag>
                   )}
+                  {remaining.severity !== 'none' && (c.stage === 'active' || c.stage === 'setup') && (
+                    <RemainingTag severity={remaining.severity === 'expired' ? 'expired' : remaining.severity === 'warning' ? 'warning' : 'normal'}>
+                      {remaining.label}
+                    </RemainingTag>
+                  )}
                 </CardMeta>
-                <CardSub style={{ marginTop: '6px' }}>{formatDate(c.createdAt || c.created_at)}</CardSub>
+                <CardSub style={{ marginTop: '4px', fontSize: '10px' }}>{formatDate(c.createdAt || c.created_at)}</CardSub>
               </Card>
-            ))}
+            );
+          })}
             {list.length > showMax && (
               <ViewAll>{t('pipeline.viewAll', 'View all')} ({list.length})</ViewAll>
             )}

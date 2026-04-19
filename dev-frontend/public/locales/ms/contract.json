@@ -72,7 +72,20 @@
     "startOperations": "Mulakan Operasi",
     "renewContract": "Perbaharui Kontrak",
     "terminateContract": "Tamatkan Kontrak",
-    "terminationReasonPrompt": "Masukkan sebab penamatan:"
+    "terminationReasonPrompt": "Masukkan sebab penamatan:",
+    "bannerRequired": "medan diperlukan hilang",
+    "bannerReady": "Sedia ke peringkat seterusnya",
+    "sectionRequired": "diperlukan",
+    "sectionComplete": "✓ Selesai",
+    "applicantIdentifier": "Nama Syarikat atau Orang Hubungan",
+    "linkedUnit": "Unit Dihubungkan",
+    "required": "Wajib",
+    "optional": "Pilihan",
+    "requiredTaskTooltip": "Tugas wajib — mesti selesai sebelum Active",
+    "optionalTaskTooltip": "Tugas pilihan — boleh selesai kemudian",
+    "isRequired": "diperlukan",
+    "contractPeriodRequired": "Tempoh Kontrak diperlukan",
+    "unitAssignHint": "Tetapkan melalui halaman Unit Foodcourt"
   },
   "common": {
     "loading": "Memuatkan..."

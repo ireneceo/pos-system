@@ -27,16 +27,21 @@ interface Comment {
 }
 
 interface CommentSectionProps {
-  entityType: 'support_ticket' | 'operation_ticket' | 'notice' | 'hardware_quote';
+  entityType: 'support_ticket' | 'operation_ticket' | 'notice' | 'hardware_quote' | 'contract';
   entityId: string;
   currentUserId?: number | string;
   onMarkRead?: () => void;
+  titleText?: string;
 }
 
-const SectionContainer = styled.div`
-  margin-top: 24px;
-  border-top: 1px solid #E6EBF1;
-  padding-top: 20px;
+const SectionContainer = styled.div<{ $embedded?: boolean }>`
+  ${p => p.$embedded ? `
+    margin-top: 0;
+  ` : `
+    margin-top: 24px;
+    border-top: 1px solid #E6EBF1;
+    padding-top: 20px;
+  `}
 `;
 
 const SectionTitle = styled.h4`
@@ -281,7 +286,7 @@ const InternalToggle = styled.label`
 
 const ALLOWED_EXTENSIONS = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.zip';
 
-const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, currentUserId, onMarkRead }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, currentUserId, onMarkRead, titleText }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(false);
@@ -451,8 +456,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ entityType, entityId, c
   };
 
   return (
-    <SectionContainer>
-      <SectionTitle>Comments ({comments.length})</SectionTitle>
+    <SectionContainer $embedded={!!titleText}>
+      <SectionTitle>{titleText || 'Comments'} ({comments.length})</SectionTitle>
       {comments.length > 0 ? (
         <CommentList>
           {comments.map(comment => (
