@@ -799,3 +799,28 @@ Brand/Foodcourt 플랜 인보이스는 항상 해당 레스토랑이 결제한�
 - [ ] issuer_type + issuer_id 정합성 (system_admin이면 issuer_id NULL)
 - [ ] payer_type + payer_id 정합성
 - [ ] additional_charges JSON 배열 형식 유효성
+
+---
+
+## Contract 연결 (2026-04-19 v3.15)
+
+### `invoices.contract_id INT NULL` 컬럼
+- **용도**: 특정 Contract 에서 파생된 일회성 인보이스를 계약과 연결하여 추적 (가맹비, 보증금, 설치비 등)
+- **자동화 없음**: 플랜 자동 발행과 독립. 사용자가 Contract Detail "Billing" 섹션에서 명시적으로 "+ Issue One-time Invoice" 눌러야 생성됨
+- **ON DELETE SET NULL 시멘틱**: 계약 삭제 시 인보이스는 보존, 참조만 해제 (logical FK, app 레이어)
+
+### UI
+- Contract Detail "Billing" 아코디언 섹션:
+  - **Recurring Subscriptions**: 연결된 ContractPlan 목록 (실제 청구 기반 EntityPlan)
+  - **One-time Invoices**: `contract_id` 로 연결된 인보이스 테이블
+  - **Negotiated Financial Terms**: `financial_terms` JSON 의 협상 금액 참조 (실제 청구 아님)
+- "+ Issue One-time Invoice" → `/pos/{brand|foodcourt}/invoices?contract_id=X&action=create` → Invoice Create Modal 자동 열림 + payer 자동 prefill
+
+### API
+- `GET /api/contracts/:id` 응답에 `invoices` include
+- `GET /api/invoices/:id` 응답에 `contractId` 포함
+- POST/PUT `/api/invoices` body 에 `contract_id` (POST는 pass-through, PUT는 `contractId` whitelist)
+
+### 편집 권한 (v3.15 보안 수정)
+- PUT `/api/invoices/:id` 는 **System Admin / issuer entity (brand/foodcourt) / 수신 restaurant** 만 편집 가능
+- null-safe 비교로 cross-entity 편집 차단

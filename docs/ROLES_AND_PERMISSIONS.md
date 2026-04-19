@@ -513,6 +513,22 @@ WHERE foodcourt_id = user.foodcourt_id
 - 고객에게는 General 아이디만 제공 (Manager 아이디는 미제공)
 - 권한 분리는 추후 개발 예정
 
+### Manager 지점/브랜드 할당 (2026-04-19 v3.15)
+- **Foodcourt Manager**: `users.branch_id` 컬럼으로 특정 지점 담당 저장 가능. FoodcourtStaffPage Add/Edit 모달에서 "Branch Assignment" Select (All branches / 특정 branch). JWT payload 에 branch_id 포함
+- **Brand Manager**: 여러 Brand 를 소유한 Brand General 이 Manager 추가 시 "어느 Brand 에 소속시킬지" Select 필수. Manager 목록은 소유한 모든 Brand 에서 통합 조회
+- **Restaurant ↔ Branch**: `restaurants.branch_id` 컬럼. Foodcourt General 이 레스토랑 생성/편집 시 Branch Select 로 지점 연결 가능
+- **실제 enforcement**: 저장 레이어만 구현 (Phase A). Manager 로그인 시 본인 branch 범위 접근 제한은 후속 과제
+
+### Brand 권한 로직 (2026-04-19 v3.15 보안 수정)
+- 기존: `req.user.brand_id === parseInt(brandId)` 단일 비교
+- 변경: `brand.owner_id === req.user.id` 기반
+- **이유**: Brand General 이 여러 Brand 를 소유할 수 있음. 단일 비교 시 primary 외 Brand 에 Manager 생성/수정/삭제 불가 + 타 Brand 편집 권한 우회 가능성 동시 해소
+- 6개 라우트 적용 (GET/POST/PUT/DELETE staff, PUT permissions, PUT reset-password)
+
+### Invoice 편집 권한 (2026-04-19 v3.15 보안 수정)
+- PUT `/api/invoices/:id` 는 **issuer entity** (brand/foodcourt) 또는 **수신 restaurant** 소속 유저, 또는 **System Admin** 만 편집 가능
+- 기존 버그: null-safe 비교 누락 (`Number(null)===Number(null)` true) 로 인해 타 엔티티가 cross-edit 가능했음 → 수정
+
 ---
 
 ## 업데이트 이력
@@ -521,3 +537,4 @@ WHERE foodcourt_id = user.foodcourt_id
 - 2026-02-11: 7-Day Trial 권한 명시, 레스토랑 관리 역할별 차이 추가, Brand/Foodcourt General 제한사항 보강
 - 2026-02-23: Staff 섹션 대폭 보강 (PIN 캐셔 전환, Menu Visibility 권한 체계, 생성/관리/승격), 권한 매트릭스 Staff 항목 추가
 - 2026-03-06: 권한 매트릭스에 인보이스 결제/결제확인 행 추가, Brand General 인보이스 발행 권한 ✅로 수정
+- 2026-04-19 (v3.15): Manager 지점/브랜드 할당 저장 레이어, Brand 권한 owner_id 기반으로 개편, Invoice IDOR null-safe 수정

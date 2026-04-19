@@ -1,93 +1,85 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-19 UTC (v3.15 운영 배포 완료)
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-04-19 UTC
+**작업 상태:** 완료 (v3.15 운영 배포 완료)
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션 — 2026-04-19)
 
-**오전**: v3.14 + 누적 운영 배포 (smoke 10/10)
+**v3.14 누적 배포 (오전)** — 이전 세션 미배포 변경 + 첫 Accordion/Pipeline 카드 변경분
 
-**오후-이른**: Contract UX 대개편 + P0/P1 필수 필드
-- Sidebar 실시간 뱃지, Pipeline 카드 UX, Tab→Accordion, Documents 필수 제거
-- P0 #1~#3 (unit_id / applicant OR / is_required)
-- P1 필드 하이라이트 + 인라인 에러 + i18n 4개국어
+**v3.15 배포 (저녁 20:44 UTC)** — 대규모 변경
 
-**오후-늦음**: P2 Contract 비즈니스 기능
-- **P2 #1 계약 만료 알림 이메일**
-  - `contracts.last_expiry_notification_day` 컬럼 + beforeUpdate 훅 (end_date/start_date 변경시 reset)
-  - `subscriptionScheduler.processContractExpiryReminders()` — renewal_alert_months + D-7 2단계, 자동 expired 전환, Brand General/Foodcourt General 전원 + applicant_email 별도 이메일
-  - `contractExpiryIssuerEmail` / `contractExpiryApplicantEmail` 템플릿
-  - ContractDetail 상단 ExpiryBanner + `?action=renew` URL 자동 Renew 모달 트리거
-  - i18n 4개국어 email + frontend
-  - E2E 7/7 pass
-- **P2 #2 Contract → Invoice 추적 연결** (자동화 X, 수동 연결)
-  - `invoices.contract_id` 컬럼 ADD + Contract↔Invoice association
-  - POST pass-through, PUT whitelist, GET 응답에 contractId
-  - GET contract detail에 invoices include
-  - ContractDetail **새 Accordion 섹션 "Billing"** (Parties/Contract/**Billing**/Setup/Documents)
-    - Recurring Subscriptions: ContractPlans 목록 + Plans 페이지 링크
-    - One-time Invoices: 연결된 인보이스 테이블 + "+ Issue" 버튼
-    - **Negotiated Financial Terms (reference)** 상단 표시 — entity_type별 franchise_fee/royalty/base_rent/maintenance_fee 등 프리텍스트
-  - Brand/Foodcourt Invoice Create Modal — URL `?contract_id=X&action=create` 자동 prefill + `contract_id` 저장
-  - E2E 8/8 pass
-- **P2 #3 / #4 — 불필요 결정** (docs/문서에 사유 기록)
-  - #3 one_time charge_type: Irene 명시적으로 "일회성은 인보이스 발행" 방침 → #2에서 해결됨, 중복 경로 만들 필요 없음
-  - #4 자동 불일치 경고: 협상↔실제 차이는 의도적일 수 있음(할인 등). 대신 Billing 섹션에 Negotiated terms 표시로 수동 비교 가능
+주요 기능:
+1. Sidebar 실시간 뱃지 갱신
+2. Contract 리스트 카드 UX (금액/잔여기간/Foodcourt 위치), 레이아웃 정렬
+3. Contract Detail Tab → Smart Accordion 전환 (FormAccordion 신규)
+4. 필드 하이라이트 + RequiredBanner + ReadyBanner + 버튼 정책 전환
+5. Notes & Comments 제목/구분선 중복 제거
+6. Documents 필수 차단 제거 (외부 DMS 대응)
+7. P0 3건: Foodcourt unit_id 필수 / Applicant OR / contract_tasks.is_required
+8. P1 UX 마무리: 하이라이트 visual, 인라인 에러, i18n 4개국어 13키
+9. P2 #1 Contract 만료 알림 (스케줄러 + 이메일 + ExpiryBanner + ?action=renew)
+10. P2 #2 Contract↔Invoice 연결 (contract_id + Billing 섹션 + One-time Invoice prefill)
+11. P3 Foodcourt Branch 시스템 (다지점 지원 + 마이그레이션)
+12. Unit full code 표시 (BRANCH-UNIT 형식)
+13. Phase A Foodcourt Manager 지점 할당 + Phase B Brand Manager 브랜드 할당
+14. Restaurant ↔ Branch 연결 (restaurants.branch_id)
+15. 사이드바 정리 (obsolete placeholder 제거, Branches 메뉴 Management 첫번째로)
+16. FoodcourtStaffPage 버튼 사이즈 통일
 
-**오후-마지막**: P3 Foodcourt Branch 모델
-- 설계 문서 `docs/FOODCOURT_BRANCH_MODEL.md` 작성 + Irene 승인 결정 5건 반영
-- S1 **DB + Model + 마이그레이션**
-  - `foodcourt_branches` 신규 테이블 (id/foodcourt_id/name/code/is_primary/status/주소 세트/위도경도/operating_hours 등)
-  - `foodcourt_units.branch_id` ADD
-  - `FoodcourtBranch` 모델, `FoodcourtUnit` 에 branch_id + validate 훅 (branch↔foodcourt 일관성) + fullCode getter
-  - Association: `Foodcourt.hasMany(branches)`, `FoodcourtBranch.hasMany(units)`, `FoodcourtUnit.belongsTo(branch)`
-  - 마이그레이션 스크립트 — 기존 foodcourt "Central Food Hall" 에 primary branch 자동 생성 (code="CFH", is_primary=true), 유닛 할당
-- S2 **API** — `routes/foodcourt-branches.js` (CRUD + 권한)
-  - Foodcourt General / System Admin 접근
-  - code 필수 수동 입력, foodcourt 내 unique (A-Z0-9 검증)
-  - is_primary 삭제 차단, unit 존재시 삭제 차단
-  - inactive branch 에 신규 unit 불가
-- S2 **foodcourt-units 라우트 확장** — branch_id 필수, (branch_id, unit_number) unique, 지점 이동 허용
-- S3 **FoodcourtBranchesPage UI** (`/pos/foodcourt/branches`) — 리스트/추가/편집 모달, primary 배지, 상태 배지
-- S3 **App 라우트 + 사이드바** — "Branches" 메뉴 추가 (Foodcourt General만)
-- S4 **ContractPipeline 카드 full code 표시** — `SUNWAY-A01` 형식 + branch 이름
-- S4 **ContractDetail Unit 섹션** — full code (`SUNWAY-A01 (Sunway Pyramid)`) 표시
-- E2E 15/15 pass (CRUD, 중복 방지, 지점 간 이동, inactive 차단, primary 보호)
+보안 수정 2건:
+- Brand 권한 `brand.owner_id === user.id` 기반 개편 (다중 브랜드 소유자 지원, 6 라우트)
+- Invoice PUT IDOR null-safe 비교 (cross-entity 편집 차단)
 
-### DB 변경 (dev 적용, 운영 배포 대기)
-- `contracts.last_expiry_notification_day` ADD
-- `invoices.contract_id` ADD
-- `foodcourt_branches` 테이블 신규
-- `foodcourt_units.branch_id` ADD
-- `contract_tasks.is_required` ADD (P0 #3)
+스코프 버그 수정 2건:
+- Foodcourt General `/api/restaurants` 필터 누락 + `optionalAuth` 필드 누락
+- `/api/restaurants/manager/:managerId` Foodcourt General 경로 분기 추가
+
+### DB 변경 (운영 sync 완료)
+- `contract_tasks.is_required`
+- `contracts.last_expiry_notification_day`
+- `invoices.contract_id`
+- `foodcourt_branches` (신규 테이블)
+- `foodcourt_units.branch_id`
+- `users.branch_id`
+- `restaurants.branch_id`
 
 ### 검증 결과
 - state-hydration-check 0 warnings (여러 차례)
-- 빌드 exit 0 (여러 차례)
-- health-check 40/40 통과
-- i18n verify Errors 0
-- E2E 총합: Contract-Invoice 8/8, Branch 15/15, Expiry 7/7, P0 11/11, P1 12/12 = **53 pass / 0 fail**
+- 빌드 exit 0 (다수 재빌드), 타입에러 0
+- E2E **82+ pass / 0 fail** (user flow 50, security 16, regression 16)
+- health-check 40/40 (dev + 운영 smoke 10/10)
+- `npm run i18n:verify` Errors 0
+
+### 운영 배포 (v3.15)
+- 2026-04-19 20:44 UTC — 자동 배포 smoke 10/10 pass
+- Backup: `/var/www/backups/20260419_204244`
+- Frontend bundle: `main.e5f1c173.js`
+- 릴리즈 블로그: `https://purplehere.com/blog/release-v3.15`
+- System Admin 공지 42번 (운영 DB 자동 sync)
+- Git commit `9e2427d2` origin/main 푸시 완료
 
 ### 다음 할 일
 
-**운영 배포 (Irene `/배포`):**
-- 이번 세션 변경 + DB 스키마 5건 (last_expiry_notification_day / invoices.contract_id / foodcourt_branches / foodcourt_units.branch_id / contract_tasks.is_required)
+**운영 모니터링 (v3.15 실사용 확인):**
+- Contract 만료 알림 스케줄러 실제 이메일 발송 동작 (Brand/Foodcourt SMTP 설정된 경우)
+- Foodcourt General 이 실제 운영 데이터로 Branch 관리 확인
+- Restaurant 스코프 실제 화면 확인
 
-**후속 과제 (P3 다음):**
-- Floor Plan 시스템 — Branch 단위 평면도 업로드 + 유닛 좌표 매핑
-- Brand Franchise Map — 위도/경도 기반 매장 지도
-- Contract.location_description → Floor Plan 좌표 연동
-- 지점별/브랜드별 권한 (Foodcourt Manager / Brand Manager) — 별도 설계 문서
+**후속 개발 (우선순위 순):**
+- **Manager 지점별/브랜드별 실제 접근 enforcement** (Phase A (a) 결정대로 저장만 완료. 실제 필터링 적용은 후속 — users.branch_id/brand_id 기반으로 Contract/Unit/Invoice 접근 제한)
+- **Floor Plan 시스템** — Branch 평면도 업로드 + 유닛 좌표 매핑
+- **Brand Franchise Map** — 지역별 매장 지도
+- **Contract.location_description → Floor Plan 좌표 자동 동기화**
 - Terminated/Expired 계약 리스트 필터 + 비활성 Restaurant 섹션
-- P2 #4 아이디어 — Billing 섹션의 "Negotiated vs Plan" 대조 뷰 개선 (필요시)
 
 **결정 완료 (개발 안 함):**
-- 고객 회원가입 이메일 인증 — 전화번호 기반이라 불필요
-- 주문 확인/영수증 메일 — 이미 WhatsApp/Telegram + PNG 다운로드로 완성
-- P2 #3 entity_plans.one_time 확장 — 일회성은 invoice 직접 발행이 정책
-- P2 #4 financial_terms ↔ plan 자동 경고 — 의도된 차이 많음 (false alarm)
+- 고객 회원가입 이메일 인증 (전화번호 기반이라 불필요)
+- 주문 확인/영수증 메일 (이미 WhatsApp/Telegram + PNG로 완성)
+- P2 #3 entity_plans.one_time (일회성은 Invoice 직접 발행이 정책)
+- P2 #4 financial_terms ↔ plan 자동 경고 (의도된 차이 많음)
 
 ---
 

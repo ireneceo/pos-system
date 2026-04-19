@@ -6,6 +6,109 @@
 
 ---
 
+## ✅ 완료: v3.15 운영 배포 — Foodcourt Branch 시스템 + Contract Billing + Manager 권한 + 보안 2건 (2026-04-19 오후)
+
+### 배경
+- 오후 (v3.14 배포 이후 축적): Contract Management UX 전면 개편, Foodcourt 다지점 지원, Manager 권한 할당 세분화, 보안 취약점 2건 수정
+- 오후~저녁: 실제 유저 흐름 검증 → 스코프 버그 + UI 불일치 추가 발견 → 수정
+- 저녁 20:44 UTC: v3.15 운영 배포 완료 (smoke 10/10 pass)
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Sidebar 실시간 뱃지 | 전역 소켓 핸들러에 `fetchBadgeCounts()` 추가. 15초 polling 대기 → 즉시 반영 | ✅ |
+| 2 | Contract 리스트 카드 UX | `utils/contractBillable.ts` 신규, 금액 요약 + 잔여기간 태그 + Foodcourt 카드 유닛/location | ✅ |
+| 3 | Pipeline 레이아웃 정렬 | Column 배경 제거, gap 8px, width 100% — 상단 StatsGrid와 좌우 full 정렬 | ✅ |
+| 4 | Contract Detail Tab → Smart Accordion | 4섹션 아코디언화 + FormAccordion/FormAccordionSection 신규 컴포넌트 + 상태 배지 + RequiredBanner | ✅ |
+| 5 | 필드 하이라이트 visual | field-error 빨간 테두리 + field-highlight 보라 pulse + 인라인 에러 메시지 | ✅ |
+| 6 | 버튼 정책 전환 | "disabled" → "클릭 허용 + 자동 섹션 펼침/스크롤". UI_DESIGN_GUIDE 4.4 개정 + 14장 Accordion 신설 | ✅ |
+| 7 | Notes & Comments 통합 | CommentSection.titleText prop + $embedded 스타일 (외부 제목/구분선 중복 제거) | ✅ |
+| 8 | Documents 필수 제거 | 외부 DMS 사용 반영 | ✅ |
+| 9 | P0 #1 Foodcourt unit_id 필수 | Contracting→Setup 시 검증 추가 | ✅ |
+| 10 | P0 #2 Applicant OR 조건 | company_name OR contact_person 중 하나만 있으면 통과 | ✅ |
+| 11 | P0 #3 contract_tasks.is_required | Setup→Active 시 required task만 완료 요구 + UI 토글 | ✅ |
+| 12 | P2 #1 Contract 만료 알림 | `last_expiry_notification_day` + `processContractExpiryReminders` 스케줄러. renewal_alert_months + D-7 2단계, 자동 expired 전환, 발행자팀/applicant 별도 이메일. ExpiryBanner + `?action=renew` URL | ✅ |
+| 13 | P2 #2 Contract↔Invoice 연결 | `invoices.contract_id` + Billing 아코디언 섹션 + "+Issue One-time Invoice" → prefill → 자동 연결. Negotiated Financial Terms 참조 표시 | ✅ |
+| 14 | P3 Foodcourt Branch 시스템 | `foodcourt_branches` 테이블 신규 (주소/연락처/운영시간/위경도), `foodcourt_units.branch_id` + (branch,unit) unique. Primary branch 자동 마이그레이션. CRUD API + 전용 UI 페이지 + 사이드바 메뉴 | ✅ |
+| 15 | Unit full code 표시 | `{BRANCH}-{UNIT}` 형식 (SUNWAY-A01) Pipeline/Detail 일괄 적용 | ✅ |
+| 16 | Phase A — Foodcourt Manager 지점 할당 | `users.branch_id` 컬럼 + Select UI (All branches/특정 지점). JWT payload 포함 | ✅ |
+| 17 | Phase B — Brand Manager 브랜드 할당 | 여러 Brand 소유자 Manager 생성 시 Brand Select 필수. Manager 목록 통합 조회 | ✅ |
+| 18 | Brand 권한 owner_id 기반 개편 (보안) | `req.user.brand_id` 단일 비교 → `brand.owner_id === req.user.id` (6개 라우트). 다중 브랜드 소유자 권한 버그 해소 | ✅ |
+| 19 | Invoice PUT IDOR 취약점 수정 (보안) | `Number(null) === Number(null)` = true 버그로 인한 cross-entity 편집 가능성. null-safe 비교로 System Admin/발행자/수신 restaurant 만 허용 | ✅ |
+| 20 | Restaurant ↔ Branch 연결 | `restaurants.branch_id` + API 검증 + Foodcourt General Restaurant 생성/편집 시 Branch Select | ✅ |
+| 21 | Foodcourt General 레스토랑 스코프 버그 수정 | `/api/restaurants` 에 foodcourt_id 필터 추가 + `optionalAuth` 누락 필드(brand_id/foodcourt_id/branch_id) 보완 | ✅ |
+| 22 | /api/restaurants/manager/:managerId Foodcourt 경로 | RestaurantManager 조인만 쓰던 것을 role 분기 추가로 Foodcourt General은 foodcourt_id 기반 조회 | ✅ |
+| 23 | 사이드바 정리 | obsolete "Foodcourts" Coming Soon placeholder 제거, "Branches" 메뉴를 Management 섹션 첫번째로 이동 | ✅ |
+| 24 | FoodcourtStaffPage 버튼 사이즈 통일 | 8px 16px → 12px 20px, border-radius 6→8, weight 500→600 (다른 페이지와 일관) | ✅ |
+| 25 | i18n 4개국어 (17+ 키) | banner/section/task/applicant/unit/branch/negotiated/contractExpiry 등 | ✅ |
+
+### DB 변경 (운영 적용 완료)
+- `contract_tasks.is_required TINYINT(1) NOT NULL DEFAULT 1`
+- `contracts.last_expiry_notification_day INT NULL`
+- `invoices.contract_id INT NULL`
+- `foodcourt_branches` 신규 테이블
+- `foodcourt_units.branch_id INT NULL`
+- `users.branch_id INT NULL`
+- `restaurants.branch_id INT NULL`
+
+### 수정된 파일 (주요)
+
+**백엔드**
+- models/: Contract.js, ContractTask.js, Invoice.js, Restaurant.js, User.js, FoodcourtUnit.js, FoodcourtBranch.js (신규), index.js
+- routes/: contracts.js, invoices-main.js, brands.js, foodcourts.js, foodcourt-units.js, foodcourt-branches.js (신규), restaurants-crud.js
+- services/: subscriptionScheduler.js, authService.js
+- utils/: notificationTemplates.js
+- scripts/: migrate-foodcourt-branches.js (신규)
+- locales/{4}/email.json
+
+**프론트엔드 신규**
+- components/UI/FormAccordion.tsx
+- utils/contractBillable.ts
+- pages/FoodcourtGeneral/FoodcourtBranchesPage.tsx
+
+**프론트엔드 수정**
+- components/Contract/: ContractDetail.tsx, ContractPipeline.tsx, ContractManagementPage.tsx
+- components/Common/CommentSection.tsx
+- components/Layout/MainLayout.tsx
+- components/ProtectedRoute.tsx
+- components/UI/index.tsx
+- pages/FoodcourtGeneral/FoodcourtBranchesPage.tsx
+- pages/Foodcourt/FoodcourtStaffPage.tsx
+- pages/Brand/BrandStaffPage.tsx
+- pages/Manager/RestaurantsPage.tsx
+- pages/BrandGeneral/BrandInvoicesPage.tsx
+- pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx
+- App.tsx
+- public/locales/{4}/contract.json, common.json
+
+**문서**
+- docs/CONTRACT_DETAIL_UX.md
+- docs/FOODCOURT_BRANCH_MODEL.md (신규)
+- dev-frontend/UI_DESIGN_GUIDE.md (4.4 개정 + 14장 Accordion)
+
+### 검증 결과
+- state-hydration-check **0 warnings**
+- 빌드 exit 0 (여러 차례), 신규 타입 에러 0
+- E2E **82+ pass / 0 fail** (user flow 50, security 16, regression 16)
+- health-check **40/40** (dev + 운영 smoke 10/10)
+- `npm run i18n:verify` **Errors 0**
+
+### 운영 배포
+- 2026-04-19 20:44 UTC 자동 배포 완료
+- smoke tests 10/10 pass
+- DB sync 자동 처리 (신규 7건 컬럼/테이블)
+- 릴리즈 블로그 + System Admin 공지 운영 DB 자동 등록
+
+### 다음 할 일
+- 운영 실사용 모니터링 (ExpiryScheduler 실제 이메일 발송, Branch 마이그레이션 후 운영 Foodcourt 데이터 상태, Restaurant 스코프 실제 화면 확인)
+- Manager 지점별/브랜드별 **실제 접근 enforcement** (Phase A (a) 결정대로 저장만 된 상태. 필요 시 후속 구현)
+- Floor Plan 시스템 (Branch 평면도 + 유닛 좌표)
+- Brand Franchise Map
+- Contract.location_description → Floor Plan 좌표 자동 동기화
+
+---
+
 ## ✅ 완료: Sidebar 실시간 뱃지 + Contract UX 대개편 + P0/P1 필수 필드 (2026-04-19)
 
 ### 배경
