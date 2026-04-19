@@ -38,7 +38,11 @@ const optionalAuth = async (req, res, next) => {
           id: user.id,
           email: user.email,
           role: user.role,
-          restaurant_id: user.restaurant_id
+          restaurant_id: user.restaurant_id,
+          brand_id: user.brand_id,
+          foodcourt_id: user.foodcourt_id,
+          branch_id: user.branch_id,
+          manager_id: user.manager_id
         };
       }
     }
@@ -86,6 +90,9 @@ router.get('/', optionalAuth, async (req, res) => {
     if (req.user && (req.user.role === 'Brand General' || req.user.role === 'Brand Manager')) {
       managersInclude.where = { id: req.user.id };
       managersInclude.required = true;
+    } else if (req.user && (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') && req.user.foodcourt_id) {
+      // Scope to restaurants assigned to this foodcourt
+      whereClause.foodcourt_id = req.user.foodcourt_id;
     }
 
     const findOpts = {
@@ -101,6 +108,11 @@ router.get('/', optionalAuth, async (req, res) => {
           model: Brand,
           as: 'brand',
           attributes: ['id', 'name', 'code', 'logo_url']
+        },
+        {
+          model: require('../models').FoodcourtBranch,
+          as: 'branch',
+          attributes: ['id', 'name', 'code']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -239,6 +251,12 @@ router.get('/', optionalAuth, async (req, res) => {
         staff_limit: restaurantData.staff_limit || 5,
         payment_model: restaurantData.payment_model || 'restaurant',
         foodcourt_id: restaurantData.foodcourt_id || null,
+        branch_id: restaurantData.branch_id || null,
+        branch: restaurantData.branch ? {
+          id: restaurantData.branch.id,
+          name: restaurantData.branch.name,
+          code: restaurantData.branch.code
+        } : null,
         city: restaurantData.city || '',
         state: restaurantData.state || '',
         postalCode: restaurantData.postal_code || '',
@@ -266,16 +284,32 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
   try {
     const { managerId } = req.params;
 
-    const restaurants = await Restaurant.findAll({
-      include: [{
-        model: User,
-        as: 'managers',
-        where: { id: managerId },
-        attributes: [],
-        through: { attributes: [] }
-      }],
-      order: [['createdAt', 'DESC']]
-    });
+    // Get the target user to determine scope strategy
+    const targetUser = await User.findByPk(managerId, { attributes: ['id', 'role', 'brand_id', 'foodcourt_id'] });
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let restaurants;
+    if ((targetUser.role === 'Foodcourt General' || targetUser.role === 'Foodcourt Manager') && targetUser.foodcourt_id) {
+      // Foodcourt-scoped: all restaurants in this foodcourt
+      restaurants = await Restaurant.findAll({
+        where: { foodcourt_id: targetUser.foodcourt_id },
+        order: [['createdAt', 'DESC']]
+      });
+    } else {
+      // Default (Brand General, Brand Manager, Restaurant Owner): restaurants via RestaurantManager join
+      restaurants = await Restaurant.findAll({
+        include: [{
+          model: User,
+          as: 'managers',
+          where: { id: managerId },
+          attributes: [],
+          through: { attributes: [] }
+        }],
+        order: [['createdAt', 'DESC']]
+      });
+    }
 
     // Batch fetch today's sales, orders, and staff count
     const restaurantIds = restaurants.map(r => r.id);
@@ -686,6 +720,21 @@ router.post('/', authenticateToken, requireRole(
       }
     }
 
+    // Validate branch_id — must belong to the target foodcourt
+    if (req.body.branch_id) {
+      const FoodcourtBranch = require('../models/FoodcourtBranch');
+      const branch = await FoodcourtBranch.findByPk(req.body.branch_id);
+      if (!branch) {
+        return res.status(400).json({ success: false, message: 'Branch not found' });
+      }
+      if (req.body.foodcourt_id && Number(branch.foodcourt_id) !== Number(req.body.foodcourt_id)) {
+        return res.status(400).json({ success: false, message: 'Branch does not belong to the selected foodcourt' });
+      }
+      if (branch.status === 'inactive') {
+        return res.status(400).json({ success: false, message: 'Cannot assign restaurant to an inactive branch' });
+      }
+    }
+
     // Validate foodcourt_id permission if provided
     if (req.body.foodcourt_id) {
       const foodcourtCheck = await validateFoodcourtPermission(req.body.foodcourt_id, req.user.id, req.user.role);
@@ -832,6 +881,7 @@ router.post('/', authenticateToken, requireRole(
       subscription_snapshot: planSnapshot,
       brand_id: req.body.brand_id || null,
       foodcourt_id: req.body.foodcourt_id || null,
+      branch_id: req.body.branch_id || null,
       payment_model: req.body.payment_model || 'restaurant',
       ...planLimits
     };
@@ -1154,6 +1204,27 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     // Foodcourt association
     if (req.body.foodcourt_id !== undefined) {
       updateData.foodcourt_id = req.body.foodcourt_id ? parseInt(req.body.foodcourt_id) : null;
+    }
+
+    // Branch association (within a foodcourt)
+    if (req.body.branch_id !== undefined) {
+      if (req.body.branch_id) {
+        const FoodcourtBranch = require('../models/FoodcourtBranch');
+        const branch = await FoodcourtBranch.findByPk(req.body.branch_id);
+        if (!branch) {
+          return res.status(400).json({ success: false, message: 'Branch not found' });
+        }
+        const targetFcId = updateData.foodcourt_id !== undefined ? updateData.foodcourt_id : restaurant.foodcourt_id;
+        if (targetFcId && Number(branch.foodcourt_id) !== Number(targetFcId)) {
+          return res.status(400).json({ success: false, message: 'Branch does not belong to the restaurant\'s foodcourt' });
+        }
+        if (branch.status === 'inactive') {
+          return res.status(400).json({ success: false, message: 'Cannot assign restaurant to an inactive branch' });
+        }
+        updateData.branch_id = parseInt(req.body.branch_id);
+      } else {
+        updateData.branch_id = null;
+      }
     }
 
     // Payment model (who pays invoices)

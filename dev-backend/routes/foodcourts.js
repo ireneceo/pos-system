@@ -1499,11 +1499,21 @@ router.post('/:id/staff', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Foodcourt not found' });
     }
 
-    const { username, email, full_name, phone, permissions } = req.body;
+    const { username, email, full_name, phone, permissions, branch_id } = req.body;
 
     // Validate required fields
     if (!username || !email || !full_name) {
       return res.status(400).json({ success: false, message: 'Username, email, and full name are required' });
+    }
+
+    // Validate branch_id (if provided) belongs to this foodcourt
+    if (branch_id != null) {
+      const FoodcourtBranch = require('../models/FoodcourtBranch');
+      const branch = await FoodcourtBranch.findByPk(branch_id);
+      if (!branch) return res.status(400).json({ success: false, message: 'Branch not found' });
+      if (branch.foodcourt_id !== parseInt(foodcourtId)) {
+        return res.status(400).json({ success: false, message: 'Branch does not belong to this foodcourt' });
+      }
     }
 
     // Check duplicate email/username
@@ -1547,6 +1557,7 @@ router.post('/:id/staff', authenticateToken, async (req, res) => {
       full_name,
       phone: phone || null,
       foodcourt_id: parseInt(foodcourtId),
+      branch_id: branch_id || null,
       permissions: permissions || '[]'
     });
 
@@ -1585,11 +1596,25 @@ router.put('/:id/staff/:userId', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Manager not found in this foodcourt' });
     }
 
-    const { full_name, email, phone, username } = req.body;
+    const { full_name, email, phone, username, branch_id, permissions } = req.body;
     const updateData = {};
 
     if (full_name) updateData.full_name = full_name;
     if (phone !== undefined) updateData.phone = phone;
+    if (permissions !== undefined) updateData.permissions = permissions;
+    if (branch_id !== undefined) {
+      if (branch_id === null || branch_id === '') {
+        updateData.branch_id = null;
+      } else {
+        const FoodcourtBranch = require('../models/FoodcourtBranch');
+        const branch = await FoodcourtBranch.findByPk(branch_id);
+        if (!branch) return res.status(400).json({ success: false, message: 'Branch not found' });
+        if (branch.foodcourt_id !== parseInt(foodcourtId)) {
+          return res.status(400).json({ success: false, message: 'Branch does not belong to this foodcourt' });
+        }
+        updateData.branch_id = branch_id;
+      }
+    }
 
     // Check email uniqueness if changing
     if (email && email !== manager.email) {

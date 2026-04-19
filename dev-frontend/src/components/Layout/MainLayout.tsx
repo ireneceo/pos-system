@@ -1267,15 +1267,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   isRouteAllowed('/pos/foodcourt/general/management') ||
                   isRouteAllowed('/pos/manager/restaurants') ||
                   isRouteAllowed('/pos/manager/staff') ||
-                  isRouteAllowed('/pos/foodcourt/manager')
+                  isRouteAllowed('/pos/foodcourt/manager') ||
+                  user?.role === 'Foodcourt General'
                 ) && (
                   <>
                     <NavTitle>{t("nav.section.management")}</NavTitle>
-                    {isRouteAllowed('/pos/foodcourt/general/management') && (
-                      <DisabledNavItem title="Coming Soon">
-                        <DisabledNavIcon>⊘</DisabledNavIcon>
-                        {t("nav.foodcourts")}
-                      </DisabledNavItem>
+                    {user?.role === 'Foodcourt General' && (
+                      <NavItem to="/pos/foodcourt/branches" active={isActive('/pos/foodcourt/branches')} onClick={closeSidebar}>
+                        <NavIcon>◉</NavIcon>
+                        {t("nav.branches", "Branches")}
+                      </NavItem>
                     )}
                     {isRouteAllowed('/pos/manager/restaurants') && (
                       <NavItem to="/pos/manager/restaurants" active={isActive('/pos/manager/restaurants')} onClick={closeSidebar}>

@@ -231,6 +231,14 @@ Invoice.init({
     allowNull: true,
     defaultValue: [],
     comment: 'Array of modification records: [{modified_at, modified_by, modified_by_name, changes: {field: {from, to}}, reason}]'
+  },
+  // Contract reference — one-time invoice traceability.
+  // Logical FK only (DB FK omitted due to 64-index limit on invoices table).
+  // Invoice is NOT auto-generated from contracts; this is set manually via UI or ?contract_id URL.
+  contract_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Optional reference to originating Contract (ON DELETE SET NULL semantics managed at app layer)'
   }
 }, {
   sequelize: database.sequelize,

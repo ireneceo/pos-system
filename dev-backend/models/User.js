@@ -67,6 +67,11 @@ User.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  branch_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Foodcourt Manager only — branch assignment within the foodcourt'
+  },
   pin_code: {
     type: DataTypes.STRING(4),
     allowNull: true,

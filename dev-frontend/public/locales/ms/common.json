@@ -254,7 +254,8 @@
     "franchiseManagement": "Pengurusan Francais",
     "tenancyManagement": "Pengurusan Penyewaan",
     "franchise": "Francais",
-    "tenancy": "Penyewaan"
+    "tenancy": "Penyewaan",
+    "branches": "Cawangan"
   },
   "language": {
     "en": "English",

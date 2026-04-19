@@ -117,7 +117,7 @@ router.get('/', authenticateToken, async (req, res, next) => {
       include: [
         { model: Restaurant, as: 'restaurant', attributes: ['id', 'name'] },
         { model: User, as: 'creator', attributes: ['id', 'full_name'] },
-        { model: FoodcourtUnit, as: 'unit', attributes: ['id', 'unit_number', 'size_value', 'size_unit', 'location_description'] },
+        { model: FoodcourtUnit, as: 'unit', attributes: ['id', 'unit_number', 'size_value', 'size_unit', 'location_description'], include: [{ model: require('../models').FoodcourtBranch, as: 'branch', attributes: ['id', 'name', 'code'] }] },
         { model: ContractPlan, as: 'plans', include: [
           { model: EntityPlan, as: 'entityPlan', include: [
             { model: EntityPlanPrice, as: 'prices' }
@@ -154,7 +154,7 @@ router.get('/', authenticateToken, async (req, res, next) => {
           include: [
             { model: Restaurant, as: 'restaurant', attributes: ['id', 'name'] },
             { model: User, as: 'creator', attributes: ['id', 'full_name'] },
-            { model: FoodcourtUnit, as: 'unit', attributes: ['id', 'unit_number', 'size_value', 'size_unit', 'location_description'] },
+            { model: FoodcourtUnit, as: 'unit', attributes: ['id', 'unit_number', 'size_value', 'size_unit', 'location_description'], include: [{ model: require('../models').FoodcourtBranch, as: 'branch', attributes: ['id', 'name', 'code'] }] },
             { model: ContractPlan, as: 'plans', include: [
               { model: EntityPlan, as: 'entityPlan', include: [
                 { model: EntityPlanPrice, as: 'prices' }
@@ -190,11 +190,12 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
         { model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'branch_name', 'address', 'phone'] },
         { model: User, as: 'creator', attributes: ['id', 'full_name'] },
         { model: User, as: 'updater', attributes: ['id', 'full_name'] },
-        { model: FoodcourtUnit, as: 'unit' },
+        { model: FoodcourtUnit, as: 'unit', include: [{ model: require('../models').FoodcourtBranch, as: 'branch', attributes: ['id', 'name', 'code'] }] },
         { model: ContractDocument, as: 'documents', include: [{ model: User, as: 'uploader', attributes: ['id', 'full_name'] }] },
         { model: ContractTask, as: 'tasks', order: [['sort_order', 'ASC']] },
         { model: ContractNote, as: 'contractNotes', include: [{ model: User, as: 'author', attributes: ['id', 'full_name'] }], order: [['created_at', 'DESC']] },
         { model: ContractPlan, as: 'plans', include: [{ model: EntityPlan, as: 'entityPlan' }] },
+        { model: require('../models').Invoice, as: 'invoices', attributes: ['id', 'invoice_number', 'invoice_category', 'category_display_name', 'total_amount', 'currency', 'status', 'due_date', 'issued_at', 'type'], required: false },
         { model: ContractHistory, as: 'history', include: [{ model: User, as: 'changedByUser', attributes: ['id', 'full_name'] }], order: [['created_at', 'DESC']] },
         { model: Contract, as: 'renewedFrom', attributes: ['id', 'contract_number', 'stage'] },
         { model: Contract, as: 'renewedTo', attributes: ['id', 'contract_number', 'stage'] }

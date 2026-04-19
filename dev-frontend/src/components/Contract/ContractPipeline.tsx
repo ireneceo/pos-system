@@ -23,7 +23,7 @@ interface Contract {
   created_at: string;
   createdAt?: string;
   tasks?: { is_completed: boolean }[];
-  unit?: { unit_number: string; size_value?: number; size_unit?: string; location_description?: string | null } | null;
+  unit?: { unit_number: string; size_value?: number; size_unit?: string; location_description?: string | null; branch?: { id: number; name: string; code: string } | null } | null;
   financial_terms?: any;
   plans?: any[];
 }
@@ -237,10 +237,14 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
                 {c.applicant_phone && <CardSub>{c.applicant_phone}</CardSub>}
                 {c.applicant_location && <CardSub>{c.applicant_location}</CardSub>}
 
-                {unitLocation && (
+                {entityType === 'foodcourt' && c.unit && (
                   <LocationRow>
                     <LocationIcon>◆</LocationIcon>
-                    <span>Unit {c.unit?.unit_number}{unitSize ? ` · ${unitSize}` : ''}</span>
+                    <span>
+                      {c.unit.branch?.code ? `${c.unit.branch.code}-${c.unit.unit_number}` : `Unit ${c.unit.unit_number}`}
+                      {unitSize ? ` · ${unitSize}` : ''}
+                      {c.unit.branch?.name ? ` · ${c.unit.branch.name}` : ''}
+                    </span>
                   </LocationRow>
                 )}
                 {unitLocation && <CardSub>{c.unit?.location_description}</CardSub>}
@@ -275,7 +279,9 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
                     </CardTag>
                   )}
                   {entityType === 'foodcourt' && c.unit && (
-                    <CardTag bg="#ECFDF5" color="#059669">Unit {c.unit.unit_number}</CardTag>
+                    <CardTag bg="#ECFDF5" color="#059669">
+                      {c.unit.branch?.code ? `${c.unit.branch.code}-${c.unit.unit_number}` : `Unit ${c.unit.unit_number}`}
+                    </CardTag>
                   )}
                   {remaining.severity !== 'none' && (c.stage === 'active' || c.stage === 'setup') && (
                     <RemainingTag severity={remaining.severity === 'expired' ? 'expired' : remaining.severity === 'warning' ? 'warning' : 'normal'}>

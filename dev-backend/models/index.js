@@ -549,10 +549,24 @@ ContractPlan.belongsTo(Contract, { foreignKey: 'contract_id', as: 'contract' });
 Contract.hasMany(ContractPlan, { foreignKey: 'contract_id', as: 'plans' });
 ContractPlan.belongsTo(EntityPlan, { foreignKey: 'entity_plan_id', as: 'entityPlan' });
 
+// Contract ↔ Invoice (one-time invoice traceability — logical FK only)
+Contract.hasMany(Invoice, { foreignKey: 'contract_id', as: 'invoices', constraints: false });
+Invoice.belongsTo(Contract, { foreignKey: 'contract_id', as: 'contract', constraints: false });
+
 // FoodcourtUnit
 FoodcourtUnit.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
 Foodcourt.hasMany(FoodcourtUnit, { foreignKey: 'foodcourt_id', as: 'units' });
 FoodcourtUnit.belongsTo(Contract, { foreignKey: 'current_contract_id', as: 'currentContract' });
+
+// FoodcourtBranch
+const FoodcourtBranch = require('./FoodcourtBranch');
+FoodcourtBranch.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
+Foodcourt.hasMany(FoodcourtBranch, { foreignKey: 'foodcourt_id', as: 'branches' });
+FoodcourtBranch.hasMany(FoodcourtUnit, { foreignKey: 'branch_id', as: 'units' });
+FoodcourtUnit.belongsTo(FoodcourtBranch, { foreignKey: 'branch_id', as: 'branch' });
+// Restaurant ↔ Branch (which branch of a foodcourt this restaurant is in)
+FoodcourtBranch.hasMany(Restaurant, { foreignKey: 'branch_id', as: 'restaurants' });
+Restaurant.belongsTo(FoodcourtBranch, { foreignKey: 'branch_id', as: 'branch' });
 
 // WorkManual associations
 WorkManual.belongsTo(User, { foreignKey: 'author_id', as: 'author' });
@@ -700,6 +714,7 @@ module.exports = {
   ContractHistory,
   ContractPlan,
   FoodcourtUnit,
+  FoodcourtBranch,
   WorkManual,
   WorkManualCategory
 };

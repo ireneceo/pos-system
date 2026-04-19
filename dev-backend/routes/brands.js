@@ -1712,11 +1712,15 @@ async function generateBrandInvoiceNumber(brandId) {
 router.get('/:id/staff', authenticateToken, async (req, res) => {
   try {
     const brandId = req.params.id;
+    const brand = await Brand.findByPk(brandId);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
 
-    // Verify access: System Admin or Brand General/Manager of this brand
+    // Verify access: System Admin, Brand General who OWNS this brand, or Brand Manager assigned to it
     if (req.user.role === 'System Admin') {
       // OK
-    } else if ((req.user.role === 'Brand General' || req.user.role === 'Brand Manager') && req.user.brand_id === parseInt(brandId)) {
+    } else if (req.user.role === 'Brand General' && brand.owner_id === req.user.id) {
+      // OK
+    } else if (req.user.role === 'Brand Manager' && req.user.brand_id === parseInt(brandId)) {
       // OK
     } else {
       return res.status(403).json({ success: false, message: 'Access denied' });
@@ -1743,19 +1747,20 @@ router.post('/:id/staff', authenticateToken, async (req, res) => {
   try {
     const brandId = req.params.id;
 
-    // Only Brand General or System Admin can create managers
-    if (req.user.role === 'System Admin') {
-      // OK
-    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
-      // OK
-    } else {
-      return res.status(403).json({ success: false, message: 'Access denied. Only Brand General can create managers.' });
-    }
-
     // Verify brand exists
     const brand = await Brand.findByPk(brandId);
     if (!brand) {
       return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+
+    // Only Brand General (who OWNS this brand) or System Admin can create managers
+    // Support: one Brand General may own multiple brands (brands.owner_id = user.id)
+    if (req.user.role === 'System Admin') {
+      // OK
+    } else if (req.user.role === 'Brand General' && brand.owner_id === req.user.id) {
+      // OK
+    } else {
+      return res.status(403).json({ success: false, message: 'Access denied. Only the Brand General who owns this brand can create managers.' });
     }
 
     const { username, email, full_name, phone, permissions } = req.body;
@@ -1826,11 +1831,12 @@ router.put('/:id/staff/:userId', authenticateToken, async (req, res) => {
   try {
     const brandId = req.params.id;
     const userId = req.params.userId;
+    const brand = await Brand.findByPk(brandId);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
 
-    // Only Brand General or System Admin
     if (req.user.role === 'System Admin') {
       // OK
-    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
+    } else if (req.user.role === 'Brand General' && brand.owner_id === req.user.id) {
       // OK
     } else {
       return res.status(403).json({ success: false, message: 'Access denied' });
@@ -1883,11 +1889,12 @@ router.delete('/:id/staff/:userId', authenticateToken, async (req, res) => {
   try {
     const brandId = req.params.id;
     const userId = req.params.userId;
+    const brand = await Brand.findByPk(brandId);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
 
-    // Only Brand General or System Admin
     if (req.user.role === 'System Admin') {
       // OK
-    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
+    } else if (req.user.role === 'Brand General' && brand.owner_id === req.user.id) {
       // OK
     } else {
       return res.status(403).json({ success: false, message: 'Access denied' });
@@ -1914,11 +1921,12 @@ router.put('/:id/staff/:userId/permissions', authenticateToken, async (req, res)
   try {
     const brandId = req.params.id;
     const userId = req.params.userId;
+    const brand = await Brand.findByPk(brandId);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
 
-    // Only Brand General or System Admin
     if (req.user.role === 'System Admin') {
       // OK
-    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
+    } else if (req.user.role === 'Brand General' && brand.owner_id === req.user.id) {
       // OK
     } else {
       return res.status(403).json({ success: false, message: 'Access denied' });
@@ -1952,11 +1960,12 @@ router.put('/:id/staff/:userId/reset-password', authenticateToken, async (req, r
   try {
     const brandId = req.params.id;
     const userId = req.params.userId;
+    const brand = await Brand.findByPk(brandId);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
 
-    // Only Brand General or System Admin
     if (req.user.role === 'System Admin') {
       // OK
-    } else if (req.user.role === 'Brand General' && req.user.brand_id === parseInt(brandId)) {
+    } else if (req.user.role === 'Brand General' && brand.owner_id === req.user.id) {
       // OK
     } else {
       return res.status(403).json({ success: false, message: 'Access denied' });

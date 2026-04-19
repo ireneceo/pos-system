@@ -254,7 +254,8 @@
     "franchiseManagement": "加盟管理",
     "tenancyManagement": "入驻管理",
     "franchise": "加盟",
-    "tenancy": "入驻"
+    "tenancy": "入驻",
+    "branches": "分店"
   },
   "language": {
     "en": "English",

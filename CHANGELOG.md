@@ -6,6 +6,9 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+
+## [v3.15] — 2026-04-19 배포
+
 ### 2026-04-19
 - Sidebar 실시간 뱃지 갱신 — 전역 소켓 이벤트 `order-created/items-added/updated`에 뱃지 재조회 호출 추가 (기존 15초 polling 대기 → 즉시 반영)
 - Contract 리스트 카드 UX — 금액 요약 블록 (플랜 연결시 플랜 값, 미연결시 financial_terms + "pending plan" 힌트), 잔여기간 태그 (expired/warning/normal), Foodcourt 카드 유닛/location_description 표시. 공용 헬퍼 `utils/contractBillable.ts` 신규 (getBillableSummary, getRemainingInfo)
@@ -21,6 +24,22 @@
 - i18n 4개국어 13키 추가 (en/ko/zh/ms) — banner/section/applicant/unit/task 관련
 - Accordion 패턴 UI_DESIGN_GUIDE 14장 신설
 - 설계 문서 `docs/CONTRACT_DETAIL_UX.md` 실제 구현 기준으로 최신화
+- Contract 만료 임박 알림 — renewal_alert_months + D-7 2단계 이메일 자동 발송, 만료 하루 경과 시 자동 stage='expired' 전환, Brand/Foodcourt General 팀 + applicant 별도 이메일. 상세 페이지 상단 ExpiryBanner + URL `?action=renew` 자동 Renew 트리거
+- Contract → Invoice 추적 연결 — `invoices.contract_id` 컬럼 신규, Contract 상세 Accordion "Billing" 섹션 (Recurring Subscriptions + One-time Invoices + Negotiated Financial Terms 참조), "+ Issue One-time Invoice" 버튼 → Invoice Create Modal 자동 prefill (payer/brand/foodcourt/contract 정보 자동 채움)
+- Foodcourt Branch 시스템 신규 — `foodcourt_branches` 테이블 신설, 1 Foodcourt = N Branch 지원. 지점 코드 기반 유닛 식별 (`SUNWAY-A01`, `PAVILION-A01` 형식). 지점별 주소/연락처/운영시간/위경도/inactive 전환 지원. Foodcourt General 전용 사이드바 "Branches" 메뉴 + 전용 관리 페이지. 기존 Foodcourt 자동 마이그레이션 (primary branch 생성)
+- Foodcourt Unit 지점별 유일성 — `(branch_id, unit_number)` unique 제약. 서로 다른 지점에 같은 유닛 번호 허용. 지점 간 유닛 이동 지원. inactive 지점에는 신규 유닛 차단
+- Contract Pipeline 카드 / Contract Detail Unit 섹션 — 유닛을 `CODE-UNIT (Branch Name)` 형식으로 표시 (예: `SUNWAY-A01 (Sunway Pyramid)`)
+- Foodcourt Manager 지점 할당 — `users.branch_id` 컬럼 신규, FoodcourtStaffPage Add/Edit 모달에 "Branch Assignment" Select (All branches / 특정 지점). JWT payload에 branch_id 포함
+- Brand Manager 브랜드 할당 — 여러 Brand 소유 Brand General이 Manager 추가 시 "어느 Brand에 소속시킬지" Select 필수. Manager 목록은 소유한 모든 Brand에서 통합 조회
+- Brand 권한 로직 owner_id 기반으로 개편 — `req.user.brand_id` 단일 비교에서 `brand.owner_id === req.user.id` 로 전환 (6개 라우트). 다중 브랜드 소유자가 primary 외 브랜드에도 Manager 생성/수정/삭제 가능
+- Invoice PUT IDOR 취약점 수정 (보안) — `Number(null) === Number(null)` = `true` 버그로 인해 타 엔티티가 인보이스 수정 가능했던 점 차단. issuer_type/id + restaurant_id null-safe 비교로 System Admin / 발행자 / 수신 restaurant 만 편집 허용
+- Restaurant ↔ Branch 연결 — `restaurants.branch_id` 컬럼 신규. Foodcourt General이 레스토랑 생성/편집 시 Branch Select로 입점 지점 지정 가능 (branch ↔ foodcourt 일관성 검증 + inactive 차단). 레스토랑 리스트 응답에 branch 정보 포함
+- Foodcourt General 레스토랑 스코프 버그 수정 — `/api/restaurants` 에서 Foodcourt General이 전체 레스토랑을 보던 문제 수정. `optionalAuth`가 foodcourt_id를 req.user에 누락시킨 버그 동시 수정. 이제 본인 foodcourt 내 레스토랑만 조회
+- Foodcourt General Admin 관리 페이지 레스토랑 드롭다운 수정 — `/api/restaurants/manager/:managerId` 가 RestaurantManager 조인만 사용해서 Foodcourt General에는 빈 목록 나오던 버그. Role 분기 추가로 Foodcourt General/Manager 는 `foodcourt_id` 기반 조회
+- Foodcourt 사이드바 정리 — obsolete "Foodcourts" Coming Soon 플레이스홀더 제거, "Branches" 메뉴를 Management 섹션 첫번째로 이동
+- FoodcourtStaffPage 버튼 스타일 표준화 — 얇던 버튼 (8px 16px) → 표준 사이즈 (12px 20px, border-radius 8px, font-weight 600)
+- Documents 필수 차단 제거 — Contracting→Setup 전환 시 Documents 업로드 강제 요건 삭제 (외부 DMS 사용 가능)
+- ContractDetail Financial Terms 섹션 상태 배너 — 플랜 연결됨/미연결 상태에 따라 상단에 "Billing plan linked" 초록 배너 또는 "No billing plan linked" 노란 배너 표시 (카드/상세 일관성)
 
 ### 2026-04-18
 - Contract Management Enhancement Phase 1 구현 — 당사자/발행자 정보 확장 + 4탭 UI (Parties/Contract/Setup/Documents), 신규 컴포넌트 3개 (BankInfoField, RepresentativeField, SyncMasterToggle)

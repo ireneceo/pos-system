@@ -190,6 +190,7 @@ const BrandInvoicesPage: React.FC = () => {
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [payerMode, setPayerMode] = useState<'member' | 'external'>('member');
   const [externalPayer, setExternalPayer] = useState({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
+  const [prefillContractId, setPrefillContractId] = useState<number | null>(null);
   const [showLinkAccountModal, setShowLinkAccountModal] = useState(false);
   const [linkSearchQuery, setLinkSearchQuery] = useState('');
   const [linkSearchResults, setLinkSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
@@ -492,6 +493,45 @@ const BrandInvoicesPage: React.FC = () => {
     fetchCurrencyConfig();
     fetchInvoiceCategories();
     fetchBrandPaymentSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Prefill from ?contract_id=X&action=create — one-time invoice flow originated from ContractDetail
+  useEffect(() => {
+    const cid = searchParams.get('contract_id');
+    const action = searchParams.get('action');
+    if (!cid || action !== 'create') return;
+    (async () => {
+      try {
+        const token = getAuthToken();
+        const res = await fetch(`/api/contracts/${cid}`, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (!data.success) return;
+        const c = data.data;
+        setPrefillContractId(Number(cid));
+        if (c.restaurant_id) {
+          setPayerMode('member');
+          // selectedTarget will need restaurant object — defer to search-based selection
+        } else {
+          setPayerMode('external');
+          setExternalPayer({
+            name: c.applicant_contact_person || c.applicant_company_name || '',
+            email: c.applicant_email || '',
+            phone: c.applicant_phone || '',
+            company: c.applicant_company_name || '',
+            address: c.applicant_location || '',
+            tax_id: c.applicant_business_registration || ''
+          });
+        }
+        setShowCreateInvoiceModal(true);
+        // Clean URL after prefilling so reload doesn't retrigger
+        setSearchParams(prev => {
+          const p = new URLSearchParams(prev);
+          p.delete('contract_id'); p.delete('action');
+          return p;
+        }, { replace: true });
+      } catch (e) { console.error('Prefill from contract failed:', e); }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -923,6 +963,7 @@ const BrandInvoicesPage: React.FC = () => {
     setNewInvoice({ managerId: '', managerName: '', companyName: '', restaurantId: '', restaurantName: '', amount: '', tax: '0', total: '0', description: '', dueDate: '', planType: 'professional', billingCycle: 'monthly', invoiceCategory: 'service', customDescription: '', serviceDescription: '', currency: 'MYR', discountType: 'none' as 'none' | 'percentage' | 'fixed', discountValue: '', discountReason: '' });
     setSelectedTarget(null); setSearchQuery(''); setShowSearchDropdown(false);
     setPayerMode('member'); setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
+    setPrefillContractId(null);
   };
 
   const formatDate = (dateString: string) => {
@@ -1157,7 +1198,8 @@ const BrandInvoicesPage: React.FC = () => {
         payer_type: payerType, payer_id: payerId, invoice_category: newInvoice.invoiceCategory || 'service',
         custom_description: newInvoice.invoiceCategory === 'others' ? newInvoice.customDescription : null,
         service_description: newInvoice.invoiceCategory !== 'others' ? newInvoice.serviceDescription : null,
-        additional_charges: calculatedCharges
+        additional_charges: calculatedCharges,
+        contract_id: prefillContractId || null
       };
       if (payerMode === 'external') {
         invoiceData.external_payer_name = externalPayer.name; invoiceData.external_payer_email = externalPayer.email;

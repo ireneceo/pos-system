@@ -1,6 +1,6 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-19 (v3.14 배포 + Contract Pipeline 카드 UX + Accordion 전환 + P0/P1 필수 필드 갭 보완)
+> **최종 업데이트:** 2026-04-19 (v3.15 배포 — Foodcourt Branch 시스템 + Contract Billing + Manager 권한 할당 + 보안 2건 수정)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 

@@ -565,11 +565,13 @@ const ManagerRestaurantsPage: React.FC = () => {
     autoRenew: true,
     enableTrial: false,
     brand_id: '' as string,
-    foodcourt_id: '' as string
+    foodcourt_id: '' as string,
+    branch_id: '' as string
   });
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
+  const [branches, setBranches] = useState<Array<{ id: number; name: string; code: string; is_primary?: boolean }>>([]);
   // Restaurant Admin states
   const [adminAction, setAdminAction] = useState<'create' | 'assign'>('create');
   const [newAdminData, setNewAdminData] = useState({ fullName: '', email: '', username: '', phone: '' });
@@ -638,6 +640,24 @@ const ManagerRestaurantsPage: React.FC = () => {
       }
     };
     fetchBrands();
+
+    const fetchBranches = async () => {
+      try {
+        const token = getAuthToken();
+        const fcId = (user as any)?.foodcourt_id;
+        if (!fcId) return;
+        const response = await fetch(`/api/foodcourts/${fcId}/branches`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) setBranches(Array.isArray(data.data) ? data.data : []);
+        }
+      } catch (error) {
+        console.error('Error fetching branches:', error);
+      }
+    };
+    if (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') fetchBranches();
 
     const fetchPlans = async () => {
       try {
@@ -708,8 +728,11 @@ const ManagerRestaurantsPage: React.FC = () => {
               new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] :
               new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
             brand_id: restaurant.brand_id || null,
+            foodcourt_id: restaurant.foodcourt_id || null,
+            branch_id: restaurant.branch_id || null,
+            branch: restaurant.branch || null,
             payment_model: restaurant.payment_model || 'restaurant'
-          }));
+          } as any));
 
           setRestaurants(transformedRestaurants);
         } else {
@@ -788,7 +811,8 @@ const ManagerRestaurantsPage: React.FC = () => {
       autoRenew: true,
       enableTrial: false,
       brand_id: searchParams.get('brandId') || '',
-      foodcourt_id: searchParams.get('foodcourtId') || ''
+      foodcourt_id: searchParams.get('foodcourtId') || '',
+      branch_id: searchParams.get('branchId') || ''
     });
     setAdminAction('create');
     setNewAdminData({ fullName: '', email: '', username: '', phone: '' });
@@ -891,7 +915,8 @@ const ManagerRestaurantsPage: React.FC = () => {
         auto_renew: newRestaurant.autoRenew,
         created_by: managerId,
         brand_id: autoBrandId,
-        foodcourt_id: autoFoodcourtId
+        foodcourt_id: autoFoodcourtId,
+        branch_id: newRestaurant.branch_id ? parseInt(newRestaurant.branch_id) : null
       };
 
       // Add admin-specific fields
@@ -956,8 +981,11 @@ const ManagerRestaurantsPage: React.FC = () => {
               new Date(restaurant.subscriptionEnd || restaurant.subscription_end).toISOString().split('T')[0] :
               new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
             brand_id: restaurant.brand_id || null,
+            foodcourt_id: restaurant.foodcourt_id || null,
+            branch_id: restaurant.branch_id || null,
+            branch: restaurant.branch || null,
             payment_model: restaurant.payment_model || 'restaurant'
-          }));
+          } as any));
           setRestaurants(transformedRestaurants);
         }
 
@@ -986,7 +1014,10 @@ const ManagerRestaurantsPage: React.FC = () => {
           subscriptionStart: '',
           subscriptionEnd: '',
           autoRenew: true,
-          enableTrial: false
+          enableTrial: false,
+          brand_id: '',
+          foodcourt_id: '',
+          branch_id: ''
         });
         setAdminAction('create');
         setNewAdminData({ fullName: '', email: '', username: '', phone: '' });
@@ -1083,7 +1114,8 @@ const ManagerRestaurantsPage: React.FC = () => {
       autoRenew: true,
       enableTrial: false,
       brand_id: (restaurant as any).brand_id ? (restaurant as any).brand_id.toString() : '',
-      foodcourt_id: (restaurant as any).foodcourt_id ? (restaurant as any).foodcourt_id.toString() : ''
+      foodcourt_id: (restaurant as any).foodcourt_id ? (restaurant as any).foodcourt_id.toString() : '',
+      branch_id: (restaurant as any).branch_id ? (restaurant as any).branch_id.toString() : ''
     });
     setShowEditModal(true);
   };
@@ -1115,7 +1147,10 @@ const ManagerRestaurantsPage: React.FC = () => {
             : 'restaurant',
           // Allow Brand/Foodcourt General to relink restaurant
           ...(user?.role === 'Brand General' ? { brand_id: newRestaurant.brand_id ? parseInt(newRestaurant.brand_id) : null } : {}),
-          ...(user?.role === 'Foodcourt General' ? { foodcourt_id: newRestaurant.foodcourt_id ? parseInt(newRestaurant.foodcourt_id) : null } : {})
+          ...(user?.role === 'Foodcourt General' ? {
+            foodcourt_id: newRestaurant.foodcourt_id ? parseInt(newRestaurant.foodcourt_id) : null,
+            branch_id: newRestaurant.branch_id ? parseInt(newRestaurant.branch_id) : null
+          } : {})
         };
 
         const response = await fetch(`/api/restaurants/${editingRestaurant.id}`, {
@@ -1173,7 +1208,10 @@ const ManagerRestaurantsPage: React.FC = () => {
             subscriptionEnd: '',
             autoRenew: true,
             currency: '',
-            enableTrial: false
+            enableTrial: false,
+            brand_id: '',
+            foodcourt_id: '',
+            branch_id: ''
           });
         } else {
           const errorText = await response.text();
@@ -1728,6 +1766,21 @@ const ManagerRestaurantsPage: React.FC = () => {
                     >
                       <option value="">— Not linked to any brand —</option>
                       {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  </FormGroup>
+                )}
+
+                {/* Branch selector — Foodcourt General picks which branch of their foodcourt the restaurant is in */}
+                {user?.role === 'Foodcourt General' && (
+                  <FormGroup style={{gridColumn: '1 / -1'}}>
+                    <FormLabel>Linked Branch</FormLabel>
+                    <select
+                      value={newRestaurant.branch_id}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, branch_id: e.target.value})}
+                      style={{width: '100%', padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', background: '#fff'}}
+                    >
+                      <option value="">— Not linked to a specific branch —</option>
+                      {branches.map(b => <option key={b.id} value={b.id}>{b.code} — {b.name}{b.is_primary ? ' (Primary)' : ''}</option>)}
                     </select>
                   </FormGroup>
                 )}

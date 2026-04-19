@@ -496,6 +496,11 @@ Restaurant.init({
     allowNull: true,
     comment: 'Foodcourt ID if restaurant is a tenant in a foodcourt'
   },
+  branch_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'FoodcourtBranch ID — specific branch within the foodcourt this restaurant occupies'
+  },
   // Subscription Discount (applied by System Admin)
   discount_type: {
     type: DataTypes.ENUM('none', 'percentage', 'fixed'),

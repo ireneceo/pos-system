@@ -254,7 +254,8 @@
     "franchiseManagement": "Franchise Management",
     "tenancyManagement": "Tenancy Management",
     "franchise": "Franchise",
-    "tenancy": "Tenancy"
+    "tenancy": "Tenancy",
+    "branches": "Branches"
   },
   "language": {
     "en": "English",

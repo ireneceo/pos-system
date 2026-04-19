@@ -182,6 +182,7 @@ const BrandPlansPage = React.lazy(() => import('./pages/BrandGeneral/BrandPlansP
 const BrandPaymentSettingsPage = React.lazy(() => import('./pages/BrandGeneral/BrandPaymentSettingsPage'));
 const FranchiseManagementPage = React.lazy(() => import('./pages/BrandGeneral/FranchiseManagementPage'));
 const TenancyManagementPage = React.lazy(() => import('./pages/FoodcourtGeneral/TenancyManagementPage'));
+const FoodcourtBranchesPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtBranchesPage'));
 const RentManagement = React.lazy(() => import('./pages/Foodcourt/RentManagement'));
 const TenantSupport = React.lazy(() => import('./pages/Foodcourt/TenantSupport'));
 // BrandReports, FranchiseSupport 삭제됨 (미사용 placeholder)
@@ -660,6 +661,11 @@ function App() {
                       <Route path="/pos/foodcourt/tenancy" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <TenancyManagementPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/branches" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                          <FoodcourtBranchesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/foodcourt/general/management" element={

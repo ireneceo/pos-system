@@ -254,7 +254,8 @@
     "franchiseManagement": "가맹점 관리",
     "tenancyManagement": "입점 관리",
     "franchise": "가맹점",
-    "tenancy": "입점"
+    "tenancy": "입점",
+    "branches": "지점"
   },
   "language": {
     "en": "English",

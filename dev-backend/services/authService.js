@@ -73,6 +73,7 @@ async function login(emailOrUsername, password) {
     username: user.username,
     brand_id: user.brand_id,
     foodcourt_id: user.foodcourt_id,
+    branch_id: user.branch_id,
     restaurant_id: user.restaurant_id,
     manager_id: user.manager_id
   }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
@@ -100,6 +101,7 @@ async function login(emailOrUsername, password) {
       manager_id: user.manager_id,
       brand_id: user.brand_id,
       foodcourt_id: user.foodcourt_id,
+      branch_id: user.branch_id,
       preferred_language: user.preferred_language || 'en',
       permissions,
       is_demo: user.is_demo || false

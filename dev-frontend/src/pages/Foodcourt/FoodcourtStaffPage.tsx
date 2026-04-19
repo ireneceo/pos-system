@@ -18,6 +18,7 @@ interface Manager {
   status: 'active' | 'inactive';
   joinDate: string;
   permissions: string[];
+  branch_id?: number | null;
 }
 
 // Foodcourt Manager 권한 그룹 (MainLayout 사이드바 섹션 기반, products 없음)
@@ -68,10 +69,10 @@ const HeaderActions = styled.div`
 `;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 12px 20px;
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
   border: ${props => props.variant === 'primary' ? 'none' : props.variant === 'danger' ? '1px solid #EF4444' : '1px solid #E6EBF1'};
@@ -332,6 +333,9 @@ const FoodcourtStaffPage: React.FC = () => {
   const [managers, setManagers] = useState<Manager[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Branches (for assignment)
+  const [branches, setBranches] = useState<Array<{ id: number; name: string; code: string; is_primary: boolean }>>([]);
+
   // Add Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newManager, setNewManager] = useState({
@@ -339,7 +343,8 @@ const FoodcourtStaffPage: React.FC = () => {
     name: '',
     email: '',
     phone: '',
-    permissions: ['dashboard'] as string[]
+    permissions: ['dashboard'] as string[],
+    branch_id: '' as string | number
   });
 
   // Edit Modal
@@ -350,7 +355,8 @@ const FoodcourtStaffPage: React.FC = () => {
     email: '',
     phone: '',
     username: '',
-    permissions: [] as string[]
+    permissions: [] as string[],
+    branch_id: '' as string | number
   });
 
   // Password display modal
@@ -397,18 +403,31 @@ const FoodcourtStaffPage: React.FC = () => {
               try { return JSON.parse(u.permissions); } catch { return []; }
             }
             return [];
-          })()
+          })(),
+          branch_id: u.branch_id || null
         }));
         setManagers(transformed);
       }
     } catch (_) { /* silently fail */ }
   }, [foodcourtId]);
 
+  const fetchBranches = useCallback(async () => {
+    if (!foodcourtId) return;
+    try {
+      const response = await fetch(`/api/foodcourts/${foodcourtId}/branches`, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const data = await response.json();
+      if (data.success) setBranches(Array.isArray(data.data) ? data.data : []);
+    } catch (e) { /* silent */ }
+  }, [foodcourtId]);
+
   useEffect(() => {
     if (user && foodcourtId) {
       fetchManagers();
+      fetchBranches();
     }
-  }, [user, foodcourtId, fetchManagers]);
+  }, [user, foodcourtId, fetchManagers, fetchBranches]);
 
   const filteredManagers = managers.filter(m => {
     if (searchQuery) {
@@ -427,7 +446,7 @@ const FoodcourtStaffPage: React.FC = () => {
 
   // === Add Modal ===
   const handleOpenAddModal = () => {
-    setNewManager({ username: '', name: '', email: '', phone: '', permissions: ['dashboard'] });
+    setNewManager({ username: '', name: '', email: '', phone: '', permissions: ['dashboard'], branch_id: '' });
     setFormError('');
     setShowAddModal(true);
   };
@@ -447,7 +466,8 @@ const FoodcourtStaffPage: React.FC = () => {
           email: newManager.email.trim(),
           full_name: newManager.name.trim(),
           phone: newManager.phone.trim() || null,
-          permissions: newManager.permissions
+          permissions: newManager.permissions,
+          branch_id: newManager.branch_id ? Number(newManager.branch_id) : null
         })
       });
 
@@ -476,7 +496,8 @@ const FoodcourtStaffPage: React.FC = () => {
       email: manager.email,
       phone: manager.phone,
       username: manager.username,
-      permissions: [...manager.permissions]
+      permissions: [...manager.permissions],
+      branch_id: (manager as any).branch_id ? String((manager as any).branch_id) : ''
     });
     setFormError('');
     setShowEditModal(true);
@@ -497,7 +518,8 @@ const FoodcourtStaffPage: React.FC = () => {
           full_name: editForm.name.trim(),
           email: editForm.email.trim(),
           phone: editForm.phone.trim() || null,
-          username: editForm.username.trim()
+          username: editForm.username.trim(),
+          branch_id: editForm.branch_id ? Number(editForm.branch_id) : null
         })
       });
 
@@ -788,6 +810,29 @@ const FoodcourtStaffPage: React.FC = () => {
             </FormGroup>
           </FormRow>
 
+          {branches.length > 0 && (
+            <FormRow>
+              <FormGroup style={{ flex: '1 1 100%' }}>
+                <FormLabel>{t('common:foodcourtStaffPage.branch', 'Branch Assignment')}</FormLabel>
+                <select
+                  value={newManager.branch_id || ''}
+                  onChange={(e) => setNewManager(prev => ({ ...prev, branch_id: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                >
+                  <option value="">{t('common:foodcourtStaffPage.branchAll', 'All branches (Foodcourt-wide)')}</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>
+                      {b.code} — {b.name}{b.is_primary ? ' (Primary)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                  {t('common:foodcourtStaffPage.branchHint', 'Assign this manager to a specific branch (optional). Leave empty for foodcourt-wide access.')}
+                </div>
+              </FormGroup>
+            </FormRow>
+          )}
+
           {renderPermissionCheckboxes(
             newManager.permissions,
             (updated) => setNewManager(prev => ({ ...prev, permissions: updated }))
@@ -855,6 +900,26 @@ const FoodcourtStaffPage: React.FC = () => {
                   />
                 </FormGroup>
               </FormRow>
+
+              {branches.length > 0 && (
+                <FormRow>
+                  <FormGroup style={{ flex: '1 1 100%' }}>
+                    <FormLabel>{t('common:foodcourtStaffPage.branch', 'Branch Assignment')}</FormLabel>
+                    <select
+                      value={editForm.branch_id || ''}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, branch_id: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                    >
+                      <option value="">{t('common:foodcourtStaffPage.branchAll', 'All branches (Foodcourt-wide)')}</option>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.code} — {b.name}{b.is_primary ? ' (Primary)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </FormGroup>
+                </FormRow>
+              )}
 
               {renderPermissionCheckboxes(
                 editForm.permissions,

@@ -18,6 +18,8 @@ interface Manager {
   status: 'active' | 'inactive';
   joinDate: string;
   permissions: string[];
+  brand_id?: number | null;
+  brand_name?: string;
 }
 
 // Brand Manager 권한 그룹 (MainLayout 사이드바 섹션 기반)
@@ -351,7 +353,8 @@ const BrandStaffPage: React.FC = () => {
     name: '',
     email: '',
     phone: '',
-    permissions: ['dashboard'] as string[]
+    permissions: ['dashboard'] as string[],
+    brand_id: '' as string | number
   });
 
   // Edit Modal
@@ -362,7 +365,8 @@ const BrandStaffPage: React.FC = () => {
     email: '',
     phone: '',
     username: '',
-    permissions: [] as string[]
+    permissions: [] as string[],
+    brand_id: '' as string | number
   });
 
   // Password display modal
@@ -383,44 +387,73 @@ const BrandStaffPage: React.FC = () => {
   const [formError, setFormError] = useState('');
 
   const brandId = user?.brand_id;
+  const [ownedBrands, setOwnedBrands] = useState<Array<{ id: number; name: string }>>([]);
+
+  const fetchOwnedBrands = useCallback(async () => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`/api/brands`, { headers: { Authorization: `Bearer ${token}` } });
+      if (response.ok) {
+        const data = await response.json();
+        const arr = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+        setOwnedBrands(arr.map((b: any) => ({ id: b.id, name: b.name })));
+      }
+    } catch (_) { /* silent */ }
+  }, []);
 
   const fetchManagers = useCallback(async () => {
     if (!brandId) return;
     try {
       const token = getAuthToken();
-      const response = await fetch(`/api/brands/${brandId}/staff`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const managersArray = data.data || [];
-        const transformed: Manager[] = managersArray.map((u: any) => ({
-          id: u.id.toString(),
-          username: u.username || '',
-          name: u.full_name || u.username || 'Unknown',
-          email: u.email,
-          phone: u.phone || '',
-          status: 'active' as const,
-          joinDate: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
-          permissions: (() => {
-            if (Array.isArray(u.permissions)) return u.permissions;
-            if (typeof u.permissions === 'string') {
-              try { return JSON.parse(u.permissions); } catch { return []; }
-            }
-            return [];
-          })()
-        }));
-        setManagers(transformed);
+      // Fetch managers across all owned brands (for Brand General who may own multiple)
+      const brands = ownedBrands.length > 0 ? ownedBrands : [{ id: brandId, name: '' }];
+      const all: any[] = [];
+      for (const b of brands) {
+        try {
+          const response = await fetch(`/api/brands/${b.id}/staff`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const arr = data.data || [];
+            arr.forEach((u: any) => { u._brand_name = b.name; });
+            all.push(...arr);
+          }
+        } catch {}
       }
+      const transformed: Manager[] = all.map((u: any) => ({
+        id: u.id.toString(),
+        username: u.username || '',
+        name: u.full_name || u.username || 'Unknown',
+        email: u.email,
+        phone: u.phone || '',
+        status: 'active' as const,
+        joinDate: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
+        permissions: (() => {
+          if (Array.isArray(u.permissions)) return u.permissions;
+          if (typeof u.permissions === 'string') {
+            try { return JSON.parse(u.permissions); } catch { return []; }
+          }
+          return [];
+        })(),
+        brand_id: u.brand_id || null,
+        brand_name: u._brand_name || ''
+      }));
+      setManagers(transformed);
     } catch (_) { /* silently fail */ }
-  }, [brandId]);
+  }, [brandId, ownedBrands]);
+
+  useEffect(() => {
+    if (user) {
+      fetchOwnedBrands();
+    }
+  }, [user, fetchOwnedBrands]);
 
   useEffect(() => {
     if (user && brandId) {
       fetchManagers();
     }
-  }, [user, brandId, fetchManagers]);
+  }, [user, brandId, fetchManagers, ownedBrands]);
 
   const filteredManagers = managers.filter(m => {
     if (searchQuery) {
@@ -439,7 +472,7 @@ const BrandStaffPage: React.FC = () => {
 
   // === Add Modal ===
   const handleOpenAddModal = () => {
-    setNewManager({ username: '', name: '', email: '', phone: '', permissions: ['dashboard'] });
+    setNewManager({ username: '', name: '', email: '', phone: '', permissions: ['dashboard'], brand_id: brandId || '' });
     setFormError('');
     setShowAddModal(true);
   };
@@ -448,10 +481,12 @@ const BrandStaffPage: React.FC = () => {
     if (!newManager.username.trim()) { setFormError('Username is required.'); return; }
     if (!newManager.name.trim()) { setFormError('Full Name is required.'); return; }
     if (!newManager.email.trim()) { setFormError('Email is required.'); return; }
+    if (!newManager.brand_id) { setFormError('Please select which brand this manager will manage.'); return; }
 
     try {
       const token = getAuthToken();
-      const response = await fetch(`/api/brands/${brandId}/staff`, {
+      const targetBrandId = Number(newManager.brand_id);
+      const response = await fetch(`/api/brands/${targetBrandId}/staff`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
@@ -488,7 +523,8 @@ const BrandStaffPage: React.FC = () => {
       email: manager.email,
       phone: manager.phone,
       username: manager.username,
-      permissions: [...manager.permissions]
+      permissions: [...manager.permissions],
+      brand_id: manager.brand_id ? String(manager.brand_id) : ''
     });
     setFormError('');
     setShowEditModal(true);
@@ -801,6 +837,27 @@ const BrandStaffPage: React.FC = () => {
             />
           </FormGroup>
         </FormRow>
+
+        {ownedBrands.length > 0 && (
+          <FormRow>
+            <FormGroup style={{ flex: '1 1 100%' }}>
+              <FormLabel>{t('common:brandStaffPage.brand', 'Brand Assignment')} *</FormLabel>
+              <select
+                value={newManager.brand_id || ''}
+                onChange={(e) => setNewManager(prev => ({ ...prev, brand_id: e.target.value }))}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+              >
+                <option value="">{t('common:brandStaffPage.selectBrand', 'Select a brand...')}</option>
+                {ownedBrands.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 4 }}>
+                {t('common:brandStaffPage.brandHint', 'Manager will have access to this specific brand only.')}
+              </div>
+            </FormGroup>
+          </FormRow>
+        )}
 
         {renderPermissionCheckboxes(
           newManager.permissions,

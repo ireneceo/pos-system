@@ -65,6 +65,9 @@ class SubscriptionScheduler {
       // 5. Send overdue invoice reminders (D+3, D+7, D+14)
       const reminderResults = await this.processOverdueReminders();
 
+      // 6. Contract expiry reminders (renewal_alert_months threshold + D-7) + auto stage='expired'
+      const contractResults = await this.processContractExpiryReminders();
+
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       console.log(`✓ [SUBSCRIPTION SCHEDULER] Completed in ${duration}s`);
       console.log(`   - Trial expired: ${trialResults.updated} restaurants`);
@@ -72,6 +75,7 @@ class SubscriptionScheduler {
       console.log(`   - Overdue payments: ${paymentResults.updated} restaurants`);
       console.log(`   - Entity subscriptions: ${entityResults.updated} entities`);
       console.log(`   - Overdue reminders sent: ${reminderResults.sent}`);
+      console.log(`   - Contract expiry reminders: ${contractResults.sent} sent, ${contractResults.expired} auto-expired`);
 
       return {
         success: true,
@@ -747,6 +751,143 @@ class SubscriptionScheduler {
   }
 
   /**
+   * Contract expiry reminders + auto-expire
+   *
+   * Rules:
+   *   - Active contracts only (demo/test entities filtered)
+   *   - daysUntilEnd < 0 → auto stage='expired' + history log
+   *   - Reminder thresholds: renewal_alert_months (sets first "warning"), then 7 days (urgent)
+   *     Example: renewal_alert_months=3 → 90 days → 7 days → 2 emails total
+   *   - Uses contracts.last_expiry_notification_day to prevent duplicates
+   *   - Dual emails: issuer team (all Brand General / Foodcourt General users) + applicant_email
+   */
+  async processContractExpiryReminders() {
+    const { Contract, ContractHistory, Brand, Foodcourt, User } = require('../models');
+    const { sendIssuerEmail, sendPlatformEmail } = require('../utils/emailService');
+    const { contractExpiryIssuerEmail, contractExpiryApplicantEmail } = require('../utils/notificationTemplates');
+    const { getLogoAttachment } = require('../utils/emailTemplates');
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let sent = 0;
+    let expired = 0;
+
+    try {
+      // Fetch active contracts ending within next renewal_alert_months+ window (generous upper bound)
+      const contracts = await Contract.findAll({
+        where: {
+          stage: 'active',
+          end_date: { [Op.ne]: null }
+        }
+      });
+
+      for (const contract of contracts) {
+        try {
+          const endDate = new Date(contract.end_date);
+          endDate.setHours(0, 0, 0, 0);
+          const daysUntil = Math.floor((endDate - today) / (1000 * 60 * 60 * 24));
+
+          // Auto-expire past end_date
+          if (daysUntil < 0) {
+            await contract.update({ stage: 'expired' });
+            await ContractHistory.create({
+              contract_id: contract.id,
+              action: 'stage_changed',
+              from_value: 'active',
+              to_value: 'expired',
+              details: { auto: true, reason: 'end_date_passed' },
+              changed_by: null
+            });
+            expired++;
+            console.log(`[ContractExpiry] Auto-expired #${contract.id} (${contract.contract_number})`);
+            continue;
+          }
+
+          // Determine threshold
+          const alertMonths = contract.renewal_alert_months ?? 3;
+          const primaryThreshold = alertMonths * 30;
+          const urgentThreshold = 7;
+
+          let currentThreshold = null;
+          if (daysUntil <= urgentThreshold) currentThreshold = urgentThreshold;
+          else if (daysUntil <= primaryThreshold) currentThreshold = primaryThreshold;
+
+          if (currentThreshold === null) continue; // not yet in window
+          if (contract.last_expiry_notification_day === currentThreshold) continue; // already sent for this threshold
+
+          // Load issuer entity + team + applicant info
+          const isBrand = contract.entity_type === 'brand';
+          const EntityModel = isBrand ? Brand : Foodcourt;
+          const entity = await EntityModel.findByPk(contract.entity_id);
+          if (!entity) continue;
+          if (entity.is_demo || entity.is_test) continue; // demo/test filter
+
+          // Issuer team: Brand General / Foodcourt General role users owning this entity
+          const teamRole = isBrand ? 'Brand General' : 'Foodcourt General';
+          const team = await User.findAll({
+            where: {
+              role: teamRole,
+              [isBrand ? 'brand_id' : 'foodcourt_id']: contract.entity_id,
+              is_demo: { [Op.ne]: true }
+            }
+          });
+
+          // Ensure owner_id included (if not already a General user)
+          if (entity.owner_id && !team.find(u => u.id === entity.owner_id)) {
+            const owner = await User.findByPk(entity.owner_id);
+            if (owner && !owner.is_demo) team.push(owner);
+          }
+
+          // Issuer emails — entity-branded
+          const issuerEmail = contractExpiryIssuerEmail(contract.get({ plain: true }), daysUntil, 'en');
+          for (const member of team) {
+            if (!member.email) continue;
+            try {
+              await sendIssuerEmail(contract.entity_type, contract.entity_id, {
+                to: member.email,
+                subject: issuerEmail.subject,
+                html: issuerEmail.html,
+                text: issuerEmail.text,
+                attachments: getLogoAttachment()
+              });
+              sent++;
+            } catch (e) {
+              console.error(`[ContractExpiry] issuer email fail (${member.email}):`, e.message);
+            }
+          }
+
+          // Applicant email — separate, softer tone
+          if (contract.applicant_email) {
+            try {
+              const issuerName = entity.company_name || entity.name || '';
+              const applicantEmail = contractExpiryApplicantEmail(contract.get({ plain: true }), daysUntil, issuerName, 'en');
+              await sendIssuerEmail(contract.entity_type, contract.entity_id, {
+                to: contract.applicant_email,
+                subject: applicantEmail.subject,
+                html: applicantEmail.html,
+                text: applicantEmail.text,
+                attachments: getLogoAttachment()
+              });
+              sent++;
+            } catch (e) {
+              console.error(`[ContractExpiry] applicant email fail:`, e.message);
+            }
+          }
+
+          await contract.update({ last_expiry_notification_day: currentThreshold });
+          console.log(`[ContractExpiry] Reminder sent for #${contract.id} (D-${daysUntil}, threshold ${currentThreshold})`);
+        } catch (e) {
+          console.error(`[ContractExpiry] Error for contract #${contract.id}:`, e.message);
+        }
+      }
+    } catch (error) {
+      console.error('[ContractExpiry] Error:', error.message);
+    }
+
+    return { sent, expired };
+  }
+
+  /**
    * Send subscription status change email for entity users (Brand/Foodcourt/Owner)
    * Uses Platform SMTP since entity users don't have an issuer
    */
@@ -817,3 +958,4 @@ class SubscriptionScheduler {
 }
 
 module.exports = new SubscriptionScheduler();
+module.exports.SubscriptionScheduler = SubscriptionScheduler;

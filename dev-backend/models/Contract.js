@@ -170,6 +170,11 @@ Contract.init({
     type: DataTypes.INTEGER,
     defaultValue: 3
   },
+  last_expiry_notification_day: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Last threshold (days-before) at which expiry reminder was sent. Reset to NULL on end_date change.'
+  },
   termination_notice_months: {
     type: DataTypes.INTEGER,
     allowNull: true
@@ -239,6 +244,14 @@ Contract.init({
   tableName: 'contracts',
   timestamps: true,
   underscored: true,
+  hooks: {
+    // Reset expiry notification tracker when contract period changes
+    beforeUpdate(contract) {
+      if (contract.changed('end_date') || contract.changed('start_date')) {
+        contract.last_expiry_notification_day = null;
+      }
+    }
+  },
   validate: {
     bankInfoShape() {
       const validate = (val, label) => {

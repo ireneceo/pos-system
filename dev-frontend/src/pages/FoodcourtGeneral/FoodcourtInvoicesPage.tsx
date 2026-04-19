@@ -168,6 +168,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [selectedTarget, setSelectedTarget] = useState<{type: 'manager' | 'restaurant', data: Manager | Restaurant} | null>(null);
   const [payerMode, setPayerMode] = useState<'member' | 'external'>('member');
   const [externalPayer, setExternalPayer] = useState({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
+  const [prefillContractId, setPrefillContractId] = useState<number | null>(null);
   const [showLinkAccountModal, setShowLinkAccountModal] = useState(false);
   const [linkSearchQuery, setLinkSearchQuery] = useState('');
   const [linkSearchResults, setLinkSearchResults] = useState<{managers: Manager[], restaurants: Restaurant[]}>({managers: [], restaurants: []});
@@ -449,6 +450,44 @@ const FoodcourtInvoicesPage: React.FC = () => {
     fetchCurrencyConfig();
     fetchInvoiceCategories();
     fetchFoodcourtPaymentSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Prefill from ?contract_id=X&action=create
+  useEffect(() => {
+    try {
+      const url = new URL(window.location.href);
+      const cid = url.searchParams.get('contract_id');
+      const action = url.searchParams.get('action');
+      if (!cid || action !== 'create') return;
+      (async () => {
+        try {
+          const { getAuthToken } = require('../../utils/auth');
+          const token = getAuthToken();
+          const res = await fetch(`/api/contracts/${cid}`, { headers: { Authorization: `Bearer ${token}` } });
+          const data = await res.json();
+          if (!data.success) return;
+          const c = data.data;
+          setPrefillContractId(Number(cid));
+          if (c.restaurant_id) { setPayerMode('member'); }
+          else {
+            setPayerMode('external');
+            setExternalPayer({
+              name: c.applicant_contact_person || c.applicant_company_name || '',
+              email: c.applicant_email || '',
+              phone: c.applicant_phone || '',
+              company: c.applicant_company_name || '',
+              address: c.applicant_location || '',
+              tax_id: c.applicant_business_registration || ''
+            });
+          }
+          setShowCreateInvoiceModal(true);
+          url.searchParams.delete('contract_id');
+          url.searchParams.delete('action');
+          window.history.replaceState({}, '', url.toString());
+        } catch (e) { console.error('Prefill failed:', e); }
+      })();
+    } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -845,6 +884,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
     setNewInvoice({ managerId: '', managerName: '', companyName: '', restaurantId: '', restaurantName: '', amount: '', tax: '0', total: '0', description: '', dueDate: '', planType: 'professional', billingCycle: 'monthly', invoiceCategory: 'service', customDescription: '', serviceDescription: '', discountType: 'none' as 'none' | 'percentage' | 'fixed', discountValue: '', discountReason: '' });
     setSelectedTarget(null); setSearchQuery(''); setShowSearchDropdown(false);
     setPayerMode('member'); setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
+    setPrefillContractId(null);
   };
 
   const filteredInvoices = invoices.filter(invoice => {
@@ -1088,7 +1128,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
         currency: payerMode === 'external' ? (operationSettings.currency || 'MYR') : (selectedTarget?.type === 'restaurant' ? ((selectedTarget.data as any).currency === 'RM' ? 'MYR' : (selectedTarget.data as any).currency || operationSettings.currency || 'MYR') : (operationSettings.currency || 'MYR')),
         status: 'draft', notes: description, issued_by: user?.id || 1, issued_at: new Date().toISOString(),
         issuer_type: 'foodcourt', issuer_id: user?.foodcourt_id || null,
-        invoice_category: newInvoice.invoiceCategory || 'service', additional_charges: calculatedCharges
+        invoice_category: newInvoice.invoiceCategory || 'service', additional_charges: calculatedCharges,
+        contract_id: prefillContractId || null
       };
       if (payerMode === 'external') {
         invoiceData.external_payer_name = externalPayer.name; invoiceData.external_payer_email = externalPayer.email;

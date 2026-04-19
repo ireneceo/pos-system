@@ -148,6 +148,35 @@ const ReadyBanner = styled.div`
   margin-bottom: 16px;
 `;
 
+const ExpiryBanner = styled.div<{ urgent: boolean }>`
+  background: ${p => p.urgent ? '#FEE2E2' : '#FEF3C7'};
+  border: 1px solid ${p => p.urgent ? '#FECACA' : '#FCD34D'};
+  border-left: 4px solid ${p => p.urgent ? '#DC2626' : '#F59E0B'};
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+`;
+
+const ExpiryIcon = styled.span`
+  font-size: 16px;
+`;
+
+const ExpiryText = styled.span`
+  flex: 1;
+  font-size: 14px;
+  color: #1F2937;
+`;
+
+const ExpiryActions = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+`;
+
 const TitleRow = styled.div`
   display: flex;
   align-items: center;
@@ -526,7 +555,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
   const [searchingRestaurant, setSearchingRestaurant] = useState(false);
   const searchTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  const validSections = ['parties', 'contract', 'setup', 'documents'] as const;
+  const validSections = ['parties', 'contract', 'billing', 'setup', 'documents'] as const;
   type SectionKey = typeof validSections[number];
   const readSectionsFromUrl = (): Set<SectionKey> => {
     try {
@@ -615,6 +644,27 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
 
   // Keep formRef in sync
   React.useEffect(() => { formRef.current = form; }, [form]);
+
+  // Handle ?action=renew URL parameter — auto-open renewal flow once
+  const renewActionRef = React.useRef(false);
+  useEffect(() => {
+    if (renewActionRef.current || !contract || contract.stage !== 'active') return;
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('action') === 'renew') {
+        renewActionRef.current = true;
+        url.searchParams.delete('action');
+        window.history.replaceState({}, '', url.toString());
+        // Slight delay so banner renders first
+        setTimeout(() => {
+          if (window.confirm(t('detail.renewConfirm', 'Renew this contract? A new renewed contract will be created.') as string)) {
+            handleRenew();
+          }
+        }, 200);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contract?.stage]);
 
 
   const handleAutoSave = async () => {
@@ -866,6 +916,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
   const requirementsBySection: Record<SectionKey, SectionReq[]> = {
     parties: sectionRequirements.filter(r => r.section === 'parties'),
     contract: sectionRequirements.filter(r => r.section === 'contract'),
+    billing: sectionRequirements.filter(r => r.section === 'billing'),
     setup: sectionRequirements.filter(r => r.section === 'setup'),
     documents: sectionRequirements.filter(r => r.section === 'documents')
   };
@@ -942,6 +993,33 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         <ContractStageBar currentStage={contract.stage} />
       )}
 
+      {(() => {
+        if (contract.stage !== 'active' || !contract.end_date) return null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const end = new Date(String(contract.end_date).slice(0, 10) + 'T00:00:00');
+        const days = Math.floor((end.getTime() - today.getTime()) / 86400000);
+        const alertMonths = contract.renewal_alert_months ?? 3;
+        const primary = alertMonths * 30;
+        if (days < 0 || days > primary) return null;
+        const urgent = days <= 7;
+        return (
+          <ExpiryBanner urgent={urgent}>
+            <ExpiryIcon>{urgent ? '🔴' : '⚠'}</ExpiryIcon>
+            <ExpiryText>
+              <strong>{t('detail.expiryBannerTitle', 'Contract expiring in')} {days} {t('detail.days', 'days')}</strong>
+              {' · '}
+              {t('detail.expiryBannerBody', 'Start renewal discussion or plan transition.')}
+            </ExpiryText>
+            <ExpiryActions>
+              <Btn variant="primary" onClick={handleRenew} style={{ padding: '6px 14px', fontSize: 13 }}>
+                {t('detail.renewContract', 'Renew Contract')}
+              </Btn>
+            </ExpiryActions>
+          </ExpiryBanner>
+        );
+      })()}
+
       {formError && <ErrorMsg>{formError}</ErrorMsg>}
 
       {sectionRequirements.length > 0 && (
@@ -951,12 +1029,13 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
             {sectionRequirements.length} {t('detail.bannerRequired', 'required field(s) missing')}
           </RequiredText>
           <RequiredChips>
-            {(['parties', 'contract', 'setup', 'documents'] as SectionKey[]).map(sec => {
+            {(['parties', 'contract', 'billing', 'setup', 'documents'] as SectionKey[]).map(sec => {
               const reqs = requirementsBySection[sec];
               if (reqs.length === 0) return null;
               const labels: Record<SectionKey, string> = {
                 parties: t('detail.tabParties', 'Parties') as string,
                 contract: t('detail.tabContract', 'Contract') as string,
+                billing: t('detail.tabBilling', 'Billing') as string,
                 setup: t('detail.tabSetup', 'Setup') as string,
                 documents: t('detail.tabDocuments', 'Documents') as string
               };
@@ -1371,8 +1450,18 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
             <SubsectionTitle>{t('detail.unit', 'Unit')}</SubsectionTitle>
             <FormGrid data-field-key="unit_id" className={fieldShellClass('unit_id')}>
               <FormGroup>
-                <Label required={!contract.unit_id}>{t('detail.unitNumber', 'Unit Number')}</Label>
-                <Input value={contract.unit?.unit_number || '—'} disabled readOnly />
+                <Label required={!contract.unit_id}>{t('detail.unitFullCode', 'Unit')}</Label>
+                <Input
+                  value={
+                    contract.unit
+                      ? (contract.unit.branch?.code
+                          ? `${contract.unit.branch.code}-${contract.unit.unit_number}${contract.unit.branch.name ? ` (${contract.unit.branch.name})` : ''}`
+                          : contract.unit.unit_number)
+                      : '—'
+                  }
+                  disabled
+                  readOnly
+                />
                 <div className="field-error-msg">{t('detail.unitAssignHint', 'Assign via Foodcourt Units page')}</div>
               </FormGroup>
               <FormGroup>
@@ -1595,6 +1684,143 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
           disabled={!isEditable}
         />
       </Section>
+      </FormAccordionSection>
+      <FormAccordionSection id="billing" title={t('detail.tabBilling', 'Billing') as string} status={sectionStatus('billing').status} statusLabel={sectionStatus('billing').label}>
+
+      {/* Negotiated terms reference (from financial_terms) — read-only for cross-check */}
+      {(() => {
+        const ft = form.financial_terms || {};
+        const rows: Array<{ label: string; value: string }> = [];
+        const currency = contract?.entity_currency || 'MYR';
+        const money = (v: any) => (v != null && v !== '' && Number.isFinite(Number(v))) ? `${currency} ${Number(v).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}` : null;
+        if (entityType === 'brand') {
+          const fee = money(ft.franchise_fee); if (fee) rows.push({ label: t('detail.franchiseFee', 'Franchise Fee') as string, value: fee });
+          if (ft.royalty_value != null && ft.royalty_value !== '') {
+            const isPct = ft.royalty_type === 'percent' || ft.royalty_type === 'percentage';
+            rows.push({ label: t('detail.royalty', 'Royalty') as string, value: isPct ? `${ft.royalty_value}%` : (money(ft.royalty_value) || '—') });
+          }
+          const sys = money(ft.system_monthly_fee); if (sys) rows.push({ label: t('detail.systemMonthlyFee', 'System Fee (Monthly)') as string, value: `${sys}/mo` });
+          const dep = money(ft.security_deposit); if (dep) rows.push({ label: t('detail.securityDeposit', 'Security Deposit') as string, value: dep });
+        } else {
+          let rent: number | null = null;
+          if (Array.isArray(ft.rent_schedule) && ft.rent_schedule.length) {
+            const y1 = ft.rent_schedule.find((r: any) => Number(r.year) === 1) || ft.rent_schedule[0];
+            rent = y1?.base_rent != null ? Number(y1.base_rent) : null;
+          }
+          if (rent == null && ft.base_rent != null) rent = Number(ft.base_rent);
+          if (rent != null) rows.push({ label: t('detail.baseRent', 'Base Rent') as string, value: `${money(rent)}/mo` });
+          const mgmt = money(ft.maintenance_fee); if (mgmt) rows.push({ label: t('detail.maintenanceFee', 'Management Fee') as string, value: `${mgmt}/mo` });
+          if (ft.percentage_rent?.rate != null && ft.percentage_rent.rate !== '') {
+            rows.push({ label: t('detail.percentageRent', 'Percentage Rent') as string, value: `${ft.percentage_rent.rate}%` });
+          }
+          const dep = money(ft.security_deposit); if (dep) rows.push({ label: t('detail.securityDeposit', 'Security Deposit') as string, value: dep });
+        }
+        if (rows.length === 0) return null;
+        return (
+          <div style={{ background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: 6, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 }}>
+              {t('detail.negotiatedTerms', 'Negotiated Financial Terms (reference)')}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+              {rows.map((r, i) => (
+                <div key={i} style={{ fontSize: 13 }}>
+                  <span style={{ color: '#6B7C93' }}>{r.label}:</span>
+                  {' '}
+                  <span style={{ color: '#0A2540', fontWeight: 600 }}>{r.value}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>
+              {t('detail.negotiatedTermsHint', 'Compare with actual plans and invoices below. Differences may be intentional (discounts, partial coverage, etc.).')}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Recurring Subscriptions (ContractPlans) */}
+      <Section>
+        <SectionTitle>{t('detail.recurringSubscriptions', 'Recurring Subscriptions')}</SectionTitle>
+        {Array.isArray(form.plans) && form.plans.length > 0 ? (
+          <div>
+            {form.plans.map((p: any) => {
+              const ep = p.entityPlan || {};
+              const price = ep.charge_type === 'percentage'
+                ? `${ep.percentage_value || 0}%`
+                : (() => {
+                    const row = (ep.prices || []).find((r: any) => r.currency === (ep.currency || 'MYR')) || (ep.prices || [])[0];
+                    const amt = row?.monthly_price != null ? Number(row.monthly_price) : null;
+                    return amt != null ? `RM ${amt.toLocaleString('en-MY')}/mo` : '—';
+                  })();
+              return (
+                <div key={p.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid #E6EBF1', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>{ep.name || 'Plan'}</div>
+                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>{price}</div>
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ marginTop: 16, padding: 12, background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 13, color: '#4B5563' }}>
+              {t('detail.recurringBillingHint', 'To activate recurring billing, assign these plans to the linked restaurant in the')}
+              {' '}
+              <a href={`/pos/${entityType === 'brand' ? 'brand' : 'foodcourt'}/plans`} style={{ color: '#635BFF', fontWeight: 600 }}>
+                {t('detail.goToPlans', 'Plans page')}
+              </a>.
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: '#9CA3AF', textAlign: 'center', padding: 20 }}>
+            {t('detail.noRecurringPlans', 'No recurring plans linked to this contract yet.')}
+          </div>
+        )}
+      </Section>
+
+      {/* One-time Invoices */}
+      <Section>
+        <SectionTitle>{t('detail.oneTimeInvoices', 'One-time Invoices')}</SectionTitle>
+        {Array.isArray(contract.invoices) && contract.invoices.length > 0 ? (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.8fr 0.8fr 0.8fr', gap: 8, padding: '8px 12px', background: '#F3F4F6', fontWeight: 600, fontSize: 12, color: '#4B5563', borderRadius: 4 }}>
+              <div>{t('detail.invoiceNumber', 'Invoice #')}</div>
+              <div>{t('detail.category', 'Category')}</div>
+              <div>{t('detail.amount', 'Amount')}</div>
+              <div>{t('detail.status', 'Status')}</div>
+              <div>{t('detail.dueDate', 'Due')}</div>
+            </div>
+            {contract.invoices.map((inv: any) => (
+              <div key={inv.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.8fr 0.8fr 0.8fr', gap: 8, padding: '10px 12px', borderBottom: '1px solid #E6EBF1', fontSize: 13, alignItems: 'center' }}>
+                <div style={{ fontWeight: 600, color: '#0A2540' }}>{inv.invoice_number}</div>
+                <div style={{ color: '#4B5563' }}>{inv.category_display_name || inv.invoice_category || '—'}</div>
+                <div style={{ color: '#0A2540', fontWeight: 600 }}>{inv.currency || 'MYR'} {Number(inv.total_amount).toLocaleString('en-MY', { minimumFractionDigits: 2 })}</div>
+                <div>
+                  <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
+                    background: inv.status === 'paid' ? '#D1FAE5' : inv.status === 'overdue' ? '#FEE2E2' : inv.status === 'pending_payment' ? '#FEF3C7' : '#E5E7EB',
+                    color: inv.status === 'paid' ? '#065F46' : inv.status === 'overdue' ? '#991B1B' : inv.status === 'pending_payment' ? '#92400E' : '#4B5563'
+                  }}>{inv.status}</span>
+                </div>
+                <div style={{ color: '#6B7C93' }}>{inv.due_date ? tzFormatDate(inv.due_date, null) : '—'}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: '#9CA3AF', textAlign: 'center', padding: 20 }}>
+            {t('detail.noOneTimeInvoices', 'No one-time invoices for this contract yet.')}
+          </div>
+        )}
+        <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+          <Btn
+            variant="primary"
+            onClick={() => {
+              const page = entityType === 'brand' ? '/pos/brand/invoices' : '/pos/foodcourt/invoices';
+              window.location.href = `${page}?contract_id=${contractId}&action=create`;
+            }}
+            disabled={!isEditable && contract.stage !== 'active'}
+          >
+            + {t('detail.issueOneTimeInvoice', 'Issue One-time Invoice')}
+          </Btn>
+        </div>
+      </Section>
+
       </FormAccordionSection>
       <FormAccordionSection id="setup" title={t('detail.tabSetup', 'Setup') as string} status={sectionStatus('setup').status} statusLabel={sectionStatus('setup').label}>
       {/* Support Services */}

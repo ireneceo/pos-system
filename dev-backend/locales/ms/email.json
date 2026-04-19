@@ -59,5 +59,25 @@
     "heading": "Kemas Kini Tiket",
     "status": "Status",
     "viewButton": "Lihat Tiket"
+  },
+  "contractExpiry": {
+    "issuerSubject": "⚠ Kontrak #{{number}} tamat dalam {{days}} hari",
+    "issuerSubjectUrgent": "🔴 SEGERA — Kontrak #{{number}} tamat dalam {{days}} hari",
+    "issuerHeading": "Peringatan Tamat Kontrak",
+    "issuerIntro": "Kontrak berikut menghampiri tarikh tamat dan memerlukan tindakan anda.",
+    "applicantSubject": "Kontrak anda dengan {{issuer}} tamat pada {{date}}",
+    "applicantHeading": "Kontrak Akan Tamat",
+    "applicantIntro": "Kontrak anda dengan {{issuer}} akan tamat pada {{date}}. Sila hubungi kami untuk perbincangan pembaharuan atau peralihan.",
+    "contractNumber": "Nombor Kontrak",
+    "applicantCompany": "Pemohon",
+    "endDate": "Tarikh Tamat",
+    "daysRemaining": "Hari Berbaki",
+    "renewalPolicy": "Dasar Pembaharuan",
+    "renewalAuto": "Pembaharuan automatik",
+    "renewalManual": "Memerlukan pembaharuan manual",
+    "renewalNone": "Tiada pembaharuan — kontrak akan tamat",
+    "viewButton": "Buka Kontrak",
+    "renewButton": "Mula Pembaharuan",
+    "contactBody": "Untuk sebarang pertanyaan mengenai kontrak, sila hubungi kami secara langsung."
   }
 }

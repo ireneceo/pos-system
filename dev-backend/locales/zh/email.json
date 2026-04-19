@@ -59,5 +59,25 @@
     "heading": "工单更新",
     "status": "状态",
     "viewButton": "查看工单"
+  },
+  "contractExpiry": {
+    "issuerSubject": "⚠ 合同 #{{number}} 将在 {{days}} 天后到期",
+    "issuerSubjectUrgent": "🔴 紧急 — 合同 #{{number}} 将在 {{days}} 天后到期",
+    "issuerHeading": "合同到期提醒",
+    "issuerIntro": "以下合同即将到期,需要您采取行动。",
+    "applicantSubject": "您与 {{issuer}} 的合同将于 {{date}} 到期",
+    "applicantHeading": "合同即将到期",
+    "applicantIntro": "您与 {{issuer}} 的合同将于 {{date}} 到期。请联系我们讨论续约或终止事宜。",
+    "contractNumber": "合同编号",
+    "applicantCompany": "申请方",
+    "endDate": "终止日期",
+    "daysRemaining": "剩余天数",
+    "renewalPolicy": "续约政策",
+    "renewalAuto": "自动续约",
+    "renewalManual": "需手动续约",
+    "renewalNone": "不续约 — 合同终止",
+    "viewButton": "打开合同",
+    "renewButton": "开始续约",
+    "contactBody": "如有合同相关疑问,请直接与我们联系。"
   }
 }

@@ -301,6 +301,82 @@ function emailVerificationEmail(fullName, verificationUrl) {
   }, title, body, 'en');
 }
 
+/**
+ * Contract expiry reminder — 발행자(internal team) 대상
+ */
+function contractExpiryIssuerEmail(contract, daysRemaining, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (key, params) => getEmailText(lang, key, params);
+
+  const isUrgent = daysRemaining <= 7;
+  const endDate = new Date(contract.end_date).toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const contractUrl = `${BASE_URL}/pos/${contract.entity_type === 'brand' ? 'brand/franchise' : 'foodcourt/tenancy'}?id=${contract.id}`;
+  const renewUrl = `${contractUrl}&action=renew`;
+
+  const renewalLabel = contract.renewal_type === 'auto'
+    ? t('contractExpiry.renewalAuto')
+    : contract.renewal_type === 'none'
+      ? t('contractExpiry.renewalNone')
+      : t('contractExpiry.renewalManual');
+
+  const banner = isUrgent
+    ? `<div style="background:#FEE2E2;border-left:4px solid #DC2626;padding:14px 16px;border-radius:6px;margin:16px 0;">
+         <div style="color:#991B1B;font-weight:600;font-size:15px;">⚠ ${daysRemaining} ${t('contractExpiry.daysRemaining')}</div>
+       </div>`
+    : `<div style="background:#FEF3C7;border-left:4px solid #F59E0B;padding:14px 16px;border-radius:6px;margin:16px 0;">
+         <div style="color:#92400E;font-weight:600;font-size:15px;">${daysRemaining} ${t('contractExpiry.daysRemaining')}</div>
+       </div>`;
+
+  const title = t('contractExpiry.issuerHeading');
+  const body = `
+    <p style="color:#374151;font-size:15px;margin:0 0 16px;line-height:1.6;">${t('contractExpiry.issuerIntro')}</p>
+    ${banner}
+    ${infoTable(
+      infoRow(t('contractExpiry.contractNumber'), contract.contract_number || '—') +
+      infoRow(t('contractExpiry.applicantCompany'), contract.applicant_company_name || contract.applicant_contact_person || '—') +
+      infoRow(t('contractExpiry.endDate'), endDate) +
+      infoRow(t('contractExpiry.daysRemaining'), daysRemaining) +
+      infoRow(t('contractExpiry.renewalPolicy'), renewalLabel)
+    )}
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${renewUrl}" style="display:inline-block;background:${BRAND_COLOR};color:#ffffff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;margin:0 4px;">${t('contractExpiry.renewButton')}</a>
+      <a href="${contractUrl}" style="display:inline-block;background:transparent;color:${BRAND_COLOR};padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;border:1px solid ${BRAND_COLOR};margin:0 4px;">${t('contractExpiry.viewButton')}</a>
+    </div>`;
+
+  const subjectKey = isUrgent ? 'contractExpiry.issuerSubjectUrgent' : 'contractExpiry.issuerSubject';
+  return withRenderMeta({
+    subject: t(subjectKey, { number: contract.contract_number || contract.id, days: daysRemaining }),
+    html: wrapTemplate(title, body, lang),
+    text: `${title}\nContract ${contract.contract_number} expires on ${endDate} (${daysRemaining} days). ${contractUrl}`
+  }, title, body, lang);
+}
+
+/**
+ * Contract expiry reminder — 신청자(applicant) 대상
+ */
+function contractExpiryApplicantEmail(contract, daysRemaining, issuerName, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (key, params) => getEmailText(lang, key, params);
+
+  const endDate = new Date(contract.end_date).toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  const title = t('contractExpiry.applicantHeading');
+  const body = `
+    <p style="color:#374151;font-size:15px;margin:0 0 16px;line-height:1.6;">${t('contractExpiry.applicantIntro', { issuer: issuerName || '—', date: endDate })}</p>
+    ${infoTable(
+      infoRow(t('contractExpiry.contractNumber'), contract.contract_number || '—') +
+      infoRow(t('contractExpiry.endDate'), endDate) +
+      infoRow(t('contractExpiry.daysRemaining'), daysRemaining)
+    )}
+    <p style="color:#6B7280;font-size:14px;margin:16px 0 0;line-height:1.6;">${t('contractExpiry.contactBody')}</p>`;
+
+  return withRenderMeta({
+    subject: t('contractExpiry.applicantSubject', { issuer: issuerName || '—', date: endDate }),
+    html: wrapTemplate(title, body, lang),
+    text: `${title}\nContract ${contract.contract_number} with ${issuerName} expires on ${endDate} (${daysRemaining} days).`
+  }, title, body, lang);
+}
+
 module.exports = {
   wrapTemplate,
   noticeReceivedEmail,
@@ -311,5 +387,7 @@ module.exports = {
   invoiceCreatedEmail,
   invoiceOverdueEmail,
   invoicePaidEmail,
-  emailVerificationEmail
+  emailVerificationEmail,
+  contractExpiryIssuerEmail,
+  contractExpiryApplicantEmail
 };

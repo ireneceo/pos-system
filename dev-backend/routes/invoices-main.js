@@ -382,6 +382,8 @@ router.get('/', authenticateToken, async (req, res) => {
         // Modification tracking
         isModified: invoice.is_modified || false,
         modificationHistory: invoice.modification_history || [],
+        // Contract link (one-time invoice traceability)
+        contractId: invoice.contract_id || null,
         // Hardware quote link (extract from notes)
         hardwareQuoteNumber: invoice.notes?.match(/Hardware Quote: (QUO-\d+)/)?.[1] || null,
         // External payer info
@@ -659,7 +661,9 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
             : null,
         // Modification tracking
         isModified: invoice.is_modified || false,
-        modificationHistory: invoice.modification_history || []
+        modificationHistory: invoice.modification_history || [],
+        // Contract link
+        contractId: invoice.contract_id || null
       };
     });
 
@@ -1212,7 +1216,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
           : null,
       // Modification tracking
       isModified: invoice.is_modified || false,
-      modificationHistory: invoice.modification_history || []
+      modificationHistory: invoice.modification_history || [],
+      // Contract link (one-time invoice traceability)
+      contractId: invoice.contract_id || null
     };
 
     res.json({ invoice: transformedInvoice, items });
@@ -1339,6 +1345,22 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
+    // Authorization: only the issuer or payer (restaurant) or System Admin can edit
+    const userRole = req.user.role;
+    const userBrandId = req.user.brand_id;
+    const userFoodcourtId = req.user.foodcourt_id;
+    const userRestaurantId = req.user.restaurant_id;
+    const sameId = (a, b) => a != null && b != null && Number(a) === Number(b);
+    let allowed = false;
+    if (userRole === 'System Admin') allowed = true;
+    else if (invoice.issuer_type === 'brand' && sameId(invoice.issuer_id, userBrandId)) allowed = true;
+    else if (invoice.issuer_type === 'foodcourt' && sameId(invoice.issuer_id, userFoodcourtId)) allowed = true;
+    else if (sameId(invoice.restaurant_id, userRestaurantId)) allowed = true;
+    if (!allowed) {
+      await transaction.rollback();
+      return res.status(403).json({ success: false, error: 'Access denied: you cannot edit this invoice' });
+    }
+
     // Prevent editing invoices that are paid, cancelled, or have payment submitted
     if (invoice.status === 'paid' || invoice.status === 'cancelled' || invoice.status === 'payment_submitted') {
       await transaction.rollback();
@@ -1373,6 +1395,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const { restaurantId } = req.body;
     if (restaurantId !== undefined) updateData.restaurant_id = restaurantId || null;
     if (invoiceCategory !== undefined) updateData.invoice_category = invoiceCategory;
+    const { contractId } = req.body;
+    if (contractId !== undefined) updateData.contract_id = contractId || null;
     if (customDescription !== undefined) updateData.custom_description = customDescription;
     if (serviceDescription !== undefined) updateData.service_description = serviceDescription;
     if (notes !== undefined) updateData.notes = notes;
