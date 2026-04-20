@@ -337,5 +337,9 @@
   "foodcourtSubscriptionsPage.discountType": "Discount Type",
   "foodcourtSubscriptionsPage.none": "None",
   "foodcourtSubscriptionsPage.reasonOptional": "Reason (optional)",
-  "foodcourtSubscriptionsPage.preview": "Preview"
+  "foodcourtSubscriptionsPage.preview": "Preview",
+  "branches": {
+    "latitude": "Latitude",
+    "longitude": "Longitude"
+  }
 }

@@ -36,6 +36,7 @@ const authenticateToken = async (req, res, next) => {
       restaurant_id: user.restaurant_id,
       brand_id: user.brand_id,
       foodcourt_id: user.foodcourt_id,
+      branch_id: user.branch_id,
       manager_id: user.manager_id,
       is_demo: user.is_demo || false
     };
@@ -180,6 +181,7 @@ const optionalAuthenticateToken = async (req, res, next) => {
         restaurant_id: user.restaurant_id,
         brand_id: user.brand_id,
         foodcourt_id: user.foodcourt_id,
+        branch_id: user.branch_id,
         manager_id: user.manager_id,
         is_demo: user.is_demo || false
       };
@@ -258,11 +260,27 @@ const demoProtection = (req, res, next) => {
   next();
 };
 
+// Resolve Manager scope limits. Returns:
+//   { scoped: false } — System Admin, General roles, or unscoped Manager (backward-compat: NULL = all)
+//   { scoped: true, branch_id } — Foodcourt Manager restricted to a branch
+//   { scoped: true, brand_id } — Brand Manager restricted to one brand
+const getManagerScope = (user) => {
+  if (!user) return { scoped: false };
+  if (user.role === 'Foodcourt Manager' && user.branch_id) {
+    return { scoped: true, branch_id: Number(user.branch_id) };
+  }
+  if (user.role === 'Brand Manager' && user.brand_id) {
+    return { scoped: true, brand_id: Number(user.brand_id) };
+  }
+  return { scoped: false };
+};
+
 module.exports = {
   authenticateToken,
   optionalAuthenticateToken,
   requireRole,
   checkRestaurantAccess,
   checkSubscriptionStatus,
-  demoProtection
+  demoProtection,
+  getManagerScope
 };

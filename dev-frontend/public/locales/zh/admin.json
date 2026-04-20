@@ -1347,5 +1347,14 @@
   "supportTicketsPage.lastUpdated": "最后更新",
   "systemInquiryPage.createTicket": "创建 工单",
   "systemInquiryPage.resolved": "已解决",
-  "systemInquiryPage.allStatus": "全部状态"
+  "systemInquiryPage.allStatus": "全部状态",
+  "restaurantsPage": {
+    "tabOperational": "运营中",
+    "tabArchive": "归档",
+    "overdue": "逾期",
+    "latitude": "纬度",
+    "longitude": "经度",
+    "latitudeHint": "例: 3.1390 (从地址自动填充)",
+    "longitudeHint": "例: 101.6869"
+  }
 }

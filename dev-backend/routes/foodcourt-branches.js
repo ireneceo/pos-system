@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken, requireRole, getManagerScope } = require('../middleware/auth');
 const { FoodcourtBranch, FoodcourtUnit, Foodcourt } = require('../models');
 
 // Scope helper — Foodcourt General / Manager should only access their own foodcourt
@@ -23,8 +23,12 @@ router.get('/foodcourts/:foodcourtId/branches', authenticateToken, async (req, r
       return res.status(403).json({ success: false, message: 'Not your foodcourt' });
     }
 
+    const where = { foodcourt_id: foodcourtId };
+    const mgrScope = getManagerScope(req.user);
+    if (mgrScope.scoped && mgrScope.branch_id) where.id = mgrScope.branch_id;
+
     const branches = await FoodcourtBranch.findAll({
-      where: { foodcourt_id: foodcourtId },
+      where,
       include: [{ model: FoodcourtUnit, as: 'units', attributes: ['id', 'unit_number', 'status'] }],
       order: [['is_primary', 'DESC'], ['created_at', 'ASC']]
     });
@@ -102,6 +106,10 @@ router.get('/foodcourt-branches/:id', authenticateToken, async (req, res, next) 
     if (!branch) return res.status(404).json({ success: false, message: 'Branch not found' });
     if (scope.scope === 'entity' && scope.foodcourt_id !== branch.foodcourt_id) {
       return res.status(403).json({ success: false, message: 'Not your foodcourt' });
+    }
+    const mgrScope = getManagerScope(req.user);
+    if (mgrScope.scoped && mgrScope.branch_id && branch.id !== mgrScope.branch_id) {
+      return res.status(403).json({ success: false, message: 'No access to this branch' });
     }
     res.json({ success: true, data: branch });
   } catch (e) { next(e); }

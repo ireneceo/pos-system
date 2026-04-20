@@ -21,7 +21,23 @@ const invoiceScheduler = require('../services/invoiceScheduler');
 const subscriptionScheduler = require('../services/subscriptionScheduler');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
-const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+
+// Check if an invoice is attached to a specific branch (via contract.unit or restaurant)
+const invoiceInBranch = async (invoice, branchId) => {
+  if (!invoice || !branchId) return false;
+  if (invoice.restaurant_id) {
+    const r = await Restaurant.findByPk(invoice.restaurant_id, { attributes: ['branch_id'] });
+    if (r && r.branch_id === branchId) return true;
+  }
+  if (invoice.contract_id) {
+    const Contract = require('../models/Contract');
+    const FoodcourtUnit = require('../models/FoodcourtUnit');
+    const c = await Contract.findByPk(invoice.contract_id, { attributes: ['unit_id'], include: [{ model: FoodcourtUnit, as: 'unit', attributes: ['branch_id'] }] });
+    if (c && c.unit && c.unit.branch_id === branchId) return true;
+  }
+  return false;
+};
+const { authenticateToken, checkRestaurantAccess, getManagerScope } = require('../middleware/auth');
 const InvoiceCategory = require('../models/InvoiceCategory');
 const { normalizeAdditionalCharges, getAvailablePaymentMethods } = require('../utils/paymentSettingsHelper');
 const { sendNotification, sendNotificationBatch, getSystemAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
@@ -130,6 +146,34 @@ router.get('/', authenticateToken, async (req, res) => {
     } else {
       // Other roles: no access
       return res.json([]);
+    }
+
+    // Branch-scoped Foodcourt Manager: restrict to invoices linked to restaurants/contracts in their branch
+    const mgrScope = getManagerScope(req.user);
+    if (mgrScope.scoped && mgrScope.branch_id) {
+      const Contract = require('../models/Contract');
+      const FoodcourtUnit = require('../models/FoodcourtUnit');
+      const branchUnits = await FoodcourtUnit.findAll({
+        where: { branch_id: mgrScope.branch_id },
+        attributes: ['id']
+      });
+      const unitIds = branchUnits.map(u => u.id);
+      const branchContracts = unitIds.length > 0 ? await Contract.findAll({
+        where: { unit_id: { [Op.in]: unitIds } },
+        attributes: ['id']
+      }) : [];
+      const contractIds = branchContracts.map(c => c.id);
+      const branchRestaurants = await Restaurant.findAll({
+        where: { branch_id: mgrScope.branch_id },
+        attributes: ['id']
+      });
+      const restaurantIds = branchRestaurants.map(r => r.id);
+
+      const orConditions = [];
+      if (contractIds.length > 0) orConditions.push({ contract_id: { [Op.in]: contractIds } });
+      if (restaurantIds.length > 0) orConditions.push({ restaurant_id: { [Op.in]: restaurantIds } });
+      if (orConditions.length === 0) return res.json([]);
+      whereClause = { ...whereClause, [Op.and]: [{ [Op.or]: orConditions }] };
     }
 
     console.log(`📋 GET /api/invoices - User: ${req.user.email} (${role}), Where:`, whereClause);
@@ -1137,6 +1181,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
+    // Branch-scoped Foodcourt Manager: verify invoice is linked to their branch
+    const mgrScope = getManagerScope(req.user);
+    if (mgrScope.scoped && mgrScope.branch_id) {
+      const inBranch = await invoiceInBranch(invoice, mgrScope.branch_id);
+      if (!inBranch) return res.status(403).json({ error: 'No access to this invoice' });
+    }
+
     const items = await InvoiceItem.findAll({
       where: { invoice_id: req.params.id }
     });
@@ -1361,6 +1412,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Access denied: you cannot edit this invoice' });
     }
 
+    // Branch-scoped Foodcourt Manager: limit edits to their branch's invoices
+    const mgrScope = getManagerScope(req.user);
+    if (mgrScope.scoped && mgrScope.branch_id) {
+      const inBranch = await invoiceInBranch(invoice, mgrScope.branch_id);
+      if (!inBranch) {
+        await transaction.rollback();
+        return res.status(403).json({ success: false, error: 'No access to this invoice' });
+      }
+    }
+
     // Prevent editing invoices that are paid, cancelled, or have payment submitted
     if (invoice.status === 'paid' || invoice.status === 'cancelled' || invoice.status === 'payment_submitted') {
       await transaction.rollback();
@@ -1538,6 +1599,13 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
       return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // Branch-scoped Foodcourt Manager: limit deletes to their branch's invoices
+    const mgrScope = getManagerScope(req.user);
+    if (mgrScope.scoped && mgrScope.branch_id) {
+      const inBranch = await invoiceInBranch(invoice, mgrScope.branch_id);
+      if (!inBranch) return res.status(403).json({ success: false, message: 'No access to this invoice' });
     }
 
     // Delete invoice items first

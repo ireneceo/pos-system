@@ -63,6 +63,14 @@ Restaurant.init({
     defaultValue: 'Malaysia',
     allowNull: true
   },
+  latitude: {
+    type: DataTypes.DOUBLE,
+    allowNull: true
+  },
+  longitude: {
+    type: DataTypes.DOUBLE,
+    allowNull: true
+  },
   business_registration: {
     type: DataTypes.STRING(100),
     allowNull: true,

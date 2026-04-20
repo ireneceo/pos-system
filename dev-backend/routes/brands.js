@@ -341,6 +341,87 @@ router.get('/:id/restaurants', authenticateToken, async (req, res) => {
   }
 });
 
+// Franchise map — returns restaurants with lat/lng + active contract + 30-day sales
+router.get('/:id/franchise-map', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const brand = await Brand.findByPk(id);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+
+    const canAccess = req.user.role === 'System Admin'
+      || brand.owner_id === req.user.id
+      || (req.user.role === 'Brand Manager' && Number(req.user.brand_id) === Number(id));
+    if (!canAccess) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const { sequelize } = require('../config/database');
+    const Contract = require('../models/Contract');
+    const { Op } = require('sequelize');
+
+    const restaurants = await Restaurant.findAll({
+      where: { brand_id: id },
+      attributes: ['id', 'name', 'branch_name', 'status', 'address', 'city', 'state', 'country',
+                   'phone', 'email', 'latitude', 'longitude', 'logo_url', 'is_demo'],
+      order: [['name', 'ASC']]
+    });
+
+    const restaurantIds = restaurants.map(r => r.id);
+
+    // 30-day sales (completed/served orders) per restaurant
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const salesRows = restaurantIds.length > 0 ? await sequelize.query(`
+      SELECT restaurant_id, COALESCE(SUM(total_amount), 0) AS sales_30d, COUNT(*) AS order_count
+      FROM orders
+      WHERE restaurant_id IN (:ids)
+        AND status IN ('completed', 'served')
+        AND (is_deleted = false OR is_deleted IS NULL)
+        AND order_date >= :since
+      GROUP BY restaurant_id
+    `, { replacements: { ids: restaurantIds, since }, type: sequelize.QueryTypes.SELECT }) : [];
+    const salesMap = new Map(salesRows.map(r => [Number(r.restaurant_id), { sales_30d: Number(r.sales_30d) || 0, order_count: Number(r.order_count) || 0 }]));
+
+    // Active contract (stage='active') per restaurant → contract_type + exclusivity radius
+    const contracts = restaurantIds.length > 0 ? await Contract.findAll({
+      where: { restaurant_id: { [Op.in]: restaurantIds }, stage: 'active', entity_type: 'brand', entity_id: id },
+      attributes: ['id', 'restaurant_id', 'contract_type', 'exclusivity_terms']
+    }) : [];
+    const contractMap = new Map();
+    contracts.forEach(c => {
+      const terms = c.exclusivity_terms || {};
+      contractMap.set(Number(c.restaurant_id), {
+        contract_id: c.id,
+        contract_type: c.contract_type || null,
+        radius_km: Number(terms.radius_km) > 0 ? Number(terms.radius_km) : null
+      });
+    });
+
+    const enriched = restaurants.map(r => {
+      const obj = r.toJSON();
+      const s = salesMap.get(r.id) || { sales_30d: 0, order_count: 0 };
+      const c = contractMap.get(r.id) || { contract_id: null, contract_type: null, radius_km: null };
+      return { ...obj, sales_30d: s.sales_30d, order_count: s.order_count, ...c };
+    });
+
+    const maxSales = enriched.reduce((m, r) => Math.max(m, r.sales_30d), 0);
+    const mapped = enriched.filter(r => r.latitude != null && r.longitude != null);
+    const unmapped = enriched.filter(r => r.latitude == null || r.longitude == null);
+
+    res.json({
+      success: true,
+      data: {
+        brand: { id: brand.id, name: brand.name, code: brand.code, logo_url: brand.logo_url },
+        mapped,
+        unmapped,
+        total: restaurants.length,
+        max_sales_30d: maxSales
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching franchise map:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch franchise map' });
+  }
+});
+
 // Delete brand
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {

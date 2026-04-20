@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, getManagerScope } = require('../middleware/auth');
 const { Contract, ContractDocument, ContractTask, ContractNote, ContractHistory, ContractPlan,
         FoodcourtUnit, Restaurant, Brand, Foodcourt, User, EntityPlan } = require('../models');
 const { Op } = require('sequelize');
@@ -27,7 +27,9 @@ const checkContractAccess = async (req, res) => {
     res.status(403).json({ success: false, message: 'No access to contracts' });
     return null;
   }
-  const contract = await Contract.findByPk(req.params.id);
+  const contract = await Contract.findByPk(req.params.id, {
+    include: [{ model: FoodcourtUnit, as: 'unit', attributes: ['id', 'branch_id'] }]
+  });
   if (!contract) {
     res.status(404).json({ success: false, message: 'Contract not found' });
     return null;
@@ -35,6 +37,14 @@ const checkContractAccess = async (req, res) => {
   if (entity.entity_type && (contract.entity_type !== entity.entity_type || contract.entity_id !== entity.entity_id)) {
     res.status(403).json({ success: false, message: 'No access to this contract' });
     return null;
+  }
+  // Foodcourt Manager with branch scope: contract must belong to their branch
+  const scope = getManagerScope(req.user);
+  if (scope.scoped && scope.branch_id) {
+    if (!contract.unit || contract.unit.branch_id !== scope.branch_id) {
+      res.status(403).json({ success: false, message: 'No access to this contract' });
+      return null;
+    }
   }
   return contract;
 };
@@ -95,6 +105,16 @@ router.get('/', authenticateToken, async (req, res, next) => {
       where.entity_id = entity.entity_id;
     }
     if (req.query.stage) where.stage = req.query.stage;
+
+    // Foodcourt Manager with branch scope: limit to contracts whose unit belongs to the branch
+    const scope = getManagerScope(req.user);
+    if (scope.scoped && scope.branch_id) {
+      const branchUnits = await FoodcourtUnit.findAll({
+        where: { branch_id: scope.branch_id },
+        attributes: ['id']
+      });
+      where.unit_id = { [Op.in]: branchUnits.map(u => u.id) };
+    }
 
     // Search: name, contract_number, restaurant name, location, comments
     const searchTerm = req.query.search;
@@ -184,6 +204,8 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
       where.entity_id = entity.entity_id;
     }
 
+    const scope = getManagerScope(req.user);
+
     const contract = await Contract.findOne({
       where,
       include: [
@@ -203,6 +225,14 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
     });
 
     if (!contract) return res.status(404).json({ success: false, message: 'Contract not found' });
+
+    // Foodcourt Manager with branch scope: deny access to contracts outside their branch
+    if (scope.scoped && scope.branch_id) {
+      const unitBranchId = contract.unit ? contract.unit.branch_id : null;
+      if (unitBranchId !== scope.branch_id) {
+        return res.status(403).json({ success: false, message: 'No access to this contract' });
+      }
+    }
 
     // Attach entity currency for display
     const contractData = contract.toJSON();
@@ -236,6 +266,15 @@ router.post('/', authenticateToken, async (req, res, next) => {
     const entity = getUserEntity(req.user);
     if (!entity || !entity.entity_type) {
       return res.status(403).json({ success: false, message: 'Only Brand/Foodcourt General can create contracts' });
+    }
+
+    // Branch-scoped Foodcourt Manager: reject units outside their branch
+    const scope = getManagerScope(req.user);
+    if (scope.scoped && scope.branch_id && req.body.unit_id) {
+      const unit = await FoodcourtUnit.findByPk(req.body.unit_id, { attributes: ['id', 'branch_id'] });
+      if (!unit || unit.branch_id !== scope.branch_id) {
+        return res.status(403).json({ success: false, message: 'Cannot assign a unit from a different branch' });
+      }
     }
 
     const issuerSnapshot = await buildIssuerSnapshot(entity.entity_type, entity.entity_id);
@@ -284,6 +323,15 @@ router.put('/:id', authenticateToken, async (req, res, next) => {
   try {
     const contract = await checkContractAccess(req, res);
     if (!contract) return;
+
+    // Branch-scoped Foodcourt Manager: cannot move unit to another branch
+    const scope = getManagerScope(req.user);
+    if (scope.scoped && scope.branch_id && req.body.unit_id !== undefined && req.body.unit_id !== null) {
+      const unit = await FoodcourtUnit.findByPk(req.body.unit_id, { attributes: ['id', 'branch_id'] });
+      if (!unit || unit.branch_id !== scope.branch_id) {
+        return res.status(403).json({ success: false, message: 'Cannot assign a unit from a different branch' });
+      }
+    }
 
     const oldTerms = JSON.stringify(contract.financial_terms);
     const updateFields = [

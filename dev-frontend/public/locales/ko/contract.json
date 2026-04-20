@@ -112,5 +112,40 @@
   },
   "common": {
     "loading": "로딩 중..."
+  },
+  "tabs": {
+    "active": "진행 중",
+    "archive": "보관함"
+  },
+  "map": {
+    "total": "전체",
+    "mapped": "지도 표시",
+    "unmapped": "좌표 없음",
+    "unmappedTitle": "좌표 미설정 매장 ({{count}})",
+    "empty": "아직 지도에 표시할 매장이 없습니다.",
+    "noCoords": "좌표가 등록된 매장이 없습니다. 레스토랑 편집에서 위치를 추가하세요.",
+    "noBrand": "사용 가능한 브랜드가 없습니다.",
+    "legend": {
+      "active": "운영중",
+      "trial": "체험",
+      "overdue": "연체",
+      "suspended": "정지",
+      "archive": "보관",
+      "franchise": "프랜차이즈/라이선스",
+      "direct": "직영",
+      "territory": "독점 영역",
+      "sizeNote": "핀 크기 = 최근 30일 매출",
+      "branchPin": "큰 핀 = 지점 (점유율 %)",
+      "restaurantPin": "작은 핀 = 입점 매장"
+    },
+    "branches": "지점",
+    "tenants": "입점 매장",
+    "emptyFoodcourt": "아직 지도에 표시할 지점이 없습니다.",
+    "noCoordsFoodcourt": "좌표 등록된 지점이 없습니다. 지점 편집에서 위치를 추가하세요.",
+    "unmappedBranches": "좌표 미설정 지점 ({{count}})"
+  },
+  "franchiseTabs": {
+    "contracts": "계약",
+    "map": "지도"
   }
 }

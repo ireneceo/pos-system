@@ -55,7 +55,7 @@ const optionalAuth = async (req, res, next) => {
 
 router.get('/', optionalAuth, async (req, res) => {
   try {
-    const { brand_id, search, limit } = req.query;
+    const { brand_id, search, limit, status } = req.query;
     const { Op } = require('sequelize');
 
     // Build include options for managers
@@ -72,6 +72,14 @@ router.get('/', optionalAuth, async (req, res) => {
     // Filter by brand_id if provided
     if (brand_id) {
       whereClause.brand_id = brand_id;
+    }
+
+    // Filter by status (comma-separated multi-value support, e.g. ?status=active,trial)
+    if (status && typeof status === 'string' && status.trim()) {
+      const allowed = ['active', 'inactive', 'trial', 'overdue', 'suspended', 'expired', 'cancelled'];
+      const values = status.split(',').map(s => s.trim()).filter(v => allowed.includes(v));
+      if (values.length === 1) whereClause.status = values[0];
+      else if (values.length > 1) whereClause.status = { [Op.in]: values };
     }
 
     // Server-side text search (name, branch_name, slug, phone, address)
@@ -93,6 +101,10 @@ router.get('/', optionalAuth, async (req, res) => {
     } else if (req.user && (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') && req.user.foodcourt_id) {
       // Scope to restaurants assigned to this foodcourt
       whereClause.foodcourt_id = req.user.foodcourt_id;
+      // Branch-scoped Foodcourt Manager: further limit to restaurants in their branch
+      if (req.user.role === 'Foodcourt Manager' && req.user.branch_id) {
+        whereClause.branch_id = req.user.branch_id;
+      }
     }
 
     const findOpts = {
@@ -261,6 +273,8 @@ router.get('/', optionalAuth, async (req, res) => {
         state: restaurantData.state || '',
         postalCode: restaurantData.postal_code || '',
         country: restaurantData.country || 'MY',
+        latitude: restaurantData.latitude ?? null,
+        longitude: restaurantData.longitude ?? null,
         businessRegistration: restaurantData.business_registration || '',
         taxId: restaurantData.tax_id || '',
         currency: restaurantData.currency || 'MYR',
@@ -604,6 +618,13 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
       return res.status(404).json({ error: 'Restaurant not found' });
     }
 
+    // Branch-scoped Foodcourt Manager: restrict to restaurants in their branch
+    if (req.user.role === 'Foodcourt Manager' && req.user.branch_id) {
+      if (restaurant.branch_id !== req.user.branch_id) {
+        return res.status(403).json({ error: 'No access to this restaurant' });
+      }
+    }
+
     const restaurantData = restaurant.toJSON();
 
     // Normalize payment_settings: sync enabled flag with availableIn
@@ -732,6 +753,11 @@ router.post('/', authenticateToken, requireRole(
       }
       if (branch.status === 'inactive') {
         return res.status(400).json({ success: false, message: 'Cannot assign restaurant to an inactive branch' });
+      }
+      // Branch-scoped Foodcourt Manager: must match their assigned branch
+      if (req.user.role === 'Foodcourt Manager' && req.user.branch_id && Number(req.body.branch_id) !== Number(req.user.branch_id)) {
+        await transaction.rollback();
+        return res.status(403).json({ success: false, message: 'Cannot assign restaurant to a different branch' });
       }
     }
 
@@ -895,6 +921,17 @@ router.post('/', authenticateToken, requireRole(
     }
 
     const restaurant = await Restaurant.create(restaurantData, { transaction });
+
+    // Auto-geocode in background (non-blocking) if lat/lng not explicitly provided
+    if (!restaurantData.latitude && !restaurantData.longitude && restaurantData.address) {
+      const { geocodeAddress } = require('../utils/geocoding');
+      geocodeAddress(restaurantData).then(async (coords) => {
+        if (coords) {
+          try { await restaurant.update({ latitude: coords.latitude, longitude: coords.longitude }); }
+          catch (e) { console.warn('[geocoding] update failed:', e.message); }
+        }
+      }).catch(e => console.warn('[geocoding] bg fail:', e.message));
+    }
 
     // Admin User의 restaurant_id를 생성된 레스토랑으로 설정
     if (adminUser) {
@@ -1076,6 +1113,16 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     const restaurant = await Restaurant.findByPk(req.params.id);
     if (!restaurant) {
       return res.status(404).json({ error: 'Restaurant not found' });
+    }
+
+    // Branch-scoped Foodcourt Manager: block edits outside their branch + block moving to another branch
+    if (req.user.role === 'Foodcourt Manager' && req.user.branch_id) {
+      if (restaurant.branch_id !== req.user.branch_id) {
+        return res.status(403).json({ error: 'No access to this restaurant' });
+      }
+      if (req.body.branch_id !== undefined && req.body.branch_id !== null && Number(req.body.branch_id) !== Number(req.user.branch_id)) {
+        return res.status(403).json({ error: 'Cannot move restaurant to another branch' });
+      }
     }
 
     // Map frontend fields to database fields - only include fields that are explicitly provided
@@ -1376,7 +1423,28 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       updateData.admin_name = null;
     }
 
+    // Capture pre-update values for address-change detection
+    const prevAddr = {
+      address: restaurant.address, city: restaurant.city, state: restaurant.state,
+      postal_code: restaurant.postal_code, country: restaurant.country
+    };
+
     await restaurant.update(updateData);
+
+    // Auto-geocode in background when address changed and coords not manually set
+    const { addressChanged, geocodeAddress } = require('../utils/geocoding');
+    const latLngManuallyProvided = updateData.latitude !== undefined || updateData.longitude !== undefined;
+    if (!latLngManuallyProvided && addressChanged(prevAddr, updateData)) {
+      geocodeAddress({
+        address: restaurant.address, city: restaurant.city, state: restaurant.state,
+        postal_code: restaurant.postal_code, country: restaurant.country
+      }).then(async (coords) => {
+        if (coords) {
+          try { await restaurant.update({ latitude: coords.latitude, longitude: coords.longitude }); }
+          catch (e) { console.warn('[geocoding] update failed:', e.message); }
+        }
+      }).catch(e => console.warn('[geocoding] bg fail:', e.message));
+    }
 
     // Handle multiple managers if managerIds array is provided
     if (req.body.managerIds && Array.isArray(req.body.managerIds)) {

@@ -24,6 +24,8 @@ interface Branch {
   country?: string | null;
   phone?: string | null;
   email?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   units?: Array<{ id: number; unit_number: string; status: string }>;
 }
 
@@ -186,6 +188,14 @@ const FoodcourtBranchesPage: React.FC = () => {
             <Field>
               <Label>{t('branches.email', 'Email')}</Label>
               <Input type="email" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} />
+            </Field>
+            <Field>
+              <Label>{t('branches.latitude', 'Latitude')}</Label>
+              <Input type="number" step="any" value={form.latitude ?? ''} onChange={e => setForm({ ...form, latitude: e.target.value === '' ? null : parseFloat(e.target.value) })} placeholder="e.g., 3.0725" />
+            </Field>
+            <Field>
+              <Label>{t('branches.longitude', 'Longitude')}</Label>
+              <Input type="number" step="any" value={form.longitude ?? ''} onChange={e => setForm({ ...form, longitude: e.target.value === '' ? null : parseFloat(e.target.value) })} placeholder="e.g., 101.6066" />
             </Field>
           </FormGrid>
             </ModalBody>

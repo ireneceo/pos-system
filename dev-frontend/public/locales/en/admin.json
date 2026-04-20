@@ -1347,5 +1347,14 @@
   "supportTicketsPage.lastUpdated": "Last Updated",
   "systemInquiryPage.createTicket": "Create Ticket",
   "systemInquiryPage.resolved": "Resolved",
-  "systemInquiryPage.allStatus": "All Status"
+  "systemInquiryPage.allStatus": "All Status",
+  "restaurantsPage": {
+    "tabOperational": "Operational",
+    "tabArchive": "Archive",
+    "overdue": "Overdue",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "latitudeHint": "e.g., 3.1390 (auto-filled from address)",
+    "longitudeHint": "e.g., 101.6869"
+  }
 }

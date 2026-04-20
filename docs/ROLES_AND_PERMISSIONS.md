@@ -517,7 +517,23 @@ WHERE foodcourt_id = user.foodcourt_id
 - **Foodcourt Manager**: `users.branch_id` 컬럼으로 특정 지점 담당 저장 가능. FoodcourtStaffPage Add/Edit 모달에서 "Branch Assignment" Select (All branches / 특정 branch). JWT payload 에 branch_id 포함
 - **Brand Manager**: 여러 Brand 를 소유한 Brand General 이 Manager 추가 시 "어느 Brand 에 소속시킬지" Select 필수. Manager 목록은 소유한 모든 Brand 에서 통합 조회
 - **Restaurant ↔ Branch**: `restaurants.branch_id` 컬럼. Foodcourt General 이 레스토랑 생성/편집 시 Branch Select 로 지점 연결 가능
-- **실제 enforcement**: 저장 레이어만 구현 (Phase A). Manager 로그인 시 본인 branch 범위 접근 제한은 후속 과제
+
+### Manager 실제 접근 enforcement (2026-04-20)
+Phase A/B 의 저장만 되어있던 `branch_id`/`brand_id` 를 실제 필터로 적용. `middleware/auth.js` 에 `getManagerScope(user)` 헬퍼 추가 (scoped Manager 에만 true 반환).
+
+**Foodcourt Manager (branch_id 지정 시)**:
+- `GET /api/contracts` — unit.branch_id 매칭 계약만
+- `GET /api/contracts/:id` / `PUT /api/contracts/:id` — scope 밖 403, cross-branch unit 이동 차단
+- `GET /api/foodcourts/:id/units` — 본인 branch 유닛만 / POST/PUT/DELETE 도 branch 매칭 강제
+- `GET /api/foodcourts/:id/branches` — 본인 branch 만
+- `GET /api/invoices` + 상세/편집/삭제 — restaurant.branch_id 또는 contract.unit.branch_id 매칭만
+- `GET /api/restaurants` + 상세/편집 — restaurants.branch_id 매칭 + cross-branch 이동 차단
+
+**Brand Manager (brand_id 지정 시)**: 기존 entity_type/entity_id 필터가 이미 스코프로 동작. 별도 추가 불필요.
+
+**정책**: `branch_id=NULL`인 Manager 는 하위호환으로 **full scope** (기존 운영 유지). NULL=all.
+
+**검증**: 통합 테스트 8/8 pass (cross-branch 403, own 200, General regression 정상).
 
 ### Brand 권한 로직 (2026-04-19 v3.15 보안 수정)
 - 기존: `req.user.brand_id === parseInt(brandId)` 단일 비교

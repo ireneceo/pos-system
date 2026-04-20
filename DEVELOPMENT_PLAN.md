@@ -1,8 +1,73 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-19 (v3.15 배포 — Foodcourt Branch 시스템 + Contract Billing + Manager 권한 할당 + 보안 2건 수정)
+> **최종 업데이트:** 2026-04-20 (Manager enforcement + Archive 탭 + Brand Franchise Map + Foodcourt Tenancy Map + AddonModule 정리)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: Manager Enforcement + Archive 탭 + Franchise/Tenancy Map (2026-04-20, 미배포)
+
+### 배경
+v3.15 후속 과제 4건을 한 세션에 완료. Manager 지점/브랜드 실제 접근 제한 적용, 계약/레스토랑 Archive 탭, Brand/Foodcourt 지도 뷰, 새 기능을 구독 플랜에 편입.
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Manager 지점/브랜드 접근 enforcement | `users.branch_id / brand_id` 기반 실제 필터 (contracts / invoices / units / branches / restaurants 5개 라우트). `getManagerScope()` 헬퍼 + auth 미들웨어에 `branch_id` 노출 | ✅ |
+| 2 | Contract 리스트 Active/Archive 탭 | expired 드롭다운 누락 버그 수정 + 파이프라인/리스트 분리 + stats 3종(terminated/expired/renewed) | ✅ |
+| 3 | Restaurant 리스트 Operational/Archive 탭 | Suspended는 Operational에 유지 (결제 주의). 백엔드 `/api/restaurants?status=` 다중값 필터 추가 | ✅ |
+| 4 | Brand Franchise Map | Leaflet + OSM, 클러스터링, 상태별 핀 색상 5종, **Franchise=★ / Direct=●** 구분, **핀 크기 = 30일 매출**, **점선 원 = territory radius(exclusivity_terms.radius_km)**, Un-mapped 리스트 | ✅ |
+| 5 | Foodcourt Tenancy Map | Branch 큰 핀(점유율 % 표시) + Restaurant 작은 핀(계약/매출), territory radius 동일 적용 | ✅ |
+| 6 | 수동 좌표 편집 UI | Restaurant(Admin 모달 신규+편집), FoodcourtBranch 폼 lat/lng 입력 | ✅ |
+| 7 | Auto-Geocoding (Nominatim) | POST/PUT 주소 변경 시 비동기 훅 (응답 차단 없음) + 수동 좌표 우선 | ✅ |
+| 8 | DB `restaurants.latitude/longitude` | DOUBLE NULL 추가 (개발 DB 적용 완료, 운영 ALTER 필요) | ✅ |
+| 9 | Backfill 스크립트 | `scripts/backfill-restaurant-geocode.js` (1req/s 스로틀, dry-run 지원) | ✅ |
+| 10 | AddonModule 등록 + Plan 편입 | `brand_franchise`, `fc_tenancy`, `fc_branches` 신규 모듈. 모든 Brand/Foodcourt 플랜(Basic/Pro/Enterprise)에 포함. `scripts/register-map-modules.js` idempotent | ✅ |
+| 11 | i18n 4개 언어 | tabs + map legend + lat/lng + franchiseTabs 키 확장 (en/ko/zh/ms) | ✅ |
+
+### 수정된 파일
+
+**백엔드**
+- `middleware/auth.js` (branch_id 노출 + getManagerScope)
+- `models/Restaurant.js` (latitude/longitude)
+- `routes/brands.js` (franchise-map + allowed-routes 연동)
+- `routes/foodcourts.js` (tenancy-map 신규)
+- `routes/contracts.js`, `routes/invoices-main.js`, `routes/restaurants-crud.js`, `routes/foodcourt-branches.js`, `routes/foodcourt-units.js` (Manager scope 적용)
+- `utils/geocoding.js` (Nominatim wrapper, 신규)
+- `scripts/backfill-restaurant-geocode.js`, `scripts/register-map-modules.js` (신규)
+
+**프론트엔드**
+- `components/Contract/ContractManagementPage.tsx` (Active/Archive + extraTabs prop)
+- `pages/BrandGeneral/FranchiseManagementPage.tsx` (Contracts/Map 탭, multi-brand 선택)
+- `pages/BrandGeneral/BrandFranchiseMapPage.tsx` (신규)
+- `pages/FoodcourtGeneral/TenancyManagementPage.tsx` (Contracts/Map 탭)
+- `pages/FoodcourtGeneral/FoodcourtTenancyMapPage.tsx` (신규)
+- `pages/FoodcourtGeneral/FoodcourtBranchesPage.tsx` (lat/lng)
+- `pages/Admin/RestaurantsPage.tsx` (Operational/Archive 탭 + lat/lng)
+
+**의존성**: `leaflet`, `react-leaflet`, `leaflet.markercluster` + types
+
+### DB 변경 (운영 배포 시 적용 필요)
+- `ALTER TABLE restaurants ADD latitude DOUBLE NULL, ADD longitude DOUBLE NULL`
+- `node scripts/register-map-modules.js` (AddonModule + Plan Template sync)
+- `node scripts/backfill-restaurant-geocode.js` (선택, 기존 매장 자동 좌표)
+
+### 검증 결과
+- state-hydration-check: 0 warnings
+- 빌드: exit 0 (총 3회, 각 72~100초)
+- Manager scope 통합 테스트: 8/8 pass
+- API 권한 6/6 pass (BG own/other, admin, FG, invalid, no-auth)
+- Brand map: max_sales_30d=134.4 집계 확인
+- FC map: branches 점유율 stats 정상
+- Restaurant lat/lng write→read 왕복 일치
+- AddonModule 등록 후 allowed-routes 20/18 반영 확인
+- health-check: 40/40 pass (다수 재실행)
+- i18n:verify: Errors 0
+
+### 미배포
+**운영 배포는 다음 세션에서 `/배포` 명령으로 진행.**
 
 ---
 

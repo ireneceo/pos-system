@@ -23,6 +23,7 @@ import {
 } from '../UI';
 import { SearchInput, FilterSelect } from '../Common/FilterComponents';
 import DatePeriodFilter, { PeriodType, DateRange, calculatePeriodDateRange } from '../Common/DatePeriodFilter';
+import { TabContainer, Tab } from '../UI/Tabs';
 import ContractPipeline from './ContractPipeline';
 import ContractDetail from './ContractDetail';
 
@@ -30,6 +31,7 @@ import { getAuthToken } from '../../utils/auth';
 interface ContractManagementPageProps {
   entityType: 'brand' | 'foodcourt';
   pageTitle: string;
+  extraTabs?: React.ReactNode;
 }
 
 // Stage badge
@@ -88,10 +90,16 @@ const STAT_COLORS: Record<string, string> = {
   proposal: '#2563EB',
   contracting: '#D97706',
   setup: '#8B5CF6',
-  active: '#059669'
+  active: '#059669',
+  terminated: '#6B7280',
+  expired: '#6B7280',
+  renewed: '#7C3AED'
 };
 
-const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityType, pageTitle }) => {
+const ACTIVE_STAGES = ['proposal', 'contracting', 'setup', 'active'];
+const ARCHIVE_STAGES = ['terminated', 'expired', 'renewed'];
+
+const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityType, pageTitle, extraTabs }) => {
   const { t } = useTranslation('contract');
   const [searchParams, setSearchParams] = useSearchParams();
   const [contracts, setContracts] = useState<any[]>([]);
@@ -99,6 +107,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
 
   // URL-backed state
   const view = (searchParams.get('view') || 'pipeline') as 'pipeline' | 'list';
+  const tab = (searchParams.get('tab') || 'active') as 'active' | 'archive';
   const selectedId = searchParams.get('id') ? Number(searchParams.get('id')) : null;
 
   const setView = (v: 'pipeline' | 'list') => {
@@ -108,6 +117,17 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
       p.delete('id');
       return p;
     }, { replace: true });
+  };
+
+  const setTab = (t: 'active' | 'archive') => {
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      p.set('tab', t);
+      p.delete('id');
+      if (t === 'archive') p.set('view', 'list');
+      return p;
+    }, { replace: true });
+    setStageFilter('');
   };
 
   const setSelectedId = (id: number | null) => {
@@ -201,8 +221,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
   };
 
   // Filter by date range (search is now server-side)
-  const filteredContracts = contracts.filter(c => {
-    // Date range filter
+  const dateFilteredContracts = contracts.filter(c => {
     if (activePeriod !== 'all' || isCustomDateRange) {
       const contractDate = c.created_at || c.createdAt || '';
       if (contractDate) {
@@ -213,12 +232,20 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
     return true;
   });
 
-  // Stats (from filtered)
+  // Tab split (active vs archive)
+  const activeContracts = dateFilteredContracts.filter(c => ACTIVE_STAGES.includes(c.stage));
+  const archiveContracts = dateFilteredContracts.filter(c => ARCHIVE_STAGES.includes(c.stage));
+  const filteredContracts = tab === 'archive' ? archiveContracts : activeContracts;
+
+  // Stats per tab
   const stageCounts = {
-    proposal: filteredContracts.filter(c => c.stage === 'proposal').length,
-    contracting: filteredContracts.filter(c => c.stage === 'contracting').length,
-    setup: filteredContracts.filter(c => c.stage === 'setup').length,
-    active: filteredContracts.filter(c => c.stage === 'active').length
+    proposal: activeContracts.filter(c => c.stage === 'proposal').length,
+    contracting: activeContracts.filter(c => c.stage === 'contracting').length,
+    setup: activeContracts.filter(c => c.stage === 'setup').length,
+    active: activeContracts.filter(c => c.stage === 'active').length,
+    terminated: archiveContracts.filter(c => c.stage === 'terminated').length,
+    expired: archiveContracts.filter(c => c.stage === 'expired').length,
+    renewed: archiveContracts.filter(c => c.stage === 'renewed').length
   };
 
   return (
@@ -243,24 +270,51 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
           />
         ) : (
         <>
-        <StatsGrid>
-          <StatCard color={STAT_COLORS.proposal}>
-            <StatValue>{stageCounts.proposal}</StatValue>
-            <StatLabel>{t('stages.proposal', 'Proposal')}</StatLabel>
-          </StatCard>
-          <StatCard color={STAT_COLORS.contracting}>
-            <StatValue>{stageCounts.contracting}</StatValue>
-            <StatLabel>{t('stages.contracting', 'Contracting')}</StatLabel>
-          </StatCard>
-          <StatCard color={STAT_COLORS.setup}>
-            <StatValue>{stageCounts.setup}</StatValue>
-            <StatLabel>{t('stages.setup', 'Setup')}</StatLabel>
-          </StatCard>
-          <StatCard color={STAT_COLORS.active}>
-            <StatValue>{stageCounts.active}</StatValue>
-            <StatLabel>{t('stages.active', 'Active')}</StatLabel>
-          </StatCard>
-        </StatsGrid>
+        {extraTabs}
+        <TabContainer>
+          <Tab active={tab === 'active'} onClick={() => setTab('active')}>
+            {t('tabs.active', 'Active Pipeline')} ({activeContracts.length})
+          </Tab>
+          <Tab active={tab === 'archive'} onClick={() => setTab('archive')}>
+            {t('tabs.archive', 'Archive')} ({archiveContracts.length})
+          </Tab>
+        </TabContainer>
+
+        {tab === 'active' ? (
+          <StatsGrid>
+            <StatCard color={STAT_COLORS.proposal}>
+              <StatValue>{stageCounts.proposal}</StatValue>
+              <StatLabel>{t('stages.proposal', 'Proposal')}</StatLabel>
+            </StatCard>
+            <StatCard color={STAT_COLORS.contracting}>
+              <StatValue>{stageCounts.contracting}</StatValue>
+              <StatLabel>{t('stages.contracting', 'Contracting')}</StatLabel>
+            </StatCard>
+            <StatCard color={STAT_COLORS.setup}>
+              <StatValue>{stageCounts.setup}</StatValue>
+              <StatLabel>{t('stages.setup', 'Setup')}</StatLabel>
+            </StatCard>
+            <StatCard color={STAT_COLORS.active}>
+              <StatValue>{stageCounts.active}</StatValue>
+              <StatLabel>{t('stages.active', 'Active')}</StatLabel>
+            </StatCard>
+          </StatsGrid>
+        ) : (
+          <StatsGrid>
+            <StatCard color={STAT_COLORS.terminated}>
+              <StatValue>{stageCounts.terminated}</StatValue>
+              <StatLabel>{t('stages.terminated', 'Terminated')}</StatLabel>
+            </StatCard>
+            <StatCard color={STAT_COLORS.expired}>
+              <StatValue>{stageCounts.expired}</StatValue>
+              <StatLabel>{t('stages.expired', 'Expired')}</StatLabel>
+            </StatCard>
+            <StatCard color={STAT_COLORS.renewed}>
+              <StatValue>{stageCounts.renewed}</StatValue>
+              <StatLabel>{t('stages.renewed', 'Renewed')}</StatLabel>
+            </StatCard>
+          </StatsGrid>
+        )}
 
         <DatePeriodFilter
           activePeriod={activePeriod}
@@ -275,12 +329,20 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
             style={{ minWidth: '120px', maxWidth: '150px' }}
           >
             <option value="">{t('list.allStages', 'All Stages')}</option>
-            <option value="proposal">{t('stages.proposal', 'Proposal')}</option>
-            <option value="contracting">{t('stages.contracting', 'Contracting')}</option>
-            <option value="setup">{t('stages.setup', 'Setup')}</option>
-            <option value="active">{t('stages.active', 'Active')}</option>
-            <option value="terminated">{t('stages.terminated', 'Terminated')}</option>
-            <option value="renewed">{t('stages.renewed', 'Renewed')}</option>
+            {tab === 'active' ? (
+              <>
+                <option value="proposal">{t('stages.proposal', 'Proposal')}</option>
+                <option value="contracting">{t('stages.contracting', 'Contracting')}</option>
+                <option value="setup">{t('stages.setup', 'Setup')}</option>
+                <option value="active">{t('stages.active', 'Active')}</option>
+              </>
+            ) : (
+              <>
+                <option value="terminated">{t('stages.terminated', 'Terminated')}</option>
+                <option value="expired">{t('stages.expired', 'Expired')}</option>
+                <option value="renewed">{t('stages.renewed', 'Renewed')}</option>
+              </>
+            )}
           </FilterSelect>
           <SearchInput
             placeholder={t('list.search', 'Search...')}
@@ -288,16 +350,18 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
             style={{ minWidth: '140px', maxWidth: '200px' }}
           />
-          <div style={{ marginLeft: 'auto' }}>
-            <ViewToggle>
-              <ViewToggleBtn active={view === 'pipeline'} onClick={() => setView('pipeline')}>
-                {t('views.pipeline', 'Pipeline')}
-              </ViewToggleBtn>
-              <ViewToggleBtn active={view === 'list'} onClick={() => setView('list')}>
-                {t('views.list', 'List')}
-              </ViewToggleBtn>
-            </ViewToggle>
-          </div>
+          {tab === 'active' && (
+            <div style={{ marginLeft: 'auto' }}>
+              <ViewToggle>
+                <ViewToggleBtn active={view === 'pipeline'} onClick={() => setView('pipeline')}>
+                  {t('views.pipeline', 'Pipeline')}
+                </ViewToggleBtn>
+                <ViewToggleBtn active={view === 'list'} onClick={() => setView('list')}>
+                  {t('views.list', 'List')}
+                </ViewToggleBtn>
+              </ViewToggle>
+            </div>
+          )}
         </DatePeriodFilter>
 
         {error && (
@@ -306,7 +370,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
 
         {loading ? (
           <DataTableEmpty>{t('common.loading', 'Loading...')}</DataTableEmpty>
-        ) : view === 'pipeline' ? (
+        ) : view === 'pipeline' && tab === 'active' ? (
           <ContractPipeline
             contracts={filteredContracts}
             onCardClick={(id) => setSelectedId(id)}

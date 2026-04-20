@@ -15,6 +15,7 @@ import {
   Content
 , Modal as CommonModal } from '../../components/UI';
 import { ModalWarning } from '../../components/UI/Modal';
+import { TabContainer, Tab } from '../../components/UI/Tabs';
 import ConfirmModal from '../../components/ConfirmModal';
 // Using page-specific filter components instead of common ones
 import { useStore } from '../../contexts/StoreContext';
@@ -64,6 +65,8 @@ interface Restaurant {
   city?: string;
   state?: string;
   postalCode?: string;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
   businessRegistration?: string;
   taxId?: string;
   planType?: string;
@@ -605,6 +608,7 @@ const RestaurantsPage: React.FC = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [statusTab, setStatusTab] = useState<'operational' | 'archive'>('operational');
   const [filterManager, setFilterManager] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -640,6 +644,8 @@ const RestaurantsPage: React.FC = () => {
     state: '',
     postalCode: '',
     country: 'MY',
+    latitude: '',
+    longitude: '',
     businessRegistration: '',
     taxId: '',
     cuisine: '',
@@ -868,6 +874,11 @@ const RestaurantsPage: React.FC = () => {
             phone: restaurant.phone || '',
             address: restaurant.address || '',
             country: restaurant.country || '',
+            city: restaurant.city || '',
+            state: restaurant.state || '',
+            postalCode: restaurant.postal_code || '',
+            latitude: restaurant.latitude ?? null,
+            longitude: restaurant.longitude ?? null,
             brand_id: restaurant.brand_id || null,
             foodcourt_id: restaurant.foodcourt_id || null,
             paymentModel: restaurant.payment_model || 'restaurant',
@@ -968,6 +979,8 @@ const RestaurantsPage: React.FC = () => {
       state: '',
       postalCode: '',
       country: 'MY',
+      latitude: '',
+      longitude: '',
       businessRegistration: '',
       taxId: '',
       cuisine: '',
@@ -1217,6 +1230,8 @@ const RestaurantsPage: React.FC = () => {
         state: newRestaurant.state,
         postal_code: newRestaurant.postalCode,
         country: newRestaurant.country,
+        latitude: newRestaurant.latitude ? parseFloat(newRestaurant.latitude) : null,
+        longitude: newRestaurant.longitude ? parseFloat(newRestaurant.longitude) : null,
         business_registration: newRestaurant.businessRegistration,
         tax_id: newRestaurant.taxId,
         location: newRestaurant.address, // Use address as location
@@ -1388,6 +1403,8 @@ const RestaurantsPage: React.FC = () => {
         state: editingRestaurant.state || '',
         postal_code: editingRestaurant.postalCode || '',
         country: editingRestaurant.country || 'MY',
+        latitude: editingRestaurant.latitude !== '' && editingRestaurant.latitude != null ? parseFloat(String(editingRestaurant.latitude)) : null,
+        longitude: editingRestaurant.longitude !== '' && editingRestaurant.longitude != null ? parseFloat(String(editingRestaurant.longitude)) : null,
         business_registration: editingRestaurant.businessRegistration || '',
         tax_id: editingRestaurant.taxId || '',
         cuisine: editingRestaurant.cuisine || 'Various',
@@ -1514,10 +1531,20 @@ const RestaurantsPage: React.FC = () => {
     navigate(`/admin/report?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`);
   };
 
+  const OPERATIONAL_STATUSES = ['active', 'trial', 'overdue', 'suspended'];
+  const ARCHIVE_STATUSES = ['inactive', 'expired', 'cancelled'];
+
   const filteredRestaurants = restaurants.filter(restaurant => {
     const matchesSearch = restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          restaurant.managerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          restaurant.cuisine.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Tab split: operational vs archive
+    const inTab = statusTab === 'archive'
+      ? ARCHIVE_STATUSES.includes(restaurant.status)
+      : OPERATIONAL_STATUSES.includes(restaurant.status);
+    if (!inTab) return false;
+
     const matchesStatus = filterStatus === 'all' || restaurant.status === filterStatus;
 
     // Check both old single managerId and new managers array for filtering
@@ -1619,6 +1646,15 @@ const RestaurantsPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
+        <TabContainer>
+          <Tab active={statusTab === 'operational'} onClick={() => { setStatusTab('operational'); setFilterStatus('all'); }}>
+            {t('admin:restaurantsPage.tabOperational', 'Operational')} ({restaurants.filter(r => OPERATIONAL_STATUSES.includes(r.status)).length})
+          </Tab>
+          <Tab active={statusTab === 'archive'} onClick={() => { setStatusTab('archive'); setFilterStatus('all'); }}>
+            {t('admin:restaurantsPage.tabArchive', 'Archive')} ({restaurants.filter(r => ARCHIVE_STATUSES.includes(r.status)).length})
+          </Tab>
+        </TabContainer>
+
         <PageFilterWrapper>
           <FilterDropdownContainer>
             <DropdownInput
@@ -1701,12 +1737,20 @@ const RestaurantsPage: React.FC = () => {
           </FilterDropdownContainer>
           <PageFilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="all">{t('admin:restaurantsPage.allStatus')}</option>
-            <option value="active">{t('admin:restaurantsPage.active')}</option>
-            <option value="inactive">{t('admin:restaurantsPage.inactive')}</option>
-            <option value="trial">{t('admin:restaurantsPage.trial')}</option>
-            <option value="expired">{t('admin:restaurantsPage.expired')}</option>
-            <option value="suspended">{t('admin:restaurantsPage.suspended')}</option>
-            <option value="cancelled">{t('admin:restaurantsPage.cancelled')}</option>
+            {statusTab === 'operational' ? (
+              <>
+                <option value="active">{t('admin:restaurantsPage.active')}</option>
+                <option value="trial">{t('admin:restaurantsPage.trial')}</option>
+                <option value="overdue">{t('admin:restaurantsPage.overdue', 'Overdue')}</option>
+                <option value="suspended">{t('admin:restaurantsPage.suspended')}</option>
+              </>
+            ) : (
+              <>
+                <option value="inactive">{t('admin:restaurantsPage.inactive')}</option>
+                <option value="expired">{t('admin:restaurantsPage.expired')}</option>
+                <option value="cancelled">{t('admin:restaurantsPage.cancelled')}</option>
+              </>
+            )}
           </PageFilterSelect>
           <PageSearchInput
             placeholder="Search restaurants..."
@@ -2069,6 +2113,27 @@ const RestaurantsPage: React.FC = () => {
                       placeholder="e.g., 50000"
                       value={newRestaurant.postalCode}
                       onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>{t('admin:restaurantsPage.latitude', 'Latitude')}</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="any"
+                      placeholder={t('admin:restaurantsPage.latitudeHint', 'e.g., 3.1390 (auto-filled from address)')}
+                      value={newRestaurant.latitude}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, latitude: e.target.value})}
+                    />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>{t('admin:restaurantsPage.longitude', 'Longitude')}</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="any"
+                      placeholder={t('admin:restaurantsPage.longitudeHint', 'e.g., 101.6869')}
+                      value={newRestaurant.longitude}
+                      onChange={(e) => setNewRestaurant({...newRestaurant, longitude: e.target.value})}
                     />
                   </FormGroup>
 
@@ -2629,6 +2694,27 @@ const RestaurantsPage: React.FC = () => {
                       placeholder="e.g., 50000"
                       value={editingRestaurant.postalCode || ''}
                       onChange={(e) => setEditingRestaurant({...editingRestaurant, postalCode: e.target.value})}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>{t('admin:restaurantsPage.latitude', 'Latitude')}</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="any"
+                      placeholder={t('admin:restaurantsPage.latitudeHint', 'e.g., 3.1390 (auto-filled from address)')}
+                      value={editingRestaurant.latitude ?? ''}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, latitude: e.target.value})}
+                    />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>{t('admin:restaurantsPage.longitude', 'Longitude')}</FormLabel>
+                    <FormInput
+                      type="number"
+                      step="any"
+                      placeholder={t('admin:restaurantsPage.longitudeHint', 'e.g., 101.6869')}
+                      value={editingRestaurant.longitude ?? ''}
+                      onChange={(e) => setEditingRestaurant({...editingRestaurant, longitude: e.target.value})}
                     />
                   </FormGroup>
 

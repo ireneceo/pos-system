@@ -112,5 +112,40 @@
   },
   "common": {
     "loading": "加载中..."
+  },
+  "tabs": {
+    "active": "进行中",
+    "archive": "归档"
+  },
+  "map": {
+    "total": "全部",
+    "mapped": "在地图上",
+    "unmapped": "无坐标",
+    "unmappedTitle": "无坐标餐厅 ({{count}})",
+    "empty": "暂无可在地图上显示的餐厅。",
+    "noCoords": "尚无餐厅拥有坐标。请编辑餐厅以添加位置。",
+    "noBrand": "没有可用的品牌。",
+    "legend": {
+      "active": "运营中",
+      "trial": "试用",
+      "overdue": "逾期",
+      "suspended": "暂停",
+      "archive": "归档",
+      "franchise": "加盟/授权",
+      "direct": "直营",
+      "territory": "独占范围",
+      "sizeNote": "标记大小 = 近30日销售",
+      "branchPin": "大标记 = 分店 (占用率 %)",
+      "restaurantPin": "小标记 = 入驻商家"
+    },
+    "branches": "分店",
+    "tenants": "入驻商家",
+    "emptyFoodcourt": "暂无可在地图上显示的分店。",
+    "noCoordsFoodcourt": "尚无分店拥有坐标。请编辑分店以添加位置。",
+    "unmappedBranches": "无坐标分店 ({{count}})"
+  },
+  "franchiseTabs": {
+    "contracts": "合约",
+    "map": "地图"
   }
 }

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, getManagerScope } = require('../middleware/auth');
 const { FoodcourtUnit, Contract, Foodcourt, FoodcourtBranch } = require('../models');
 
 // List units for a foodcourt (optionally filter by branch_id)
@@ -12,6 +12,12 @@ router.get('/:foodcourtId/units', authenticateToken, async (req, res, next) => {
 
     const where = { foodcourt_id: req.params.foodcourtId };
     if (req.query.branch_id) where.branch_id = Number(req.query.branch_id);
+
+    // Branch-scoped Foodcourt Manager: restrict to assigned branch
+    const scope = getManagerScope(req.user);
+    if (scope.scoped && scope.branch_id) {
+      where.branch_id = scope.branch_id;
+    }
 
     const units = await FoodcourtUnit.findAll({
       where,
@@ -36,6 +42,11 @@ router.post('/:foodcourtId/units', authenticateToken, async (req, res, next) => 
     const branchId = req.body.branch_id;
     if (!branchId) {
       return res.status(400).json({ success: false, message: 'branch_id is required' });
+    }
+
+    const scope = getManagerScope(req.user);
+    if (scope.scoped && scope.branch_id && Number(branchId) !== scope.branch_id) {
+      return res.status(403).json({ success: false, message: 'Cannot create units outside your assigned branch' });
     }
 
     const branch = await FoodcourtBranch.findByPk(branchId);
@@ -80,10 +91,18 @@ router.put('/:foodcourtId/units/:unitId', authenticateToken, async (req, res, ne
     });
     if (!unit) return res.status(404).json({ success: false, message: 'Unit not found' });
 
+    const scope = getManagerScope(req.user);
+    if (scope.scoped && scope.branch_id && unit.branch_id !== scope.branch_id) {
+      return res.status(403).json({ success: false, message: 'No access to units outside your assigned branch' });
+    }
+
     const updates = {};
     const { unit_number, size_value, size_unit, location_description, status, branch_id } = req.body;
 
     if (branch_id !== undefined) {
+      if (scope.scoped && scope.branch_id && Number(branch_id) !== scope.branch_id) {
+        return res.status(403).json({ success: false, message: 'Cannot move unit to another branch' });
+      }
       const branch = await FoodcourtBranch.findByPk(branch_id);
       if (!branch) return res.status(400).json({ success: false, message: 'Branch not found' });
       if (branch.foodcourt_id !== Number(req.params.foodcourtId)) {
@@ -126,6 +145,11 @@ router.delete('/:foodcourtId/units/:unitId', authenticateToken, async (req, res,
       where: { id: req.params.unitId, foodcourt_id: req.params.foodcourtId }
     });
     if (!unit) return res.status(404).json({ success: false, message: 'Unit not found' });
+
+    const scope = getManagerScope(req.user);
+    if (scope.scoped && scope.branch_id && unit.branch_id !== scope.branch_id) {
+      return res.status(403).json({ success: false, message: 'No access to units outside your assigned branch' });
+    }
 
     if (unit.status === 'occupied') {
       return res.status(400).json({ success: false, message: 'Cannot delete occupied unit' });

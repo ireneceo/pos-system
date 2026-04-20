@@ -112,5 +112,40 @@
   },
   "common": {
     "loading": "Memuatkan..."
+  },
+  "tabs": {
+    "active": "Pipeline Aktif",
+    "archive": "Arkib"
+  },
+  "map": {
+    "total": "jumlah",
+    "mapped": "atas peta",
+    "unmapped": "tanpa koordinat",
+    "unmappedTitle": "Restoran Tanpa Koordinat ({{count}})",
+    "empty": "Tiada restoran untuk dipaparkan di peta.",
+    "noCoords": "Tiada restoran mempunyai koordinat. Edit restoran untuk tambah lokasi.",
+    "noBrand": "Tiada jenama tersedia.",
+    "legend": {
+      "active": "Aktif",
+      "trial": "Percubaan",
+      "overdue": "Tertunggak",
+      "suspended": "Digantung",
+      "archive": "Arkib",
+      "franchise": "Francais/Lesen",
+      "direct": "Langsung",
+      "territory": "Kawasan Eksklusif",
+      "sizeNote": "Saiz pin = jualan 30 hari",
+      "branchPin": "Pin besar = cawangan (% penghunian)",
+      "restaurantPin": "Pin kecil = restoran penyewa"
+    },
+    "branches": "cawangan",
+    "tenants": "restoran penyewa",
+    "emptyFoodcourt": "Tiada cawangan untuk dipaparkan di peta.",
+    "noCoordsFoodcourt": "Tiada cawangan mempunyai koordinat. Edit cawangan untuk tambah lokasi.",
+    "unmappedBranches": "Cawangan Tanpa Koordinat ({{count}})"
+  },
+  "franchiseTabs": {
+    "contracts": "Kontrak",
+    "map": "Peta"
   }
 }

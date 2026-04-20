@@ -112,5 +112,40 @@
   },
   "common": {
     "loading": "Loading..."
+  },
+  "tabs": {
+    "active": "Active Pipeline",
+    "archive": "Archive"
+  },
+  "map": {
+    "total": "total",
+    "mapped": "on map",
+    "unmapped": "un-mapped",
+    "unmappedTitle": "Un-mapped Restaurants ({{count}})",
+    "empty": "No restaurants to display on the map yet.",
+    "noCoords": "No restaurants have coordinates yet. Edit a restaurant to add location data.",
+    "noBrand": "No brand available.",
+    "legend": {
+      "active": "Active",
+      "trial": "Trial",
+      "overdue": "Overdue",
+      "suspended": "Suspended",
+      "archive": "Archive",
+      "franchise": "Franchise/License",
+      "direct": "Direct",
+      "territory": "Territory radius",
+      "sizeNote": "Pin size = sales last 30d",
+      "branchPin": "Large pin = branch (shows occupancy %)",
+      "restaurantPin": "Small pin = tenant restaurant"
+    },
+    "branches": "branches",
+    "tenants": "tenant restaurants",
+    "emptyFoodcourt": "No branches to display on the map yet.",
+    "noCoordsFoodcourt": "No branches have coordinates yet. Edit a branch to add location data.",
+    "unmappedBranches": "Un-mapped Branches ({{count}})"
+  },
+  "franchiseTabs": {
+    "contracts": "Contracts",
+    "map": "Map"
   }
 }

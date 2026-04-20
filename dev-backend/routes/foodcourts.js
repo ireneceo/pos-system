@@ -7,6 +7,115 @@ const { sequelize } = require('../config/database');
 const bcrypt = require('bcrypt');
 const { deleteOldImages } = require('../utils/imageProcessor');
 
+// Tenancy map — returns branches with lat/lng, units with status, tenant restaurants
+router.get('/:id/tenancy-map', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { FoodcourtBranch, FoodcourtUnit, Contract } = require('../models');
+
+    const foodcourt = await Foodcourt.findByPk(id);
+    if (!foodcourt) return res.status(404).json({ success: false, message: 'Foodcourt not found' });
+
+    const canAccess = req.user.role === 'System Admin'
+      || foodcourt.owner_id === req.user.id
+      || (['Foodcourt General', 'Foodcourt Manager'].includes(req.user.role) && Number(req.user.foodcourt_id) === Number(id));
+    if (!canAccess) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    // Branch-scoped Foodcourt Manager: restrict to their branch
+    const branchWhere = { foodcourt_id: id };
+    if (req.user.role === 'Foodcourt Manager' && req.user.branch_id) {
+      branchWhere.id = req.user.branch_id;
+    }
+
+    const branches = await FoodcourtBranch.findAll({
+      where: branchWhere,
+      attributes: ['id', 'name', 'code', 'status', 'address', 'city', 'state', 'country', 'phone', 'email', 'latitude', 'longitude', 'is_primary'],
+      order: [['is_primary', 'DESC'], ['name', 'ASC']]
+    });
+
+    const branchIds = branches.map(b => b.id);
+    const units = branchIds.length > 0 ? await FoodcourtUnit.findAll({
+      where: { branch_id: { [Op.in]: branchIds } },
+      attributes: ['id', 'branch_id', 'unit_number', 'status', 'current_contract_id', 'location_description']
+    }) : [];
+
+    // Tenant restaurants with 30-day sales
+    const restaurants = await Restaurant.findAll({
+      where: { foodcourt_id: id, ...(req.user.role === 'Foodcourt Manager' && req.user.branch_id ? { branch_id: req.user.branch_id } : {}) },
+      attributes: ['id', 'name', 'branch_name', 'status', 'branch_id', 'latitude', 'longitude', 'logo_url', 'is_demo']
+    });
+
+    const restaurantIds = restaurants.map(r => r.id);
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const salesRows = restaurantIds.length > 0 ? await sequelize.query(`
+      SELECT restaurant_id, COALESCE(SUM(total_amount), 0) AS sales_30d, COUNT(*) AS order_count
+      FROM orders
+      WHERE restaurant_id IN (:ids)
+        AND status IN ('completed', 'served')
+        AND (is_deleted = false OR is_deleted IS NULL)
+        AND order_date >= :since
+      GROUP BY restaurant_id
+    `, { replacements: { ids: restaurantIds, since }, type: sequelize.QueryTypes.SELECT }) : [];
+    const salesMap = new Map(salesRows.map(r => [Number(r.restaurant_id), Number(r.sales_30d) || 0]));
+
+    const activeContracts = restaurantIds.length > 0 ? await Contract.findAll({
+      where: { restaurant_id: { [Op.in]: restaurantIds }, stage: 'active', entity_type: 'foodcourt', entity_id: id },
+      attributes: ['id', 'restaurant_id', 'contract_type', 'exclusivity_terms']
+    }) : [];
+    const contractMap = new Map();
+    activeContracts.forEach(c => {
+      const terms = c.exclusivity_terms || {};
+      contractMap.set(Number(c.restaurant_id), {
+        contract_id: c.id,
+        contract_type: c.contract_type || null,
+        radius_km: Number(terms.radius_km) > 0 ? Number(terms.radius_km) : null
+      });
+    });
+
+    const enrichedRestaurants = restaurants.map(r => {
+      const obj = r.toJSON();
+      const c = contractMap.get(r.id) || { contract_id: null, contract_type: null, radius_km: null };
+      return { ...obj, sales_30d: salesMap.get(r.id) || 0, ...c };
+    });
+
+    const maxSales = enrichedRestaurants.reduce((m, r) => Math.max(m, r.sales_30d), 0);
+
+    // Unit occupancy per branch
+    const unitsByBranch = {};
+    units.forEach(u => {
+      if (!unitsByBranch[u.branch_id]) unitsByBranch[u.branch_id] = { total: 0, occupied: 0, vacant: 0, reserved: 0 };
+      unitsByBranch[u.branch_id].total++;
+      if (u.status === 'occupied') unitsByBranch[u.branch_id].occupied++;
+      else if (u.status === 'vacant') unitsByBranch[u.branch_id].vacant++;
+      else if (u.status === 'reserved') unitsByBranch[u.branch_id].reserved++;
+    });
+
+    const enrichedBranches = branches.map(b => ({
+      ...b.toJSON(),
+      unit_stats: unitsByBranch[b.id] || { total: 0, occupied: 0, vacant: 0, reserved: 0 }
+    }));
+
+    const mappedBranches = enrichedBranches.filter(b => b.latitude != null && b.longitude != null);
+    const unmappedBranches = enrichedBranches.filter(b => b.latitude == null || b.longitude == null);
+
+    res.json({
+      success: true,
+      data: {
+        foodcourt: { id: foodcourt.id, name: foodcourt.name, code: foodcourt.code, logo_url: foodcourt.logo_url },
+        mappedBranches,
+        unmappedBranches,
+        restaurants: enrichedRestaurants,
+        max_sales_30d: maxSales,
+        total_branches: branches.length,
+        total_restaurants: restaurants.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching tenancy map:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch tenancy map' });
+  }
+});
+
 // Get all foodcourts (filtered by owner for Foodcourt General)
 router.get('/', authenticateToken, async (req, res) => {
   try {

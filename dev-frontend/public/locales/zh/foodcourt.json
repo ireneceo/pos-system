@@ -337,5 +337,9 @@
   "foodcourtSubscriptionsPage.discountType": "折扣 类型",
   "foodcourtSubscriptionsPage.none": "无",
   "foodcourtSubscriptionsPage.reasonOptional": "原因（可选）",
-  "foodcourtSubscriptionsPage.preview": "Preview"
+  "foodcourtSubscriptionsPage.preview": "Preview",
+  "branches": {
+    "latitude": "纬度",
+    "longitude": "经度"
+  }
 }

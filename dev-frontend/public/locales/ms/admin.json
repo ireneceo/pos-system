@@ -1347,5 +1347,14 @@
   "supportTicketsPage.lastUpdated": "Kemas Kini Terakhir",
   "systemInquiryPage.createTicket": "Cipta Tiket",
   "systemInquiryPage.resolved": "Diselesaikan",
-  "systemInquiryPage.allStatus": "Semua Status"
+  "systemInquiryPage.allStatus": "Semua Status",
+  "restaurantsPage": {
+    "tabOperational": "Beroperasi",
+    "tabArchive": "Arkib",
+    "overdue": "Tertunggak",
+    "latitude": "Latitud",
+    "longitude": "Longitud",
+    "latitudeHint": "cth: 3.1390 (auto dari alamat)",
+    "longitudeHint": "cth: 101.6869"
+  }
 }

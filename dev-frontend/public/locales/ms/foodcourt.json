@@ -337,5 +337,9 @@
   "foodcourtSubscriptionsPage.discountType": "Diskaun Jenis",
   "foodcourtSubscriptionsPage.none": "Tiada",
   "foodcourtSubscriptionsPage.reasonOptional": "Sebab (pilihan)",
-  "foodcourtSubscriptionsPage.preview": "Preview"
+  "foodcourtSubscriptionsPage.preview": "Preview",
+  "branches": {
+    "latitude": "Latitud",
+    "longitude": "Longitud"
+  }
 }

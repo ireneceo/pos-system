@@ -1347,5 +1347,14 @@
   "supportTicketsPage.lastUpdated": "마지막 업데이트",
   "systemInquiryPage.createTicket": "생성 티켓",
   "systemInquiryPage.resolved": "해결됨",
-  "systemInquiryPage.allStatus": "전체 상태"
+  "systemInquiryPage.allStatus": "전체 상태",
+  "restaurantsPage": {
+    "tabOperational": "운영 중",
+    "tabArchive": "보관함",
+    "overdue": "연체",
+    "latitude": "위도",
+    "longitude": "경도",
+    "latitudeHint": "예: 3.1390 (주소로부터 자동 입력)",
+    "longitudeHint": "예: 101.6869"
+  }
 }

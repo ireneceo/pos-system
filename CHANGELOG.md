@@ -6,6 +6,18 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-20
+- Manager 지점/브랜드 접근 enforcement — `users.branch_id/brand_id` 기반으로 contracts / invoices / units / branches / restaurants 5개 라우트에 실제 필터 적용. `getManagerScope()` 헬퍼 + `req.user.branch_id` 노출. 통합 테스트 8/8 pass
+- Contract 리스트 Active Pipeline / Archive 탭 — expired 드롭다운 누락 버그 수정. Pipeline은 4단계(proposal~active) 유지, Archive는 List 뷰 강제 + stats 3종(terminated/expired/renewed)
+- Restaurant 리스트 Operational / Archive 탭 — Suspended는 Operational에 유지 (결제 주의 놓치지 않게). 백엔드 `/api/restaurants?status=` 다중값 필터 추가
+- Brand Franchise Map 신규 — Leaflet + OpenStreetMap, 클러스터링, 상태별 핀 색상 5종, Franchise=★ / Direct=● 구분, 핀 크기 = 최근 30일 매출, 점선 원 = territory radius (`exclusivity_terms.radius_km`), Un-mapped 매장 리스트
+- Foodcourt Tenancy Map 신규 — Branch 큰 핀(점유율 % 표시) + 입점 Restaurant 작은 핀(계약/매출), territory radius 동일 적용, 유닛 통계 (total/occupied/vacant/reserved)
+- 수동 좌표 편집 UI — Restaurant(Admin 신규+편집 모달), FoodcourtBranch 폼에 latitude/longitude 입력 필드
+- Auto-Geocoding (Nominatim) — POST/PUT 주소 변경 시 비동기 훅 (응답 차단 없음). 수동 좌표가 있으면 우선. `utils/geocoding.js` (1 req/s 스로틀)
+- DB `restaurants.latitude/longitude DOUBLE NULL` 컬럼 추가 + backfill 스크립트 (`scripts/backfill-restaurant-geocode.js` dry-run 지원)
+- AddonModule 등록 — `brand_franchise`, `fc_tenancy`, `fc_branches` 신규 모듈. 모든 Brand/Foodcourt 플랜(Basic/Pro/Enterprise)에 자동 포함 (`scripts/register-map-modules.js` idempotent)
+- i18n 4개 언어 확장 — tabs + franchiseTabs + map legend + latitude/longitude 키 (en/ko/zh/ms)
+
 
 ## [v3.15] — 2026-04-19 배포
 

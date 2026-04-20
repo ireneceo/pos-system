@@ -337,5 +337,9 @@
   "foodcourtSubscriptionsPage.discountType": "할인 유형",
   "foodcourtSubscriptionsPage.none": "없음",
   "foodcourtSubscriptionsPage.reasonOptional": "사유 (선택)",
-  "foodcourtSubscriptionsPage.preview": "미리보기"
+  "foodcourtSubscriptionsPage.preview": "미리보기",
+  "branches": {
+    "latitude": "위도",
+    "longitude": "경도"
+  }
 }
