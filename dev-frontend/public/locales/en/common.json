@@ -255,7 +255,10 @@
     "tenancyManagement": "Tenancy Management",
     "franchise": "Franchise",
     "tenancy": "Tenancy",
-    "branches": "Branches"
+    "branches": "Branches",
+    "franchiseMap": "Franchise Map",
+    "tenancyMap": "Tenancy Map",
+    "branchMap": "Branch Map"
   },
   "language": {
     "en": "English",

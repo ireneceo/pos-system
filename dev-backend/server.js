@@ -621,6 +621,8 @@ const foodcourtUnitsRouter = require('./routes/foodcourt-units');
 app.use('/api/foodcourts', foodcourtUnitsRouter);  // Foodcourt unit management
 const foodcourtBranchesRouter = require('./routes/foodcourt-branches');
 app.use('/api', foodcourtBranchesRouter);  // Foodcourt branches — mounts /foodcourts/:id/branches + /foodcourt-branches/:id
+const foodcourtFloorPlansRouter = require('./routes/foodcourt-floor-plans');
+app.use('/api', foodcourtFloorPlansRouter);  // Floor plans — /foodcourt-branches/:id/floor-plans + /foodcourt-floor-plans/:id + /foodcourt-units/:id/plan-position
 
 // GitHub Webhook for Auto-Deployment (보안: System Admin 인증 필요)
 const { exec } = require('child_process');

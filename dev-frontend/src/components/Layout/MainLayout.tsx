@@ -1060,9 +1060,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </NavItem>
                 )}
 
-                <NavItem to="/pos/brand/franchise" active={isActive('/pos/brand/franchise')} onClick={closeSidebar}>
+                <NavItem to="/pos/brand/franchise" active={isActive('/pos/brand/franchise') && !isActive('/pos/brand/franchise-map')} onClick={closeSidebar}>
                   <NavIcon>◇</NavIcon>
                   {t("nav.franchise")}
+                </NavItem>
+                <NavItem to="/pos/brand/franchise-map" active={isActive('/pos/brand/franchise-map')} onClick={closeSidebar}>
+                  <NavIcon>◉</NavIcon>
+                  {t("nav.franchiseMap", "Franchise Map")}
                 </NavItem>
 
                 {hasManagerPermission('management') && (
@@ -1258,9 +1262,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </NavItem>
                 )}
 
-                <NavItem to="/pos/foodcourt/tenancy" active={isActive('/pos/foodcourt/tenancy')} onClick={closeSidebar}>
+                <NavItem to="/pos/foodcourt/tenancy" active={isActive('/pos/foodcourt/tenancy') && !isActive('/pos/foodcourt/tenancy-map')} onClick={closeSidebar}>
                   <NavIcon>◇</NavIcon>
                   {t("nav.tenancy")}
+                </NavItem>
+                <NavItem to="/pos/foodcourt/tenancy-map" active={isActive('/pos/foodcourt/tenancy-map')} onClick={closeSidebar}>
+                  <NavIcon>◉</NavIcon>
+                  {t("nav.branchMap", "Branch Map")}
+                </NavItem>
+                <NavItem
+                  to="/pos/foodcourt/floor-plan"
+                  active={isActive('/pos/foodcourt/floor-plan')}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    closeSidebar();
+                    window.open('/pos/foodcourt/floor-plan', '_blank');
+                  }}
+                >
+                  <NavIcon>▦</NavIcon>
+                  {t("nav.floorPlan", "Floor Plan")}
                 </NavItem>
 
                 {hasManagerPermission('management') && (

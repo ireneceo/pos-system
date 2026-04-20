@@ -181,7 +181,11 @@ const BrandInvoicesPage = React.lazy(() => import('./pages/BrandGeneral/BrandInv
 const BrandPlansPage = React.lazy(() => import('./pages/BrandGeneral/BrandPlansPage'));
 const BrandPaymentSettingsPage = React.lazy(() => import('./pages/BrandGeneral/BrandPaymentSettingsPage'));
 const FranchiseManagementPage = React.lazy(() => import('./pages/BrandGeneral/FranchiseManagementPage'));
+const BrandFranchiseMapStandalone = React.lazy(() => import('./pages/BrandGeneral/BrandFranchiseMapStandalone'));
 const TenancyManagementPage = React.lazy(() => import('./pages/FoodcourtGeneral/TenancyManagementPage'));
+const FoodcourtTenancyMapStandalone = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtTenancyMapStandalone'));
+const FoodcourtFloorPlanPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtFloorPlanPage'));
+const FoodcourtFloorPlanEditorPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtFloorPlanEditorPage'));
 const FoodcourtBranchesPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtBranchesPage'));
 const RentManagement = React.lazy(() => import('./pages/Foodcourt/RentManagement'));
 const TenantSupport = React.lazy(() => import('./pages/Foodcourt/TenantSupport'));
@@ -458,6 +462,18 @@ function App() {
                         </ProtectedRoute>
                       } />
 
+                      {/* Foodcourt Floor Plan — standalone window (no MainLayout) */}
+                      <Route path="/pos/foodcourt/floor-plan" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <FoodcourtFloorPlanPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/floor-plan-editor" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General']}>
+                          <FoodcourtFloorPlanEditorPage />
+                        </ProtectedRoute>
+                      } />
+
                       {/* ===== POS LAYOUT ROUTES (MainLayout mounted once) ===== */}
                       <Route element={<PosLayout />}>
 
@@ -663,6 +679,11 @@ function App() {
                           <TenancyManagementPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/foodcourt/tenancy-map" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <FoodcourtTenancyMapStandalone />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/foodcourt/branches" element={
                         <ProtectedRoute requiredRole={['Foodcourt General']}>
                           <FoodcourtBranchesPage />
@@ -743,6 +764,11 @@ function App() {
                       <Route path="/pos/brand/franchise" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <FranchiseManagementPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/franchise-map" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandFranchiseMapStandalone />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/performance" element={

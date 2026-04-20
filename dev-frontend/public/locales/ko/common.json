@@ -207,7 +207,7 @@
     "notifications": "알림",
     "notices": "공지",
     "workManuals": "업무매뉴얼",
-    "floorPlan": "배치도",
+    "floorPlan": "평면도",
     "kitchenDisplay": "주방 디스플레이",
     "posTerminal": "POS Terminal",
     "mobileOrder": "모바일 주문",
@@ -255,7 +255,10 @@
     "tenancyManagement": "입점 관리",
     "franchise": "가맹점",
     "tenancy": "입점",
-    "branches": "지점"
+    "branches": "지점",
+    "franchiseMap": "가맹 지도",
+    "tenancyMap": "입점 지도",
+    "branchMap": "지점 지도"
   },
   "language": {
     "en": "English",

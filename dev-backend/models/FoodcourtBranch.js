@@ -50,7 +50,12 @@ FoodcourtBranch.init({
   latitude: { type: DataTypes.DECIMAL(10, 7), allowNull: true },
   longitude: { type: DataTypes.DECIMAL(10, 7), allowNull: true },
   operating_hours: { type: DataTypes.JSON, allowNull: true },
-  notes: { type: DataTypes.TEXT, allowNull: true }
+  notes: { type: DataTypes.TEXT, allowNull: true },
+  unit_config: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: '{ enabled: bool, zones: [{ prefix, count, padding }] } — auto-numbering config for units'
+  }
 }, {
   sequelize: database.sequelize,
   modelName: 'FoodcourtBranch',

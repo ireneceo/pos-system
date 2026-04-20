@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -7,6 +7,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAuthToken } from '../../utils/auth';
 
@@ -51,103 +52,197 @@ const STATUS_COLOR: Record<string, string> = {
   inactive: '#9CA3AF', expired: '#9CA3AF', cancelled: '#9CA3AF'
 };
 
-const Container = styled.div`display: flex; flex-direction: column; gap: 16px;`;
-const MapWrap = styled.div`
-  height: 520px; border: 1px solid #E6EBF1; border-radius: 8px; overflow: hidden;
-  .leaflet-container { height: 100%; width: 100%; }
+const Layout = styled.div`
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  height: 640px;
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
 `;
-const Legend = styled.div`display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #4B5563;`;
+
+const SidePanel = styled.div`
+  display: flex; flex-direction: column;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+`;
+
+const SidePanelHeader = styled.div`
+  padding: 12px 14px;
+  border-bottom: 1px solid #E6EBF1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0A2540;
+  background: #F8FAFC;
+`;
+
+const SideList = styled.div`
+  flex: 1;
+  overflow-y: auto;
+`;
+
+const BranchCard = styled.div<{ $selected?: boolean }>`
+  padding: 12px 14px;
+  border-bottom: 1px solid #EEF2F6;
+  cursor: pointer;
+  transition: background 0.12s;
+  background: ${p => p.$selected ? '#F0EDFF' : 'white'};
+  border-left: 3px solid ${p => p.$selected ? '#635BFF' : 'transparent'};
+  &:hover { background: ${p => p.$selected ? '#F0EDFF' : '#F8FAFC'}; }
+  h4 { margin: 0 0 4px; font-size: 14px; color: #0A2540; display: flex; align-items: center; gap: 8px; }
+  .code { font-size: 11px; color: #9CA3AF; font-weight: 500; }
+  .addr { font-size: 12px; color: #6B7280; margin-top: 2px; }
+  .stats { margin-top: 6px; display: flex; gap: 8px; font-size: 11px; color: #4B5563; }
+  .stats b { color: #0A2540; }
+  .occupancy { background: var(--c); color: white; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+`;
+
+const TenantSubList = styled.div`
+  padding: 8px 14px 12px;
+  background: #FAFBFC;
+  border-bottom: 1px solid #EEF2F6;
+  .sub-title { font-size: 11px; font-weight: 600; color: #6B7280; text-transform: uppercase; margin: 4px 0; }
+`;
+
+const TenantRow = styled.div<{ $selected?: boolean }>`
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #374151;
+  background: ${p => p.$selected ? '#E0E7FF' : 'transparent'};
+  &:hover { background: ${p => p.$selected ? '#E0E7FF' : '#F3F4F6'}; }
+  display: flex; align-items: center; gap: 6px;
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c, #9CA3AF); flex-shrink: 0; }
+  .name { flex: 1; }
+  .sales { color: #9CA3AF; font-size: 11px; }
+`;
+
+const NoTenants = styled.div`
+  font-size: 12px; color: #9CA3AF; font-style: italic; padding: 4px 8px;
+`;
+
+const MapWrap = styled.div`
+  border: 1px solid #E6EBF1; border-radius: 8px; overflow: hidden; height: 640px;
+  .leaflet-container { height: 100%; width: 100%; }
+  @media (max-width: 960px) { height: 480px; }
+`;
+
+const Legend = styled.div`display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #4B5563;`;
 const LegendItem = styled.span`
   display: inline-flex; align-items: center; gap: 6px;
   &::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #9CA3AF); }
 `;
+
 const Summary = styled.div`
   display: flex; gap: 16px; font-size: 13px; color: #4B5563;
   strong { color: #0A2540; }
 `;
+
 const UnmappedBox = styled.div`
   border: 1px solid #E6EBF1; border-radius: 8px; padding: 12px 16px; background: #FAFBFC;
+  margin-top: 16px;
 `;
+
 const UnmappedTitle = styled.div`font-size: 13px; font-weight: 600; color: #4B5563; margin-bottom: 8px;`;
+
 const UnmappedList = styled.ul`
   margin: 0; padding-left: 20px; font-size: 13px; color: #6B7280;
   li { margin: 2px 0; }
 `;
+
 const EmptyState = styled.div`padding: 48px 16px; text-align: center; color: #6B7280; font-size: 14px;`;
 
 const FRANCHISE_TYPES = ['franchise', 'license', 'master', 'revenue_share'];
 
-const createBranchIcon = (status: string, unitStats: Branch['unit_stats']) => {
+const createBranchIcon = (status: string, unitStats: Branch['unit_stats'], selected: boolean) => {
   const color = STATUS_COLOR[status] || '#9CA3AF';
   const occupancyRate = unitStats.total > 0 ? unitStats.occupied / unitStats.total : 0;
-  // Branch pin shows occupancy percentage in the center
   const pct = Math.round(occupancyRate * 100);
+  const size = selected ? 44 : 36;
+  const h = Math.round(size * 46 / 36);
+  // Selection indicated by inner ring accent (no external drop-shadow → avoids clipping)
+  const selectedRing = selected ? `<circle cx="18" cy="18" r="14" fill="none" stroke="#635BFF" stroke-width="2"/>` : '';
   const svg = `
-    <svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg">
+    <svg width="${size}" height="${h}" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg">
       <path d="M18 0C8.1 0 0 8.1 0 18c0 12.2 18 28 18 28s18-15.8 18-28C36 8.1 27.9 0 18 0z" fill="${color}"/>
+      ${selectedRing}
       <circle cx="18" cy="18" r="12" fill="white"/>
       <text x="18" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="${color}">${pct}%</text>
     </svg>`;
   return L.divIcon({
-    html: svg,
-    className: 'tenancy-map-branch-pin',
-    iconSize: [36, 46],
-    iconAnchor: [18, 46],
-    popupAnchor: [0, -42]
+    html: svg, className: 'tenancy-map-branch-pin',
+    iconSize: [size, h], iconAnchor: [size / 2, h], popupAnchor: [0, -(h - 4)]
   });
 };
 
-const createRestaurantIcon = (status: string, contractType: string | null, salesIntensity: number) => {
+const createRestaurantIcon = (status: string, contractType: string | null) => {
   const color = STATUS_COLOR[status] || '#9CA3AF';
-  const scale = 0.85 + Math.min(1, Math.max(0, salesIntensity)) * 0.5;
-  const w = Math.round(22 * scale);
-  const h = Math.round(32 * scale);
   const isFranchise = contractType && FRANCHISE_TYPES.includes(contractType);
+  const isDirect = contractType === 'direct' || contractType === 'standard';
   const mark = isFranchise
     ? `<polygon points="11,6 12,9.2 15.2,9.2 12.6,11.2 13.6,14.4 11,12.4 8.4,14.4 9.4,11.2 6.8,9.2 10,9.2" fill="#FFFFFF"/>`
-    : `<circle cx="11" cy="11" r="4" fill="white"/>`;
+    : isDirect
+      ? `<circle cx="11" cy="11" r="4" fill="white"/>`
+      : `<circle cx="11" cy="11" r="2.5" fill="white" opacity="0.7"/>`;
   const svg = `
-    <svg width="${w}" height="${h}" viewBox="0 0 22 32" xmlns="http://www.w3.org/2000/svg">
+    <svg width="22" height="32" viewBox="0 0 22 32" xmlns="http://www.w3.org/2000/svg">
       <path d="M11 0C4.9 0 0 4.9 0 11c0 7.5 11 21 11 21s11-13.5 11-21C22 4.9 17.1 0 11 0z" fill="${color}"/>
       ${mark}
     </svg>`;
   return L.divIcon({
-    html: svg,
-    className: 'tenancy-map-restaurant-pin',
-    iconSize: [w, h],
-    iconAnchor: [Math.round(w / 2), h],
-    popupAnchor: [0, -(h - 2)]
+    html: svg, className: 'tenancy-map-restaurant-pin',
+    iconSize: [22, 32], iconAnchor: [11, 32], popupAnchor: [0, -30]
   });
 };
 
-const FitBounds: React.FC<{ branches: Branch[] }> = ({ branches }) => {
+// View controller — setView on selection change, fitBounds when selection cleared
+const MapView: React.FC<{ branches: Branch[]; selectedBranch: Branch | null }> = ({ branches, selectedBranch }) => {
   const map = useMap();
   useEffect(() => {
+    if (selectedBranch && selectedBranch.latitude != null && selectedBranch.longitude != null) {
+      map.setView([selectedBranch.latitude, selectedBranch.longitude], 16, { animate: true });
+      return;
+    }
     const pts = branches.filter(b => b.latitude != null && b.longitude != null);
     if (pts.length === 0) return;
+    if (pts.length === 1) {
+      map.setView([pts[0].latitude as number, pts[0].longitude as number], 14);
+      return;
+    }
     const bounds = L.latLngBounds(pts.map(p => [p.latitude as number, p.longitude as number]));
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-  }, [branches, map]);
+  }, [branches, selectedBranch, map]);
   return null;
 };
 
-const ClusterLayer: React.FC<{
+// Pins layer
+const PinsLayer: React.FC<{
   branches: Branch[];
-  restaurants: Restaurant[];
-  maxSales: number;
-}> = ({ branches, restaurants, maxSales }) => {
+  tenantsForSelected: Restaurant[];
+  selectedBranchId: number | null;
+  onBranchClick: (id: number) => void;
+}> = ({ branches, tenantsForSelected, selectedBranchId, onBranchClick }) => {
   const map = useMap();
-  const groupRef = useRef<any>(null);
+  const layerRef = useRef<any>(null);
 
   useEffect(() => {
     if (!map) return;
-    if (groupRef.current) { groupRef.current.clearLayers(); map.removeLayer(groupRef.current); }
-    const group = (L as any).markerClusterGroup({ maxClusterRadius: 50 });
+    if (layerRef.current) {
+      layerRef.current.clearLayers();
+      map.removeLayer(layerRef.current);
+    }
+    const layer = L.layerGroup();
 
-    // Branch pins (large)
     branches.forEach(b => {
       if (b.latitude == null || b.longitude == null) return;
-      const marker = L.marker([b.latitude, b.longitude], { icon: createBranchIcon(b.status, b.unit_stats) });
+      const isSelected = selectedBranchId === b.id;
+      const marker = L.marker([b.latitude, b.longitude], { icon: createBranchIcon(b.status, b.unit_stats, isSelected) });
+      marker.on('click', () => onBranchClick(b.id));
       const color = STATUS_COLOR[b.status] || '#9CA3AF';
       const html = `
         <div style="min-width:220px">
@@ -158,40 +253,35 @@ const ClusterLayer: React.FC<{
             <span><b>Total:</b> ${b.unit_stats.total}</span>
             <span style="color:#10B981"><b>Occupied:</b> ${b.unit_stats.occupied}</span>
             <span style="color:#6B7280"><b>Vacant:</b> ${b.unit_stats.vacant}</span>
-            ${b.unit_stats.reserved ? `<span style="color:#F59E0B"><b>Reserved:</b> ${b.unit_stats.reserved}</span>` : ''}
           </div>
           <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-top:6px;color:white;background:${color}">${b.status}</span>
         </div>`;
       marker.bindPopup(html);
-      group.addLayer(marker);
+      layer.addLayer(marker);
     });
 
-    // Tenant restaurants (small pins)
-    restaurants.forEach(r => {
+    // Tenant pins shown only for selected branch
+    tenantsForSelected.forEach(r => {
       if (r.latitude == null || r.longitude == null) return;
-      const intensity = maxSales > 0 ? (r.sales_30d || 0) / maxSales : 0;
-      const marker = L.marker([r.latitude, r.longitude], { icon: createRestaurantIcon(r.status, r.contract_type || null, intensity) });
+      const m = L.marker([r.latitude, r.longitude], { icon: createRestaurantIcon(r.status, r.contract_type || null) });
       const color = STATUS_COLOR[r.status] || '#9CA3AF';
       const html = `
         <div style="min-width:200px">
           <h4 style="margin:0 0 6px;font-size:13px;color:#0A2540">${r.name}${r.branch_name ? ' · ' + r.branch_name : ''}</h4>
-          <div style="display:flex;gap:12px;margin-top:4px;font-size:11px;color:#4B5563">
-            <span><b>Type:</b> ${r.contract_type || '—'}</span>
-            <span><b>Radius:</b> ${r.radius_km ? r.radius_km + ' km' : '—'}</span>
-          </div>
-          <div style="font-size:11px;color:#4B5563;margin-top:2px"><b>Sales 30d:</b> ${(r.sales_30d || 0).toLocaleString()}</div>
+          <div style="font-size:11px;color:#4B5563;margin:2px 0"><b>Type:</b> ${r.contract_type || '—'}</div>
+          <div style="font-size:11px;color:#4B5563"><b>Sales 30d:</b> ${(r.sales_30d || 0).toLocaleString()}</div>
           <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-top:6px;color:white;background:${color}">${r.status}</span>
         </div>`;
-      marker.bindPopup(html);
-      group.addLayer(marker);
+      m.bindPopup(html);
+      layer.addLayer(m);
     });
 
-    groupRef.current = group;
-    map.addLayer(group);
+    layerRef.current = layer;
+    map.addLayer(layer);
     return () => {
-      if (groupRef.current) { groupRef.current.clearLayers(); map.removeLayer(groupRef.current); groupRef.current = null; }
+      if (layerRef.current) { layerRef.current.clearLayers(); map.removeLayer(layerRef.current); layerRef.current = null; }
     };
-  }, [branches, restaurants, map, maxSales]);
+  }, [branches, tenantsForSelected, selectedBranchId, map, onBranchClick]);
 
   return null;
 };
@@ -203,6 +293,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
   const [data, setData] = useState<TenancyMapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!fcId) { setLoading(false); return; }
@@ -223,14 +314,35 @@ const FoodcourtTenancyMapPage: React.FC = () => {
 
   const mappedBranches = useMemo(() => data?.mappedBranches || [], [data]);
   const unmappedBranches = useMemo(() => data?.unmappedBranches || [], [data]);
+  const allBranches = useMemo(() => [...mappedBranches, ...unmappedBranches], [mappedBranches, unmappedBranches]);
   const restaurants = useMemo(() => data?.restaurants || [], [data]);
+
+  const selectedBranch = useMemo(
+    () => allBranches.find(b => b.id === selectedBranchId) || null,
+    [allBranches, selectedBranchId]
+  );
+
+  const tenantsForSelected = useMemo(
+    () => selectedBranchId ? restaurants.filter(r => r.branch_id === selectedBranchId) : [],
+    [restaurants, selectedBranchId]
+  );
+
+  const tenantsByBranch = useMemo(() => {
+    const map: Record<number, Restaurant[]> = {};
+    restaurants.forEach(r => {
+      if (r.branch_id == null) return;
+      if (!map[r.branch_id]) map[r.branch_id] = [];
+      map[r.branch_id].push(r);
+    });
+    return map;
+  }, [restaurants]);
 
   if (loading) return <EmptyState>{t('common.loading', 'Loading...')}</EmptyState>;
   if (error) return <EmptyState style={{ color: '#DC2626' }}>{error}</EmptyState>;
   if (!data || data.total_branches === 0) return <EmptyState>{t('map.emptyFoodcourt', 'No branches to display on the map yet.')}</EmptyState>;
 
   return (
-    <Container>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <Summary>
         <span><strong>{data.total_branches}</strong> {t('map.branches', 'branches')}</span>
         <span><strong>{mappedBranches.length}</strong> {t('map.mapped', 'on map')}</span>
@@ -243,37 +355,98 @@ const FoodcourtTenancyMapPage: React.FC = () => {
         <LegendItem style={{ ['--c' as any]: STATUS_COLOR.overdue }}>{t('map.legend.overdue', 'Overdue')}</LegendItem>
         <LegendItem style={{ ['--c' as any]: STATUS_COLOR.suspended }}>{t('map.legend.suspended', 'Suspended')}</LegendItem>
         <LegendItem style={{ ['--c' as any]: STATUS_COLOR.inactive }}>{t('map.legend.archive', 'Archive')}</LegendItem>
-        <span style={{ marginLeft: 12, color: '#6B7280' }}>
-          {t('map.legend.branchPin', 'Large pin = branch (shows occupancy %)')}  ·  {t('map.legend.restaurantPin', 'Small pin = tenant restaurant')}
-        </span>
       </Legend>
 
-      {mappedBranches.length > 0 ? (
-        <MapWrap>
-          <MapContainer center={[3.139, 101.6869]} zoom={6} scrollWheelZoom>
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            />
-            {restaurants.filter(r => r.radius_km && r.radius_km > 0 && r.latitude != null && r.longitude != null).map(r => (
-              <Circle
-                key={`radius-${r.id}`}
-                center={[r.latitude as number, r.longitude as number]}
-                radius={(r.radius_km as number) * 1000}
-                pathOptions={{
-                  color: STATUS_COLOR[r.status] || '#9CA3AF',
-                  fillColor: STATUS_COLOR[r.status] || '#9CA3AF',
-                  fillOpacity: 0.08, weight: 1, dashArray: '4 4'
-                }}
+      <Layout>
+        <SidePanel>
+          <SidePanelHeader>
+            {t('map.branchListHeader', 'Branches ({{count}})', { count: allBranches.length })}
+          </SidePanelHeader>
+          <SideList>
+            {allBranches.map(b => {
+              const isSelected = selectedBranchId === b.id;
+              const color = STATUS_COLOR[b.status] || '#9CA3AF';
+              const pct = b.unit_stats.total > 0 ? Math.round(b.unit_stats.occupied / b.unit_stats.total * 100) : 0;
+              const tenants = tenantsByBranch[b.id] || [];
+              return (
+                <React.Fragment key={b.id}>
+                  <BranchCard
+                    $selected={isSelected}
+                    onClick={() => setSelectedBranchId(isSelected ? null : b.id)}
+                  >
+                    <h4>
+                      {b.name}
+                      {b.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3 }}>PRIMARY</span>}
+                      <span className="occupancy" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{pct}%</span>
+                    </h4>
+                    <div className="code">{b.code}</div>
+                    {b.address && <div className="addr">{b.address}</div>}
+                    <div className="stats">
+                      <span><b>{b.unit_stats.total}</b> units</span>
+                      <span style={{ color: '#10B981' }}><b>{b.unit_stats.occupied}</b> occupied</span>
+                      <span style={{ color: '#6B7280' }}><b>{b.unit_stats.vacant}</b> vacant</span>
+                      {b.latitude == null && <span style={{ color: '#EF4444' }}>no coords</span>}
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                      <Link
+                        to={`/pos/foodcourt/floor-plan?branch=${b.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ fontSize: 11, color: '#635BFF', textDecoration: 'none' }}
+                      >
+                        {t('map.viewFloorPlan', 'View floor plan →')}
+                      </Link>
+                    </div>
+                  </BranchCard>
+                  {isSelected && (
+                    <TenantSubList>
+                      <div className="sub-title">
+                        {t('map.tenantsIn', 'Tenants ({{count}})', { count: tenants.length })}
+                      </div>
+                      {tenants.length === 0 ? (
+                        <NoTenants>{t('map.noTenants', 'No tenant restaurants in this branch')}</NoTenants>
+                      ) : (
+                        tenants.map(r => {
+                          const isFranchise = r.contract_type && ['franchise', 'license', 'master', 'revenue_share'].includes(r.contract_type);
+                          return (
+                            <TenantRow key={r.id}>
+                              <span className="dot" style={{ ['--c' as any]: STATUS_COLOR[r.status] || '#9CA3AF' }} />
+                              <span className="name">
+                                {r.name}{r.branch_name ? ` · ${r.branch_name}` : ''}
+                                {isFranchise && <span title="Franchise/License/Revenue-share"> ★</span>}
+                              </span>
+                              <span className="sales">{(r.sales_30d || 0).toLocaleString()}</span>
+                            </TenantRow>
+                          );
+                        })
+                      )}
+                    </TenantSubList>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </SideList>
+        </SidePanel>
+
+        {mappedBranches.length > 0 ? (
+          <MapWrap>
+            <MapContainer center={[3.139, 101.6869]} zoom={6} scrollWheelZoom>
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
-            ))}
-            <ClusterLayer branches={mappedBranches} restaurants={restaurants} maxSales={data.max_sales_30d || 0} />
-            <FitBounds branches={mappedBranches} />
-          </MapContainer>
-        </MapWrap>
-      ) : (
-        <EmptyState>{t('map.noCoordsFoodcourt', 'No branches have coordinates yet. Edit a branch to add location data.')}</EmptyState>
-      )}
+              <PinsLayer
+                branches={mappedBranches}
+                tenantsForSelected={tenantsForSelected}
+                selectedBranchId={selectedBranchId}
+                onBranchClick={(id) => setSelectedBranchId(id === selectedBranchId ? null : id)}
+              />
+              <MapView branches={mappedBranches} selectedBranch={selectedBranch} />
+            </MapContainer>
+          </MapWrap>
+        ) : (
+          <EmptyState>{t('map.noCoordsFoodcourt', 'No branches have coordinates yet. Edit a branch to add location data.')}</EmptyState>
+        )}
+      </Layout>
 
       {unmappedBranches.length > 0 && (
         <UnmappedBox>
@@ -285,7 +458,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
           </UnmappedList>
         </UnmappedBox>
       )}
-    </Container>
+    </div>
   );
 };
 

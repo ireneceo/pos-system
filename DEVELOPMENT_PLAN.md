@@ -1,8 +1,66 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-20 (Manager enforcement + Archive 탭 + Brand Franchise Map + Foodcourt Tenancy Map + AddonModule 정리)
+> **최종 업데이트:** 2026-04-20 저녁 (Map 페이지 분리 + Floor Plan 시스템 + Branch Unit Numbering)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+
+---
+
+## ✅ 완료: Map 뷰 분리 + Floor Plan 시스템 + Branch Unit Numbering (2026-04-20 저녁, 미배포)
+
+### 배경
+Brand Franchise Map / Foodcourt Tenancy Map 을 standalone 창으로 분리 (레스토랑 Floor Plan 패턴 참조). Foodcourt Floor Plan 에디터/뷰 신규 구현 (매장 배치 + 계약 정보 표시). Branch 편집 모달에 Unit Numbering 설정 신설 (prefix + 자유 입력 + 범위 확장).
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Brand Franchise Map / Foodcourt Branch Map — standalone 창 분리 | 사이드바 메뉴 클릭 시 `window.open(_blank)` 로 새 창. PosLayout 밖에 라우트 배치. `← Back` 버튼으로 창 닫기 | ✅ |
+| 2 | 양쪽 Map — 사이드 리스트 패널 | 클릭 시 지도 확대 + 상세 패널. Foodcourt Branch 클릭 시 입점 매장 서브 리스트 | ✅ |
+| 3 | 핀 스타일 정제 | 외부 보라 그림자 제거(잘림 해결), 선택 표시는 내부 링. franchise=★ / direct=● / null은 표시 안함 | ✅ |
+| 4 | Brand Map 다중 브랜드 처리 | 레스토랑 많은 순 정렬 + 드롭다운 항상 표시 + 카운트 표기 | ✅ |
+| 5 | Foodcourt Branch Map tenant toggle 제거 | 지점만 표시 (매장은 Branch 선택 시 사이드 서브 리스트로) | ✅ |
+| 6 | Foodcourt Floor Plan View 페이지 | `/pos/foodcourt/floor-plan` standalone. 지점 선택 → 캔버스 + 매장 클릭 시 상세 패널 (Store / Tenancy Contract / Financial Terms / Restaurant 4섹션) | ✅ |
+| 7 | Foodcourt Floor Plan Editor | `/pos/foodcourt/floor-plan-editor` standalone. Restaurant 패턴 복제 (FloorPlanCanvas 재사용). 좌측 Sidebar: Add Store (shape 4개) + Unplaced Stores + Properties + Canvas Settings. drag/resize/undo/save | ✅ |
+| 8 | DB: foodcourt_floor_plans 테이블 + foodcourt_units 좌표 | branch_id FK, canvas_width/height/grid_size/show_grid. units 에 plan_x/y/width/height/shape | ✅ |
+| 9 | Backend: Floor Plan CRUD + batch layout | `GET/POST/PUT/DELETE /api/foodcourt-branches/:id/floor-plans` + `PUT /api/foodcourt-floor-plans/:id/layout` (배치 일괄 저장, contract 보호) + `GET /api/foodcourt-units/:id/detail` (계약 join) | ✅ |
+| 10 | Floor Plan 1 지점 = 1 평면도 단순화 | Editor 진입 시 평면도 없으면 자동 생성 ("Main"). 다층 UI 제거 | ✅ |
+| 11 | Branch Map → Floor Plan 연계 | Branch 카드의 `View floor plan →` 링크, `?branch=N` 파라미터 | ✅ |
+| 12 | Branch Unit Numbering 설정 | `foodcourt_branches.unit_config JSON`. Branch 편집 모달 신규 섹션. Toggle switch + Zone cards (prefix 선택 + free-form numbers textarea) | ✅ |
+| 13 | Unit Numbering 자유 입력 + 범위 확장 | 콤마/줄바꿈 구분, 범위 `01-20` / `A01-A10` / `05A-08A` / `P-2-01A-05A` 자동 확장. prefix 토글로 모든 항목에 자동 prepend | ✅ |
+| 14 | Unit Numbering Preview/Sync API | `POST /api/foodcourt-branches/:id/sync-units` — `confirm=false` preview / `confirm=true` apply. contract 연결 유닛 삭제 시 블록 + 안내 | ✅ |
+| 15 | Branch 편집 모달 — 공용 컴포넌트화 | 커스텀 `FormGrid/Field/Label/Input/Select` → `CommonModal size="large"` + `FormRow/FormGroup/FormLabel/FormInput/FormSelect`. 필드 겹침 해소 | ✅ |
+| 16 | Floor Plan / Map 사이드바 메뉴 분리 | Sidebar `Tenancy / Branch Map / Floor Plan` 3개 분리. Map/Floor Plan 은 `window.open(_blank)` | ✅ |
+| 17 | AddonModule `fc_floor_plan` 등록 + 플랜 편입 | 모든 Foodcourt 플랜에 포함 | ✅ |
+| 18 | Contract/Restaurant/Map 다운스트림 자동 반영 | Unit Numbering 저장 시 동기화된 Units 가 Contract 드롭다운 / Floor Plan Unplaced 에 자동 표시 | ✅ |
+| 19 | i18n 4개 언어 | Floor Plan / Unit Numbering / Map 관련 키 확장 (en/ko/zh/ms) | ✅ |
+| 20 | ProtectedRoute 화이트리스트 확장 | `/pos/brand/franchise-map`, `/pos/foodcourt/tenancy-map`, `/pos/foodcourt/floor-plan`, `/pos/foodcourt/floor-plan-editor` | ✅ |
+
+### DB 변경 (운영 배포 시 적용 필요)
+- `CREATE TABLE foodcourt_floor_plans (id, branch_id FK, floor_name, image_url, sort_order, notes, canvas_width, canvas_height, grid_size, show_grid, timestamps)`
+- `ALTER TABLE foodcourt_units ADD COLUMN floor_plan_id INT NULL, ADD COLUMN plan_x/plan_y/plan_width/plan_height FLOAT NULL, ADD COLUMN plan_shape VARCHAR(20) NULL` + FK SET NULL
+- `ALTER TABLE foodcourt_branches ADD COLUMN unit_config JSON NULL`
+- `node scripts/register-map-modules.js` (fc_floor_plan 모듈 + Plan 편입)
+
+### 수정/신규 파일
+
+**백엔드**
+- 수정: routes/foodcourt-branches.js (unit_config 수락, sync-units API, 자유 입력/범위 generator), routes/foodcourts.js (tenancy-map API), routes/foodcourt-floor-plans.js 신규, models/FoodcourtBranch.js (unit_config), models/FoodcourtUnit.js (plan_*), models/index.js (FloorPlan assoc), server.js (라우트 마운트)
+- 신규: models/FoodcourtFloorPlan.js, routes/foodcourt-floor-plans.js
+
+**프론트엔드**
+- 수정: components/Layout/MainLayout.tsx (사이드바 Floor Plan/Map 메뉴), components/ProtectedRoute.tsx (route 화이트리스트), pages/FoodcourtGeneral/{FoodcourtBranchesPage,FoodcourtTenancyMapPage}.tsx (Unit Numbering + 지점 중심), pages/BrandGeneral/BrandFranchiseMapPage.tsx (핀 스타일), App.tsx (라우트 4개 추가, PosLayout 밖)
+- 신규: pages/FoodcourtGeneral/FoodcourtFloorPlanPage.tsx (뷰), FoodcourtFloorPlanEditorPage.tsx (에디터), FoodcourtTenancyMapStandalone.tsx, pages/BrandGeneral/BrandFranchiseMapStandalone.tsx
+
+### 검증
+- state-hydration-check: 0 warnings
+- 빌드 (여러 차례): 모두 exit 0, 경고 0건
+- Floor Plan API: Create 201 / Batch save 200 (circle+rect) / Read-back shapes 일치 / Unit detail 200 / 권한 BG 403
+- Unit Numbering API: 자유 입력 파싱 확인 — `P-2-01A-05A` → 5개 확장 / `05A-08A` → 4개 / `01-20` → 20개 / mixed list / backward-compat pattern mode 지원
+- health-check: 40/40 pass
+
+### 미배포
+**운영 배포는 다음 세션에서 `/배포` 명령으로 진행.**
 
 ---
 

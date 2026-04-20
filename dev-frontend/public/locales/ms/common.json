@@ -255,7 +255,10 @@
     "tenancyManagement": "Pengurusan Penyewaan",
     "franchise": "Francais",
     "tenancy": "Penyewaan",
-    "branches": "Cawangan"
+    "branches": "Cawangan",
+    "franchiseMap": "Peta Francais",
+    "tenancyMap": "Peta Penyewaan",
+    "branchMap": "Peta Cawangan"
   },
   "language": {
     "en": "English",

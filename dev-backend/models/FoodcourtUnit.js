@@ -54,6 +54,37 @@ FoodcourtUnit.init({
   current_contract_id: {
     type: DataTypes.INTEGER,
     allowNull: true
+  },
+  floor_plan_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Which floor plan this unit is placed on'
+  },
+  plan_x: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    comment: 'X position on canvas (pixels)'
+  },
+  plan_y: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    comment: 'Y position on canvas (pixels)'
+  },
+  plan_width: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    comment: 'Unit rectangle width on canvas (pixels)'
+  },
+  plan_height: {
+    type: DataTypes.FLOAT,
+    allowNull: true,
+    comment: 'Unit rectangle height on canvas (pixels)'
+  },
+  plan_shape: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    defaultValue: 'rect',
+    comment: 'rect | circle'
   }
 }, {
   sequelize: database.sequelize,

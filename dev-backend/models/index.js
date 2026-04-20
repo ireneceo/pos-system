@@ -568,6 +568,13 @@ FoodcourtUnit.belongsTo(FoodcourtBranch, { foreignKey: 'branch_id', as: 'branch'
 FoodcourtBranch.hasMany(Restaurant, { foreignKey: 'branch_id', as: 'restaurants' });
 Restaurant.belongsTo(FoodcourtBranch, { foreignKey: 'branch_id', as: 'branch' });
 
+// FoodcourtFloorPlan associations
+const FoodcourtFloorPlan = require('./FoodcourtFloorPlan');
+FoodcourtFloorPlan.belongsTo(FoodcourtBranch, { foreignKey: 'branch_id', as: 'branch' });
+FoodcourtBranch.hasMany(FoodcourtFloorPlan, { foreignKey: 'branch_id', as: 'floorPlans' });
+FoodcourtFloorPlan.hasMany(FoodcourtUnit, { foreignKey: 'floor_plan_id', as: 'units' });
+FoodcourtUnit.belongsTo(FoodcourtFloorPlan, { foreignKey: 'floor_plan_id', as: 'floorPlan' });
+
 // WorkManual associations
 WorkManual.belongsTo(User, { foreignKey: 'author_id', as: 'author' });
 User.hasMany(WorkManual, { foreignKey: 'author_id', as: 'workManuals' });
@@ -715,6 +722,7 @@ module.exports = {
   ContractPlan,
   FoodcourtUnit,
   FoodcourtBranch,
+  FoodcourtFloorPlan,
   WorkManual,
   WorkManualCategory
 };

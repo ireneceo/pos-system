@@ -12,7 +12,7 @@ const MODULES = [
     description: 'Franchise contracts, applicants, and geographic map',
     category: 'basic',
     target_user_type: 'brand',
-    ui_routes: ['/pos/brand/franchise'],
+    ui_routes: ['/pos/brand/franchise', '/pos/brand/franchise-map'],
     features: ['Contract list', 'Pipeline', 'Archive', 'Map view'],
     dependencies: []
   },
@@ -22,7 +22,7 @@ const MODULES = [
     description: 'Foodcourt tenancy contracts, applicants, and geographic map',
     category: 'basic',
     target_user_type: 'foodcourt',
-    ui_routes: ['/pos/foodcourt/tenancy'],
+    ui_routes: ['/pos/foodcourt/tenancy', '/pos/foodcourt/tenancy-map'],
     features: ['Contract list', 'Pipeline', 'Archive', 'Map view (branches + tenants)'],
     dependencies: []
   },
@@ -35,6 +35,16 @@ const MODULES = [
     ui_routes: ['/pos/foodcourt/branches'],
     features: ['Branch CRUD', 'Units per branch', 'Coordinates'],
     dependencies: []
+  },
+  {
+    module_code: 'fc_floor_plan',
+    name: 'Floor Plan',
+    description: 'Visual floor plan with unit coordinates and drag-drop placement',
+    category: 'advanced',
+    target_user_type: 'foodcourt',
+    ui_routes: ['/pos/foodcourt/floor-plan'],
+    features: ['Multi-level floor plans', 'Drag-drop unit placement', 'Status color overlay', 'Tenant info on hover'],
+    dependencies: ['fc_branches']
   }
 ];
 
@@ -42,7 +52,8 @@ const MODULES = [
 const PLAN_INCLUSIONS = {
   brand_franchise: ['brand_basic', 'brand_professional', 'brand_enterprise'],
   fc_tenancy: ['foodcourt_basic', 'foodcourt_professional', 'foodcourt_enterprise'],
-  fc_branches: ['foodcourt_basic', 'foodcourt_professional', 'foodcourt_enterprise']
+  fc_branches: ['foodcourt_basic', 'foodcourt_professional', 'foodcourt_enterprise'],
+  fc_floor_plan: ['foodcourt_basic', 'foodcourt_professional', 'foodcourt_enterprise']
 };
 
 (async () => {

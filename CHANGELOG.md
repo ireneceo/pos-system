@@ -6,6 +6,23 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-20 (저녁)
+- Brand Franchise Map / Foodcourt Branch Map 독립 창 분리 — 사이드바 메뉴 클릭 시 `window.open(_blank)` 로 새 창, 사이드바 없는 standalone 레이아웃. `← Back` 으로 창 닫기
+- Map 사이드 리스트 패널 — 레스토랑/지점 리스트 클릭 시 해당 위치로 지도 확대 + 상세 정보. Foodcourt Branch 클릭 시 입점 매장 서브 리스트 펼침
+- 핀 스타일 정제 — 외부 보라 그림자 제거(잘림 해결), 선택 표시는 핀 내부 링. `franchise=★` / `direct=●`, 계약 없는 경우 마크 표시 안함
+- Brand Map 다중 브랜드 개선 — 레스토랑 많은 순 정렬 + 드롭다운 항상 표시 + 각 브랜드 레스토랑 개수 표기
+- Foodcourt Floor Plan 뷰/에디터 신규 — `/pos/foodcourt/floor-plan` (뷰, 매장 클릭 → 계약 정보 사이드 패널: Store / Tenancy Contract / Financial Terms / Restaurant 4섹션) / `/pos/foodcourt/floor-plan-editor` (에디터, 레스토랑 FloorPlanEditor 패턴 복제, FloorPlanCanvas 재사용, Add Store shape 4종 / Unplaced / Properties / Canvas 설정 Sidebar 카드, drag/resize/undo/save)
+- Floor Plan 1 지점 = 1 평면도 단순화 — 에디터 진입 시 평면도 없으면 자동 생성, 다층 UI 제거
+- Branch Unit Numbering 설정 — 지점 편집 모달 신규 섹션. Toggle switch + Zone cards. Prefix 토글(선택적) + Free-form textarea (콤마/줄바꿈, 범위 `01-20` `A01-A10` `05A-08A` `P-2-01A-05A` 자동 확장). Preview + 변경 Diff (Create/Delete/Blocked-by-contract) + contract 연결 유닛 삭제 시 거부
+- Branch Unit Numbering 저장 시 Contract / Floor Plan / Restaurant 자동 반영 — 동기화된 Units 가 계약 생성 시 드롭다운 및 Floor Plan Unplaced Stores 에 자동 표시
+- Branch 편집 모달 공용 컴포넌트화 — `CommonModal size="large"` + `FormRow/FormGroup/FormLabel/FormInput/FormSelect` 로 교체, 필드 겹침 해소, `Add Branch` (+기호 제거)
+- 사이드바 Foodcourt General — Tenancy / Branch Map / Floor Plan 3개 메뉴 분리. Branches / Floor Plan / Map 은 새 창
+- AddonModule `fc_floor_plan` 등록 + 모든 Foodcourt 플랜(Basic/Pro/Enterprise)에 자동 편입
+- DB: `foodcourt_floor_plans` 테이블 신규 / `foodcourt_units.floor_plan_id/plan_x/plan_y/plan_width/plan_height/plan_shape` 추가 / `foodcourt_branches.unit_config JSON` 추가
+- Backend API — `GET/POST/PUT/DELETE /api/foodcourt-branches/:id/floor-plans`, `PUT /api/foodcourt-floor-plans/:id/layout` (batch 배치), `GET /api/foodcourt-units/:id/detail` (계약 join), `POST /api/foodcourt-branches/:id/sync-units` (preview/confirm, contract 보호)
+- ProtectedRoute brandLevelRoutes 에 `/pos/brand/franchise-map`, `/pos/foodcourt/tenancy-map`, `/pos/foodcourt/floor-plan(-editor)` 추가
+- i18n 4개 언어 — Floor Plan / Unit Numbering / Map 관련 40+ 키
+
 ### 2026-04-20
 - Manager 지점/브랜드 접근 enforcement — `users.branch_id/brand_id` 기반으로 contracts / invoices / units / branches / restaurants 5개 라우트에 실제 필터 적용. `getManagerScope()` 헬퍼 + `req.user.branch_id` 노출. 통합 테스트 8/8 pass
 - Contract 리스트 Active Pipeline / Archive 탭 — expired 드롭다운 누락 버그 수정. Pipeline은 4단계(proposal~active) 유지, Archive는 List 뷰 강제 + stats 3종(terminated/expired/renewed)

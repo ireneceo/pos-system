@@ -255,7 +255,10 @@
     "tenancyManagement": "入驻管理",
     "franchise": "加盟",
     "tenancy": "入驻",
-    "branches": "分店"
+    "branches": "分店",
+    "franchiseMap": "加盟地图",
+    "tenancyMap": "入驻地图",
+    "branchMap": "分店地图"
   },
   "language": {
     "en": "English",
