@@ -92,6 +92,23 @@
     "renewConfirm": "要续约此合同吗?将创建新的续约合同。",
     "tabBilling": "结算",
     "recurringSubscriptions": "订阅计费",
+    "currency": "货币",
+    "currencyLocked": "货币已锁定 — 已发出发票",
+    "linkedPlans": "已连接的计划",
+    "createPlanFromContract": "从合约创建计划",
+    "creatingPlan": "正在创建…",
+    "openPlansPage": "打开计划页",
+    "noLinkedPlans": "此合约尚未连接任何计划。",
+    "noLinkedPlansHint": "点击上方\"⚡ 从合约创建计划\",将根据合约的财务条款自动生成计划。",
+    "unlink": "断开连接",
+    "planMismatch": "合约/方案金额不一致",
+    "unlinkConfirm": "确定要将此计划从合约断开吗?计划本身保留(共享资源)。",
+    "billingDay": "计费日",
+    "autoGenerateOff": "自动生成关闭",
+    "billingPreview": "下期发票(预估)",
+    "financialRedacted": "您的角色权限下金额已隐藏",
+    "estimatedSubtotal": "预估小计",
+    "previewDisclaimer": "基于已连接计划与近30天营收预估。实际发票可能包含税费及付款设置中的附加费用。",
     "recurringBillingHint": "要激活订阅计费,请在以下位置将计划分配给关联餐厅 —",
     "goToPlans": "计划页面",
     "noRecurringPlans": "此合同暂未关联订阅计划。",
@@ -187,9 +204,105 @@
     "confirmDelete": "删除平面图 \"{{name}}\"? 单元放置将被清除。",
     "legend": {
       "vacant": "空置",
-      "reserved": "已预留",
-      "preparing": "准备中",
-      "occupied": "已占用"
+      "reserved": "已预订",
+      "preparing": "筹备中",
+      "occupied": "已出租"
+    },
+    "unitStatus": {
+      "vacant": "空置",
+      "reserved": "已预订",
+      "proposal": "提案中",
+      "contracting": "洽谈中",
+      "preparing": "筹备中",
+      "occupied": "已出租",
+      "active": "营业中",
+      "expiring": "即将到期",
+      "expired": "已到期"
+    },
+    "contractStage": {
+      "proposal": "提案",
+      "contracting": "洽谈",
+      "setup": "筹备",
+      "active": "营业中",
+      "expired": "已到期",
+      "terminated": "已终止",
+      "renewed": "已续约"
+    },
+    "contractType": {
+      "standard": "标准租约",
+      "revenue_share": "营收分成",
+      "popup": "快闪"
+    },
+    "renewalType": {
+      "auto": "自动",
+      "manual": "手动",
+      "none": "无"
+    },
+    "banner": {
+      "inPipeline": "进行中 · 开始后 {{days}} 天",
+      "expiring": "{{days}} 天后到期 — 建议检视续约",
+      "expired": "合约已到期 — 需标记为空置或续签",
+      "billingGap": "未配置计费 — 此活跃合约尚未连接任何计划。请打开合约连接或创建计划。"
+    },
+    "sec": {
+      "unit": "档口信息",
+      "contract": "当前合约",
+      "tenant": "租户",
+      "financial": "财务条款",
+      "timeline": "进程"
+    },
+    "unit": {
+      "code": "编号",
+      "size": "面积",
+      "location": "位置"
+    },
+    "vacant": {
+      "noContract": "此档口暂无合约。",
+      "createProposal": "创建租赁提案"
+    },
+    "contract": {
+      "number": "合约编号",
+      "stage": "阶段",
+      "type": "类型",
+      "period": "期间",
+      "daysLeft": "剩余天数",
+      "overdue": "已超过结束日",
+      "signed": "签约日",
+      "renewal": "续约",
+      "alertMonths": "{{n}} 个月前提醒"
+    },
+    "tenant": {
+      "legalEntity": "法人实体",
+      "applicant": "申请方",
+      "contact": "联系人",
+      "phone": "电话",
+      "email": "邮箱"
+    },
+    "fin": {
+      "baseRent": "基本租金",
+      "revShare": "营收分成",
+      "minGuarantee": "最低保证",
+      "deposit": "押金",
+      "cam": "公共维护费 (CAM)",
+      "fitout": "装修责任",
+      "hours": "营业时间",
+      "restoration": "恢复义务",
+      "totalMonthly": "月度总义务",
+      "redacted": "财务条款仅对美食广场 General 与系统管理员可见",
+      "fitoutVal": {
+        "tenant": "租户",
+        "landlord": "业主",
+        "shared": "共同负担"
+      }
+    },
+    "action": {
+      "open": "打开合约 →",
+      "renew": "续约",
+      "advance": "推进至下一阶段",
+      "reject": "拒绝",
+      "recordPayment": "记录付款",
+      "markVacant": "标记为空置",
+      "edit": "编辑档口"
     },
     "activeContract": "活动合约",
     "number": "编号",

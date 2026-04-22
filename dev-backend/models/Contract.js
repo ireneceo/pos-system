@@ -17,6 +17,11 @@ Contract.init({
     type: DataTypes.INTEGER,
     allowNull: false
   },
+  currency: {
+    type: DataTypes.STRING(3),
+    allowNull: true,
+    comment: 'ISO 4217 code. Inherited from entity default at creation; stored explicitly so historical contracts stay stable when entity default changes.'
+  },
   restaurant_id: {
     type: DataTypes.INTEGER,
     allowNull: true

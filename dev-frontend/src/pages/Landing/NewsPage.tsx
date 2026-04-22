@@ -279,7 +279,7 @@ const LoadingSpinner = styled.div`
 `;
 
 const NewsPage: React.FC = () => {
-  const { t } = useTranslation('landing');
+  const { t, i18n } = useTranslation('landing');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [categories, setCategories] = useState<NewsCategory[]>([]);
@@ -304,7 +304,7 @@ const NewsPage: React.FC = () => {
   useEffect(() => {
     fetchPosts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCategory, pagination.page]);
+  }, [activeCategory, pagination.page, i18n.language]);
 
   useEffect(() => {
     const params: Record<string, string> = {};
@@ -318,7 +318,8 @@ const NewsPage: React.FC = () => {
     setLoading(true);
     try {
       const categoryParam = activeCategory !== 'all' ? `&category=${activeCategory}` : '';
-      const response = await fetch(`/api/contents/public/news?page=${pagination.page}&limit=${pagination.limit}${categoryParam}`);
+      const lang = (i18n.language || 'en').split('-')[0];
+      const response = await fetch(`/api/contents/public/news?page=${pagination.page}&limit=${pagination.limit}&lang=${encodeURIComponent(lang)}${categoryParam}`);
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories || []);

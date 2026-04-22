@@ -16,7 +16,18 @@ interface SEOHeadProps {
   jsonLd?: object | object[];
   noindex?: boolean;
   twitterSite?: string;
+  // i18n SEO
+  language?: 'en' | 'ms' | 'zh' | 'ko';
+  alternateUrls?: { [lang: string]: string };  // { en: 'https://...', ms: '...', zh: '...' }
 }
+
+// ISO 639-1 → og:locale mapping (Malaysia-first)
+const OG_LOCALE_MAP: Record<string, string> = {
+  en: 'en_MY',
+  ms: 'ms_MY',
+  zh: 'zh_CN',
+  ko: 'ko_KR',
+};
 
 const SEOHead: React.FC<SEOHeadProps> = ({
   title,
@@ -30,7 +41,9 @@ const SEOHead: React.FC<SEOHeadProps> = ({
   modifiedTime,
   jsonLd,
   noindex = false,
-  twitterSite = '@purplehere'
+  twitterSite = '@purplehere',
+  language,
+  alternateUrls
 }) => {
   const { settings } = useSiteSettings();
 
@@ -69,6 +82,15 @@ const SEOHead: React.FC<SEOHeadProps> = ({
       {/* Canonical URL */}
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
 
+      {/* hreflang alternate links (SEO language targeting) */}
+      {language && <meta httpEquiv="content-language" content={language} />}
+      {alternateUrls && Object.entries(alternateUrls).map(([lang, url]) => (
+        <link key={lang} rel="alternate" hrefLang={lang} href={url} />
+      ))}
+      {alternateUrls && (alternateUrls.en || canonicalUrl) && (
+        <link rel="alternate" hrefLang="x-default" href={alternateUrls.en || canonicalUrl!} />
+      )}
+
       {/* Open Graph Tags */}
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={finalDescription} />
@@ -76,6 +98,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({
       <meta property="og:url" content={canonicalUrl || currentUrl} />
       {finalOgImage && <meta property="og:image" content={finalOgImage} />}
       <meta property="og:site_name" content={siteName} />
+      {language && <meta property="og:locale" content={OG_LOCALE_MAP[language] || 'en_MY'} />}
 
       {/* Article specific OG tags */}
       {ogType === 'article' && publishedTime && (

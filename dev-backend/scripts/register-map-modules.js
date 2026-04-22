@@ -8,7 +8,7 @@ const PlanTemplate = require('../models/PlanTemplate');
 const MODULES = [
   {
     module_code: 'brand_franchise',
-    name: 'Franchise Management',
+    name: 'Franchise Management & Map',
     description: 'Franchise contracts, applicants, and geographic map',
     category: 'basic',
     target_user_type: 'brand',
@@ -18,7 +18,7 @@ const MODULES = [
   },
   {
     module_code: 'fc_tenancy',
-    name: 'Tenancy Management',
+    name: 'Tenancy Management & Map',
     description: 'Foodcourt tenancy contracts, applicants, and geographic map',
     category: 'basic',
     target_user_type: 'foodcourt',
@@ -28,8 +28,8 @@ const MODULES = [
   },
   {
     module_code: 'fc_branches',
-    name: 'Branch Management',
-    description: 'Foodcourt multi-branch support with location data',
+    name: 'Branch Management & Unit Numbering',
+    description: 'Foodcourt multi-branch support with flexible unit numbering',
     category: 'basic',
     target_user_type: 'foodcourt',
     ui_routes: ['/pos/foodcourt/branches'],
@@ -38,7 +38,7 @@ const MODULES = [
   },
   {
     module_code: 'fc_floor_plan',
-    name: 'Floor Plan',
+    name: 'Floor Plan & Store Management',
     description: 'Visual floor plan with unit coordinates and drag-drop placement',
     category: 'advanced',
     target_user_type: 'foodcourt',

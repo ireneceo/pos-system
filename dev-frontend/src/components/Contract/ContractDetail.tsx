@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import ContractStageBar from './ContractStageBar';
+import LinkedPlansSection from './LinkedPlansSection';
 import AutoSaveField from '../Common/AutoSaveField';
 import CommentSection from '../Common/CommentSection';
 import DateField from '../Common/DateField';
@@ -866,7 +867,14 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
   if (loading) return <DetailContainer><div style={{ padding: '40px', textAlign: 'center', color: '#6B7C93' }}>Loading...</div></DetailContainer>;
   if (!contract) return <DetailContainer><div style={{ padding: '40px', textAlign: 'center', color: '#6B7C93' }}>Contract not found</div></DetailContainer>;
 
-  const entityCurrency: string = contract.entity_currency || 'MYR';
+  // Currency: Contract.currency is the source of truth (explicit per-contract).
+  // Falls back to entity default on legacy rows before backfill. entitySupported
+  // drives the picker options when the entity supports multiple currencies.
+  const entityCurrency: string = contract.currency || contract.entity_currency || 'MYR';
+  const entitySupported: string[] = Array.isArray(contract.entity_supported_currencies) && contract.entity_supported_currencies.length > 0
+    ? contract.entity_supported_currencies
+    : [entityCurrency];
+  const currencyLocked: boolean = !!contract.currency_locked;
 
   const badge = STAGE_COLORS[contract.stage] || { color: '#6B7280', bg: '#F3F4F6' };
   const isEditable = ['proposal', 'contracting', 'setup'].includes(contract.stage);
@@ -1272,6 +1280,33 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
                   )}
                 </Select>
               </AutoSaveField>
+            </FormGroup>
+            <FormGroup>
+              <Label>{t('detail.currency', 'Currency')}</Label>
+              {entitySupported.length > 1 && !currencyLocked ? (
+                <AutoSaveField onSave={handleAutoSave} type="select" debounceMs={300}>
+                  <Select
+                    value={form.currency || entityCurrency}
+                    onChange={e => updateField('currency', e.target.value)}
+                    disabled={!isEditable}
+                  >
+                    {entitySupported.map(code => (
+                      <option key={code} value={code}>{getCurrencySymbol(code)} — {code}</option>
+                    ))}
+                  </Select>
+                </AutoSaveField>
+              ) : (
+                <Input
+                  value={`${getCurrencySymbol(form.currency || entityCurrency)} — ${form.currency || entityCurrency}`}
+                  disabled
+                  title={currencyLocked ? (t('detail.currencyLocked', 'Currency is locked — invoices have been issued') as string) : ''}
+                />
+              )}
+              {currencyLocked && (
+                <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '4px' }}>
+                  🔒 {t('detail.currencyLocked', 'Currency is locked — invoices have been issued')}
+                </div>
+              )}
             </FormGroup>
             <FormGroup data-field-key="start_date" className={[fieldShellClass('start_date'), highlightField === 'end_date' ? 'field-highlight' : '', (attemptedSave && missingFieldKeys.has('end_date')) ? 'field-error' : ''].filter(Boolean).join(' ')}>
               <Label required>{t('detail.contractPeriod', 'Contract Period')}</Label>
@@ -1737,43 +1772,17 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         );
       })()}
 
-      {/* Recurring Subscriptions (ContractPlans) */}
-      <Section>
-        <SectionTitle>{t('detail.recurringSubscriptions', 'Recurring Subscriptions')}</SectionTitle>
-        {Array.isArray(form.plans) && form.plans.length > 0 ? (
-          <div>
-            {form.plans.map((p: any) => {
-              const ep = p.entityPlan || {};
-              const price = ep.charge_type === 'percentage'
-                ? `${ep.percentage_value || 0}%`
-                : (() => {
-                    const row = (ep.prices || []).find((r: any) => r.currency === (ep.currency || 'MYR')) || (ep.prices || [])[0];
-                    const amt = row?.monthly_price != null ? Number(row.monthly_price) : null;
-                    return amt != null ? `RM ${amt.toLocaleString('en-MY')}/mo` : '—';
-                  })();
-              return (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid #E6EBF1', gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>{ep.name || 'Plan'}</div>
-                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>{price}</div>
-                  </div>
-                </div>
-              );
-            })}
-            <div style={{ marginTop: 16, padding: 12, background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 13, color: '#4B5563' }}>
-              {t('detail.recurringBillingHint', 'To activate recurring billing, assign these plans to the linked restaurant in the')}
-              {' '}
-              <a href={`/pos/${entityType === 'brand' ? 'brand' : 'foodcourt'}/plans`} style={{ color: '#635BFF', fontWeight: 600 }}>
-                {t('detail.goToPlans', 'Plans page')}
-              </a>.
-            </div>
-          </div>
-        ) : (
-          <div style={{ fontSize: 13, color: '#9CA3AF', textAlign: 'center', padding: 20 }}>
-            {t('detail.noRecurringPlans', 'No recurring plans linked to this contract yet.')}
-          </div>
-        )}
-      </Section>
+      {/* Recurring Subscriptions (ContractPlans) + Billing Preview */}
+      <LinkedPlansSection
+        contractId={contract.id}
+        plans={Array.isArray(form.plans) ? form.plans : []}
+        currency={entityCurrency}
+        entityType={entityType}
+        canManage={['System Admin', 'Foodcourt General', 'Brand General'].includes(user?.role || '')}
+        onChanged={fetchContract}
+        t={t}
+        financialTerms={form.financial_terms}
+      />
 
       {/* One-time Invoices */}
       <Section>

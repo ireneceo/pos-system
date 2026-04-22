@@ -381,6 +381,202 @@ const LoadingContainer = styled.div`
 const PIE_COLORS = ['#EA580C', '#F97316', '#FB923C', '#FDBA74', '#FED7AA', '#FFF7ED', '#FFFBEB'];
 
 // ============================================================================
+// Tenancy Operations section — contract pipeline + expiring + billing gaps + forecast
+// ============================================================================
+
+const TenancyOpsSection = styled.div`
+  background: white;
+  padding: 24px 28px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  margin-bottom: 24px;
+  border: 1px solid #E6EBF1;
+`;
+
+const TenancyOpsHeader = styled.div`
+  margin-bottom: 20px;
+  h3 { margin: 0 0 4px; font-size: 18px; font-weight: 700; color: #0A2540; }
+`;
+
+const TenancyOpsSubtitle = styled.div`
+  font-size: 13px;
+  color: #6B7C93;
+`;
+
+const FunnelRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+  @media (max-width: 960px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+`;
+
+const FunnelCell = styled.div<{ $color: string }>`
+  padding: 14px 12px;
+  background: #F8FAFC;
+  border-left: 3px solid ${p => p.$color};
+  border-radius: 6px;
+  .label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #6B7C93;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 6px;
+  }
+  .count {
+    font-size: 22px;
+    font-weight: 700;
+    color: ${p => p.$color};
+    line-height: 1;
+  }
+`;
+
+const FunnelTotal = styled.div`
+  padding: 14px 12px;
+  background: #F0EDFF;
+  border-left: 3px solid #635BFF;
+  border-radius: 6px;
+  .label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #6B7C93;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 6px;
+  }
+  .count {
+    font-size: 22px;
+    font-weight: 700;
+    color: #635BFF;
+    line-height: 1;
+  }
+`;
+
+const TenancyOpsGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const OpsCard = styled.div<{ $highlight?: boolean }>`
+  padding: 16px 18px;
+  background: ${p => p.$highlight ? '#F0EDFF' : '#F8FAFC'};
+  border: 1px solid ${p => p.$highlight ? '#DDD6FE' : '#E6EBF1'};
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+`;
+
+const OpsCardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  h4 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #0A2540;
+  }
+`;
+
+const OpsCardStats = styled.div`
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4B5563;
+  small {
+    font-weight: 500;
+    color: #9CA3AF;
+    margin-left: 2px;
+  }
+`;
+
+const OpsEmpty = styled.div`
+  font-size: 12px;
+  color: #9CA3AF;
+  font-style: italic;
+  padding: 8px 0;
+`;
+
+const OpsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const OpsListItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #E6EBF1;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  &:hover {
+    border-color: #635BFF;
+    box-shadow: 0 2px 6px rgba(99, 91, 255, 0.08);
+  }
+  .primary {
+    font-size: 12px;
+    font-weight: 600;
+    color: #0A2540;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    margin-right: 8px;
+  }
+  .sub {
+    font-weight: 500;
+    color: #6B7C93;
+  }
+`;
+
+const OpsBadge = styled.span<{ $urgent?: boolean }>`
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: ${p => p.$urgent ? '#FEE2E2' : '#DCFCE7'};
+  color: ${p => p.$urgent ? '#991B1B' : '#15803D'};
+  white-space: nowrap;
+  flex-shrink: 0;
+`;
+
+const ForecastValue = styled.div`
+  font-size: 26px;
+  font-weight: 700;
+  color: #635BFF;
+  line-height: 1.1;
+  margin-bottom: 4px;
+`;
+
+const ForecastMeta = styled.div`
+  font-size: 12px;
+  color: #4B5563;
+  margin-bottom: 8px;
+`;
+
+const ForecastNote = styled.div`
+  font-size: 11px;
+  color: #9CA3AF;
+  font-style: italic;
+  line-height: 1.4;
+`;
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -412,6 +608,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }>>([]);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{ planType?: string; status?: string; daysLeft?: number }>({});
   const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
+  const [tenancyOps, setTenancyOps] = useState<any | null>(null);
 
   useEffect(() => {
     if (defaultCurrency) setCurrency(defaultCurrency);
@@ -548,11 +745,24 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       } catch (e) { /* silent */ }
 
       fetchTrendData(foodcourt.id);
+      fetchTenancyOps(foodcourt.id);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchTenancyOps = async (fcId: number) => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+      const res = await fetch(`/api/foodcourts/${fcId}/tenancy-dashboard`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) setTenancyOps(data.data);
+    } catch (e) { /* silent */ }
   };
 
   const fetchTrendData = async (fcId: number) => {
@@ -771,6 +981,126 @@ const FoodcourtGeneralDashboard: React.FC = () => {
             )}
           </ChartCard>
         </ChartGrid>
+
+        {/* Tenancy Operations — contract pipeline + expiring + billing gaps + forecast */}
+        {tenancyOps && (
+          <TenancyOpsSection>
+            <TenancyOpsHeader>
+              <h3>{t('foodcourt:foodcourtGeneralDashboard.tenancyOperations', 'Tenancy Operations')}</h3>
+              <TenancyOpsSubtitle>
+                {t('foodcourt:foodcourtGeneralDashboard.tenancyOpsSubtitle', 'Contract lifecycle, billing gaps, and revenue forecast')}
+              </TenancyOpsSubtitle>
+            </TenancyOpsHeader>
+
+            {/* Pipeline funnel */}
+            <FunnelRow>
+              {(['proposal', 'contracting', 'setup', 'active', 'vacant'] as const).map((stage) => {
+                const colors: Record<string, string> = {
+                  proposal: '#8B5CF6', contracting: '#F97316', setup: '#3B82F6',
+                  active: '#16A34A', vacant: '#9CA3AF'
+                };
+                const labels: Record<string, string> = {
+                  proposal: t('foodcourt:foodcourtGeneralDashboard.stageProposal', 'Proposal'),
+                  contracting: t('foodcourt:foodcourtGeneralDashboard.stageContracting', 'In Talks'),
+                  setup: t('foodcourt:foodcourtGeneralDashboard.stageSetup', 'Setup'),
+                  active: t('foodcourt:foodcourtGeneralDashboard.stageActive', 'Active'),
+                  vacant: t('foodcourt:foodcourtGeneralDashboard.stageVacant', 'Vacant')
+                };
+                return (
+                  <FunnelCell key={stage} $color={colors[stage]}>
+                    <div className="label">{labels[stage]}</div>
+                    <div className="count">{tenancyOps.pipeline?.[stage] ?? 0}</div>
+                  </FunnelCell>
+                );
+              })}
+              <FunnelTotal>
+                <div className="label">{t('foodcourt:foodcourtGeneralDashboard.totalUnits', 'Total Units')}</div>
+                <div className="count">{tenancyOps.pipeline?.total ?? 0}</div>
+              </FunnelTotal>
+            </FunnelRow>
+
+            {/* Expiring + Billing Gaps side by side */}
+            <TenancyOpsGrid>
+              <OpsCard>
+                <OpsCardHeader>
+                  <h4>{t('foodcourt:foodcourtGeneralDashboard.expiringSoon', 'Expiring Soon')}</h4>
+                  <OpsCardStats>
+                    <span>{tenancyOps.expiring?.count_30d ?? 0} <small>{t('foodcourt:foodcourtGeneralDashboard.in30d', 'in 30d')}</small></span>
+                    <span>·</span>
+                    <span>{tenancyOps.expiring?.count_90d ?? 0} <small>{t('foodcourt:foodcourtGeneralDashboard.in90d', 'in 90d')}</small></span>
+                  </OpsCardStats>
+                </OpsCardHeader>
+                {(tenancyOps.expiring?.list || []).length === 0 ? (
+                  <OpsEmpty>{t('foodcourt:foodcourtGeneralDashboard.noExpiring', 'No contracts expiring soon.')}</OpsEmpty>
+                ) : (
+                  <OpsList>
+                    {(tenancyOps.expiring.list as any[]).slice(0, 5).map((c) => (
+                      <OpsListItem key={c.id} onClick={() => navigate(`/pos/foodcourt/tenancy?id=${c.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/pos/foodcourt/tenancy?id=${c.id}`); }}>
+                        <div className="primary">
+                          {c.contract_number || `#${c.id}`}
+                          {c.applicant_company_name && <span className="sub"> · {c.applicant_company_name}</span>}
+                        </div>
+                        <OpsBadge $urgent={c.days_left <= 30}>
+                          {c.days_left > 0 ? `${c.days_left}d` : t('foodcourt:foodcourtGeneralDashboard.overdue', 'overdue')}
+                        </OpsBadge>
+                      </OpsListItem>
+                    ))}
+                  </OpsList>
+                )}
+              </OpsCard>
+
+              <OpsCard>
+                <OpsCardHeader>
+                  <h4>{t('foodcourt:foodcourtGeneralDashboard.billingGaps', 'Billing Gaps')}</h4>
+                  <OpsCardStats>
+                    <span>{tenancyOps.billing_gaps?.count ?? 0} <small>{t('foodcourt:foodcourtGeneralDashboard.unlinked', 'active w/o plan')}</small></span>
+                  </OpsCardStats>
+                </OpsCardHeader>
+                {(tenancyOps.billing_gaps?.list || []).length === 0 ? (
+                  <OpsEmpty>
+                    {t('foodcourt:foodcourtGeneralDashboard.noBillingGaps', 'All active contracts have billing plans linked.')}
+                  </OpsEmpty>
+                ) : (
+                  <OpsList>
+                    {(tenancyOps.billing_gaps.list as any[]).slice(0, 5).map((c) => (
+                      <OpsListItem key={c.id} onClick={() => navigate(`/pos/foodcourt/tenancy?id=${c.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/pos/foodcourt/tenancy?id=${c.id}`); }}>
+                        <div className="primary">
+                          {c.contract_number || `#${c.id}`}
+                          {c.applicant_company_name && <span className="sub"> · {c.applicant_company_name}</span>}
+                        </div>
+                        <OpsBadge $urgent>
+                          ! {t('foodcourt:foodcourtGeneralDashboard.noPlan', 'no plan')}
+                        </OpsBadge>
+                      </OpsListItem>
+                    ))}
+                  </OpsList>
+                )}
+              </OpsCard>
+
+              {/* Revenue Forecast */}
+              <OpsCard $highlight>
+                <OpsCardHeader>
+                  <h4>{t('foodcourt:foodcourtGeneralDashboard.revenueForecast', 'Revenue Forecast (Monthly)')}</h4>
+                </OpsCardHeader>
+                {tenancyOps.revenue_forecast?.financial_redacted ? (
+                  <OpsEmpty>🔒 {t('foodcourt:foodcourtGeneralDashboard.forecastRedacted', 'Forecast hidden for your role')}</OpsEmpty>
+                ) : (
+                  <>
+                    <ForecastValue>
+                      {formatCurrency(tenancyOps.revenue_forecast?.estimated_monthly_fixed_floor || 0, tenancyOps.revenue_forecast?.currency || currency)}
+                    </ForecastValue>
+                    <ForecastMeta>
+                      {tenancyOps.revenue_forecast?.active_plans_count ?? 0} {t('foodcourt:foodcourtGeneralDashboard.activePlansLinked', 'active plans linked')}
+                    </ForecastMeta>
+                    <ForecastNote>
+                      {t('foodcourt:foodcourtGeneralDashboard.forecastNote', 'Fixed + combined min-guarantee only. Variable % portion depends on tenant revenue.')}
+                    </ForecastNote>
+                  </>
+                )}
+              </OpsCard>
+            </TenancyOpsGrid>
+          </TenancyOpsSection>
+        )}
 
         {/* Tenant Performance Table */}
         <RecentOrdersSection>

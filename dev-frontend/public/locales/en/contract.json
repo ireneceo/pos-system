@@ -95,6 +95,23 @@
     "recurringBillingHint": "To activate recurring billing, assign these plans to the linked restaurant in the",
     "goToPlans": "Plans page",
     "noRecurringPlans": "No recurring plans linked to this contract yet.",
+    "currency": "Currency",
+    "currencyLocked": "Currency is locked — invoices have been issued",
+    "linkedPlans": "Linked Plans",
+    "createPlanFromContract": "Create plan from contract",
+    "creatingPlan": "Creating plan…",
+    "openPlansPage": "Open Plans",
+    "noLinkedPlans": "No plans linked to this contract yet.",
+    "noLinkedPlansHint": "Use \"⚡ Create plan from contract\" above to auto-generate a plan from this contract's financial terms.",
+    "unlink": "Unlink",
+    "planMismatch": "Contract/Plan mismatch",
+    "unlinkConfirm": "Unlink this plan from the contract? The plan itself will remain (shared resource).",
+    "billingDay": "Billing day",
+    "autoGenerateOff": "auto-generate OFF",
+    "billingPreview": "Next invoice (estimated)",
+    "financialRedacted": "Amounts hidden for your role",
+    "estimatedSubtotal": "Estimated subtotal",
+    "previewDisclaimer": "Estimate based on linked plan(s) and last 30-day revenue. Actual invoice may include tax and additional charges set by payment settings.",
     "oneTimeInvoices": "One-time Invoices",
     "invoiceNumber": "Invoice #",
     "category": "Category",
@@ -188,8 +205,104 @@
     "legend": {
       "vacant": "Vacant",
       "reserved": "Reserved",
-      "preparing": "Preparing",
-      "occupied": "Occupied"
+      "preparing": "Setup",
+      "occupied": "Leased"
+    },
+    "unitStatus": {
+      "vacant": "Vacant",
+      "reserved": "Reserved",
+      "proposal": "Proposal",
+      "contracting": "In Talks",
+      "preparing": "Setup",
+      "occupied": "Leased",
+      "active": "Active",
+      "expiring": "Expiring",
+      "expired": "Expired"
+    },
+    "contractStage": {
+      "proposal": "Proposal",
+      "contracting": "Contracting",
+      "setup": "Setup",
+      "active": "Active",
+      "expired": "Expired",
+      "terminated": "Terminated",
+      "renewed": "Renewed"
+    },
+    "contractType": {
+      "standard": "Standard Tenancy",
+      "revenue_share": "Revenue Share",
+      "popup": "Pop-up"
+    },
+    "renewalType": {
+      "auto": "Auto",
+      "manual": "Manual",
+      "none": "None"
+    },
+    "banner": {
+      "inPipeline": "Pipeline in progress · {{days}} days since start",
+      "expiring": "Contract expires in {{days}} days — renewal review recommended",
+      "expired": "Contract has expired — unit should be marked vacant or renewed",
+      "billingGap": "Billing is not configured — no plan linked to this active contract. Open the contract to link or create a plan."
+    },
+    "sec": {
+      "unit": "Unit",
+      "contract": "Current Contract",
+      "tenant": "Tenant",
+      "financial": "Financial Terms",
+      "timeline": "Timeline"
+    },
+    "unit": {
+      "code": "Code",
+      "size": "Size",
+      "location": "Location"
+    },
+    "vacant": {
+      "noContract": "This unit has no contract assigned.",
+      "createProposal": "Create tenancy proposal"
+    },
+    "contract": {
+      "number": "Number",
+      "stage": "Stage",
+      "type": "Type",
+      "period": "Period",
+      "daysLeft": "Days remaining",
+      "overdue": "Past end date",
+      "signed": "Signed on",
+      "renewal": "Renewal",
+      "alertMonths": "{{n}}mo alert"
+    },
+    "tenant": {
+      "legalEntity": "Legal entity",
+      "applicant": "Applicant",
+      "contact": "Contact",
+      "phone": "Phone",
+      "email": "Email"
+    },
+    "fin": {
+      "baseRent": "Base Rent",
+      "revShare": "Revenue Share",
+      "minGuarantee": "Min Guarantee",
+      "deposit": "Deposit",
+      "cam": "Maintenance (CAM)",
+      "fitout": "Fit-out",
+      "hours": "Operating hours",
+      "restoration": "Restoration required",
+      "totalMonthly": "Total monthly obligation",
+      "redacted": "Financial terms are visible to Foodcourt General and System Admin only",
+      "fitoutVal": {
+        "tenant": "Tenant",
+        "landlord": "Landlord",
+        "shared": "Shared"
+      }
+    },
+    "action": {
+      "open": "Open contract →",
+      "renew": "Renew",
+      "advance": "Advance to next stage",
+      "reject": "Reject",
+      "recordPayment": "Record payment",
+      "markVacant": "Mark vacant",
+      "edit": "Edit unit"
     },
     "activeContract": "Active Contract",
     "number": "Number",

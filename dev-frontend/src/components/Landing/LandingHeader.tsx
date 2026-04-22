@@ -28,6 +28,13 @@ const LogoSection = styled.div`
   align-items: center;
   gap: 12px;
   cursor: pointer;
+
+  /* Mobile: stack tagline below logo */
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
 `;
 
 const LogoImage = styled.img`
@@ -37,6 +44,10 @@ const LogoImage = styled.img`
   @media (max-width: 1024px) {
     height: 28px;
   }
+
+  @media (max-width: 768px) {
+    height: 26px;
+  }
 `;
 
 const LogoText = styled.span`
@@ -44,9 +55,15 @@ const LogoText = styled.span`
   font-weight: 300;
   color: #9CA3AF;
   letter-spacing: -0.3px;
+  white-space: nowrap;
 
   @media (max-width: 1024px) {
     font-size: 12px;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 11px;
+    line-height: 1.2;
   }
 `;
 
@@ -298,7 +315,7 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
       <Header>
         <LogoSection onClick={() => handleNavigate('/')}>
           {(logo || brandLogo) && <LogoImage src={logo || brandLogo} alt="Logo" />}
-          <LogoText>Everything You Need, All</LogoText>
+          <LogoText>Solving Real F&amp;B Problems</LogoText>
         </LogoSection>
 
         <Nav>
@@ -367,9 +384,6 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <MobileNavLink active={isActive('/contact')} onClick={() => handleNavigate('/contact')}>
             {t('nav.contact')}
           </MobileNavLink>
-          <MobileLanguageWrapper>
-            <LanguageSelector variant="globe" />
-          </MobileLanguageWrapper>
           <MobileSignUpButton onClick={() => handleNavigate('/demo')}>
             {t('nav.tryDemo')}
           </MobileSignUpButton>

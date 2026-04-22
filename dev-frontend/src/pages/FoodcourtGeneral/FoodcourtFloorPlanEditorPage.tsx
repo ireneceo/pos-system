@@ -6,6 +6,7 @@ import styled from 'styled-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FloorPlanData, FloorTable, TABLE_SHAPES } from '../FloorPlan/types';
 import FloorPlanCanvas from '../FloorPlan/FloorPlanCanvas';
+import FoodcourtUnitNode, { UnitDisplay } from './FoodcourtUnitNode';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAuthToken } from '../../utils/auth';
@@ -149,11 +150,12 @@ const CheckboxRow = styled.label`
 
 // ───── Component ─────
 
+// Grid-friendly defaults — all multiples of 20 so shape edges AND center both land on grid.
 const UNIT_SHAPES = [
-  { key: 'round',  shape: 'round',     label: 'Round',    w: 70,  h: 70  },
-  { key: 'square', shape: 'square',    label: 'Square',   w: 70,  h: 70  },
-  { key: 'rect-h', shape: 'rectangle', label: 'Rect (H)', w: 110, h: 70  },
-  { key: 'rect-v', shape: 'rectangle', label: 'Rect (V)', w: 70,  h: 110, variant: 'vertical' }
+  { key: 'round',  shape: 'round',     label: 'Round',    w: 80,  h: 80  },
+  { key: 'square', shape: 'square',    label: 'Square',   w: 80,  h: 80  },
+  { key: 'rect-h', shape: 'rectangle', label: 'Rect (H)', w: 120, h: 80  },
+  { key: 'rect-v', shape: 'rectangle', label: 'Rect (V)', w: 80,  h: 120, variant: 'vertical' }
 ];
 
 // Editable store (mirrors FloorTable but with Foodcourt unit id + shape kept DB-native)
@@ -168,6 +170,22 @@ const STATUS_COLORS: Record<string, { border: string }> = {
   preparing: { border: '#3B82F6' },
   occupied:  { border: '#16A34A' }
 };
+
+// Grid snap on one axis. `centerPos` is the cursor-following center; `half` is half the
+// shape's extent. Mode controls which key point aligns to grid:
+//   'edge'   — left/top edge snaps (default — predictable, matches Figma/Sketch)
+//   'center' — center snaps (hold Shift during drag)
+//   'free'   — no snap (hold Alt during drag)
+type SnapMode = 'edge' | 'center' | 'free';
+function snapAxis(centerPos: number, half: number, gridSize: number, mode: SnapMode): number {
+  if (mode === 'free' || gridSize <= 0) return centerPos;
+  if (mode === 'center') {
+    return Math.round(centerPos / gridSize) * gridSize;
+  }
+  // edge mode — snap the top/left edge, then re-center
+  const snappedEdge = Math.round((centerPos - half) / gridSize) * gridSize;
+  return snappedEdge + half;
+}
 
 const FoodcourtFloorPlanEditorPage: React.FC = () => {
   const { t } = useTranslation('contract');
@@ -400,9 +418,19 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
       const { x: sx, y: sy, rect } = getCanvasScale();
       let nx = (clientX - rect.left) * sx - dragOffset.x;
       let ny = (clientY - rect.top) * sy - dragOffset.y;
-      if (gridSize > 0) {
-        nx = Math.round(nx / gridSize) * gridSize;
-        ny = Math.round(ny / gridSize) * gridSize;
+      const store = stores.find(s => s.id === selectedId);
+      if (store) {
+        // Modifier-based snap mode (predictable, Figma/Sketch convention):
+        //   default  → edge snap (left/top corner to grid)
+        //   Shift    → center snap
+        //   Alt/Opt  → no snap (free)
+        const mouseEvt = (e as MouseEvent);
+        const touchEvt = (e as TouchEvent);
+        const shift = mouseEvt.shiftKey ?? touchEvt.shiftKey ?? false;
+        const alt = mouseEvt.altKey ?? touchEvt.altKey ?? false;
+        const mode: SnapMode = alt ? 'free' : shift ? 'center' : 'edge';
+        nx = snapAxis(nx, store.width / 2, gridSize, mode);
+        ny = snapAxis(ny, store.height / 2, gridSize, mode);
       }
       nx = Math.max(0, Math.min(canvasW, nx));
       ny = Math.max(0, Math.min(canvasH, ny));
@@ -426,20 +454,41 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
     };
   }, [isDragging, selectedId, dragOffset, getCanvasScale, gridSize, canvasW, canvasH]);
 
-  // Keyboard
+  // Keyboard — delete/undo + arrow-key nudge for precise positioning
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        const tag = (e.target as HTMLElement).tagName;
-        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+      const tag = (e.target as HTMLElement).tagName;
+      const inInput = tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA';
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !inInput) {
         deleteSelected();
+        return;
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); handleUndo(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+      // Arrow-key nudge (precise positioning)
+      if (selectedId && !inInput && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        const step = e.shiftKey ? gridSize : e.altKey ? 10 : 1;
+        const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+        const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+        pushUndo();
+        setStores(prev => prev.map(s => {
+          if (s.id !== selectedId) return s;
+          const nx = Math.max(s.width / 2, Math.min(canvasW - s.width / 2, s.x + dx));
+          const ny = Math.max(s.height / 2, Math.min(canvasH - s.height / 2, s.y + dy));
+          return { ...s, x: nx, y: ny };
+        }));
+        setHasChanges(true);
+      }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, undoStack, stores]);
+  }, [selectedId, undoStack, stores, gridSize, canvasW, canvasH]);
 
   // Save
   const handleSave = async () => {
@@ -598,11 +647,12 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
                       {(() => {
                         const isRect = selectedStore.shape === 'rectangle';
                         const isVertical = selectedStore.width < selectedStore.height;
+                        // Sizes aligned to grid (multiples of 20) — edges + center both land on grid.
                         const sizes = isRect
                           ? (isVertical
-                            ? [{ label: 'S', w: 55, h: 85 }, { label: 'M', w: 70, h: 110 }, { label: 'L', w: 90, h: 140 }]
-                            : [{ label: 'S', w: 85, h: 55 }, { label: 'M', w: 110, h: 70 }, { label: 'L', w: 140, h: 90 }])
-                          : [{ label: 'S', w: 60, h: 60 }, { label: 'M', w: 70, h: 70 }, { label: 'L', w: 90, h: 90 }];
+                            ? [{ label: 'S', w: 60, h: 80 }, { label: 'M', w: 80, h: 120 }, { label: 'L', w: 100, h: 160 }]
+                            : [{ label: 'S', w: 80, h: 60 }, { label: 'M', w: 120, h: 80 }, { label: 'L', w: 160, h: 100 }])
+                          : [{ label: 'S', w: 60, h: 60 }, { label: 'M', w: 80, h: 80 }, { label: 'L', w: 100, h: 100 }];
                         return sizes.map(s => (
                           <SizeBtn key={s.label}
                             $active={selectedStore.width === s.w && selectedStore.height === s.h}
@@ -635,9 +685,63 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
                       />
                     </FormGroup>
                   </FormRow>
-                  <Btn $variant="danger" onClick={deleteSelected} style={{ width: '100%', justifyContent: 'center', marginTop: 12 }}>
+                  {/* X / Y top-left position — precise positioning */}
+                  <FormRow>
+                    <FormGroup>
+                      <FormLabel>{t('floorPlan.posX', 'X (left edge)')}</FormLabel>
+                      <FormInput type="number" min={0} max={canvasW}
+                        value={Math.round(selectedStore.x - selectedStore.width / 2)}
+                        onChange={(e) => {
+                          const tlX = parseInt(e.target.value);
+                          if (isNaN(tlX)) return;
+                          const nx = Math.max(selectedStore.width / 2, Math.min(canvasW - selectedStore.width / 2, tlX + selectedStore.width / 2));
+                          updateStore({ x: nx });
+                        }}
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <FormLabel>{t('floorPlan.posY', 'Y (top edge)')}</FormLabel>
+                      <FormInput type="number" min={0} max={canvasH}
+                        value={Math.round(selectedStore.y - selectedStore.height / 2)}
+                        onChange={(e) => {
+                          const tlY = parseInt(e.target.value);
+                          if (isNaN(tlY)) return;
+                          const ny = Math.max(selectedStore.height / 2, Math.min(canvasH - selectedStore.height / 2, tlY + selectedStore.height / 2));
+                          updateStore({ y: ny });
+                        }}
+                      />
+                    </FormGroup>
+                  </FormRow>
+                  <SizeRow style={{ marginTop: 8, marginBottom: 0 }}>
+                    <Btn onClick={() => {
+                      // Edge snap: align left-edge to grid
+                      if (gridSize <= 0) return;
+                      pushUndo();
+                      const nx = snapAxis(selectedStore.x, selectedStore.width / 2, gridSize, 'edge');
+                      const ny = snapAxis(selectedStore.y, selectedStore.height / 2, gridSize, 'edge');
+                      updateStore({ x: nx, y: ny });
+                    }} style={{ flex: 1, justifyContent: 'center' }}>
+                      ⊟ {t('floorPlan.snapEdge', 'Snap edge')}
+                    </Btn>
+                    <Btn onClick={() => {
+                      // Center snap: align center to grid
+                      if (gridSize <= 0) return;
+                      pushUndo();
+                      const nx = snapAxis(selectedStore.x, selectedStore.width / 2, gridSize, 'center');
+                      const ny = snapAxis(selectedStore.y, selectedStore.height / 2, gridSize, 'center');
+                      updateStore({ x: nx, y: ny });
+                    }} style={{ flex: 1, justifyContent: 'center' }}>
+                      ⊕ {t('floorPlan.snapCenter', 'Snap center')}
+                    </Btn>
+                  </SizeRow>
+                  <Btn $variant="danger" onClick={deleteSelected} style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
                     {t('floorPlan.removeStore', 'Remove Store')}
                   </Btn>
+                  {/* Drag + nudge hints */}
+                  <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 8, lineHeight: 1.5 }}>
+                    <div>{t('floorPlan.dragHintSnap', 'Drag: edge snap · Shift = center snap · Alt = free')}</div>
+                    <div>{t('floorPlan.nudgeHint', '↑↓←→ 1px · Shift 1 grid · Alt 10px')}</div>
+                  </div>
                 </SidebarCard>
               )}
 
@@ -676,6 +780,30 @@ const FoodcourtFloorPlanEditorPage: React.FC = () => {
                 onTableMouseDown={handleTableMouseDown}
                 onTableTouchStart={handleTableTouchStart}
                 onCanvasClick={() => { if (!justFinishedDrag.current) setSelectedId(null); }}
+                renderNode={({ table, isSelected, isEditing, onMouseDown, onTouchStart }) => {
+                  // In editor mode we only need shape + unit code; no tenant/pill rendered.
+                  // Map legacy unit.status to displayStatus palette so border color roughly reflects state.
+                  const unitId = (table as any).unitId ?? Number(String(table.id).replace(/^u/, ''));
+                  const u = allUnits.find(x => x.id === unitId);
+                  const raw = u?.status || 'vacant';
+                  const displayStatus = (raw === 'occupied' ? 'active'
+                    : raw === 'preparing' ? 'preparing'
+                    : raw === 'reserved' ? 'contracting'
+                    : 'vacant') as UnitDisplay['displayStatus'];
+                  const augmented = {
+                    ...table,
+                    unitDisplay: { displayStatus, tenantName: null, contractStage: null, contractId: null, logoUrl: null }
+                  };
+                  return (
+                    <FoodcourtUnitNode
+                      table={augmented as FloorTable & { unitDisplay: UnitDisplay }}
+                      isSelected={isSelected}
+                      isEditing={isEditing}
+                      onMouseDown={onMouseDown}
+                      onTouchStart={onTouchStart}
+                    />
+                  );
+                }}
               />
             </CanvasArea>
           </>

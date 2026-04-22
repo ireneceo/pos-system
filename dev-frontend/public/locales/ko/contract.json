@@ -92,6 +92,23 @@
     "renewConfirm": "이 계약을 갱신할까요? 갱신된 새 계약이 생성됩니다.",
     "tabBilling": "청구",
     "recurringSubscriptions": "반복 청구 (구독 플랜)",
+    "currency": "통화",
+    "currencyLocked": "통화 잠김 — 이미 인보이스가 발행되었습니다",
+    "linkedPlans": "연결된 플랜",
+    "createPlanFromContract": "계약에서 플랜 만들기",
+    "creatingPlan": "플랜 생성 중…",
+    "openPlansPage": "플랜 페이지",
+    "noLinkedPlans": "이 계약에 연결된 플랜이 없습니다.",
+    "noLinkedPlansHint": "위 \"⚡ 계약에서 플랜 만들기\" 버튼으로 계약서의 재무 조건을 기반으로 플랜을 자동 생성합니다.",
+    "unlink": "연결 해제",
+    "planMismatch": "계약/플랜 금액 불일치",
+    "unlinkConfirm": "이 플랜을 계약에서 해제하시겠습니까? 플랜 자체는 남습니다 (공유 리소스).",
+    "billingDay": "청구일",
+    "autoGenerateOff": "자동 생성 OFF",
+    "billingPreview": "다음 인보이스 (예상)",
+    "financialRedacted": "역할 권한상 금액이 가려졌습니다",
+    "estimatedSubtotal": "예상 소계",
+    "previewDisclaimer": "연결된 플랜과 최근 30일 매출 기준 예상. 실제 인보이스는 세금 및 결제 설정의 추가 요금이 포함될 수 있습니다.",
     "recurringBillingHint": "반복 청구를 활성화하려면 플랜을 연결된 레스토랑에 할당해 주세요 —",
     "goToPlans": "Plans 페이지",
     "noRecurringPlans": "이 계약에 연결된 반복 플랜이 없습니다.",
@@ -186,10 +203,106 @@
     "removeFromPlan": "평면도에서 제거",
     "confirmDelete": "평면도 \"{{name}}\"을(를) 삭제할까요? 유닛 배치가 해제됩니다.",
     "legend": {
-      "vacant": "비어있음",
+      "vacant": "공실",
       "reserved": "예약됨",
-      "preparing": "준비중",
-      "occupied": "운영중"
+      "preparing": "입점 준비",
+      "occupied": "입점중"
+    },
+    "unitStatus": {
+      "vacant": "공실",
+      "reserved": "예약됨",
+      "proposal": "제안중",
+      "contracting": "협상중",
+      "preparing": "입점 준비",
+      "occupied": "입점중",
+      "active": "운영중",
+      "expiring": "만료임박",
+      "expired": "만료"
+    },
+    "contractStage": {
+      "proposal": "제안",
+      "contracting": "계약 협상",
+      "setup": "입점 준비",
+      "active": "운영중",
+      "expired": "만료",
+      "terminated": "해지",
+      "renewed": "갱신"
+    },
+    "contractType": {
+      "standard": "표준 임대",
+      "revenue_share": "매출 분배",
+      "popup": "팝업"
+    },
+    "renewalType": {
+      "auto": "자동",
+      "manual": "수동",
+      "none": "없음"
+    },
+    "banner": {
+      "inPipeline": "파이프라인 진행 중 · 시작 후 {{days}}일 경과",
+      "expiring": "{{days}}일 후 계약 만료 — 갱신 검토 권장",
+      "expired": "계약이 만료됨 — 공실 처리 또는 갱신 필요",
+      "billingGap": "청구 미설정 — 이 Active 계약에 연결된 Plan이 없습니다. 계약을 열어 Plan을 연결하거나 생성하세요."
+    },
+    "sec": {
+      "unit": "유닛 정보",
+      "contract": "현재 계약",
+      "tenant": "테넌트",
+      "financial": "재무 조건",
+      "timeline": "진행 타임라인"
+    },
+    "unit": {
+      "code": "코드",
+      "size": "면적",
+      "location": "위치"
+    },
+    "vacant": {
+      "noContract": "이 유닛에는 계약이 없습니다.",
+      "createProposal": "임대 제안 만들기"
+    },
+    "contract": {
+      "number": "계약번호",
+      "stage": "단계",
+      "type": "유형",
+      "period": "기간",
+      "daysLeft": "남은 일수",
+      "overdue": "종료일 경과",
+      "signed": "서명일",
+      "renewal": "갱신 정책",
+      "alertMonths": "{{n}}개월 전 알림"
+    },
+    "tenant": {
+      "legalEntity": "법인명",
+      "applicant": "신청자",
+      "contact": "담당자",
+      "phone": "전화",
+      "email": "이메일"
+    },
+    "fin": {
+      "baseRent": "기본 월세",
+      "revShare": "매출 분배",
+      "minGuarantee": "최소 보장",
+      "deposit": "보증금",
+      "cam": "공용관리비 (CAM)",
+      "fitout": "인테리어 책임",
+      "hours": "운영 시간",
+      "restoration": "원상복구 의무",
+      "totalMonthly": "월 총 의무 합산",
+      "redacted": "재무 조건은 푸드코트 제너럴·시스템 관리자에게만 표시됩니다",
+      "fitoutVal": {
+        "tenant": "입점자 부담",
+        "landlord": "푸드코트 부담",
+        "shared": "공동 부담"
+      }
+    },
+    "action": {
+      "open": "계약 열기 →",
+      "renew": "갱신",
+      "advance": "다음 단계로 진행",
+      "reject": "거절",
+      "recordPayment": "납입 기록",
+      "markVacant": "공실 처리",
+      "edit": "유닛 편집"
     },
     "activeContract": "활성 계약",
     "number": "번호",

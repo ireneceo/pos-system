@@ -92,6 +92,23 @@
     "renewConfirm": "Perbaharui kontrak ini? Kontrak yang diperbaharui akan dibuat.",
     "tabBilling": "Pengebilan",
     "recurringSubscriptions": "Langganan Berulang",
+    "currency": "Mata wang",
+    "currencyLocked": "Mata wang dikunci — invois telah dikeluarkan",
+    "linkedPlans": "Pelan Disambung",
+    "createPlanFromContract": "Cipta pelan dari kontrak",
+    "creatingPlan": "Mencipta pelan…",
+    "openPlansPage": "Buka Pelan",
+    "noLinkedPlans": "Tiada pelan disambung ke kontrak ini.",
+    "noLinkedPlansHint": "Guna \"⚡ Cipta pelan dari kontrak\" di atas untuk auto-jana pelan dari syarat kewangan kontrak ini.",
+    "unlink": "Putus sambungan",
+    "planMismatch": "Kontrak/Pelan tidak sepadan",
+    "unlinkConfirm": "Putus sambungan pelan ini dari kontrak? Pelan sendiri akan kekal (sumber dikongsi).",
+    "billingDay": "Hari bil",
+    "autoGenerateOff": "Auto-jana MATI",
+    "billingPreview": "Invois seterusnya (anggaran)",
+    "financialRedacted": "Amaun disembunyikan untuk peranan anda",
+    "estimatedSubtotal": "Jumlah kecil anggaran",
+    "previewDisclaimer": "Anggaran berdasarkan pelan bersambung dan hasil 30-hari terakhir. Invois sebenar mungkin termasuk cukai dan caj tambahan dari tetapan pembayaran.",
     "recurringBillingHint": "Untuk mengaktifkan pengebilan berulang, tetapkan pelan kepada restoran yang dihubungkan di",
     "goToPlans": "halaman Pelan",
     "noRecurringPlans": "Tiada pelan berulang dihubungkan dengan kontrak ini.",
@@ -188,8 +205,104 @@
     "legend": {
       "vacant": "Kosong",
       "reserved": "Ditempah",
-      "preparing": "Menyiapkan",
-      "occupied": "Diduduki"
+      "preparing": "Penyediaan",
+      "occupied": "Disewa"
+    },
+    "unitStatus": {
+      "vacant": "Kosong",
+      "reserved": "Ditempah",
+      "proposal": "Cadangan",
+      "contracting": "Rundingan",
+      "preparing": "Penyediaan",
+      "occupied": "Disewa",
+      "active": "Beroperasi",
+      "expiring": "Hampir Tamat",
+      "expired": "Tamat Tempoh"
+    },
+    "contractStage": {
+      "proposal": "Cadangan",
+      "contracting": "Rundingan",
+      "setup": "Penyediaan",
+      "active": "Beroperasi",
+      "expired": "Tamat Tempoh",
+      "terminated": "Ditamatkan",
+      "renewed": "Diperbaharui"
+    },
+    "contractType": {
+      "standard": "Sewa Standard",
+      "revenue_share": "Kongsi Hasil",
+      "popup": "Pop-up"
+    },
+    "renewalType": {
+      "auto": "Automatik",
+      "manual": "Manual",
+      "none": "Tiada"
+    },
+    "banner": {
+      "inPipeline": "Rundingan berlangsung · {{days}} hari sejak mula",
+      "expiring": "Kontrak tamat dalam {{days}} hari — semak pembaharuan disyorkan",
+      "expired": "Kontrak telah tamat — unit perlu ditanda kosong atau diperbaharui",
+      "billingGap": "Bil belum disiapkan — tiada pelan disambung kepada kontrak aktif ini. Buka kontrak untuk sambung atau cipta pelan."
+    },
+    "sec": {
+      "unit": "Maklumat Unit",
+      "contract": "Kontrak Semasa",
+      "tenant": "Penyewa",
+      "financial": "Syarat Kewangan",
+      "timeline": "Garis Masa"
+    },
+    "unit": {
+      "code": "Kod",
+      "size": "Saiz",
+      "location": "Lokasi"
+    },
+    "vacant": {
+      "noContract": "Unit ini tiada kontrak.",
+      "createProposal": "Buat cadangan sewa"
+    },
+    "contract": {
+      "number": "Nombor",
+      "stage": "Peringkat",
+      "type": "Jenis",
+      "period": "Tempoh",
+      "daysLeft": "Hari berbaki",
+      "overdue": "Melepasi tarikh tamat",
+      "signed": "Ditandatangani",
+      "renewal": "Pembaharuan",
+      "alertMonths": "Peringatan {{n}} bulan"
+    },
+    "tenant": {
+      "legalEntity": "Entiti sah",
+      "applicant": "Pemohon",
+      "contact": "Hubungan",
+      "phone": "Telefon",
+      "email": "Emel"
+    },
+    "fin": {
+      "baseRent": "Sewa Asas",
+      "revShare": "Kongsi Hasil",
+      "minGuarantee": "Jaminan Minimum",
+      "deposit": "Deposit",
+      "cam": "Penyelenggaraan (CAM)",
+      "fitout": "Ubah suai",
+      "hours": "Waktu operasi",
+      "restoration": "Pemulihan diperlukan",
+      "totalMonthly": "Jumlah obligasi bulanan",
+      "redacted": "Syarat kewangan hanya kelihatan kepada Foodcourt General dan System Admin",
+      "fitoutVal": {
+        "tenant": "Penyewa",
+        "landlord": "Tuan tanah",
+        "shared": "Kongsi"
+      }
+    },
+    "action": {
+      "open": "Buka kontrak →",
+      "renew": "Perbaharui",
+      "advance": "Teruskan ke peringkat seterusnya",
+      "reject": "Tolak",
+      "recordPayment": "Rekod pembayaran",
+      "markVacant": "Tanda kosong",
+      "edit": "Edit unit"
     },
     "activeContract": "Kontrak Aktif",
     "number": "Nombor",

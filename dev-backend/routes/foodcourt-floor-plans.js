@@ -27,21 +27,99 @@ async function assertBranchAccess(req, branchId) {
 
 // List floor plans for a branch
 // GET /api/foodcourt-branches/:branchId/floor-plans
+//
+// For each unit on the floor, picks the single most-relevant contract for display
+// by scanning all contracts where unit_id matches, then ordering by stage priority:
+//   active > setup > contracting > proposal > expired (historical)
+// Enables the canvas to reflect the full pipeline (not just active tenants).
+//
+// financialVisible flag on each currentContract indicates whether financial_terms
+// should be surfaced to the requesting user (Manager role is redacted).
 router.get('/foodcourt-branches/:branchId/floor-plans', authenticateToken, async (req, res, next) => {
   try {
     const access = await assertBranchAccess(req, req.params.branchId);
     if (!access.ok) return res.status(access.status).json({ success: false, message: access.message });
 
+    const { Contract, Restaurant } = require('../models');
     const plans = await FoodcourtFloorPlan.findAll({
       where: { branch_id: req.params.branchId },
       include: [{
         model: FoodcourtUnit,
         as: 'units',
-        attributes: ['id', 'unit_number', 'status', 'plan_x', 'plan_y', 'plan_width', 'plan_height', 'plan_shape', 'location_description', 'current_contract_id']
+        attributes: ['id', 'unit_number', 'status', 'size_value', 'size_unit',
+                     'plan_x', 'plan_y', 'plan_width', 'plan_height', 'plan_shape',
+                     'location_description', 'current_contract_id']
       }],
       order: [['sort_order', 'ASC'], ['id', 'ASC']]
     });
-    res.json({ success: true, data: plans });
+
+    // Collect all unit IDs and fetch every live/pipeline contract for those units in one query
+    const unitIds = [];
+    plans.forEach(p => (p.units || []).forEach(u => unitIds.push(u.id)));
+
+    let contractsByUnit = {};
+    if (unitIds.length > 0) {
+      const rows = await Contract.findAll({
+        where: { unit_id: unitIds, stage: ['proposal', 'contracting', 'setup', 'active', 'expired'] },
+        attributes: ['id', 'contract_number', 'stage', 'contract_type', 'unit_id',
+                     'start_date', 'end_date', 'signing_date', 'duration_months',
+                     'renewal_type', 'renewal_alert_months', 'termination_notice_months',
+                     'applicant_company_name', 'applicant_contact_person',
+                     'applicant_email', 'applicant_phone',
+                     'financial_terms', 'exclusivity_terms', 'renewal_policy',
+                     'restaurant_id', 'created_at'],
+        include: [{ model: Restaurant, as: 'restaurant',
+                    attributes: ['id', 'name', 'branch_name', 'logo_url', 'brand_id'] }],
+        order: [['created_at', 'DESC']]
+      });
+
+      const STAGE_PRIORITY = { active: 5, setup: 4, contracting: 3, proposal: 2, expired: 1 };
+      rows.forEach(c => {
+        const uid = c.unit_id;
+        if (!uid) return;
+        const existing = contractsByUnit[uid];
+        if (!existing || (STAGE_PRIORITY[c.stage] || 0) > (STAGE_PRIORITY[existing.stage] || 0)) {
+          contractsByUnit[uid] = c;
+        }
+      });
+    }
+
+    // Also check which contracts have an open ContractPlan attachment — for billing_gap flag
+    const { ContractPlan } = require('../models');
+    const contractIds = Object.values(contractsByUnit).map(c => c.id);
+    const openPlansByContract = new Set();
+    if (contractIds.length > 0) {
+      const openPlans = await ContractPlan.findAll({
+        where: { contract_id: contractIds, end_at: null },
+        attributes: ['contract_id']
+      });
+      openPlans.forEach(cp => openPlansByContract.add(cp.contract_id));
+    }
+
+    // Manager sees contract identity but NOT financial details; redact before send
+    const isManager = req.user.role === 'Foodcourt Manager';
+
+    // Convert to plain objects and attach chosen contract + billing_gap flag
+    const data = plans.map(p => {
+      const plan = p.toJSON();
+      plan.units = (plan.units || []).map(u => {
+        const c = contractsByUnit[u.id];
+        if (!c) return { ...u, currentContract: null, billing_gap: false };
+        const cj = c.toJSON();
+        if (isManager) {
+          cj.financial_terms = null;
+          cj.financial_redacted = true;
+        } else {
+          cj.financial_redacted = false;
+        }
+        // billing_gap: contract is 'active' but has no open ContractPlan attached
+        const billingGap = c.stage === 'active' && !openPlansByContract.has(c.id);
+        return { ...u, currentContract: cj, billing_gap: billingGap };
+      });
+      return plan;
+    });
+
+    res.json({ success: true, data });
   } catch (e) { next(e); }
 });
 
@@ -206,31 +284,69 @@ router.put('/foodcourt-floor-plans/:id/layout',
   }
 );
 
-// Unit detail with current contract info — for floor plan click popup
+// Unit detail — returns everything needed by the Floor Plan right-side detail panel:
+//   §1 unit header (size, location, full code)
+//   §2 current contract (via same priority pick as the list endpoint)
+//   §3 tenant (restaurant + applicant)
+//   §4 financial terms (redacted for Manager)
+//   §5 timeline stages (delegated to client — we send dates)
+//   §6 action eligibility (delegated to client — role from JWT)
 // GET /api/foodcourt-units/:unitId/detail
 router.get('/foodcourt-units/:unitId/detail',
   authenticateToken,
   async (req, res, next) => {
     try {
-      const { Contract, Restaurant } = require('../models');
+      const { Contract, Restaurant, FoodcourtBranch } = require('../models');
       const unit = await FoodcourtUnit.findByPk(req.params.unitId, {
-        include: [
-          { model: Contract, as: 'currentContract',
-            attributes: ['id', 'contract_number', 'stage', 'contract_type',
-                         'applicant_company_name', 'applicant_contact_person',
-                         'applicant_email', 'applicant_phone',
-                         'start_date', 'end_date', 'financial_terms',
-                         'restaurant_id'],
-            include: [{ model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'branch_name', 'status', 'logo_url'] }]
-          }
-        ]
+        include: [{ model: FoodcourtBranch, as: 'branch', attributes: ['id', 'name', 'code'] }]
       });
       if (!unit) return res.status(404).json({ success: false, message: 'Unit not found' });
 
       const access = await assertBranchAccess(req, unit.branch_id);
       if (!access.ok) return res.status(access.status).json({ success: false, message: access.message });
 
-      res.json({ success: true, data: unit });
+      // Priority pick from all contracts touching this unit
+      const rows = await Contract.findAll({
+        where: { unit_id: unit.id, stage: ['proposal', 'contracting', 'setup', 'active', 'expired', 'terminated', 'renewed'] },
+        attributes: ['id', 'contract_number', 'stage', 'contract_type',
+                     'applicant_company_name', 'applicant_contact_person',
+                     'applicant_email', 'applicant_phone', 'applicant_business_type',
+                     'applicant_notes', 'applicant_location',
+                     'start_date', 'end_date', 'signing_date', 'duration_months',
+                     'financial_terms', 'exclusivity_terms', 'renewal_policy',
+                     'renewal_type', 'renewal_alert_months', 'termination_notice_months',
+                     'restaurant_id', 'created_at', 'updated_at'],
+        include: [{ model: Restaurant, as: 'restaurant',
+                    attributes: ['id', 'name', 'branch_name', 'status', 'logo_url', 'brand_id'] }],
+        order: [['created_at', 'DESC']]
+      });
+
+      const STAGE_PRIORITY = { active: 7, setup: 6, contracting: 5, proposal: 4, renewed: 3, expired: 2, terminated: 1 };
+      let current = null;
+      for (const c of rows) {
+        if (!current || (STAGE_PRIORITY[c.stage] || 0) > (STAGE_PRIORITY[current.stage] || 0)) {
+          current = c;
+        }
+      }
+
+      const isManager = req.user.role === 'Foodcourt Manager';
+      const data = unit.toJSON();
+      data.currentContract = current ? (() => {
+        const cj = current.toJSON();
+        if (isManager) { cj.financial_terms = null; cj.financial_redacted = true; }
+        else cj.financial_redacted = false;
+        return cj;
+      })() : null;
+
+      // All contracts (historical) for timeline + last tenant on vacant units
+      data.contractHistory = rows.map(c => ({
+        id: c.id, stage: c.stage, contract_number: c.contract_number,
+        start_date: c.start_date, end_date: c.end_date,
+        applicant_company_name: c.applicant_company_name,
+        restaurant_name: c.restaurant ? c.restaurant.name : null
+      }));
+
+      res.json({ success: true, data });
     } catch (e) { next(e); }
   }
 );

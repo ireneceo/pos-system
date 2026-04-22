@@ -20,6 +20,11 @@ ContractPlan.init({
   assigned_at: {
     type: DataTypes.DATEONLY,
     allowNull: true
+  },
+  end_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'When this plan attachment ended. Auto-set on Contract.stage → expired/terminated/renewed.'
   }
 }, {
   sequelize: database.sequelize,

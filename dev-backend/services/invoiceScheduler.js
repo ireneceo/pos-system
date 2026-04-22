@@ -461,10 +461,28 @@ class InvoiceScheduler {
               reason: pr.discount_reason || null
             };
 
-            // Calculate charges
-            const charges = this.calculatePlanCharges(plan, revenue, discountInfo);
+            // Look up fixed monthly price for this plan+currency (fixed + combined types need it)
+            let fixedMonthlyPrice = 0;
+            if (plan.charge_type === 'fixed' || plan.charge_type === 'combined') {
+              const EntityPlanPrice = require('../models/EntityPlanPrice');
+              const priceRow = await EntityPlanPrice.findOne({
+                where: { entity_plan_id: plan.id, currency: invoiceCurrency, is_active: true }
+              });
+              // Fallback to plan's default currency price if no exact match
+              if (!priceRow) {
+                const anyPrice = await EntityPlanPrice.findOne({
+                  where: { entity_plan_id: plan.id, is_active: true }
+                });
+                fixedMonthlyPrice = anyPrice ? Number(anyPrice.monthly_price) : 0;
+              } else {
+                fixedMonthlyPrice = Number(priceRow.monthly_price);
+              }
+            }
 
-            if (charges.totalAmount < 0) {
+            // Calculate charges
+            const charges = this.calculatePlanCharges(plan, revenue, discountInfo, fixedMonthlyPrice);
+
+            if (charges.totalAmount < 0 || charges.subtotal <= 0) {
               result.skipped++;
               continue;
             }
@@ -743,87 +761,59 @@ class InvoiceScheduler {
   /**
    * Calculate charges based on entity plan and revenue (same logic as brands.js)
    */
-  calculatePlanCharges(plan, revenue, discountInfo = { type: 'none', value: 0, reason: null }) {
+  // Compute line items from an EntityPlan based on its own fields.
+  // Supports: fixed (EntityPlanPrice.monthly_price) / percentage (percentage_value × revenue) / combined (MAX of both).
+  // `fixedPrice` is the EntityPlanPrice row for the invoice currency (caller passes it in charges.items).
+  calculatePlanCharges(plan, revenue, discountInfo = { type: 'none', value: 0, reason: null }, fixedMonthlyPrice = 0) {
     const items = [];
     let subtotal = 0;
-    const taxRate = parseFloat(plan.tax_rate || 0) / 100;
+    const taxRate = 0; // EntityPlan has no tax_rate field — tax applied downstream via payment settings
 
-    // 1. Fixed subscription fee
-    if (parseFloat(plan.subscription_fee) > 0) {
-      const fee = parseFloat(plan.subscription_fee);
-      const tax = fee * taxRate;
-      items.push({
-        item_type: 'subscription_fee',
-        description: `${plan.name} - Subscription Fee`,
-        calculation_method: 'fixed',
-        fixed_amount: fee,
-        calculated_amount: fee,
-        tax_rate: parseFloat(plan.tax_rate || 0),
-        tax_amount: Math.round(tax * 100) / 100,
-        total_amount: Math.round((fee + tax) * 100) / 100
-      });
-      subtotal += fee;
+    const chargeType = plan.charge_type || 'fixed';
+    const fixedAmount = Number(fixedMonthlyPrice) || 0;
+    const pctRate = parseFloat(plan.percentage_value || 0);
+    const percentageAmount = pctRate > 0 ? Math.round(revenue * pctRate / 100 * 100) / 100 : 0;
+
+    let rentAmount = 0;
+    let description = '';
+    let calcMethod = chargeType;
+    let fixedForItem = null;
+    let pctRateForItem = null;
+    let minForItem = null;
+
+    if (chargeType === 'fixed') {
+      rentAmount = fixedAmount;
+      description = `${plan.name} (Fixed)`;
+      fixedForItem = fixedAmount;
+    } else if (chargeType === 'percentage') {
+      rentAmount = percentageAmount;
+      description = `${plan.name} (${pctRate}% of revenue)`;
+      pctRateForItem = pctRate;
+    } else if (chargeType === 'combined') {
+      // Min-guarantee pattern: rent = max(fixed floor, percentage × revenue)
+      rentAmount = Math.max(fixedAmount, percentageAmount);
+      description = `${plan.name} (Combined: max of ${fixedAmount} or ${pctRate}% × ${revenue})`;
+      fixedForItem = fixedAmount;
+      pctRateForItem = pctRate;
+      minForItem = fixedAmount; // fixed acts as minimum guarantee
     }
 
-    // 2. Revenue percentage (royalty)
-    if (parseFloat(plan.revenue_percentage) > 0) {
-      const rate = parseFloat(plan.revenue_percentage);
-      const amount = Math.round(revenue * rate / 100 * 100) / 100;
-      const tax = amount * taxRate;
+    if (rentAmount > 0) {
+      const tax = rentAmount * taxRate;
       items.push({
-        item_type: 'revenue_percentage',
-        description: `${plan.name} - Revenue Royalty (${rate}%)`,
-        calculation_method: 'percentage',
-        percentage_rate: rate,
-        base_amount: revenue,
-        calculated_amount: amount,
-        tax_rate: parseFloat(plan.tax_rate || 0),
+        item_type: chargeType === 'percentage' ? 'revenue_percentage' : 'rent',
+        description,
+        calculation_method: calcMethod,
+        fixed_amount: fixedForItem,
+        percentage_rate: pctRateForItem,
+        base_amount: pctRate > 0 ? revenue : null,
+        minimum_amount: minForItem,
+        calculated_amount: rentAmount,
+        tax_rate: 0,
         tax_amount: Math.round(tax * 100) / 100,
-        total_amount: Math.round((amount + tax) * 100) / 100
+        total_amount: Math.round((rentAmount + tax) * 100) / 100
       });
-      subtotal += amount;
-    }
-
-    // 3. Rent
-    if (plan.rent_type !== 'none') {
-      let rentAmount = 0;
-      let description = '';
-      let calcMethod = 'fixed';
-
-      if (plan.rent_type === 'fixed') {
-        rentAmount = parseFloat(plan.rent_fixed || 0);
-        description = `${plan.name} - Rent (Fixed)`;
-      } else if (plan.rent_type === 'percentage') {
-        const rate = parseFloat(plan.rent_percentage || 0);
-        rentAmount = Math.round(revenue * rate / 100 * 100) / 100;
-        description = `${plan.name} - Rent (${rate}%)`;
-        calcMethod = 'percentage';
-      } else if (plan.rent_type === 'combined') {
-        const fixedMin = parseFloat(plan.rent_fixed || 0);
-        const rate = parseFloat(plan.rent_percentage || 0);
-        const percentageAmount = Math.round(revenue * rate / 100 * 100) / 100;
-        rentAmount = Math.max(fixedMin, percentageAmount);
-        description = `${plan.name} - Rent (Combined)`;
-        calcMethod = 'combined';
-      }
-
-      if (rentAmount > 0) {
-        const tax = rentAmount * taxRate;
-        items.push({
-          item_type: 'rent',
-          description,
-          calculation_method: calcMethod,
-          fixed_amount: plan.rent_type === 'fixed' || plan.rent_type === 'combined' ? parseFloat(plan.rent_fixed || 0) : null,
-          percentage_rate: plan.rent_type === 'percentage' || plan.rent_type === 'combined' ? parseFloat(plan.rent_percentage || 0) : null,
-          base_amount: revenue,
-          minimum_amount: plan.rent_type === 'combined' ? parseFloat(plan.rent_fixed || 0) : null,
-          calculated_amount: rentAmount,
-          tax_rate: parseFloat(plan.tax_rate || 0),
-          tax_amount: Math.round(tax * 100) / 100,
-          total_amount: Math.round((rentAmount + tax) * 100) / 100
-        });
-        subtotal += rentAmount;
-      }
+      subtotal += rentAmount;
     }
 
     // Apply discount

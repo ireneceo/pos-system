@@ -24,9 +24,14 @@ const FooterGrid = styled.div`
   gap: 40px;
   margin-bottom: 40px;
 
+  /* Mobile: 2 columns. Logo(1st) and Company(4th) span full width.
+     Product(2nd) + Info(3rd) share a single row side-by-side. */
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 30px;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px 20px;
+
+    > :nth-child(1) { grid-column: 1 / -1; }
+    > :nth-child(4) { grid-column: 1 / -1; }
   }
 `;
 

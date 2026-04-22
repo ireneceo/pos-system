@@ -6,6 +6,22 @@ import FloorPlanCanvas from './FloorPlanCanvas';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+
+// Grid snap on one axis. Matches the convention used by FoodcourtFloorPlanEditor so
+// operators switching between Restaurant and Foodcourt editors see identical behavior.
+//   'edge'   — left/top edge snaps (default — predictable, matches Figma/Sketch)
+//   'center' — center snaps (hold Shift during drag)
+//   'free'   — no snap (hold Alt during drag)
+type SnapMode = 'edge' | 'center' | 'free';
+function snapAxis(centerPos: number, half: number, gridSize: number, mode: SnapMode): number {
+  if (mode === 'free' || gridSize <= 0) return centerPos;
+  if (mode === 'center') {
+    return Math.round(centerPos / gridSize) * gridSize;
+  }
+  const snappedEdge = Math.round((centerPos - half) / gridSize) * gridSize;
+  return snappedEdge + half;
+}
+
 // ─── Styled Components ───
 
 const PageContainer = styled.div`
@@ -482,9 +498,16 @@ const FloorPlanEditor: React.FC = () => {
       let newX = (clientX - rect.left) * sx - dragOffset.x;
       let newY = (clientY - rect.top) * sy - dragOffset.y;
 
-      if (floorPlan.gridSize > 0) {
-        newX = Math.round(newX / floorPlan.gridSize) * floorPlan.gridSize;
-        newY = Math.round(newY / floorPlan.gridSize) * floorPlan.gridSize;
+      const table = floorPlan.tables.find(t => t.id === selectedId);
+      if (table) {
+        // Modifier-based snap: default edge / Shift center / Alt free
+        const mouseEvt = e as MouseEvent;
+        const touchEvt = e as TouchEvent;
+        const shift = mouseEvt.shiftKey ?? touchEvt.shiftKey ?? false;
+        const alt = mouseEvt.altKey ?? touchEvt.altKey ?? false;
+        const mode: SnapMode = alt ? 'free' : shift ? 'center' : 'edge';
+        newX = snapAxis(newX, table.width / 2, floorPlan.gridSize, mode);
+        newY = snapAxis(newY, table.height / 2, floorPlan.gridSize, mode);
       }
       newX = Math.max(0, Math.min(floorPlan.canvasWidth, newX));
       newY = Math.max(0, Math.min(floorPlan.canvasHeight, newY));
@@ -712,6 +735,27 @@ const FloorPlanEditor: React.FC = () => {
                     />
                   </FormGroup>
                 </FormRow>
+                <SizeRow style={{ marginTop: '8px' }}>
+                  <Btn onClick={() => {
+                    if (floorPlan.gridSize <= 0) return;
+                    const nx = snapAxis(selectedTable.x, selectedTable.width / 2, floorPlan.gridSize, 'edge');
+                    const ny = snapAxis(selectedTable.y, selectedTable.height / 2, floorPlan.gridSize, 'edge');
+                    updateTable({ x: nx, y: ny });
+                  }} style={{ flex: 1, justifyContent: 'center' }}>
+                    ⊟ Snap edge
+                  </Btn>
+                  <Btn onClick={() => {
+                    if (floorPlan.gridSize <= 0) return;
+                    const nx = snapAxis(selectedTable.x, selectedTable.width / 2, floorPlan.gridSize, 'center');
+                    const ny = snapAxis(selectedTable.y, selectedTable.height / 2, floorPlan.gridSize, 'center');
+                    updateTable({ x: nx, y: ny });
+                  }} style={{ flex: 1, justifyContent: 'center' }}>
+                    ⊕ Snap center
+                  </Btn>
+                </SizeRow>
+                <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 8, lineHeight: 1.5 }}>
+                  Drag: edge snap · Shift = center snap · Alt = free
+                </div>
                 <Btn $variant="danger" onClick={deleteSelected} style={{ width: '100%', justifyContent: 'center', marginTop: '12px' }}>
                   Delete {isFixture ? 'Fixture' : 'Table'}
                 </Btn>

@@ -20,6 +20,46 @@ const getUserEntity = (user) => {
   return null;
 };
 
+// Helper: resolve { currency, supported } for a Brand/Foodcourt entity
+// supported_currencies may be JSON string, JSON array, or null — normalize.
+async function resolveEntityCurrencyInfo(entityType, entityId) {
+  const Model = entityType === 'brand' ? Brand : Foodcourt;
+  const row = await Model.findByPk(entityId, { attributes: ['id', 'currency', 'supported_currencies'] });
+  if (!row) return { defaultCurrency: 'MYR', supported: ['MYR'] };
+  const defaultCurrency = row.currency || 'MYR';
+  let supported;
+  const raw = row.supported_currencies;
+  if (Array.isArray(raw)) supported = raw;
+  else if (typeof raw === 'string') {
+    try { supported = JSON.parse(raw); } catch { supported = null; }
+  }
+  if (!Array.isArray(supported) || supported.length === 0) supported = [defaultCurrency];
+  // Ensure default is in the supported list
+  if (!supported.includes(defaultCurrency)) supported = [defaultCurrency, ...supported];
+  return { defaultCurrency, supported };
+}
+
+// Helper: validate currency — must be in supported list. Returns resolved code or throws.
+async function resolveContractCurrency(entityType, entityId, requested) {
+  const info = await resolveEntityCurrencyInfo(entityType, entityId);
+  if (!requested) return info.defaultCurrency; // default on creation
+  const code = String(requested).toUpperCase();
+  if (!info.supported.includes(code)) {
+    const err = new Error(`Currency "${code}" not supported by this entity. Supported: ${info.supported.join(', ')}`);
+    err.status = 422;
+    throw err;
+  }
+  return code;
+}
+
+// Helper: is this contract's currency locked? (active + at least one invoice issued)
+async function isCurrencyLocked(contractId) {
+  if (!contractId) return false;
+  const Invoice = require('../models/Invoice');
+  const cnt = await Invoice.count({ where: { contract_id: contractId } });
+  return cnt > 0;
+}
+
 // Helper: check contract access
 const checkContractAccess = async (req, res) => {
   const entity = getUserEntity(req.user);
@@ -234,24 +274,29 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
       }
     }
 
-    // Attach entity currency for display
+    // Attach entity currency info (currency + supported_currencies list) for display + dropdown
     const contractData = contract.toJSON();
     try {
+      const info = await resolveEntityCurrencyInfo(contract.entity_type, contract.entity_id);
+      contractData.entity_currency = info.defaultCurrency;
+      contractData.entity_supported_currencies = info.supported;
+      // Back-compat: `entity` populated with name/currency as before
       if (contract.entity_type === 'brand') {
-        const Brand = require('../models/Brand');
         const brand = await Brand.findByPk(contract.entity_id, { attributes: ['id', 'name', 'currency'] });
-        contractData.entity_currency = brand?.currency || 'MYR';
         contractData.entity = brand;
       } else if (contract.entity_type === 'foodcourt') {
-        const Foodcourt = require('../models/Foodcourt');
         const foodcourt = await Foodcourt.findByPk(contract.entity_id, { attributes: ['id', 'name', 'currency'] });
-        contractData.entity_currency = foodcourt?.currency || 'MYR';
         contractData.entity = foodcourt;
-      } else {
-        contractData.entity_currency = 'MYR';
       }
     } catch (err) {
-      contractData.entity_currency = 'MYR';
+      contractData.entity_currency = contractData.currency || 'MYR';
+      contractData.entity_supported_currencies = [contractData.currency || 'MYR'];
+    }
+    // Also check if currency is locked (any invoice issued)
+    try {
+      contractData.currency_locked = await isCurrencyLocked(contract.id);
+    } catch (e) {
+      contractData.currency_locked = false;
     }
 
     res.json({ success: true, data: contractData });
@@ -279,9 +324,18 @@ router.post('/', authenticateToken, async (req, res, next) => {
 
     const issuerSnapshot = await buildIssuerSnapshot(entity.entity_type, entity.entity_id);
 
+    // Currency: validated against entity.supported_currencies; defaults to entity.currency
+    let resolvedCurrency;
+    try {
+      resolvedCurrency = await resolveContractCurrency(entity.entity_type, entity.entity_id, req.body.currency);
+    } catch (e) {
+      return res.status(e.status || 400).json({ success: false, message: e.message });
+    }
+
     const contract = await Contract.create({
       entity_type: entity.entity_type,
       entity_id: entity.entity_id,
+      currency: resolvedCurrency,
       stage: 'proposal',
       applicant_company_name: req.body.applicant_company_name ?? req.body.applicant_name,
       applicant_contact_person: req.body.applicant_contact_person,
@@ -361,6 +415,21 @@ router.put('/:id', authenticateToken, async (req, res, next) => {
     for (const field of updateFields) {
       if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
+      }
+    }
+
+    // Currency — changeable until any invoice is issued for this contract
+    if (req.body.currency !== undefined && req.body.currency !== contract.currency) {
+      if (await isCurrencyLocked(contract.id)) {
+        return res.status(422).json({
+          success: false,
+          message: 'Currency cannot be changed after invoices have been issued for this contract'
+        });
+      }
+      try {
+        updates.currency = await resolveContractCurrency(contract.entity_type, contract.entity_id, req.body.currency);
+      } catch (e) {
+        return res.status(e.status || 400).json({ success: false, message: e.message });
       }
     }
 
@@ -494,6 +563,14 @@ router.put('/:id/stage', authenticateToken, async (req, res, next) => {
     await contract.update({ stage, updated_by: req.user.id });
     await logHistory(contract.id, 'stage_changed', currentStage, stage, null, req.user.id);
 
+    // Close open ContractPlan attachments when the contract exits active lifecycle
+    if (['expired', 'terminated', 'renewed'].includes(stage)) {
+      await ContractPlan.update(
+        { end_at: new Date() },
+        { where: { contract_id: contract.id, end_at: null } }
+      );
+    }
+
     res.json({ success: true, data: contract });
   } catch (error) {
     next(error);
@@ -535,6 +612,11 @@ router.post('/:id/terminate', authenticateToken, async (req, res, next) => {
     }
 
     await logHistory(contract.id, 'terminated', 'active', 'terminated', { reason: termination_reason }, req.user.id);
+
+    await ContractPlan.update(
+      { end_at: new Date() },
+      { where: { contract_id: contract.id, end_at: null } }
+    );
 
     res.json({ success: true, data: contract });
   } catch (error) {
@@ -827,6 +909,298 @@ router.delete('/:id/plans/:planId', authenticateToken, async (req, res, next) =>
 
     await plan.destroy();
     res.json({ success: true, message: 'Plan reference removed' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// Phase 1 Contract ↔ Plan integration endpoints
+// ============================================================================
+
+// Create an EntityPlan from this contract's financial_terms, then attach it.
+// Used by the "Create plan from contract" wizard on Contract Detail.
+// POST /api/contracts/:id/create-plan-from-contract
+// Body (all optional — sensible defaults from the contract):
+//   { name?, description?, billing_day? }
+router.post('/:id/create-plan-from-contract', authenticateToken, async (req, res, next) => {
+  try {
+    const contract = await checkContractAccess(req, res);
+    if (!contract) return;
+
+    if (!['System Admin', 'Foodcourt General', 'Brand General'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Only Foodcourt/Brand General or System Admin can create plans' });
+    }
+
+    const ft = contract.financial_terms || {};
+    const baseRent = Number(ft.base_rent);
+    const revenueShare = Number(ft.revenue_share_percent);
+    const franchiseFee = Number(ft.franchise_fee);
+    const royalty = Number(ft.royalty_value);
+
+    // Decide charge_type
+    let chargeType = null;
+    let percentageValue = 0;
+    let fixedAmount = 0;
+    const warnings = [];
+
+    if (contract.entity_type === 'foodcourt') {
+      const hasRev = !isNaN(revenueShare) && revenueShare > 0;
+      const hasBase = !isNaN(baseRent) && baseRent > 0;
+      if (hasRev && hasBase) {
+        // Combined: min-guarantee pattern — rent = max(base_rent, revenue × %)
+        chargeType = 'combined';
+        percentageValue = revenueShare;
+        fixedAmount = baseRent;
+      } else if (hasRev) {
+        chargeType = 'percentage';
+        percentageValue = revenueShare;
+      } else if (hasBase) {
+        chargeType = 'fixed';
+        fixedAmount = baseRent;
+      }
+    } else if (contract.entity_type === 'brand') {
+      // Brand: royalty % is the typical recurring, franchise_fee is one-time (handled elsewhere)
+      if (!isNaN(royalty) && royalty > 0 && (ft.royalty_type === 'percent' || !ft.royalty_type)) {
+        chargeType = 'percentage';
+        percentageValue = royalty;
+      } else if (!isNaN(royalty) && royalty > 0 && ft.royalty_type === 'fixed') {
+        chargeType = 'fixed';
+        fixedAmount = royalty;
+      } else if (!isNaN(franchiseFee) && franchiseFee > 0) {
+        chargeType = 'fixed';
+        fixedAmount = franchiseFee;
+        warnings.push('Only franchise_fee present (typically one-time). Plan created as fixed recurring — verify this is intended.');
+      }
+    }
+
+    if (!chargeType) {
+      return res.status(400).json({
+        success: false,
+        message: 'Contract has no billable terms yet. Fill base_rent / revenue_share_percent (Foodcourt) or royalty_value / franchise_fee (Brand) before generating a plan.'
+      });
+    }
+
+    // Resolve billing_day — use start_date day if 1-28, else 1. Override if provided.
+    let billingDay = Number(req.body.billing_day) || null;
+    if (!billingDay && contract.start_date) {
+      const d = new Date(contract.start_date);
+      const day = d.getUTCDate();
+      billingDay = day >= 1 && day <= 28 ? day : 1;
+    }
+    if (!billingDay) billingDay = 1;
+
+    // Plan name default
+    const entityName = contract.issuer_company_name ||
+      (contract.entity_type === 'foodcourt'
+        ? (await Foodcourt.findByPk(contract.entity_id))?.name
+        : (await Brand.findByPk(contract.entity_id))?.name) || 'Entity';
+    const planName = req.body.name || `${contract.contract_number || `#${contract.id}`} — ${entityName} ${contract.entity_type === 'foodcourt' ? 'Tenancy' : 'Franchise'}`;
+
+    const { sequelize } = require('../config/database');
+    const t = await sequelize.transaction();
+    try {
+      const plan = await EntityPlan.create({
+        entity_type: contract.entity_type,
+        entity_id: contract.entity_id,
+        name: planName,
+        description: req.body.description || `Auto-generated from contract ${contract.contract_number || '#' + contract.id}`,
+        auto_generate: true,
+        currency: contract.currency || 'MYR',
+        is_active: true,
+        category: 'custom',
+        charge_type: chargeType,
+        percentage_value: percentageValue,
+        revenue_base: 'previous_month',
+        billing_day: billingDay,
+        created_by: req.user.id
+      }, { transaction: t });
+
+      // Create EntityPlanPrice row for fixed + combined types (combined uses fixed as min-guarantee)
+      if ((chargeType === 'fixed' || chargeType === 'combined') && fixedAmount > 0) {
+        const EntityPlanPrice = require('../models/EntityPlanPrice');
+        await EntityPlanPrice.create({
+          entity_plan_id: plan.id,
+          currency: contract.currency || 'MYR',
+          monthly_price: fixedAmount,
+          annual_price: Math.round(fixedAmount * 12 * 0.9 * 100) / 100, // 10% annual discount default
+          is_active: true
+        }, { transaction: t });
+      }
+
+      // Attach to contract (close any prior still-open attachment)
+      await ContractPlan.update({ end_at: new Date() }, {
+        where: { contract_id: contract.id, end_at: null },
+        transaction: t
+      });
+      const link = await ContractPlan.create({
+        contract_id: contract.id,
+        entity_plan_id: plan.id,
+        assigned_at: new Date()
+      }, { transaction: t });
+
+      await t.commit();
+
+      await logHistory(contract.id, 'plan_assigned', null, plan.id.toString(),
+        { auto_generated_from_contract: true }, req.user.id);
+
+      res.status(201).json({
+        success: true,
+        data: { plan, link, warnings }
+      });
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Billing preview — simulate the next invoice for this contract.
+// GET /api/contracts/:id/billing-preview
+router.get('/:id/billing-preview', authenticateToken, async (req, res, next) => {
+  try {
+    const contract = await checkContractAccess(req, res);
+    if (!contract) return;
+
+    const { sequelize } = require('../config/database');
+    const EntityPlanPrice = require('../models/EntityPlanPrice');
+
+    const links = await ContractPlan.findAll({
+      where: { contract_id: contract.id, end_at: null },
+      include: [{ model: EntityPlan, as: 'entityPlan' }]
+    });
+
+    if (links.length === 0) {
+      return res.json({
+        success: true,
+        data: { currency: contract.currency || 'MYR', plans: [], line_items: [], subtotal: 0, has_plan: false }
+      });
+    }
+
+    // Compute last-30-day revenue if any plan is percentage-based
+    let revenue30d = 0;
+    if (contract.restaurant_id && links.some(l => l.entityPlan?.charge_type === 'percentage')) {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const [rows] = await sequelize.query(`
+        SELECT COALESCE(SUM(total_amount), 0) AS rev
+        FROM orders
+        WHERE restaurant_id = :rid
+          AND status IN ('completed', 'served')
+          AND (is_deleted = false OR is_deleted IS NULL)
+          AND order_date >= :since
+      `, { replacements: { rid: contract.restaurant_id, since } });
+      revenue30d = Number(rows[0].rev) || 0;
+    }
+
+    const isManagerRole = ['Foodcourt Manager', 'Brand Manager'].includes(req.user.role);
+    const currency = contract.currency || 'MYR';
+    const items = [];
+    let subtotal = 0;
+
+    for (const link of links) {
+      const plan = link.entityPlan;
+      if (!plan) continue;
+
+      // Look up fixed monthly price for fixed/combined types
+      let fixedAmount = 0;
+      if (plan.charge_type === 'fixed' || plan.charge_type === 'combined') {
+        const price = await EntityPlanPrice.findOne({
+          where: { entity_plan_id: plan.id, currency, is_active: true }
+        }) || await EntityPlanPrice.findOne({
+          where: { entity_plan_id: plan.id, is_active: true }
+        });
+        fixedAmount = price ? Number(price.monthly_price) : 0;
+      }
+      const rate = Number(plan.percentage_value) || 0;
+      const pctAmount = rate > 0 ? Math.round(revenue30d * (rate / 100) * 100) / 100 : 0;
+
+      let amount = 0;
+      let method = plan.charge_type;
+      if (plan.charge_type === 'fixed') {
+        amount = fixedAmount;
+      } else if (plan.charge_type === 'percentage') {
+        amount = pctAmount;
+      } else if (plan.charge_type === 'combined') {
+        amount = Math.max(fixedAmount, pctAmount);
+      }
+
+      items.push({
+        plan_id: plan.id,
+        plan_name: plan.name,
+        method,
+        rate: plan.charge_type !== 'fixed' ? rate : null,
+        base: isManagerRole || plan.charge_type === 'fixed' ? null : revenue30d,
+        amount: isManagerRole ? null : amount,
+        minimum: plan.charge_type === 'combined' ? (isManagerRole ? null : fixedAmount) : null,
+        currency: plan.currency || currency,
+        redacted: isManagerRole
+      });
+      if (!isManagerRole) subtotal += amount;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        currency,
+        revenue_base_30d: isManagerRole ? null : revenue30d,
+        line_items: items,
+        subtotal: isManagerRole ? null : Math.round(subtotal * 100) / 100,
+        has_plan: true,
+        financial_redacted: isManagerRole
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Active contracts without any open ContractPlan attachment — used for billing-gap alerts.
+// GET /api/foodcourts/:id/unlinked-contracts
+// GET /api/brands/:id/unlinked-contracts
+// (Both paths mount here; entityType inferred from route prefix.)
+router.get('/unlinked/:entityType/:entityId', authenticateToken, async (req, res, next) => {
+  try {
+    const entityType = req.params.entityType === 'brand' ? 'brand' : 'foodcourt';
+    const entityId = Number(req.params.entityId);
+
+    // Access: user must belong to this entity OR be System Admin
+    if (req.user.role !== 'System Admin') {
+      const myEntity = getUserEntity(req.user);
+      if (!myEntity || myEntity.entity_type !== entityType || Number(myEntity.entity_id) !== entityId) {
+        return res.status(403).json({ success: false, message: 'No access to this entity' });
+      }
+    }
+
+    const list = await Contract.findAll({
+      where: { entity_type: entityType, entity_id: entityId, stage: 'active' },
+      attributes: ['id', 'contract_number', 'stage', 'restaurant_id', 'unit_id', 'start_date', 'end_date', 'currency', 'applicant_company_name'],
+      include: [
+        { model: ContractPlan, as: 'plans', where: { end_at: null }, required: false },
+        { model: Restaurant, as: 'restaurant', attributes: ['id', 'name', 'branch_name'], required: false }
+      ],
+      order: [['start_date', 'ASC']]
+    });
+
+    const unlinked = list.filter(c => !c.plans || c.plans.length === 0);
+
+    res.json({
+      success: true,
+      data: {
+        count: unlinked.length,
+        contracts: unlinked.map(c => ({
+          id: c.id,
+          contract_number: c.contract_number,
+          currency: c.currency,
+          restaurant: c.restaurant ? { id: c.restaurant.id, name: c.restaurant.name, branch_name: c.restaurant.branch_name } : null,
+          unit_id: c.unit_id,
+          applicant_company_name: c.applicant_company_name,
+          start_date: c.start_date,
+          end_date: c.end_date
+        }))
+      }
+    });
   } catch (error) {
     next(error);
   }

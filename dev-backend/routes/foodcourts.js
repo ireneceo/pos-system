@@ -36,8 +36,28 @@ router.get('/:id/tenancy-map', authenticateToken, async (req, res) => {
     const branchIds = branches.map(b => b.id);
     const units = branchIds.length > 0 ? await FoodcourtUnit.findAll({
       where: { branch_id: { [Op.in]: branchIds } },
-      attributes: ['id', 'branch_id', 'unit_number', 'status', 'current_contract_id', 'location_description']
+      attributes: ['id', 'branch_id', 'unit_number', 'status', 'current_contract_id', 'location_description', 'size_value', 'size_unit']
     }) : [];
+
+    // Pick highest-priority contract per unit (same rule as Floor Plan API)
+    const unitIds = units.map(u => u.id);
+    const unitContracts = unitIds.length > 0 ? await Contract.findAll({
+      where: { unit_id: { [Op.in]: unitIds }, stage: ['proposal', 'contracting', 'setup', 'active', 'expired'] },
+      attributes: ['id', 'unit_id', 'stage', 'contract_type', 'applicant_company_name',
+                   'start_date', 'end_date', 'renewal_alert_months', 'financial_terms', 'restaurant_id'],
+      include: [{ model: Restaurant, as: 'restaurant',
+                  attributes: ['id', 'name', 'branch_name', 'logo_url'] }]
+    }) : [];
+    const STAGE_PRIORITY = { active: 5, setup: 4, contracting: 3, proposal: 2, expired: 1 };
+    const contractByUnit = {};
+    unitContracts.forEach(c => {
+      const uid = c.unit_id;
+      const existing = contractByUnit[uid];
+      if (!existing || (STAGE_PRIORITY[c.stage] || 0) > (STAGE_PRIORITY[existing.stage] || 0)) {
+        contractByUnit[uid] = c;
+      }
+    });
+    const isManager = req.user.role === 'Foodcourt Manager';
 
     // Tenant restaurants with 30-day sales
     const restaurants = await Restaurant.findAll({
@@ -80,19 +100,47 @@ router.get('/:id/tenancy-map', authenticateToken, async (req, res) => {
 
     const maxSales = enrichedRestaurants.reduce((m, r) => Math.max(m, r.sales_30d), 0);
 
-    // Unit occupancy per branch
+    // Unit occupancy per branch — breakdown by contract stage (active/setup/contracting/proposal/vacant)
+    // Falls back to unit.status when no contract is assigned (still useful for legacy data).
+    const emptyStats = () => ({ total: 0, active: 0, setup: 0, contracting: 0, proposal: 0, vacant: 0, expired: 0 });
     const unitsByBranch = {};
+    const unitsDetailByBranch = {};
     units.forEach(u => {
-      if (!unitsByBranch[u.branch_id]) unitsByBranch[u.branch_id] = { total: 0, occupied: 0, vacant: 0, reserved: 0 };
+      if (!unitsByBranch[u.branch_id]) unitsByBranch[u.branch_id] = emptyStats();
+      if (!unitsDetailByBranch[u.branch_id]) unitsDetailByBranch[u.branch_id] = [];
       unitsByBranch[u.branch_id].total++;
-      if (u.status === 'occupied') unitsByBranch[u.branch_id].occupied++;
-      else if (u.status === 'vacant') unitsByBranch[u.branch_id].vacant++;
-      else if (u.status === 'reserved') unitsByBranch[u.branch_id].reserved++;
+
+      const c = contractByUnit[u.id];
+      let bucket = 'vacant';
+      if (c) {
+        if (c.stage === 'active') bucket = 'active';
+        else if (c.stage === 'setup') bucket = 'setup';
+        else if (c.stage === 'contracting') bucket = 'contracting';
+        else if (c.stage === 'proposal') bucket = 'proposal';
+        else if (c.stage === 'expired') bucket = 'expired';
+      }
+      unitsByBranch[u.branch_id][bucket]++;
+
+      const cj = c ? c.toJSON() : null;
+      if (cj && isManager) { cj.financial_terms = null; cj.financial_redacted = true; }
+      else if (cj) cj.financial_redacted = false;
+
+      unitsDetailByBranch[u.branch_id].push({
+        id: u.id,
+        unit_number: u.unit_number,
+        status: u.status,
+        size_value: u.size_value,
+        size_unit: u.size_unit,
+        location_description: u.location_description,
+        displayStage: bucket, // 'active' | 'setup' | 'contracting' | 'proposal' | 'expired' | 'vacant'
+        currentContract: cj
+      });
     });
 
     const enrichedBranches = branches.map(b => ({
       ...b.toJSON(),
-      unit_stats: unitsByBranch[b.id] || { total: 0, occupied: 0, vacant: 0, reserved: 0 }
+      unit_stats: unitsByBranch[b.id] || emptyStats(),
+      units: unitsDetailByBranch[b.id] || []
     }));
 
     const mappedBranches = enrichedBranches.filter(b => b.latitude != null && b.longitude != null);
@@ -738,6 +786,30 @@ function calculatePlanCharges(plan, revenue, taxRate = 0, currency = null) {
         fixed_amount: null,
         percentage_rate: rate,
         base_amount: revenue,
+        calculated_amount: amount,
+        tax_rate: parseFloat(taxRate),
+        tax_amount: tax,
+        total_amount: Math.round((amount + tax) * 100) / 100
+      });
+      subtotal += amount;
+    }
+  } else if (plan.charge_type === 'combined') {
+    // Min-guarantee pattern — rent = MAX(EntityPlanPrice.monthly_price, percentage × revenue)
+    const priceRecord = (plan.prices || []).find(p => p.currency === planCurrency);
+    const fixedAmount = parseFloat(priceRecord?.monthly_price || 0);
+    const rate = parseFloat(plan.percentage_value || 0);
+    const percentageAmount = Math.round(revenue * rate / 100 * 100) / 100;
+    const amount = Math.max(fixedAmount, percentageAmount);
+    if (amount > 0) {
+      const tax = Math.round(amount * taxRateDecimal * 100) / 100;
+      items.push({
+        item_type: 'combined_charge',
+        description: `${plan.name} (MAX of ${planCurrency} ${fixedAmount.toLocaleString()} or ${rate}% × ${planCurrency} ${revenue.toLocaleString()})`,
+        calculation_method: 'combined',
+        fixed_amount: fixedAmount,
+        percentage_rate: rate,
+        base_amount: revenue,
+        minimum_amount: fixedAmount,
         calculated_amount: amount,
         tax_rate: parseFloat(taxRate),
         tax_amount: tax,
@@ -1957,6 +2029,170 @@ router.get('/:id/allowed-routes', async (req, res) => {
   } catch (error) {
     console.error('Error fetching foodcourt allowed routes:', error);
     res.status(500).json({ error: 'Failed to fetch allowed routes' });
+  }
+});
+
+// ============================================================================
+// Tenancy Operations Dashboard — single-shot aggregation for the Foodcourt
+// General dashboard widgets. Covers pipeline counts, expiring contracts,
+// billing gaps (active contracts without a linked plan), unit occupancy, and
+// an estimated monthly revenue forecast computed across linked plans.
+// GET /api/foodcourts/:id/tenancy-dashboard
+// ============================================================================
+router.get('/:id/tenancy-dashboard', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { FoodcourtBranch, FoodcourtUnit, Contract, ContractPlan, EntityPlan, EntityPlanPrice } = require('../models');
+
+    const foodcourt = await Foodcourt.findByPk(id, { attributes: ['id', 'name', 'currency', 'supported_currencies', 'owner_id'] });
+    if (!foodcourt) return res.status(404).json({ success: false, message: 'Foodcourt not found' });
+
+    // Access: System Admin / Foodcourt General (owner) / Foodcourt Manager (own fc)
+    const canAccess = req.user.role === 'System Admin'
+      || foodcourt.owner_id === req.user.id
+      || (['Foodcourt General', 'Foodcourt Manager'].includes(req.user.role) && Number(req.user.foodcourt_id) === Number(id));
+    if (!canAccess) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const isManager = req.user.role === 'Foodcourt Manager';
+    const managerBranch = isManager && req.user.branch_id ? Number(req.user.branch_id) : null;
+
+    // Branch scope: manager sees only their branch's contracts
+    const branchWhere = { foodcourt_id: id };
+    if (managerBranch) branchWhere.id = managerBranch;
+    const branches = await FoodcourtBranch.findAll({ where: branchWhere, attributes: ['id'] });
+    const branchIds = branches.map(b => b.id);
+
+    // Units within scope
+    const units = branchIds.length > 0 ? await FoodcourtUnit.findAll({
+      where: { branch_id: { [Op.in]: branchIds } },
+      attributes: ['id', 'status', 'branch_id']
+    }) : [];
+    const unitIds = units.map(u => u.id);
+
+    // All contracts for these units (any non-dead stage)
+    const contracts = unitIds.length > 0 ? await Contract.findAll({
+      where: {
+        unit_id: { [Op.in]: unitIds },
+        stage: ['proposal', 'contracting', 'setup', 'active', 'expired']
+      },
+      attributes: ['id', 'contract_number', 'stage', 'unit_id', 'restaurant_id', 'applicant_company_name',
+                   'start_date', 'end_date', 'renewal_alert_months', 'currency', 'created_at']
+    }) : [];
+
+    // Priority-pick current contract per unit (same rule as Floor Plan API)
+    const STAGE_PRIORITY = { active: 5, setup: 4, contracting: 3, proposal: 2, expired: 1 };
+    const currentByUnit = {};
+    contracts.forEach(c => {
+      const prev = currentByUnit[c.unit_id];
+      if (!prev || (STAGE_PRIORITY[c.stage] || 0) > (STAGE_PRIORITY[prev.stage] || 0)) {
+        currentByUnit[c.unit_id] = c;
+      }
+    });
+
+    // Pipeline counts (based on current contract per unit)
+    const pipeline = { proposal: 0, contracting: 0, setup: 0, active: 0, expired: 0, vacant: 0, total: units.length };
+    units.forEach(u => {
+      const c = currentByUnit[u.id];
+      if (!c) pipeline.vacant++;
+      else if (pipeline[c.stage] !== undefined) pipeline[c.stage]++;
+    });
+
+    // Active contracts + gap detection (contracts with no open ContractPlan)
+    const activeContracts = contracts.filter(c => c.stage === 'active');
+    const activeIds = activeContracts.map(c => c.id);
+    const openPlanLinks = activeIds.length > 0 ? await ContractPlan.findAll({
+      where: { contract_id: { [Op.in]: activeIds }, end_at: null },
+      attributes: ['id', 'contract_id', 'entity_plan_id']
+    }) : [];
+    const linkedContractIds = new Set(openPlanLinks.map(l => l.contract_id));
+    const gapContracts = activeContracts.filter(c => !linkedContractIds.has(c.id));
+
+    // Expiring contracts (active, within max(renewal_alert_months, 90 days) ahead)
+    const now = new Date();
+    const expiring30 = [];
+    const expiring90 = [];
+    activeContracts.forEach(c => {
+      if (!c.end_date) return;
+      const end = new Date(c.end_date);
+      const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (24 * 3600 * 1000));
+      if (daysLeft < 0) return; // past end — expired handled separately
+      if (daysLeft <= 30) expiring30.push({ ...c.toJSON(), days_left: daysLeft });
+      if (daysLeft <= 90) expiring90.push({ ...c.toJSON(), days_left: daysLeft });
+    });
+    expiring90.sort((a, b) => a.days_left - b.days_left);
+
+    // Revenue forecast — sum estimated monthly charge across all linked plans.
+    // Fetch linked plans + their fixed prices in one go.
+    let monthlyForecast = 0;
+    const planIds = openPlanLinks.map(l => l.entity_plan_id);
+    if (planIds.length > 0) {
+      const plans = await EntityPlan.findAll({
+        where: { id: { [Op.in]: planIds } },
+        attributes: ['id', 'charge_type', 'percentage_value', 'currency']
+      });
+      const prices = await EntityPlanPrice.findAll({
+        where: { entity_plan_id: { [Op.in]: planIds }, is_active: true },
+        attributes: ['entity_plan_id', 'currency', 'monthly_price']
+      });
+      const priceByPlan = {};
+      prices.forEach(p => {
+        if (!priceByPlan[p.entity_plan_id]) priceByPlan[p.entity_plan_id] = {};
+        priceByPlan[p.entity_plan_id][p.currency] = Number(p.monthly_price);
+      });
+
+      // For percentage/combined, we need recent revenue per restaurant. Keep simple:
+      // use the *fixed* floor for combined, 0 for percentage-only (no revenue available here).
+      for (const plan of plans) {
+        const priceMap = priceByPlan[plan.id] || {};
+        const fixed = priceMap[foodcourt.currency] || Object.values(priceMap)[0] || 0;
+        if (plan.charge_type === 'fixed') monthlyForecast += fixed;
+        else if (plan.charge_type === 'combined') monthlyForecast += fixed; // min-guarantee floor
+        // percentage-only: skip (needs per-restaurant revenue — shown as "variable" in UI)
+      }
+    }
+
+    // Redact amounts for Manager role
+    const redact = (list) => isManager ? [] : list;
+
+    res.json({
+      success: true,
+      data: {
+        currency: foodcourt.currency || 'MYR',
+        scope: { manager_branch_only: !!managerBranch, branch_ids: branchIds },
+        pipeline,
+        expiring: {
+          count_30d: expiring30.length,
+          count_90d: expiring90.length,
+          list: expiring90.slice(0, 10).map(c => ({
+            id: c.id,
+            contract_number: c.contract_number,
+            applicant_company_name: c.applicant_company_name,
+            end_date: c.end_date,
+            days_left: c.days_left
+          }))
+        },
+        billing_gaps: {
+          count: gapContracts.length,
+          list: gapContracts.slice(0, 10).map(c => ({
+            id: c.id,
+            contract_number: c.contract_number,
+            applicant_company_name: c.applicant_company_name,
+            days_since_start: c.start_date
+              ? Math.max(0, Math.floor((Date.now() - new Date(c.start_date).getTime()) / (24 * 3600 * 1000)))
+              : null
+          }))
+        },
+        revenue_forecast: isManager ? { financial_redacted: true } : {
+          currency: foodcourt.currency || 'MYR',
+          active_plans_count: openPlanLinks.length,
+          estimated_monthly_fixed_floor: Math.round(monthlyForecast * 100) / 100,
+          disclaimer: 'Fixed + combined min-guarantee only. Percentage-based variable portion excluded from estimate (depends on restaurant revenue).'
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching tenancy dashboard:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch tenancy dashboard' });
   }
 });
 

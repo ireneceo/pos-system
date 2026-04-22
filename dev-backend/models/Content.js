@@ -109,6 +109,75 @@ Content.init({
     allowNull: true,
     comment: 'Structured FAQ data for Schema.org markup'
   },
+  // Multilingual
+  language: {
+    type: DataTypes.STRING(5),
+    allowNull: false,
+    defaultValue: 'en',
+    comment: 'ISO 639-1 2-letter code (en/ms/zh/ko)'
+  },
+  translation_group_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Links translated versions of the same article'
+  },
+  // Marketing metadata
+  target_persona: {
+    type: DataTypes.STRING(30),
+    allowNull: true,
+    comment: 'restaurant_owner / brand_general / foodcourt_operator / owner'
+  },
+  funnel_stage: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    comment: 'TOFU / MOFU / BOFU'
+  },
+  content_tier: {
+    type: DataTypes.STRING(15),
+    allowNull: true,
+    comment: 'pillar / cluster / tactical / case_study / news_jack'
+  },
+  // Tag taxonomy (filterable on public blog/FAQ pages)
+  problem_category: {
+    type: DataTypes.STRING(30),
+    allowNull: true,
+    comment: 'operations / customer_experience / data_decisions / management / organization / automation'
+  },
+  // Multi-format fields (one content row = multi-channel rollout)
+  video_script: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Short-form video (15-30s) script: hook/problem/solution/cta sections'
+  },
+  thumbnail_copy: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Punchy copy for SNS thumbnails'
+  },
+  social_captions: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: '[DEPRECATED] Per-platform captions. Replaced by social_post.',
+    get() {
+      const raw = this.getDataValue('social_captions');
+      return raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+    }
+  },
+  // NEW — simplified distribution fields (replaces video_script + thumbnail_copy + social_captions)
+  video_prompt: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true,
+    comment: 'Full AI video production prompt — scene descriptions, VO script, overlays, thumbnail spec, visual style'
+  },
+  social_post: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Unified social post for all platforms: { title, body, hashtags[] }',
+    get() {
+      const raw = this.getDataValue('social_post');
+      return raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : null;
+    }
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

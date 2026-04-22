@@ -96,9 +96,9 @@ EntityPlan.init({
     comment: 'Staff account limit (-1 for unlimited)'
   },
   charge_type: {
-    type: DataTypes.ENUM('fixed', 'percentage'),
+    type: DataTypes.ENUM('fixed', 'percentage', 'combined'),
     defaultValue: 'fixed',
-    comment: 'fixed=multi-currency pricing (EntityPlanPrice), percentage=% of revenue'
+    comment: 'fixed=EntityPlanPrice.monthly_price / percentage=percentage_value*revenue / combined=MAX(both) (min-guarantee pattern)'
   },
   percentage_value: {
     type: DataTypes.DECIMAL(5, 2),

@@ -385,6 +385,97 @@ const LoadingContainer = styled.div`
 const PIE_COLORS = ['#DC2626', '#EF4444', '#F87171', '#FCA5A5', '#FECACA', '#FEE2E2', '#FFF5F5'];
 
 // ============================================================================
+// Franchise Operations section — contract pipeline + expiring + billing gaps + royalty forecast
+// Mirrors Foodcourt Dashboard's Tenancy Operations for visual + mental-model consistency.
+// ============================================================================
+const FranchiseOpsSection = styled.div`
+  background: white;
+  padding: 24px 28px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  margin-bottom: 24px;
+  border: 1px solid #E6EBF1;
+`;
+const FranchiseOpsHeader = styled.div`
+  margin-bottom: 20px;
+  h3 { margin: 0 0 4px; font-size: 18px; font-weight: 700; color: #0A2540; }
+`;
+const FranchiseOpsSubtitle = styled.div`font-size: 13px; color: #6B7C93;`;
+const FunnelRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+  @media (max-width: 960px) { grid-template-columns: repeat(3, 1fr); }
+`;
+const FunnelCell = styled.div<{ $color: string }>`
+  padding: 14px 12px;
+  background: #F8FAFC;
+  border-left: 3px solid ${p => p.$color};
+  border-radius: 6px;
+  .label { font-size: 10px; font-weight: 600; color: #6B7C93; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+  .count { font-size: 22px; font-weight: 700; color: ${p => p.$color}; line-height: 1; }
+`;
+const FunnelTotal = styled.div`
+  padding: 14px 12px;
+  background: #F0EDFF;
+  border-left: 3px solid #635BFF;
+  border-radius: 6px;
+  .label { font-size: 10px; font-weight: 600; color: #6B7C93; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; }
+  .count { font-size: 22px; font-weight: 700; color: #635BFF; line-height: 1; }
+`;
+const FranchiseOpsGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  @media (max-width: 1100px) { grid-template-columns: 1fr; }
+`;
+const OpsCard = styled.div<{ $highlight?: boolean }>`
+  padding: 16px 18px;
+  background: ${p => p.$highlight ? '#F0EDFF' : '#F8FAFC'};
+  border: 1px solid ${p => p.$highlight ? '#DDD6FE' : '#E6EBF1'};
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+`;
+const OpsCardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  h4 { margin: 0; font-size: 13px; font-weight: 600; color: #0A2540; }
+`;
+const OpsCardStats = styled.div`
+  display: flex; gap: 6px; font-size: 12px; font-weight: 600; color: #4B5563;
+  small { font-weight: 500; color: #9CA3AF; margin-left: 2px; }
+`;
+const OpsEmpty = styled.div`font-size: 12px; color: #9CA3AF; font-style: italic; padding: 8px 0;`;
+const OpsList = styled.div`display: flex; flex-direction: column; gap: 6px;`;
+const OpsListItem = styled.div`
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; background: white; border-radius: 6px;
+  border: 1px solid #E6EBF1; cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  &:hover { border-color: #635BFF; box-shadow: 0 2px 6px rgba(99, 91, 255, 0.08); }
+  .primary {
+    font-size: 12px; font-weight: 600; color: #0A2540;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1; min-width: 0; margin-right: 8px;
+  }
+  .sub { font-weight: 500; color: #6B7C93; }
+`;
+const OpsBadge = styled.span<{ $urgent?: boolean }>`
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px;
+  background: ${p => p.$urgent ? '#FEE2E2' : '#DCFCE7'};
+  color: ${p => p.$urgent ? '#991B1B' : '#15803D'};
+  white-space: nowrap; flex-shrink: 0;
+`;
+const ForecastValue = styled.div`font-size: 26px; font-weight: 700; color: #635BFF; line-height: 1.1; margin-bottom: 4px;`;
+const ForecastMeta = styled.div`font-size: 12px; color: #4B5563; margin-bottom: 8px;`;
+const ForecastNote = styled.div`font-size: 11px; color: #9CA3AF; font-style: italic; line-height: 1.4;`;
+
+// ============================================================================
 // Component
 // ============================================================================
 
@@ -414,6 +505,7 @@ const BrandGeneralDashboard: React.FC = () => {
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [subscriptionInfo, setSubscriptionInfo] = useState<{ planType?: string; status?: string; daysLeft?: number }>({});
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [franchiseOps, setFranchiseOps] = useState<any | null>(null);
   const [alerts, setAlerts] = useState<Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }>>([]);
   const [badgeCounts, setBadgeCounts] = useState({ systemInquiry: 0, operationInquiry: 0, notices: 0, invoices: 0 });
   const [activeContracts, setActiveContracts] = useState<any[]>([]);
@@ -558,11 +650,24 @@ const BrandGeneralDashboard: React.FC = () => {
       setAlerts(alertList);
 
       fetchTrendData(brand.id);
+      fetchFranchiseOps(brand.id);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchFranchiseOps = async (bId: number) => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+      const res = await fetch(`/api/brands/${bId}/franchise-dashboard`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) setFranchiseOps(data.data);
+    } catch (e) { /* silent */ }
   };
 
   const fetchTrendData = async (bId: number) => {
@@ -833,6 +938,145 @@ const BrandGeneralDashboard: React.FC = () => {
             </div>
           </ChartCard>
         </ChartGrid>
+
+        {/* Franchise Operations — contract pipeline + expiring + billing gaps + royalty forecast */}
+        {franchiseOps && (
+          <FranchiseOpsSection>
+            <FranchiseOpsHeader>
+              <h3>{t('brand:brandGeneralDashboard.franchiseOperations', 'Franchise Operations')}</h3>
+              <FranchiseOpsSubtitle>
+                {t('brand:brandGeneralDashboard.franchiseOpsSubtitle', 'Contract lifecycle, billing gaps, and royalty forecast')}
+              </FranchiseOpsSubtitle>
+            </FranchiseOpsHeader>
+
+            {/* Pipeline funnel */}
+            <FunnelRow>
+              {(['proposal', 'contracting', 'setup', 'active', 'expired'] as const).map((stage) => {
+                const colors: Record<string, string> = {
+                  proposal: '#8B5CF6', contracting: '#F97316', setup: '#3B82F6',
+                  active: '#16A34A', expired: '#EF4444'
+                };
+                const labels: Record<string, string> = {
+                  proposal: t('brand:brandGeneralDashboard.stageProposal', 'Proposal'),
+                  contracting: t('brand:brandGeneralDashboard.stageContracting', 'In Talks'),
+                  setup: t('brand:brandGeneralDashboard.stageSetup', 'Setup'),
+                  active: t('brand:brandGeneralDashboard.stageActive', 'Active'),
+                  expired: t('brand:brandGeneralDashboard.stageExpired', 'Expired')
+                };
+                return (
+                  <FunnelCell key={stage} $color={colors[stage]}>
+                    <div className="label">{labels[stage]}</div>
+                    <div className="count">{franchiseOps.pipeline?.[stage] ?? 0}</div>
+                  </FunnelCell>
+                );
+              })}
+              <FunnelTotal>
+                <div className="label">{t('brand:brandGeneralDashboard.totalContracts', 'Total')}</div>
+                <div className="count">{franchiseOps.pipeline?.total ?? 0}</div>
+              </FunnelTotal>
+            </FunnelRow>
+
+            {/* Expiring + Billing Gaps + Royalty Forecast */}
+            <FranchiseOpsGrid>
+              <OpsCard>
+                <OpsCardHeader>
+                  <h4>{t('brand:brandGeneralDashboard.expiringSoon', 'Expiring Soon')}</h4>
+                  <OpsCardStats>
+                    <span>{franchiseOps.expiring?.count_30d ?? 0} <small>{t('brand:brandGeneralDashboard.in30d', 'in 30d')}</small></span>
+                    <span>·</span>
+                    <span>{franchiseOps.expiring?.count_90d ?? 0} <small>{t('brand:brandGeneralDashboard.in90d', 'in 90d')}</small></span>
+                  </OpsCardStats>
+                </OpsCardHeader>
+                {(franchiseOps.expiring?.list || []).length === 0 ? (
+                  <OpsEmpty>{t('brand:brandGeneralDashboard.noExpiring', 'No contracts expiring soon.')}</OpsEmpty>
+                ) : (
+                  <OpsList>
+                    {(franchiseOps.expiring.list as any[]).slice(0, 5).map((c) => {
+                      const restaurantLabel = c.restaurant?.name
+                        ? `${c.restaurant.name}${c.restaurant.branch_name ? ` · ${c.restaurant.branch_name}` : ''}`
+                        : c.applicant_company_name;
+                      return (
+                        <OpsListItem
+                          key={c.id}
+                          onClick={() => navigate(`/pos/brand/franchise?id=${c.id}`)}
+                          role="button" tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/pos/brand/franchise?id=${c.id}`); }}
+                        >
+                          <div className="primary">
+                            {c.contract_number || `#${c.id}`}
+                            {restaurantLabel && <span className="sub"> · {restaurantLabel}</span>}
+                          </div>
+                          <OpsBadge $urgent={c.days_left <= 30}>
+                            {c.days_left > 0 ? `${c.days_left}d` : t('brand:brandGeneralDashboard.overdue', 'overdue')}
+                          </OpsBadge>
+                        </OpsListItem>
+                      );
+                    })}
+                  </OpsList>
+                )}
+              </OpsCard>
+
+              <OpsCard>
+                <OpsCardHeader>
+                  <h4>{t('brand:brandGeneralDashboard.billingGaps', 'Billing Gaps')}</h4>
+                  <OpsCardStats>
+                    <span>{franchiseOps.billing_gaps?.count ?? 0} <small>{t('brand:brandGeneralDashboard.unlinked', 'active w/o plan')}</small></span>
+                  </OpsCardStats>
+                </OpsCardHeader>
+                {(franchiseOps.billing_gaps?.list || []).length === 0 ? (
+                  <OpsEmpty>
+                    {t('brand:brandGeneralDashboard.noBillingGaps', 'All active franchise contracts have plans linked.')}
+                  </OpsEmpty>
+                ) : (
+                  <OpsList>
+                    {(franchiseOps.billing_gaps.list as any[]).slice(0, 5).map((c) => {
+                      const restaurantLabel = c.restaurant?.name
+                        ? `${c.restaurant.name}${c.restaurant.branch_name ? ` · ${c.restaurant.branch_name}` : ''}`
+                        : c.applicant_company_name;
+                      return (
+                        <OpsListItem
+                          key={c.id}
+                          onClick={() => navigate(`/pos/brand/franchise?id=${c.id}`)}
+                          role="button" tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate(`/pos/brand/franchise?id=${c.id}`); }}
+                        >
+                          <div className="primary">
+                            {c.contract_number || `#${c.id}`}
+                            {restaurantLabel && <span className="sub"> · {restaurantLabel}</span>}
+                          </div>
+                          <OpsBadge $urgent>
+                            ! {t('brand:brandGeneralDashboard.noPlan', 'no plan')}
+                          </OpsBadge>
+                        </OpsListItem>
+                      );
+                    })}
+                  </OpsList>
+                )}
+              </OpsCard>
+
+              <OpsCard $highlight>
+                <OpsCardHeader>
+                  <h4>{t('brand:brandGeneralDashboard.royaltyForecast', 'Royalty Forecast (Monthly)')}</h4>
+                </OpsCardHeader>
+                {franchiseOps.revenue_forecast?.financial_redacted ? (
+                  <OpsEmpty>🔒 {t('brand:brandGeneralDashboard.forecastRedacted', 'Forecast hidden for your role')}</OpsEmpty>
+                ) : (
+                  <>
+                    <ForecastValue>
+                      {formatCurrency(franchiseOps.revenue_forecast?.estimated_monthly_fixed_floor || 0, franchiseOps.revenue_forecast?.currency || currency)}
+                    </ForecastValue>
+                    <ForecastMeta>
+                      {franchiseOps.revenue_forecast?.active_plans_count ?? 0} {t('brand:brandGeneralDashboard.activePlansLinked', 'active plans linked')}
+                    </ForecastMeta>
+                    <ForecastNote>
+                      {t('brand:brandGeneralDashboard.forecastNote', 'Fixed + combined min-guarantee only. Percentage-based royalty excluded (varies with restaurant revenue).')}
+                    </ForecastNote>
+                  </>
+                )}
+              </OpsCard>
+            </FranchiseOpsGrid>
+          </FranchiseOpsSection>
+        )}
 
         {/* Restaurant Performance Table */}
         <RecentOrdersSection>

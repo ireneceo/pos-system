@@ -5,12 +5,19 @@ import { LandingLayout } from '../../components/Landing';
 import SEOHead, { generateArticleSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
 import { useSiteTimezone, formatDateInSiteTz } from '../../hooks/useSiteTimezone';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface BlogCategory {
   id: number;
   name: string;
   slug: string;
   icon: string | null;
+}
+
+interface SocialPost {
+  title?: string;
+  body?: string;
+  hashtags?: string[];
 }
 
 interface BlogPost {
@@ -23,6 +30,7 @@ interface BlogPost {
   published_at: string | null;
   view_count: number;
   author_name: string | null;
+  language?: string;
   category?: BlogCategory;
   // SEO fields
   seo_title?: string | null;
@@ -30,6 +38,12 @@ interface BlogPost {
   seo_keywords?: string | null;
   og_image_url?: string | null;
   ai_summary?: string | null;
+  // Distribution fields (admin-only)
+  video_prompt?: string | null;
+  social_post?: SocialPost | null;
+  target_persona?: string | null;
+  problem_category?: string | null;
+  content_tier?: string | null;
 }
 
 const PageContainer = styled.div`
@@ -195,6 +209,195 @@ const ArticleHeader = styled.div`
   margin-bottom: 32px;
 `;
 
+const MultiFormatSection = styled.section`
+  max-width: 800px;
+  margin: 32px auto 48px;
+  padding: 24px 28px;
+  background: #FFFBF0;
+  border: 1px dashed #F59E0B;
+  border-radius: 16px;
+
+  @media (max-width: 768px) {
+    margin: 24px 16px;
+    padding: 20px;
+  }
+`;
+
+const AdminBadge = styled.div`
+  display: inline-block;
+  padding: 4px 10px;
+  background: #F59E0B;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+`;
+
+const MultiFormatTitle = styled.h2`
+  font-size: 20px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0 0 8px;
+`;
+
+const MultiFormatHint = styled.p`
+  font-size: 13px;
+  color: #6B7C93;
+  margin: 0 0 20px;
+  line-height: 1.5;
+`;
+
+const UsageGuide = styled.div`
+  background: white;
+  border: 1px solid #F59E0B;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: #425466;
+  line-height: 1.6;
+
+  strong {
+    display: block;
+    color: #0A2540;
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  ol {
+    margin: 0 0 10px;
+    padding-left: 20px;
+  }
+
+  li {
+    margin-bottom: 4px;
+  }
+
+  em {
+    display: block;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #F59E0B;
+    font-style: normal;
+    font-size: 12px;
+    color: #6B7C93;
+  }
+
+  b {
+    color: #0A2540;
+  }
+`;
+
+const AssetTip = styled.div`
+  padding: 6px 14px;
+  background: #FFFBF0;
+  border-bottom: 1px dashed #F59E0B;
+  font-size: 11px;
+  color: #B45309;
+  font-style: italic;
+`;
+
+const AssetBlock = styled.div`
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  background: #FAFBFC;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`;
+
+const AssetHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: white;
+  border-bottom: 1px solid #E6EBF1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0A2540;
+`;
+
+const AssetBody = styled.div`
+  padding: 14px 16px;
+  font-size: 14px;
+  color: #425466;
+  line-height: 1.6;
+
+  pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: inherit;
+    font-size: 13px;
+  }
+`;
+
+const CopyButton = styled.button`
+  padding: 5px 12px;
+  border: 1px solid #E6EBF1;
+  background: white;
+  color: #635BFF;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #F8F9FF;
+    border-color: #635BFF;
+  }
+`;
+
+const SocialField = styled.div`
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #E6EBF1;
+
+  &:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+`;
+
+const SocialFieldHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6B7C93;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const CopyButtonSmall = styled.button`
+  padding: 3px 8px;
+  border: 1px solid #E6EBF1;
+  background: white;
+  color: #635BFF;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+
+  &:hover {
+    background: #F8F9FF;
+    border-color: #635BFF;
+  }
+`;
+
 const ArticleContent = styled.div`
   font-size: 17px;
   line-height: 1.8;
@@ -356,7 +559,9 @@ const NotFoundState = styled.div`
 `;
 
 const BlogPostPage: React.FC = () => {
-  const { t } = useTranslation('landing');
+  const { t, i18n } = useTranslation('landing');
+  const { user } = useAuth();
+  const isSystemAdmin = user?.role === 'System Admin';
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -367,22 +572,65 @@ const BlogPostPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
+  const [isFallback, setIsFallback] = useState(false);
+  const [translations, setTranslations] = useState<Array<{ language: string; slug: string; title: string }>>([]);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch (e) {
+      console.error('Copy failed:', e);
+    }
+  };
+
   useEffect(() => {
     if (slug) {
       fetchPost();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
+  }, [slug, i18n.language]);
+
+  // Auto-navigate to the correct slug — keeps URL in sync with (post.language, post.slug).
+  // Two cases:
+  //   A) UI language differs from post language → navigate to translated version (if exists)
+  //   B) URL slug differs from the returned post.slug (e.g. user hit MS slug with lang=en;
+  //      server resolved it to the EN sibling) → replace URL to the canonical slug.
+  useEffect(() => {
+    if (!post) return;
+    const uiLang = (i18n.language || 'en').split('-')[0];
+
+    // Case A: language mismatch — try to switch to matching translation
+    if (post.language !== uiLang && translations.length) {
+      const match = translations.find(tr => tr.language === uiLang);
+      if (match && match.slug !== slug) {
+        navigate(`/blog/${match.slug}`, { replace: true });
+        return;
+      }
+      // No translation in requested lang → fall through (fallback banner shown)
+    }
+
+    // Case B: same language but URL slug doesn't match canonical — fix URL
+    if (post.slug && post.slug !== slug) {
+      navigate(`/blog/${post.slug}`, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i18n.language, post?.slug, post?.language, translations.length]);
 
   const fetchPost = async () => {
     setLoading(true);
     setNotFound(false);
     try {
-      const response = await fetch(`/api/contents/public/blog/${slug}`);
+      const lang = (i18n.language || 'en').split('-')[0];
+      const response = await fetch(`/api/contents/public/blog/${slug}?lang=${encodeURIComponent(lang)}`);
       if (response.ok) {
         const data = await response.json();
         setPost(data.post);
         setRelatedPosts(data.relatedPosts || []);
+        setIsFallback(Boolean(data.is_fallback));
+        setTranslations(Array.isArray(data.translations) ? data.translations : []);
       } else if (response.status === 404) {
         setNotFound(true);
       }
@@ -465,6 +713,10 @@ const BlogPostPage: React.FC = () => {
         author={getAuthorDisplayName(post.author_name) || 'PurpleHere'}
         publishedTime={post.published_at || undefined}
         jsonLd={[articleSchema, breadcrumbSchema]}
+        language={post.language as 'en' | 'ms' | 'zh' | 'ko' | undefined}
+        alternateUrls={translations.length > 1 ? Object.fromEntries(
+          translations.map(tr => [tr.language, `https://purplehere.com/blog/${tr.slug}`])
+        ) : undefined}
       />
       <PageContainer>
         <HeroSection>
@@ -509,6 +761,21 @@ const BlogPostPage: React.FC = () => {
           </ThumbnailSection>
         )}
 
+        {isFallback && (
+          <div style={{ maxWidth: 800, margin: '0 auto', padding: '20px 20px 0' }}>
+            <div style={{
+              background: '#FFF8E1',
+              border: '1px solid #FFE082',
+              borderRadius: 8,
+              padding: '12px 16px',
+              fontSize: 14,
+              color: '#6B4E00',
+            }}>
+              {t('landing:blogPostPage.fallbackNotice', 'This article is only available in English. Translation coming soon.')}
+            </div>
+          </div>
+        )}
+
         <ArticleSection>
           <ArticleHeader>
             <BackButton onClick={() => navigate(backPath)}>
@@ -520,6 +787,101 @@ const BlogPostPage: React.FC = () => {
           </ArticleHeader>
           <ArticleContent dangerouslySetInnerHTML={{ __html: post.content }} />
         </ArticleSection>
+
+        {isSystemAdmin && (post.video_prompt || post.social_post) && (
+          <MultiFormatSection>
+            <AdminBadge>🔒 {t('landing:blogPostPage.adminOnly', 'Admin only — not visible to public readers')}</AdminBadge>
+            <MultiFormatTitle>
+              📣 {t('landing:blogPostPage.distributionKit', 'Distribution Kit')}
+            </MultiFormatTitle>
+
+            <UsageGuide>
+              <strong>How to distribute this post</strong>
+              <ol>
+                <li><b>Video Prompt</b> → Paste into any AI video generator (Sora / Runway / Veo / Pika) to produce a 15-28s vertical video. The first frame becomes your thumbnail automatically — no separate thumbnail work needed.</li>
+                <li><b>Social Post</b> → Copy title, body, and hashtags. Paste identically on Facebook / LinkedIn / Threads / YouTube / TikTok. Upload the generated video as the attachment.</li>
+                <li><b>Or use an auto-distribution tool</b> (Buffer, Hootsuite, Publer) — post once, it fans out to all channels.</li>
+              </ol>
+            </UsageGuide>
+
+            {post.video_prompt && (
+              <AssetBlock>
+                <AssetHeader>
+                  <span>🎬 {t('landing:blogPostPage.videoPrompt', 'Video Production Prompt')}</span>
+                  <CopyButton onClick={() => copyToClipboard(post.video_prompt!, 'video')}>
+                    {copiedKey === 'video' ? '✓ Copied' : 'Copy prompt'}
+                  </CopyButton>
+                </AssetHeader>
+                <AssetTip>Paste into Sora / Runway / Veo / Pika. Includes scene breakdown, voice-over script, text overlays, thumbnail spec (first frame), and visual style guide. Generated video = ready to upload.</AssetTip>
+                <AssetBody>
+                  <pre>{post.video_prompt}</pre>
+                </AssetBody>
+              </AssetBlock>
+            )}
+
+            {post.social_post && (
+              <AssetBlock>
+                <AssetHeader>
+                  <span>📱 {t('landing:blogPostPage.socialPost', 'Social Post (all platforms)')}</span>
+                  <CopyButton
+                    onClick={() => {
+                      const packaged = [
+                        post.social_post?.title || '',
+                        '',
+                        post.social_post?.body || '',
+                        '',
+                        (post.social_post?.hashtags || []).join(' ')
+                      ].join('\n');
+                      copyToClipboard(packaged, 'social-full');
+                    }}
+                  >
+                    {copiedKey === 'social-full' ? '✓ Copied full package' : 'Copy full package'}
+                  </CopyButton>
+                </AssetHeader>
+                <AssetTip>Paste identically on Facebook, LinkedIn, Threads, YouTube, TikTok. Use the generated video as the attachment on all platforms.</AssetTip>
+                <AssetBody>
+                  {post.social_post.title && (
+                    <SocialField>
+                      <SocialFieldHeader>
+                        <span>Title</span>
+                        <CopyButtonSmall onClick={() => copyToClipboard(post.social_post!.title!, 'social-title')}>
+                          {copiedKey === 'social-title' ? '✓' : 'Copy'}
+                        </CopyButtonSmall>
+                      </SocialFieldHeader>
+                      <div style={{ fontWeight: 600, fontSize: 16, color: '#0A2540' }}>{post.social_post.title}</div>
+                    </SocialField>
+                  )}
+                  {post.social_post.body && (
+                    <SocialField>
+                      <SocialFieldHeader>
+                        <span>Body</span>
+                        <CopyButtonSmall onClick={() => copyToClipboard(post.social_post!.body!, 'social-body')}>
+                          {copiedKey === 'social-body' ? '✓' : 'Copy'}
+                        </CopyButtonSmall>
+                      </SocialFieldHeader>
+                      <div style={{ whiteSpace: 'pre-wrap', fontSize: 14, lineHeight: 1.6 }}>{post.social_post.body}</div>
+                    </SocialField>
+                  )}
+                  {post.social_post.hashtags && post.social_post.hashtags.length > 0 && (
+                    <SocialField>
+                      <SocialFieldHeader>
+                        <span>Hashtags</span>
+                        <CopyButtonSmall onClick={() => copyToClipboard((post.social_post!.hashtags || []).join(' '), 'social-tags')}>
+                          {copiedKey === 'social-tags' ? '✓' : 'Copy'}
+                        </CopyButtonSmall>
+                      </SocialFieldHeader>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {post.social_post.hashtags.map((tag, i) => (
+                          <span key={i} style={{ background: '#F0EFFF', color: '#635BFF', padding: '3px 10px', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>{tag}</span>
+                        ))}
+                      </div>
+                    </SocialField>
+                  )}
+                </AssetBody>
+              </AssetBlock>
+            )}
+          </MultiFormatSection>
+        )}
 
         {relatedPosts.length > 0 && (
           <RelatedSection>

@@ -16,6 +16,26 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
 });
 
+interface CurrentContract {
+  id: number;
+  contract_number?: string | null;
+  stage: string;
+  contract_type?: string | null;
+  applicant_company_name?: string | null;
+  applicant_contact_person?: string | null;
+  applicant_email?: string | null;
+  applicant_phone?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  signing_date?: string | null;
+  duration_months?: number | null;
+  renewal_type?: string | null;
+  renewal_alert_months?: number | null;
+  termination_notice_months?: number | null;
+  financial_terms?: Record<string, any> | null;
+  financial_redacted?: boolean;
+  exclusivity_terms?: Record<string, any> | null;
+}
 interface MappedRestaurant {
   id: number;
   name: string;
@@ -34,7 +54,9 @@ interface MappedRestaurant {
   order_count?: number;
   contract_id?: number | null;
   contract_type?: string | null;
+  contract_stage?: string | null;
   radius_km?: number | null;
+  currentContract?: CurrentContract | null;
 }
 
 interface UnmappedRestaurant extends Omit<MappedRestaurant, 'latitude' | 'longitude'> {
@@ -63,15 +85,101 @@ const FRANCHISE_TYPES = ['franchise', 'license', 'master'];
 
 // ============ Styled ============
 
-const Layout = styled.div`
+const Layout = styled.div<{ $hasDetail?: boolean }>`
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 16px;
+  grid-template-columns: ${p => p.$hasDetail ? '260px 1fr 360px' : '320px 1fr'};
+  gap: 12px;
   height: 640px;
+  @media (max-width: 1200px) {
+    grid-template-columns: ${p => p.$hasDetail ? '240px 1fr 320px' : '280px 1fr'};
+  }
   @media (max-width: 960px) {
     grid-template-columns: 1fr; height: auto;
   }
 `;
+
+const STAGE_PALETTE: Record<string, { bg: string; border: string; text: string; label: string }> = {
+  active:      { bg: '#DCFCE7', border: '#16A34A', text: '#15803D', label: 'Active' },
+  setup:       { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF', label: 'Setup' },
+  contracting: { bg: '#FFEDD5', border: '#F97316', text: '#9A3412', label: 'In Talks' },
+  proposal:    { bg: '#EDE9FE', border: '#8B5CF6', text: '#5B21B6', label: 'Proposal' },
+  expired:     { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B', label: 'Expired' }
+};
+
+const DetailPanel = styled.div`
+  display: flex; flex-direction: column;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+`;
+const DetailHeader = styled.div`
+  padding: 14px 16px;
+  border-bottom: 1px solid #E6EBF1;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 8px;
+  .title { font-size: 15px; font-weight: 700; color: #0A2540; margin: 0; }
+  .sub { font-size: 11px; color: #9CA3AF; font-weight: 500; margin-top: 2px; }
+  .close { background: none; border: none; cursor: pointer; font-size: 18px; color: #6B7C93; &:hover { color: #0A2540; } }
+`;
+const DetailBody = styled.div`flex: 1; overflow-y: auto; padding: 14px 16px;`;
+const DetailSection = styled.div`margin-bottom: 16px;`;
+const DetailSectionTitle = styled.div`
+  font-size: 10px; font-weight: 600; color: #6B7C93;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+`;
+const StageBadge = styled.span<{ $bg: string; $text: string; $border: string }>`
+  display: inline-block; padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  background: ${p => p.$bg}; color: ${p => p.$text};
+  border: 1px solid ${p => p.$border};
+`;
+const InfoRow = styled.div`
+  display: flex; justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #4B5563;
+  b { color: #0A2540; text-align: right; }
+`;
+const TileGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+`;
+const Tile = styled.div<{ $color: string }>`
+  padding: 8px;
+  border-radius: 6px;
+  background: #F8FAFC;
+  border-left: 3px solid ${p => p.$color};
+`;
+const TileLabel = styled.div`
+  font-size: 9px; font-weight: 600; color: #6B7C93;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  margin-bottom: 3px;
+`;
+const TileValue = styled.div`
+  font-size: 13px; font-weight: 700; color: #0A2540;
+  line-height: 1.2;
+`;
+const OpenContractLink = styled.a`
+  display: inline-block; margin-top: 8px;
+  padding: 8px 14px;
+  background: #635BFF;
+  color: white;
+  border-radius: 6px;
+  font-size: 12px; font-weight: 600;
+  text-decoration: none;
+  &:hover { background: #5A51E6; }
+`;
+
+function fmtMoney(v: any): string {
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
+  return n.toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
 
 const SidePanel = styled.div`
   display: flex; flex-direction: column;
@@ -306,7 +414,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
         <span style={{ marginLeft: 12, color: '#6B7280' }}>{t('map.legend.sizeNote', 'Pin size = sales last 30d')}</span>
       </Legend>
 
-      <Layout>
+      <Layout $hasDetail={!!selected}>
         <SidePanel>
           <SidePanelHeader>
             <span>{t('map.restaurantListHeader', 'Restaurants ({{count}})', { count: filteredList.length })}</span>
@@ -356,18 +464,24 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
-              {mapped.filter(p => p.radius_km && p.radius_km > 0).map(p => (
-                <Circle
-                  key={`radius-${p.id}`}
-                  center={[p.latitude, p.longitude]}
-                  radius={(p.radius_km as number) * 1000}
-                  pathOptions={{
-                    color: STATUS_COLOR[p.status] || '#9CA3AF',
-                    fillColor: STATUS_COLOR[p.status] || '#9CA3AF',
-                    fillOpacity: 0.08, weight: 1, dashArray: '4 4'
-                  }}
-                />
-              ))}
+              {mapped.filter(p => p.radius_km && p.radius_km > 0).map(p => {
+                const isSelected = selectedId === p.id;
+                const color = STATUS_COLOR[p.status] || '#9CA3AF';
+                return (
+                  <Circle
+                    key={`radius-${p.id}`}
+                    center={[p.latitude, p.longitude]}
+                    radius={(p.radius_km as number) * 1000}
+                    pathOptions={{
+                      color,
+                      fillOpacity: 0,         // no color fill — avoids green wash over the map
+                      opacity: isSelected ? 0.7 : 0.35,
+                      weight: isSelected ? 1.5 : 1,
+                      dashArray: '4 4'
+                    }}
+                  />
+                );
+              })}
               <ClusterLayer
                 points={mapped}
                 maxSales={data.max_sales_30d || 0}
@@ -380,6 +494,140 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
         ) : (
           <EmptyState>{t('map.noCoords', 'No restaurants have coordinates yet. Edit a restaurant to add location data.')}</EmptyState>
         )}
+
+        {/* Right detail panel — contract + tenant info for clicked restaurant */}
+        {selected && (() => {
+          const c = selected.currentContract;
+          const stagePalette = c && STAGE_PALETTE[c.stage] ? STAGE_PALETTE[c.stage] : null;
+          const daysLeft = c?.end_date ? Math.ceil((new Date(c.end_date + 'T00:00:00').getTime() - Date.now()) / (24 * 3600 * 1000)) : null;
+          const ft = (c?.financial_terms && !c.financial_redacted) ? c.financial_terms : null;
+          const currency = 'RM';
+
+          return (
+            <DetailPanel>
+              <DetailHeader>
+                <div>
+                  <h3 className="title">{selected.name}{selected.branch_name ? ` · ${selected.branch_name}` : ''}</h3>
+                  {(selected.city || selected.address) && (
+                    <div className="sub">{[selected.address, selected.city, selected.state].filter(Boolean).join(', ')}</div>
+                  )}
+                </div>
+                <button className="close" onClick={() => setSelectedId(null)} aria-label={t('common.close', 'Close')} type="button">✕</button>
+              </DetailHeader>
+              <DetailBody>
+                {/* Restaurant basics */}
+                <DetailSection>
+                  <DetailSectionTitle>{t('map.restaurant', 'Restaurant')}</DetailSectionTitle>
+                  <InfoRow><span>{t('map.status', 'Status')}</span>
+                    <b style={{ color: STATUS_COLOR[selected.status] || '#6B7280' }}>{selected.status}</b></InfoRow>
+                  {selected.phone && <InfoRow><span>{t('map.phone', 'Phone')}</span>
+                    <b><a href={`tel:${selected.phone}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{selected.phone}</a></b></InfoRow>}
+                  {selected.email && <InfoRow><span>{t('map.email', 'Email')}</span>
+                    <b><a href={`mailto:${selected.email}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{selected.email}</a></b></InfoRow>}
+                  <InfoRow><span>{t('map.sales30d', 'Sales (30d)')}</span>
+                    <b>{currency} {fmtMoney(selected.sales_30d || 0)}</b></InfoRow>
+                </DetailSection>
+
+                {/* Contract */}
+                {c ? (
+                  <>
+                    <DetailSection>
+                      <DetailSectionTitle>
+                        {t('floorPlan.sec.contract', 'Current Contract')}
+                        {stagePalette && (
+                          <StageBadge
+                            style={{ marginLeft: 8 }}
+                            $bg={stagePalette.bg}
+                            $text={stagePalette.text}
+                            $border={stagePalette.border}
+                          >
+                            {t(`floorPlan.unitStatus.${c.stage}`, stagePalette.label)}
+                          </StageBadge>
+                        )}
+                      </DetailSectionTitle>
+                      <InfoRow><span>{t('floorPlan.contract.number', 'Number')}</span>
+                        <b>{c.contract_number || `#${c.id}`}</b></InfoRow>
+                      {c.contract_type && <InfoRow><span>{t('floorPlan.contract.type', 'Type')}</span>
+                        <b>{t(`floorPlan.contractType.${c.contract_type}`, c.contract_type)}</b></InfoRow>}
+                      {(c.start_date || c.end_date) && (
+                        <InfoRow>
+                          <span>{t('floorPlan.contract.period', 'Period')}</span>
+                          <b>
+                            {c.start_date ? new Date(c.start_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' }) : '—'}
+                            {' → '}
+                            {c.end_date ? new Date(c.end_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' }) : '—'}
+                          </b>
+                        </InfoRow>
+                      )}
+                      {daysLeft != null && (c.stage === 'active' || c.stage === 'setup') && (
+                        <InfoRow>
+                          <span>{t('floorPlan.contract.daysLeft', 'Days remaining')}</span>
+                          <b style={{ color: daysLeft < 30 ? '#DC2626' : daysLeft < 90 ? '#D97706' : '#059669' }}>
+                            {daysLeft > 0 ? `${daysLeft}d` : t('floorPlan.contract.overdue', 'Past end date')}
+                          </b>
+                        </InfoRow>
+                      )}
+                      {c.renewal_type && (
+                        <InfoRow><span>{t('floorPlan.contract.renewal', 'Renewal')}</span>
+                          <b>{t(`floorPlan.renewalType.${c.renewal_type}`, c.renewal_type)}
+                            {c.renewal_alert_months ? ` · ${c.renewal_alert_months}mo alert` : ''}
+                          </b></InfoRow>
+                      )}
+                    </DetailSection>
+
+                    {/* Applicant (legal entity + contact) */}
+                    {(c.applicant_company_name || c.applicant_contact_person) && (
+                      <DetailSection>
+                        <DetailSectionTitle>{t('floorPlan.sec.tenant', 'Tenant')}</DetailSectionTitle>
+                        {c.applicant_company_name && <InfoRow><span>{t('floorPlan.tenant.legalEntity', 'Legal entity')}</span>
+                          <b>{c.applicant_company_name}</b></InfoRow>}
+                        {c.applicant_contact_person && <InfoRow><span>{t('floorPlan.tenant.contact', 'Contact')}</span>
+                          <b>{c.applicant_contact_person}</b></InfoRow>}
+                        {c.applicant_phone && <InfoRow><span>{t('floorPlan.tenant.phone', 'Phone')}</span>
+                          <b><a href={`tel:${c.applicant_phone}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{c.applicant_phone}</a></b></InfoRow>}
+                        {c.applicant_email && <InfoRow><span>{t('floorPlan.tenant.email', 'Email')}</span>
+                          <b><a href={`mailto:${c.applicant_email}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{c.applicant_email}</a></b></InfoRow>}
+                      </DetailSection>
+                    )}
+
+                    {/* Financial terms — Brand-style: franchise_fee + royalties + marketing fund + deposit */}
+                    {c.financial_redacted && (
+                      <DetailSection>
+                        <DetailSectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</DetailSectionTitle>
+                        <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>
+                          🔒 {t('floorPlan.fin.redacted', 'Financial terms are visible to Brand General and System Admin only')}
+                        </div>
+                      </DetailSection>
+                    )}
+                    {ft && Object.keys(ft).length > 0 && (
+                      <DetailSection>
+                        <DetailSectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</DetailSectionTitle>
+                        <TileGrid>
+                          {ft.franchise_fee != null && <Tile $color="#15803D"><TileLabel>{t('map.fin.franchiseFee', 'Franchise Fee')}</TileLabel><TileValue>{currency} {fmtMoney(ft.franchise_fee)}</TileValue></Tile>}
+                          {ft.royalty_value != null && <Tile $color="#1E40AF"><TileLabel>{t('map.fin.royalty', 'Royalty')}</TileLabel><TileValue>{ft.royalty_type === 'percent' ? `${ft.royalty_value}%` : `${currency} ${fmtMoney(ft.royalty_value)}`}</TileValue></Tile>}
+                          {ft.marketing_fund_value != null && <Tile $color="#B45309"><TileLabel>{t('map.fin.marketingFund', 'Marketing Fund')}</TileLabel><TileValue>{ft.marketing_fund_type === 'percent' ? `${ft.marketing_fund_value}%` : `${currency} ${fmtMoney(ft.marketing_fund_value)}`}</TileValue></Tile>}
+                          {ft.security_deposit != null && <Tile $color="#6D28D9"><TileLabel>{t('floorPlan.fin.deposit', 'Deposit')}</TileLabel><TileValue>{currency} {fmtMoney(ft.security_deposit)}</TileValue></Tile>}
+                        </TileGrid>
+                        {ft.territory && <InfoRow><span>{t('map.fin.territory', 'Territory')}</span><b>{ft.territory}</b></InfoRow>}
+                        {selected.radius_km && <InfoRow><span>{t('map.fin.exclusivityRadius', 'Exclusivity')}</span><b>{selected.radius_km} km</b></InfoRow>}
+                      </DetailSection>
+                    )}
+
+                    <OpenContractLink href={`/pos/brand/franchise?id=${c.id}`}>
+                      {t('floorPlan.action.open', 'Open contract →')}
+                    </OpenContractLink>
+                  </>
+                ) : (
+                  <DetailSection>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', padding: '8px 0' }}>
+                      {t('map.noContract', 'No active contract with this restaurant')}
+                    </div>
+                  </DetailSection>
+                )}
+              </DetailBody>
+            </DetailPanel>
+          );
+        })()}
       </Layout>
 
       {unmapped.length > 0 && (

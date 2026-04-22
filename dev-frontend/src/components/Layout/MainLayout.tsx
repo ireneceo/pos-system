@@ -1060,14 +1060,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </NavItem>
                 )}
 
-                <NavItem to="/pos/brand/franchise" active={isActive('/pos/brand/franchise') && !isActive('/pos/brand/franchise-map')} onClick={closeSidebar}>
-                  <NavIcon>◇</NavIcon>
-                  {t("nav.franchise")}
-                </NavItem>
-                <NavItem to="/pos/brand/franchise-map" active={isActive('/pos/brand/franchise-map')} onClick={closeSidebar}>
-                  <NavIcon>◉</NavIcon>
-                  {t("nav.franchiseMap", "Franchise Map")}
-                </NavItem>
+                {isRouteAllowed('/pos/brand/franchise') && (
+                  <NavItem to="/pos/brand/franchise" active={isActive('/pos/brand/franchise') && !isActive('/pos/brand/franchise-map')} onClick={closeSidebar}>
+                    <NavIcon>◇</NavIcon>
+                    {t("nav.franchise")}
+                  </NavItem>
+                )}
+                {isRouteAllowed('/pos/brand/franchise-map') && (
+                  <NavItem to="/pos/brand/franchise-map" active={isActive('/pos/brand/franchise-map')} onClick={closeSidebar}>
+                    <NavIcon>◉</NavIcon>
+                    {t("nav.franchiseMap", "Franchise Map")}
+                  </NavItem>
+                )}
 
                 {hasManagerPermission('management') && (
                   isRouteAllowed('/pos/brand/general/management') ||
@@ -1262,26 +1266,32 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </NavItem>
                 )}
 
-                <NavItem to="/pos/foodcourt/tenancy" active={isActive('/pos/foodcourt/tenancy') && !isActive('/pos/foodcourt/tenancy-map')} onClick={closeSidebar}>
-                  <NavIcon>◇</NavIcon>
-                  {t("nav.tenancy")}
-                </NavItem>
-                <NavItem to="/pos/foodcourt/tenancy-map" active={isActive('/pos/foodcourt/tenancy-map')} onClick={closeSidebar}>
-                  <NavIcon>◉</NavIcon>
-                  {t("nav.branchMap", "Branch Map")}
-                </NavItem>
-                <NavItem
-                  to="/pos/foodcourt/floor-plan"
-                  active={isActive('/pos/foodcourt/floor-plan')}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    closeSidebar();
-                    window.open('/pos/foodcourt/floor-plan', '_blank');
-                  }}
-                >
-                  <NavIcon>▦</NavIcon>
-                  {t("nav.floorPlan", "Floor Plan")}
-                </NavItem>
+                {isRouteAllowed('/pos/foodcourt/tenancy') && (
+                  <NavItem to="/pos/foodcourt/tenancy" active={isActive('/pos/foodcourt/tenancy') && !isActive('/pos/foodcourt/tenancy-map')} onClick={closeSidebar}>
+                    <NavIcon>◇</NavIcon>
+                    {t("nav.tenancy")}
+                  </NavItem>
+                )}
+                {isRouteAllowed('/pos/foodcourt/tenancy-map') && (
+                  <NavItem to="/pos/foodcourt/tenancy-map" active={isActive('/pos/foodcourt/tenancy-map')} onClick={closeSidebar}>
+                    <NavIcon>◉</NavIcon>
+                    {t("nav.branchMap", "Branch Map")}
+                  </NavItem>
+                )}
+                {isRouteAllowed('/pos/foodcourt/floor-plan') && (
+                  <NavItem
+                    to="/pos/foodcourt/floor-plan"
+                    active={isActive('/pos/foodcourt/floor-plan')}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      closeSidebar();
+                      window.open('/pos/foodcourt/floor-plan', '_blank');
+                    }}
+                  >
+                    <NavIcon>▦</NavIcon>
+                    {t("nav.floorPlan", "Floor Plan")}
+                  </NavItem>
+                )}
 
                 {hasManagerPermission('management') && (
                   isRouteAllowed('/pos/foodcourt/general/management') ||
@@ -1292,7 +1302,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 ) && (
                   <>
                     <NavTitle>{t("nav.section.management")}</NavTitle>
-                    {user?.role === 'Foodcourt General' && (
+                    {user?.role === 'Foodcourt General' && isRouteAllowed('/pos/foodcourt/branches') && (
                       <NavItem to="/pos/foodcourt/branches" active={isActive('/pos/foodcourt/branches')} onClick={closeSidebar}>
                         <NavIcon>◉</NavIcon>
                         {t("nav.branches", "Branches")}

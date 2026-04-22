@@ -262,7 +262,7 @@ const LoadingSpinner = styled.div`
 `;
 
 const FAQPage: React.FC = () => {
-  const { t } = useTranslation('landing');
+  const { t, i18n } = useTranslation('landing');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [categories, setCategories] = useState<FAQCategory[]>([]);
@@ -278,7 +278,7 @@ const FAQPage: React.FC = () => {
       setActiveCategory(category);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [i18n.language]);
 
   useEffect(() => {
     if (activeCategory !== 'all') {
@@ -291,7 +291,8 @@ const FAQPage: React.FC = () => {
 
   const fetchFAQs = async () => {
     try {
-      const response = await fetch('/api/contents/public/faq');
+      const lang = (i18n.language || 'en').split('-')[0];
+      const response = await fetch(`/api/contents/public/faq?lang=${encodeURIComponent(lang)}`);
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories || []);

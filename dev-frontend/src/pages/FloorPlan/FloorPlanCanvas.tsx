@@ -1,9 +1,21 @@
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
-import { FloorPlanData, TableStatusInfo } from './types';
+import { FloorPlanData, FloorTable, TableStatusInfo } from './types';
 import TableNode from './TableNode';
 
 type TableStatus = 'available' | 'occupied' | 'ready' | 'needs-attention';
+
+export interface CanvasNodeRenderProps {
+  table: FloorTable;
+  status: TableStatus;
+  statusInfo?: TableStatusInfo;
+  isSelected: boolean;
+  isEditing: boolean;
+  onClick?: (tableNumber: string) => void;
+  onMouseDown?: (e: React.MouseEvent, tableId: string) => void;
+  onTouchStart?: (e: React.TouchEvent, tableId: string) => void;
+  currency?: string;
+}
 
 interface FloorPlanCanvasProps {
   floorPlan: FloorPlanData;
@@ -15,6 +27,9 @@ interface FloorPlanCanvasProps {
   onTableTouchStart?: (e: React.TouchEvent, tableId: string) => void;
   onCanvasClick?: () => void;
   currency?: string;
+  // Optional custom node renderer. Falls back to restaurant TableNode if not provided.
+  // Foodcourt Floor Plan uses this to render tenancy-aware unit nodes (no seats label).
+  renderNode?: (props: CanvasNodeRenderProps) => React.ReactNode;
 }
 
 const CanvasOuter = styled.div`
@@ -72,7 +87,8 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
   onTableMouseDown,
   onTableTouchStart,
   onCanvasClick,
-  currency = ''
+  currency = '',
+  renderNode
 }) => {
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -168,20 +184,36 @@ const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
             if (e.target === e.currentTarget) onCanvasClick?.();
           }}
         >
-          {floorPlan.tables.map(table => (
-            <TableNode
-              key={table.id}
-              table={table}
-              status={getTableStatus(table.tableNumber)}
-              isSelected={selectedTableId === table.id}
-              isEditing={isEditing}
-              onClick={onTableClick}
-              onMouseDown={onTableMouseDown}
-              onTouchStart={onTableTouchStart}
-              statusInfo={tableStatuses[table.tableNumber]}
-              currency={currency}
-            />
-          ))}
+          {floorPlan.tables.map(table => {
+            const nodeProps: CanvasNodeRenderProps = {
+              table,
+              status: getTableStatus(table.tableNumber),
+              statusInfo: tableStatuses[table.tableNumber],
+              isSelected: selectedTableId === table.id,
+              isEditing,
+              onClick: onTableClick,
+              onMouseDown: onTableMouseDown,
+              onTouchStart: onTableTouchStart,
+              currency
+            };
+            return (
+              <React.Fragment key={table.id}>
+                {renderNode ? renderNode(nodeProps) : (
+                  <TableNode
+                    table={table}
+                    status={nodeProps.status}
+                    isSelected={nodeProps.isSelected}
+                    isEditing={isEditing}
+                    onClick={onTableClick}
+                    onMouseDown={onTableMouseDown}
+                    onTouchStart={onTableTouchStart}
+                    statusInfo={nodeProps.statusInfo}
+                    currency={currency}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
         </ScaledLayer>
 
         {floorPlan.tables.length === 0 && (

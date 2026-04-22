@@ -18,13 +18,35 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
 });
 
+interface UnitDetail {
+  id: number;
+  unit_number: string;
+  status: string;
+  size_value: number | null;
+  size_unit: 'sqft' | 'sqm' | null;
+  location_description?: string | null;
+  displayStage: 'active' | 'setup' | 'contracting' | 'proposal' | 'expired' | 'vacant';
+  currentContract: {
+    id: number;
+    stage: string;
+    contract_type?: string | null;
+    applicant_company_name?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    renewal_alert_months?: number | null;
+    financial_terms?: Record<string, any> | null;
+    financial_redacted?: boolean;
+    restaurant?: { id: number; name: string; branch_name?: string | null; logo_url?: string | null } | null;
+  } | null;
+}
 interface Branch {
   id: number; name: string; code: string; status: string;
   address?: string; city?: string; state?: string; country?: string;
   phone?: string; email?: string;
   latitude: number | null; longitude: number | null;
   is_primary?: boolean;
-  unit_stats: { total: number; occupied: number; vacant: number; reserved: number };
+  unit_stats: { total: number; active: number; setup: number; contracting: number; proposal: number; vacant: number; expired: number };
+  units: UnitDetail[];
 }
 
 interface Restaurant {
@@ -52,15 +74,101 @@ const STATUS_COLOR: Record<string, string> = {
   inactive: '#9CA3AF', expired: '#9CA3AF', cancelled: '#9CA3AF'
 };
 
-const Layout = styled.div`
+const Layout = styled.div<{ $hasDetail?: boolean }>`
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 16px;
+  grid-template-columns: ${p => p.$hasDetail ? '260px 1fr 360px' : '320px 1fr'};
+  gap: 12px;
   height: 640px;
+  @media (max-width: 1200px) {
+    grid-template-columns: ${p => p.$hasDetail ? '240px 1fr 320px' : '280px 1fr'};
+  }
   @media (max-width: 960px) {
     grid-template-columns: 1fr;
     height: auto;
   }
+`;
+
+// Stage palette matches Floor Plan's DISPLAY_PALETTE for visual consistency
+const STAGE_PALETTE: Record<string, { bg: string; border: string; text: string; label: string }> = {
+  active:      { bg: '#DCFCE7', border: '#16A34A', text: '#15803D', label: 'Active' },
+  setup:       { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF', label: 'Setup' },
+  contracting: { bg: '#FFEDD5', border: '#F97316', text: '#9A3412', label: 'In Talks' },
+  proposal:    { bg: '#EDE9FE', border: '#8B5CF6', text: '#5B21B6', label: 'Proposal' },
+  expired:     { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B', label: 'Expired' },
+  vacant:      { bg: '#F3F4F6', border: '#9CA3AF', text: '#6B7280', label: 'Vacant' }
+};
+
+const StatsPillRow = styled.div`
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+`;
+const StatPill = styled.span<{ $bg: string; $text: string; $border: string }>`
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px;
+  background: ${p => p.$bg};
+  color: ${p => p.$text};
+  border: 1px solid ${p => p.$border};
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+`;
+
+// Right-side detail panel (new)
+const DetailPanel = styled.div`
+  display: flex; flex-direction: column;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+`;
+const DetailHeader = styled.div`
+  padding: 14px 16px;
+  border-bottom: 1px solid #E6EBF1;
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 8px;
+  .title { font-size: 15px; font-weight: 700; color: #0A2540; margin: 0 0 4px; }
+  .code { font-size: 11px; color: #9CA3AF; font-weight: 500; letter-spacing: 0.3px; }
+  .close { background: none; border: none; cursor: pointer; font-size: 18px; color: #6B7C93; &:hover { color: #0A2540; } }
+`;
+const DetailBody = styled.div`
+  flex: 1; overflow-y: auto; padding: 14px 16px;
+`;
+const DetailSection = styled.div`margin-bottom: 16px;`;
+const DetailSectionTitle = styled.div`
+  font-size: 10px; font-weight: 600; color: #6B7C93;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+`;
+const UnitRow = styled.div<{ $bg: string; $border: string; $text: string }>`
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px;
+  background: ${p => p.$bg};
+  border: 1px solid ${p => p.$border};
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: ${p => p.$text};
+  .unit-code { font-weight: 700; font-size: 13px; }
+  .tenant { color: #374151; font-size: 11px; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+  .stage-tag { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+`;
+const InfoRow = styled.div`
+  display: flex; justify-content: space-between;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #4B5563;
+  b { color: #0A2540; text-align: right; }
+`;
+const ViewFloorPlanLink = styled(Link)`
+  display: inline-block; margin-top: 10px;
+  padding: 8px 14px;
+  background: #635BFF;
+  color: white;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  &:hover { background: #5A51E6; }
 `;
 
 const SidePanel = styled.div`
@@ -357,7 +465,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
         <LegendItem style={{ ['--c' as any]: STATUS_COLOR.inactive }}>{t('map.legend.archive', 'Archive')}</LegendItem>
       </Legend>
 
-      <Layout>
+      <Layout $hasDetail={!!selectedBranch}>
         <SidePanel>
           <SidePanelHeader>
             {t('map.branchListHeader', 'Branches ({{count}})', { count: allBranches.length })}
@@ -366,62 +474,37 @@ const FoodcourtTenancyMapPage: React.FC = () => {
             {allBranches.map(b => {
               const isSelected = selectedBranchId === b.id;
               const color = STATUS_COLOR[b.status] || '#9CA3AF';
-              const pct = b.unit_stats.total > 0 ? Math.round(b.unit_stats.occupied / b.unit_stats.total * 100) : 0;
-              const tenants = tenantsByBranch[b.id] || [];
+              const pct = b.unit_stats.total > 0 ? Math.round(b.unit_stats.active / b.unit_stats.total * 100) : 0;
               return (
-                <React.Fragment key={b.id}>
-                  <BranchCard
-                    $selected={isSelected}
-                    onClick={() => setSelectedBranchId(isSelected ? null : b.id)}
-                  >
-                    <h4>
-                      {b.name}
-                      {b.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3 }}>PRIMARY</span>}
-                      <span className="occupancy" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{pct}%</span>
-                    </h4>
-                    <div className="code">{b.code}</div>
-                    {b.address && <div className="addr">{b.address}</div>}
-                    <div className="stats">
-                      <span><b>{b.unit_stats.total}</b> units</span>
-                      <span style={{ color: '#10B981' }}><b>{b.unit_stats.occupied}</b> occupied</span>
-                      <span style={{ color: '#6B7280' }}><b>{b.unit_stats.vacant}</b> vacant</span>
-                      {b.latitude == null && <span style={{ color: '#EF4444' }}>no coords</span>}
-                    </div>
-                    <div style={{ marginTop: 6 }}>
-                      <Link
-                        to={`/pos/foodcourt/floor-plan?branch=${b.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ fontSize: 11, color: '#635BFF', textDecoration: 'none' }}
-                      >
-                        {t('map.viewFloorPlan', 'View floor plan →')}
-                      </Link>
-                    </div>
-                  </BranchCard>
-                  {isSelected && (
-                    <TenantSubList>
-                      <div className="sub-title">
-                        {t('map.tenantsIn', 'Tenants ({{count}})', { count: tenants.length })}
-                      </div>
-                      {tenants.length === 0 ? (
-                        <NoTenants>{t('map.noTenants', 'No tenant restaurants in this branch')}</NoTenants>
-                      ) : (
-                        tenants.map(r => {
-                          const isFranchise = r.contract_type && ['franchise', 'license', 'master', 'revenue_share'].includes(r.contract_type);
-                          return (
-                            <TenantRow key={r.id}>
-                              <span className="dot" style={{ ['--c' as any]: STATUS_COLOR[r.status] || '#9CA3AF' }} />
-                              <span className="name">
-                                {r.name}{r.branch_name ? ` · ${r.branch_name}` : ''}
-                                {isFranchise && <span title="Franchise/License/Revenue-share"> ★</span>}
-                              </span>
-                              <span className="sales">{(r.sales_30d || 0).toLocaleString()}</span>
-                            </TenantRow>
-                          );
-                        })
-                      )}
-                    </TenantSubList>
-                  )}
-                </React.Fragment>
+                <BranchCard
+                  key={b.id}
+                  $selected={isSelected}
+                  onClick={() => setSelectedBranchId(isSelected ? null : b.id)}
+                >
+                  <h4>
+                    {b.name}
+                    {b.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3 }}>PRIMARY</span>}
+                    <span className="occupancy" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{pct}%</span>
+                  </h4>
+                  <div className="code">{b.code}</div>
+                  {b.address && <div className="addr">{b.address}</div>}
+                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+                    <b style={{ color: '#0A2540' }}>{b.unit_stats.total}</b> {t('map.units', 'units')}
+                    {b.latitude == null && <span style={{ color: '#EF4444', marginLeft: 6 }}>no coords</span>}
+                  </div>
+                  <StatsPillRow>
+                    {(['active', 'setup', 'contracting', 'proposal', 'vacant', 'expired'] as const).map(k => {
+                      const n = b.unit_stats[k];
+                      if (!n) return null;
+                      const p = STAGE_PALETTE[k];
+                      return (
+                        <StatPill key={k} $bg={p.bg} $text={p.text} $border={p.border}>
+                          {n} {t(`floorPlan.unitStatus.${k === 'active' ? 'active' : k}`, p.label).toLowerCase()}
+                        </StatPill>
+                      );
+                    })}
+                  </StatsPillRow>
+                </BranchCard>
               );
             })}
           </SideList>
@@ -445,6 +528,83 @@ const FoodcourtTenancyMapPage: React.FC = () => {
           </MapWrap>
         ) : (
           <EmptyState>{t('map.noCoordsFoodcourt', 'No branches have coordinates yet. Edit a branch to add location data.')}</EmptyState>
+        )}
+
+        {/* Right detail panel — shows branch units + tenants grouped by stage */}
+        {selectedBranch && (
+          <DetailPanel>
+            <DetailHeader>
+              <div>
+                <h3 className="title">
+                  {selectedBranch.name}
+                  {selectedBranch.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3, marginLeft: 8, verticalAlign: 'middle' }}>PRIMARY</span>}
+                </h3>
+                <div className="code">{selectedBranch.code}</div>
+              </div>
+              <button className="close" onClick={() => setSelectedBranchId(null)} aria-label={t('common.close', 'Close')} type="button">✕</button>
+            </DetailHeader>
+            <DetailBody>
+              {/* Branch info */}
+              <DetailSection>
+                <DetailSectionTitle>{t('map.branchInfo', 'Branch Info')}</DetailSectionTitle>
+                {selectedBranch.address && <InfoRow><span>{t('map.address', 'Address')}</span><b>{selectedBranch.address}</b></InfoRow>}
+                {selectedBranch.city && <InfoRow><span>{t('map.city', 'City')}</span><b>{selectedBranch.city}{selectedBranch.state ? `, ${selectedBranch.state}` : ''}</b></InfoRow>}
+                {selectedBranch.phone && <InfoRow><span>{t('map.phone', 'Phone')}</span><b><a href={`tel:${selectedBranch.phone}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{selectedBranch.phone}</a></b></InfoRow>}
+                {selectedBranch.email && <InfoRow><span>{t('map.email', 'Email')}</span><b><a href={`mailto:${selectedBranch.email}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{selectedBranch.email}</a></b></InfoRow>}
+              </DetailSection>
+
+              {/* Stage breakdown */}
+              <DetailSection>
+                <DetailSectionTitle>{t('map.occupancyBreakdown', 'Occupancy Breakdown')}</DetailSectionTitle>
+                <StatsPillRow>
+                  {(['active', 'setup', 'contracting', 'proposal', 'vacant', 'expired'] as const).map(k => {
+                    const n = selectedBranch.unit_stats[k];
+                    if (!n) return null;
+                    const p = STAGE_PALETTE[k];
+                    return (
+                      <StatPill key={k} $bg={p.bg} $text={p.text} $border={p.border}>
+                        {n} {t(`floorPlan.unitStatus.${k === 'active' ? 'active' : k}`, p.label)}
+                      </StatPill>
+                    );
+                  })}
+                </StatsPillRow>
+              </DetailSection>
+
+              {/* Unit list grouped by stage */}
+              {selectedBranch.units.length > 0 && (
+                <DetailSection>
+                  <DetailSectionTitle>{t('map.units', 'Units')}</DetailSectionTitle>
+                  {(['active', 'setup', 'contracting', 'proposal', 'expired', 'vacant'] as const).map(stage => {
+                    const unitsOfStage = selectedBranch.units.filter(u => u.displayStage === stage);
+                    if (unitsOfStage.length === 0) return null;
+                    const p = STAGE_PALETTE[stage];
+                    return unitsOfStage.map(u => {
+                      const c = u.currentContract;
+                      const tenantName = c?.restaurant?.name || c?.applicant_company_name || null;
+                      return (
+                        <UnitRow key={u.id} $bg={p.bg} $border={p.border} $text={p.text}>
+                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <span className="unit-code">{u.unit_number}</span>
+                              <span className="stage-tag">{t(`floorPlan.unitStatus.${stage}`, p.label)}</span>
+                            </div>
+                            {tenantName && <span className="tenant">{tenantName}</span>}
+                            {u.size_value != null && !tenantName && (
+                              <span className="tenant">{u.size_value} {u.size_unit || 'sqft'}</span>
+                            )}
+                          </div>
+                        </UnitRow>
+                      );
+                    });
+                  })}
+                </DetailSection>
+              )}
+
+              <ViewFloorPlanLink to={`/pos/foodcourt/floor-plan?branch=${selectedBranch.id}`} target="_blank">
+                {t('map.viewFloorPlan', 'View floor plan →')}
+              </ViewFloorPlanLink>
+            </DetailBody>
+          </DetailPanel>
         )}
       </Layout>
 

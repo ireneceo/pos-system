@@ -380,26 +380,56 @@ router.get('/:id/franchise-map', authenticateToken, async (req, res) => {
     `, { replacements: { ids: restaurantIds, since }, type: sequelize.QueryTypes.SELECT }) : [];
     const salesMap = new Map(salesRows.map(r => [Number(r.restaurant_id), { sales_30d: Number(r.sales_30d) || 0, order_count: Number(r.order_count) || 0 }]));
 
-    // Active contract (stage='active') per restaurant → contract_type + exclusivity radius
+    // Highest-priority contract per restaurant — active > setup > contracting > proposal > expired
     const contracts = restaurantIds.length > 0 ? await Contract.findAll({
-      where: { restaurant_id: { [Op.in]: restaurantIds }, stage: 'active', entity_type: 'brand', entity_id: id },
-      attributes: ['id', 'restaurant_id', 'contract_type', 'exclusivity_terms']
+      where: {
+        restaurant_id: { [Op.in]: restaurantIds },
+        stage: ['proposal', 'contracting', 'setup', 'active', 'expired'],
+        entity_type: 'brand',
+        entity_id: id
+      },
+      attributes: ['id', 'restaurant_id', 'contract_number', 'stage', 'contract_type',
+                   'applicant_company_name', 'applicant_contact_person',
+                   'applicant_email', 'applicant_phone',
+                   'start_date', 'end_date', 'signing_date', 'duration_months',
+                   'renewal_type', 'renewal_alert_months', 'termination_notice_months',
+                   'financial_terms', 'exclusivity_terms']
     }) : [];
+    const STAGE_PRIORITY = { active: 5, setup: 4, contracting: 3, proposal: 2, expired: 1 };
     const contractMap = new Map();
     contracts.forEach(c => {
-      const terms = c.exclusivity_terms || {};
-      contractMap.set(Number(c.restaurant_id), {
-        contract_id: c.id,
-        contract_type: c.contract_type || null,
-        radius_km: Number(terms.radius_km) > 0 ? Number(terms.radius_km) : null
-      });
+      const prev = contractMap.get(Number(c.restaurant_id));
+      if (!prev || (STAGE_PRIORITY[c.stage] || 0) > (STAGE_PRIORITY[prev.stage] || 0)) {
+        contractMap.set(Number(c.restaurant_id), c);
+      }
     });
 
+    const isBrandManager = req.user.role === 'Brand Manager';
     const enriched = restaurants.map(r => {
       const obj = r.toJSON();
       const s = salesMap.get(r.id) || { sales_30d: 0, order_count: 0 };
-      const c = contractMap.get(r.id) || { contract_id: null, contract_type: null, radius_km: null };
-      return { ...obj, sales_30d: s.sales_30d, order_count: s.order_count, ...c };
+      const c = contractMap.get(r.id);
+      const terms = c?.exclusivity_terms || {};
+      const radius_km = Number(terms.radius_km) > 0 ? Number(terms.radius_km) : null;
+
+      let currentContract = null;
+      if (c) {
+        const cj = c.toJSON();
+        if (isBrandManager) { cj.financial_terms = null; cj.financial_redacted = true; }
+        else cj.financial_redacted = false;
+        currentContract = cj;
+      }
+
+      return {
+        ...obj,
+        sales_30d: s.sales_30d,
+        order_count: s.order_count,
+        contract_id: c ? c.id : null,
+        contract_type: c ? (c.contract_type || null) : null,
+        contract_stage: c ? c.stage : null,
+        radius_km,
+        currentContract
+      };
     });
 
     const maxSales = enriched.reduce((m, r) => Math.max(m, r.sales_30d), 0);
@@ -1211,6 +1241,30 @@ function calculatePlanCharges(plan, revenue, taxRate = 0, currency = null) {
         fixed_amount: null,
         percentage_rate: rate,
         base_amount: revenue,
+        calculated_amount: amount,
+        tax_rate: parseFloat(taxRate),
+        tax_amount: tax,
+        total_amount: Math.round((amount + tax) * 100) / 100
+      });
+      subtotal += amount;
+    }
+  } else if (plan.charge_type === 'combined') {
+    // Min-guarantee pattern — rent = MAX(EntityPlanPrice.monthly_price, percentage × revenue)
+    const priceRecord = (plan.prices || []).find(p => p.currency === planCurrency);
+    const fixedAmount = parseFloat(priceRecord?.monthly_price || 0);
+    const rate = parseFloat(plan.percentage_value || 0);
+    const percentageAmount = Math.round(revenue * rate / 100 * 100) / 100;
+    const amount = Math.max(fixedAmount, percentageAmount);
+    if (amount > 0) {
+      const tax = Math.round(amount * taxRateDecimal * 100) / 100;
+      items.push({
+        item_type: 'combined_charge',
+        description: `${plan.name} (MAX of ${planCurrency} ${fixedAmount.toLocaleString()} or ${rate}% × ${planCurrency} ${revenue.toLocaleString()})`,
+        calculation_method: 'combined',
+        fixed_amount: fixedAmount,
+        percentage_rate: rate,
+        base_amount: revenue,
+        minimum_amount: fixedAmount,
         calculated_amount: amount,
         tax_rate: parseFloat(taxRate),
         tax_amount: tax,
@@ -2173,6 +2227,169 @@ router.get('/:id/allowed-routes', async (req, res) => {
   } catch (error) {
     console.error('Error fetching brand allowed routes:', error);
     res.status(500).json({ error: 'Failed to fetch allowed routes' });
+  }
+});
+
+// ============================================================================
+// Franchise Operations Dashboard — single-shot aggregation for the Brand
+// General dashboard widgets. Mirror of Foodcourt's tenancy-dashboard, adapted
+// to franchise context (contracts linked by restaurant_id rather than unit_id).
+// GET /api/brands/:id/franchise-dashboard
+// ============================================================================
+router.get('/:id/franchise-dashboard', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { Contract, ContractPlan, EntityPlan, EntityPlanPrice } = require('../models');
+
+    const brand = await Brand.findByPk(id, { attributes: ['id', 'name', 'currency', 'supported_currencies', 'owner_id'] });
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+
+    // Access
+    const canAccess = req.user.role === 'System Admin'
+      || brand.owner_id === req.user.id
+      || (req.user.role === 'Brand Manager' && Number(req.user.brand_id) === Number(id));
+    if (!canAccess) return res.status(403).json({ success: false, message: 'Access denied' });
+
+    const isManager = req.user.role === 'Brand Manager';
+
+    // Restaurants in this brand (franchisees / direct stores)
+    const restaurants = await Restaurant.findAll({
+      where: { brand_id: id },
+      attributes: ['id', 'name', 'branch_name', 'status']
+    });
+    const restaurantIds = restaurants.map(r => r.id);
+
+    // All contracts for this brand (via entity_type=brand + entity_id)
+    const contracts = await Contract.findAll({
+      where: {
+        entity_type: 'brand',
+        entity_id: id,
+        stage: ['proposal', 'contracting', 'setup', 'active', 'expired']
+      },
+      attributes: ['id', 'contract_number', 'stage', 'restaurant_id', 'applicant_company_name',
+                   'contract_type', 'start_date', 'end_date', 'renewal_alert_months', 'currency', 'created_at']
+    });
+
+    // Priority pick per restaurant (active > setup > contracting > proposal > expired)
+    // For contracts without restaurant_id (pipeline stage), use contract.id as key so every
+    // in-pipeline contract is counted even before restaurant is linked.
+    const STAGE_PRIORITY = { active: 5, setup: 4, contracting: 3, proposal: 2, expired: 1 };
+    const currentByKey = {};
+    contracts.forEach(c => {
+      const key = c.restaurant_id != null ? `r${c.restaurant_id}` : `c${c.id}`;
+      const prev = currentByKey[key];
+      if (!prev || (STAGE_PRIORITY[c.stage] || 0) > (STAGE_PRIORITY[prev.stage] || 0)) {
+        currentByKey[key] = c;
+      }
+    });
+    const currents = Object.values(currentByKey);
+
+    // Pipeline counts
+    const pipeline = { proposal: 0, contracting: 0, setup: 0, active: 0, expired: 0, unmapped: 0, total: currents.length };
+    currents.forEach(c => {
+      if (pipeline[c.stage] !== undefined) pipeline[c.stage]++;
+      if (c.restaurant_id == null && (c.stage === 'proposal' || c.stage === 'contracting')) {
+        pipeline.unmapped++;
+      }
+    });
+
+    // Active contracts + billing gap detection
+    const activeContracts = contracts.filter(c => c.stage === 'active');
+    const activeIds = activeContracts.map(c => c.id);
+    const openPlanLinks = activeIds.length > 0 ? await ContractPlan.findAll({
+      where: { contract_id: activeIds, end_at: null },
+      attributes: ['id', 'contract_id', 'entity_plan_id']
+    }) : [];
+    const linkedContractIds = new Set(openPlanLinks.map(l => l.contract_id));
+    const gapContracts = activeContracts.filter(c => !linkedContractIds.has(c.id));
+
+    // Expiring (90 day horizon)
+    const now = new Date();
+    const expiring30 = [];
+    const expiring90 = [];
+    activeContracts.forEach(c => {
+      if (!c.end_date) return;
+      const end = new Date(c.end_date);
+      const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (24 * 3600 * 1000));
+      if (daysLeft < 0) return;
+      if (daysLeft <= 30) expiring30.push({ ...c.toJSON(), days_left: daysLeft });
+      if (daysLeft <= 90) expiring90.push({ ...c.toJSON(), days_left: daysLeft });
+    });
+    expiring90.sort((a, b) => a.days_left - b.days_left);
+
+    // Royalty forecast — sum fixed floor across linked plans (percentage-only excluded)
+    let monthlyForecast = 0;
+    const planIds = openPlanLinks.map(l => l.entity_plan_id);
+    if (planIds.length > 0) {
+      const plans = await EntityPlan.findAll({
+        where: { id: planIds },
+        attributes: ['id', 'charge_type', 'percentage_value', 'currency']
+      });
+      const prices = await EntityPlanPrice.findAll({
+        where: { entity_plan_id: planIds, is_active: true },
+        attributes: ['entity_plan_id', 'currency', 'monthly_price']
+      });
+      const priceByPlan = {};
+      prices.forEach(p => {
+        if (!priceByPlan[p.entity_plan_id]) priceByPlan[p.entity_plan_id] = {};
+        priceByPlan[p.entity_plan_id][p.currency] = Number(p.monthly_price);
+      });
+      for (const plan of plans) {
+        const priceMap = priceByPlan[plan.id] || {};
+        const fixed = priceMap[brand.currency] || Object.values(priceMap)[0] || 0;
+        if (plan.charge_type === 'fixed') monthlyForecast += fixed;
+        else if (plan.charge_type === 'combined') monthlyForecast += fixed; // floor
+        // percentage-only: variable, omitted
+      }
+    }
+
+    // Restaurant name lookup (used in list items)
+    const restaurantById = {};
+    restaurants.forEach(r => { restaurantById[r.id] = { name: r.name, branch_name: r.branch_name }; });
+
+    res.json({
+      success: true,
+      data: {
+        currency: brand.currency || 'MYR',
+        pipeline,
+        total_restaurants: restaurants.length,
+        expiring: {
+          count_30d: expiring30.length,
+          count_90d: expiring90.length,
+          list: expiring90.slice(0, 10).map(c => ({
+            id: c.id,
+            contract_number: c.contract_number,
+            applicant_company_name: c.applicant_company_name,
+            restaurant: c.restaurant_id ? (restaurantById[c.restaurant_id] || null) : null,
+            contract_type: c.contract_type,
+            end_date: c.end_date,
+            days_left: c.days_left
+          }))
+        },
+        billing_gaps: {
+          count: gapContracts.length,
+          list: gapContracts.slice(0, 10).map(c => ({
+            id: c.id,
+            contract_number: c.contract_number,
+            applicant_company_name: c.applicant_company_name,
+            restaurant: c.restaurant_id ? (restaurantById[c.restaurant_id] || null) : null,
+            contract_type: c.contract_type,
+            days_since_start: c.start_date
+              ? Math.max(0, Math.floor((Date.now() - new Date(c.start_date).getTime()) / (24 * 3600 * 1000)))
+              : null
+          }))
+        },
+        revenue_forecast: isManager ? { financial_redacted: true } : {
+          currency: brand.currency || 'MYR',
+          active_plans_count: openPlanLinks.length,
+          estimated_monthly_fixed_floor: Math.round(monthlyForecast * 100) / 100,
+          disclaimer: 'Fixed + combined min-guarantee only. Percentage-based royalty excluded (varies with restaurant revenue).'
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching franchise dashboard:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch franchise dashboard' });
   }
 });
 

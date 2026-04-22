@@ -7,17 +7,45 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { FloorPlanData, FloorTable, TableStatusInfo } from '../FloorPlan/types';
 import FloorPlanCanvas from '../FloorPlan/FloorPlanCanvas';
+import FoodcourtUnitNode, { UnitDisplay, UnitDisplayStatus } from './FoodcourtUnitNode';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 
 // ───── Types ─────
 interface Branch { id: number; name: string; code: string; foodcourt_id: number; is_primary?: boolean; country?: string; }
+interface UnitCurrentContract {
+  id: number;
+  contract_number?: string | null;
+  stage?: string | null;
+  contract_type?: string | null;
+  applicant_company_name?: string | null;
+  applicant_contact_person?: string | null;
+  applicant_email?: string | null;
+  applicant_phone?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  signing_date?: string | null;
+  duration_months?: number | null;
+  renewal_type?: string | null;
+  renewal_alert_months?: number | null;
+  termination_notice_months?: number | null;
+  financial_terms?: Record<string, any> | null;
+  financial_redacted?: boolean;
+  exclusivity_terms?: Record<string, any> | null;
+  renewal_policy?: Record<string, any> | null;
+  restaurant?: { id: number; name: string; branch_name?: string | null; logo_url?: string | null; brand_id?: number | null } | null;
+}
 interface FoodcourtUnit {
   id: number; unit_number: string; status: string;
+  size_value?: number | null;
+  size_unit?: 'sqft' | 'sqm' | null;
   plan_x: number | null; plan_y: number | null;
   plan_width: number | null; plan_height: number | null;
   plan_shape: string | null;
   location_description?: string | null;
+  current_contract_id?: number | null;
+  currentContract?: UnitCurrentContract | null;
+  billing_gap?: boolean;
 }
 interface FloorPlan {
   id: number; branch_id: number; floor_name: string;
@@ -25,12 +53,27 @@ interface FloorPlan {
   units: FoodcourtUnit[];
 }
 interface ContractDetail {
-  id: number; contract_number?: string; stage: string; contract_type?: string;
-  applicant_company_name?: string; applicant_contact_person?: string;
-  applicant_email?: string; applicant_phone?: string;
-  start_date?: string; end_date?: string;
-  financial_terms?: any;
-  restaurant?: { id: number; name: string; status: string; logo_url?: string; branch_name?: string } | null;
+  id: number;
+  contract_number?: string;
+  stage: string;
+  contract_type?: string;
+  applicant_company_name?: string;
+  applicant_contact_person?: string;
+  applicant_email?: string;
+  applicant_phone?: string;
+  start_date?: string;
+  end_date?: string;
+  signing_date?: string;
+  duration_months?: number;
+  renewal_type?: string;
+  renewal_alert_months?: number;
+  termination_notice_months?: number;
+  financial_terms?: Record<string, any> | null;
+  financial_redacted?: boolean;
+  exclusivity_terms?: Record<string, any> | null;
+  renewal_policy?: Record<string, any> | null;
+  restaurant?: { id: number; name: string; status?: string; logo_url?: string | null; branch_name?: string | null; brand_id?: number | null } | null;
+  created_at?: string;
 }
 
 // ───── Styled (cloned from FloorPlanPage.tsx) ─────
@@ -136,24 +179,230 @@ const LoadingScreen = styled.div`
   color: #6B7C93; font-size: 14px;
 `;
 
+// ───── New styled for §1-§6 panel redesign ─────
+const Banner = styled.div<{ $bg: string; $text: string; $border: string }>`
+  padding: 10px 12px;
+  background: ${p => p.$bg};
+  color: ${p => p.$text};
+  border: 1px solid ${p => p.$border};
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  line-height: 1.4;
+`;
+const PrimaryCta = styled.button`
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #635BFF;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover { background: #5A51E6; }
+`;
+const SecondaryCta = styled.button`
+  padding: 6px 12px;
+  border: 1px solid #F59E0B;
+  border-radius: 6px;
+  background: white;
+  color: #B45309;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover { background: #FFFBEB; }
+`;
+const ActionRow = styled.div`
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 8px;
+`;
+const TileGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+`;
+const Tile = styled.div<{ $color: string }>`
+  padding: 10px;
+  border-radius: 6px;
+  background: #F8FAFC;
+  border-left: 3px solid ${p => p.$color};
+`;
+const TileLabel = styled.div`
+  font-size: 10px; font-weight: 600; color: #6B7C93;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  margin-bottom: 4px;
+`;
+const TileValue = styled.div`
+  font-size: 14px; font-weight: 700; color: #0A2540;
+  line-height: 1.2;
+`;
+const TileUnit = styled.span`
+  font-size: 11px; font-weight: 500; color: #6B7C93;
+  margin-left: 3px;
+`;
+const TotalRow = styled.div`
+  display: flex; justify-content: space-between;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: #635BFF0A;
+  border-radius: 6px;
+  font-size: 13px; font-weight: 600; color: #0A2540;
+  b { color: #635BFF; }
+`;
+const Timeline = styled.div`
+  display: flex; align-items: flex-start; gap: 0;
+  padding: 4px 0;
+`;
+const TimelineStep = styled.div<{ $active: boolean; $past: boolean; $last: boolean }>`
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center;
+  position: relative;
+  &:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 5px; left: 50%; right: -50%;
+    height: 2px;
+    background: ${p => p.$past ? '#635BFF' : '#E6EBF1'};
+    z-index: 0;
+  }
+`;
+const TimelineDot = styled.div<{ $active: boolean; $past: boolean }>`
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: ${p => p.$active ? '#635BFF' : p.$past ? '#635BFF' : '#E6EBF1'};
+  border: 2px solid ${p => p.$active ? '#635BFF' : 'white'};
+  box-shadow: ${p => p.$active ? '0 0 0 3px rgba(99, 91, 255, 0.2)' : 'none'};
+  z-index: 1;
+`;
+const TimelineLabel = styled.div<{ $active: boolean; $past: boolean }>`
+  font-size: 10px;
+  font-weight: ${p => p.$active ? 700 : 500};
+  color: ${p => p.$active ? '#635BFF' : p.$past ? '#4B5563' : '#9CA3AF'};
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  text-align: center;
+`;
+
 const UNIT_STATUS_COLOR: Record<string, { bg: string; border: string; text: string }> = {
   vacant:    { bg: '#F3F4F6', border: '#D1D5DB', text: '#6B7280' },
   reserved:  { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' },
   preparing: { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
   occupied:  { bg: '#DCFCE7', border: '#16A34A', text: '#15803D' }
 };
+// Palette keyed by display status (matches FoodcourtUnitNode STATUS_PALETTE)
+const DISPLAY_PALETTE: Record<UnitDisplayStatus, { bg: string; border: string; text: string }> = {
+  vacant:      { bg: '#F3F4F6', border: '#9CA3AF', text: '#6B7280' },
+  proposal:    { bg: '#EDE9FE', border: '#8B5CF6', text: '#5B21B6' },
+  contracting: { bg: '#FFEDD5', border: '#F97316', text: '#9A3412' },
+  preparing:   { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
+  active:      { bg: '#DCFCE7', border: '#16A34A', text: '#15803D' },
+  expiring:    { bg: '#FFFBEB', border: '#F59E0B', text: '#92400E' },
+  expired:     { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B' }
+};
+const DEFAULT_STATUS_LABEL: Record<UnitDisplayStatus, string> = {
+  vacant: 'Vacant', proposal: 'Proposal', contracting: 'In Talks',
+  preparing: 'Setup', active: 'Active', expiring: 'Expiring', expired: 'Expired'
+};
 const STAGE_BG: Record<string, string> = {
-  proposal: '#2563EB', contracting: '#D97706', setup: '#8B5CF6',
-  active: '#059669', terminated: '#6B7280', expired: '#6B7280', renewed: '#7C3AED'
+  proposal: '#8B5CF6', contracting: '#F97316', setup: '#3B82F6',
+  active: '#16A34A', terminated: '#6B7280', expired: '#EF4444', renewed: '#7C3AED'
 };
 
-// Convert foodcourt unit (top-left coords) → Restaurant FloorTable (center coords)
-function unitsToFloorTables(units: FoodcourtUnit[]): FloorTable[] {
+function fmtMoney(v: any): string {
+  const n = Number(v);
+  if (isNaN(n)) return String(v);
+  return n.toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+// Derive display status from (unit.status, contract.stage, contract.end_date + renewal_alert_months).
+// active + within alert window → 'expiring' (dashed amber ring).
+function deriveDisplayStatus(unit: FoodcourtUnit, now: Date = new Date()): UnitDisplayStatus {
+  const c = unit.currentContract;
+  if (!c) return 'vacant';
+  const stage = c.stage || '';
+  if (stage === 'active') {
+    if (c.end_date) {
+      const end = new Date(c.end_date + 'T00:00:00');
+      const alertMonths = c.renewal_alert_months ?? 3;
+      const alertThresholdMs = alertMonths * 30 * 24 * 3600 * 1000;
+      if (end.getTime() - now.getTime() <= alertThresholdMs) return 'expiring';
+    }
+    return 'active';
+  }
+  if (stage === 'setup') return 'preparing';
+  if (stage === 'contracting') return 'contracting';
+  if (stage === 'proposal') return 'proposal';
+  if (stage === 'expired') return 'expired';
+  // renewed / terminated → no current tenant on this unit
+  return 'vacant';
+}
+
+// Stage-specific key number for Tier D (large shapes)
+function deriveKeyNumber(
+  unit: FoodcourtUnit,
+  displayStatus: UnitDisplayStatus,
+  currency: string,
+  now: Date = new Date()
+): string | null {
+  const c = unit.currentContract;
+  if (displayStatus === 'active' && c?.financial_terms && !c.financial_redacted) {
+    const rent = Number(c.financial_terms.base_rent);
+    if (!isNaN(rent) && rent > 0) {
+      const k = rent >= 1000 ? `${(rent / 1000).toFixed(rent % 1000 === 0 ? 0 : 1)}k` : String(Math.round(rent));
+      return `${currency || 'RM'} ${k}/mo`;
+    }
+  }
+  if (displayStatus === 'expiring' && c?.end_date) {
+    const end = new Date(c.end_date + 'T00:00:00');
+    const days = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (24 * 3600 * 1000)));
+    return `${days}d left`;
+  }
+  if (displayStatus === 'preparing' && c?.start_date) {
+    const d = new Date(c.start_date + 'T00:00:00');
+    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+    return `Opens ${d.toLocaleDateString('en-GB', opts)}`;
+  }
+  if ((displayStatus === 'contracting' || displayStatus === 'proposal') && c) {
+    // Time since contract record created — operators want "how long has this been in pipeline"
+    const createdRaw = (c as any).created_at || (c as any).createdAt;
+    if (createdRaw) {
+      const created = new Date(createdRaw);
+      const days = Math.max(0, Math.floor((now.getTime() - created.getTime()) / (24 * 3600 * 1000)));
+      return days === 0 ? 'Today' : `${days}d`;
+    }
+  }
+  if (displayStatus === 'expired' && c?.end_date) {
+    const end = new Date(c.end_date + 'T00:00:00');
+    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+    return `Ended ${end.toLocaleDateString('en-GB', opts)}`;
+  }
+  return null;
+}
+
+function sizeLabel(unit: FoodcourtUnit): string | null {
+  if (unit.size_value == null) return null;
+  return `${unit.size_value} ${unit.size_unit || 'sqft'}`;
+}
+
+// Convert foodcourt unit (top-left coords) → FloorTable (center coords).
+// Attaches `unitDisplay` for FoodcourtUnitNode.
+type FoodcourtFloorTable = FloorTable & { unitDisplay: UnitDisplay };
+function unitsToFloorTables(units: FoodcourtUnit[], currency: string = 'RM'): FoodcourtFloorTable[] {
+  const now = new Date();
   return units
     .filter(u => u.plan_x != null && u.plan_y != null)
     .map(u => {
       const w = u.plan_width ?? 100;
       const h = u.plan_height ?? 80;
+      const c = u.currentContract;
+      const displayStatus = deriveDisplayStatus(u, now);
+      const tenantName = c?.restaurant?.name || c?.applicant_company_name || null;
       return {
         id: `u${u.id}`,
         tableNumber: u.unit_number,
@@ -165,19 +414,27 @@ function unitsToFloorTables(units: FoodcourtUnit[]): FloorTable[] {
         height: h,
         rotation: 0,
         seats: 0,
-        tableType: 'table' as const
+        tableType: 'table' as const,
+        unitDisplay: {
+          displayStatus,
+          tenantName,
+          contractStage: c?.stage || null,
+          contractId: c?.id || null,
+          logoUrl: c?.restaurant?.logo_url || null,
+          keyNumber: deriveKeyNumber(u, displayStatus, currency, now),
+          sizeLabel: sizeLabel(u),
+          billingGap: !!u.billing_gap
+        }
       };
     });
 }
 
-// Map unit status to table status palette used by FloorPlanCanvas
+// Legacy statusMap kept as no-op for FloorPlanCanvas compatibility —
+// FoodcourtUnitNode reads everything from unitDisplay instead.
 function statusMap(units: FoodcourtUnit[]): Record<string, TableStatusInfo> {
   const out: Record<string, TableStatusInfo> = {};
   units.forEach(u => {
-    let s: TableStatusInfo['status'] = 'available';
-    if (u.status === 'occupied') s = 'occupied';
-    else if (u.status === 'reserved' || u.status === 'preparing') s = 'needs-attention';
-    out[u.unit_number] = { tableNumber: u.unit_number, status: s, orderCount: 0, totalAmount: 0, elapsedMinutes: 0 };
+    out[u.unit_number] = { tableNumber: u.unit_number, status: 'available', orderCount: 0, totalAmount: 0, elapsedMinutes: 0 };
   });
   return out;
 }
@@ -205,7 +462,7 @@ const FoodcourtFloorPlanPage: React.FC = () => {
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      setClock(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+      setClock(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kuala_Lumpur' }));
     };
     tick();
     const id = setInterval(tick, 30000);
@@ -324,83 +581,268 @@ const FoodcourtFloorPlanPage: React.FC = () => {
               isEditing={false}
               selectedTableId={selectedUnitNumber ? `u${selectedUnit?.id}` : null}
               onTableClick={handleTableClick}
+              renderNode={({ table, isSelected, isEditing, onClick, onMouseDown, onTouchStart }) => (
+                <FoodcourtUnitNode
+                  table={table as FoodcourtFloorTable}
+                  isSelected={isSelected}
+                  isEditing={isEditing}
+                  onClick={onClick}
+                  onMouseDown={onMouseDown}
+                  onTouchStart={onTouchStart}
+                  statusLabels={{
+                    vacant: t('floorPlan.unitStatus.vacant', 'Vacant'),
+                    proposal: t('floorPlan.unitStatus.proposal', 'Proposal'),
+                    contracting: t('floorPlan.unitStatus.contracting', 'In Talks'),
+                    preparing: t('floorPlan.unitStatus.preparing', 'Setup'),
+                    active: t('floorPlan.unitStatus.active', 'Active'),
+                    expiring: t('floorPlan.unitStatus.expiring', 'Expiring'),
+                    expired: t('floorPlan.unitStatus.expired', 'Expired')
+                  }}
+                />
+              )}
             />
           )}
         </CanvasWrapper>
 
-        {selectedUnit && (
+        {selectedUnit && (() => {
+          // Derive display status using the same rule as the canvas
+          const displayStatus = deriveDisplayStatus(selectedUnit);
+          const palette = DISPLAY_PALETTE[displayStatus];
+          const isPipelineStage = displayStatus === 'proposal' || displayStatus === 'contracting';
+          const isExpiring = displayStatus === 'expiring';
+          const daysLeft = contract?.end_date ? Math.ceil((new Date(contract.end_date + 'T00:00:00').getTime() - Date.now()) / (24 * 3600 * 1000)) : null;
+          const daysInPipeline = contract ? (() => {
+            const raw = (contract as any).created_at || (contract as any).createdAt;
+            if (!raw) return null;
+            return Math.floor((Date.now() - new Date(raw).getTime()) / (24 * 3600 * 1000));
+          })() : null;
+          const currentBranchCode = currentBranch?.code || '';
+          const fullCode = currentBranchCode ? `${currentBranchCode}-${selectedUnit.unit_number}` : selectedUnit.unit_number;
+          const currency = 'RM'; // TODO: wire up foodcourt.currency via API
+          const ft = (contract?.financial_terms && !contract.financial_redacted) ? contract.financial_terms : null;
+          const isVacant = displayStatus === 'vacant';
+
+          return (
           <DetailPanel>
             <PanelHeader>
               <BigTitle>
-                {selectedUnit.unit_number}
-                <Badge $bg={UNIT_STATUS_COLOR[selectedUnit.status]?.border || '#9CA3AF'}>{selectedUnit.status}</Badge>
+                {fullCode}
+                <Badge $bg={palette.border}>
+                  {t(`floorPlan.unitStatus.${displayStatus}`, DEFAULT_STATUS_LABEL[displayStatus])}
+                </Badge>
               </BigTitle>
-              <PanelClose onClick={() => setSelectedUnitNumber(null)}>✕</PanelClose>
+              <PanelClose onClick={() => setSelectedUnitNumber(null)} aria-label={t('common.close', 'Close')} type="button">✕</PanelClose>
             </PanelHeader>
             <PanelBody>
-              {/* STORE */}
+              {/* CONTEXTUAL BANNER */}
+              {isPipelineStage && daysInPipeline != null && (
+                <Banner $bg="#FFF7ED" $text="#9A3412" $border="#F97316">
+                  {t('floorPlan.banner.inPipeline', 'Pipeline in progress · {{days}} days since start', { days: daysInPipeline })}
+                </Banner>
+              )}
+              {isExpiring && daysLeft != null && (
+                <Banner $bg="#FFFBEB" $text="#92400E" $border="#F59E0B">
+                  {t('floorPlan.banner.expiring', 'Contract expires in {{days}} days — renewal review recommended', { days: daysLeft })}
+                </Banner>
+              )}
+              {displayStatus === 'expired' && (
+                <Banner $bg="#FEF2F2" $text="#991B1B" $border="#EF4444">
+                  {t('floorPlan.banner.expired', 'Contract has expired — unit should be marked vacant or renewed')}
+                </Banner>
+              )}
+              {selectedUnit.billing_gap && (
+                <Banner $bg="#FEE2E2" $text="#991B1B" $border="#DC2626">
+                  ! {t('floorPlan.banner.billingGap', 'Billing is not configured — no plan linked to this active contract. Open the contract to link or create a plan.')}
+                </Banner>
+              )}
+
+              {/* §1 UNIT HEADER */}
               <Section>
-                <SectionTitle>{t('floorPlan.store', 'Store')}</SectionTitle>
-                {selectedUnit.location_description && (
-                  <div style={{ fontSize: 13, color: '#4B5563' }}>{selectedUnit.location_description}</div>
+                <SectionTitle>{t('floorPlan.sec.unit', 'Unit')}</SectionTitle>
+                <Row><span>{t('floorPlan.unit.code', 'Code')}</span><b>{fullCode}</b></Row>
+                {selectedUnit.size_value != null && (
+                  <Row><span>{t('floorPlan.unit.size', 'Size')}</span><b>{selectedUnit.size_value} {selectedUnit.size_unit || 'sqft'}</b></Row>
                 )}
-                {!selectedUnit.location_description && <EmptyHint>{t('floorPlan.noDescription', 'No description')}</EmptyHint>}
+                {selectedUnit.location_description && (
+                  <Row><span>{t('floorPlan.unit.location', 'Location')}</span><b>{selectedUnit.location_description}</b></Row>
+                )}
               </Section>
 
-              {/* TENANCY CONTRACT */}
-              <Section>
-                <SectionTitle>{t('floorPlan.tenancyContract', 'Tenancy Contract')}</SectionTitle>
-                {contract ? (
-                  <>
-                    <Row><span>{t('floorPlan.number', 'Number')}</span><b>{contract.contract_number || `#${contract.id}`}</b></Row>
-                    <Row><span>{t('floorPlan.stage', 'Stage')}</span><Badge $bg={STAGE_BG[contract.stage] || '#6B7280'}>{contract.stage}</Badge></Row>
-                    {contract.contract_type && <Row><span>{t('floorPlan.type', 'Type')}</span><b>{contract.contract_type}</b></Row>}
-                    {contract.start_date && <Row><span>{t('floorPlan.period', 'Period')}</span><b>{String(contract.start_date).substring(0,10)} ~ {String(contract.end_date || '').substring(0,10) || '—'}</b></Row>}
-                    {contract.applicant_company_name && <Row><span>{t('floorPlan.tenant', 'Tenant')}</span><b>{contract.applicant_company_name}</b></Row>}
-                    {contract.applicant_contact_person && <Row><span>{t('floorPlan.contact', 'Contact')}</span><b>{contract.applicant_contact_person}</b></Row>}
-                    {contract.applicant_phone && <Row><span>{t('floorPlan.phone', 'Phone')}</span><b>{contract.applicant_phone}</b></Row>}
-                    {contract.applicant_email && <Row><span>{t('floorPlan.email', 'Email')}</span><b>{contract.applicant_email}</b></Row>}
-                  </>
-                ) : <EmptyHint>{t('floorPlan.noContract', 'No active contract')}</EmptyHint>}
-              </Section>
-
-              {/* FINANCIAL TERMS */}
-              {contract?.financial_terms && Object.keys(contract.financial_terms).length > 0 && (
+              {/* VACANT EMPTY STATE */}
+              {isVacant && (
                 <Section>
-                  <SectionTitle>{t('floorPlan.financialTerms', 'Financial Terms')}</SectionTitle>
-                  {Object.entries(contract.financial_terms).map(([k, v]) => (
-                    <Row key={k}><span>{k}</span><b>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</b></Row>
-                  ))}
+                  <EmptyHint>{t('floorPlan.vacant.noContract', 'This unit has no contract assigned.')}</EmptyHint>
+                  {canEdit && (
+                    <PrimaryCta onClick={() => navigate(`/pos/foodcourt/tenancy?new=1&unit_id=${selectedUnit.id}`)}>
+                      + {t('floorPlan.vacant.createProposal', 'Create tenancy proposal')}
+                    </PrimaryCta>
+                  )}
                 </Section>
               )}
 
-              {/* RESTAURANT */}
-              {contract?.restaurant && (
-                <Section>
-                  <SectionTitle>{t('floorPlan.restaurant', 'Restaurant')}</SectionTitle>
-                  <RestaurantCard>
-                    <RestaurantLogo $src={contract.restaurant.logo_url} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0A2540', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {contract.restaurant.name}
-                        {contract.restaurant.branch_name && <span style={{ color: '#9CA3AF', fontWeight: 400 }}> · {contract.restaurant.branch_name}</span>}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>
-                        <Badge $bg={contract.restaurant.status === 'active' ? '#059669' : '#9CA3AF'}>{contract.restaurant.status}</Badge>
-                      </div>
-                    </div>
-                  </RestaurantCard>
-                </Section>
-              )}
-
+              {/* §2 CURRENT CONTRACT */}
               {contract && (
-                <OpenLink href={`/pos/foodcourt/tenancy?id=${contract.id}`}>
-                  {t('floorPlan.openContract', 'Open contract →')}
-                </OpenLink>
+                <Section>
+                  <SectionTitle>{t('floorPlan.sec.contract', 'Current Contract')}</SectionTitle>
+                  <Row>
+                    <span>{t('floorPlan.contract.number', 'Number')}</span>
+                    <b>{contract.contract_number || `#${contract.id}`}</b>
+                  </Row>
+                  <Row>
+                    <span>{t('floorPlan.contract.stage', 'Stage')}</span>
+                    <Badge $bg={STAGE_BG[contract.stage] || '#6B7280'}>
+                      {t(`floorPlan.contractStage.${contract.stage}`, contract.stage)}
+                    </Badge>
+                  </Row>
+                  {contract.contract_type && (
+                    <Row><span>{t('floorPlan.contract.type', 'Type')}</span><b>{t(`floorPlan.contractType.${contract.contract_type}`, contract.contract_type)}</b></Row>
+                  )}
+                  {(contract.start_date || contract.end_date) && (
+                    <Row>
+                      <span>{t('floorPlan.contract.period', 'Period')}</span>
+                      <b>
+                        {contract.start_date ? new Date(contract.start_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' }) : '—'}
+                        {' → '}
+                        {contract.end_date ? new Date(contract.end_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' }) : '—'}
+                      </b>
+                    </Row>
+                  )}
+                  {daysLeft != null && (contract.stage === 'active' || contract.stage === 'setup') && (
+                    <Row>
+                      <span>{t('floorPlan.contract.daysLeft', 'Days remaining')}</span>
+                      <b style={{ color: daysLeft < 30 ? '#DC2626' : daysLeft < 90 ? '#D97706' : '#059669' }}>
+                        {daysLeft > 0 ? `${daysLeft}d` : t('floorPlan.contract.overdue', 'Past end date')}
+                      </b>
+                    </Row>
+                  )}
+                  {contract.signing_date && (
+                    <Row><span>{t('floorPlan.contract.signed', 'Signed on')}</span><b>{new Date(contract.signing_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' })}</b></Row>
+                  )}
+                  {contract.renewal_type && (
+                    <Row>
+                      <span>{t('floorPlan.contract.renewal', 'Renewal')}</span>
+                      <b>
+                        {t(`floorPlan.renewalType.${contract.renewal_type}`, contract.renewal_type)}
+                        {contract.renewal_alert_months ? ` · ${t('floorPlan.contract.alertMonths', '{{n}}mo alert', { n: contract.renewal_alert_months })}` : ''}
+                      </b>
+                    </Row>
+                  )}
+                </Section>
+              )}
+
+              {/* §3 TENANT */}
+              {contract && (contract.restaurant || contract.applicant_company_name) && (
+                <Section>
+                  <SectionTitle>{t('floorPlan.sec.tenant', 'Tenant')}</SectionTitle>
+                  {contract.restaurant ? (
+                    <RestaurantCard>
+                      <RestaurantLogo $src={contract.restaurant.logo_url || undefined} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#0A2540', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {contract.restaurant.name}
+                          {contract.restaurant.branch_name && <span style={{ color: '#9CA3AF', fontWeight: 400 }}> · {contract.restaurant.branch_name}</span>}
+                        </div>
+                        {contract.applicant_company_name && contract.applicant_company_name !== contract.restaurant.name && (
+                          <div style={{ fontSize: 11, color: '#6B7C93', marginTop: 2 }}>
+                            {t('floorPlan.tenant.legalEntity', 'Legal entity')}: {contract.applicant_company_name}
+                          </div>
+                        )}
+                      </div>
+                    </RestaurantCard>
+                  ) : (
+                    <Row><span>{t('floorPlan.tenant.applicant', 'Applicant')}</span><b>{contract.applicant_company_name}</b></Row>
+                  )}
+                  {contract.applicant_contact_person && (
+                    <Row><span>{t('floorPlan.tenant.contact', 'Contact')}</span><b>{contract.applicant_contact_person}</b></Row>
+                  )}
+                  {contract.applicant_phone && (
+                    <Row><span>{t('floorPlan.tenant.phone', 'Phone')}</span>
+                      <b><a href={`tel:${contract.applicant_phone}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{contract.applicant_phone}</a></b></Row>
+                  )}
+                  {contract.applicant_email && (
+                    <Row><span>{t('floorPlan.tenant.email', 'Email')}</span>
+                      <b><a href={`mailto:${contract.applicant_email}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{contract.applicant_email}</a></b></Row>
+                  )}
+                </Section>
+              )}
+
+              {/* §4 FINANCIAL TERMS — redacted for Manager */}
+              {contract && contract.financial_redacted && (
+                <Section>
+                  <SectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</SectionTitle>
+                  <EmptyHint>🔒 {t('floorPlan.financial.redacted', 'Financial terms are visible to Foodcourt General and System Admin only')}</EmptyHint>
+                </Section>
+              )}
+              {ft && Object.keys(ft).length > 0 && (
+                <Section>
+                  <SectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</SectionTitle>
+                  <TileGrid>
+                    {ft.base_rent != null && <Tile $color="#15803D"><TileLabel>{t('floorPlan.fin.baseRent', 'Base Rent')}</TileLabel><TileValue>{currency} {fmtMoney(ft.base_rent)}<TileUnit>/mo</TileUnit></TileValue></Tile>}
+                    {ft.revenue_share_percent != null && <Tile $color="#1E40AF"><TileLabel>{t('floorPlan.fin.revShare', 'Revenue Share')}</TileLabel><TileValue>{ft.revenue_share_percent}<TileUnit>% of GTO</TileUnit></TileValue></Tile>}
+                    {ft.min_guarantee != null && <Tile $color="#B45309"><TileLabel>{t('floorPlan.fin.minGuarantee', 'Min Guarantee')}</TileLabel><TileValue>{currency} {fmtMoney(ft.min_guarantee)}<TileUnit>/mo</TileUnit></TileValue></Tile>}
+                    {ft.security_deposit != null && <Tile $color="#6D28D9"><TileLabel>{t('floorPlan.fin.deposit', 'Deposit')}</TileLabel><TileValue>{currency} {fmtMoney(ft.security_deposit)}{ft.security_deposit_months ? <TileUnit>({ft.security_deposit_months}mo)</TileUnit> : null}</TileValue></Tile>}
+                  </TileGrid>
+                  {ft.maintenance_fee != null && <Row><span>{t('floorPlan.fin.cam', 'Maintenance (CAM)')}</span><b>{currency} {fmtMoney(ft.maintenance_fee)}/mo</b></Row>}
+                  {ft.fitout_responsibility && <Row><span>{t('floorPlan.fin.fitout', 'Fit-out')}</span><b>{t(`floorPlan.fin.fitoutVal.${ft.fitout_responsibility}`, ft.fitout_responsibility)}</b></Row>}
+                  {ft.operating_hours && <Row><span>{t('floorPlan.fin.hours', 'Operating hours')}</span><b>{ft.operating_hours}</b></Row>}
+                  {ft.restoration_required != null && <Row><span>{t('floorPlan.fin.restoration', 'Restoration required')}</span><b>{ft.restoration_required ? t('common.yes', 'Yes') : t('common.no', 'No')}</b></Row>}
+                  {/* Monthly obligation computed total */}
+                  {(() => {
+                    const base = Number(ft.base_rent) || 0;
+                    const minG = Number(ft.min_guarantee) || 0;
+                    const cam = Number(ft.maintenance_fee) || 0;
+                    const total = Math.max(base, minG) + cam;
+                    if (total <= 0) return null;
+                    return (
+                      <TotalRow>
+                        <span>{t('floorPlan.fin.totalMonthly', 'Total monthly obligation')}</span>
+                        <b>{currency} {fmtMoney(total)}/mo</b>
+                      </TotalRow>
+                    );
+                  })()}
+                </Section>
+              )}
+
+              {/* §5 TIMELINE */}
+              {contract && (
+                <Section>
+                  <SectionTitle>{t('floorPlan.sec.timeline', 'Timeline')}</SectionTitle>
+                  <Timeline>
+                    {(['proposal', 'contracting', 'setup', 'active'] as const).map((s, i, arr) => {
+                      const priority = { proposal: 1, contracting: 2, setup: 3, active: 4 } as Record<string, number>;
+                      const currentPri = priority[contract.stage] || 0;
+                      const isPast = priority[s] < currentPri;
+                      const isCurrent = s === contract.stage;
+                      return (
+                        <TimelineStep key={s} $active={isCurrent} $past={isPast} $last={i === arr.length - 1}>
+                          <TimelineDot $active={isCurrent} $past={isPast} />
+                          <TimelineLabel $active={isCurrent} $past={isPast}>
+                            {t(`floorPlan.contractStage.${s}`, s)}
+                          </TimelineLabel>
+                        </TimelineStep>
+                      );
+                    })}
+                  </Timeline>
+                </Section>
+              )}
+
+              {/* §6 ACTIONS */}
+              {contract && (
+                <ActionRow>
+                  <OpenLink href={`/pos/foodcourt/tenancy?id=${contract.id}`}>
+                    {t('floorPlan.action.open', 'Open contract →')}
+                  </OpenLink>
+                  {canEdit && isExpiring && (
+                    <SecondaryCta onClick={() => navigate(`/pos/foodcourt/tenancy?id=${contract.id}&action=renew`)}>
+                      ↻ {t('floorPlan.action.renew', 'Renew')}
+                    </SecondaryCta>
+                  )}
+                </ActionRow>
               )}
             </PanelBody>
           </DetailPanel>
-        )}
+          );
+        })()}
       </MainContent>
     </PageContainer>
   );
