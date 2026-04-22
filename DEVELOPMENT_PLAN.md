@@ -1,12 +1,24 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-20 저녁 (Map 페이지 분리 + Floor Plan 시스템 + Branch Unit Numbering)
+> **최종 업데이트:** 2026-04-22 (Subscriptions pending plan change + FG parity 구현)
 > **데이터베이스:** purple_dev_db (MySQL)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
+> **현재 버전:** v3.16
 
 ---
 
-## ✅ 완료: Map 뷰 분리 + Floor Plan 시스템 + Branch Unit Numbering (2026-04-20 저녁, 미배포)
+## ✅ 완료: v3.16 운영 배포 (2026-04-22)
+
+**이번 배포 묶음** (v3.15 이후 누적):
+- Map 뷰 분리 + Foodcourt Floor Plan 시스템 + Branch Unit Numbering (2026-04-20)
+- 블로그 자동화 + 다국어 DB + `/글쓰기` 커맨드 + 태그/필터/다포맷 (2026-04-21)
+- Contract-Plan-Invoice 파이프라인 완결 — Phase 2-C/D/E/F (2026-04-22/23)
+- POS 로그인 원클릭 (데모/테스트 카드 클릭 시 즉시 로그인)
+- Contract Detail Billing 섹션 UX 정비 — 상태 배지 로직, 피커 모달, 새창 버튼, 계약별 Invoice 검색
+
+---
+
+## ✅ 완료: Map 뷰 분리 + Floor Plan 시스템 + Branch Unit Numbering (v3.16 배포)
 
 ### 배경
 Brand Franchise Map / Foodcourt Tenancy Map 을 standalone 창으로 분리 (레스토랑 Floor Plan 패턴 참조). Foodcourt Floor Plan 에디터/뷰 신규 구현 (매장 배치 + 계약 정보 표시). Branch 편집 모달에 Unit Numbering 설정 신설 (prefix + 자유 입력 + 범위 확장).
@@ -3559,6 +3571,49 @@ Brand General이 등록한 재료(Ingredient)의 표준 코스트(Brand Cost)에
 - `dev-backend/routes/contracts.js`, `foodcourt-units.js`
 - `dev-backend/models/Comment.js`, `CommentRead.js` (ENUM 확장)
 - `dev-backend/routes/comments.js` (validTypes)
+
+---
+
+## ✅ 완료: Subscriptions Pending Plan Change + Foodcourt General Parity (2026-04-22)
+
+### 배경
+`/pos/brand/general/subscriptions` 에서 이미 플랜이 배정된 레스토랑에 새 플랜을 추가해도 드롭다운에 나오거나 즉시 교체되는 문제. 버튼들 silent 실패. 플랜 변경이 언제부터 반영되는지 표시 없음. 푸드코트 구독은 Add 버튼 자체가 부재, Manager Restaurants Edit 에도 푸드코트 구독 섹션 없음.
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | DB: EntityPlanRestaurant 에 pending_plan_id + pending_activation_date 컬럼 | 다음 청구 주기 전환용. 기존 데이터 null 기본 (backward-compat) | ✅ |
+| 2 | POST /brands/:id/plans/:planId/restaurants 리팩터 | 동일 브랜드 다른 active 플랜 → pending으로 스케줄 (즉시 교체 X), 없음 → 즉시 배정, 동일 → no-op | ✅ |
+| 3 | POST /foodcourts/:id/plans/:planId/restaurants 동일 적용 | 푸드코트 구독 POST도 pending 플로우 | ✅ |
+| 4 | GET /brands/:id/subscriptions + /foodcourts/:id/subscriptions | 응답에 pending_plan 필드 포함 (id/name/charge_type/activation_date) | ✅ |
+| 5 | POST .../cancel-pending 신규 엔드포인트 | 브랜드/푸드코트 예정 변경 취소 | ✅ |
+| 6 | Scheduler cron pending EPR swap | 매일 2AM — pending_activation_date ≤ 오늘이면 entity_plan_id 교체 + ActivityLog | ✅ |
+| 7 | BrandSubscriptionsPage Add 모달 필터 + 에러 surfacing | 플랜 있는 레스토랑 드롭다운 제외, Assign/Unassign/Discount silent console.error → inline+toast | ✅ |
+| 8 | BrandSubscriptionsPage Row 예정 변경 배너 + Cancel | "Scheduled change: X on YYYY-MM-DD" amber 배너 + Cancel 버튼 | ✅ |
+| 9 | Change Plan 모달 경고 힌트 | "다음 청구 주기부터 적용" changeScheduledHint 배너 | ✅ |
+| 10 | FoodcourtSubscriptionsPage — 브랜드와 동일 모든 기능 미러 | Add 모달 + 필터 + 에러 surfacing + Row 예정 배너 + Change 경고 | ✅ |
+| 11 | Manager Edit 모달 — Foodcourt Subscription 섹션 (FG용) | Tenancy Contract + Foodcourt Plan 2카드, 인라인 피커 2개 (검색+Link), 배지/뷰어 | ✅ |
+| 12 | FoodcourtSubscriptionsPage 자체에 + Add Subscription 버튼 | 입점 레스토랑 + 플랜 선택 모달 (BrandSubscriptionsPage 미러) | ✅ |
+| 13 | Manager Edit — Brand Subscription 섹션 보조 정비 | 인라인 피커 open/close 시 Edit 모달 unmount 방지, 피커 backdrop 불투명 (0.85) | ✅ |
+| 14 | i18n: brand/foodcourt/admin/contract 네임스페이스 신규 30+ 키 × 4언어 | en/ko/zh/ms 모두 추가 + JSON 유효성 검증 | ✅ |
+
+### API 검증 결과 (실제 호출)
+- Brand: initial(plan18) → POST plan38 = `scheduled` activation=2026-05-27 → cancel → POST plan18 = `already_assigned` → 404(plan 999999) → 403(cross-brand)
+- Foodcourt: t#2 빈 상태 → POST plan21 = `assigned` → POST plan22 = `scheduled` activation=2026-05-28 → cancel → DELETE restore
+- Hydration check: 0 warning / Build: 타입에러 0 / 번들 3개 chunk에 신규 코드 포함
+
+### 수정된 파일
+- `dev-backend/models/EntityPlanRestaurant.js`
+- `dev-backend/routes/brands.js`
+- `dev-backend/routes/foodcourts.js`
+- `dev-backend/services/invoiceScheduler.js`
+- `dev-frontend/src/pages/BrandGeneral/BrandSubscriptionsPage.tsx`
+- `dev-frontend/src/pages/FoodcourtGeneral/FoodcourtSubscriptionsPage.tsx`
+- `dev-frontend/src/pages/Manager/RestaurantsPage.tsx`
+- `dev-frontend/src/components/Contract/LinkedPlansSection.tsx` (View all plans, 마법사 제거)
+- `dev-frontend/src/components/Contract/ContractDetail.tsx` (+ Issue One-time 제거)
+- `dev-frontend/public/locales/{en,ko,zh,ms}/{brand,foodcourt,admin,contract}.json`
 
 ---
 

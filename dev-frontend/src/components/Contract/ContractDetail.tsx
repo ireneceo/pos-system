@@ -928,11 +928,150 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
     setup: sectionRequirements.filter(r => r.section === 'setup'),
     documents: sectionRequirements.filter(r => r.section === 'documents')
   };
+  // Helpers for strict per-field completeness checks (Irene's "모든 항목 입력" rule).
+  const isNonEmpty = (v: any): boolean =>
+    v != null && v !== '' && !(Array.isArray(v) && v.length === 0) &&
+    !(typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date) && Object.keys(v || {}).length === 0);
+  // Object (e.g. bank_info) counts as filled if at least one meaningful property is set.
+  const objectHasAnyValue = (obj: any): boolean =>
+    obj != null && typeof obj === 'object' && !Array.isArray(obj) &&
+    Object.values(obj).some(isNonEmpty);
+
+  // "Complete" per Irene's spec = EVERY user-facing field in the section is filled.
+  // Anything partial / any field empty → not Complete → "In progress".
+  const isSectionComplete = (sec: SectionKey): boolean => {
+    if (sec === 'parties') {
+      const fields = [
+        form.applicant_company_name,
+        form.applicant_contact_person,
+        form.applicant_email,
+        form.applicant_phone,
+        form.applicant_business_type,
+        form.applicant_location,
+        form.applicant_business_registration,
+        form.applicant_website,
+        objectHasAnyValue(form.applicant_bank_info) ? true : null,
+        Array.isArray(form.applicant_representatives) && form.applicant_representatives.length > 0 ? true : null,
+        form.applicant_notes,
+        form.issuer_company_name,
+        form.issuer_business_registration,
+        form.issuer_website,
+        objectHasAnyValue(form.issuer_bank_info) ? true : null,
+        Array.isArray(form.issuer_representatives) && form.issuer_representatives.length > 0 ? true : null
+      ];
+      return fields.every(isNonEmpty);
+    }
+    if (sec === 'contract') {
+      // Contract Information sub-block: all user-facing fields.
+      const infoFields = [
+        form.contract_number,
+        form.contract_type,
+        form.currency,
+        form.start_date,
+        form.end_date,
+        form.signing_date,
+        form.duration_months,
+        form.notes,
+        // foodcourt requires a unit; brand never uses unit_id
+        entityType === 'brand' ? true : (contract.unit_id ? true : null)
+      ];
+      if (!infoFields.every(isNonEmpty)) return false;
+
+      // Financial Terms sub-block — entity-specific fields shown in the Contract accordion UI.
+      const ft = form.financial_terms || {};
+      if (entityType === 'brand') {
+        const brandFields = [
+          ft.franchise_fee,                    // Initial Fees
+          ft.security_deposit,                 // Initial Fees
+          ft.system_setup_fee,                 // System Fees
+          ft.system_monthly_fee,               // System Fees
+          ft.royalty_value,                    // Royalty
+          ft.royalty_payment?.due_day,         // Royalty — Due Day
+          ft.royalty_payment?.grace_days,      // Royalty — Grace Days
+          ft.royalty_payment?.late_interest_pct, // Royalty — Late Interest
+          ft.marketing_fund_value,             // Marketing
+          ft.territory                         // Territory
+        ];
+        return brandFields.every(isNonEmpty);
+      }
+      // foodcourt
+      const fcFields = [
+        ft.unit_size_sqft,                     // Unit
+        Array.isArray(ft.rent_schedule) && ft.rent_schedule.length > 0 ? true : null, // Rent Schedule
+        ft.percentage_rent?.rate,              // Percentage Rent — Rate
+        ft.handover_date,                      // Key Dates
+        ft.commencement_date,                  // Key Dates
+        ft.fit_out_period_days,                // Key Dates
+        ft.security_deposit,                   // Others
+        ft.min_guarantee,                      // Others
+        ft.maintenance_fee,                    // Others
+        ft.operating_hours                     // Others
+      ];
+      return fcFields.every(isNonEmpty);
+    }
+    if (sec === 'billing') {
+      return Array.isArray(form.plans) && form.plans.some((p: any) => !p.end_at);
+    }
+    if (sec === 'setup') {
+      const tasks = Array.isArray(contract.tasks) ? contract.tasks : [];
+      if (tasks.length === 0) return false;
+      const required = tasks.filter((t: any) => t.is_required !== false);
+      if (required.length === 0) return false;
+      return required.every((t: any) => t.is_completed);
+    }
+    if (sec === 'documents') {
+      return Array.isArray(contract.documents) && contract.documents.length > 0;
+    }
+    return false;
+  };
+
+  // Did the user enter ANYTHING in this section? (any value that counts toward "started")
+  const hasAnyInputIn = (sec: SectionKey): boolean => {
+    if (sec === 'parties') {
+      return !!(form.applicant_company_name || form.applicant_contact_person
+        || form.applicant_email || form.applicant_phone || form.applicant_location
+        || form.applicant_business_type || form.applicant_business_registration
+        || form.applicant_website || form.applicant_notes
+        || form.issuer_company_name || form.issuer_business_registration);
+    }
+    if (sec === 'contract') {
+      const ft = form.financial_terms || {};
+      const hasAnyTerm = Object.values(ft).some((v: any) => v != null && v !== '' && Number(v) !== 0);
+      return !!(form.contract_number || form.start_date || form.end_date
+        || form.duration_months || form.contract_type || form.signing_date
+        || contract.unit_id || hasAnyTerm);
+    }
+    if (sec === 'billing') {
+      return Array.isArray(form.plans) && form.plans.some((p: any) => !p.end_at);
+    }
+    if (sec === 'setup') {
+      return Array.isArray(contract.tasks) && contract.tasks.length > 0;
+    }
+    if (sec === 'documents') {
+      return Array.isArray(contract.documents) && contract.documents.length > 0;
+    }
+    return false;
+  };
+
+  // Section status per Irene's spec (2026-04-23):
+  //   has required + empty       → required (red)    "입력 필수"
+  //   has required + partial     → optional (gray)   "입력중"
+  //   has required + all filled  → complete (green)  "입력완료"
+  //   no required + empty        → optional (gray)   "입력중"
+  //   no required + all filled   → complete (green)  "입력완료"
   const sectionStatus = (sec: SectionKey): { status: 'complete' | 'required' | 'optional' | 'empty'; label: string } => {
     const reqs = requirementsBySection[sec];
-    if (reqs.length > 0) return { status: 'required', label: `${reqs.length} ${t('detail.sectionRequired', 'required')}` };
-    if (!nextStage) return { status: 'optional', label: '' };
-    return { status: 'complete', label: t('detail.sectionComplete', '✓ Complete') as string };
+    const hasRequiredGap = reqs.length > 0;
+    const hasAny = hasAnyInputIn(sec);
+    const isComplete = isSectionComplete(sec);
+
+    if (isComplete) {
+      return { status: 'complete', label: t('detail.sectionComplete', '✓ Complete') as string };
+    }
+    if (hasRequiredGap && !hasAny) {
+      return { status: 'required', label: `${t('detail.sectionRequired', 'Required')} ${reqs.length}` };
+    }
+    return { status: 'optional', label: t('detail.sectionInProgress', 'In progress') as string };
   };
 
   const nextDisabled = missingRequired.length > 0;
@@ -1353,7 +1492,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       {/* Financial Terms */}
       <Section>
         <SectionTitle>{entityType === 'brand' ? t('detail.franchiseTerms', 'Franchise Terms') : t('detail.tenancyTerms', 'Tenancy Terms')}</SectionTitle>
-        {Array.isArray(form.plans) && form.plans.length > 0 ? (
+        {Array.isArray(form.plans) && form.plans.some((p: any) => !p.end_at) ? (
           <div style={{ padding: '10px 14px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 6, fontSize: 13, color: '#065F46', marginBottom: 16 }}>
             <strong>{t('detail.planLinked', 'Billing plan linked')}</strong> — {t('detail.planLinkedHint', 'Actual invoices are generated from the subscription plan(s) below. Values in this section are reference terms captured during negotiation.')}
           </div>
@@ -1775,6 +1914,7 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
       {/* Recurring Subscriptions (ContractPlans) + Billing Preview */}
       <LinkedPlansSection
         contractId={contract.id}
+        entityId={contract.entity_id}
         plans={Array.isArray(form.plans) ? form.plans : []}
         currency={entityCurrency}
         entityType={entityType}
@@ -1786,7 +1926,58 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
 
       {/* One-time Invoices */}
       <Section>
-        <SectionTitle>{t('detail.oneTimeInvoices', 'One-time Invoices')}</SectionTitle>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12, marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid #F3F4F6'
+        }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0A2540', margin: 0 }}>
+            {t('detail.oneTimeInvoices', 'One-time Invoices')}
+          </h3>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => {
+                const page = entityType === 'brand' ? '/pos/brand/invoices' : '/pos/foodcourt/invoices';
+                window.open(`${page}?contract_id=${contractId}`, '_blank');
+              }}
+              style={{
+                padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', border: '1px solid #E6EBF1',
+                background: '#F8FAFC', color: '#4B5563', transition: 'all 0.15s'
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F3F4F6'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#F8FAFC'; }}
+            >
+              {t('detail.viewAllContractInvoices', 'View all invoices')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const page = entityType === 'brand' ? '/pos/brand/invoices' : '/pos/foodcourt/invoices';
+                window.open(`${page}?contract_id=${contractId}&action=create`, '_blank');
+              }}
+              disabled={!isEditable && contract.stage !== 'active'}
+              style={{
+                padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                cursor: (!isEditable && contract.stage !== 'active') ? 'not-allowed' : 'pointer',
+                border: '1px solid #635BFF',
+                background: '#635BFF', color: 'white',
+                opacity: (!isEditable && contract.stage !== 'active') ? 0.5 : 1,
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={e => {
+                const btn = e.currentTarget as HTMLButtonElement;
+                if (!btn.disabled) { btn.style.background = '#5A51E6'; btn.style.borderColor = '#5A51E6'; }
+              }}
+              onMouseLeave={e => {
+                const btn = e.currentTarget as HTMLButtonElement;
+                if (!btn.disabled) { btn.style.background = '#635BFF'; btn.style.borderColor = '#635BFF'; }
+              }}
+            >
+              {t('detail.issueOneTimeInvoice', 'Issue One-time Invoice')}
+            </button>
+          </div>
+        </div>
         {Array.isArray(contract.invoices) && contract.invoices.length > 0 ? (
           <div style={{ marginBottom: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 0.8fr 0.8fr 0.8fr', gap: 8, padding: '8px 12px', background: '#F3F4F6', fontWeight: 600, fontSize: 12, color: '#4B5563', borderRadius: 4 }}>
@@ -1816,18 +2007,6 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
             {t('detail.noOneTimeInvoices', 'No one-time invoices for this contract yet.')}
           </div>
         )}
-        <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-          <Btn
-            variant="primary"
-            onClick={() => {
-              const page = entityType === 'brand' ? '/pos/brand/invoices' : '/pos/foodcourt/invoices';
-              window.location.href = `${page}?contract_id=${contractId}&action=create`;
-            }}
-            disabled={!isEditable && contract.stage !== 'active'}
-          >
-            + {t('detail.issueOneTimeInvoice', 'Issue One-time Invoice')}
-          </Btn>
-        </div>
       </Section>
 
       </FormAccordionSection>

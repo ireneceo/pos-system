@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const { Invoice, InvoiceItem, Restaurant, PlanPrice, PlanTemplate, EntityPlan, EntityPlanRestaurant, Order, Brand, Foodcourt, SystemSettings } = require('../models');
+const { Invoice, InvoiceItem, Restaurant, PlanPrice, PlanTemplate, EntityPlan, EntityPlanRestaurant, Order, Brand, Foodcourt, SystemSettings, ContractPlan } = require('../models');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const systemLogger = require('../utils/systemLogger');
@@ -418,6 +418,43 @@ class InvoiceScheduler {
             const restaurant = pr.restaurant;
             if (!restaurant) continue;
 
+            // Phase 2-C: If this plan was created from a Contract (has any ContractPlan row),
+            // require at least one OPEN ContractPlan link whose contract.restaurant_id matches.
+            // This prevents ghost billing after contract termination/expiry (defense-in-depth;
+            // primary guard is EntityPlanRestaurant.is_active).
+            const allContractLinks = await ContractPlan.findAll({
+              where: { entity_plan_id: plan.id },
+              include: [{ model: require('../models').Contract, as: 'contract', attributes: ['id', 'restaurant_id', 'stage'] }]
+            });
+            let matchingContractId = null;
+            let matchingContract = null;
+            if (allContractLinks.length > 0) {
+              const openMatch = allContractLinks.find(l =>
+                !l.end_at && l.contract && l.contract.restaurant_id === restaurant.id
+              );
+              if (!openMatch) {
+                // Contract-originated plan but no open matching contract → skip
+                result.skipped++;
+                continue;
+              }
+              matchingContractId = openMatch.contract_id;
+              // Phase 2-E: Load full contract for proration (start_date / end_date).
+              const Contract = require('../models').Contract;
+              matchingContract = await Contract.findByPk(matchingContractId, {
+                attributes: ['id', 'start_date', 'end_date', 'contract_number']
+              });
+            }
+
+            // Phase 2-E: Compute proration factor based on how much of [periodStart, periodEnd]
+            // the contract actually covers. Only the FIXED portion is prorated — percentage%
+            // of revenue already reflects actual activity so needs no adjustment.
+            const prorationFactor = this.computeProrationFactor(matchingContract, periodStart, periodEnd);
+            if (prorationFactor === 0) {
+              // Contract period doesn't overlap this billing period at all → skip
+              result.skipped++;
+              continue;
+            }
+
             // Use restaurant's base currency (design rule: invoice in recipient's currency)
             const invoiceCurrency = restaurant.currency || 'MYR';
 
@@ -479,8 +516,8 @@ class InvoiceScheduler {
               }
             }
 
-            // Calculate charges
-            const charges = this.calculatePlanCharges(plan, revenue, discountInfo, fixedMonthlyPrice);
+            // Calculate charges (with Phase 2-E proration applied to fixed portion)
+            const charges = this.calculatePlanCharges(plan, revenue, discountInfo, fixedMonthlyPrice, prorationFactor);
 
             if (charges.totalAmount < 0 || charges.subtotal <= 0) {
               result.skipped++;
@@ -543,7 +580,9 @@ class InvoiceScheduler {
               issuer_id: plan.entity_id,
               payer_type: 'restaurant',
               payer_id: null,
-              additional_charges: entityAdditionalCharges.length > 0 ? entityAdditionalCharges : null
+              additional_charges: entityAdditionalCharges.length > 0 ? entityAdditionalCharges : null,
+              // Phase 2-C: traceability link to the originating contract (if any)
+              contract_id: matchingContractId
             });
 
             // Create invoice items
@@ -764,13 +803,17 @@ class InvoiceScheduler {
   // Compute line items from an EntityPlan based on its own fields.
   // Supports: fixed (EntityPlanPrice.monthly_price) / percentage (percentage_value × revenue) / combined (MAX of both).
   // `fixedPrice` is the EntityPlanPrice row for the invoice currency (caller passes it in charges.items).
-  calculatePlanCharges(plan, revenue, discountInfo = { type: 'none', value: 0, reason: null }, fixedMonthlyPrice = 0) {
+  // Phase 2-E: `prorationFactor` (0-1) scales the fixed portion only. Percentage of revenue is
+  // naturally prorated by actual activity, so it is not factored.
+  calculatePlanCharges(plan, revenue, discountInfo = { type: 'none', value: 0, reason: null }, fixedMonthlyPrice = 0, prorationFactor = 1) {
     const items = [];
     let subtotal = 0;
     const taxRate = 0; // EntityPlan has no tax_rate field — tax applied downstream via payment settings
 
     const chargeType = plan.charge_type || 'fixed';
-    const fixedAmount = Number(fixedMonthlyPrice) || 0;
+    const factor = (typeof prorationFactor === 'number' && prorationFactor >= 0 && prorationFactor <= 1) ? prorationFactor : 1;
+    const fullFixed = Number(fixedMonthlyPrice) || 0;
+    const fixedAmount = Math.round(fullFixed * factor * 100) / 100;
     const pctRate = parseFloat(plan.percentage_value || 0);
     const percentageAmount = pctRate > 0 ? Math.round(revenue * pctRate / 100 * 100) / 100 : 0;
 
@@ -780,22 +823,31 @@ class InvoiceScheduler {
     let fixedForItem = null;
     let pctRateForItem = null;
     let minForItem = null;
+    const proratedSuffix = factor < 1 ? ` [prorated ${Math.round(factor * 100)}%]` : '';
 
     if (chargeType === 'fixed') {
       rentAmount = fixedAmount;
-      description = `${plan.name} (Fixed)`;
+      description = `${plan.name} (Fixed)${proratedSuffix}`;
       fixedForItem = fixedAmount;
     } else if (chargeType === 'percentage') {
       rentAmount = percentageAmount;
       description = `${plan.name} (${pctRate}% of revenue)`;
       pctRateForItem = pctRate;
     } else if (chargeType === 'combined') {
-      // Min-guarantee pattern: rent = max(fixed floor, percentage × revenue)
+      // "Fixed OR %": rent = max(fixed floor, percentage × revenue) — min-guarantee pattern.
+      // The fixed floor is prorated; percentage reflects actual activity.
       rentAmount = Math.max(fixedAmount, percentageAmount);
-      description = `${plan.name} (Combined: max of ${fixedAmount} or ${pctRate}% × ${revenue})`;
+      description = `${plan.name} (Combined: max of ${fixedAmount} or ${pctRate}% × ${revenue})${proratedSuffix}`;
       fixedForItem = fixedAmount;
       pctRateForItem = pctRate;
-      minForItem = fixedAmount; // fixed acts as minimum guarantee
+      minForItem = fixedAmount; // prorated fixed acts as minimum guarantee
+    } else if (chargeType === 'additive') {
+      // "Fixed + %": both charged together — fixed base + revenue percentage.
+      // Common in franchise models where fixed monthly management fee AND royalty are separate.
+      rentAmount = fixedAmount + percentageAmount;
+      description = `${plan.name} (Additive: ${fixedAmount} + ${pctRate}% × ${revenue})${proratedSuffix}`;
+      fixedForItem = fixedAmount;
+      pctRateForItem = pctRate;
     }
 
     if (rentAmount > 0) {
@@ -863,6 +915,39 @@ class InvoiceScheduler {
     }
 
     return `${prefix}${year}${month}${day}${String(nextNumber).padStart(3, '0')}`;
+  }
+
+  /**
+   * Phase 2-E: Compute proration factor for a contract against a billing period.
+   * Returns 0..1 = fraction of [periodStart..periodEnd] that is covered by the contract.
+   * - No contract → 1 (legacy plans with no contract continue to bill full month)
+   * - Contract fully covers period → 1
+   * - Contract starts mid-period → partial (first invoice)
+   * - Contract ends mid-period → partial (last invoice)
+   * - No overlap → 0 (caller should skip)
+   */
+  computeProrationFactor(contract, periodStart, periodEnd) {
+    if (!contract) return 1;
+    const cStart = contract.start_date ? new Date(contract.start_date) : null;
+    const cEnd = contract.end_date ? new Date(contract.end_date) : null;
+    const pStart = new Date(periodStart);
+    const pEnd = new Date(periodEnd);
+    // Normalize to midnight for whole-day math
+    pStart.setHours(0, 0, 0, 0);
+    pEnd.setHours(0, 0, 0, 0);
+    if (cStart) cStart.setHours(0, 0, 0, 0);
+    if (cEnd) cEnd.setHours(0, 0, 0, 0);
+
+    const effStart = cStart && cStart > pStart ? cStart : pStart;
+    const effEnd = cEnd && cEnd < pEnd ? cEnd : pEnd;
+    if (effEnd < effStart) return 0;
+
+    const DAY = 24 * 60 * 60 * 1000;
+    const totalDays = Math.round((pEnd - pStart) / DAY) + 1;
+    const coveredDays = Math.round((effEnd - effStart) / DAY) + 1;
+    if (totalDays <= 0) return 1;
+    const f = coveredDays / totalDays;
+    return Math.min(1, Math.max(0, Math.round(f * 10000) / 10000));
   }
 
   /**
@@ -1296,6 +1381,57 @@ class InvoiceScheduler {
           result.applied++;
         } catch (error) {
           console.error(`✗ [PENDING] Error applying change for user ${user.full_name}:`, error.message);
+          result.errors++;
+        }
+      }
+
+      // 3. EntityPlanRestaurant with pending plan change (brand/foodcourt plans)
+      const EntityPlanRestaurant = require('../models/EntityPlanRestaurant');
+      const EntityPlan = require('../models/EntityPlan');
+      const eprs = await EntityPlanRestaurant.findAll({
+        where: {
+          is_active: true,
+          pending_plan_id: { [Op.ne]: null },
+          pending_activation_date: { [Op.lte]: today }
+        }
+      });
+
+      for (const epr of eprs) {
+        try {
+          const oldPlanId = epr.entity_plan_id;
+          const newPlanId = epr.pending_plan_id;
+          const newPlan = await EntityPlan.findByPk(newPlanId);
+          if (!newPlan) {
+            console.error(`✗ [PENDING EPR] Pending plan ${newPlanId} not found for EPR ${epr.id}`);
+            await epr.update({ pending_plan_id: null, pending_activation_date: null });
+            result.errors++;
+            continue;
+          }
+
+          await epr.update({
+            entity_plan_id: newPlanId,
+            activation_date: epr.pending_activation_date,
+            pending_plan_id: null,
+            pending_activation_date: null
+          });
+
+          await ActivityLog.create({
+            restaurant_id: epr.restaurant_id,
+            user_id: null,
+            username: 'system',
+            full_name: 'Invoice Scheduler',
+            action_type: 'update',
+            entity_type: `${newPlan.entity_type}_plan_subscription`,
+            entity_id: String(epr.id),
+            entity_name: newPlan.name,
+            changes: { before: { entity_plan_id: oldPlanId }, after: { entity_plan_id: newPlanId } },
+            description: `Scheduled entity-plan change applied: plan #${oldPlanId} → ${newPlan.name} (#${newPlanId})`
+          });
+
+          console.log(`✓ [PENDING EPR] Restaurant ${epr.restaurant_id}: plan ${oldPlanId} → ${newPlanId}`);
+          result.applied++;
+        } catch (error) {
+          console.error(`✗ [PENDING EPR] Error applying EPR ${epr.id}:`, error.message);
           result.errors++;
         }
       }

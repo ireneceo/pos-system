@@ -548,6 +548,8 @@ ContractHistory.belongsTo(User, { foreignKey: 'changed_by', as: 'changedByUser' 
 ContractPlan.belongsTo(Contract, { foreignKey: 'contract_id', as: 'contract' });
 Contract.hasMany(ContractPlan, { foreignKey: 'contract_id', as: 'plans' });
 ContractPlan.belongsTo(EntityPlan, { foreignKey: 'entity_plan_id', as: 'entityPlan' });
+// Phase 2-F: reverse lookup — find which contracts use a given plan
+EntityPlan.hasMany(ContractPlan, { foreignKey: 'entity_plan_id', as: 'contractLinks' });
 
 // Contract ↔ Invoice (one-time invoice traceability — logical FK only)
 Contract.hasMany(Invoice, { foreignKey: 'contract_id', as: 'invoices', constraints: false });

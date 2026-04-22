@@ -483,12 +483,18 @@ hasPaymentMethodForCurrency(paymentSettings, currency)
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
 | id | INT PK AI | |
-| entity_plan_id | INT NOT NULL | FK → entity_plans |
+| entity_plan_id | INT NOT NULL | FK → entity_plans (현재 적용 플랜) |
 | restaurant_id | INT NOT NULL | FK → restaurants |
-| activation_date | DATE | 적용 시작일 |
+| activation_date | DATE | 현재 플랜 적용 시작일 |
 | is_active | BOOLEAN DEFAULT true | 활성 여부 |
+| discount_type | ENUM('none','percentage','fixed') | 레스토랑별 할인 타입 |
+| discount_value | DECIMAL(10,2) | 할인 값 |
+| discount_reason | VARCHAR(255) NULL | 할인 사유 |
+| pending_plan_id | INT NULL | 다음 청구 주기에 전환될 플랜 ID |
+| pending_activation_date | DATE NULL | pending 플랜 적용 예정일 |
 
 - **UNIQUE**: (entity_plan_id, restaurant_id)
+- **Pending 전환 플로우**: Brand/Foodcourt General이 이미 플랜 배정된 레스토랑에 다른 플랜을 배정하면 즉시 교체가 아니라 `pending_plan_id` + `pending_activation_date`(= 다음 billing_day)에 저장. 일일 스케줄러가 `pending_activation_date ≤ 오늘`일 때 `entity_plan_id`를 교체하고 pending 필드 초기화 + ActivityLog 기록.
 
 ### 5.5 관련 테이블
 
@@ -579,13 +585,26 @@ hasPaymentMethodForCurrency(paymentSettings, currency)
 | POST | /api/brands/:id/plans | Brand 플랜 생성 | O |
 | PUT | /api/brands/:id/plans/:planId | Brand 플랜 수정 | O |
 | DELETE | /api/brands/:id/plans/:planId | Brand 플랜 삭제 | O |
-| POST | /api/brands/:id/plans/:planId/restaurants | 레스토랑 배정 | O |
+| POST | /api/brands/:id/plans/:planId/restaurants | 레스토랑 배정 (이미 다른 플랜 배정 시 pending으로 스케줄) | O |
 | DELETE | /api/brands/:id/plans/:planId/restaurants/:rid | 레스토랑 해제 | O |
+| POST | /api/brands/:id/plans/:planId/restaurants/:rid/cancel-pending | 예정된 플랜 변경 취소 | O |
 | GET | /api/brands/:id/revenue | Brand 매출 조회 | O |
 | GET | /api/brands/:id/invoice-preview | 인보이스 미리보기 | O |
-| GET | /api/brands/:id/subscriptions | 구독 현황 | O |
+| GET | /api/brands/:id/subscriptions | 구독 현황 (`pending_plan` 필드 포함) | O |
 
-> Foodcourt도 동일 구조: `/api/foodcourts/:id/plans`, `/api/foodcourts/:id/revenue` 등
+> Foodcourt도 동일 구조: `/api/foodcourts/:id/plans`, `/api/foodcourts/:id/revenue`, `/api/foodcourts/:id/plans/:planId/restaurants/:rid/cancel-pending`
+
+**POST .../plans/:planId/restaurants 동작 분기**:
+- 레스토랑에 같은 브랜드/푸드코트의 active 플랜 없음 → 즉시 배정 (`status: assigned` | `reactivated`)
+- 같은 플랜 이미 active → no-op (`status: already_assigned`, pending 필드 초기화)
+- 다른 플랜 active → pending 스케줄 (`status: scheduled`, `pending_activation_date = 다음 billing_day`)
+
+**GET .../subscriptions 응답에 포함되는 `pending_plan`**:
+```json
+{ "pending_plan": { "id": 38, "name": "K-DINE Franchise", "charge_type": "combined",
+  "percentage_value": "5.00", "billing_day": 27, "activation_date": "2026-05-27" } }
+```
+pending 없으면 `null`.
 
 ---
 

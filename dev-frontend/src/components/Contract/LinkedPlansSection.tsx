@@ -201,17 +201,24 @@ const WarningBanner = styled.div`
   line-height: 1.5;
 `;
 
-const LinkedPlansSection: React.FC<LinkedPlansSectionProps> = ({
-  contractId, plans, currency, entityType, canManage, onChanged, t, financialTerms
+interface LinkedPlansSectionPropsExt extends LinkedPlansSectionProps {
+  entityId?: number; // Needed to fetch available plans for the picker
+}
+
+const LinkedPlansSection: React.FC<LinkedPlansSectionPropsExt> = ({
+  contractId, plans, currency, entityType, canManage, onChanged, t, financialTerms, entityId
 }) => {
   const symbol = getCurrencySymbol(currency || 'MYR');
   const [preview, setPreview] = useState<any>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [createWarnings, setCreateWarnings] = useState<string[]>([]);
+  const [showPicker, setShowPicker] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState<any[] | null>(null);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [linking, setLinking] = useState(false);
+  const [pickerError, setPickerError] = useState<string | null>(null);
 
   const openPlans = (plans || []).filter(p => !p.end_at);
+  const linkedPlanIds = new Set(openPlans.map((p: any) => p.entity_plan_id));
 
   const loadPreview = useCallback(async () => {
     setLoadingPreview(true);
@@ -229,32 +236,6 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionProps> = ({
 
   useEffect(() => { loadPreview(); }, [loadPreview, plans]);
 
-  const handleCreateFromContract = async () => {
-    if (!canManage) return;
-    setCreating(true);
-    setCreateError(null);
-    setCreateWarnings([]);
-    try {
-      const token = getAuthToken();
-      const res = await fetch(`/api/contracts/${contractId}/create-plan-from-contract`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({})
-      });
-      const json = await res.json();
-      if (json.success) {
-        if (json.data.warnings) setCreateWarnings(json.data.warnings);
-        onChanged();
-      } else {
-        setCreateError(json.message || 'Failed to create plan');
-      }
-    } catch {
-      setCreateError('Network error');
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const handleUnlink = async (planLinkId: number) => {
     if (!canManage) return;
     if (!window.confirm(t('detail.unlinkConfirm', 'Unlink this plan from the contract? The plan itself will remain (shared resource).') || '')) return;
@@ -266,50 +247,91 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionProps> = ({
     if (res.ok) onChanged();
   };
 
+  const openPicker = async () => {
+    setShowPicker(true);
+    setPickerError(null);
+    if (availablePlans !== null || !entityId) return;
+    try {
+      const token = getAuthToken();
+      const url = entityType === 'brand' ? `/api/brands/${entityId}/plans` : `/api/foodcourts/${entityId}/plans`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setAvailablePlans(json.data.filter((p: any) => p.is_active !== false));
+      } else {
+        setPickerError(json.message || 'Failed to load plans');
+        setAvailablePlans([]);
+      }
+    } catch {
+      setPickerError('Network error');
+      setAvailablePlans([]);
+    }
+  };
+
+  const handleLinkExisting = async (entityPlanId: number) => {
+    if (!canManage) return;
+    setLinking(true);
+    setPickerError(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/contracts/${contractId}/plans`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ entity_plan_id: entityPlanId })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setShowPicker(false);
+        onChanged();
+      } else {
+        setPickerError(json.message || 'Failed to link plan');
+      }
+    } catch {
+      setPickerError('Network error');
+    } finally {
+      setLinking(false);
+    }
+  };
+
   const plansPageUrl = `/pos/${entityType === 'brand' ? 'brand' : 'foodcourt'}/plans`;
+  const filteredAvailable = (availablePlans || []).filter(p => {
+    if (linkedPlanIds.has(p.id)) return false;
+    if (!pickerSearch) return true;
+    const q = pickerSearch.toLowerCase();
+    return String(p.name || '').toLowerCase().includes(q) || String(p.description || '').toLowerCase().includes(q);
+  });
 
   return (
     <Section>
       <SectionTitle>
         <span>{t('detail.linkedPlans', 'Linked Plans')}</span>
         {canManage && (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <ActionBtn
-              $variant="primary"
-              onClick={handleCreateFromContract}
-              disabled={creating}
-              type="button"
-            >
-              {creating ? t('detail.creatingPlan', 'Creating…') : `⚡ ${t('detail.createPlanFromContract', 'Create plan from contract')}`}
-            </ActionBtn>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <ActionBtn
               $variant="ghost"
-              onClick={() => { window.location.href = plansPageUrl; }}
+              onClick={() => { window.open(plansPageUrl, '_blank'); }}
+              type="button"
+              title={t('detail.viewAllPlansHint', 'Open the Plans page in a new tab to create or manage plans') as string}
+            >
+              {t('detail.viewAllPlans', 'View all plans')}
+            </ActionBtn>
+            <ActionBtn
+              $variant="primary"
+              onClick={openPicker}
               type="button"
             >
-              {t('detail.openPlansPage', 'Open Plans →')}
+              {t('detail.linkExistingPlan', 'Link existing plan')}
             </ActionBtn>
           </div>
         )}
       </SectionTitle>
-
-      {createError && (
-        <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>
-          ✗ {createError}
-        </div>
-      )}
-      {createWarnings.length > 0 && (
-        <WarningBanner>
-          ⚠ {createWarnings.map((w, i) => <div key={i}>{w}</div>)}
-        </WarningBanner>
-      )}
 
       {openPlans.length === 0 ? (
         <Empty>
           {t('detail.noLinkedPlans', 'No plans linked to this contract yet.')}
           {canManage && (
             <div style={{ marginTop: 8, fontSize: 12 }}>
-              {t('detail.noLinkedPlansHint', 'Use "⚡ Create plan from contract" above to auto-generate a plan from this contract\'s financial terms.')}
+              {t('detail.noLinkedPlansHint', 'Use "Link existing plan" to pick one from your brand/foodcourt catalog.')}
             </div>
           )}
         </Empty>
@@ -356,6 +378,128 @@ const LinkedPlansSection: React.FC<LinkedPlansSectionProps> = ({
               </Row>
             );
           })}
+        </div>
+      )}
+
+      {/* Link existing plan picker modal */}
+      {showPicker && (
+        <div
+          onClick={() => !linking && setShowPicker(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(10,37,64,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'white', borderRadius: 12, padding: 24,
+              width: '90%', maxWidth: 600, maxHeight: '80vh', overflow: 'auto',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                {t('detail.linkExistingPlanTitle', 'Link an existing plan')}
+              </div>
+              <button
+                onClick={() => !linking && setShowPicker(false)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}
+                type="button"
+              >×</button>
+            </div>
+
+            <input
+              type="text"
+              value={pickerSearch}
+              onChange={e => setPickerSearch(e.target.value)}
+              placeholder={t('detail.searchPlans', 'Search plans by name...') as string}
+              style={{
+                width: '100%', padding: '10px 12px', marginBottom: 12,
+                border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box'
+              }}
+            />
+
+            {pickerError && (
+              <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>
+                {pickerError}
+              </div>
+            )}
+
+            {availablePlans === null ? (
+              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>
+                {t('detail.loading', 'Loading…')}
+              </div>
+            ) : filteredAvailable.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                {pickerSearch ? (
+                  t('detail.noPlansMatch', 'No plans match your search.')
+                ) : (
+                  <>
+                    {t('detail.noAvailablePlans', 'No plans available. Create a plan from this contract, or manage plans separately.')}
+                    <div style={{ marginTop: 10 }}>
+                      <a
+                        href={plansPageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#635BFF', fontSize: 12, textDecoration: 'none', fontWeight: 600 }}
+                      >
+                        {t('detail.openPlansPage', 'Open Plans page ↗')}
+                      </a>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div>
+                {filteredAvailable.map((p: any) => {
+                  const priceRow = (p.prices || []).find((r: any) => r.currency === currency) || (p.prices || [])[0];
+                  const fixedAmt = priceRow?.monthly_price != null ? Number(priceRow.monthly_price) : null;
+                  const pctRate = p.percentage_value || 0;
+                  const planSym = getCurrencySymbol(priceRow?.currency || p.currency || currency);
+                  const priceLabel = p.charge_type === 'percentage'
+                    ? `${pctRate}% of ${p.revenue_base || 'previous_month'}`
+                    : p.charge_type === 'combined'
+                      ? `${planSym} ${fixedAmt != null ? fixedAmt.toLocaleString('en-MY') : '—'}/mo min · ${pctRate}% of revenue`
+                      : (fixedAmt != null ? `${planSym} ${fixedAmt.toLocaleString('en-MY')}/mo` : '—');
+                  return (
+                    <div
+                      key={p.id}
+                      style={{
+                        padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8,
+                        marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        gap: 12, background: 'white'
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14, marginBottom: 4 }}>
+                          {p.name}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#6B7C93' }}>{priceLabel}</div>
+                        {p.description && (
+                          <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {p.description}
+                          </div>
+                        )}
+                      </div>
+                      <ActionBtn
+                        $variant="primary"
+                        onClick={() => handleLinkExisting(p.id)}
+                        disabled={linking}
+                        type="button"
+                      >
+                        {linking ? t('detail.linking', 'Linking…') : t('detail.link', 'Link')}
+                      </ActionBtn>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{ marginTop: 12, fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
+              {t('detail.linkReplacesPrior', 'Linking a plan closes any prior open plan link on this contract.')}
+            </div>
+          </div>
         </div>
       )}
 

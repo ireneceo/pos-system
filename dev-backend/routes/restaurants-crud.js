@@ -646,6 +646,65 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
       m.role !== 'Restaurant Admin' && m.role !== 'Staff'
     );
 
+    // Phase A (Restaurant-Contract-Plan linking): attach summary of current Contract +
+    // Franchise/Tenancy Plan linked to this restaurant. Restaurant Edit modal and
+    // Profile > Subscription tab use these to render the Franchise/Tenancy sections.
+    let contract_summary = null;
+    let contract_summaries = [];
+    let entity_plan_summary = null;
+    try {
+      const { Contract, ContractPlan, EntityPlan, EntityPlanRestaurant, EntityPlanPrice } = require('../models');
+      const { Op: SeqOp } = require('sequelize');
+      // Find all linked contracts EXCEPT terminal stages — show active + in-progress (proposal/contracting/setup).
+      // Primary = first by priority (active → setup → contracting → proposal), tie-break by latest updated.
+      const stagePriority = { active: 0, setup: 1, contracting: 2, proposal: 3 };
+      const linkedContracts = await Contract.findAll({
+        where: { restaurant_id: restaurant.id, stage: { [SeqOp.notIn]: ['terminated', 'expired', 'renewed'] } },
+        attributes: ['id', 'contract_number', 'entity_type', 'entity_id', 'contract_type', 'stage', 'start_date', 'end_date', 'currency', 'financial_terms', 'updatedAt'],
+        order: [['updatedAt', 'DESC']]
+      });
+      if (linkedContracts.length > 0) {
+        const sorted = [...linkedContracts].sort((a, b) =>
+          (stagePriority[a.stage] ?? 99) - (stagePriority[b.stage] ?? 99)
+        );
+        const pick = (c) => ({
+          id: c.id,
+          contract_number: c.contract_number,
+          entity_type: c.entity_type,
+          entity_id: c.entity_id,
+          contract_type: c.contract_type,
+          stage: c.stage,
+          start_date: c.start_date,
+          end_date: c.end_date,
+          currency: c.currency,
+          financial_terms: c.financial_terms
+        });
+        contract_summary = pick(sorted[0]);
+        contract_summaries = sorted.map(pick);
+      }
+      // Open entity-plan assignment (brand or foodcourt franchise/tenancy plan)
+      const epr = await EntityPlanRestaurant.findOne({
+        where: { restaurant_id: restaurant.id, is_active: true },
+        include: [{ model: EntityPlan, as: 'plan', include: [{ model: EntityPlanPrice, as: 'prices' }] }]
+      });
+      if (epr && epr.plan) {
+        const p = epr.plan;
+        entity_plan_summary = {
+          id: p.id,
+          name: p.name,
+          entity_type: p.entity_type,
+          entity_id: p.entity_id,
+          charge_type: p.charge_type,
+          percentage_value: p.percentage_value,
+          billing_day: p.billing_day,
+          currency: p.currency,
+          prices: (p.prices || []).map(r => ({ currency: r.currency, monthly_price: r.monthly_price, annual_price: r.annual_price, is_active: r.is_active }))
+        };
+      }
+    } catch (e) {
+      console.error('Restaurant contract/plan summary load error:', e.message);
+    }
+
     const response = {
       ...restaurantData,
       admin: adminData ? {
@@ -664,7 +723,10 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
         company: m.company_name || '',
         phone: m.phone || '',
         isPrimary: m.RestaurantManager?.is_primary || false
-      }))
+      })),
+      contract_summary,
+      contract_summaries,
+      entity_plan_summary
     };
 
     res.json(response);
@@ -1076,6 +1138,55 @@ router.post('/', authenticateToken, requireRole(
   }
 });
 
+// Phase A (Restaurant-Contract-Plan linking): cancel any scheduled POS plan change.
+// Clears pending_* + plan_change_date/type. Writes ActivityLog audit trail.
+router.post('/:id/cancel-pending-change', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const ActivityLog = require('../models/ActivityLog');
+    const restaurant = await Restaurant.findByPk(req.params.id);
+    if (!restaurant) return res.status(404).json({ success: false, message: 'Restaurant not found' });
+
+    const hasPending = restaurant.pending_plan_type || restaurant.pending_plan_amount || restaurant.pending_billing_cycle || restaurant.plan_change_date;
+    if (!hasPending) {
+      return res.status(400).json({ success: false, message: 'No pending plan change to cancel' });
+    }
+
+    const before = {
+      pending_plan_type: restaurant.pending_plan_type,
+      pending_plan_amount: restaurant.pending_plan_amount != null ? Number(restaurant.pending_plan_amount) : null,
+      pending_billing_cycle: restaurant.pending_billing_cycle,
+      plan_change_date: restaurant.plan_change_date,
+      plan_change_type: restaurant.plan_change_type
+    };
+
+    await restaurant.update({
+      pending_plan_type: null,
+      pending_plan_amount: null,
+      pending_billing_cycle: null,
+      plan_change_date: null,
+      plan_change_type: null
+    });
+
+    await ActivityLog.create({
+      restaurant_id: restaurant.id,
+      user_id: req.user.id,
+      username: req.user.username || req.user.email || 'unknown',
+      full_name: req.user.full_name || req.user.username || req.user.email || null,
+      action_type: 'update',
+      entity_type: 'subscription',
+      entity_id: String(restaurant.id),
+      entity_name: restaurant.plan_type,
+      changes: { before, after: null, action: 'cancel_pending' },
+      description: 'Cancelled scheduled plan change'
+    });
+
+    res.json({ success: true, message: 'Pending plan change cancelled' });
+  } catch (error) {
+    console.error('Cancel pending plan change error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Update restaurant (no creation validation — fields are all optional on update)
 router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
@@ -1185,6 +1296,71 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     }
     if (req.body.autoRenew !== undefined || req.body.auto_renew !== undefined) {
       updateData.auto_renew = req.body.autoRenew !== undefined ? req.body.autoRenew : req.body.auto_renew;
+    }
+
+    // Phase A (Restaurant-Contract-Plan linking): Brand General / Foodcourt General cannot
+    // change POS plan fields immediately — the change is deferred to the next billing cycle
+    // via pending_* fields. The existing invoiceScheduler.applyPendingPlanChanges() daily job
+    // applies them + writes ActivityLog. System Admin retains direct edit.
+    const ActivityLog = require('../models/ActivityLog');
+    const isPlatformAdmin = req.user.role === 'System Admin';
+
+    const planTypeChanged = updateData.plan_type !== undefined && String(updateData.plan_type) !== String(restaurant.plan_type || '');
+    const planAmountChanged = updateData.plan_amount !== undefined && Number(updateData.plan_amount) !== Number(restaurant.plan_amount || 0);
+    const billingCycleChanged = updateData.billing_cycle !== undefined && String(updateData.billing_cycle) !== String(restaurant.billing_cycle || '');
+    const divertToPending = !isPlatformAdmin && (planTypeChanged || planAmountChanged || billingCycleChanged);
+
+    let pendingLogEntry = null;
+    if (divertToPending && restaurant.subscription_start) {
+      const substart = new Date(restaurant.subscription_start);
+      const now = new Date();
+      const effDay = Math.min(28, substart.getDate());
+      let nextBillingDate = new Date(now.getFullYear(), now.getMonth(), effDay);
+      if (nextBillingDate <= now) {
+        nextBillingDate = new Date(now.getFullYear(), now.getMonth() + 1, effDay);
+      }
+
+      const before = {
+        plan_type: restaurant.plan_type,
+        plan_amount: Number(restaurant.plan_amount || 0),
+        billing_cycle: restaurant.billing_cycle
+      };
+      const after = { ...before };
+
+      if (planTypeChanged) {
+        updateData.pending_plan_type = updateData.plan_type;
+        after.plan_type = updateData.plan_type;
+        delete updateData.plan_type;
+      }
+      if (planAmountChanged) {
+        updateData.pending_plan_amount = updateData.plan_amount;
+        after.plan_amount = Number(updateData.plan_amount);
+        delete updateData.plan_amount;
+      }
+      if (billingCycleChanged) {
+        updateData.pending_billing_cycle = updateData.billing_cycle;
+        after.billing_cycle = updateData.billing_cycle;
+        delete updateData.billing_cycle;
+      }
+      updateData.plan_change_date = nextBillingDate;
+      updateData.plan_change_type = billingCycleChanged ? 'cycle_change' : 'downgrade';
+
+      const bits = [];
+      if (planTypeChanged) bits.push(`plan ${before.plan_type} → ${after.plan_type}`);
+      if (planAmountChanged) bits.push(`amount ${before.plan_amount} → ${after.plan_amount}`);
+      if (billingCycleChanged) bits.push(`cycle ${before.billing_cycle} → ${after.billing_cycle}`);
+      pendingLogEntry = {
+        restaurant_id: restaurant.id,
+        user_id: req.user.id,
+        username: req.user.username || req.user.email || 'unknown',
+        full_name: req.user.full_name || req.user.username || req.user.email || null,
+        action_type: 'update',
+        entity_type: 'subscription',
+        entity_id: String(restaurant.id),
+        entity_name: after.plan_type || restaurant.plan_type,
+        changes: { before, after, effective_at: nextBillingDate.toISOString().slice(0, 10) },
+        description: `Scheduled plan change (effective ${nextBillingDate.toISOString().slice(0, 10)}): ${bits.join(', ')}`
+      };
     }
 
     // Auto-calculate subscription_end if start + billing_cycle changed.
@@ -1430,6 +1606,15 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     };
 
     await restaurant.update(updateData);
+
+    // Phase A: write ActivityLog for pending plan change schedule (non-admin path)
+    if (pendingLogEntry) {
+      try {
+        await ActivityLog.create(pendingLogEntry);
+      } catch (e) {
+        console.error('Failed to write pending plan ActivityLog:', e.message);
+      }
+    }
 
     // Auto-geocode in background when address changed and coords not manually set
     const { addressChanged, geocodeAddress } = require('../utils/geocoding');

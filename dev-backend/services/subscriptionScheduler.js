@@ -798,6 +798,27 @@ class SubscriptionScheduler {
               details: { auto: true, reason: 'end_date_passed' },
               changed_by: null
             });
+            // Phase 2-C: match stage PUT logic — close ContractPlan.end_at and deactivate EPR.
+            // Without this, expired contracts would keep billing indefinitely.
+            try {
+              const { ContractPlan, EntityPlanRestaurant } = require('../models');
+              const closingLinks = await ContractPlan.findAll({
+                where: { contract_id: contract.id, end_at: null }
+              });
+              if (contract.restaurant_id && closingLinks.length > 0) {
+                const planIds = closingLinks.map(l => l.entity_plan_id);
+                await EntityPlanRestaurant.update(
+                  { is_active: false },
+                  { where: { entity_plan_id: planIds, restaurant_id: contract.restaurant_id } }
+                );
+              }
+              await ContractPlan.update(
+                { end_at: new Date() },
+                { where: { contract_id: contract.id, end_at: null } }
+              );
+            } catch (e) {
+              console.error(`[ContractExpiry] Failed to close plan links for #${contract.id}:`, e.message);
+            }
             expired++;
             console.log(`[ContractExpiry] Auto-expired #${contract.id} (${contract.contract_number})`);
             continue;

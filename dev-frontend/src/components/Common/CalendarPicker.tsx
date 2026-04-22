@@ -20,7 +20,14 @@ const formatDate = (d: Date): string => {
 
 const parseDate = (s: string): Date | null => {
   if (!s) return null;
-  const [y, m, d] = s.split('-').map(Number);
+  // Accept both 'YYYY-MM-DD' and ISO '2026-06-06T00:00:00.000Z'.
+  const datePart = String(s).slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (!match) return null;
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  if (!y || !m || !d) return null;
   return new Date(y, m - 1, d);
 };
 

@@ -631,7 +631,8 @@ const ManagersPage: React.FC = () => {
   // Rule: Monthly = start + 1 month - 1 day. Annual = start + 1 year - 1 day.
   const calcSubscriptionEnd = (start: string, cycle: string) => {
     if (!start) return '';
-    const [y, m, d] = start.split('-').map(Number);
+    // Normalize: accept ISO '2026-06-06T00:00:00.000Z' from legacy DB rows.
+    const [y, m, d] = String(start).slice(0, 10).split('-').map(Number);
     const endD = new Date(y, m - 1, d);
     if (cycle === 'annual') {
       endD.setFullYear(endD.getFullYear() + 1);

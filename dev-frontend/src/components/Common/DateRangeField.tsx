@@ -29,12 +29,19 @@ interface DateRangeFieldProps {
 
 const formatDisplayDate = (s: string | null | undefined): string => {
   if (!s) return '';
-  const [y, m, d] = s.split('-').map(Number);
+  // Accept both 'YYYY-MM-DD' and ISO '2026-06-06T00:00:00.000Z' — legacy DB rows stored as DATETIME.
+  const datePart = String(s).slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (!match) return '';
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
   if (!y || !m || !d) return '';
-  const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric', month: 'short', day: '2-digit',
-    timeZone: getRestaurantTimezone()
+  // DATEONLY fields are pure calendar dates with no time-of-day — anchor to UTC + format
+  // in UTC so the calendar date stays stable regardless of browser↔restaurant tz offset.
+  // (DATETIME fields still use getRestaurantTimezone() per CLAUDE.md rule.)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'short', day: '2-digit', timeZone: 'UTC'
   });
 };
 

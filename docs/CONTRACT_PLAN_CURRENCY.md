@@ -223,3 +223,209 @@ Example: `"CFH-T-2026-0001 — Central Food Hall Tenancy"`
 - Plan-Contract amount mismatch detection (warning badge)
 - Contract renewal workflow (auto-carry or re-create ContractPlan)
 - Historical currency change audit trail
+
+---
+
+# Phase 2-C: Invoice 생성 파이프라인 완결 (2026-04-22)
+
+**Last updated:** 2026-04-22
+**Owner:** Irene
+**Status:** 설계 완료 → 구현 시작
+
+## Problem (30년차 감사 결과)
+
+Phase 1 + 2-A + 2-B로 Contract ↔ Plan 연결 가시화는 완성됐지만, **실제 invoice가 생성되지 않음**이 확인됨.
+
+### 증거 (live DB, 2026-04-22)
+- Active contract 2건 — 둘 다 ContractPlan 연결 있음
+- Plan 13개 중 **contract로부터 만들어진 3개 (#35/#37/#38)는 모두 `EntityPlanRestaurant.linked_restaurants = 0`**
+- `invoice.contract_id IS NOT NULL` 인 invoice 레코드: **0건** (automatic/manual 모두)
+- 전체 시스템에서 Contract-기반 invoice가 단 한 번도 자동 생성된 적 없음
+
+### 근본 원인
+
+`invoiceScheduler.generateEntityPlanInvoices()` 는 `EntityPlan.planRestaurants` (EntityPlanRestaurant junction) 를 `required: true` 로 include — 연결된 restaurant가 없으면 스킵.
+
+반면 `POST /api/contracts/:id/create-plan-from-contract` (routes/contracts.js:926) 는:
+- EntityPlan 생성 ✓
+- EntityPlanPrice 생성 ✓ (fixed/combined type)
+- ContractPlan 링크 생성 ✓
+- **EntityPlanRestaurant 연결은 안 만듦** ✗
+
+따라서 스케줄러는 항상 이 Plan들을 스킵.
+
+### 기타 식별된 gap
+- **Gap A**: 계약 편집 시 `restaurant_id`를 나중에 set해도 EntityPlanRestaurant 자동 생성 안 됨
+- **Gap B**: 계약 stage → terminated/expired/renewed 시 ContractPlan.end_at은 닫히지만 EntityPlanRestaurant.is_active는 그대로 (gap A 고친 뒤 유령 청구 위험)
+- **Gap C**: `subscriptionScheduler.processContractExpiryReminders()`의 auto-expire는 `Contract.update({ stage: 'expired' })` 만 함 — stage PUT endpoint를 우회해 ContractPlan.end_at을 안 닫음
+- **Gap D**: 자동 생성된 invoice에 `contract_id`가 세팅 안 됨 — 추적성 손실
+- **Gap E**: 스케줄러가 ContractPlan.end_at 체크 안 함 (연결된 계약이 종료돼도 EntityPlanRestaurant이 활성이면 계속 청구)
+- **Gap F**: 기존 orphaned plan 3건 backfill 필요
+
+## Goal
+
+Contract → Plan → **실제 Invoice 자동 생성**까지 파이프라인을 닫는다. 법적 / 추적성 / 자동화 3축 모두.
+
+## Scope
+
+### In scope
+1. `create-plan-from-contract` 트랜잭션 내에서 `contract.restaurant_id` 있으면 EntityPlanRestaurant row 동시 생성
+2. Contract PUT `/contracts/:id` 에서 `restaurant_id` 신규 세팅 시 열린 ContractPlan에 대해 EntityPlanRestaurant 자동 생성
+3. Contract stage → terminated/expired/renewed 시 open EntityPlanRestaurant (contract_id 경로로 식별) `is_active=false` 처리
+4. `subscriptionScheduler` auto-expire 경로를 stage PUT 동일 로직으로 통일 (ContractPlan.end_at + EntityPlanRestaurant.is_active 동기 처리)
+5. `invoiceScheduler.generateEntityPlanInvoices` — 생성된 invoice에 `contract_id` 기입 (ContractPlan 룩업)
+6. 스케줄러가 ContractPlan.end_at 체크 — 닫힌 링크는 스킵 (추가 방어선)
+7. Backfill 스크립트: 현재 orphan plan들에 대해 EntityPlanRestaurant 생성
+
+### Out of scope (다음 phase)
+- 부분월 proration (계약 중간 시작/종료 시 일할 계산) — 별도 task
+- Tenant Portal (입점자가 본인 invoice 조회/납부) — 별도 대형 task
+- Plan 역참조 UI (Plan detail에서 어느 Contract가 이 Plan 사용하는지) — 별도 소규모 task
+
+## Design decisions
+
+### Contract.restaurant_id가 null일 때 Plan 생성 허용 여부
+**허용** — Plan이 템플릿처럼 먼저 만들어지고 나중에 restaurant가 붙는 워크플로우가 있음. 대신 응답에 warning 추가: `"Plan created but not billable until restaurant is attached to contract"`.
+
+### EntityPlanRestaurant 연결 방식
+- 하나의 Plan은 여러 restaurant에 연결 가능 (기존 설계)
+- Contract 1건 = Plan 1건 = Restaurant 1건 (1:1:1 — contract.restaurant_id가 식별자)
+- 따라서 Contract→Plan으로 만들어진 Plan은 EntityPlanRestaurant도 1row만 존재 (contract.restaurant_id 기준)
+- Contract.restaurant_id가 **변경**되면? 기존 EPR의 is_active=false, 새 EPR 생성
+
+### Stage 전환 시 EPR 처리
+- terminated/expired/renewed — ContractPlan.end_at 설정 + 같은 트랜잭션 내 EPR is_active=false
+- Restaurant은 다른 Plan에 연결될 수 있으므로 restaurant 자체는 건드리지 않음
+
+### Scheduler의 이중 방어선
+- 주 경로: EntityPlanRestaurant.is_active + EntityPlan.is_active
+- 추가: 만약 EntityPlan이 ContractPlan과 연결돼 있는데 모든 ContractPlan.end_at 이 설정됐으면 스킵 (orphan protection)
+
+### invoice.contract_id 기입 규칙
+- EntityPlan 생성 시 ContractPlan 링크가 있는 경우, 해당 row의 contract_id를 invoice.contract_id에 저장
+- Plan이 여러 contract에 연결됐다면 (이론상 가능, 현재는 1:1) `end_at IS NULL` 중 가장 최근 assigned_at
+
+## Implementation plan
+
+### 파일별 변경 (backend)
+
+**routes/contracts.js**
+- `POST /:id/create-plan-from-contract` (line ~1003): 트랜잭션 내에서 `contract.restaurant_id`가 있으면 `EntityPlanRestaurant.create({entity_plan_id, restaurant_id, is_active: true})` 추가
+- `PUT /:id` (line ~436 이후): `restaurant_id` 변경 시 open ContractPlan 순회 — 이전 restaurant_id의 EPR `is_active=false` + 새 restaurant_id의 EPR 생성
+- `PUT /:id/stage` (line ~567): 기존 ContractPlan.end_at 업데이트와 같은 블록에 EPR `is_active=false` 추가
+- `POST /:id/terminate` (line ~616): 동일
+
+**services/subscriptionScheduler.js**
+- `processContractExpiryReminders()` auto-expire 블록 (line 791): ContractPlan.end_at + EPR deactivate 추가 (stage PUT과 로직 통일)
+
+**services/invoiceScheduler.js**
+- `generateEntityPlanInvoices()`: invoice 생성 직전 ContractPlan 룩업해서 contract_id 세팅
+- ContractPlan.end_at IS NOT NULL인 경우 스킵 추가 방어선
+
+**scripts/backfill-contract-plan-restaurants.js** (신규)
+- 모든 `ContractPlan where end_at IS NULL` 순회
+- 각 계약의 `restaurant_id`가 있으면 해당 entity_plan과 restaurant로 EPR 존재 여부 확인, 없으면 생성
+- Idempotent (이미 있으면 스킵)
+
+### 테스트 시나리오 (실동작 — 코드 리뷰 아님)
+
+1. **End-to-end wizard + scheduler**
+   - Seed: Active contract with restaurant_id, financial_terms (base_rent)
+   - POST create-plan-from-contract → Plan + EPR 둘 다 생성 확인
+   - 수동으로 스케줄러 실행 (billing_day 오늘 기준) → Invoice 생성 + invoice.contract_id 세팅 확인
+   - Invoice GET API로 읽어 확인 (field 일치)
+
+2. **Stage transition 종료**
+   - 위 계약을 stage=terminated로 전환
+   - ContractPlan.end_at, EntityPlanRestaurant.is_active 동시 업데이트 확인
+   - 스케줄러 재실행 → 새 invoice 안 만들어짐 확인
+
+3. **Auto-expire 경로**
+   - Contract end_date를 어제로 세팅 + stage='active'
+   - subscriptionScheduler.processContractExpiryReminders 실행
+   - stage=expired + ContractPlan.end_at + EPR.is_active=false 세트로 확인
+
+4. **Backfill**
+   - Orphan plan #35/#37/#38 대상 실행
+   - 실행 후 `linked_restaurants=1` (contract.restaurant_id가 있는 것만)
+   - 멱등성: 재실행 시 중복 생성 X
+
+5. **Restaurant 변경**
+   - Contract restaurant_id 1 → 2로 변경 PUT
+   - 이전 EPR is_active=false, 새 EPR 생성 확인
+
+### Health-check 추가 케이스
+- `/var/www/dev-backend/scripts/health-check.js` payment 카테고리에 "Contract→Plan→Invoice loop closed" 1건 추가
+  - seed minimal → scheduler dry-run → invoice 1건 확인 → cleanup
+
+## Rollout
+
+1. 설계 문서 완료 (이 섹션) ✓
+2. Backend 구현 (transactional, 각 엔드포인트)
+3. Backfill 스크립트 실행 (dev) → live DB 확인
+4. 스케줄러 강제 실행으로 first-ever contract invoice 발행 → 검증
+5. Build + health-check 40+ pass
+6. 운영 배포 시 backfill 스크립트 동일 실행 필요 (deploy 스크립트에 추가 or 별도 실행)
+
+---
+
+# Phase 2-D: Renewal Plan Carry-over (2026-04-23)
+
+**Status:** 완료
+
+## Problem
+
+`POST /api/contracts/:id/renew` 는 새 Contract를 만들지만 Plan/EPR 연결은 하지 않았음 → 갱신된 계약은 billing 안 됨. 동시에 old contract의 ContractPlan/EPR은 열린 채로 남아 유령 청구 위험.
+
+## Fix
+
+- `terms_changed=false`: old ContractPlan.end_at set + new ContractPlan create (same EntityPlan). EPR 유지 (같은 plan+restaurant).
+- `terms_changed=true`: old ContractPlan.end_at + EPR deactivate. 새 Contract는 'proposal' 단계 — wizard로 새 Plan 생성 플로우.
+- 전체 트랜잭션 내 원자 처리.
+
+## Verify
+
+- Scenario A (no terms change): 8/8 check 통과 — plan carries, EPR active, invoice generated for new contract
+- Scenario B (terms changed): 8/8 check 통과 — plan closed, EPR inactive, no invoice
+
+---
+
+# Phase 2-E: Proration (2026-04-23)
+
+**Status:** 완료
+
+## Design
+
+- 고정분만 proration (percentage%는 활동 기반이라 자연 비례)
+- factor = coveredDays / periodDays (inclusive 기준, setHours 0,0,0,0 정규화)
+- factor=0 → 스킵 (no coverage 시 invoice 생성 안 함)
+- factor<1 → invoice item description에 `[prorated NN%]` 표시
+- billing-preview API도 동일 factor 적용 + 응답에 `proration_factor`/`period` 포함
+
+## Verify
+
+- 5 scenarios 통과: full coverage(3000), mid-start(1451.70=15/31), mid-end(1064.40=11/31), no overlap(SKIP), billing-preview factor=0.4839
+
+---
+
+# Phase 2-F: Plans Reverse Lookup (2026-04-23)
+
+**Status:** 완료
+
+## Backend
+
+- `EntityPlan.hasMany(ContractPlan, as: 'contractLinks')` association 추가
+- `GET /api/foodcourts/:id/plans` / `/plans/:planId` 응답에 `contractLinks[]` include (contract number/stage/period 포함)
+- `GET /api/brands/:id/plans` / `/plans/:planId` 동일 처리
+- `DELETE /plans/:planId` 가드: open ContractPlan이 있으면 400 (`Cannot delete plan attached to N open contract(s)`)
+
+## Frontend
+
+- FoodcourtPlansPage + BrandPlansPage:
+  - Plan 카드에 "From contract" 배지 (open 링크가 있을 때만)
+  - Plan 상세 모달에 "Linked Contracts (N)" 섹션 (Open/Closed 상태, 계약번호, 기간, 신청사)
+
+## Verify
+
+- Live API: contractLinks 필드 정상 리턴 (contract#88 → stage=active)
+- DELETE 가드: status=400 "Cannot delete plan attached to 1 open contract(s)"

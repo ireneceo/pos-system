@@ -122,10 +122,10 @@ const StatusBadge = styled.span<{ status: SectionStatus }>`
       case 'required':
         return `background: #FEF3C7; color: #92400E;`;
       case 'optional':
-        return `background: transparent; color: #9CA3AF;`;
+        return `background: #F3F4F6; color: #6B7280;`;
       case 'empty':
       default:
-        return `background: transparent; color: #9CA3AF;`;
+        return `background: #F3F4F6; color: #6B7280;`;
     }
   }}
 `;

@@ -56,6 +56,14 @@ interface FoodcourtSubscription {
     discount_value?: number;
     discount_reason?: string;
   } | null;
+  pending_plan?: {
+    id: number;
+    name: string;
+    charge_type?: string;
+    percentage_value?: string | number;
+    billing_day?: number;
+    activation_date: string;
+  } | null;
   latest_invoice: {
     id: number;
     invoice_number: string;
@@ -302,7 +310,10 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignTarget, setAssignTarget] = useState<FoodcourtSubscription | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | ''>('');
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
   const [currencyWarning, setCurrencyWarning] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // View Modal
   const [showViewModal, setShowViewModal] = useState(false);
@@ -317,6 +328,13 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<FoodcourtSubscription | null>(null);
   const [confirmAction, setConfirmAction] = useState<'unassign' | null>(null);
+
+  // Add Subscription Modal (pick restaurant + pick plan)
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addRestaurantId, setAddRestaurantId] = useState<number | ''>('');
+  const [addPlanId, setAddPlanId] = useState<number | ''>('');
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   // ============================================
   // Data Fetching
@@ -390,11 +408,14 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
   const handleAssignPlan = (sub: FoodcourtSubscription) => {
     setAssignTarget(sub);
     setSelectedPlanId(sub.plan?.id || '');
+    setAssignError(null);
     setShowAssignModal(true);
   };
 
   const handleSubmitAssign = async () => {
     if (!foodcourtId || !assignTarget || !selectedPlanId) return;
+    setAssignSubmitting(true);
+    setAssignError(null);
     try {
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -417,11 +438,13 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
           setCurrencyWarning(result.currency_warnings[0].message);
         }
       } else {
-        const error = await response.json();
-        console.error('Failed to assign plan:', error);
+        const error = await response.json().catch(() => ({}));
+        setAssignError(error.message || error.error || `Failed to assign plan (HTTP ${response.status})`);
       }
-    } catch (error) {
-      console.error('Error assigning plan:', error);
+    } catch (error: any) {
+      setAssignError(error?.message || 'Network error');
+    } finally {
+      setAssignSubmitting(false);
     }
   };
 
@@ -445,8 +468,9 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
           { method: 'DELETE', headers }
         );
         if (!response.ok) {
-          const error = await response.json();
-          console.error('Failed to unassign:', error);
+          const error = await response.json().catch(() => ({}));
+          setActionError(error.message || error.error || `Failed to unassign (HTTP ${response.status})`);
+          return;
         }
       }
 
@@ -454,8 +478,27 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
       setConfirmTarget(null);
       setConfirmAction(null);
       fetchSubscriptions();
-    } catch (error) {
-      console.error('Action failed:', error);
+    } catch (error: any) {
+      setActionError(error?.message || 'Network error');
+    }
+  };
+
+  const handleCancelPending = async (sub: FoodcourtSubscription) => {
+    if (!foodcourtId || !sub.plan) return;
+    if (!window.confirm(t('foodcourt:foodcourtSubscriptionsPage.cancelPendingConfirm', 'Cancel the scheduled plan change?') as string)) return;
+    try {
+      const headers: HeadersInit = { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+      const r = await fetch(`/api/foodcourts/${foodcourtId}/plans/${sub.plan.id}/restaurants/${sub.restaurant_id}/cancel-pending`, {
+        method: 'POST', headers
+      });
+      if (r.ok) {
+        fetchSubscriptions();
+      } else {
+        const e = await r.json().catch(() => ({}));
+        setActionError(e.message || `Failed to cancel pending (HTTP ${r.status})`);
+      }
+    } catch (e: any) {
+      setActionError(e?.message || 'Network error');
     }
   };
 
@@ -490,9 +533,51 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
         setShowDiscountModal(false);
         setDiscountTarget(null);
         fetchSubscriptions();
+      } else {
+        const e = await response.json().catch(() => ({}));
+        setActionError(e.message || `Failed to save discount (HTTP ${response.status})`);
       }
-    } catch (error) {
-      console.error('Failed to save discount:', error);
+    } catch (error: any) {
+      setActionError(error?.message || 'Network error');
+    }
+  };
+
+  // "Add Subscription" entry point — pick restaurant + plan from scratch.
+  const handleOpenAdd = () => {
+    setAddRestaurantId('');
+    setAddPlanId('');
+    setAddError(null);
+    setShowAddModal(true);
+  };
+
+  const handleSubmitAdd = async () => {
+    if (!foodcourtId) return;
+    if (!addRestaurantId) { setAddError(t('foodcourt:foodcourtSubscriptionsPage.selectRestaurantFirst', 'Select a restaurant first') as string); return; }
+    if (!addPlanId) { setAddError(t('foodcourt:foodcourtSubscriptionsPage.selectPlanFirst', 'Select a plan first') as string); return; }
+    setAddSubmitting(true);
+    setAddError(null);
+    try {
+      const headers: HeadersInit = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+      const response = await fetch(`/api/foodcourts/${foodcourtId}/plans/${addPlanId}/restaurants`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ restaurant_ids: [addRestaurantId] })
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setShowAddModal(false);
+        fetchSubscriptions();
+        if (result.currency_warnings && result.currency_warnings.length > 0) {
+          setCurrencyWarning(result.currency_warnings[0].message);
+        }
+      } else {
+        const err = await response.json();
+        setAddError(err.message || err.error || 'Failed to add subscription');
+      }
+    } catch (e: any) {
+      setAddError(e?.message || 'Network error');
+    } finally {
+      setAddSubmitting(false);
     }
   };
 
@@ -536,6 +621,9 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
         <Header>
           <Title>{t('foodcourt:foodcourtSubscriptionsPage.foodcourtSubscriptions')}</Title>
           <ActionSection>
+            <ThemedButton variant="primary" onClick={handleOpenAdd}>
+              {t('foodcourt:foodcourtSubscriptionsPage.addSubscription', 'Add Subscription')}
+            </ThemedButton>
             <ThemedButton variant="outline" onClick={handleExportData}>{t('foodcourt:foodcourtSubscriptionsPage.export')}</ThemedButton>
           </ActionSection>
         </Header>
@@ -596,6 +684,12 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
               <div style={{ padding: '12px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: '#92400E' }}>{currencyWarning}</span>
                 <button onClick={() => setCurrencyWarning(null)} style={{ background: 'none', border: 'none', color: '#92400E', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>×</button>
+              </div>
+            )}
+            {actionError && (
+              <div style={{ padding: '12px 16px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#991B1B' }}>{actionError}</span>
+                <button onClick={() => setActionError(null)} style={{ background: 'none', border: 'none', color: '#991B1B', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>×</button>
               </div>
             )}
             <Table>
@@ -703,7 +797,7 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                   <ActionButtons>
                     <CommonActionButton onClick={() => handleViewDetails(sub)}>{t('foodcourt:foodcourtSubscriptionsPage.view')}</CommonActionButton>
                     <CommonActionButton onClick={() => handleAssignPlan(sub)}>
-                      {sub.plan ? 'Change' : 'Assign'}
+                      {sub.plan ? t('foodcourt:foodcourtSubscriptionsPage.change', 'Change') : t('foodcourt:foodcourtSubscriptionsPage.assign', 'Assign')}
                     </CommonActionButton>
                     {sub.plan && (
                       <CommonIconButton
@@ -714,6 +808,47 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                       </CommonIconButton>
                     )}
                   </ActionButtons>
+                  {sub.pending_plan && (
+                    <div style={{
+                      gridColumn: '1 / -1',
+                      margin: '8px 0 0',
+                      padding: '10px 12px',
+                      background: '#FFFBEB',
+                      border: '1px solid #F59E0B',
+                      borderRadius: 6,
+                      color: '#92400E',
+                      fontSize: 12,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexWrap: 'wrap'
+                    }}>
+                      <div>
+                        <strong>{t('foodcourt:foodcourtSubscriptionsPage.scheduledChange', 'Scheduled change')}:</strong>{' '}
+                        {t('foodcourt:foodcourtSubscriptionsPage.willSwitchTo', 'will switch to')}{' '}
+                        <strong>{sub.pending_plan.name}</strong>{' '}
+                        {t('foodcourt:foodcourtSubscriptionsPage.on', 'on')}{' '}
+                        <strong>{String(sub.pending_plan.activation_date).slice(0, 10)}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelPending(sub)}
+                        style={{
+                          background: 'white',
+                          border: '1px solid #F59E0B',
+                          color: '#92400E',
+                          padding: '4px 10px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {t('foodcourt:foodcourtSubscriptionsPage.cancelPending', 'Cancel')}
+                      </button>
+                    </div>
+                  )}
                 </SubscriptionTableRow>
               ))}
             </Table>
@@ -789,6 +924,26 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                         </div>
                       );
                     })()}
+
+                    {assignTarget.plan && selectedPlanId && selectedPlanId !== assignTarget.plan.id && (
+                      <div style={{
+                        gridColumn: '1 / -1',
+                        padding: '12px 14px', background: '#FFFBEB', border: '1px solid #F59E0B',
+                        borderRadius: 8, color: '#92400E', fontSize: 13, marginTop: 8, lineHeight: 1.5
+                      }}>
+                        ⚠ {t('foodcourt:foodcourtSubscriptionsPage.changeScheduledHint', 'The new plan will NOT take effect immediately. Current plan stays billable until the end of this cycle — the new plan activates on the next billing cycle date and the next invoice will reflect the new plan.')}
+                      </div>
+                    )}
+
+                    {assignError && (
+                      <div style={{
+                        gridColumn: '1 / -1',
+                        padding: '10px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5',
+                        borderRadius: 6, color: '#991B1B', fontSize: 13, marginTop: 8
+                      }}>
+                        {assignError}
+                      </div>
+                    )}
                   </FormGrid>
                 
             </CommonModal>
@@ -1024,6 +1179,80 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
                     )}
                   </div>
                 
+            </CommonModal>
+          )}
+
+          {/* Add Subscription Modal — pick restaurant + plan (for new assignments) */}
+          {showAddModal && (
+            <CommonModal
+              isOpen={true}
+              onClose={() => !addSubmitting && setShowAddModal(false)}
+              title={t('foodcourt:foodcourtSubscriptionsPage.addSubscription', 'Add Subscription') as string}
+              footer={<>
+                <ThemedButton variant="cancel" onClick={() => setShowAddModal(false)} disabled={addSubmitting}>
+                  {t('foodcourt:foodcourtSubscriptionsPage.cancel')}
+                </ThemedButton>
+                <ThemedButton variant="primary" onClick={handleSubmitAdd} disabled={addSubmitting || !addRestaurantId || !addPlanId}>
+                  {addSubmitting ? (t('foodcourt:foodcourtSubscriptionsPage.saving', 'Saving…') as string) : (t('foodcourt:foodcourtSubscriptionsPage.addSubscription', 'Add Subscription') as string)}
+                </ThemedButton>
+              </>}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ fontSize: 13, color: '#6B7C93' }}>
+                  {t('foodcourt:foodcourtSubscriptionsPage.addHint', 'Assign one of your foodcourt plans to a tenant restaurant. Creates a recurring subscription billed by your foodcourt.')}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 6 }}>
+                    {t('foodcourt:foodcourtSubscriptionsPage.restaurant', 'Tenant Restaurant')} *
+                  </label>
+                  <select
+                    value={addRestaurantId}
+                    onChange={e => setAddRestaurantId(e.target.value ? parseInt(e.target.value) : '')}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                  >
+                    <option value="">{t('foodcourt:foodcourtSubscriptionsPage.selectRestaurant', 'Select a tenant…')}</option>
+                    {subscriptions.filter(s => !s.plan).map(s => (
+                      <option key={s.restaurant_id} value={s.restaurant_id}>
+                        {s.restaurant_name}
+                      </option>
+                    ))}
+                  </select>
+                  {subscriptions.filter(s => !s.plan).length === 0 && (
+                    <div style={{ fontSize: 12, color: '#B45309', marginTop: 6 }}>
+                      {t('foodcourt:foodcourtSubscriptionsPage.allRestaurantsAssigned', 'All tenants already have a plan. Use Change Plan on an existing row to switch.')}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 6 }}>
+                    {t('foodcourt:foodcourtSubscriptionsPage.foodcourtPlan', 'Foodcourt Plan')} *
+                  </label>
+                  <select
+                    value={addPlanId}
+                    onChange={e => setAddPlanId(e.target.value ? parseInt(e.target.value) : '')}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                  >
+                    <option value="">{t('foodcourt:foodcourtSubscriptionsPage.selectPlan', 'Select a plan…')}</option>
+                    {foodcourtPlans.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  {foodcourtPlans.length === 0 && (
+                    <div style={{ fontSize: 12, color: '#B45309', marginTop: 6 }}>
+                      {t('foodcourt:foodcourtSubscriptionsPage.noPlansAvailable', 'No foodcourt plans yet — create one in Plans page first.')}
+                    </div>
+                  )}
+                </div>
+
+                {addError && (
+                  <div style={{ padding: '10px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13 }}>
+                    {addError}
+                  </div>
+                )}
+
+              </div>
             </CommonModal>
           )}
 

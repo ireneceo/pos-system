@@ -737,6 +737,13 @@ router.get('/:id/plans', authenticateToken, async (req, res) => {
       }, {
         model: EntityPlanPrice,
         as: 'prices'
+      }, {
+        // Phase 2-F: reverse lookup to originating contracts
+        model: require('../models').ContractPlan, as: 'contractLinks', required: false,
+        include: [{
+          model: require('../models').Contract, as: 'contract',
+          attributes: ['id', 'contract_number', 'stage', 'start_date', 'end_date', 'applicant_company_name']
+        }]
       }],
       order: [['createdAt', 'DESC']]
     });
@@ -768,6 +775,13 @@ router.get('/:id/plans/:planId', authenticateToken, async (req, res) => {
       }, {
         model: EntityPlanPrice,
         as: 'prices'
+      }, {
+        // Phase 2-F: reverse lookup to originating contracts
+        model: require('../models').ContractPlan, as: 'contractLinks', required: false,
+        include: [{
+          model: require('../models').Contract, as: 'contract',
+          attributes: ['id', 'contract_number', 'stage', 'start_date', 'end_date', 'applicant_company_name']
+        }]
       }]
     });
 
@@ -950,6 +964,16 @@ router.delete('/:id/plans/:planId', authenticateToken, async (req, res) => {
       });
     }
 
+    // Phase 2-F: protect plans attached to open contracts.
+    const { ContractPlan } = require('../models');
+    const openContractLink = await ContractPlan.count({ where: { entity_plan_id: planId, end_at: null } });
+    if (openContractLink > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete plan attached to ${openContractLink} open contract(s). Renew or terminate the contract first.`
+      });
+    }
+
     // Remove all assignments and prices then delete plan
     await EntityPlanRestaurant.destroy({ where: { entity_plan_id: planId } });
     await EntityPlanPrice.destroy({ where: { entity_plan_id: planId } });
@@ -990,14 +1014,34 @@ router.get('/:id/plans/:planId/restaurants', authenticateToken, async (req, res)
   }
 });
 
+// Helper: compute next billing date for a plan (defaults to 1st of next month if no billing_day set)
+function computeNextBillingDate(billingDay) {
+  const today = new Date();
+  const day = Math.max(1, Math.min(31, parseInt(billingDay || 1)));
+  // Next month, clamped to month length
+  let year = today.getFullYear();
+  let month = today.getMonth() + 1; // 0-indexed → 1-indexed next month
+  if (month > 11) { year++; month = 0; }
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+  const targetDay = Math.min(day, lastDayOfMonth);
+  const next = new Date(year, month, targetDay);
+  const yyyy = next.getFullYear();
+  const mm = String(next.getMonth() + 1).padStart(2, '0');
+  const dd = String(next.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // POST /api/brands/:id/plans/:planId/restaurants - Assign restaurants to a plan
+// Behavior:
+//   - If restaurant has no active plan under this brand → immediate assignment
+//   - If restaurant already has a DIFFERENT active plan under this brand → schedule as pending for next billing cycle
+//   - If restaurant already has the SAME active plan → no-op
 router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyBrandAccess(req, id);
     if (access.error) return res.status(access.status).json({ success: false, message: access.error });
 
-    // Verify plan exists and belongs to this brand (include prices for currency check)
     const plan = await EntityPlan.findOne({
       where: { id: planId, entity_type: 'brand', entity_id: id },
       include: [{ model: EntityPlanPrice, as: 'prices' }]
@@ -1009,17 +1053,13 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
       return res.status(400).json({ success: false, message: 'restaurant_ids array is required' });
     }
 
-    // Verify all restaurants belong to this brand (include currency for validation)
     const restaurants = await Restaurant.findAll({
       where: { id: restaurant_ids, brand_id: id },
       attributes: ['id', 'name', 'currency']
     });
 
     if (restaurants.length !== restaurant_ids.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'Some restaurants do not belong to this brand'
-      });
+      return res.status(400).json({ success: false, message: 'Some restaurants do not belong to this brand' });
     }
 
     const results = [];
@@ -1027,7 +1067,6 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
 
     for (const restaurant of restaurants) {
       try {
-        // Check currency compatibility for fixed plans
         const restCurrency = restaurant.currency || 'MYR';
         if (plan.charge_type === 'fixed') {
           const priceRecord = (plan.prices || []).find(p => p.currency === restCurrency);
@@ -1041,16 +1080,45 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
           }
         }
 
-        const [assignment, created] = await EntityPlanRestaurant.findOrCreate({
-          where: { entity_plan_id: planId, restaurant_id: restaurant.id },
-          defaults: { activation_date: new Date(), is_active: true }
+        // Find any active EPR for this restaurant under this brand's plans
+        const existingActive = await EntityPlanRestaurant.findOne({
+          where: { restaurant_id: restaurant.id, is_active: true },
+          include: [{
+            model: EntityPlan,
+            as: 'plan',
+            where: { entity_type: 'brand', entity_id: id },
+            required: true
+          }]
         });
 
-        if (!created && !assignment.is_active) {
-          await assignment.update({ is_active: true, activation_date: new Date() });
+        if (existingActive && existingActive.entity_plan_id === parseInt(planId)) {
+          // Same plan already active — no-op (clear any pending change)
+          await existingActive.update({ pending_plan_id: null, pending_activation_date: null });
+          results.push({ restaurant_id: restaurant.id, status: 'already_assigned' });
+        } else if (existingActive) {
+          // Different plan active — schedule as pending for next billing cycle
+          const effectiveDate = computeNextBillingDate(plan.billing_day);
+          await existingActive.update({
+            pending_plan_id: parseInt(planId),
+            pending_activation_date: effectiveDate
+          });
+          results.push({
+            restaurant_id: restaurant.id,
+            status: 'scheduled',
+            pending_plan_id: parseInt(planId),
+            pending_activation_date: effectiveDate
+          });
+        } else {
+          // No active plan — assign immediately
+          const [assignment, created] = await EntityPlanRestaurant.findOrCreate({
+            where: { entity_plan_id: planId, restaurant_id: restaurant.id },
+            defaults: { activation_date: new Date(), is_active: true }
+          });
+          if (!created && !assignment.is_active) {
+            await assignment.update({ is_active: true, activation_date: new Date(), pending_plan_id: null, pending_activation_date: null });
+          }
+          results.push({ restaurant_id: restaurant.id, status: created ? 'assigned' : 'reactivated' });
         }
-
-        results.push({ restaurant_id: restaurant.id, status: created ? 'assigned' : 'reactivated' });
       } catch (e) {
         results.push({ restaurant_id: restaurant.id, status: 'error', message: e.message });
       }
@@ -1080,12 +1148,36 @@ router.delete('/:id/plans/:planId/restaurants/:restaurantId', authenticateToken,
       return res.status(404).json({ success: false, message: 'Assignment not found' });
     }
 
-    await assignment.update({ is_active: false });
+    await assignment.update({ is_active: false, pending_plan_id: null, pending_activation_date: null });
 
     res.json({ success: true, message: 'Restaurant unassigned from plan' });
   } catch (error) {
     console.error('Error unassigning restaurant:', error);
     res.status(500).json({ success: false, message: 'Failed to unassign restaurant' });
+  }
+});
+
+// POST /api/brands/:id/plans/:planId/restaurants/:restaurantId/cancel-pending - Cancel scheduled plan change
+router.post('/:id/plans/:planId/restaurants/:restaurantId/cancel-pending', authenticateToken, async (req, res) => {
+  try {
+    const { id, planId, restaurantId } = req.params;
+    const access = await verifyBrandAccess(req, id);
+    if (access.error) return res.status(access.status).json({ success: false, message: access.error });
+
+    const assignment = await EntityPlanRestaurant.findOne({
+      where: { entity_plan_id: planId, restaurant_id: restaurantId, is_active: true }
+    });
+    if (!assignment) return res.status(404).json({ success: false, message: 'Active assignment not found' });
+
+    if (!assignment.pending_plan_id) {
+      return res.status(400).json({ success: false, message: 'No pending change to cancel' });
+    }
+
+    await assignment.update({ pending_plan_id: null, pending_activation_date: null });
+    res.json({ success: true, message: 'Pending plan change cancelled' });
+  } catch (error) {
+    console.error('Error cancelling pending change:', error);
+    res.status(500).json({ success: false, message: 'Failed to cancel pending change' });
   }
 });
 
@@ -1679,6 +1771,21 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
       }
     });
 
+    // Collect pending_plan_ids so we can resolve plan names in one query
+    const pendingPlanIds = new Set();
+    restaurants.forEach(r => {
+      (r.entityPlanRestaurants || []).forEach(epr => {
+        if (epr.is_active && epr.pending_plan_id) pendingPlanIds.add(epr.pending_plan_id);
+      });
+    });
+    const pendingPlansById = {};
+    if (pendingPlanIds.size > 0) {
+      const plans = await EntityPlan.findAll({
+        where: { id: [...pendingPlanIds], entity_type: 'brand', entity_id: id }
+      });
+      plans.forEach(p => { pendingPlansById[p.id] = p; });
+    }
+
     // Build response
     const data = restaurants.map(r => {
       const activePlan = r.entityPlanRestaurants?.find(epr => epr.is_active && epr.plan);
@@ -1690,6 +1797,20 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
       let estimatedCharges = null;
       if (activePlan?.plan) {
         estimatedCharges = calculatePlanCharges(activePlan.plan, monthRevenue);
+      }
+
+      // Pending plan (scheduled change)
+      let pending_plan = null;
+      if (activePlan && activePlan.pending_plan_id && pendingPlansById[activePlan.pending_plan_id]) {
+        const pp = pendingPlansById[activePlan.pending_plan_id];
+        pending_plan = {
+          id: pp.id,
+          name: pp.name,
+          charge_type: pp.charge_type,
+          percentage_value: pp.percentage_value,
+          billing_day: pp.billing_day,
+          activation_date: activePlan.pending_activation_date
+        };
       }
 
       return {
@@ -1711,6 +1832,7 @@ router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
           discount_value: parseFloat(activePlan.discount_value) || 0,
           discount_reason: activePlan.discount_reason || null
         } : null,
+        pending_plan,
         latest_invoice: latestInvoice ? {
           id: latestInvoice.id,
           invoice_number: latestInvoice.invoice_number,

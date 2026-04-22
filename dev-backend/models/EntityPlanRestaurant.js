@@ -44,6 +44,16 @@ EntityPlanRestaurant.init({
     type: DataTypes.STRING(255),
     allowNull: true,
     comment: 'Reason for discount'
+  },
+  pending_plan_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Next plan to apply on activation date (scheduled change)'
+  },
+  pending_activation_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+    comment: 'Date when pending_plan_id takes effect'
   }
 }, {
   sequelize: database.sequelize,

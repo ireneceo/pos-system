@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken, getManagerScope } = require('../middleware/auth');
 const { Contract, ContractDocument, ContractTask, ContractNote, ContractHistory, ContractPlan,
-        FoodcourtUnit, Restaurant, Brand, Foodcourt, User, EntityPlan } = require('../models');
+        FoodcourtUnit, Restaurant, Brand, Foodcourt, User, EntityPlan, EntityPlanRestaurant } = require('../models');
 const { Op } = require('sequelize');
 const { getTemplate: getSupportServicesTemplate, findServiceTitle } = require('../utils/contractSupportServices');
 
@@ -388,6 +388,7 @@ router.put('/:id', authenticateToken, async (req, res, next) => {
     }
 
     const oldTerms = JSON.stringify(contract.financial_terms);
+    const oldRestaurantId = contract.restaurant_id;
     const updateFields = [
       'applicant_company_name', 'applicant_contact_person',
       'applicant_email', 'applicant_phone',
@@ -438,6 +439,38 @@ router.put('/:id', authenticateToken, async (req, res, next) => {
     // Log restaurant link
     if (req.body.restaurant_id && req.body.restaurant_id !== contract.restaurant_id) {
       await logHistory(contract.id, 'restaurant_linked', null, req.body.restaurant_id.toString(), null, req.user.id);
+    }
+
+    // Phase 2-C: Sync EntityPlanRestaurant when contract's restaurant_id changes.
+    // This ensures contract-linked plans become billable once a restaurant is attached,
+    // and stop billing the old restaurant if reassigned.
+    const newRestaurantId = contract.restaurant_id;
+    if (oldRestaurantId !== newRestaurantId) {
+      const openLinks = await ContractPlan.findAll({ where: { contract_id: contract.id, end_at: null } });
+      for (const link of openLinks) {
+        // Deactivate prior restaurant's EPR for this plan (if it existed)
+        if (oldRestaurantId) {
+          await EntityPlanRestaurant.update(
+            { is_active: false },
+            { where: { entity_plan_id: link.entity_plan_id, restaurant_id: oldRestaurantId } }
+          );
+        }
+        // Activate (or create) new restaurant's EPR for this plan
+        if (newRestaurantId) {
+          const [row, created] = await EntityPlanRestaurant.findOrCreate({
+            where: { entity_plan_id: link.entity_plan_id, restaurant_id: newRestaurantId },
+            defaults: {
+              entity_plan_id: link.entity_plan_id,
+              restaurant_id: newRestaurantId,
+              activation_date: new Date(),
+              is_active: true
+            }
+          });
+          if (!created && !row.is_active) {
+            await row.update({ is_active: true, activation_date: new Date() });
+          }
+        }
+      }
     }
 
     // Log terms change
@@ -565,6 +598,18 @@ router.put('/:id/stage', authenticateToken, async (req, res, next) => {
 
     // Close open ContractPlan attachments when the contract exits active lifecycle
     if (['expired', 'terminated', 'renewed'].includes(stage)) {
+      // Phase 2-C: deactivate EPR for each closing plan BEFORE we close the link
+      // (so we still know which plan→restaurant pairs to touch).
+      const closingLinks = await ContractPlan.findAll({
+        where: { contract_id: contract.id, end_at: null }
+      });
+      if (contract.restaurant_id && closingLinks.length > 0) {
+        const planIds = closingLinks.map(l => l.entity_plan_id);
+        await EntityPlanRestaurant.update(
+          { is_active: false },
+          { where: { entity_plan_id: planIds, restaurant_id: contract.restaurant_id } }
+        );
+      }
       await ContractPlan.update(
         { end_at: new Date() },
         { where: { contract_id: contract.id, end_at: null } }
@@ -613,6 +658,17 @@ router.post('/:id/terminate', authenticateToken, async (req, res, next) => {
 
     await logHistory(contract.id, 'terminated', 'active', 'terminated', { reason: termination_reason }, req.user.id);
 
+    // Phase 2-C: deactivate EPR for each closing plan before we close the ContractPlan link.
+    const terminatingLinks = await ContractPlan.findAll({
+      where: { contract_id: contract.id, end_at: null }
+    });
+    if (contract.restaurant_id && terminatingLinks.length > 0) {
+      const planIds = terminatingLinks.map(l => l.entity_plan_id);
+      await EntityPlanRestaurant.update(
+        { is_active: false },
+        { where: { entity_plan_id: planIds, restaurant_id: contract.restaurant_id } }
+      );
+    }
     await ContractPlan.update(
       { end_at: new Date() },
       { where: { contract_id: contract.id, end_at: null } }
@@ -639,40 +695,99 @@ router.post('/:id/renew', authenticateToken, async (req, res, next) => {
 
     const termsChanged = req.body.terms_changed || false;
 
-    const newContract = await Contract.create({
-      entity_type: contract.entity_type,
-      entity_id: contract.entity_id,
-      restaurant_id: contract.restaurant_id,
-      stage: termsChanged ? 'proposal' : 'active',
-      applicant_company_name: contract.applicant_company_name,
-      applicant_contact_person: contract.applicant_contact_person,
-      applicant_email: contract.applicant_email,
-      applicant_phone: contract.applicant_phone,
-      applicant_business_type: contract.applicant_business_type,
-      applicant_location: contract.applicant_location,
-      contract_type: contract.contract_type,
-      financial_terms: req.body.financial_terms || contract.financial_terms,
-      duration_months: req.body.duration_months || contract.duration_months,
-      renewal_type: contract.renewal_type,
-      renewal_alert_months: contract.renewal_alert_months,
-      termination_notice_months: contract.termination_notice_months,
-      early_termination_fee: contract.early_termination_fee,
-      unit_id: contract.unit_id,
-      renewed_from_id: contract.id,
-      created_by: req.user.id,
-      updated_by: req.user.id
+    const { sequelize } = require('../config/database');
+    const t = await sequelize.transaction();
+    let newContract;
+    let carriedPlanIds = [];
+    try {
+      newContract = await Contract.create({
+        entity_type: contract.entity_type,
+        entity_id: contract.entity_id,
+        restaurant_id: contract.restaurant_id,
+        currency: contract.currency,
+        stage: termsChanged ? 'proposal' : 'active',
+        applicant_company_name: contract.applicant_company_name,
+        applicant_contact_person: contract.applicant_contact_person,
+        applicant_email: contract.applicant_email,
+        applicant_phone: contract.applicant_phone,
+        applicant_business_type: contract.applicant_business_type,
+        applicant_location: contract.applicant_location,
+        contract_type: contract.contract_type,
+        financial_terms: req.body.financial_terms || contract.financial_terms,
+        duration_months: req.body.duration_months || contract.duration_months,
+        renewal_type: contract.renewal_type,
+        renewal_alert_months: contract.renewal_alert_months,
+        termination_notice_months: contract.termination_notice_months,
+        early_termination_fee: contract.early_termination_fee,
+        unit_id: contract.unit_id,
+        renewed_from_id: contract.id,
+        created_by: req.user.id,
+        updated_by: req.user.id
+      }, { transaction: t });
+
+      // Phase 2-D: Plan carry-over / closure on renewal.
+      // Goal: close the billing loop so the renewed contract continues (or stops) billing correctly.
+      const openLinks = await ContractPlan.findAll({
+        where: { contract_id: contract.id, end_at: null },
+        transaction: t
+      });
+
+      if (!termsChanged && openLinks.length > 0 && newContract.restaurant_id) {
+        // Carry plan: close the old ContractPlan link, open a new one on the renewed contract.
+        // Same EntityPlan + same restaurant → existing EntityPlanRestaurant row remains (ensure is_active=true).
+        for (const link of openLinks) {
+          await link.update({ end_at: new Date() }, { transaction: t });
+          await ContractPlan.create({
+            contract_id: newContract.id,
+            entity_plan_id: link.entity_plan_id,
+            assigned_at: new Date()
+          }, { transaction: t });
+          carriedPlanIds.push(link.entity_plan_id);
+        }
+        if (carriedPlanIds.length > 0) {
+          await EntityPlanRestaurant.update(
+            { is_active: true, activation_date: new Date() },
+            { where: { entity_plan_id: carriedPlanIds, restaurant_id: newContract.restaurant_id }, transaction: t }
+          );
+        }
+      } else if (termsChanged && openLinks.length > 0) {
+        // Close old plan cleanly: EPR deactivated, ContractPlan closed.
+        // New contract is 'proposal' — billing suspends until user runs the wizard at activation.
+        if (contract.restaurant_id) {
+          const planIds = openLinks.map(l => l.entity_plan_id);
+          await EntityPlanRestaurant.update(
+            { is_active: false },
+            { where: { entity_plan_id: planIds, restaurant_id: contract.restaurant_id }, transaction: t }
+          );
+        }
+        await ContractPlan.update(
+          { end_at: new Date() },
+          { where: { contract_id: contract.id, end_at: null }, transaction: t }
+        );
+      }
+
+      await contract.update({
+        stage: 'renewed',
+        renewed_to_id: newContract.id,
+        updated_by: req.user.id
+      }, { transaction: t });
+
+      await t.commit();
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
+
+    await logHistory(contract.id, 'renewed', 'active', 'renewed',
+      { new_contract_id: newContract.id, plans_carried: carriedPlanIds.length, terms_changed: termsChanged }, req.user.id);
+    await logHistory(newContract.id, 'created', null, newContract.stage,
+      { renewed_from: contract.id, plans_inherited: carriedPlanIds.length }, req.user.id);
+
+    res.status(201).json({
+      success: true,
+      data: newContract,
+      meta: { plans_carried: carriedPlanIds.length, terms_changed: termsChanged }
     });
-
-    await contract.update({
-      stage: 'renewed',
-      renewed_to_id: newContract.id,
-      updated_by: req.user.id
-    });
-
-    await logHistory(contract.id, 'renewed', 'active', 'renewed', { new_contract_id: newContract.id }, req.user.id);
-    await logHistory(newContract.id, 'created', null, newContract.stage, { renewed_from: contract.id }, req.user.id);
-
-    res.status(201).json({ success: true, data: newContract });
   } catch (error) {
     next(error);
   }
@@ -881,19 +996,77 @@ router.get('/:id/history', authenticateToken, async (req, res, next) => {
 // Plans (reference)
 // ============================================
 
+// Link an existing EntityPlan to this contract (replaces any prior open link).
+// Same EPR wiring as the wizard (Phase 2-C): if contract has restaurant_id,
+// deactivate prior plan's EPR + create/reactivate EPR for the new plan.
 router.post('/:id/plans', authenticateToken, async (req, res, next) => {
   try {
     const contract = await checkContractAccess(req, res);
     if (!contract) return;
 
-    const plan = await ContractPlan.create({
-      contract_id: contract.id,
-      entity_plan_id: req.body.entity_plan_id,
-      assigned_at: new Date()
-    });
+    const entityPlanId = Number(req.body.entity_plan_id);
+    if (!entityPlanId) return res.status(400).json({ success: false, message: 'entity_plan_id required' });
 
-    await logHistory(contract.id, 'plan_assigned', null, req.body.entity_plan_id.toString(), null, req.user.id);
-    res.status(201).json({ success: true, data: plan });
+    // Validate plan belongs to the same entity as the contract
+    const targetPlan = await EntityPlan.findByPk(entityPlanId);
+    if (!targetPlan) return res.status(404).json({ success: false, message: 'Plan not found' });
+    if (targetPlan.entity_type !== contract.entity_type || targetPlan.entity_id !== contract.entity_id) {
+      return res.status(403).json({ success: false, message: 'Plan does not belong to this contract\'s entity' });
+    }
+
+    const { sequelize } = require('../config/database');
+    const t = await sequelize.transaction();
+    try {
+      // Close + deactivate prior open link (same as wizard)
+      const priorOpen = await ContractPlan.findAll({
+        where: { contract_id: contract.id, end_at: null },
+        transaction: t
+      });
+      if (contract.restaurant_id && priorOpen.length > 0) {
+        const priorPlanIds = priorOpen.map(l => l.entity_plan_id);
+        await EntityPlanRestaurant.update(
+          { is_active: false },
+          { where: { entity_plan_id: priorPlanIds, restaurant_id: contract.restaurant_id }, transaction: t }
+        );
+      }
+      await ContractPlan.update(
+        { end_at: new Date() },
+        { where: { contract_id: contract.id, end_at: null }, transaction: t }
+      );
+
+      const link = await ContractPlan.create({
+        contract_id: contract.id,
+        entity_plan_id: entityPlanId,
+        assigned_at: new Date()
+      }, { transaction: t });
+
+      // Create/reactivate EPR so the scheduler actually bills this plan
+      let epr = null;
+      if (contract.restaurant_id) {
+        const [row, created] = await EntityPlanRestaurant.findOrCreate({
+          where: { entity_plan_id: entityPlanId, restaurant_id: contract.restaurant_id },
+          defaults: {
+            entity_plan_id: entityPlanId,
+            restaurant_id: contract.restaurant_id,
+            activation_date: new Date(),
+            is_active: true
+          },
+          transaction: t
+        });
+        if (!created && !row.is_active) {
+          await row.update({ is_active: true, activation_date: new Date() }, { transaction: t });
+        }
+        epr = row;
+      }
+
+      await t.commit();
+
+      await logHistory(contract.id, 'plan_assigned', null, String(entityPlanId), { linked_existing: true, restaurant_linked: !!epr }, req.user.id);
+      res.status(201).json({ success: true, data: { link, epr } });
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
   } catch (error) {
     next(error);
   }
@@ -1029,6 +1202,19 @@ router.post('/:id/create-plan-from-contract', authenticateToken, async (req, res
       }
 
       // Attach to contract (close any prior still-open attachment)
+      // Phase 2-C: also deactivate EPR for the plan being replaced, so the outgoing
+      // plan stops billing this restaurant.
+      const priorOpen = await ContractPlan.findAll({
+        where: { contract_id: contract.id, end_at: null },
+        transaction: t
+      });
+      if (contract.restaurant_id && priorOpen.length > 0) {
+        const priorPlanIds = priorOpen.map(l => l.entity_plan_id);
+        await EntityPlanRestaurant.update(
+          { is_active: false },
+          { where: { entity_plan_id: priorPlanIds, restaurant_id: contract.restaurant_id }, transaction: t }
+        );
+      }
       await ContractPlan.update({ end_at: new Date() }, {
         where: { contract_id: contract.id, end_at: null },
         transaction: t
@@ -1039,14 +1225,38 @@ router.post('/:id/create-plan-from-contract', authenticateToken, async (req, res
         assigned_at: new Date()
       }, { transaction: t });
 
+      // Phase 2-C: Also create EntityPlanRestaurant so the scheduler actually bills this plan.
+      // If restaurant_id is null, skip — plan created but not billable until a restaurant is attached
+      // (editing the contract later will trigger the PUT hook to wire it up).
+      let epr = null;
+      if (contract.restaurant_id) {
+        epr = await EntityPlanRestaurant.findOrCreate({
+          where: { entity_plan_id: plan.id, restaurant_id: contract.restaurant_id },
+          defaults: {
+            entity_plan_id: plan.id,
+            restaurant_id: contract.restaurant_id,
+            activation_date: new Date(),
+            is_active: true
+          },
+          transaction: t
+        }).then(([row, created]) => {
+          if (!created && !row.is_active) {
+            return row.update({ is_active: true, activation_date: new Date() }, { transaction: t });
+          }
+          return row;
+        });
+      } else {
+        warnings.push('Plan created but not billable until a restaurant is attached to the contract.');
+      }
+
       await t.commit();
 
       await logHistory(contract.id, 'plan_assigned', null, plan.id.toString(),
-        { auto_generated_from_contract: true }, req.user.id);
+        { auto_generated_from_contract: true, restaurant_linked: !!epr }, req.user.id);
 
       res.status(201).json({
         success: true,
-        data: { plan, link, warnings }
+        data: { plan, link, epr, warnings }
       });
     } catch (e) {
       await t.rollback();
@@ -1099,20 +1309,30 @@ router.get('/:id/billing-preview', authenticateToken, async (req, res, next) => 
     const items = [];
     let subtotal = 0;
 
+    // Phase 2-E: preview next billing period using the first plan's billing_day.
+    // Compute proration factor against this contract's start/end so the preview matches
+    // what the scheduler will actually invoice.
+    const invoiceScheduler = require('../services/invoiceScheduler');
+    const nextBillingDay = (links[0] && links[0].entityPlan && links[0].entityPlan.billing_day != null)
+      ? links[0].entityPlan.billing_day : 1;
+    const { periodStart: previewStart, periodEnd: previewEnd } = invoiceScheduler.calculateEntityBillingPeriod(nextBillingDay, new Date());
+    const previewFactor = invoiceScheduler.computeProrationFactor(contract, previewStart, previewEnd);
+
     for (const link of links) {
       const plan = link.entityPlan;
       if (!plan) continue;
 
-      // Look up fixed monthly price for fixed/combined types
-      let fixedAmount = 0;
-      if (plan.charge_type === 'fixed' || plan.charge_type === 'combined') {
+      // Look up fixed monthly price for fixed/combined/additive types (all use fixed portion)
+      let fullFixed = 0;
+      if (plan.charge_type === 'fixed' || plan.charge_type === 'combined' || plan.charge_type === 'additive') {
         const price = await EntityPlanPrice.findOne({
           where: { entity_plan_id: plan.id, currency, is_active: true }
         }) || await EntityPlanPrice.findOne({
           where: { entity_plan_id: plan.id, is_active: true }
         });
-        fixedAmount = price ? Number(price.monthly_price) : 0;
+        fullFixed = price ? Number(price.monthly_price) : 0;
       }
+      const fixedAmount = Math.round(fullFixed * previewFactor * 100) / 100;
       const rate = Number(plan.percentage_value) || 0;
       const pctAmount = rate > 0 ? Math.round(revenue30d * (rate / 100) * 100) / 100 : 0;
 
@@ -1124,6 +1344,8 @@ router.get('/:id/billing-preview', authenticateToken, async (req, res, next) => 
         amount = pctAmount;
       } else if (plan.charge_type === 'combined') {
         amount = Math.max(fixedAmount, pctAmount);
+      } else if (plan.charge_type === 'additive') {
+        amount = fixedAmount + pctAmount;
       }
 
       items.push({
@@ -1135,7 +1357,8 @@ router.get('/:id/billing-preview', authenticateToken, async (req, res, next) => 
         amount: isManagerRole ? null : amount,
         minimum: plan.charge_type === 'combined' ? (isManagerRole ? null : fixedAmount) : null,
         currency: plan.currency || currency,
-        redacted: isManagerRole
+        redacted: isManagerRole,
+        proration: previewFactor < 1 ? { factor: previewFactor, covers_days: null, full_fixed: isManagerRole ? null : fullFixed } : null
       });
       if (!isManagerRole) subtotal += amount;
     }
@@ -1148,7 +1371,9 @@ router.get('/:id/billing-preview', authenticateToken, async (req, res, next) => 
         line_items: items,
         subtotal: isManagerRole ? null : Math.round(subtotal * 100) / 100,
         has_plan: true,
-        financial_redacted: isManagerRole
+        financial_redacted: isManagerRole,
+        proration_factor: previewFactor,
+        period: { start: previewStart, end: previewEnd }
       }
     });
   } catch (error) {

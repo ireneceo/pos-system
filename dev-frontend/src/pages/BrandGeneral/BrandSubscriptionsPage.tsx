@@ -57,6 +57,14 @@ interface BrandSubscription {
     discount_value?: number;
     discount_reason?: string;
   } | null;
+  pending_plan?: {
+    id: number;
+    name: string;
+    charge_type?: string;
+    percentage_value?: string | number;
+    billing_day?: number;
+    activation_date: string;
+  } | null;
   latest_invoice: {
     id: number;
     invoice_number: string;
@@ -304,7 +312,10 @@ const BrandSubscriptionsPage: React.FC = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignTarget, setAssignTarget] = useState<BrandSubscription | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | ''>('');
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
   const [currencyWarning, setCurrencyWarning] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null); // toast for row actions
 
   // View Modal
   const [showViewModal, setShowViewModal] = useState(false);
@@ -319,6 +330,13 @@ const BrandSubscriptionsPage: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<BrandSubscription | null>(null);
   const [confirmAction, setConfirmAction] = useState<'unassign' | null>(null);
+
+  // Add Subscription Modal (pick restaurant + pick plan)
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addRestaurantId, setAddRestaurantId] = useState<number | ''>('');
+  const [addPlanId, setAddPlanId] = useState<number | ''>('');
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   // ============================================
   // Data Fetching
@@ -392,11 +410,53 @@ const BrandSubscriptionsPage: React.FC = () => {
   const handleAssignPlan = (sub: BrandSubscription) => {
     setAssignTarget(sub);
     setSelectedPlanId(sub.plan?.id || '');
+    setAssignError(null);
     setShowAssignModal(true);
+  };
+
+  // "Add Subscription" entry point — pick restaurant + plan from scratch (not tied to a row).
+  const handleOpenAdd = () => {
+    setAddRestaurantId('');
+    setAddPlanId('');
+    setAddError(null);
+    setShowAddModal(true);
+  };
+
+  const handleSubmitAdd = async () => {
+    if (!brandId) return;
+    if (!addRestaurantId) { setAddError(t('brand:brandSubscriptionsPage.selectRestaurantFirst', 'Select a restaurant first') as string); return; }
+    if (!addPlanId) { setAddError(t('brand:brandSubscriptionsPage.selectPlanFirst', 'Select a plan first') as string); return; }
+    setAddSubmitting(true);
+    setAddError(null);
+    try {
+      const headers: HeadersInit = { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+      const response = await fetch(`/api/brands/${brandId}/plans/${addPlanId}/restaurants`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ restaurant_ids: [addRestaurantId] })
+      });
+      if (response.ok) {
+        const result = await response.json();
+        setShowAddModal(false);
+        fetchSubscriptions();
+        if (result.currency_warnings && result.currency_warnings.length > 0) {
+          setCurrencyWarning(result.currency_warnings[0].message);
+        }
+      } else {
+        const err = await response.json();
+        setAddError(err.message || err.error || 'Failed to add subscription');
+      }
+    } catch (e: any) {
+      setAddError(e?.message || 'Network error');
+    } finally {
+      setAddSubmitting(false);
+    }
   };
 
   const handleSubmitAssign = async () => {
     if (!brandId || !assignTarget || !selectedPlanId) return;
+    setAssignSubmitting(true);
+    setAssignError(null);
     try {
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -415,16 +475,17 @@ const BrandSubscriptionsPage: React.FC = () => {
         setAssignTarget(null);
         setSelectedPlanId('');
         fetchSubscriptions();
-        // Show currency warning if plan has no pricing for restaurant's currency
         if (result.currency_warnings && result.currency_warnings.length > 0) {
           setCurrencyWarning(result.currency_warnings[0].message);
         }
       } else {
-        const error = await response.json();
-        console.error('Failed to assign plan:', error);
+        const error = await response.json().catch(() => ({}));
+        setAssignError(error.message || error.error || `Failed to assign plan (HTTP ${response.status})`);
       }
-    } catch (error) {
-      console.error('Error assigning plan:', error);
+    } catch (error: any) {
+      setAssignError(error?.message || 'Network error');
+    } finally {
+      setAssignSubmitting(false);
     }
   };
 
@@ -448,8 +509,9 @@ const BrandSubscriptionsPage: React.FC = () => {
           { method: 'DELETE', headers }
         );
         if (!response.ok) {
-          const error = await response.json();
-          console.error('Failed to unassign:', error);
+          const error = await response.json().catch(() => ({}));
+          setActionError(error.message || error.error || `Failed to unassign (HTTP ${response.status})`);
+          return;
         }
       }
 
@@ -457,8 +519,27 @@ const BrandSubscriptionsPage: React.FC = () => {
       setConfirmTarget(null);
       setConfirmAction(null);
       fetchSubscriptions();
-    } catch (error) {
-      console.error('Action failed:', error);
+    } catch (error: any) {
+      setActionError(error?.message || 'Network error');
+    }
+  };
+
+  const handleCancelPending = async (sub: BrandSubscription) => {
+    if (!brandId || !sub.plan) return;
+    if (!window.confirm(t('brand:brandSubscriptionsPage.cancelPendingConfirm', 'Cancel the scheduled plan change?') as string)) return;
+    try {
+      const headers: HeadersInit = { ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
+      const r = await fetch(`/api/brands/${brandId}/plans/${sub.plan.id}/restaurants/${sub.restaurant_id}/cancel-pending`, {
+        method: 'POST', headers
+      });
+      if (r.ok) {
+        fetchSubscriptions();
+      } else {
+        const e = await r.json().catch(() => ({}));
+        setActionError(e.message || `Failed to cancel pending (HTTP ${r.status})`);
+      }
+    } catch (e: any) {
+      setActionError(e?.message || 'Network error');
     }
   };
 
@@ -493,9 +574,12 @@ const BrandSubscriptionsPage: React.FC = () => {
         setShowDiscountModal(false);
         setDiscountTarget(null);
         fetchSubscriptions();
+      } else {
+        const e = await response.json().catch(() => ({}));
+        setActionError(e.message || `Failed to save discount (HTTP ${response.status})`);
       }
-    } catch (error) {
-      console.error('Failed to save discount:', error);
+    } catch (error: any) {
+      setActionError(error?.message || 'Network error');
     }
   };
 
@@ -539,6 +623,9 @@ const BrandSubscriptionsPage: React.FC = () => {
         <Header>
           <Title>{t('brand:brandSubscriptionsPage.brandSubscriptions')}</Title>
           <ActionSection>
+            <ThemedButton variant="primary" onClick={handleOpenAdd}>
+              + {t('brand:brandSubscriptionsPage.addSubscription', 'Add Subscription')}
+            </ThemedButton>
             <ThemedButton variant="outline" onClick={handleExportData}>{t('brand:brandSubscriptionsPage.export')}</ThemedButton>
           </ActionSection>
         </Header>
@@ -599,6 +686,12 @@ const BrandSubscriptionsPage: React.FC = () => {
               <div style={{ padding: '12px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', color: '#92400E' }}>{currencyWarning}</span>
                 <button onClick={() => setCurrencyWarning(null)} style={{ background: 'none', border: 'none', color: '#92400E', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>×</button>
+              </div>
+            )}
+            {actionError && (
+              <div style={{ padding: '12px 16px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#991B1B' }}>{actionError}</span>
+                <button onClick={() => setActionError(null)} style={{ background: 'none', border: 'none', color: '#991B1B', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}>×</button>
               </div>
             )}
             <Table>
@@ -706,7 +799,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                   <ActionButtons>
                     <CommonActionButton onClick={() => handleViewDetails(sub)}>{t('brand:brandSubscriptionsPage.view')}</CommonActionButton>
                     <CommonActionButton onClick={() => handleAssignPlan(sub)}>
-                      {sub.plan ? 'Change' : 'Assign'}
+                      {sub.plan ? t('brand:brandSubscriptionsPage.change', 'Change') : t('brand:brandSubscriptionsPage.assign', 'Assign')}
                     </CommonActionButton>
                     {sub.plan && (
                       <CommonIconButton
@@ -717,6 +810,47 @@ const BrandSubscriptionsPage: React.FC = () => {
                       </CommonIconButton>
                     )}
                   </ActionButtons>
+                  {sub.pending_plan && (
+                    <div style={{
+                      gridColumn: '1 / -1',
+                      margin: '8px 0 0',
+                      padding: '10px 12px',
+                      background: '#FFFBEB',
+                      border: '1px solid #F59E0B',
+                      borderRadius: 6,
+                      color: '#92400E',
+                      fontSize: 12,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 8,
+                      flexWrap: 'wrap'
+                    }}>
+                      <div>
+                        <strong>{t('brand:brandSubscriptionsPage.scheduledChange', 'Scheduled change')}:</strong>{' '}
+                        {t('brand:brandSubscriptionsPage.willSwitchTo', 'will switch to')}{' '}
+                        <strong>{sub.pending_plan.name}</strong>{' '}
+                        {t('brand:brandSubscriptionsPage.on', 'on')}{' '}
+                        <strong>{String(sub.pending_plan.activation_date).slice(0, 10)}</strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelPending(sub)}
+                        style={{
+                          background: 'white',
+                          border: '1px solid #F59E0B',
+                          color: '#92400E',
+                          padding: '4px 10px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {t('brand:brandSubscriptionsPage.cancelPending', 'Cancel')}
+                      </button>
+                    </div>
+                  )}
                 </SubscriptionTableRow>
               ))}
             </Table>
@@ -792,6 +926,26 @@ const BrandSubscriptionsPage: React.FC = () => {
                         </div>
                       );
                     })()}
+
+                    {assignTarget.plan && selectedPlanId && selectedPlanId !== assignTarget.plan.id && (
+                      <div style={{
+                        gridColumn: '1 / -1',
+                        padding: '12px 14px', background: '#FFFBEB', border: '1px solid #F59E0B',
+                        borderRadius: 8, color: '#92400E', fontSize: 13, marginTop: 8, lineHeight: 1.5
+                      }}>
+                        ⚠ {t('brand:brandSubscriptionsPage.changeScheduledHint', 'The new plan will NOT take effect immediately. Current plan stays billable until the end of this cycle — the new plan activates on the next billing cycle date and the next invoice will reflect the new plan.')}
+                      </div>
+                    )}
+
+                    {assignError && (
+                      <div style={{
+                        gridColumn: '1 / -1',
+                        padding: '10px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5',
+                        borderRadius: 6, color: '#991B1B', fontSize: 13, marginTop: 8
+                      }}>
+                        {assignError}
+                      </div>
+                    )}
                   </FormGrid>
                 
             </CommonModal>
@@ -1026,7 +1180,81 @@ const BrandSubscriptionsPage: React.FC = () => {
                       </div>
                     )}
                   </div>
-                
+
+            </CommonModal>
+          )}
+
+          {/* Add Subscription Modal — pick restaurant + plan (for new assignments) */}
+          {showAddModal && (
+            <CommonModal
+              isOpen={true}
+              onClose={() => !addSubmitting && setShowAddModal(false)}
+              title={t('brand:brandSubscriptionsPage.addSubscription', 'Add Subscription') as string}
+              footer={<>
+                <ThemedButton variant="cancel" onClick={() => setShowAddModal(false)} disabled={addSubmitting}>
+                  {t('brand:brandSubscriptionsPage.cancel')}
+                </ThemedButton>
+                <ThemedButton variant="primary" onClick={handleSubmitAdd} disabled={addSubmitting || !addRestaurantId || !addPlanId}>
+                  {addSubmitting ? (t('brand:brandSubscriptionsPage.saving', 'Saving…') as string) : (t('brand:brandSubscriptionsPage.addSubscription', 'Add Subscription') as string)}
+                </ThemedButton>
+              </>}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ fontSize: 13, color: '#6B7C93' }}>
+                  {t('brand:brandSubscriptionsPage.addHint', 'Assign one of your brand plans to a restaurant under your brand. Creates a recurring subscription billed by your brand.')}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 6 }}>
+                    {t('brand:brandSubscriptionsPage.restaurant', 'Restaurant')} *
+                  </label>
+                  <select
+                    value={addRestaurantId}
+                    onChange={e => setAddRestaurantId(e.target.value ? parseInt(e.target.value) : '')}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                  >
+                    <option value="">{t('brand:brandSubscriptionsPage.selectRestaurant', 'Select a restaurant…')}</option>
+                    {subscriptions.filter(s => !s.plan).map(s => (
+                      <option key={s.restaurant_id} value={s.restaurant_id}>
+                        {s.restaurant_name}{s.restaurant_branch_name ? ` (${s.restaurant_branch_name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {subscriptions.filter(s => !s.plan).length === 0 && (
+                    <div style={{ fontSize: 12, color: '#B45309', marginTop: 6 }}>
+                      {t('brand:brandSubscriptionsPage.allRestaurantsAssigned', 'All restaurants already have a plan. Use Change Plan on an existing row to switch.')}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 6 }}>
+                    {t('brand:brandSubscriptionsPage.brandPlan', 'Brand Plan')} *
+                  </label>
+                  <select
+                    value={addPlanId}
+                    onChange={e => setAddPlanId(e.target.value ? parseInt(e.target.value) : '')}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14 }}
+                  >
+                    <option value="">{t('brand:brandSubscriptionsPage.selectPlan', 'Select a plan…')}</option>
+                    {brandPlans.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                  {brandPlans.length === 0 && (
+                    <div style={{ fontSize: 12, color: '#B45309', marginTop: 6 }}>
+                      {t('brand:brandSubscriptionsPage.noPlansAvailable', 'No brand plans yet — create one in Plans page first.')}
+                    </div>
+                  )}
+                </div>
+
+                {addError && (
+                  <div style={{ padding: '10px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13 }}>
+                    {addError}
+                  </div>
+                )}
+
+              </div>
             </CommonModal>
           )}
 

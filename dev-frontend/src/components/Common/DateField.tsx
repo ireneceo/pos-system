@@ -30,11 +30,20 @@ const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const formatDate = (d: Date): string =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+// Accept both plain 'YYYY-MM-DD' and ISO '2026-06-06T00:00:00.000Z'.
+// Legacy DB rows store dates as DATETIME / TIMESTAMP, so the API returns ISO strings;
+// we must normalize before date-part extraction or we parse '06T00:00:00.000Z' as NaN.
 const parseDate = (s: string | null | undefined): Date | null => {
   if (!s) return null;
-  const [y, m, d] = s.split('-').map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
+  // Take only the date portion before any 'T' / space / timezone marker.
+  const datePart = String(s).slice(0, 10);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!y || !mo || !d) return null;
+  return new Date(y, mo - 1, d);
 };
 
 const isSameDay = (a: Date, b: Date): boolean =>
@@ -52,9 +61,20 @@ const getMonthLabel = (year: number, month: number): string => {
 };
 
 const formatDisplayDate = (s: string | null | undefined): string => {
-  const d = parseDate(s || '');
-  if (!d) return '';
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit', timeZone: getRestaurantTimezone() });
+  const datePart = String(s || '').slice(0, 10);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+  if (!match) return '';
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  // DATEONLY fields are pure calendar dates with no time-of-day — formatting them through
+  // a browser-local Date and then reinterpreting in restaurant timezone can shift by a day
+  // when browser is east of restaurant. Anchor to UTC + format in UTC so the calendar date
+  // always displays as stored. (DATETIME fields — order times, invoice issued_at — still use
+  // getRestaurantTimezone() per CLAUDE.md timezone rule.)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+    year: 'numeric', month: 'short', day: '2-digit', timeZone: 'UTC'
+  });
 };
 
 const DateField: React.FC<DateFieldProps> = ({

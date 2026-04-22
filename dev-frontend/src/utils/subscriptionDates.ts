@@ -71,8 +71,11 @@ export function formatDateISO(d: Date): string {
 
 /**
  * Parse yyyy-MM-dd as local Date (not UTC).
+ * Accepts both plain 'YYYY-MM-DD' and ISO '2026-06-06T00:00:00.000Z'
+ * so legacy DB rows stored as DATETIME don't render as invalid dates.
  */
 export function parseDateLocal(s: string): Date {
-  const [y, m, d] = s.split('-').map(Number);
+  const datePart = String(s || '').slice(0, 10);
+  const [y, m, d] = datePart.split('-').map(Number);
   return new Date(y, m - 1, d);
 }

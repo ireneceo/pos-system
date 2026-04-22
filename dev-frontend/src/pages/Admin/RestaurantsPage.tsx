@@ -2324,7 +2324,7 @@ const RestaurantsPage: React.FC = () => {
                         // Recalculate end date based on new cycle
                         let newEnd = newRestaurant.subscriptionEnd;
                         if (newRestaurant.subscriptionStart) {
-                          const [y, m, d] = newRestaurant.subscriptionStart.split('-').map(Number);
+                          const [y, m, d] = String(newRestaurant.subscriptionStart).slice(0, 10).split('-').map(Number);
                           const endD = new Date(y, m - 1, d);
                           if (cycle === 'annual') {
                             endD.setFullYear(endD.getFullYear() + 1);
@@ -2369,7 +2369,7 @@ const RestaurantsPage: React.FC = () => {
                         // Auto-calculate end date: start + cycle - 1 day
                         let end = '';
                         if (start) {
-                          const [y, m, d] = start.split('-').map(Number);
+                          const [y, m, d] = String(start).slice(0, 10).split('-').map(Number);
                           const endD = new Date(y, m - 1, d);
                           if (newRestaurant.billingCycle === 'annual') {
                             endD.setFullYear(endD.getFullYear() + 1);
@@ -2824,7 +2824,7 @@ const RestaurantsPage: React.FC = () => {
                         // Recalculate end date based on new cycle
                         let newEnd = editingRestaurant.subscriptionEnd;
                         if (editingRestaurant.subscriptionStart) {
-                          const [y, m, d] = editingRestaurant.subscriptionStart.split('-').map(Number);
+                          const [y, m, d] = String(editingRestaurant.subscriptionStart).slice(0, 10).split('-').map(Number);
                           const endD = new Date(y, m - 1, d);
                           if (cycle === 'annual') endD.setFullYear(endD.getFullYear() + 1);
                           else endD.setMonth(endD.getMonth() + 1);
@@ -2865,7 +2865,7 @@ const RestaurantsPage: React.FC = () => {
                       onChange={(start, _end) => {
                         let end = '';
                         if (start) {
-                          const [y, m, d] = start.split('-').map(Number);
+                          const [y, m, d] = String(start).slice(0, 10).split('-').map(Number);
                           const endD = new Date(y, m - 1, d);
                           const cycle = editingRestaurant.billingCycle || 'monthly';
                           if (cycle === 'annual') endD.setFullYear(endD.getFullYear() + 1);

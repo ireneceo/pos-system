@@ -32,7 +32,7 @@ interface EntityPlan {
   entity_id: number;
   name: string;
   description: string | null;
-  charge_type: 'fixed' | 'percentage';
+  charge_type: 'fixed' | 'percentage' | 'combined' | 'additive';
   percentage_value: string;
   revenue_base: 'previous_month' | 'previous_year' | 'up_to_billing_day';
   billing_day: number | null;
@@ -51,6 +51,24 @@ interface EntityPlan {
   updatedAt: string;
   planRestaurants?: PlanRestaurant[];
   prices?: EntityPlanPrice[];
+  contractLinks?: ContractLink[];
+}
+
+// Phase 2-F: reverse lookup — which contracts are (or were) attached to this plan
+interface ContractLink {
+  id: number;
+  contract_id: number;
+  entity_plan_id: number;
+  assigned_at: string | null;
+  end_at: string | null;
+  contract?: {
+    id: number;
+    contract_number: string | null;
+    stage: string;
+    start_date: string | null;
+    end_date: string | null;
+    applicant_company_name: string | null;
+  };
 }
 
 interface EntityPlanPrice {
@@ -245,15 +263,18 @@ const BadgeContainer = styled.div`
   align-items: center;
 `;
 
-const ChargeTypeBadge = styled.span<{ chargeType: 'fixed' | 'percentage' }>`
+const ChargeTypeBadge = styled.span<{ chargeType: 'fixed' | 'percentage' | 'combined' | 'additive' }>`
   display: inline-block;
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  background: ${props => props.chargeType === 'fixed' ? '#DBEAFE' : '#FEF3C7'};
-  color: ${props => props.chargeType === 'fixed' ? '#1E40AF' : '#92400E'};
+  ${p =>
+    p.chargeType === 'fixed' ? 'background: #DBEAFE; color: #1E40AF;' :
+    p.chargeType === 'percentage' ? 'background: #FEF3C7; color: #92400E;' :
+    p.chargeType === 'additive' ? 'background: #DCFCE7; color: #166534;' :
+    'background: #E9D5FF; color: #6B21A8;'}
 `;
 
 const ActionButtons = styled.div`
@@ -465,7 +486,7 @@ const BrandPlansPage: React.FC = () => {
   const defaultFormData = {
     name: '',
     description: '',
-    charge_type: 'fixed' as 'fixed' | 'percentage',
+    charge_type: 'fixed' as 'fixed' | 'percentage' | 'combined' | 'additive',
     percentage_value: '',
     revenue_base: 'previous_month' as 'previous_month' | 'previous_year' | 'up_to_billing_day',
     billing_day: '',
@@ -899,14 +920,22 @@ const BrandPlansPage: React.FC = () => {
         <FormLabel>Charge Type *</FormLabel>
         <FormSelect
           value={formData.charge_type}
-          onChange={(e) => setFormData(prev => ({...prev, charge_type: e.target.value as 'fixed' | 'percentage'}))}
+          onChange={(e) => setFormData(prev => ({...prev, charge_type: e.target.value as any}))}
         >
-          <option value="fixed">{t('brand:brandPlansPage.fixedAmountCurrencyPricing')}</option>
-          <option value="percentage">% of Revenue</option>
+          <option value="fixed">{t('brand:brandPlansPage.fixedAmount', 'Fixed Amount')}</option>
+          <option value="percentage">{t('brand:brandPlansPage.percentageOfRevenue', '% of Revenue')}</option>
+          <option value="additive">{t('brand:brandPlansPage.additive', 'Fixed Amount + % of Revenue')}</option>
+          <option value="combined">{t('brand:brandPlansPage.combined', 'Fixed Amount or % of Revenue (whichever higher)')}</option>
         </FormSelect>
+        <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 4 }}>
+          {formData.charge_type === 'fixed' && t('brand:brandPlansPage.chargeHintFixed', 'Flat monthly fee per currency.')}
+          {formData.charge_type === 'percentage' && t('brand:brandPlansPage.chargeHintPercentage', 'Royalty = revenue × rate. No fixed base.')}
+          {formData.charge_type === 'additive' && t('brand:brandPlansPage.chargeHintAdditive', 'Bill = fixed amount + (revenue × rate). Both charged.')}
+          {formData.charge_type === 'combined' && t('brand:brandPlansPage.chargeHintCombined', 'Bill = max(fixed amount, revenue × rate). Min-guarantee pattern.')}
+        </div>
       </FormGroup>
 
-      {formData.charge_type === 'fixed' ? (
+      {(formData.charge_type === 'fixed' || formData.charge_type === 'additive' || formData.charge_type === 'combined') && (
         <FormGroup>
           <FormLabel>{t('brand:brandPlansPage.pricingByCurrency')}</FormLabel>
           <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
@@ -959,7 +988,9 @@ const BrandPlansPage: React.FC = () => {
             )}
           </div>
         </FormGroup>
-      ) : (
+      )}
+
+      {(formData.charge_type === 'percentage' || formData.charge_type === 'additive' || formData.charge_type === 'combined') && (
         <>
           <FormGroup>
             <FormLabel>Revenue Percentage (%)</FormLabel>
@@ -1079,11 +1110,23 @@ const BrandPlansPage: React.FC = () => {
               <PlanCard key={plan.id} isPopular={plan.is_popular} isActive={plan.is_active}>
                 <BadgeContainer>
                   <ChargeTypeBadge chargeType={plan.charge_type || 'fixed'}>
-                    {plan.charge_type === 'percentage' ? '% Revenue' : 'Fixed'}
+                    {plan.charge_type === 'percentage' ? '% Revenue'
+                      : plan.charge_type === 'additive' ? 'Fixed + %'
+                      : plan.charge_type === 'combined' ? 'Fixed or %'
+                      : 'Fixed'}
                   </ChargeTypeBadge>
                   <StatusBadge isActive={plan.is_active}>
                     {plan.is_active ? 'Active' : 'Inactive'}
                   </StatusBadge>
+                  {(plan.contractLinks || []).some(l => !l.end_at) && (
+                    <span style={{
+                      padding: '4px 10px', borderRadius: 12,
+                      background: '#EEF2FF', color: '#4338CA',
+                      fontSize: 11, fontWeight: 600, letterSpacing: 0.2
+                    }} title="Created from a contract — see Details">
+                      From contract
+                    </span>
+                  )}
                 </BadgeContainer>
 
                 <PlanHeader>
@@ -1412,7 +1455,47 @@ const BrandPlansPage: React.FC = () => {
                     Manage Restaurant Assignments
                   </Button>
                 </DetailSection>
-              
+
+                {/* Phase 2-F: Originating Contracts */}
+                {(selectedPlan.contractLinks || []).length > 0 && (
+                  <DetailSection>
+                    <h4>Linked Contracts ({(selectedPlan.contractLinks || []).length})</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {(selectedPlan.contractLinks || []).map(link => {
+                        const c = link.contract;
+                        const isOpen = !link.end_at;
+                        return (
+                          <div key={link.id} style={{
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                            padding: '10px 12px', background: isOpen ? '#F0F9FF' : '#F9FAFB',
+                            borderRadius: 8, border: `1px solid ${isOpen ? '#BAE6FD' : '#E6EBF1'}`
+                          }}>
+                            <div>
+                              <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
+                                {c?.contract_number || `Contract #${link.contract_id}`}
+                                {c?.applicant_company_name ? <span style={{ color: '#6B7C93', fontWeight: 400, marginLeft: 6 }}>· {c.applicant_company_name}</span> : null}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
+                                {c?.start_date ? tzFormatDate(c.start_date, null) : '—'}
+                                {c?.end_date ? ` → ${tzFormatDate(c.end_date, null)}` : ''}
+                                {c?.stage ? ` · ${c.stage}` : ''}
+                              </div>
+                            </div>
+                            <span style={{
+                              padding: '4px 10px', borderRadius: 12,
+                              background: isOpen ? '#DCFCE7' : '#F3F4F6',
+                              color: isOpen ? '#166534' : '#6B7280',
+                              fontSize: 11, fontWeight: 600
+                            }}>
+                              {isOpen ? 'Open' : 'Closed'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </DetailSection>
+                )}
+
           </CommonModal>
         )}
 

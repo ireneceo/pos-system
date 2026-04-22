@@ -509,9 +509,30 @@ const LoginPage: React.FC = () => {
     }
   }, [authLoading, isAuthenticated, user, navigate, location]);
 
-  const handleQuickLogin = (account: typeof DEMO_ACCOUNTS[0] | typeof TEST_ACCOUNTS[0]) => {
+  const handleQuickLogin = async (account: typeof DEMO_ACCOUNTS[0] | typeof TEST_ACCOUNTS[0]) => {
     setEmail(account.email);
     setPassword(account.password);
+    setError('');
+    setEmailNotVerified(false);
+    setResendMessage('');
+    setIsLoading(true);
+    try {
+      const loginSuccess = await login(account.email, account.password);
+      if (!loginSuccess) {
+        setError('Invalid email/username or password');
+      }
+      // Navigation is handled by the useEffect that watches isAuthenticated
+    } catch (error: any) {
+      console.error('Quick login error:', error);
+      if (error?.code === 'EMAIL_NOT_VERIFIED') {
+        setEmailNotVerified(true);
+        setUnverifiedEmail(error.email || account.email);
+      } else {
+        setError(error?.message || 'Login failed. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -665,7 +686,7 @@ const LoginPage: React.FC = () => {
           <TestAccountsTitle>{t('auth:loginPage.availableAccounts')}</TestAccountsTitle>
 
           <QuickLoginHint>
-            <strong>Quick Login:</strong> Click any account card below to auto-fill credentials
+            <strong>Quick Login:</strong> Click any account card below to sign in instantly
           </QuickLoginHint>
 
           <DemoAccountsSection>

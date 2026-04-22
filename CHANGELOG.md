@@ -6,6 +6,63 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-22 (Subscriptions Pending Plan Change + Foodcourt General Parity)
+- **Subscriptions 예정 변경 (pending) 플로우** — `/pos/brand/general/subscriptions`, `/pos/foodcourt/general/subscriptions` 에서 이미 플랜이 배정된 레스토랑에 다른 플랜을 배정하면 즉시 교체가 아니라 다음 청구 주기 날짜로 스케줄. 행에 "Scheduled change: X on YYYY-MM-DD" 배너 + Cancel 버튼 표시. 스케줄러(2AM cron)가 활성일 도래 시 자동 전환
+- **Add Subscription 모달 필터** — 이미 플랜 있는 레스토랑은 드롭다운에서 제외 (기존 플랜은 Change Plan 행 버튼으로만 변경). 전부 배정되어 있으면 안내 문구
+- **버튼 silent 실패 수정** — Assign / Unassign / Discount / Cancel-pending 모든 액션의 에러를 페이지 상단 토스트 + 모달 inline 으로 surface (이전엔 `console.error`만)
+- **Change Plan 경고 힌트** — 다른 플랜 선택 시 "다음 청구 주기부터 적용" amber 배너 명시
+- **Foodcourt Subscription 섹션** — Manager/RestaurantsPage.tsx Edit 모달에 Foodcourt General 전용 섹션 신설 (Tenancy Contract + Foodcourt Plan 2카드, 인라인 피커)
+- **Foodcourt Subscriptions 페이지 + Add Subscription 버튼** — 이전엔 Export만 있었고 추가 버튼 자체 부재. 브랜드와 동일한 모달 UX
+- **Contract Detail "View all plans" 버튼 심벌 제거** — "↗" 제거, "+ Issue One-time Invoice" 의 "+" 제거
+- **contract.json i18n 보정** — `detail.viewAllPlans / viewAllPlansHint / linkExistingPlan / noLinkedPlansHint` 4개 언어 누락 키 추가
+- **DB**: `entity_plan_restaurants` 에 `pending_plan_id`, `pending_activation_date` 컬럼 추가 (backward-compatible)
+
+### 2026-04-23 (Billing 섹션 액션 버튼 정리)
+- "All Plans ↗" 버튼 제거 — 인라인 2개 액션(Link / Create)이 95% 케이스를 커버하므로 중복 제거. 플랜 관리는 사이드바 네비게이션 Plans 페이지에서
+- 피커 모달 "No available plans" 빈 상태에 Plans 페이지 링크 추가 — 엣지 케이스만 대비
+
+### 2026-04-23 (Contract Detail 섹션 상태 배지 + 배너 오판 수정)
+- "Billing plan linked" 초록 배너가 **닫힌(end_at SET)** ContractPlan도 카운트해서 잘못 표시되던 버그 — `form.plans.length > 0` → `form.plans.some(p => !p.end_at)` 로 open 링크만 체크
+- 5개 아코디언 섹션(Parties/Contract/Billing/Setup/Documents) 상태 배지 로직 **완전 통일** — 이전엔 섹션마다 다른 라벨("Complete" / "N/4 filled" / "Pending" / "No plan linked" 등)로 비일관적. 수정 후 3-상태 일관:
+  - **Required N** (빨강) — 다음 stage 필수 필드 부족
+  - **✓ Complete** (초록) — 섹션 핵심 필드 전부 채워짐
+  - **Incomplete** (회색) — 일부 입력 또는 미입력 (지금 안 해도 됨)
+- 섹션별 `isSectionComplete()` 기준 정의:
+  - Parties: 신청자 식별(회사/담당자) + 연락처(이메일/전화) + 발행자 회사명
+  - Contract: 계약번호 + 시작일 + 종료일 + financial_terms 값 1건 이상 + (foodcourt) unit
+  - Billing: open(end_at=null) ContractPlan 1건 이상
+  - Setup: 필수 task 존재 + is_required=true 전부 완료
+  - Documents: 문서 1건 이상
+
+
+## [v3.16] — 2026-04-22 배포
+
+### 2026-04-23 (POS 로그인 UX)
+- POS 로그인 페이지 원클릭 로그인 — 데모/테스트 계정 카드 클릭 시 자동 로그인 + 역할 기반 리다이렉트. 이전엔 필드만 채워지고 별도로 "Login" 버튼을 눌러야 했음. 문구도 "sign in instantly"로 변경
+
+### 2026-04-23 (Contract Detail Billing 섹션 UX 정비)
+- Billing 섹션 상태 배지 로직 재작성 — 이전: nextStage 요구사항이 billing에 없어서 항상 "✓ Complete"로 잘못 표시됨. 수정: open plan 링크 있으면 `✓ Plan linked`, setup/active 단계이면서 billable terms 있는데 plan 미연결이면 `No plan linked`(required), plan 없고 billable terms도 없으면 `Not set up`(required), 그 외엔 `Pending`(optional)
+- "Create plan from contract" 버튼 이모지(⚡) 제거 — 비인라인 아이콘이 어지러워 텍스트로 단순화
+- "Link existing plan" 피커 모달 신규 — 기존 EntityPlan 목록에서 검색/선택해서 이 contract에 link. Phase 2-C 패턴 재사용(transaction 내 이전 ContractPlan close + EPR 자동 전환). 권한: 같은 entity 소속 Plan만 link 허용(403)
+- "All Plans ↗" 버튼 — 이전 `window.location.href`로 전체 페이지 이동 → `window.open(_blank)` 새창
+- "Issue One-time Invoice ↗" 버튼 — 새창으로 열리도록 변경(현재 Contract 페이지 유지)
+- "View all invoices for this contract ↗" 버튼 신규 — 계약에 연결된 전체 invoice를 새창으로 조회
+- 백엔드 `POST /api/contracts/:id/plans` 강화 — 이전: ContractPlan만 만들고 EPR 안 만듦(스케줄러가 빌링 못 함). 수정: entity ownership 검증 + transaction 내 prior ContractPlan.end_at + prior EPR deactivate + 새 ContractPlan + 새 EPR 자동 생성/재활성화. create-plan-from-contract 마법사와 동일 EPR 배선
+
+### 2026-04-23 (Contract-Plan-Invoice 파이프라인 완결)
+- Phase 2-C: Contract → Plan → Invoice 자동화 완결 — `create-plan-from-contract` 마법사가 EntityPlanRestaurant를 트랜잭션 내 동시 생성, 스케줄러가 실제로 invoice를 발행. 이전까지 0건이던 Contract 기반 invoice 자동 생성이 실동작 확인
+- Phase 2-C: Contract stage 전환 시 Plan/EPR 동기화 — stage=terminated/expired/renewed 전환, /terminate 호출, subscriptionScheduler auto-expire 3경로 모두 ContractPlan.end_at + EntityPlanRestaurant.is_active=false 동시 처리
+- Phase 2-C: invoiceScheduler 방어선 — 생성 invoice에 contract_id 기입 (traceability), Contract-originated Plan의 모든 ContractPlan.end_at이 닫혔으면 skip (ghost billing 차단)
+- Phase 2-C: 마법사 Plan 교체 시 이전 EPR 정리 — create-plan-from-contract 재호출로 Plan 교체될 때 이전 EPR도 is_active=false 처리
+- Phase 2-C: Backfill 스크립트 `scripts/backfill-contract-plan-restaurants.js` (idempotent) — 기존 orphan plan 복구
+- Phase 2-D: Contract renewal Plan carry-over — `POST /contracts/:id/renew` 트랜잭션화. terms_changed=false면 이전 ContractPlan close + 새 ContractPlan create (same EntityPlan, EPR 유지). terms_changed=true면 EPR deactivate + ContractPlan close, 새 계약은 proposal
+- Phase 2-E: Proration (일할 계산) — invoiceScheduler.computeProrationFactor 신규. 고정분만 factor 곱 (percentage는 활동 기반이라 자연 비례). 계약이 기간과 겹치지 않으면 invoice 스킵
+- Phase 2-E: billing-preview API proration 반영 — proration_factor, period 필드 응답 추가. 검증 5 시나리오 통과: full(3000), mid-start(15/31 일할), mid-end(11/31 일할), no overlap(skip)
+- Phase 2-F: Plans 역참조 — EntityPlan.hasMany(ContractPlan, as: contractLinks) 추가. /foodcourts/:id/plans + /brands/:id/plans 응답에 contractLinks include (contract_number/stage/period/applicant)
+- Phase 2-F: Plan DELETE 가드 — open ContractPlan 있으면 400 차단. Foodcourt/Brand 양쪽 동일
+- Phase 2-F: FE — Plan 카드 "From contract" 배지 + 상세 모달 "Linked Contracts (N)" 섹션 (계약번호/기간/stage/Open·Closed 상태)
+- 설계 문서 `docs/CONTRACT_PLAN_CURRENCY.md`에 Phase 2-C/D/E/F 섹션 추가
+
 ### 2026-04-20 (저녁)
 - Brand Franchise Map / Foodcourt Branch Map 독립 창 분리 — 사이드바 메뉴 클릭 시 `window.open(_blank)` 로 새 창, 사이드바 없는 standalone 레이아웃. `← Back` 으로 창 닫기
 - Map 사이드 리스트 패널 — 레스토랑/지점 리스트 클릭 시 해당 위치로 지도 확대 + 상세 정보. Foodcourt Branch 클릭 시 입점 매장 서브 리스트 펼침

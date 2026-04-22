@@ -570,6 +570,20 @@ const ManagerRestaurantsPage: React.FC = () => {
   });
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  // Phase B: Contract + Plan pickers for Brand General (inline search + link)
+  const [showContractPicker, setShowContractPicker] = useState(false);
+  const [showPlanPicker, setShowPlanPicker] = useState(false);
+  const [availableContracts, setAvailableContracts] = useState<any[] | null>(null);
+  const [availableBrandPlans, setAvailableBrandPlans] = useState<any[] | null>(null);
+  // Foodcourt General: Tenancy contract + Foodcourt plan pickers
+  const [showTenancyPicker, setShowTenancyPicker] = useState(false);
+  const [showFoodcourtPlanPicker, setShowFoodcourtPlanPicker] = useState(false);
+  const [availableTenancyContracts, setAvailableTenancyContracts] = useState<any[] | null>(null);
+  const [availableFoodcourtPlans, setAvailableFoodcourtPlans] = useState<any[] | null>(null);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerSubmitting, setPickerSubmitting] = useState(false);
+  const [pickerError, setPickerError] = useState<string | null>(null);
   const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
   const [branches, setBranches] = useState<Array<{ id: number; name: string; code: string; is_primary?: boolean }>>([]);
   // Restaurant Admin states
@@ -1081,10 +1095,25 @@ const ManagerRestaurantsPage: React.FC = () => {
     }
   };
 
-  const handleEditRestaurant = (e: React.MouseEvent, restaurant: Restaurant) => {
+  const handleEditRestaurant = async (e: React.MouseEvent, restaurant: Restaurant) => {
     e.stopPropagation();
     setFormError('');
-    setEditingRestaurant(restaurant);
+
+    // Phase B: fetch fresh /:id to pull pending_* fields + contract_summary + entity_plan_summary
+    // (the list endpoint doesn't include these) so the edit modal can show the Franchise section
+    // and any scheduled plan change.
+    let augmented: any = restaurant;
+    try {
+      const token = getAuthToken();
+      const r = await fetch(`/api/restaurants/${restaurant.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (r.ok) {
+        const detail = await r.json();
+        augmented = { ...restaurant, ...detail };
+      }
+    } catch { /* non-critical, fall back to list data */ }
+    setEditingRestaurant(augmented);
 
     const paymentModelValue = (restaurant as any).payment_model;
     const mappedPaymentModel = paymentModelValue === 'brand_manager' ? 'manager' :
@@ -1118,6 +1147,282 @@ const ManagerRestaurantsPage: React.FC = () => {
       branch_id: (restaurant as any).branch_id ? (restaurant as any).branch_id.toString() : ''
     });
     setShowEditModal(true);
+  };
+
+  // Phase B helpers: refresh edit modal with fresh /:id data (after link/unlink operations)
+  const refreshEditingRestaurant = async () => {
+    if (!editingRestaurant) return;
+    const token = getAuthToken();
+    const r = await fetch(`/api/restaurants/${editingRestaurant.id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    if (r.ok) {
+      const detail = await r.json();
+      setEditingRestaurant({ ...editingRestaurant, ...detail } as any);
+    }
+  };
+
+  // Resolve brand_id for picker fetches.
+  // For Brand General, the plans/contracts listed in the picker should come from the user's
+  // own brand (JWT) — not from the restaurant's brand_id. The restaurant's brand linkage is
+  // separate metadata and shouldn't block linking a plan from the Brand General's own catalog.
+  // Fallback order: user.brand_id → form dropdown → restaurant's saved brand_id.
+  const getCurrentBrandId = (): number | null => {
+    if (user?.brand_id) return Number(user.brand_id);
+    const formVal = newRestaurant?.brand_id;
+    if (formVal !== undefined && formVal !== '' && formVal !== null) {
+      const n = Number(formVal);
+      if (!isNaN(n) && n > 0) return n;
+    }
+    const saved = (editingRestaurant as any)?.brand_id;
+    return saved ? Number(saved) : null;
+  };
+
+  const openContractPicker = async () => {
+    if (!editingRestaurant) return;
+    setPickerSearch('');
+    setPickerError(null);
+    setAvailableContracts(null); // reset to show Loading state
+    setShowContractPicker(true);
+    const brandId = getCurrentBrandId();
+    if (!brandId) {
+      setAvailableContracts([]);
+      setPickerError('Could not determine brand context. Please re-login.');
+      return;
+    }
+    try {
+      const token = getAuthToken();
+      const r = await fetch(`/api/contracts?entity_type=brand&entity_id=${brandId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!r.ok) {
+        setAvailableContracts([]);
+        setPickerError(`Load failed: HTTP ${r.status}`);
+        return;
+      }
+      const j = await r.json();
+      const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+      setAvailableContracts(arr);
+    } catch (e: any) {
+      setAvailableContracts([]);
+      setPickerError(e?.message || 'Network error');
+    }
+  };
+
+  const openBrandPlanPicker = async () => {
+    if (!editingRestaurant) return;
+    setPickerSearch('');
+    setPickerError(null);
+    setAvailableBrandPlans(null); // reset to show Loading state
+    setShowPlanPicker(true);
+    const brandId = getCurrentBrandId();
+    if (!brandId) {
+      setAvailableBrandPlans([]);
+      setPickerError('Could not determine brand context. Please re-login.');
+      return;
+    }
+    try {
+      const token = getAuthToken();
+      const r = await fetch(`/api/brands/${brandId}/plans`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!r.ok) {
+        setAvailableBrandPlans([]);
+        setPickerError(`Load failed: HTTP ${r.status}`);
+        return;
+      }
+      const j = await r.json();
+      const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+      setAvailableBrandPlans(arr.filter((p: any) => p.is_active !== false));
+    } catch (e: any) {
+      setAvailableBrandPlans([]);
+      setPickerError(e?.message || 'Network error');
+    }
+  };
+
+  const handleLinkContract = async (contractId: number) => {
+    if (!editingRestaurant) return;
+    setPickerSubmitting(true);
+    setPickerError(null);
+    try {
+      const token = getAuthToken();
+      const r = await fetch(`/api/contracts/${contractId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ restaurant_id: editingRestaurant.id })
+      });
+      if (r.ok) {
+        setShowContractPicker(false);
+        setAvailableContracts(null); // force refetch next open
+        await refreshEditingRestaurant();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        setPickerError(err.message || err.error || 'Failed to link contract');
+      }
+    } catch (e: any) {
+      setPickerError(e?.message || 'Network error');
+    } finally {
+      setPickerSubmitting(false);
+    }
+  };
+
+  const handleLinkBrandPlan = async (planId: number) => {
+    if (!editingRestaurant) return;
+    setPickerSubmitting(true);
+    setPickerError(null);
+    try {
+      const token = getAuthToken();
+      const brandId = getCurrentBrandId();
+      if (!brandId) {
+        setPickerError('Could not determine brand context. Please re-login.');
+        setPickerSubmitting(false);
+        return;
+      }
+      const r = await fetch(`/api/brands/${brandId}/plans/${planId}/restaurants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ restaurant_ids: [editingRestaurant.id] })
+      });
+      if (r.ok) {
+        setShowPlanPicker(false);
+        setAvailableBrandPlans(null);
+        await refreshEditingRestaurant();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        setPickerError(err.message || err.error || 'Failed to link plan');
+      }
+    } catch (e: any) {
+      setPickerError(e?.message || 'Network error');
+    } finally {
+      setPickerSubmitting(false);
+    }
+  };
+
+  // Resolve foodcourt_id for Foodcourt General picker fetches.
+  const getCurrentFoodcourtId = (): number | null => {
+    if (user?.foodcourt_id) return Number(user.foodcourt_id);
+    const saved = (editingRestaurant as any)?.foodcourt_id;
+    return saved ? Number(saved) : null;
+  };
+
+  const openTenancyContractPicker = async () => {
+    if (!editingRestaurant) return;
+    setPickerSearch('');
+    setPickerError(null);
+    setAvailableTenancyContracts(null);
+    setShowTenancyPicker(true);
+    const fcId = getCurrentFoodcourtId();
+    if (!fcId) {
+      setAvailableTenancyContracts([]);
+      setPickerError('Could not determine foodcourt context. Please re-login.');
+      return;
+    }
+    try {
+      const token = getAuthToken();
+      const r = await fetch(`/api/contracts?entity_type=foodcourt&entity_id=${fcId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!r.ok) {
+        setAvailableTenancyContracts([]);
+        setPickerError(`Load failed: HTTP ${r.status}`);
+        return;
+      }
+      const j = await r.json();
+      const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+      setAvailableTenancyContracts(arr);
+    } catch (e: any) {
+      setAvailableTenancyContracts([]);
+      setPickerError(e?.message || 'Network error');
+    }
+  };
+
+  const openFoodcourtPlanPicker = async () => {
+    if (!editingRestaurant) return;
+    setPickerSearch('');
+    setPickerError(null);
+    setAvailableFoodcourtPlans(null);
+    setShowFoodcourtPlanPicker(true);
+    const fcId = getCurrentFoodcourtId();
+    if (!fcId) {
+      setAvailableFoodcourtPlans([]);
+      setPickerError('Could not determine foodcourt context. Please re-login.');
+      return;
+    }
+    try {
+      const token = getAuthToken();
+      const r = await fetch(`/api/foodcourts/${fcId}/plans`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (!r.ok) {
+        setAvailableFoodcourtPlans([]);
+        setPickerError(`Load failed: HTTP ${r.status}`);
+        return;
+      }
+      const j = await r.json();
+      const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+      setAvailableFoodcourtPlans(arr.filter((p: any) => p.is_active !== false));
+    } catch (e: any) {
+      setAvailableFoodcourtPlans([]);
+      setPickerError(e?.message || 'Network error');
+    }
+  };
+
+  const handleLinkTenancyContract = async (contractId: number) => {
+    if (!editingRestaurant) return;
+    setPickerSubmitting(true);
+    setPickerError(null);
+    try {
+      const token = getAuthToken();
+      const r = await fetch(`/api/contracts/${contractId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ restaurant_id: editingRestaurant.id })
+      });
+      if (r.ok) {
+        setShowTenancyPicker(false);
+        setAvailableTenancyContracts(null);
+        await refreshEditingRestaurant();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        setPickerError(err.message || err.error || 'Failed to link contract');
+      }
+    } catch (e: any) {
+      setPickerError(e?.message || 'Network error');
+    } finally {
+      setPickerSubmitting(false);
+    }
+  };
+
+  const handleLinkFoodcourtPlan = async (planId: number) => {
+    if (!editingRestaurant) return;
+    setPickerSubmitting(true);
+    setPickerError(null);
+    try {
+      const token = getAuthToken();
+      const fcId = getCurrentFoodcourtId();
+      if (!fcId) {
+        setPickerError('Could not determine foodcourt context. Please re-login.');
+        setPickerSubmitting(false);
+        return;
+      }
+      const r = await fetch(`/api/foodcourts/${fcId}/plans/${planId}/restaurants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ restaurant_ids: [editingRestaurant.id] })
+      });
+      if (r.ok) {
+        setShowFoodcourtPlanPicker(false);
+        setAvailableFoodcourtPlans(null);
+        await refreshEditingRestaurant();
+      } else {
+        const err = await r.json().catch(() => ({}));
+        setPickerError(err.message || err.error || 'Failed to link plan');
+      }
+    } catch (e: any) {
+      setPickerError(e?.message || 'Network error');
+    } finally {
+      setPickerSubmitting(false);
+    }
   };
 
   const handleUpdateRestaurant = async (e: React.FormEvent) => {
@@ -1651,11 +1956,14 @@ const ManagerRestaurantsPage: React.FC = () => {
                   />
                 </FormGroup>
 
-                {/* Subscription Settings */}
+                {/* Solution Subscription (platform POS fee — paid to System Admin) */}
                 <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
                   <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                    Subscription Settings
+                    {t('admin:restaurantsPage.solutionSubscription', 'Solution Subscription')}
                   </h3>
+                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 6 }}>
+                    {t('admin:restaurantsPage.solutionSubscriptionHint', 'PurpleHere platform usage fee (billed by System Admin)')}
+                  </div>
                 </div>
 
                 <FormGroup>
@@ -1712,11 +2020,26 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup style={{ gridColumn: 'span 2' }}>
-                  <FormLabel>Subscription Period *</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.subscriptionPeriod', 'Subscription Period *')} <span style={{ color: '#6B7C93', fontWeight: 400, fontSize: 11 }}>({t('admin:restaurantsPage.endAutoCalculated', 'end auto-calculated')})</span></FormLabel>
                   <DateRangeField
                     startDate={newRestaurant.subscriptionStart}
                     endDate={newRestaurant.subscriptionEnd}
-                    onChange={(s, e) => setNewRestaurant({...newRestaurant, subscriptionStart: s, subscriptionEnd: e})}
+                    onChange={(start, _end) => {
+                      // Match Admin pattern: user enters START only, end = start + cycle - 1 day (auto).
+                      let end = '';
+                      if (start) {
+                        const [y, m, d] = String(start).slice(0, 10).split('-').map(Number);
+                        const endD = new Date(y, m - 1, d);
+                        if (newRestaurant.billingCycle === 'annual') {
+                          endD.setFullYear(endD.getFullYear() + 1);
+                        } else {
+                          endD.setMonth(endD.getMonth() + 1);
+                        }
+                        endD.setDate(endD.getDate() - 1);
+                        end = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
+                      }
+                      setNewRestaurant({ ...newRestaurant, subscriptionStart: start, subscriptionEnd: end });
+                    }}
                   />
                 </FormGroup>
 
@@ -1897,11 +2220,14 @@ const ManagerRestaurantsPage: React.FC = () => {
                   />
                 </FormGroup>
 
-                {/* Subscription Settings */}
+                {/* Solution Subscription (platform POS fee — paid to System Admin) */}
                 <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
                   <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                    Subscription Settings
+                    {t('admin:restaurantsPage.solutionSubscription', 'Solution Subscription')}
                   </h3>
+                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 6 }}>
+                    {t('admin:restaurantsPage.solutionSubscriptionHint', 'PurpleHere platform usage fee (billed by System Admin)')}
+                  </div>
                 </div>
 
                 <FormGroup>
@@ -1958,11 +2284,26 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup style={{ gridColumn: 'span 2' }}>
-                  <FormLabel>Subscription Period *</FormLabel>
+                  <FormLabel>{t('admin:restaurantsPage.subscriptionPeriod', 'Subscription Period *')} <span style={{ color: '#6B7C93', fontWeight: 400, fontSize: 11 }}>({t('admin:restaurantsPage.endAutoCalculated', 'end auto-calculated')})</span></FormLabel>
                   <DateRangeField
                     startDate={newRestaurant.subscriptionStart}
                     endDate={newRestaurant.subscriptionEnd}
-                    onChange={(s, e) => setNewRestaurant({...newRestaurant, subscriptionStart: s, subscriptionEnd: e})}
+                    onChange={(start, _end) => {
+                      // Match Admin pattern: user enters START only, end = start + cycle - 1 day (auto).
+                      let end = '';
+                      if (start) {
+                        const [y, m, d] = String(start).slice(0, 10).split('-').map(Number);
+                        const endD = new Date(y, m - 1, d);
+                        if (newRestaurant.billingCycle === 'annual') {
+                          endD.setFullYear(endD.getFullYear() + 1);
+                        } else {
+                          endD.setMonth(endD.getMonth() + 1);
+                        }
+                        endD.setDate(endD.getDate() - 1);
+                        end = `${endD.getFullYear()}-${String(endD.getMonth() + 1).padStart(2, '0')}-${String(endD.getDate()).padStart(2, '0')}`;
+                      }
+                      setNewRestaurant({ ...newRestaurant, subscriptionStart: start, subscriptionEnd: end });
+                    }}
                   />
                 </FormGroup>
 
@@ -1991,9 +2332,497 @@ const ManagerRestaurantsPage: React.FC = () => {
                     Paid by: {newRestaurant.paymentModel === 'manager' ? 'Manager' : 'Restaurant'}
                   </div>
                 </div>
+
+                {/* Phase A/B: Upcoming scheduled POS plan change */}
+                {editingRestaurant && (editingRestaurant as any).plan_change_date && (editingRestaurant as any).pending_plan_type && (
+                  <div style={{
+                    gridColumn: '1 / -1',
+                    padding: '12px 14px',
+                    background: '#FFFBEB',
+                    border: '1px solid #F59E0B',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}>
+                    <div style={{ fontSize: 13, color: '#92400E' }}>
+                      <strong>{t('admin:restaurantsPage.upcomingPlanChange', 'Upcoming plan change')}:</strong>
+                      {' '}
+                      {(editingRestaurant as any).plan_type} → {(editingRestaurant as any).pending_plan_type}
+                      {' '}({t('admin:restaurantsPage.effective', 'effective')} {String((editingRestaurant as any).plan_change_date).slice(0, 10)})
+                    </div>
+                    <ThemedButton
+                      variant="outline"
+                      onClick={async () => {
+                        if (!window.confirm(t('admin:restaurantsPage.cancelPendingConfirm', 'Cancel the scheduled plan change?') as string)) return;
+                        const token = getAuthToken();
+                        const r = await fetch(`/api/restaurants/${editingRestaurant.id}/cancel-pending-change`, {
+                          method: 'POST',
+                          headers: token ? { Authorization: `Bearer ${token}` } : {}
+                        });
+                        if (r.ok) {
+                          setEditingRestaurant({ ...editingRestaurant, pending_plan_type: null, pending_plan_amount: null, pending_billing_cycle: null, plan_change_date: null } as any);
+                        }
+                      }}
+                    >
+                      {t('admin:restaurantsPage.cancelPending', 'Cancel pending')}
+                    </ThemedButton>
+                  </div>
+                )}
+
+                {/* Phase B: Brand Subscription section (Brand General only) */}
+                {user?.role === 'Brand General' && editingRestaurant && (
+                  <div style={{ gridColumn: '1 / -1', marginTop: '20px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0A2540', borderBottom: '2px solid #0891B2', paddingBottom: '8px' }}>
+                      {t('admin:restaurantsPage.brandSubscription', 'Brand Subscription')}
+                    </h3>
+                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 6, marginBottom: 12 }}>
+                      {t('admin:restaurantsPage.brandSubscriptionHint', 'Franchise royalties/fees your brand bills this restaurant (plan & contract)')}
+                    </div>
+
+                    {/* Franchise Contract card */}
+                    <div style={{
+                      padding: '12px 14px',
+                      background: (editingRestaurant as any).contract_summary ? '#F0F9FF' : '#FFFBEB',
+                      border: `1px solid ${(editingRestaurant as any).contract_summary ? '#BAE6FD' : '#F59E0B'}`,
+                      borderRadius: 8,
+                      marginBottom: 8
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        {t('admin:restaurantsPage.franchiseContract', 'Franchise Contract')}
+                      </div>
+                      {(editingRestaurant as any).contract_summary ? (
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
+                            {(editingRestaurant as any).contract_summary.contract_number || `Contract #${(editingRestaurant as any).contract_summary.id}`}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                            {(editingRestaurant as any).contract_summary.contract_type} · {(editingRestaurant as any).contract_summary.stage}
+                            {(editingRestaurant as any).contract_summary.start_date && ` · ${String((editingRestaurant as any).contract_summary.start_date).slice(0,10)}`}
+                            {(editingRestaurant as any).contract_summary.end_date && ` ~ ${String((editingRestaurant as any).contract_summary.end_date).slice(0,10)}`}
+                          </div>
+                          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                            <ThemedButton variant="outline" onClick={openContractPicker}>
+                              {t('admin:restaurantsPage.changeContract', 'Change')}
+                            </ThemedButton>
+                            <ThemedButton
+                              variant="outline"
+                              onClick={() => { window.open(`/pos/brand/franchise?id=${(editingRestaurant as any).contract_summary.id}`, '_blank'); }}
+                            >
+                              {t('admin:restaurantsPage.viewContract', 'View')} ↗
+                            </ThemedButton>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: 13, color: '#92400E', marginBottom: 8 }}>
+                            ⚠ {t('admin:restaurantsPage.noContractLinked', 'No franchise contract linked to this restaurant')}
+                          </div>
+                          <ThemedButton variant="outline" onClick={openContractPicker}>
+                            {t('admin:restaurantsPage.linkExistingContract', 'Link existing contract')}
+                          </ThemedButton>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Franchise (Brand) Plan card */}
+                    <div style={{
+                      padding: '12px 14px',
+                      background: (editingRestaurant as any).entity_plan_summary ? '#F0F9FF' : '#FFFBEB',
+                      border: `1px solid ${(editingRestaurant as any).entity_plan_summary ? '#BAE6FD' : '#F59E0B'}`,
+                      borderRadius: 8
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        {t('admin:restaurantsPage.brandPlan', 'Brand Plan')}
+                      </div>
+                      {(editingRestaurant as any).entity_plan_summary ? (
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
+                            {(editingRestaurant as any).entity_plan_summary.name}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                            {(editingRestaurant as any).entity_plan_summary.charge_type === 'percentage'
+                              ? `${(editingRestaurant as any).entity_plan_summary.percentage_value}% of revenue`
+                              : (editingRestaurant as any).entity_plan_summary.charge_type === 'combined'
+                                ? `Combined · ${(editingRestaurant as any).entity_plan_summary.percentage_value}% min guarantee`
+                                : `Fixed`}
+                            {(editingRestaurant as any).entity_plan_summary.billing_day && ` · billing day ${(editingRestaurant as any).entity_plan_summary.billing_day}`}
+                          </div>
+                          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                            <ThemedButton variant="outline" onClick={openBrandPlanPicker}>
+                              {t('admin:restaurantsPage.changePlan', 'Change')}
+                            </ThemedButton>
+                            <ThemedButton
+                              variant="outline"
+                              onClick={() => { window.open(`/pos/brand/general/subscriptions`, '_blank'); }}
+                            >
+                              {t('admin:restaurantsPage.managePlan', 'Manage')} ↗
+                            </ThemedButton>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: 13, color: '#92400E', marginBottom: 8 }}>
+                            ⚠ {t('admin:restaurantsPage.noBrandPlanLinked', 'No brand plan linked to this restaurant')}
+                          </div>
+                          <ThemedButton variant="outline" onClick={openBrandPlanPicker}>
+                            {t('admin:restaurantsPage.linkExistingPlan', 'Link existing plan')}
+                          </ThemedButton>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Foodcourt Subscription section (Foodcourt General only) */}
+                {user?.role === 'Foodcourt General' && editingRestaurant && (
+                  <div style={{ gridColumn: '1 / -1', marginTop: '20px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: '#0A2540', borderBottom: '2px solid #0891B2', paddingBottom: '8px' }}>
+                      {t('admin:restaurantsPage.foodcourtSubscription', 'Foodcourt Subscription')}
+                    </h3>
+                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 6, marginBottom: 12 }}>
+                      {t('admin:restaurantsPage.foodcourtSubscriptionHint', 'Tenancy rent/fees your foodcourt bills this restaurant (plan & contract)')}
+                    </div>
+
+                    {/* Tenancy Contract card */}
+                    <div style={{
+                      padding: '12px 14px',
+                      background: (editingRestaurant as any).contract_summary ? '#F0F9FF' : '#FFFBEB',
+                      border: `1px solid ${(editingRestaurant as any).contract_summary ? '#BAE6FD' : '#F59E0B'}`,
+                      borderRadius: 8,
+                      marginBottom: 8
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        {t('admin:restaurantsPage.tenancyContract', 'Tenancy Contract')}
+                      </div>
+                      {(editingRestaurant as any).contract_summary ? (
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
+                            {(editingRestaurant as any).contract_summary.contract_number || `Contract #${(editingRestaurant as any).contract_summary.id}`}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                            {(editingRestaurant as any).contract_summary.contract_type} · {(editingRestaurant as any).contract_summary.stage}
+                            {(editingRestaurant as any).contract_summary.start_date && ` · ${String((editingRestaurant as any).contract_summary.start_date).slice(0,10)}`}
+                            {(editingRestaurant as any).contract_summary.end_date && ` ~ ${String((editingRestaurant as any).contract_summary.end_date).slice(0,10)}`}
+                          </div>
+                          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                            <ThemedButton variant="outline" onClick={openTenancyContractPicker}>
+                              {t('admin:restaurantsPage.changeContract', 'Change')}
+                            </ThemedButton>
+                            <ThemedButton
+                              variant="outline"
+                              onClick={() => { window.open(`/pos/foodcourt/tenancy?id=${(editingRestaurant as any).contract_summary.id}`, '_blank'); }}
+                            >
+                              {t('admin:restaurantsPage.viewContract', 'View')}
+                            </ThemedButton>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: 13, color: '#92400E', marginBottom: 8 }}>
+                            ⚠ {t('admin:restaurantsPage.noTenancyContractLinked', 'No tenancy contract linked to this restaurant')}
+                          </div>
+                          <ThemedButton variant="outline" onClick={openTenancyContractPicker}>
+                            {t('admin:restaurantsPage.linkExistingContract', 'Link existing contract')}
+                          </ThemedButton>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Foodcourt Plan card */}
+                    <div style={{
+                      padding: '12px 14px',
+                      background: (editingRestaurant as any).entity_plan_summary ? '#F0F9FF' : '#FFFBEB',
+                      border: `1px solid ${(editingRestaurant as any).entity_plan_summary ? '#BAE6FD' : '#F59E0B'}`,
+                      borderRadius: 8
+                    }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        {t('admin:restaurantsPage.foodcourtPlan', 'Foodcourt Plan')}
+                      </div>
+                      {(editingRestaurant as any).entity_plan_summary ? (
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
+                            {(editingRestaurant as any).entity_plan_summary.name}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+                            {(editingRestaurant as any).entity_plan_summary.charge_type === 'percentage'
+                              ? `${(editingRestaurant as any).entity_plan_summary.percentage_value}% of revenue`
+                              : (editingRestaurant as any).entity_plan_summary.charge_type === 'combined'
+                                ? `Combined · ${(editingRestaurant as any).entity_plan_summary.percentage_value}% min guarantee`
+                                : (editingRestaurant as any).entity_plan_summary.charge_type === 'additive'
+                                  ? `Fixed + ${(editingRestaurant as any).entity_plan_summary.percentage_value}%`
+                                  : `Fixed`}
+                            {(editingRestaurant as any).entity_plan_summary.billing_day && ` · billing day ${(editingRestaurant as any).entity_plan_summary.billing_day}`}
+                          </div>
+                          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                            <ThemedButton variant="outline" onClick={openFoodcourtPlanPicker}>
+                              {t('admin:restaurantsPage.changePlan', 'Change')}
+                            </ThemedButton>
+                            <ThemedButton
+                              variant="outline"
+                              onClick={() => { window.open(`/pos/foodcourt/general/subscriptions`, '_blank'); }}
+                            >
+                              {t('admin:restaurantsPage.managePlan', 'Manage')}
+                            </ThemedButton>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: 13, color: '#92400E', marginBottom: 8 }}>
+                            ⚠ {t('admin:restaurantsPage.noFoodcourtPlanLinked', 'No foodcourt plan linked to this restaurant')}
+                          </div>
+                          <ThemedButton variant="outline" onClick={openFoodcourtPlanPicker}>
+                            {t('admin:restaurantsPage.linkExistingPlan', 'Link existing plan')}
+                          </ThemedButton>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </FormGrid>
-            
+
         </CommonModal>
+      )}
+
+      {/* Phase B: Contract picker — search + link */}
+      {showContractPicker && editingRestaurant && (
+        <div
+          onClick={() => !pickerSubmitting && setShowContractPicker(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(10,37,64,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 12, padding: 24, width: '90%', maxWidth: 640, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                {t('admin:restaurantsPage.linkContractTitle', 'Link an existing contract')}
+              </div>
+              <button type="button" onClick={() => !pickerSubmitting && setShowContractPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+            </div>
+            <input
+              type="text"
+              value={pickerSearch}
+              onChange={e => setPickerSearch(e.target.value)}
+              placeholder={t('admin:restaurantsPage.searchContracts', 'Search by contract number or applicant...') as string}
+              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+            />
+            {pickerError && (
+              <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>{pickerError}</div>
+            )}
+            {availableContracts === null ? (
+              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
+            ) : (() => {
+              const q = pickerSearch.toLowerCase();
+              const filtered = (availableContracts || []).filter((c: any) => {
+                // Prefer contracts that are unlinked or linked to THIS restaurant
+                const relevant = !c.restaurant_id || c.restaurant_id === editingRestaurant.id;
+                if (!relevant) return false;
+                if (!q) return true;
+                return String(c.contract_number || '').toLowerCase().includes(q) ||
+                  String(c.applicant_company_name || '').toLowerCase().includes(q) ||
+                  String(c.applicant_contact_person || '').toLowerCase().includes(q);
+              });
+              if (filtered.length === 0) {
+                return <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                  {pickerSearch ? t('admin:restaurantsPage.noContractsMatch', 'No contracts match.') : t('admin:restaurantsPage.noAvailableContracts', 'No unlinked contracts. Create one in the Franchise page.')}
+                </div>;
+              }
+              return <div>{filtered.map((c: any) => {
+                const isLinkedHere = c.restaurant_id === editingRestaurant.id;
+                return <div key={c.id} style={{ padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
+                      {c.contract_number || `Contract #${c.id}`}
+                      {isLinkedHere && <span style={{ marginLeft: 8, fontSize: 11, padding: '2px 8px', borderRadius: 10, background: '#DCFCE7', color: '#166534' }}>{t('admin:restaurantsPage.linkedHere', 'linked')}</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>
+                      {c.applicant_company_name || c.applicant_contact_person || '—'} · {c.stage}
+                      {c.start_date && ` · ${String(c.start_date).slice(0,10)}`}
+                    </div>
+                  </div>
+                  {!isLinkedHere && (
+                    <ThemedButton variant="outline" onClick={() => handleLinkContract(c.id)} disabled={pickerSubmitting}>
+                      {pickerSubmitting ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
+                    </ThemedButton>
+                  )}
+                </div>;
+              })}</div>;
+            })()}
+            <div style={{ marginTop: 12, fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
+              {t('admin:restaurantsPage.linkContractHint', 'Linking transfers the contract to this restaurant. Any open plan on the contract will auto-wire billing.')}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase B: Brand Plan picker — search + link */}
+      {showPlanPicker && editingRestaurant && (
+        <div
+          onClick={() => !pickerSubmitting && setShowPlanPicker(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(10,37,64,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 12, padding: 24, width: '90%', maxWidth: 640, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                {t('admin:restaurantsPage.linkPlanTitle', 'Link an existing brand plan')}
+              </div>
+              <button type="button" onClick={() => !pickerSubmitting && setShowPlanPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+            </div>
+            <input
+              type="text"
+              value={pickerSearch}
+              onChange={e => setPickerSearch(e.target.value)}
+              placeholder={t('admin:restaurantsPage.searchPlans', 'Search plans by name...') as string}
+              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+            />
+            {pickerError && (
+              <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>{pickerError}</div>
+            )}
+            {availableBrandPlans === null ? (
+              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
+            ) : (() => {
+              const q = pickerSearch.toLowerCase();
+              const filtered = (availableBrandPlans || []).filter((p: any) => !q || String(p.name || '').toLowerCase().includes(q));
+              if (filtered.length === 0) {
+                return <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                  {pickerSearch ? t('admin:restaurantsPage.noPlansMatch', 'No plans match.') : t('admin:restaurantsPage.noAvailablePlans', 'No brand plans yet. Create one in the Subscriptions page.')}
+                </div>;
+              }
+              return <div>{filtered.map((p: any) => <div key={p.id} style={{ padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>{p.name}</div>
+                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>
+                    {p.charge_type === 'percentage' ? `${p.percentage_value}% of revenue` : p.charge_type === 'combined' ? `Combined (${p.percentage_value}% min)` : 'Fixed'}
+                    {p.billing_day && ` · billing day ${p.billing_day}`}
+                  </div>
+                </div>
+                <ThemedButton variant="outline" onClick={() => handleLinkBrandPlan(p.id)} disabled={pickerSubmitting}>
+                  {pickerSubmitting ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
+                </ThemedButton>
+              </div>)}</div>;
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Foodcourt General: Tenancy Contract picker */}
+      {showTenancyPicker && editingRestaurant && (
+        <div
+          onClick={() => !pickerSubmitting && setShowTenancyPicker(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(10,37,64,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 12, padding: 24, width: '90%', maxWidth: 640, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                {t('admin:restaurantsPage.linkTenancyContractTitle', 'Link an existing tenancy contract')}
+              </div>
+              <button type="button" onClick={() => !pickerSubmitting && setShowTenancyPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+            </div>
+            <input
+              type="text"
+              value={pickerSearch}
+              onChange={e => setPickerSearch(e.target.value)}
+              placeholder={t('admin:restaurantsPage.searchContracts', 'Search by contract number or applicant...') as string}
+              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+            />
+            {pickerError && (
+              <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>{pickerError}</div>
+            )}
+            {availableTenancyContracts === null ? (
+              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
+            ) : (() => {
+              const q = pickerSearch.toLowerCase();
+              const filtered = (availableTenancyContracts || []).filter((c: any) => {
+                const relevant = !c.restaurant_id || c.restaurant_id === editingRestaurant.id;
+                if (!relevant) return false;
+                if (!q) return true;
+                return String(c.contract_number || '').toLowerCase().includes(q) ||
+                  String(c.applicant_company_name || '').toLowerCase().includes(q) ||
+                  String(c.applicant_contact_person || '').toLowerCase().includes(q);
+              });
+              if (filtered.length === 0) {
+                return <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                  {pickerSearch ? t('admin:restaurantsPage.noContractsMatch', 'No contracts match.') : t('admin:restaurantsPage.noAvailableTenancyContracts', 'No unlinked contracts. Create one in the Tenancy page.')}
+                </div>;
+              }
+              return <div>{filtered.map((c: any) => {
+                const isLinkedHere = c.restaurant_id === editingRestaurant.id;
+                return <div key={c.id} style={{ padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>
+                      {c.contract_number || `Contract #${c.id}`}
+                      {isLinkedHere && <span style={{ marginLeft: 8, fontSize: 11, padding: '2px 8px', borderRadius: 10, background: '#DCFCE7', color: '#166534' }}>{t('admin:restaurantsPage.linkedHere', 'linked')}</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>
+                      {c.applicant_company_name || c.applicant_contact_person || '—'} · {c.stage}
+                      {c.start_date && ` · ${String(c.start_date).slice(0,10)}`}
+                    </div>
+                  </div>
+                  {!isLinkedHere && (
+                    <ThemedButton variant="outline" onClick={() => handleLinkTenancyContract(c.id)} disabled={pickerSubmitting}>
+                      {pickerSubmitting ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
+                    </ThemedButton>
+                  )}
+                </div>;
+              })}</div>;
+            })()}
+            <div style={{ marginTop: 12, fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
+              {t('admin:restaurantsPage.linkContractHint', 'Linking transfers the contract to this restaurant. Any open plan on the contract will auto-wire billing.')}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Foodcourt General: Foodcourt Plan picker */}
+      {showFoodcourtPlanPicker && editingRestaurant && (
+        <div
+          onClick={() => !pickerSubmitting && setShowFoodcourtPlanPicker(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(10,37,64,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 12, padding: 24, width: '90%', maxWidth: 640, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>
+                {t('admin:restaurantsPage.linkFoodcourtPlanTitle', 'Link an existing foodcourt plan')}
+              </div>
+              <button type="button" onClick={() => !pickerSubmitting && setShowFoodcourtPlanPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
+            </div>
+            <input
+              type="text"
+              value={pickerSearch}
+              onChange={e => setPickerSearch(e.target.value)}
+              placeholder={t('admin:restaurantsPage.searchPlans', 'Search plans by name...') as string}
+              style={{ width: '100%', padding: '10px 12px', marginBottom: 12, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }}
+            />
+            {pickerError && (
+              <div style={{ padding: '8px 12px', background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 6, color: '#991B1B', fontSize: 13, marginBottom: 12 }}>{pickerError}</div>
+            )}
+            {availableFoodcourtPlans === null ? (
+              <div style={{ textAlign: 'center', padding: 24, color: '#6B7C93', fontSize: 13 }}>{t('admin:restaurantsPage.loading', 'Loading…')}</div>
+            ) : (() => {
+              const q = pickerSearch.toLowerCase();
+              const filtered = (availableFoodcourtPlans || []).filter((p: any) => !q || String(p.name || '').toLowerCase().includes(q));
+              if (filtered.length === 0) {
+                return <div style={{ textAlign: 'center', padding: 24, color: '#9CA3AF', fontSize: 13 }}>
+                  {pickerSearch ? t('admin:restaurantsPage.noPlansMatch', 'No plans match.') : t('admin:restaurantsPage.noAvailableFoodcourtPlans', 'No foodcourt plans yet. Create one in the Subscriptions page.')}
+                </div>;
+              }
+              return <div>{filtered.map((p: any) => <div key={p.id} style={{ padding: '12px 14px', border: '1px solid #E6EBF1', borderRadius: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>{p.name}</div>
+                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2 }}>
+                    {p.charge_type === 'percentage' ? `${p.percentage_value}% of revenue`
+                      : p.charge_type === 'combined' ? `Combined (${p.percentage_value}% min)`
+                      : p.charge_type === 'additive' ? `Fixed + ${p.percentage_value}%`
+                      : 'Fixed'}
+                    {p.billing_day && ` · billing day ${p.billing_day}`}
+                  </div>
+                </div>
+                <ThemedButton variant="outline" onClick={() => handleLinkFoodcourtPlan(p.id)} disabled={pickerSubmitting}>
+                  {pickerSubmitting ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
+                </ThemedButton>
+              </div>)}</div>;
+            })()}
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}
