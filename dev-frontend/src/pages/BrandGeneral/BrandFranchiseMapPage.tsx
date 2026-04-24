@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -8,6 +9,11 @@ import 'leaflet.markercluster';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { formatAddress, AppLocale } from '../../utils/formatAddress';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
+import { getCurrencySymbol } from '../../utils/currency';
+import { Button } from '../../components/Button';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -21,6 +27,7 @@ interface CurrentContract {
   contract_number?: string | null;
   stage: string;
   contract_type?: string | null;
+  currency?: string | null;
   applicant_company_name?: string | null;
   applicant_contact_person?: string | null;
   applicant_email?: string | null;
@@ -57,6 +64,18 @@ interface MappedRestaurant {
   contract_stage?: string | null;
   radius_km?: number | null;
   currentContract?: CurrentContract | null;
+  currentPlans?: Array<{
+    id: number;
+    name: string;
+    charge_type: string;
+    percentage_value?: string | number | null;
+    fixed_amount?: string | number | null;
+    currency?: string | null;
+    billing_day?: number | null;
+    activation_date?: string | null;
+    pending_plan_id?: number | null;
+    pending_activation_date?: string | null;
+  }>;
 }
 
 interface UnmappedRestaurant extends Omit<MappedRestaurant, 'latitude' | 'longitude'> {
@@ -65,7 +84,7 @@ interface UnmappedRestaurant extends Omit<MappedRestaurant, 'latitude' | 'longit
 }
 
 interface FranchiseMapData {
-  brand: { id: number; name: string; code: string; logo_url?: string };
+  brand: { id: number; name: string; code: string; logo_url?: string; currency?: string; time_zone?: string };
   mapped: MappedRestaurant[];
   unmapped: UnmappedRestaurant[];
   total: number;
@@ -73,7 +92,8 @@ interface FranchiseMapData {
 }
 
 interface BrandFranchiseMapPageProps {
-  brandId: number;
+  // Single brand id or a list (for "All Brands" view — multi-owner aggregation).
+  brandId: number | number[];
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -164,21 +184,11 @@ const TileValue = styled.div`
   font-size: 13px; font-weight: 700; color: #0A2540;
   line-height: 1.2;
 `;
-const OpenContractLink = styled.a`
-  display: inline-block; margin-top: 8px;
-  padding: 8px 14px;
-  background: #635BFF;
-  color: white;
-  border-radius: 6px;
-  font-size: 12px; font-weight: 600;
-  text-decoration: none;
-  &:hover { background: #5A51E6; }
-`;
-
 function fmtMoney(v: any): string {
   const n = Number(v);
   if (isNaN(n)) return String(v);
-  return n.toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  // Locale-neutral grouping; caller prefixes currency symbol.
+  return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
 const SidePanel = styled.div`
@@ -316,12 +326,13 @@ const ClusterLayer: React.FC<{
       const ctypeLabel = p.contract_type || '—';
       const salesLabel = p.sales_30d != null ? p.sales_30d.toLocaleString() : '—';
       const radiusLabel = p.radius_km ? `${p.radius_km} km` : '—';
+      const addrLine = formatAddress(p as any, 'oneline');
+      const escapeHtml = (s: string) => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] as string));
       const html = `
         <div style="min-width:220px">
-          <h4 style="margin:0 0 6px;font-size:14px;color:#0A2540">${p.name}${p.branch_name ? ' · ' + p.branch_name : ''}</h4>
-          ${p.address ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${p.address}</div>` : ''}
-          ${p.city || p.state ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${[p.city, p.state].filter(Boolean).join(', ')}</div>` : ''}
-          ${p.phone ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${p.phone}</div>` : ''}
+          <h4 style="margin:0 0 6px;font-size:14px;color:#0A2540">${escapeHtml(p.name)}${p.branch_name ? ' · ' + escapeHtml(p.branch_name) : ''}</h4>
+          ${addrLine ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${escapeHtml(addrLine)}</div>` : ''}
+          ${p.phone ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${escapeHtml(p.phone)}</div>` : ''}
           <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:#4B5563">
             <span><b>Type:</b> ${ctypeLabel}</span>
             <span><b>Radius:</b> ${radiusLabel}</span>
@@ -345,28 +356,88 @@ const ClusterLayer: React.FC<{
 // ============ Main ============
 
 const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }) => {
-  const { t } = useTranslation('contract');
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const canEdit = user?.role === 'System Admin' || user?.role === 'Brand General';
+  const firstBrandId = Array.isArray(brandId) ? brandId[0] : brandId;
+  // Plan-management gate for "Link a plan" / billing_gap CTA. hasModule falls
+  // open for System Admin and when no plan is assigned.
+  const { hasModule } = useAllowedRoutes({
+    role: user?.role || '',
+    brandId: Array.isArray(brandId) ? (brandId[0] || null) : (brandId || null)
+  });
+  const canLinkPlans = hasModule('brand_plans');
+
+  // Opener-aware navigation — same pattern as Foodcourt Floor Plan. When this
+  // page is open as a standalone popup, routing the parent window avoids
+  // leaving an orphan detail view behind.
+  const openInOpener = useCallback((path: string) => {
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.location.href = path;
+        window.opener.focus();
+        window.close();
+        return;
+      } catch { /* cross-origin or opener blocked — fall back */ }
+    }
+    navigate(path);
+  }, [navigate]);
+
+  const [stageActionLoading, setStageActionLoading] = useState<boolean>(false);
+  const { t, i18n } = useTranslation('contract');
   const [data, setData] = useState<FranchiseMapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
 
+  // Serialize array dep so useEffect re-runs only on actual brand id changes.
+  const brandIdList = useMemo(
+    () => Array.isArray(brandId) ? brandId : [brandId],
+    [brandId]
+  );
+  const brandIdKey = brandIdList.join(',');
+
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
         const token = getAuthToken();
-        const res = await fetch(`/api/brands/${brandId}/franchise-map`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const json = await res.json();
-        if (json.success) { setData(json.data); setError(null); setSelectedId(null); }
-        else setError(json.message || 'Failed to load map');
+        const ids = brandIdKey.split(',').filter(Boolean).map(Number);
+        if (ids.length === 0) {
+          setData({ brand: { id: 0, name: '', code: '' }, mapped: [], unmapped: [], total: 0 });
+          setError(null);
+          setSelectedId(null);
+          return;
+        }
+        const results = await Promise.all(
+          ids.map(id =>
+            fetch(`/api/brands/${id}/franchise-map`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).then(r => r.json())
+          )
+        );
+        const okResults = results.filter(r => r && r.success && r.data);
+        if (okResults.length === 0) {
+          setError(results.find(r => r && r.message)?.message || 'Failed to load map');
+          return;
+        }
+        // Merge: concat mapped/unmapped, sum total, keep max of max_sales_30d.
+        // Top-level `brand` becomes unused for multi-brand view (per-pin brand comes from each restaurant's own record).
+        const merged: FranchiseMapData = {
+          brand: okResults[0].data.brand,
+          mapped: okResults.flatMap(r => r.data.mapped || []),
+          unmapped: okResults.flatMap(r => r.data.unmapped || []),
+          total: okResults.reduce((sum, r) => sum + (r.data.total || 0), 0),
+          max_sales_30d: Math.max(0, ...okResults.map(r => r.data.max_sales_30d || 0))
+        };
+        setData(merged);
+        setError(null);
+        setSelectedId(null);
       } catch { setError('Failed to load map'); }
       finally { setLoading(false); }
     })();
-  }, [brandId]);
+  }, [brandIdKey]);
 
   const mapped = useMemo(() => data?.mapped || [], [data]);
   const unmapped = useMemo(() => data?.unmapped || [], [data]);
@@ -445,7 +516,10 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                     {r.name}{r.branch_name ? ` · ${r.branch_name}` : ''}
                     <span className="status-badge" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{r.status}</span>
                   </h4>
-                  {r.address && <div className="addr">{r.address}{r.city ? `, ${r.city}` : ''}</div>}
+                  {(() => {
+                    const line = formatAddress(r as any, 'oneline');
+                    return line ? <div className="addr">{line}</div> : null;
+                  })()}
                   <div className="stats">
                     {r.contract_type && <span><b>{r.contract_type}</b></span>}
                     {r.sales_30d != null && <span>{r.sales_30d.toLocaleString()} sales 30d</span>}
@@ -501,16 +575,66 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
           const stagePalette = c && STAGE_PALETTE[c.stage] ? STAGE_PALETTE[c.stage] : null;
           const daysLeft = c?.end_date ? Math.ceil((new Date(c.end_date + 'T00:00:00').getTime() - Date.now()) / (24 * 3600 * 1000)) : null;
           const ft = (c?.financial_terms && !c.financial_redacted) ? c.financial_terms : null;
-          const currency = 'RM';
+          const currencyCode = c?.currency || data?.brand?.currency || 'MYR';
+          const currency = getCurrencySymbol(currencyCode) || currencyCode;
+          const brandTimeZone = data?.brand?.time_zone || 'Asia/Kuala_Lumpur';
+
+          // Pipeline stage transition (same mapping as backend validTransitions)
+          const nextStage: Record<string, string | null> = {
+            proposal: 'contracting',
+            contracting: 'setup',
+            setup: 'active',
+            active: null, expired: null, terminated: null, renewed: null
+          };
+          const nextStageLabel: Record<string, string> = {
+            contracting: t('floorPlan.action.advanceToContracting', 'Advance to Contracting'),
+            setup: t('floorPlan.action.advanceToSetup', 'Advance to Setup'),
+            active: t('floorPlan.action.advanceToActive', 'Mark Active')
+          };
+          const nextStageFor = c ? nextStage[c.stage] : null;
+          const isExpiring = (c?.stage === 'active') && daysLeft != null && daysLeft <= (c?.renewal_alert_months ?? 3) * 30;
+          const isExpired = c?.stage === 'expired';
+
+          const doAdvanceStage = async () => {
+            if (!c || !nextStageFor) return;
+            const confirmMsg = t('floorPlan.action.advanceConfirm',
+              'Advance contract {{num}} to "{{stage}}"?',
+              { num: c.contract_number || `#${c.id}`, stage: nextStageFor });
+            if (!window.confirm(confirmMsg)) return;
+            setStageActionLoading(true);
+            try {
+              const token = getAuthToken();
+              const res = await fetch(`/api/contracts/${c.id}/stage`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ stage: nextStageFor })
+              });
+              const data = await res.json();
+              if (!res.ok || data.success === false) {
+                alert(data.message || 'Failed to advance stage');
+                return;
+              }
+              // Refresh franchise-map so the map pin + panel reflect the new stage
+              const reloadRes = await fetch(`/api/brands/${firstBrandId}/franchise-map`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              const reload = await reloadRes.json();
+              if (reload.success) setData(reload.data);
+            } finally {
+              setStageActionLoading(false);
+            }
+          };
 
           return (
             <DetailPanel>
               <DetailHeader>
                 <div>
                   <h3 className="title">{selected.name}{selected.branch_name ? ` · ${selected.branch_name}` : ''}</h3>
-                  {(selected.city || selected.address) && (
-                    <div className="sub">{[selected.address, selected.city, selected.state].filter(Boolean).join(', ')}</div>
-                  )}
+                  {(() => {
+                    const locale = (['en', 'ko', 'zh', 'ms'].includes(i18n.language) ? i18n.language : 'en') as AppLocale;
+                    const oneline = formatAddress(selected as any, 'oneline', locale);
+                    return oneline ? <div className="sub">{oneline}</div> : null;
+                  })()}
                 </div>
                 <button className="close" onClick={() => setSelectedId(null)} aria-label={t('common.close', 'Close')} type="button">✕</button>
               </DetailHeader>
@@ -553,9 +677,9 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                         <InfoRow>
                           <span>{t('floorPlan.contract.period', 'Period')}</span>
                           <b>
-                            {c.start_date ? new Date(c.start_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' }) : '—'}
+                            {c.start_date ? new Date(c.start_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: brandTimeZone }) : '—'}
                             {' → '}
-                            {c.end_date ? new Date(c.end_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' }) : '—'}
+                            {c.end_date ? new Date(c.end_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: brandTimeZone }) : '—'}
                           </b>
                         </InfoRow>
                       )}
@@ -613,14 +737,90 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                       </DetailSection>
                     )}
 
-                    <OpenContractLink href={`/pos/brand/franchise?id=${c.id}`}>
-                      {t('floorPlan.action.open', 'Open contract →')}
-                    </OpenContractLink>
+                    {/* Actions — stage-aware primary + always-on secondary */}
+                    <DetailSection>
+                      <DetailSectionTitle>{t('floorPlan.sec.actions', 'Actions')}</DetailSectionTitle>
+                      {canEdit && nextStageFor && (
+                        <Button variant="primary" fullWidth type="button"
+                          onClick={doAdvanceStage}
+                          disabled={stageActionLoading}
+                          loading={stageActionLoading}>
+                          {nextStageLabel[nextStageFor]}
+                        </Button>
+                      )}
+                      {canEdit && isExpiring && (
+                        <Button variant="primary" fullWidth type="button"
+                          onClick={() => openInOpener(`/pos/brand/franchise?id=${c.id}&action=renew`)}>
+                          {t('floorPlan.action.renew', 'Renew contract')}
+                        </Button>
+                      )}
+                      {canEdit && isExpired && (
+                        <Button variant="primary" fullWidth type="button"
+                          onClick={() => openInOpener(`/pos/brand/franchise?new=1&restaurant_id=${selected.id}`)}>
+                          {t('floorPlan.action.newTenancy', 'Create new tenancy')}
+                        </Button>
+                      )}
+                      <div style={{ marginTop: 10 }}>
+                        <Button variant="secondary" fullWidth type="button"
+                          onClick={() => openInOpener(`/pos/brand/franchise?id=${c.id}`)}>
+                          {t('floorPlan.action.open', 'Open contract')}
+                        </Button>
+                      </div>
+                    </DetailSection>
                   </>
                 ) : (
                   <DetailSection>
                     <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', padding: '8px 0' }}>
                       {t('map.noContract', 'No active contract with this restaurant')}
+                    </div>
+                  </DetailSection>
+                )}
+
+                {/* Current Subscription Plans — only shown to brands whose plan
+                    includes the brand_plans advanced module. Basic-tier brands
+                    do not have plan linkage at all, so this block stays hidden. */}
+                {canLinkPlans && selected.currentPlans && selected.currentPlans.length > 0 ? (
+                  <DetailSection>
+                    <DetailSectionTitle>
+                      {t('map.sec.plans', 'Current Plans')} ({selected.currentPlans.length})
+                    </DetailSectionTitle>
+                    {selected.currentPlans.map(plan => (
+                      <div key={plan.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px dashed #E6EBF1' }}>
+                        <InfoRow><span>{t('map.plan.name', 'Plan')}</span>
+                          <b>{plan.name}</b></InfoRow>
+                        <InfoRow><span>{t('map.plan.chargeType', 'Charge')}</span>
+                          <b>
+                            {plan.charge_type === 'fixed' && (
+                              <>{currency} {fmtMoney(Number(plan.fixed_amount) || 0)}</>
+                            )}
+                            {plan.charge_type === 'percentage' && (
+                              <>{plan.percentage_value}% of revenue</>
+                            )}
+                            {plan.charge_type === 'combined' && (
+                              <>MAX({currency} {fmtMoney(Number(plan.fixed_amount) || 0)}, {plan.percentage_value}%)</>
+                            )}
+                            {plan.charge_type === 'additive' && (
+                              <>{currency} {fmtMoney(Number(plan.fixed_amount) || 0)} + {plan.percentage_value}%</>
+                            )}
+                          </b>
+                        </InfoRow>
+                        {plan.billing_day && (
+                          <InfoRow><span>{t('map.plan.billingDay', 'Billing day')}</span>
+                            <b>Day {plan.billing_day}</b></InfoRow>
+                        )}
+                        {plan.pending_plan_id && plan.pending_activation_date && (
+                          <div style={{ marginTop: 6, padding: '6px 8px', background: '#FFFBEB', border: '1px solid #F59E0B', borderRadius: 6, fontSize: 11, color: '#92400E' }}>
+                            {t('map.plan.pendingChange', 'Plan change scheduled on {{date}}', { date: String(plan.pending_activation_date).slice(0, 10) })}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </DetailSection>
+                ) : (
+                  <DetailSection>
+                    <DetailSectionTitle>{t('map.sec.plans', 'Current Plans')}</DetailSectionTitle>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', padding: '4px 0' }}>
+                      {t('map.noPlan', 'No subscription plan linked')}
                     </div>
                   </DetailSection>
                 )}

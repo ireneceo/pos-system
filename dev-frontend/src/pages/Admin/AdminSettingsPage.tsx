@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 interface CompanySettings {
   companyName: string;
   address: string;
+  address_line_2?: string;
   city: string;
   state: string;
   postalCode: string;
@@ -193,6 +194,7 @@ const AdminSettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<CompanySettings>({
     companyName: '',
     address: '',
+    address_line_2: '',
     city: '',
     state: '',
     postalCode: '',
@@ -224,8 +226,9 @@ const AdminSettingsPage: React.FC = () => {
       const response = await fetch('/api/admin/settings');
       if (response.ok) {
         const data = await response.json();
-        setSettings(data);
-        setInitialSettings(data);
+        // Merge with defaults so new fields (e.g. address_line_2) don't get dropped on legacy server response
+        setSettings(prev => ({ ...prev, ...data, address_line_2: data.address_line_2 || '' }));
+        setInitialSettings(prev => ({ ...prev, ...data, address_line_2: data.address_line_2 || '' }));
       } else {
         console.error('Failed to load settings:', response.status);
       }
@@ -378,12 +381,24 @@ const AdminSettingsPage: React.FC = () => {
             <FormGroup>
               <FormLabel>Address *</FormLabel>
               <AutoSaveField onSave={saveSettings}>
-                <FormTextArea
+                <FormInput
+                  type="text"
                   value={settings.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  placeholder="Enter complete address"
-                  rows={3}
+                  onChange={(e) => handleInputChange('address', e.target.value.replace(/[\r\n\t]+/g, ' '))}
+                  placeholder="Street, building, area"
                   required
+                />
+              </AutoSaveField>
+            </FormGroup>
+
+            <FormGroup>
+              <FormLabel>Address Line 2</FormLabel>
+              <AutoSaveField onSave={saveSettings}>
+                <FormInput
+                  type="text"
+                  value={settings.address_line_2 || ''}
+                  onChange={(e) => handleInputChange('address_line_2', e.target.value.replace(/[\r\n\t]+/g, ' '))}
+                  placeholder="Unit / Floor / Building name"
                 />
               </AutoSaveField>
             </FormGroup>

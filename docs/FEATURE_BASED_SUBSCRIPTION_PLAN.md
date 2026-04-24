@@ -1,9 +1,23 @@
 # Feature-Based Subscription System - 개발 계획서
 
 **작성일:** 2025-01-19
-**수정일:** 2025-12-15
+**수정일:** 2026-04-24 (v3.17 실질 티어 차단 구현)
 **프로젝트:** OrderHere POS System
 **목표:** 모듈형 구독 시스템 + 레시피-재고-발주 통합 관리
+
+> ## 🔒 v3.17 업데이트: 실질 티어 차단 (API + URL + UI 3중 가드)
+>
+> 이전까지는 사이드바 메뉴만 숨기는 cosmetic UI 가드만 적용되어, URL 직접 입력 또는 API curl 호출로 우회 가능했음. v3.17에서 실제 paywall 동작하도록 3중 가드 적용:
+>
+> 1. **백엔드 미들웨어** `dev-backend/middleware/requireModule.js` — 타겟 엔티티(brand/foodcourt)의 활성 `PlanTemplate.included_modules` 확인 후 모듈 없으면 `403 MODULE_NOT_INCLUDED` 반환. SA + demo 계정 bypass. Helpers: `requireBrandModule(code)`, `requireFoodcourtModule(code)`, `requireContractEntityModule({brand:'brand_plans', foodcourt:'fc_plans'})`
+>
+> 2. **29개 엔드포인트 적용**: `routes/brands.js` plan/subscription 13개, `routes/foodcourts.js` plan/subscription 13개, `routes/contracts.js` plan linkage 3개
+>
+> 3. **프론트 URL 가드** `ProtectedRoute.tsx`의 `MODULE_GATED_ROUTES` 맵 — 6개 URL에 대해 모듈 미보유 시 역할 대시보드로 redirect
+>
+> 4. **프론트 UI 가드** `useAllowedRoutes.hasModule(code)` — `ContractDetail.LinkedPlansSection`, 맵 페이지 billing_gap 배너 등 게이팅
+>
+> **도메인 원칙**: Restaurant은 live entity, Contract는 snapshot. R1/R2 cross-brand 차단 규칙 동시 철회 (`docs/ADDRESS_STANDARDIZATION.md` §2 회고 참조).
 
 ---
 

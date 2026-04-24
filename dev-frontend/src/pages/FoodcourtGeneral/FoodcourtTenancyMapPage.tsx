@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,9 +7,12 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 import { getAuthToken } from '../../utils/auth';
+import { getCurrencySymbol } from '../../utils/currency';
+import { Button } from '../../components/Button';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -60,7 +63,7 @@ interface Restaurant {
 }
 
 interface TenancyMapData {
-  foodcourt: { id: number; name: string; code: string; logo_url?: string };
+  foodcourt: { id: number; name: string; code: string; logo_url?: string; currency?: string; time_zone?: string };
   mappedBranches: Branch[];
   unmappedBranches: Branch[];
   restaurants: Restaurant[];
@@ -68,6 +71,15 @@ interface TenancyMapData {
   total_branches: number;
   total_restaurants: number;
 }
+
+// "Occupied" in a foodcourt tenancy context = units under an active lease
+// (signed contract currently running OR in setup/preparing to open). This is
+// the retail property industry convention — proposal/contracting are pipeline,
+// expired/vacant are available inventory. Backend returns `unit_stats` with
+// per-stage counts (no `occupied` field); we derive it here consistently
+// wherever occupancy is displayed.
+const occupiedCount = (s: Branch['unit_stats']): number =>
+  (s?.active || 0) + (s?.setup || 0);
 
 const STATUS_COLOR: Record<string, string> = {
   active: '#10B981', trial: '#F59E0B', suspended: '#EF4444', overdue: '#EAB308',
@@ -269,7 +281,7 @@ const FRANCHISE_TYPES = ['franchise', 'license', 'master', 'revenue_share'];
 
 const createBranchIcon = (status: string, unitStats: Branch['unit_stats'], selected: boolean) => {
   const color = STATUS_COLOR[status] || '#9CA3AF';
-  const occupancyRate = unitStats.total > 0 ? unitStats.occupied / unitStats.total : 0;
+  const occupancyRate = unitStats.total > 0 ? occupiedCount(unitStats) / unitStats.total : 0;
   const pct = Math.round(occupancyRate * 100);
   const size = selected ? 44 : 36;
   const h = Math.round(size * 46 / 36);
@@ -329,12 +341,23 @@ const MapView: React.FC<{ branches: Branch[]; selectedBranch: Branch | null }> =
 };
 
 // Pins layer
+interface PopupLabels {
+  primary: string;
+  total: string;
+  occupied: string;
+  vacant: string;
+  type: string;
+  sales30d: string;
+  currencySymbol: string;
+}
 const PinsLayer: React.FC<{
   branches: Branch[];
   tenantsForSelected: Restaurant[];
   selectedBranchId: number | null;
   onBranchClick: (id: number) => void;
-}> = ({ branches, tenantsForSelected, selectedBranchId, onBranchClick }) => {
+  onTenantClick?: (restaurantId: number) => void;
+  popupLabels: PopupLabels;
+}> = ({ branches, tenantsForSelected, selectedBranchId, onBranchClick, onTenantClick, popupLabels }) => {
   const map = useMap();
   const layerRef = useRef<any>(null);
 
@@ -352,33 +375,41 @@ const PinsLayer: React.FC<{
       const marker = L.marker([b.latitude, b.longitude], { icon: createBranchIcon(b.status, b.unit_stats, isSelected) });
       marker.on('click', () => onBranchClick(b.id));
       const color = STATUS_COLOR[b.status] || '#9CA3AF';
+      const occ = occupiedCount(b.unit_stats);
+      // Popup strings are rendered into raw HTML by Leaflet, so escape user-controlled
+      // fields (branch name, code, address) to avoid stored-XSS when names contain angle brackets.
+      const esc = (s: any) => String(s ?? '').replace(/[&<>"']/g, (ch) =>
+        ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '"' ? '&quot;' : '&#39;');
       const html = `
         <div style="min-width:220px">
-          <h4 style="margin:0 0 6px;font-size:14px;color:#0A2540">${b.name}${b.is_primary ? ' <span style="font-size:10px;background:#F0EDFF;color:#635BFF;padding:1px 5px;border-radius:3px">PRIMARY</span>' : ''}</h4>
-          <div style="font-size:11px;color:#9CA3AF;margin:2px 0">${b.code}</div>
-          ${b.address ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${b.address}</div>` : ''}
+          <h4 style="margin:0 0 6px;font-size:14px;color:#0A2540">${esc(b.name)}${b.is_primary ? ` <span style="font-size:10px;background:#F0EDFF;color:#635BFF;padding:1px 5px;border-radius:3px">${esc(popupLabels.primary)}</span>` : ''}</h4>
+          <div style="font-size:11px;color:#9CA3AF;margin:2px 0">${esc(b.code)}</div>
+          ${b.address ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${esc(b.address)}</div>` : ''}
           <div style="display:flex;gap:10px;margin-top:8px;font-size:11px">
-            <span><b>Total:</b> ${b.unit_stats.total}</span>
-            <span style="color:#10B981"><b>Occupied:</b> ${b.unit_stats.occupied}</span>
-            <span style="color:#6B7280"><b>Vacant:</b> ${b.unit_stats.vacant}</span>
+            <span><b>${esc(popupLabels.total)}:</b> ${b.unit_stats.total}</span>
+            <span style="color:#10B981"><b>${esc(popupLabels.occupied)}:</b> ${occ}</span>
+            <span style="color:#6B7280"><b>${esc(popupLabels.vacant)}:</b> ${b.unit_stats.vacant}</span>
           </div>
-          <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-top:6px;color:white;background:${color}">${b.status}</span>
+          <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-top:6px;color:white;background:${color}">${esc(b.status)}</span>
         </div>`;
       marker.bindPopup(html);
       layer.addLayer(marker);
     });
 
     // Tenant pins shown only for selected branch
+    const esc = (s: any) => String(s ?? '').replace(/[&<>"']/g, (ch) =>
+      ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '"' ? '&quot;' : '&#39;');
     tenantsForSelected.forEach(r => {
       if (r.latitude == null || r.longitude == null) return;
       const m = L.marker([r.latitude, r.longitude], { icon: createRestaurantIcon(r.status, r.contract_type || null) });
+      if (onTenantClick) m.on('click', () => onTenantClick(r.id));
       const color = STATUS_COLOR[r.status] || '#9CA3AF';
       const html = `
         <div style="min-width:200px">
-          <h4 style="margin:0 0 6px;font-size:13px;color:#0A2540">${r.name}${r.branch_name ? ' · ' + r.branch_name : ''}</h4>
-          <div style="font-size:11px;color:#4B5563;margin:2px 0"><b>Type:</b> ${r.contract_type || '—'}</div>
-          <div style="font-size:11px;color:#4B5563"><b>Sales 30d:</b> ${(r.sales_30d || 0).toLocaleString()}</div>
-          <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-top:6px;color:white;background:${color}">${r.status}</span>
+          <h4 style="margin:0 0 6px;font-size:13px;color:#0A2540">${esc(r.name)}${r.branch_name ? ' · ' + esc(r.branch_name) : ''}</h4>
+          <div style="font-size:11px;color:#4B5563;margin:2px 0"><b>${esc(popupLabels.type)}:</b> ${esc(r.contract_type || '—')}</div>
+          <div style="font-size:11px;color:#4B5563"><b>${esc(popupLabels.sales30d)}:</b> ${esc(popupLabels.currencySymbol)} ${(r.sales_30d || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</div>
+          <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;margin-top:6px;color:white;background:${color}">${esc(r.status)}</span>
         </div>`;
       m.bindPopup(html);
       layer.addLayer(m);
@@ -389,7 +420,7 @@ const PinsLayer: React.FC<{
     return () => {
       if (layerRef.current) { layerRef.current.clearLayers(); map.removeLayer(layerRef.current); layerRef.current = null; }
     };
-  }, [branches, tenantsForSelected, selectedBranchId, map, onBranchClick]);
+  }, [branches, tenantsForSelected, selectedBranchId, map, onBranchClick, onTenantClick, popupLabels]);
 
   return null;
 };
@@ -398,10 +429,37 @@ const FoodcourtTenancyMapPage: React.FC = () => {
   const { t } = useTranslation('contract');
   const { user } = useAuth();
   const fcId = user?.foodcourt_id;
+  const navigate = useNavigate();
+  const canEdit = user?.role === 'System Admin' || user?.role === 'Foodcourt General';
+
+  // fc_plans module gates the billing_gap CTA — without the advanced plans feature,
+  // the concept of "no plan linked" does not apply for basic-tier foodcourts.
+  const { hasModule } = useAllowedRoutes({
+    role: user?.role || '',
+    foodcourtId: fcId || null
+  });
+  const canLinkPlans = hasModule('fc_plans');
+
+  // Opener-aware navigation — same pattern as Floor Plan page.
+  const openInOpener = useCallback((path: string) => {
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.location.href = path;
+        window.opener.focus();
+        window.close();
+        return;
+      } catch { /* cross-origin or opener blocked — fall back */ }
+    }
+    navigate(path);
+  }, [navigate]);
   const [data, setData] = useState<TenancyMapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+  // Selecting a specific unit inside a branch — switches the right detail panel
+  // from branch overview to a unit/tenant-focused view (contract + financial + actions).
+  const [selectedUnitId, setSelectedUnitId] = useState<number | null>(null);
+  const [stageActionLoading, setStageActionLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (!fcId) { setLoading(false); return; }
@@ -430,6 +488,15 @@ const FoodcourtTenancyMapPage: React.FC = () => {
     [allBranches, selectedBranchId]
   );
 
+  const selectedUnit = useMemo(() => {
+    if (!selectedUnitId) return null;
+    for (const b of allBranches) {
+      const u = b.units?.find(x => x.id === selectedUnitId);
+      if (u) return { unit: u, branch: b };
+    }
+    return null;
+  }, [allBranches, selectedUnitId]);
+
   const tenantsForSelected = useMemo(
     () => selectedBranchId ? restaurants.filter(r => r.branch_id === selectedBranchId) : [],
     [restaurants, selectedBranchId]
@@ -444,6 +511,19 @@ const FoodcourtTenancyMapPage: React.FC = () => {
     });
     return map;
   }, [restaurants]);
+
+  // Labels injected into the Leaflet popup HTML strings — computed in the
+  // component so they respect i18next language switches.
+  const fcCurrencyCode = data?.foodcourt?.currency || 'MYR';
+  const popupLabels: PopupLabels = useMemo(() => ({
+    primary: t('map.primary', 'PRIMARY'),
+    total: t('map.popup.total', 'Total'),
+    occupied: t('map.popup.occupied', 'Occupied'),
+    vacant: t('map.popup.vacant', 'Vacant'),
+    type: t('map.popup.type', 'Type'),
+    sales30d: t('map.popup.sales30d', 'Sales 30d'),
+    currencySymbol: getCurrencySymbol(fcCurrencyCode) || fcCurrencyCode
+  }), [t, fcCurrencyCode]);
 
   if (loading) return <EmptyState>{t('common.loading', 'Loading...')}</EmptyState>;
   if (error) return <EmptyState style={{ color: '#DC2626' }}>{error}</EmptyState>;
@@ -474,37 +554,85 @@ const FoodcourtTenancyMapPage: React.FC = () => {
             {allBranches.map(b => {
               const isSelected = selectedBranchId === b.id;
               const color = STATUS_COLOR[b.status] || '#9CA3AF';
-              const pct = b.unit_stats.total > 0 ? Math.round(b.unit_stats.active / b.unit_stats.total * 100) : 0;
+              const pct = b.unit_stats.total > 0 ? Math.round(occupiedCount(b.unit_stats) / b.unit_stats.total * 100) : 0;
+              // Sort units: non-vacant first (by stage priority), then vacant; each alphabetical by unit_number
+              const stageOrder: Record<string, number> = { active: 1, setup: 2, contracting: 3, proposal: 4, expired: 5, vacant: 6 };
+              const sortedUnits = [...(b.units || [])].sort((a, b2) => {
+                const sa = stageOrder[a.displayStage] ?? 9;
+                const sb = stageOrder[b2.displayStage] ?? 9;
+                if (sa !== sb) return sa - sb;
+                return String(a.unit_number).localeCompare(String(b2.unit_number), undefined, { numeric: true });
+              });
               return (
-                <BranchCard
-                  key={b.id}
-                  $selected={isSelected}
-                  onClick={() => setSelectedBranchId(isSelected ? null : b.id)}
-                >
-                  <h4>
-                    {b.name}
-                    {b.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3 }}>PRIMARY</span>}
-                    <span className="occupancy" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{pct}%</span>
-                  </h4>
-                  <div className="code">{b.code}</div>
-                  {b.address && <div className="addr">{b.address}</div>}
-                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
-                    <b style={{ color: '#0A2540' }}>{b.unit_stats.total}</b> {t('map.units', 'units')}
-                    {b.latitude == null && <span style={{ color: '#EF4444', marginLeft: 6 }}>no coords</span>}
-                  </div>
-                  <StatsPillRow>
-                    {(['active', 'setup', 'contracting', 'proposal', 'vacant', 'expired'] as const).map(k => {
-                      const n = b.unit_stats[k];
-                      if (!n) return null;
-                      const p = STAGE_PALETTE[k];
-                      return (
-                        <StatPill key={k} $bg={p.bg} $text={p.text} $border={p.border}>
-                          {n} {t(`floorPlan.unitStatus.${k === 'active' ? 'active' : k}`, p.label).toLowerCase()}
-                        </StatPill>
-                      );
-                    })}
-                  </StatsPillRow>
-                </BranchCard>
+                <React.Fragment key={b.id}>
+                  <BranchCard
+                    $selected={isSelected}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedBranchId(null);
+                        setSelectedUnitId(null);
+                      } else {
+                        setSelectedBranchId(b.id);
+                        setSelectedUnitId(null);
+                      }
+                    }}
+                  >
+                    <h4>
+                      {b.name}
+                      {b.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3 }}>{t('map.primary', 'PRIMARY')}</span>}
+                      <span className="occupancy" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{pct}%</span>
+                    </h4>
+                    <div className="code">{b.code}</div>
+                    {b.address && <div className="addr">{b.address}</div>}
+                    <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+                      <b style={{ color: '#0A2540' }}>{b.unit_stats.total}</b> {t('map.units', 'units')}
+                      {b.latitude == null && <span style={{ color: '#EF4444', marginLeft: 6 }}>no coords</span>}
+                    </div>
+                    <StatsPillRow>
+                      {(['active', 'setup', 'contracting', 'proposal', 'vacant', 'expired'] as const).map(k => {
+                        const n = b.unit_stats[k];
+                        if (!n) return null;
+                        const p = STAGE_PALETTE[k];
+                        return (
+                          <StatPill key={k} $bg={p.bg} $text={p.text} $border={p.border}>
+                            {n} {t(`floorPlan.unitStatus.${k === 'active' ? 'active' : k}`, p.label).toLowerCase()}
+                          </StatPill>
+                        );
+                      })}
+                    </StatsPillRow>
+                  </BranchCard>
+                  {/* Nested unit list — auto-expand for the selected branch. Click a unit
+                      to switch the right detail panel from branch-level to unit/tenant-level. */}
+                  {isSelected && sortedUnits.length > 0 && (
+                    <TenantSubList>
+                      <div className="sub-title">{t('map.tenantsIn', 'Tenants ({{count}})', { count: sortedUnits.length })}</div>
+                      {sortedUnits.map(u => {
+                        const pal = STAGE_PALETTE[u.displayStage] || STAGE_PALETTE.vacant;
+                        const tenantName = u.currentContract?.restaurant?.name || u.currentContract?.applicant_company_name || null;
+                        return (
+                          <TenantRow
+                            key={u.id}
+                            $selected={selectedUnitId === u.id}
+                            style={{ ['--c' as any]: pal.border }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedUnitId(selectedUnitId === u.id ? null : u.id);
+                            }}
+                          >
+                            <span className="dot" />
+                            <span className="name">
+                              <b style={{ color: '#0A2540', marginRight: 6 }}>{u.unit_number}</b>
+                              {tenantName ? tenantName : <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>{t('floorPlan.unitStatus.vacant', 'Vacant')}</span>}
+                            </span>
+                            <span className="sales" style={{ color: pal.text, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                              {t(`floorPlan.unitStatus.${u.displayStage}`, pal.label)}
+                            </span>
+                          </TenantRow>
+                        );
+                      })}
+                    </TenantSubList>
+                  )}
+                </React.Fragment>
               );
             })}
           </SideList>
@@ -521,7 +649,15 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                 branches={mappedBranches}
                 tenantsForSelected={tenantsForSelected}
                 selectedBranchId={selectedBranchId}
-                onBranchClick={(id) => setSelectedBranchId(id === selectedBranchId ? null : id)}
+                onBranchClick={(id) => { setSelectedBranchId(id === selectedBranchId ? null : id); setSelectedUnitId(null); }}
+                onTenantClick={(restaurantId) => {
+                  // Locate the unit belonging to this restaurant under the currently selected branch
+                  const b = allBranches.find(x => x.id === selectedBranchId);
+                  if (!b) return;
+                  const u = (b.units || []).find(x => x.currentContract?.restaurant?.id === restaurantId);
+                  if (u) setSelectedUnitId(u.id);
+                }}
+                popupLabels={popupLabels}
               />
               <MapView branches={mappedBranches} selectedBranch={selectedBranch} />
             </MapContainer>
@@ -530,14 +666,219 @@ const FoodcourtTenancyMapPage: React.FC = () => {
           <EmptyState>{t('map.noCoordsFoodcourt', 'No branches have coordinates yet. Edit a branch to add location data.')}</EmptyState>
         )}
 
-        {/* Right detail panel — shows branch units + tenants grouped by stage */}
-        {selectedBranch && (
+        {/* Right detail panel — 2-mode:
+            (A) unit/tenant selected → unit-level detail (contract, financial, actions)
+            (B) only branch selected → branch-level overview (info + unit list)
+            Mirrors the Brand Franchise Map and Foodcourt Floor Plan detail patterns. */}
+        {selectedUnit ? (() => {
+          const u = selectedUnit.unit;
+          const bRef = selectedUnit.branch;
+          const c = u.currentContract;
+          const pal = STAGE_PALETTE[u.displayStage] || STAGE_PALETTE.vacant;
+          const displayStatus = u.displayStage;
+          const daysLeft = c?.end_date ? Math.ceil((new Date(c.end_date + 'T00:00:00').getTime() - Date.now()) / (24 * 3600 * 1000)) : null;
+          const isExpiring = (c?.stage === 'active') && daysLeft != null && daysLeft <= (c?.renewal_alert_months ?? 3) * 30;
+          const isExpired = displayStatus === 'expired';
+          const isVacant = displayStatus === 'vacant';
+          const fcCurrencyCode2 = data?.foodcourt?.currency || 'MYR';
+          const currency = getCurrencySymbol(fcCurrencyCode2) || fcCurrencyCode2;
+          const fcTimeZone = data?.foodcourt?.time_zone || 'Asia/Kuala_Lumpur';
+          const ft = (c?.financial_terms && !c?.financial_redacted) ? c.financial_terms : null;
+          const fullCode = bRef.code ? `${bRef.code}-${u.unit_number}` : u.unit_number;
+
+          const nextStageMap: Record<string, string | null> = {
+            proposal: 'contracting', contracting: 'setup', setup: 'active',
+            active: null, expired: null, terminated: null, renewed: null, vacant: null
+          };
+          const nextStageLabel: Record<string, string> = {
+            contracting: t('floorPlan.action.advanceToContracting', 'Advance to Contracting'),
+            setup: t('floorPlan.action.advanceToSetup', 'Advance to Setup'),
+            active: t('floorPlan.action.advanceToActive', 'Mark Active')
+          };
+          const nextStageFor = c ? nextStageMap[c.stage] : null;
+          const fmt = (v: any) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+          const doAdvanceStage = async () => {
+            if (!c || !nextStageFor) return;
+            const confirmMsg = t('floorPlan.action.advanceConfirm',
+              'Advance contract {{num}} to "{{stage}}"?',
+              { num: (c as any).contract_number || `#${c.id}`, stage: nextStageFor });
+            if (!window.confirm(confirmMsg)) return;
+            setStageActionLoading(true);
+            try {
+              const token = getAuthToken();
+              const res = await fetch(`/api/contracts/${c.id}/stage`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ stage: nextStageFor })
+              });
+              const resp = await res.json();
+              if (!res.ok || resp.success === false) {
+                alert(resp.message || 'Failed to advance stage');
+                return;
+              }
+              // Reload tenancy map to reflect the new stage
+              const reloadRes = await fetch(`/api/foodcourts/${fcId}/tenancy-map`, { headers: { Authorization: `Bearer ${token}` } });
+              const reload = await reloadRes.json();
+              if (reload.success) setData(reload.data);
+            } finally {
+              setStageActionLoading(false);
+            }
+          };
+
+          return (
+            <DetailPanel>
+              <DetailHeader>
+                <div>
+                  <h3 className="title">
+                    {fullCode}{' '}
+                    <StatPill $bg={pal.bg} $text={pal.text} $border={pal.border} style={{ marginLeft: 6 }}>
+                      {t(`floorPlan.unitStatus.${displayStatus}`, pal.label)}
+                    </StatPill>
+                  </h3>
+                  <div className="code">{bRef.name}{bRef.is_primary ? ' · PRIMARY' : ''}</div>
+                </div>
+                <button className="close" onClick={() => setSelectedUnitId(null)} aria-label={t('common.close', 'Close')} type="button">✕</button>
+              </DetailHeader>
+              <DetailBody>
+                {/* Billing gap — only relevant when fc_plans module is active */}
+                {(u as any).billing_gap && canLinkPlans && c && (
+                  <DetailSection>
+                    <div style={{ padding: '10px 12px', background: '#FEE2E2', color: '#991B1B', border: '1px solid #DC2626', borderRadius: 6, fontSize: 12, marginBottom: 8 }}>
+                      {t('floorPlan.banner.billingGap', 'Billing is not configured — no plan linked to this active contract. Open the contract to link or create a plan.')}
+                    </div>
+                    {canEdit && (
+                      <Button variant="secondary" size="small" type="button"
+                        onClick={() => openInOpener(`/pos/foodcourt/tenancy?id=${c.id}#billing`)}>
+                        {t('floorPlan.action.linkPlan', 'Link a plan')}
+                      </Button>
+                    )}
+                  </DetailSection>
+                )}
+
+                {/* Unit info */}
+                <DetailSection>
+                  <DetailSectionTitle>{t('floorPlan.sec.unit', 'Unit')}</DetailSectionTitle>
+                  <InfoRow><span>{t('floorPlan.unit.code', 'Code')}</span><b>{fullCode}</b></InfoRow>
+                  {u.size_value != null && <InfoRow><span>{t('floorPlan.unit.size', 'Size')}</span><b>{u.size_value} {u.size_unit || 'sqft'}</b></InfoRow>}
+                  {u.location_description && <InfoRow><span>{t('floorPlan.unit.location', 'Location')}</span><b>{u.location_description}</b></InfoRow>}
+                </DetailSection>
+
+                {/* Vacant empty state */}
+                {isVacant && (
+                  <DetailSection>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', padding: '8px 0' }}>
+                      {t('floorPlan.vacant.noContract', 'This unit has no contract assigned.')}
+                    </div>
+                    {canEdit && (
+                      <Button variant="primary" fullWidth type="button"
+                        onClick={() => openInOpener(`/pos/foodcourt/tenancy?new=1&unit_id=${u.id}`)}>
+                        {t('floorPlan.vacant.createProposal', 'Create tenancy proposal')}
+                      </Button>
+                    )}
+                  </DetailSection>
+                )}
+
+                {/* Current Contract */}
+                {c && (
+                  <DetailSection>
+                    <DetailSectionTitle>{t('floorPlan.sec.contract', 'Current Contract')}</DetailSectionTitle>
+                    <InfoRow><span>{t('floorPlan.contract.number', 'Number')}</span><b>{(c as any).contract_number || `#${c.id}`}</b></InfoRow>
+                    {c.contract_type && <InfoRow><span>{t('floorPlan.contract.type', 'Type')}</span><b>{t(`floorPlan.contractType.${c.contract_type}`, c.contract_type)}</b></InfoRow>}
+                    {(c.start_date || c.end_date) && (
+                      <InfoRow>
+                        <span>{t('floorPlan.contract.period', 'Period')}</span>
+                        <b>
+                          {c.start_date ? new Date(c.start_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: fcTimeZone }) : '—'}
+                          {' → '}
+                          {c.end_date ? new Date(c.end_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: fcTimeZone }) : '—'}
+                        </b>
+                      </InfoRow>
+                    )}
+                    {daysLeft != null && (c.stage === 'active' || c.stage === 'setup') && (
+                      <InfoRow>
+                        <span>{t('floorPlan.contract.daysLeft', 'Days remaining')}</span>
+                        <b style={{ color: daysLeft < 30 ? '#DC2626' : daysLeft < 90 ? '#D97706' : '#059669' }}>
+                          {daysLeft > 0 ? `${daysLeft}d` : t('floorPlan.contract.overdue', 'Past end date')}
+                        </b>
+                      </InfoRow>
+                    )}
+                  </DetailSection>
+                )}
+
+                {/* Tenant */}
+                {c && (c.restaurant || c.applicant_company_name) && (
+                  <DetailSection>
+                    <DetailSectionTitle>{t('floorPlan.sec.tenant', 'Tenant')}</DetailSectionTitle>
+                    {c.restaurant && (
+                      <InfoRow><span>{t('floorPlan.tenant.legalEntity', 'Legal entity')}</span><b>{c.restaurant.name}{c.restaurant.branch_name ? ` · ${c.restaurant.branch_name}` : ''}</b></InfoRow>
+                    )}
+                    {c.applicant_company_name && (!c.restaurant || c.applicant_company_name !== c.restaurant.name) && (
+                      <InfoRow><span>{t('floorPlan.tenant.applicant', 'Applicant')}</span><b>{c.applicant_company_name}</b></InfoRow>
+                    )}
+                  </DetailSection>
+                )}
+
+                {/* Financial Terms */}
+                {c && c.financial_redacted && (
+                  <DetailSection>
+                    <DetailSectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</DetailSectionTitle>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}>
+                      🔒 {t('floorPlan.fin.redacted', 'Financial terms are visible to Foodcourt General and System Admin only')}
+                    </div>
+                  </DetailSection>
+                )}
+                {ft && Object.keys(ft).length > 0 && (
+                  <DetailSection>
+                    <DetailSectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</DetailSectionTitle>
+                    {ft.base_rent != null && <InfoRow><span>{t('floorPlan.fin.baseRent', 'Base Rent')}</span><b>{currency} {fmt(ft.base_rent)}/mo</b></InfoRow>}
+                    {ft.revenue_share_percent != null && <InfoRow><span>{t('floorPlan.fin.revShare', 'Revenue Share')}</span><b>{ft.revenue_share_percent}% of GTO</b></InfoRow>}
+                    {ft.min_guarantee != null && <InfoRow><span>{t('floorPlan.fin.minGuarantee', 'Min Guarantee')}</span><b>{currency} {fmt(ft.min_guarantee)}/mo</b></InfoRow>}
+                    {ft.security_deposit != null && <InfoRow><span>{t('floorPlan.fin.deposit', 'Deposit')}</span><b>{currency} {fmt(ft.security_deposit)}</b></InfoRow>}
+                    {ft.maintenance_fee != null && <InfoRow><span>{t('floorPlan.fin.cam', 'Maintenance (CAM)')}</span><b>{currency} {fmt(ft.maintenance_fee)}/mo</b></InfoRow>}
+                  </DetailSection>
+                )}
+
+                {/* Actions */}
+                {c && (
+                  <DetailSection>
+                    <DetailSectionTitle>{t('floorPlan.sec.actions', 'Actions')}</DetailSectionTitle>
+                    {canEdit && nextStageFor && (
+                      <Button variant="primary" fullWidth type="button"
+                        onClick={doAdvanceStage} disabled={stageActionLoading} loading={stageActionLoading}>
+                        {nextStageLabel[nextStageFor]}
+                      </Button>
+                    )}
+                    {canEdit && isExpiring && (
+                      <Button variant="primary" fullWidth type="button"
+                        onClick={() => openInOpener(`/pos/foodcourt/tenancy?id=${c.id}&action=renew`)}>
+                        {t('floorPlan.action.renew', 'Renew contract')}
+                      </Button>
+                    )}
+                    {canEdit && isExpired && (
+                      <Button variant="primary" fullWidth type="button"
+                        onClick={() => openInOpener(`/pos/foodcourt/tenancy?new=1&unit_id=${u.id}`)}>
+                        {t('floorPlan.action.newTenancy', 'Create new tenancy')}
+                      </Button>
+                    )}
+                    <div style={{ marginTop: 10 }}>
+                      <Button variant="secondary" fullWidth type="button"
+                        onClick={() => openInOpener(`/pos/foodcourt/tenancy?id=${c.id}`)}>
+                        {t('floorPlan.action.open', 'Open contract')}
+                      </Button>
+                    </div>
+                  </DetailSection>
+                )}
+              </DetailBody>
+            </DetailPanel>
+          );
+        })() : selectedBranch && (
           <DetailPanel>
             <DetailHeader>
               <div>
                 <h3 className="title">
                   {selectedBranch.name}
-                  {selectedBranch.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3, marginLeft: 8, verticalAlign: 'middle' }}>PRIMARY</span>}
+                  {selectedBranch.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3, marginLeft: 8, verticalAlign: 'middle' }}>{t('map.primary', 'PRIMARY')}</span>}
                 </h3>
                 <div className="code">{selectedBranch.code}</div>
               </div>
@@ -570,38 +911,8 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                 </StatsPillRow>
               </DetailSection>
 
-              {/* Unit list grouped by stage */}
-              {selectedBranch.units.length > 0 && (
-                <DetailSection>
-                  <DetailSectionTitle>{t('map.units', 'Units')}</DetailSectionTitle>
-                  {(['active', 'setup', 'contracting', 'proposal', 'expired', 'vacant'] as const).map(stage => {
-                    const unitsOfStage = selectedBranch.units.filter(u => u.displayStage === stage);
-                    if (unitsOfStage.length === 0) return null;
-                    const p = STAGE_PALETTE[stage];
-                    return unitsOfStage.map(u => {
-                      const c = u.currentContract;
-                      const tenantName = c?.restaurant?.name || c?.applicant_company_name || null;
-                      return (
-                        <UnitRow key={u.id} $bg={p.bg} $border={p.border} $text={p.text}>
-                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <span className="unit-code">{u.unit_number}</span>
-                              <span className="stage-tag">{t(`floorPlan.unitStatus.${stage}`, p.label)}</span>
-                            </div>
-                            {tenantName && <span className="tenant">{tenantName}</span>}
-                            {u.size_value != null && !tenantName && (
-                              <span className="tenant">{u.size_value} {u.size_unit || 'sqft'}</span>
-                            )}
-                          </div>
-                        </UnitRow>
-                      );
-                    });
-                  })}
-                </DetailSection>
-              )}
-
               <ViewFloorPlanLink to={`/pos/foodcourt/floor-plan?branch=${selectedBranch.id}`} target="_blank">
-                {t('map.viewFloorPlan', 'View floor plan →')}
+                {t('map.viewFloorPlan', 'View floor plan')}
               </ViewFloorPlanLink>
             </DetailBody>
           </DetailPanel>

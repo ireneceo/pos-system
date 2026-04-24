@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Brand, Restaurant, User, EntityPlan, EntityPlanRestaurant, EntityPlanPrice, Order, Invoice, InvoiceItem } = require('../models');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const { requireBrandModule } = require('../middleware/requireModule');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const bcrypt = require('bcrypt');
@@ -389,6 +390,7 @@ router.get('/:id/franchise-map', authenticateToken, async (req, res) => {
         entity_id: id
       },
       attributes: ['id', 'restaurant_id', 'contract_number', 'stage', 'contract_type',
+                   'currency',
                    'applicant_company_name', 'applicant_contact_person',
                    'applicant_email', 'applicant_phone',
                    'start_date', 'end_date', 'signing_date', 'duration_months',
@@ -402,6 +404,48 @@ router.get('/:id/franchise-map', authenticateToken, async (req, res) => {
       if (!prev || (STAGE_PRIORITY[c.stage] || 0) > (STAGE_PRIORITY[prev.stage] || 0)) {
         contractMap.set(Number(c.restaurant_id), c);
       }
+    });
+
+    // Current active subscription plan per restaurant (EntityPlanRestaurant joined to this brand's plans).
+    // Note: fixed amount lives in entity_plan_prices.monthly_price (per currency), not on entity_plans.
+    const eprRows = restaurantIds.length > 0 ? await sequelize.query(`
+      SELECT epr.restaurant_id, epr.activation_date, epr.pending_plan_id, epr.pending_activation_date,
+             ep.id AS plan_id, ep.name AS plan_name, ep.charge_type, ep.percentage_value,
+             ep.billing_day
+      FROM entity_plan_restaurants epr
+      JOIN entity_plans ep ON ep.id = epr.entity_plan_id
+      WHERE epr.is_active = 1
+        AND ep.entity_type = 'brand' AND ep.entity_id = :brandId
+        AND epr.restaurant_id IN (:ids)
+    `, { replacements: { brandId: id, ids: restaurantIds }, type: sequelize.QueryTypes.SELECT }) : [];
+
+    // Build price lookup: plan_id + currency → monthly_price
+    const activePlanIds = [...new Set(eprRows.map(r => r.plan_id))];
+    const priceRows = activePlanIds.length > 0 ? await EntityPlanPrice.findAll({
+      where: { entity_plan_id: activePlanIds, is_active: true },
+      attributes: ['entity_plan_id', 'currency', 'monthly_price']
+    }) : [];
+    const priceByPlan = new Map();
+    priceRows.forEach(p => {
+      if (!priceByPlan.has(p.entity_plan_id)) priceByPlan.set(p.entity_plan_id, {});
+      priceByPlan.get(p.entity_plan_id)[p.currency] = Number(p.monthly_price);
+    });
+
+    const plansByRestaurant = new Map();
+    eprRows.forEach(row => {
+      const rid = Number(row.restaurant_id);
+      if (!plansByRestaurant.has(rid)) plansByRestaurant.set(rid, []);
+      plansByRestaurant.get(rid).push({
+        id: row.plan_id,
+        name: row.plan_name,
+        charge_type: row.charge_type,
+        percentage_value: row.percentage_value,
+        billing_day: row.billing_day,
+        activation_date: row.activation_date,
+        pending_plan_id: row.pending_plan_id,
+        pending_activation_date: row.pending_activation_date,
+        _priceByCurrency: priceByPlan.get(row.plan_id) || {}
+      });
     });
 
     const isBrandManager = req.user.role === 'Brand Manager';
@@ -420,6 +464,16 @@ router.get('/:id/franchise-map', authenticateToken, async (req, res) => {
         currentContract = cj;
       }
 
+      const rawPlans = plansByRestaurant.get(r.id) || [];
+      const rCurrency = r.currency || 'MYR';
+      const currentPlans = rawPlans.map(p => {
+        const { _priceByCurrency, ...base } = p;
+        const fixed = _priceByCurrency[rCurrency] != null
+          ? _priceByCurrency[rCurrency]
+          : (_priceByCurrency.MYR != null ? _priceByCurrency.MYR : null);
+        return { ...base, fixed_amount: fixed, currency: rCurrency };
+      });
+
       return {
         ...obj,
         sales_30d: s.sales_30d,
@@ -428,7 +482,8 @@ router.get('/:id/franchise-map', authenticateToken, async (req, res) => {
         contract_type: c ? (c.contract_type || null) : null,
         contract_stage: c ? c.stage : null,
         radius_km,
-        currentContract
+        currentContract,
+        currentPlans
       };
     });
 
@@ -436,10 +491,23 @@ router.get('/:id/franchise-map', authenticateToken, async (req, res) => {
     const mapped = enriched.filter(r => r.latitude != null && r.longitude != null);
     const unmapped = enriched.filter(r => r.latitude == null || r.longitude == null);
 
+    // Expose brand's default display locale settings to the frontend so the map
+    // panel no longer has to hardcode 'RM' / 'Asia/Kuala_Lumpur'.
+    let brandOps = brand.operation_settings;
+    if (typeof brandOps === 'string') { try { brandOps = JSON.parse(brandOps); } catch { brandOps = null; } }
+    const brandTimeZone = brandOps?.timeZone || 'Asia/Kuala_Lumpur';
+
     res.json({
       success: true,
       data: {
-        brand: { id: brand.id, name: brand.name, code: brand.code, logo_url: brand.logo_url },
+        brand: {
+          id: brand.id,
+          name: brand.name,
+          code: brand.code,
+          logo_url: brand.logo_url,
+          currency: brand.currency || 'MYR',
+          time_zone: brandTimeZone
+        },
         mapped,
         unmapped,
         total: restaurants.length,
@@ -718,7 +786,7 @@ async function verifyBrandAccess(req, brandId) {
 }
 
 // GET /api/brands/:id/plans - Get all plans for a brand
-router.get('/:id/plans', authenticateToken, async (req, res) => {
+router.get('/:id/plans', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -756,7 +824,7 @@ router.get('/:id/plans', authenticateToken, async (req, res) => {
 });
 
 // GET /api/brands/:id/plans/:planId - Get single plan detail
-router.get('/:id/plans/:planId', authenticateToken, async (req, res) => {
+router.get('/:id/plans/:planId', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -795,7 +863,7 @@ router.get('/:id/plans/:planId', authenticateToken, async (req, res) => {
 });
 
 // POST /api/brands/:id/plans - Create a new plan
-router.post('/:id/plans', authenticateToken, async (req, res) => {
+router.post('/:id/plans', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -882,7 +950,7 @@ router.post('/:id/plans', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/brands/:id/plans/:planId - Update a plan
-router.put('/:id/plans/:planId', authenticateToken, async (req, res) => {
+router.put('/:id/plans/:planId', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -943,7 +1011,7 @@ router.put('/:id/plans/:planId', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/brands/:id/plans/:planId - Delete a plan
-router.delete('/:id/plans/:planId', authenticateToken, async (req, res) => {
+router.delete('/:id/plans/:planId', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -991,7 +1059,7 @@ router.delete('/:id/plans/:planId', authenticateToken, async (req, res) => {
 // ============================================
 
 // GET /api/brands/:id/plans/:planId/restaurants - Get restaurants assigned to a plan
-router.get('/:id/plans/:planId/restaurants', authenticateToken, async (req, res) => {
+router.get('/:id/plans/:planId/restaurants', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -1036,7 +1104,7 @@ function computeNextBillingDate(billingDay) {
 //   - If restaurant has no active plan under this brand → immediate assignment
 //   - If restaurant already has a DIFFERENT active plan under this brand → schedule as pending for next billing cycle
 //   - If restaurant already has the SAME active plan → no-op
-router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res) => {
+router.post('/:id/plans/:planId/restaurants', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -1053,13 +1121,17 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
       return res.status(400).json({ success: false, message: 'restaurant_ids array is required' });
     }
 
+    // R1 (restaurant.brand_id == plan.entity_id) used to block assignment here.
+    // Removed: restaurant is source of truth and may belong to a different brand at
+    // any moment (brand/concept flex). Plan assignment is a billing record only.
+    // See docs/ADDRESS_STANDARDIZATION.md §2 (retrospective).
     const restaurants = await Restaurant.findAll({
-      where: { id: restaurant_ids, brand_id: id },
-      attributes: ['id', 'name', 'currency']
+      where: { id: restaurant_ids },
+      attributes: ['id', 'name', 'currency', 'brand_id']
     });
 
     if (restaurants.length !== restaurant_ids.length) {
-      return res.status(400).json({ success: false, message: 'Some restaurants do not belong to this brand' });
+      return res.status(400).json({ success: false, message: 'One or more restaurants not found' });
     }
 
     const results = [];
@@ -1134,7 +1206,7 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
 });
 
 // DELETE /api/brands/:id/plans/:planId/restaurants/:restaurantId - Unassign a restaurant
-router.delete('/:id/plans/:planId/restaurants/:restaurantId', authenticateToken, async (req, res) => {
+router.delete('/:id/plans/:planId/restaurants/:restaurantId', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId, restaurantId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -1158,7 +1230,7 @@ router.delete('/:id/plans/:planId/restaurants/:restaurantId', authenticateToken,
 });
 
 // POST /api/brands/:id/plans/:planId/restaurants/:restaurantId/cancel-pending - Cancel scheduled plan change
-router.post('/:id/plans/:planId/restaurants/:restaurantId/cancel-pending', authenticateToken, async (req, res) => {
+router.post('/:id/plans/:planId/restaurants/:restaurantId/cancel-pending', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId, restaurantId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -1182,7 +1254,7 @@ router.post('/:id/plans/:planId/restaurants/:restaurantId/cancel-pending', authe
 });
 
 // PUT /api/brands/:id/plans/:planId/restaurants/:restaurantId/discount - Set discount for a restaurant
-router.put('/:id/plans/:planId/restaurants/:restaurantId/discount', authenticateToken, async (req, res) => {
+router.put('/:id/plans/:planId/restaurants/:restaurantId/discount', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId, restaurantId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -1224,7 +1296,7 @@ router.put('/:id/plans/:planId/restaurants/:restaurantId/discount', authenticate
 });
 
 // GET /api/brands/:id/plans/:planId/prices - Get multi-currency prices for a plan
-router.get('/:id/plans/:planId/prices', authenticateToken, async (req, res) => {
+router.get('/:id/plans/:planId/prices', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -1243,7 +1315,7 @@ router.get('/:id/plans/:planId/prices', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/brands/:id/plans/:planId/prices - Update multi-currency prices for a plan
-router.put('/:id/plans/:planId/prices', authenticateToken, async (req, res) => {
+router.put('/:id/plans/:planId/prices', authenticateToken, requireBrandModule('brand_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyBrandAccess(req, id);
@@ -1695,7 +1767,7 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
 });
 
 // GET /api/brands/:id/subscriptions - Get subscription status for brand restaurants
-router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
+router.get('/:id/subscriptions', authenticateToken, requireBrandModule('brand_subscriptions'), async (req, res) => {
   try {
     const { id } = req.params;
     const access = await verifyBrandAccess(req, id);

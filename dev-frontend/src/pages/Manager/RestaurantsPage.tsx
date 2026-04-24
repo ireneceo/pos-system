@@ -12,6 +12,8 @@ import { formatCurrency, getPlanPrice, formatPlanPrice, normalizeCurrencyCode } 
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import DateRangeField from '../../components/Common/DateRangeField';
+import { AddressFields } from '../../components/Form';
+import type { Address } from '../../utils/formatAddress';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -547,6 +549,7 @@ const ManagerRestaurantsPage: React.FC = () => {
     email: '',
     phone: '',
     address: '',
+    addressLine2: '',
     city: '',
     state: '',
     postalCode: '',
@@ -583,6 +586,7 @@ const ManagerRestaurantsPage: React.FC = () => {
   const [availableFoodcourtPlans, setAvailableFoodcourtPlans] = useState<any[] | null>(null);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerSubmitting, setPickerSubmitting] = useState(false);
+  const [submittingId, setSubmittingId] = useState<number | null>(null); // per-row loading — only this id shows "Linking…"
   const [pickerError, setPickerError] = useState<string | null>(null);
   const [brands, setBrands] = useState<Array<{ id: number; name: string; code: string; currency: string }>>([]);
   const [branches, setBranches] = useState<Array<{ id: number; name: string; code: string; is_primary?: boolean }>>([]);
@@ -807,6 +811,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       email: '',
       phone: '',
       address: '',
+      addressLine2: '',
       city: '',
       state: '',
       postalCode: '',
@@ -904,6 +909,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       const restaurantData: any = {
         name: newRestaurant.name,
         address: newRestaurant.address,
+        address_line_2: (newRestaurant as any).addressLine2 || null,
         city: newRestaurant.city,
         state: newRestaurant.state,
         postal_code: newRestaurant.postalCode,
@@ -1012,6 +1018,7 @@ const ManagerRestaurantsPage: React.FC = () => {
           email: '',
           phone: '',
           address: '',
+          addressLine2: '',
           city: '',
           state: '',
           postalCode: '',
@@ -1125,9 +1132,10 @@ const ManagerRestaurantsPage: React.FC = () => {
       email: restaurant.email,
       phone: restaurant.phone,
       address: restaurant.address,
+      addressLine2: (restaurant as any).address_line_2 || (restaurant as any).addressLine2 || '',
       city: (restaurant as any).city || '',
       state: (restaurant as any).state || '',
-      postalCode: (restaurant as any).postalCode || '',
+      postalCode: (restaurant as any).postal_code || (restaurant as any).postalCode || '',
       country: (restaurant as any).country || 'MY',
       businessRegistration: (restaurant as any).businessRegistration || '',
       taxId: (restaurant as any).taxId || '',
@@ -1243,6 +1251,7 @@ const ManagerRestaurantsPage: React.FC = () => {
   const handleLinkContract = async (contractId: number) => {
     if (!editingRestaurant) return;
     setPickerSubmitting(true);
+    setSubmittingId(contractId);
     setPickerError(null);
     try {
       const token = getAuthToken();
@@ -1263,12 +1272,14 @@ const ManagerRestaurantsPage: React.FC = () => {
       setPickerError(e?.message || 'Network error');
     } finally {
       setPickerSubmitting(false);
+      setSubmittingId(null);
     }
   };
 
   const handleLinkBrandPlan = async (planId: number) => {
     if (!editingRestaurant) return;
     setPickerSubmitting(true);
+    setSubmittingId(planId);
     setPickerError(null);
     try {
       const token = getAuthToken();
@@ -1276,6 +1287,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       if (!brandId) {
         setPickerError('Could not determine brand context. Please re-login.');
         setPickerSubmitting(false);
+        setSubmittingId(null);
         return;
       }
       const r = await fetch(`/api/brands/${brandId}/plans/${planId}/restaurants`, {
@@ -1295,6 +1307,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       setPickerError(e?.message || 'Network error');
     } finally {
       setPickerSubmitting(false);
+      setSubmittingId(null);
     }
   };
 
@@ -1370,6 +1383,7 @@ const ManagerRestaurantsPage: React.FC = () => {
   const handleLinkTenancyContract = async (contractId: number) => {
     if (!editingRestaurant) return;
     setPickerSubmitting(true);
+    setSubmittingId(contractId);
     setPickerError(null);
     try {
       const token = getAuthToken();
@@ -1390,12 +1404,14 @@ const ManagerRestaurantsPage: React.FC = () => {
       setPickerError(e?.message || 'Network error');
     } finally {
       setPickerSubmitting(false);
+      setSubmittingId(null);
     }
   };
 
   const handleLinkFoodcourtPlan = async (planId: number) => {
     if (!editingRestaurant) return;
     setPickerSubmitting(true);
+    setSubmittingId(planId);
     setPickerError(null);
     try {
       const token = getAuthToken();
@@ -1403,6 +1419,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       if (!fcId) {
         setPickerError('Could not determine foodcourt context. Please re-login.');
         setPickerSubmitting(false);
+        setSubmittingId(null);
         return;
       }
       const r = await fetch(`/api/foodcourts/${fcId}/plans/${planId}/restaurants`, {
@@ -1422,6 +1439,7 @@ const ManagerRestaurantsPage: React.FC = () => {
       setPickerError(e?.message || 'Network error');
     } finally {
       setPickerSubmitting(false);
+      setSubmittingId(null);
     }
   };
 
@@ -1436,6 +1454,7 @@ const ManagerRestaurantsPage: React.FC = () => {
           email: newRestaurant.email,
           phone: newRestaurant.phone,
           address: newRestaurant.address,
+          address_line_2: (newRestaurant as any).addressLine2 || null,
           city: newRestaurant.city,
           state: newRestaurant.state,
           postal_code: newRestaurant.postalCode,
@@ -1497,6 +1516,7 @@ const ManagerRestaurantsPage: React.FC = () => {
             email: '',
             phone: '',
             address: '',
+            addressLine2: '',
             city: '',
             state: '',
             postalCode: '',
@@ -1865,20 +1885,6 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Country *</FormLabel>
-                  <FormSelect
-                    value={newRestaurant.country}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, country: e.target.value})}
-                  >
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </FormSelect>
-                </FormGroup>
-
-                <FormGroup>
                   <FormLabel>Phone Number *</FormLabel>
                   <PhoneInput
                     value={newRestaurant.phone}
@@ -1888,41 +1894,26 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup style={{gridColumn: '1 / -1'}}>
-                  <FormLabel>Address *</FormLabel>
-                  <FormTextarea
-                    placeholder="Enter street address"
-                    value={newRestaurant.address}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, address: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantsPage.city')}</FormLabel>
-                  <FormInput
-                    type="text"
-                    placeholder="e.g., Kuala Lumpur"
-                    value={newRestaurant.city}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantsPage.stateProvince')}</FormLabel>
-                  <FormInput
-                    type="text"
-                    placeholder="e.g., Wilayah Persekutuan"
-                    value={newRestaurant.state}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantsPage.postalCode')}</FormLabel>
-                  <FormInput
-                    type="text"
-                    placeholder="e.g., 50000"
-                    value={newRestaurant.postalCode}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})}
+                  <AddressFields
+                    value={{
+                      address: newRestaurant.address,
+                      address_line_2: (newRestaurant as any).addressLine2 || '',
+                      city: newRestaurant.city,
+                      state: newRestaurant.state,
+                      postal_code: newRestaurant.postalCode,
+                      country: newRestaurant.country
+                    }}
+                    onChange={(a: Address) => setNewRestaurant({
+                      ...newRestaurant,
+                      address: a.address || '',
+                      addressLine2: a.address_line_2 || '',
+                      city: a.city || '',
+                      state: a.state || '',
+                      postalCode: a.postal_code || '',
+                      country: (a.country || newRestaurant.country || 'MY').toUpperCase()
+                    } as any)}
+                    defaultCountry={newRestaurant.country}
+                    required={['address']}
                   />
                 </FormGroup>
 
@@ -2129,20 +2120,6 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Country *</FormLabel>
-                  <FormSelect
-                    value={newRestaurant.country}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, country: e.target.value})}
-                  >
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </FormSelect>
-                </FormGroup>
-
-                <FormGroup>
                   <FormLabel>Phone Number *</FormLabel>
                   <PhoneInput
                     value={newRestaurant.phone}
@@ -2152,41 +2129,26 @@ const ManagerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup style={{gridColumn: '1 / -1'}}>
-                  <FormLabel>Address *</FormLabel>
-                  <FormTextarea
-                    placeholder="Enter street address"
-                    value={newRestaurant.address}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, address: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantsPage.city')}</FormLabel>
-                  <FormInput
-                    type="text"
-                    placeholder="e.g., Kuala Lumpur"
-                    value={newRestaurant.city}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantsPage.stateProvince')}</FormLabel>
-                  <FormInput
-                    type="text"
-                    placeholder="e.g., Wilayah Persekutuan"
-                    value={newRestaurant.state}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})}
-                  />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('admin:restaurantsPage.postalCode')}</FormLabel>
-                  <FormInput
-                    type="text"
-                    placeholder="e.g., 50000"
-                    value={newRestaurant.postalCode}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})}
+                  <AddressFields
+                    value={{
+                      address: newRestaurant.address,
+                      address_line_2: (newRestaurant as any).addressLine2 || '',
+                      city: newRestaurant.city,
+                      state: newRestaurant.state,
+                      postal_code: newRestaurant.postalCode,
+                      country: newRestaurant.country
+                    }}
+                    onChange={(a: Address) => setNewRestaurant({
+                      ...newRestaurant,
+                      address: a.address || '',
+                      addressLine2: a.address_line_2 || '',
+                      city: a.city || '',
+                      state: a.state || '',
+                      postalCode: a.postal_code || '',
+                      country: (a.country || newRestaurant.country || 'MY').toUpperCase()
+                    } as any)}
+                    defaultCountry={newRestaurant.country}
+                    required={['address']}
                   />
                 </FormGroup>
 
@@ -2598,6 +2560,15 @@ const ManagerRestaurantsPage: React.FC = () => {
               </div>
               <button type="button" onClick={() => !pickerSubmitting && setShowContractPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
             </div>
+            {(() => {
+              const bId = (editingRestaurant as any)?.brand_id;
+              const bName = bId ? (brands.find(b => b.id === Number(bId))?.name || `Brand #${bId}`) : null;
+              return bName ? (
+                <div style={{ padding: '10px 12px', background: '#F0EDFF', border: '1px solid #C4B5FD', borderRadius: 6, fontSize: 13, color: '#5B21B6', marginBottom: 12 }}>
+                  {t('admin:restaurantsPage.pickerBrandContext', 'Linking restaurant "{{rest}}" to a contract under brand "{{brand}}". Only contracts from this brand are shown.', { rest: editingRestaurant.name, brand: bName })}
+                </div>
+              ) : null;
+            })()}
             <input
               type="text"
               value={pickerSearch}
@@ -2641,7 +2612,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </div>
                   {!isLinkedHere && (
                     <ThemedButton variant="outline" onClick={() => handleLinkContract(c.id)} disabled={pickerSubmitting}>
-                      {pickerSubmitting ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
+                      {submittingId === c.id ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
                     </ThemedButton>
                   )}
                 </div>;
@@ -2667,6 +2638,15 @@ const ManagerRestaurantsPage: React.FC = () => {
               </div>
               <button type="button" onClick={() => !pickerSubmitting && setShowPlanPicker(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6B7C93' }}>×</button>
             </div>
+            {(() => {
+              const bId = (editingRestaurant as any)?.brand_id;
+              const bName = bId ? (brands.find(b => b.id === Number(bId))?.name || `Brand #${bId}`) : null;
+              return bName ? (
+                <div style={{ padding: '10px 12px', background: '#F0EDFF', border: '1px solid #C4B5FD', borderRadius: 6, fontSize: 13, color: '#5B21B6', marginBottom: 12 }}>
+                  {t('admin:restaurantsPage.pickerPlanBrandContext', 'Linking restaurant "{{rest}}" to a plan under brand "{{brand}}".', { rest: editingRestaurant.name, brand: bName })}
+                </div>
+              ) : null;
+            })()}
             <input
               type="text"
               value={pickerSearch}
@@ -2696,7 +2676,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </div>
                 </div>
                 <ThemedButton variant="outline" onClick={() => handleLinkBrandPlan(p.id)} disabled={pickerSubmitting}>
-                  {pickerSubmitting ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
+                  {submittingId === p.id ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
                 </ThemedButton>
               </div>)}</div>;
             })()}
@@ -2759,7 +2739,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </div>
                   {!isLinkedHere && (
                     <ThemedButton variant="outline" onClick={() => handleLinkTenancyContract(c.id)} disabled={pickerSubmitting}>
-                      {pickerSubmitting ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
+                      {submittingId === c.id ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
                     </ThemedButton>
                   )}
                 </div>;
@@ -2817,7 +2797,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </div>
                 </div>
                 <ThemedButton variant="outline" onClick={() => handleLinkFoodcourtPlan(p.id)} disabled={pickerSubmitting}>
-                  {pickerSubmitting ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
+                  {submittingId === p.id ? t('admin:restaurantsPage.linking', 'Linking…') : t('admin:restaurantsPage.link', 'Link')}
                 </ThemedButton>
               </div>)}</div>;
             })()}

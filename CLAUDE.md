@@ -242,6 +242,9 @@ date.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', timeZone:
 - [ ] 새 공개 페이지 → `LandingHeader.tsx` GNB + `App.tsx` 라우트 + static import
 - [ ] API 응답 필드명 일치 확인 (snake_case ↔ camelCase 매핑)
 - [ ] 인터페이스 타입과 실제 API 응답 구조 대조
+- [ ] **주소 입력**: `<AddressFields />` 공용 컴포넌트 사용 (직접 input 6개 쪼개지 말 것). `docs/ADDRESS_STANDARDIZATION.md` 참조
+- [ ] **주소 표시**: `formatAddress(addr, format, locale)` 유틸 사용. `[a, b, c].filter(Boolean).join(', ')` 패턴 금지
+- [ ] **Country**: CHAR(2) ISO 3166-1 alpha-2 (`MY`, `KR` 등). 풀네임 저장 금지. 표시명은 `getCountryName(iso2, locale)` 또는 `<AddressFields>` 의 select
 
 ### 콘텐츠 연동
 - [ ] 새 기능/페이지 추가 시 FAQ 페이지에 관련 Q&A 추가 필요 여부 확인

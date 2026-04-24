@@ -1,7 +1,23 @@
 import React from 'react';
 import { Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useAllowedRoutes } from '../hooks/useAllowedRoutes';
 import styled from 'styled-components';
+
+// Routes whose feature belongs to an advanced-tier addon module. When the user's
+// current subscription plan does not include the listed module code, ProtectedRoute
+// bounces them to their role dashboard instead of letting the page mount.
+// This is the URL-level counterpart to the backend `requireModule` middleware —
+// together they close the gap where a basic-tier tenant could reach the page by
+// typing the URL directly.
+const MODULE_GATED_ROUTES: Array<{ prefix: string; module: string }> = [
+  { prefix: '/pos/brand/plans', module: 'brand_plans' },
+  { prefix: '/pos/brand/subscriptions', module: 'brand_subscriptions' },
+  { prefix: '/pos/manager/plans', module: 'brand_plans' },
+  { prefix: '/pos/manager/subscriptions', module: 'brand_subscriptions' },
+  { prefix: '/pos/foodcourt/plans', module: 'fc_plans' },
+  { prefix: '/pos/foodcourt/subscriptions', module: 'fc_subscriptions' }
+];
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -85,6 +101,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams<{ restaurantId?: string }>();
+
+  // Resolve module entitlements for the current user (brand/foodcourt context).
+  // hasModule fails open when plan filtering is skipped (System Admin or error state).
+  const { hasModule, loading: modulesLoading } = useAllowedRoutes({
+    role: user?.role || '',
+    brandId: user?.brand_id || null,
+    foodcourtId: user?.foodcourt_id || null
+  });
 
   // 로딩 중일 때는 스피너 표시
   if (isLoading) {
@@ -261,6 +285,25 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         default:
           return <Navigate to="/pos" replace />;
       }
+    }
+  }
+
+  // Module tier gate — if the current URL's feature is not in the plan, redirect
+  // to the role dashboard. Wait for the allowed-routes fetch to settle before
+  // deciding so we don't flash-redirect during hydration.
+  const gated = MODULE_GATED_ROUTES.find(g => location.pathname.startsWith(g.prefix));
+  if (gated && !modulesLoading && user && user.role !== 'System Admin' && !hasModule(gated.module)) {
+    switch (user.role) {
+      case 'Brand General':
+        return <Navigate to="/pos/brand/general/dashboard" replace />;
+      case 'Brand Manager':
+        return <Navigate to="/pos/brand/dashboard" replace />;
+      case 'Foodcourt General':
+        return <Navigate to="/pos/foodcourt/general/dashboard" replace />;
+      case 'Foodcourt Manager':
+        return <Navigate to="/pos/foodcourt/dashboard" replace />;
+      default:
+        return <Navigate to="/pos" replace />;
     }
   }
 

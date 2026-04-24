@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Foodcourt, Restaurant, User, EntityPlan, EntityPlanRestaurant, EntityPlanPrice, Order, Invoice, InvoiceItem } = require('../models');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const { requireFoodcourtModule } = require('../middleware/requireModule');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const bcrypt = require('bcrypt');
@@ -146,10 +147,22 @@ router.get('/:id/tenancy-map', authenticateToken, async (req, res) => {
     const mappedBranches = enrichedBranches.filter(b => b.latitude != null && b.longitude != null);
     const unmappedBranches = enrichedBranches.filter(b => b.latitude == null || b.longitude == null);
 
+    // Expose foodcourt's currency + timezone so the map panel no longer hardcodes.
+    let fcOps = foodcourt.operation_settings;
+    if (typeof fcOps === 'string') { try { fcOps = JSON.parse(fcOps); } catch { fcOps = null; } }
+    const fcTimeZone = fcOps?.timeZone || 'Asia/Kuala_Lumpur';
+
     res.json({
       success: true,
       data: {
-        foodcourt: { id: foodcourt.id, name: foodcourt.name, code: foodcourt.code, logo_url: foodcourt.logo_url },
+        foodcourt: {
+          id: foodcourt.id,
+          name: foodcourt.name,
+          code: foodcourt.code,
+          logo_url: foodcourt.logo_url,
+          currency: foodcourt.currency || 'MYR',
+          time_zone: fcTimeZone
+        },
         mappedBranches,
         unmappedBranches,
         restaurants: enrichedRestaurants,
@@ -325,8 +338,12 @@ router.get('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Foodcourt not found' });
     }
 
-    // Check access permissions
-    if (req.user.role !== 'System Admin' && foodcourt.owner_id !== req.user.id) {
+    // Check access permissions — System Admin (all), owner (Foodcourt General),
+    // or any user scoped to this foodcourt (Foodcourt Manager).
+    const isSA = req.user.role === 'System Admin';
+    const isOwner = foodcourt.owner_id === req.user.id;
+    const isScoped = Number(req.user.foodcourt_id) === Number(foodcourt.id);
+    if (!isSA && !isOwner && !isScoped) {
       return res.status(403).json({ error: 'Access denied to this foodcourt' });
     }
 
@@ -827,7 +844,7 @@ function calculatePlanCharges(plan, revenue, taxRate = 0, currency = null) {
 // --- Foodcourt Plans CRUD ---
 
 // GET /api/foodcourts/:id/plans - List all plans for a foodcourt
-router.get('/:id/plans', authenticateToken, async (req, res) => {
+router.get('/:id/plans', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -858,7 +875,7 @@ router.get('/:id/plans', authenticateToken, async (req, res) => {
 });
 
 // GET /api/foodcourts/:id/plans/:planId - Get single plan detail
-router.get('/:id/plans/:planId', authenticateToken, async (req, res) => {
+router.get('/:id/plans/:planId', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -890,7 +907,7 @@ router.get('/:id/plans/:planId', authenticateToken, async (req, res) => {
 });
 
 // POST /api/foodcourts/:id/plans - Create new plan
-router.post('/:id/plans', authenticateToken, async (req, res) => {
+router.post('/:id/plans', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -964,7 +981,7 @@ router.post('/:id/plans', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/foodcourts/:id/plans/:planId - Update plan
-router.put('/:id/plans/:planId', authenticateToken, async (req, res) => {
+router.put('/:id/plans/:planId', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -1007,7 +1024,7 @@ router.put('/:id/plans/:planId', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/foodcourts/:id/plans/:planId - Delete plan
-router.delete('/:id/plans/:planId', authenticateToken, async (req, res) => {
+router.delete('/:id/plans/:planId', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -1042,7 +1059,7 @@ router.delete('/:id/plans/:planId', authenticateToken, async (req, res) => {
 // --- Plan ↔ Restaurant Assignment ---
 
 // GET /api/foodcourts/:id/plans/:planId/restaurants
-router.get('/:id/plans/:planId/restaurants', authenticateToken, async (req, res) => {
+router.get('/:id/plans/:planId/restaurants', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -1078,7 +1095,7 @@ function computeNextBillingDateFc(billingDay) {
 
 // POST /api/foodcourts/:id/plans/:planId/restaurants - Assign restaurants
 // Same "schedule-for-next-cycle" behavior as brand: different active plan → pending; no active plan → immediate
-router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res) => {
+router.post('/:id/plans/:planId/restaurants', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -1095,13 +1112,16 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
       return res.status(400).json({ success: false, message: 'restaurant_ids array is required' });
     }
 
+    // R2 (restaurant.foodcourt_id == plan.entity_id) used to block assignment here.
+    // Removed: restaurant's foodcourt membership is flexible; plan assignment is
+    // a billing record, not a constraint. See docs/ADDRESS_STANDARDIZATION.md §2 (retrospective).
     const restaurants = await Restaurant.findAll({
-      where: { id: restaurant_ids, foodcourt_id: id },
-      attributes: ['id', 'name', 'currency']
+      where: { id: restaurant_ids },
+      attributes: ['id', 'name', 'currency', 'foodcourt_id']
     });
 
     if (restaurants.length !== restaurant_ids.length) {
-      return res.status(400).json({ success: false, message: 'Some restaurants do not belong to this foodcourt' });
+      return res.status(400).json({ success: false, message: 'One or more restaurants not found' });
     }
 
     const results = [];
@@ -1173,7 +1193,7 @@ router.post('/:id/plans/:planId/restaurants', authenticateToken, async (req, res
 });
 
 // DELETE /api/foodcourts/:id/plans/:planId/restaurants/:restaurantId - Unassign
-router.delete('/:id/plans/:planId/restaurants/:restaurantId', authenticateToken, async (req, res) => {
+router.delete('/:id/plans/:planId/restaurants/:restaurantId', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId, restaurantId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -1193,7 +1213,7 @@ router.delete('/:id/plans/:planId/restaurants/:restaurantId', authenticateToken,
 });
 
 // POST /api/foodcourts/:id/plans/:planId/restaurants/:restaurantId/cancel-pending - Cancel scheduled plan change
-router.post('/:id/plans/:planId/restaurants/:restaurantId/cancel-pending', authenticateToken, async (req, res) => {
+router.post('/:id/plans/:planId/restaurants/:restaurantId/cancel-pending', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId, restaurantId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -1216,7 +1236,7 @@ router.post('/:id/plans/:planId/restaurants/:restaurantId/cancel-pending', authe
 });
 
 // PUT /api/foodcourts/:id/plans/:planId/restaurants/:restaurantId/discount - Set discount for a restaurant
-router.put('/:id/plans/:planId/restaurants/:restaurantId/discount', authenticateToken, async (req, res) => {
+router.put('/:id/plans/:planId/restaurants/:restaurantId/discount', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId, restaurantId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -1258,7 +1278,7 @@ router.put('/:id/plans/:planId/restaurants/:restaurantId/discount', authenticate
 });
 
 // GET /api/foodcourts/:id/plans/:planId/prices - Get multi-currency prices for a plan
-router.get('/:id/plans/:planId/prices', authenticateToken, async (req, res) => {
+router.get('/:id/plans/:planId/prices', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -1277,7 +1297,7 @@ router.get('/:id/plans/:planId/prices', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/foodcourts/:id/plans/:planId/prices - Update multi-currency prices for a plan
-router.put('/:id/plans/:planId/prices', authenticateToken, async (req, res) => {
+router.put('/:id/plans/:planId/prices', authenticateToken, requireFoodcourtModule('fc_plans'), async (req, res) => {
   try {
     const { id, planId } = req.params;
     const access = await verifyFoodcourtAccess(req, id);
@@ -1523,7 +1543,7 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
 });
 
 // GET /api/foodcourts/:id/subscriptions - Subscription status for foodcourt restaurants
-router.get('/:id/subscriptions', authenticateToken, async (req, res) => {
+router.get('/:id/subscriptions', authenticateToken, requireFoodcourtModule('fc_subscriptions'), async (req, res) => {
   try {
     const { id } = req.params;
     const access = await verifyFoodcourtAccess(req, id);

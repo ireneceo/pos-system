@@ -25,7 +25,8 @@
       "Bash(pm2 jlist *)",
       "Bash(xargs -n1 basename)",
       "Bash(awk -F: '{print $1}')",
-      "Bash(scp /tmp/img_audit.js irene@87.106.78.146:/tmp/img_audit.js)"
+      "Bash(scp /tmp/img_audit.js irene@87.106.78.146:/tmp/img_audit.js)",
+      "Bash(pm2 status *)"
     ],
     "deny": [],
     "ask": []

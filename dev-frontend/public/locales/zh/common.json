@@ -546,5 +546,19 @@
   "tenantSupport.trainingAndWorkshopScheduleGuidance": "培训和研讨会日程指导",
   "cookie.message": "我们使用Cookie来改善您的体验并分析网站流量。点击\"全部接受\"即表示您同意我们使用Cookie。详情请参阅<a href=\"/privacy\">隐私政策</a>。",
   "cookie.acceptAll": "全部接受",
-  "cookie.essentialOnly": "仅必要"
+  "cookie.essentialOnly": "仅必要",
+  "address": {
+    "line1": "地址",
+    "line1Placeholder": "街道 / 楼栋 / 区域",
+    "line2": "详细地址（选填）",
+    "line2Placeholder": "单元 / 楼层 / 建筑名",
+    "city": "城市",
+    "state": "州 / 省",
+    "postalCode": "邮政编码",
+    "country": "国家",
+    "selectCountry": "选择国家",
+    "latitude": "纬度",
+    "longitude": "经度",
+    "latLngHint": "留空则保存时自动定位"
+  }
 }

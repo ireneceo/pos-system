@@ -75,14 +75,15 @@ router.post('/foodcourts/:foodcourtId/branches',
         code,
         status: body.status || 'active',
         address: body.address || null,
+        address_line_2: body.address_line_2 || null,
         city: body.city || null,
         state: body.state || null,
         postal_code: body.postal_code || null,
-        country: body.country || fc.country,
+        country: body.country ? String(body.country).toUpperCase().slice(0, 2) : fc.country,
         phone: body.phone || null,
         email: body.email || null,
-        latitude: body.latitude != null ? body.latitude : null,
-        longitude: body.longitude != null ? body.longitude : null,
+        latitude: body.latitude != null && body.latitude !== '' ? body.latitude : null,
+        longitude: body.longitude != null && body.longitude !== '' ? body.longitude : null,
         operating_hours: body.operating_hours || null,
         notes: body.notes || null
       });
@@ -132,12 +133,19 @@ router.put('/foodcourt-branches/:id',
 
       const body = req.body || {};
       const updates = {};
-      const allowed = ['name', 'address', 'city', 'state', 'postal_code', 'country',
+      const allowed = ['name', 'address', 'address_line_2', 'city', 'state', 'postal_code', 'country',
                        'phone', 'email', 'latitude', 'longitude', 'operating_hours', 'notes', 'status',
                        'unit_config'];
       for (const k of allowed) {
         if (k in body) updates[k] = body[k];
       }
+      // Country normalization to CHAR(2) ISO
+      if ('country' in updates && updates.country) {
+        updates.country = String(updates.country).toUpperCase().slice(0, 2);
+      }
+      // Coerce empty strings on lat/lng to NULL
+      if ('latitude' in updates && (updates.latitude === '' || updates.latitude == null)) updates.latitude = null;
+      if ('longitude' in updates && (updates.longitude === '' || updates.longitude == null)) updates.longitude = null;
       // Code update with validation
       if ('code' in body) {
         const code = String(body.code || '').trim().toUpperCase();

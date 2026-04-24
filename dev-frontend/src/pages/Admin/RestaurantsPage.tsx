@@ -24,6 +24,8 @@ import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies,
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
 import DateRangeField from '../../components/Common/DateRangeField';
+import { AddressFields } from '../../components/Form';
+import type { Address } from '../../utils/formatAddress';
 import { COUNTRIES } from '../../constants/countries';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
@@ -640,6 +642,7 @@ const RestaurantsPage: React.FC = () => {
     email: '',
     phone: '',
     address: '',
+    addressLine2: '',
     city: '',
     state: '',
     postalCode: '',
@@ -975,6 +978,7 @@ const RestaurantsPage: React.FC = () => {
       email: '',
       phone: '',
       address: '',
+      addressLine2: '',
       city: '',
       state: '',
       postalCode: '',
@@ -2077,90 +2081,46 @@ const RestaurantsPage: React.FC = () => {
                     />
                   </FormGroup>
 
-                  <FormGroup>
-                    <FormLabel>Address *</FormLabel>
-                    <FormTextarea
-                      placeholder="Enter restaurant address"
-                      value={newRestaurant.address}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, address: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.city')}</FormLabel>
-                    <FormInput
-                      type="text"
-                      placeholder="e.g., Kuala Lumpur"
-                      value={newRestaurant.city}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.stateProvince')}</FormLabel>
-                    <FormInput
-                      type="text"
-                      placeholder="e.g., Selangor"
-                      value={newRestaurant.state}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.postalCode')}</FormLabel>
-                    <FormInput
-                      type="text"
-                      placeholder="e.g., 50000"
-                      value={newRestaurant.postalCode}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.latitude', 'Latitude')}</FormLabel>
-                    <FormInput
-                      type="number"
-                      step="any"
-                      placeholder={t('admin:restaurantsPage.latitudeHint', 'e.g., 3.1390 (auto-filled from address)')}
-                      value={newRestaurant.latitude}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, latitude: e.target.value})}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.longitude', 'Longitude')}</FormLabel>
-                    <FormInput
-                      type="number"
-                      step="any"
-                      placeholder={t('admin:restaurantsPage.longitudeHint', 'e.g., 101.6869')}
-                      value={newRestaurant.longitude}
-                      onChange={(e) => setNewRestaurant({...newRestaurant, longitude: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.country')}</FormLabel>
-                    <FormSelect
-                      value={newRestaurant.country}
-                      onChange={(e) => {
-                        const countryCode = e.target.value;
-                        const autoCurrency = COUNTRY_TO_CURRENCY[countryCode] || newRestaurant.currency;
-                        const planCurrency = planCurrencies.includes(autoCurrency as any) ? autoCurrency : newRestaurant.currency;
+                  <AddressFields
+                    value={{
+                      address: newRestaurant.address,
+                      address_line_2: newRestaurant.addressLine2 || '',
+                      city: newRestaurant.city,
+                      state: newRestaurant.state,
+                      postal_code: newRestaurant.postalCode,
+                      country: newRestaurant.country,
+                      latitude: newRestaurant.latitude ? Number(newRestaurant.latitude) : null,
+                      longitude: newRestaurant.longitude ? Number(newRestaurant.longitude) : null
+                    }}
+                    onChange={(a: Address) => {
+                      const nextCountry = (a.country || newRestaurant.country || '').toUpperCase();
+                      const countryChanged = nextCountry !== newRestaurant.country;
+                      let currency = newRestaurant.currency;
+                      let planAmount = newRestaurant.planAmount;
+                      if (countryChanged) {
+                        const autoCurrency = COUNTRY_TO_CURRENCY[nextCountry] || newRestaurant.currency;
+                        currency = planCurrencies.includes(autoCurrency as any) ? autoCurrency : newRestaurant.currency;
                         const selectedPlan = availablePlans.find(p => p.display_name === newRestaurant.planType);
-                        setNewRestaurant({
-                          ...newRestaurant,
-                          country: countryCode,
-                          currency: planCurrency,
-                          planAmount: selectedPlan ? String(getPlanPrice(selectedPlan, planCurrency)) : newRestaurant.planAmount
-                        });
-                      }}
-                    >
-                      {COUNTRIES.map(country => (
-                        <option key={country.code} value={country.code}>
-                          {country.name}
-                        </option>
-                      ))}
-                    </FormSelect>
-                  </FormGroup>
+                        planAmount = selectedPlan ? String(getPlanPrice(selectedPlan, currency)) : newRestaurant.planAmount;
+                      }
+                      setNewRestaurant({
+                        ...newRestaurant,
+                        address: a.address || '',
+                        addressLine2: a.address_line_2 || '',
+                        city: a.city || '',
+                        state: a.state || '',
+                        postalCode: a.postal_code || '',
+                        country: nextCountry,
+                        latitude: a.latitude != null ? String(a.latitude) : '',
+                        longitude: a.longitude != null ? String(a.longitude) : '',
+                        currency,
+                        planAmount
+                      });
+                    }}
+                    showLatLng
+                    defaultCountry={newRestaurant.country}
+                    required={['address']}
+                  />
 
                   <FormGroup>
                     <FormLabel>{t('admin:restaurantsPage.businessRegistrationNo')}</FormLabel>
@@ -2658,79 +2618,33 @@ const RestaurantsPage: React.FC = () => {
                     />
                   </FormGroup>
 
-                  <FormGroup>
-                    <FormLabel>Address *</FormLabel>
-                    <FormTextarea
-                      placeholder="Enter restaurant address"
-                      value={editingRestaurant.address || editingRestaurant.location}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, address: e.target.value, location: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.city')}</FormLabel>
-                    <FormInput
-                      type="text"
-                      placeholder="e.g., Kuala Lumpur"
-                      value={editingRestaurant.city || ''}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, city: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.stateProvince')}</FormLabel>
-                    <FormInput
-                      type="text"
-                      placeholder="e.g., Selangor"
-                      value={editingRestaurant.state || ''}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, state: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.postalCode')}</FormLabel>
-                    <FormInput
-                      type="text"
-                      placeholder="e.g., 50000"
-                      value={editingRestaurant.postalCode || ''}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, postalCode: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.latitude', 'Latitude')}</FormLabel>
-                    <FormInput
-                      type="number"
-                      step="any"
-                      placeholder={t('admin:restaurantsPage.latitudeHint', 'e.g., 3.1390 (auto-filled from address)')}
-                      value={editingRestaurant.latitude ?? ''}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, latitude: e.target.value})}
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.longitude', 'Longitude')}</FormLabel>
-                    <FormInput
-                      type="number"
-                      step="any"
-                      placeholder={t('admin:restaurantsPage.longitudeHint', 'e.g., 101.6869')}
-                      value={editingRestaurant.longitude ?? ''}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, longitude: e.target.value})}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.country')}</FormLabel>
-                    <FormSelect
-                      value={editingRestaurant.country || 'MY'}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, country: e.target.value})}
-                    >
-                      {COUNTRIES.map(country => (
-                        <option key={country.code} value={country.code}>
-                          {country.name}
-                        </option>
-                      ))}
-                    </FormSelect>
-                  </FormGroup>
+                  <AddressFields
+                    value={{
+                      address: editingRestaurant.address || (editingRestaurant as any).location || '',
+                      address_line_2: (editingRestaurant as any).addressLine2 || '',
+                      city: editingRestaurant.city || '',
+                      state: editingRestaurant.state || '',
+                      postal_code: editingRestaurant.postalCode || '',
+                      country: editingRestaurant.country || 'MY',
+                      latitude: editingRestaurant.latitude != null && editingRestaurant.latitude !== '' ? Number(editingRestaurant.latitude) : null,
+                      longitude: editingRestaurant.longitude != null && editingRestaurant.longitude !== '' ? Number(editingRestaurant.longitude) : null
+                    }}
+                    onChange={(a: Address) => setEditingRestaurant({
+                      ...editingRestaurant,
+                      address: a.address || '',
+                      location: a.address || '',
+                      addressLine2: a.address_line_2 || '',
+                      city: a.city || '',
+                      state: a.state || '',
+                      postalCode: a.postal_code || '',
+                      country: (a.country || editingRestaurant.country || 'MY').toUpperCase(),
+                      latitude: a.latitude as any,
+                      longitude: a.longitude as any
+                    } as any)}
+                    showLatLng
+                    defaultCountry={editingRestaurant.country || 'MY'}
+                    required={['address']}
+                  />
 
                   <FormGroup>
                     <FormLabel>{t('admin:restaurantsPage.businessRegistrationNo')}</FormLabel>

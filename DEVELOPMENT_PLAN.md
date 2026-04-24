@@ -1,9 +1,201 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-22 (Subscriptions pending plan change + FG parity 구현)
-> **데이터베이스:** purple_dev_db (MySQL)
+> **최종 업데이트:** 2026-04-24 (v3.17 배포 완료)
+> **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** v3.16
+> **현재 버전:** **v3.17 (2026-04-24 운영 배포)**
+
+---
+
+## ✓ 완료: v3.17 운영 배포 (2026-04-24)
+
+### 배포 묶음 (이번 세션에서 운영 반영)
+v3.16 이후 누적된 주소 표준화 · R1/R2 방어선 철회 · Subscription Plan 실질 티어 차단 · Floor Plan + Brand/FC Map 전면 개선 · FC Tenancy Map 계층 드릴다운을 한 번에 배포.
+
+### 배포 결과
+- 코드 sync: 35 backend + 561 frontend 파일
+- DB 마이그레이션: 21 new columns, `Malaysia→MY` 정규화 15 rows, `country` CHAR(2) / `lat·lng` DECIMAL(10,7) ALTER 완료
+- Smoke tests: 10/10 (health · login · menu · POST order #9720 · bill · invoices · restaurants · payment · frontend · JS bundle)
+- 배포 후 audit: 모든 country ISO 정규화, whitespace 0건, R1/R2 informational 통과
+- 운영 URL https://purplehere.com, 릴리즈 블로그 https://purplehere.com/blog/release-v3.17 live
+- System Admin 공지 id=44 (5 recipients), 운영 DB 동기화 완료
+- 백업: `/var/www/backups/20260424_174607` (운영서버)
+
+### 주요 변경사항
+
+| 영역 | 변경 |
+|------|------|
+| 주소 표준화 | 9 엔티티 통일, `country CHAR(2)` + `lat/lng DECIMAL(10,7)` + `address_line_2`, `<AddressFields>` 공용 컴포넌트, `formatAddress()` 유틸, i18n-iso-countries 250국 ×4언어 |
+| R1/R2 철회 | Restaurant은 live entity, Contract는 snapshot. 잘못된 cross-brand 차단 4곳 제거 + cleanup 스크립트 정제 |
+| Subscription Plan 게이팅 | `middleware/requireModule.js` 신설, 29 백엔드 엔드포인트 + 6 URL + UI 3중 가드 |
+| Franchise Map All Brands | 다중 브랜드 소유자용 집계 뷰 |
+| Floor Plan / Brand Map / FC Tenancy Map | 표준 Button 통일, 화살표 제거, currency/timezone API 연동, stage advance 원클릭, billing_gap CTA with `fc_plans` 모듈 게이팅 |
+| FC Tenancy Map 계층 | 사이드리스트 branch→tenants 자동 expand, 유닛 클릭 시 우측 상세 패널 (Brand Map 패턴) + 지도 tenant 핀 클릭 연동 |
+
+### 주요 수정 파일
+
+**백엔드**
+- `routes/brands.js`, `routes/foodcourts.js`, `routes/contracts.js`, `routes/restaurants-crud.js`, `routes/admin-settings.js`
+- `routes/foodcourt-branches.js`, `routes/foodcourt-floor-plans.js`, `routes/foodcourt-units.js`
+- `middleware/requireModule.js` (신설), `middleware/addressValidation.js` (신설)
+- `models/{Restaurant,Brand,Foodcourt,FoodcourtBranch,User,Supplier,HardwareQuote,CompanySettings}.js`
+- `utils/formatAddress.js` (신설)
+- `scripts/{audit,migrate,cleanup}-addresses.js` (신설)
+
+**프론트엔드**
+- `pages/BrandGeneral/{BrandFranchiseMapPage,BrandFranchiseMapStandalone,FranchiseManagementPage}.tsx`
+- `pages/FoodcourtGeneral/{FoodcourtFloorPlanPage,FoodcourtTenancyMapPage,FoodcourtTenancyMapStandalone,FoodcourtBranchesPage}.tsx`
+- `components/{ProtectedRoute,Contract/ContractDetail,Form/AddressFields}.tsx`
+- `hooks/useAllowedRoutes.ts` (hasModule 추가)
+- `utils/formatAddress.ts` (신설)
+- 4개 언어 i18n: `public/locales/{en,ko,zh,ms}/{common,contract}.json`
+
+### 검증
+- health-check 40/40 통과, /검증 10단계 전수 통과, 주문 라이프사이클 create→ready→served→cleanup 정상
+- 운영 smoke 10/10, API E2E 27/27, 역할별 11/11, DB 정합성 orphan 0, 보안 anon 401 전 영역
+
+### 의존성
+- `i18n-iso-countries@^7.14.0` (frontend + backend)
+
+---
+
+## ✓ 완료: R1/R2 방어선 철회 + Subscription Plan 모듈 게이팅 (2026-04-24 저녁, v3.17 배포됨)
+
+### 배경
+직전 세션의 주소 표준화에서 도입한 R1/R2 "cross-brand 정합성 방어선"이 과도한 설계였음이 드러남. Irene이 restaurant #10 을 brand 1(K-DINE with MIN) → brand 4(with MIN) 로 옮기려 했으나 400 BRAND_MISMATCH 로 차단. 검토 결과:
+
+1. **Contract UI에 브랜드 선택 필드 없음** — `entity_id`는 만든 BG 유저의 `brand_id`가 자동으로 찍히는 invisible 메타데이터. 사용자가 의식적으로 지정한 값이 아님.
+2. **도메인 모델 오류** — Contract가 Restaurant의 상위 제약이 되면 안 됨. Restaurant은 컨셉/방향/세무 등이 유연하게 변하는 살아있는 엔티티; Contract는 특정 시점 합의의 스냅샷 기록일 뿐.
+3. **Subscription Plan은 advanced 모듈** — `brand_plans`/`fc_plans` 는 상위 구독 플랜에서만 unlock 되는 프리미엄 기능인데, Contract 빌링이 Plan 연결을 무조건 강제하면 basic 고객(계약/인보이스만 쓰는)과 부합하지 않음.
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | `restaurants-crud.js` PUT R1 제거 | brand_id 변경 시 BRAND_MISMATCH 차단 블록 삭제. Restaurant is source of truth. | ✓ |
+| 2 | `brands.js` plan 배정 R1 제거 | restaurant 배정 시 cross-brand mismatch 차단 블록 삭제 | ✓ |
+| 3 | `foodcourts.js` plan 배정 R2 제거 | restaurant 배정 시 cross-foodcourt mismatch 차단 블록 삭제 | ✓ |
+| 4 | `contracts.js` POST R1/R2 제거 | restaurant 연결 시 entity 불일치 차단 블록 삭제 (restaurant 존재 체크만 유지) | ✓ |
+| 5 | `scripts/cleanup-addresses.js` 재구성 | `enforceBrandIntegrity`/`enforceFoodcourtIntegrity` 함수 제거. 주소 sanitize + plan mismatch 경고(informational)만 남김 | ✓ |
+| 6 | `hooks/useAllowedRoutes.ts` — hasModule helper | `includedModules` state + `hasModule(code)` 헬퍼 노출. skipFiltering 시 fail-open | ✓ |
+| 7 | `ContractDetail.tsx` — Plan 섹션 게이팅 | `LinkedPlansSection`을 `brand_plans`/`fc_plans` 모듈 보유자에게만 조건부 렌더 | ✓ |
+
+### 도메인 원칙 (이제부터 적용)
+- **Restaurant**: 살아있는 엔티티, source of truth. 브랜드/컨셉/세무/운영방향 자유 변경.
+- **Contract**: 특정 시점 합의 스냅샷. 과거 기록. Restaurant 변경을 제약하지 않음.
+- **Plan(EntityPlan)/EPR**: 청구 관계 기록. 마찬가지로 Restaurant 변경을 제약하지 않음.
+- **Subscription Plan UI**: basic 고객은 financial_terms + One-time Invoice 로 운영. Plan 섹션은 advanced 모듈 보유자에게만 표시.
+
+### 검증
+- 빌드: exit 0, `main.659e0d17.js` 배포
+- API E2E:
+  - `PUT /api/restaurants/10 { brand_id: 4 }` → 200 OK (이전: 400 BRAND_MISMATCH)
+  - Read-back: brand_id = 4 persisted ✓
+  - Contract #23.entity_id = 1 untouched (snapshot 보존) ✓
+  - EPR 2건 untouched ✓
+  - Plan assignment cross-brand 차단 제거 확인 (BRAND_MISMATCH 안 뜸) ✓
+  - 원상복구 완료
+- health-check: 40/40 pass
+
+### 미배포
+운영 배포는 `/배포` 명령으로 진행. 주소 표준화 + R1/R2 철회가 한 묶음으로 나감.
+
+### 수정된 파일
+
+**백엔드**
+- routes/restaurants-crud.js, routes/brands.js, routes/foodcourts.js, routes/contracts.js
+- scripts/cleanup-addresses.js (brand_id/foodcourt_id 자동 교정 로직 제거)
+
+**프론트엔드**
+- hooks/useAllowedRoutes.ts (hasModule 추가)
+- components/Contract/ContractDetail.tsx (Plan 섹션 게이팅)
+
+---
+
+## ✓ 완료: Address Standardization — Global Unification (2026-04-24, 미배포)
+
+### 배경
+`with MIN Cafe (restaurant #10)` 에 계약/플랜 연결했는데 franchise-map 에 안 보이는 증상.
+근본 원인: restaurant.brand_id 와 contract.entity_id/plan.entity_id 불일치 (cross-brand 링크) + 주소 DB 스키마/데이터 파편화 (country VARCHAR(100) vs VARCHAR(10), lat/lng DOUBLE vs DECIMAL, 줄바꿈/풀네임 혼재).
+
+**설계 문서**: `docs/ADDRESS_STANDARDIZATION.md` (11장, 30년차 리뷰 반영)
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | franchise-map API 500 에러 수정 | `ep.fixed_amount`/`ep.billing_cycle` 존재하지 않는 컬럼 참조 제거, `entity_plan_prices.monthly_price` 별도 조회. `currentPlan` → `currentPlans` 배열로 변경 (한 레스토랑 다중 플랜 지원) | ✅ |
+| 2 | Cross-brand 링크 API 검증 복원 | `brands.js` / `foodcourts.js` POST plans 배정 시 R1/R2 검증 (BRAND_MISMATCH / FOODCOURT_MISMATCH) | ✅ |
+| 3 | Contract POST R1/R2 검증 추가 | 계약 생성 시점에 cross-brand 차단 | ✅ |
+| 4 | Restaurant PUT R1 방어 추가 | brand_id 변경 시도 시 활성 계약과 mismatch 검증 (회귀 방지) | ✅ |
+| 5 | DB 스키마 통일 (8 엔티티) | `address_line_2 VARCHAR(255)` 추가. `country CHAR(2)` ISO 통일. `latitude/longitude DECIMAL(10,7)` 통일. users/suppliers/hardware_quotes 에 6필드 확장. `scripts/migrate-address-schema.js` | ✅ |
+| 6 | 데이터 정제 | newline/tab sanitize, `"Malaysia"` → `"MY"` ISO 정규화, R1/R2 정합성 자동 교정 (restaurant #10 brand_id 4→1). `scripts/cleanup-addresses.js` (dry-run + apply) | ✅ |
+| 7 | Sequelize 모델 업데이트 8개 | Restaurant / Brand / Foodcourt / FoodcourtBranch / CompanySettings / User / Supplier / HardwareQuote 에 address_line_2 + country CHAR(2) + lat/lng DECIMAL 반영 | ✅ |
+| 8 | 공통 유틸 `formatAddress` | frontend/backend 양쪽. i18n-iso-countries 250국가 × 4언어. 국가별 포맷 (MY/KR/JP/default). format: 'full'/'short'/'oneline'/'location' | ✅ |
+| 9 | 입력 검증 미들웨어 | `middleware/addressValidation.js` — sanitize + country ISO 검증 (warn-only) | ✅ |
+| 10 | 공용 컴포넌트 `<AddressFields />` | 6필드 + lat/lng. autoComplete 브라우저 자동완성 지원. 줄바꿈 자동차단. country searchable select | ✅ |
+| 11 | 입력 폼 교체 (AddressFields) | Admin/RestaurantsPage (new+edit), Manager/RestaurantsPage (new), FoodcourtGeneral/FoodcourtBranchesPage, Suppliers/SuppliersPage, BrandGeneral/BrandManagement | ✅ |
+| 12 | AutoSave 패턴 address_line_2 추가 | Admin/AdminSettingsPage, CompanyInformation/CompanyInformationPage, Brand/BrandCompanyInfoPage + 백엔드 admin-settings.js | ✅ |
+| 13 | Display formatAddress 치환 | BrandGeneral/BrandFranchiseMapPage (상세/팝업/리스트, XSS escapeHtml 보너스), BrandInvoiceViewModal, FoodcourtInvoiceViewModal | ✅ |
+| 14 | Picker UX 배너 | Manager/RestaurantsPage Link existing contract/plan 피커 상단 amber 배너로 브랜드 컨텍스트 사전 안내 | ✅ |
+| 15 | 운영 DB 사전 점검 스크립트 | `scripts/audit-addresses.js` (read-only) — 운영 배포 전 실행해서 schema/country/newline/R1/R2/EPR 전수 점검 | ✅ |
+| 16 | i18n 4언어 12 keys | `common.json` `address.*` 블록 추가 (en/ko/zh/ms) | ✅ |
+
+### DB 변경 (운영 배포 시 적용 필요)
+- 5개 엔티티 (restaurants/brands/foodcourts/foodcourt_branches/company_settings) 에 `address_line_2 VARCHAR(255)` 추가
+- users/suppliers 에 6필드 추가 (address_line_2/city/state/postal_code/country)
+- hardware_quotes 에 5필드 추가 (country_code 유지)
+- restaurants.country VARCHAR(100) → CHAR(2), latitude/longitude DOUBLE → DECIMAL(10,7)
+- brands/foodcourts/foodcourt_branches/company_settings country → CHAR(2) 통일
+- Country 값 ISO 정규화: "Malaysia" → "MY" 등
+- Restaurant #10 brand_id 4→1 (R1 정합성 교정)
+
+### 수정/신규 파일
+
+**백엔드 신규**
+- utils/formatAddress.js
+- middleware/addressValidation.js
+- scripts/migrate-address-schema.js, cleanup-addresses.js, audit-addresses.js
+
+**백엔드 수정**
+- models/: Brand / CompanySettings / Foodcourt / FoodcourtBranch / HardwareQuote / Restaurant / Supplier / User
+- routes/: admin-settings / brands / contracts / foodcourt-branches / foodcourts / restaurants-crud
+
+**프론트엔드 신규**
+- components/Form/AddressFields.tsx, components/Form/index.ts (export)
+- utils/formatAddress.ts
+
+**프론트엔드 수정**
+- pages/Admin/{AdminSettingsPage, RestaurantsPage}.tsx
+- pages/Brand/BrandCompanyInfoPage.tsx
+- pages/BrandGeneral/{BrandFranchiseMapPage, BrandManagement}.tsx + invoices/BrandInvoiceViewModal.tsx
+- pages/CompanyInformation/CompanyInformationPage.tsx
+- pages/FoodcourtGeneral/FoodcourtBranchesPage.tsx + invoices/FoodcourtInvoiceViewModal.tsx
+- pages/Manager/RestaurantsPage.tsx
+- pages/Suppliers/SuppliersPage.tsx
+- public/locales/{en,ko,zh,ms}/common.json
+
+**문서 신규**: docs/ADDRESS_STANDARDIZATION.md
+
+### 의존성
+- `i18n-iso-countries@^7.14.0` (frontend + backend) — 250국가 × 4언어 표시명
+
+### 검증
+- state-hydration-check: 0 warnings
+- 빌드: exit 0, `main.17043904.js` 배포
+- health-check: 40/40 pass (4회)
+- API 실호출: 총 28 pass 0 fail (franchise-map, Write/Read 왕복, BRAND/FOODCOURT_MISMATCH 차단, 역할별)
+- 역할별 유저 흐름: SA/BG/FG/BMgr/Owner 12/12 pass
+- audit-addresses.js (dev DB): 전 테이블 ✓ (country ISO, no newlines, R1/R2/EPR 정합성)
+
+### 미배포
+**운영 배포는 다음 세션에서 `/배포` 명령으로 진행.**
+운영 DB 적용 순서: `audit-addresses.js` → `migrate-address-schema.js --apply` → `cleanup-addresses.js --apply` → pm2 restart → frontend rebuild
+
+### 잔여 follow-up
+- Invoice PDF print HTML 템플릿 (Owner/Admin/Brand/Foodcourt InvoicesPage 내부 큰 inline HTML) 에 `formatAddress()` 적용 — cosmetic, 고장 없음
+- BillPrintPage / DailySettlementPrint / TableDetailPanel 의 주소 concat 치환
+- Brand 변경 시 stale 계약 정리 UX 개선 (현재는 400 에러 메시지로만 안내)
 
 ---
 

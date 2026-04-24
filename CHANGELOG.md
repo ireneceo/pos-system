@@ -6,7 +6,86 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-04-22 (Subscriptions Pending Plan Change + Foodcourt General Parity)
+
+## [v3.17] — 2026-04-24 배포
+
+### FC Tenancy Map — 계층 사이드리스트 + 유닛 상세 패널
+- **사이드 리스트 계층화**: branch 카드 선택 시 그 아래 tenant 레스토랑/유닛을 nested로 자동 전개. 정렬 규칙은 stage priority (active → setup → contracting → proposal → expired → vacant) 후 unit_number 자연순. Tenant 이름 없으면 "Vacant" italic 표시.
+- **유닛 클릭 시 우측 상세 패널 (Brand Map / Floor Plan 패턴)**: unit code + stage badge header, Billing Gap banner (`fc_plans` 모듈 보유 시만), Unit info, Vacant empty state CTA, Current Contract, Tenant, Financial Terms (base_rent / revenue share / min guarantee / deposit / CAM), Actions (stage advance / renew / new tenancy / open contract).
+- **지도 핀 클릭 연동**: branch 선택 상태에서 tenant restaurant 핀 클릭 → 해당 unit의 상세 패널로 전환. 사이드리스트와 핀 양쪽으로 진입 가능.
+- **타이머/통화**: `data.foodcourt.currency`/`time_zone` 재사용, 하드코딩 없음
+- **표준 Button 컴포넌트 일관 사용**, 화살표/아이콘 없음
+
+**검증 결과 (30/30)**:
+- 주문 라이프사이클 create → read → preparing → ready → served → delete: 8/8 ✓
+- 세션 변경 회귀 (R1 제거, 모듈 게이팅 Basic/Enterprise, 지도 신규 필드, branch.units 구조, stage transition): 10/10 ✓
+- 역할별 접근 (SA/BG/FG + cross-tenant): 4/4 ✓
+- DB 정합성 (orphan 없음): 3/3 ✓
+- 보안 (anon 401 전 영역): 5/5 ✓
+- **health-check 40/40 ✓**
+
+**빌드**: `main.30c49482.js` + `8535.ccdbd53d.chunk.js` 배포
+
+### Brand Franchise Map + Foodcourt Tenancy Map 감사 + 개선
+- **Brand Franchise Map detail panel 개선** — 오늘 Floor Plan에 만든 패턴 대칭 적용
+  - `OpenContractLink` anchor 제거 → opener-aware navigate + 표준 Button (variant=secondary)
+  - 파이프라인 stage advance primary 버튼 (proposal→contracting→setup→active) 추가
+  - Expiring/Expired 상태 각각 Renew / Create new tenancy CTA
+  - `brand_plans` 모듈 게이팅 — 미보유 시 Current Plans 섹션 숨김
+  - 통화/타임존 하드코딩 제거 (`'RM'`, `'Asia/Kuala_Lumpur'`, `'en-MY'` locale) → `data.brand.currency`, `data.brand.time_zone`, `contract.currency` 사용
+  - 화살표/아이콘 완전 제거 (→, +, ↻ 전부)
+- **Foodcourt Tenancy Map 개선**
+  - **`unit_stats.occupied` runtime 버그 수정** — 백엔드는 `occupied` 필드를 반환하지 않는데 프론트가 참조해서 NaN% 표시되던 문제. Retail property 표준에 맞춰 `occupiedCount(stats) = active + setup` 헬퍼로 정의하고 아이콘/사이드리스트/팝업 모두 일관 적용
+  - Leaflet 팝업의 하드코딩 영문 "PRIMARY", "Occupied", "Vacant", "Type", "Sales 30d" → `t('map.popup.*')` 4개 언어 i18n 키로 치환
+  - 팝업 HTML에 branch name/code/address XSS escape 추가 (Leaflet이 raw HTML 렌더링하므로)
+  - `"View floor plan →"` 화살표 제거
+  - 통화 `toLocaleString()` locale-neutral + 매장 통화 심볼 prefix
+- **백엔드 API 응답 확장**
+  - `GET /api/brands/:id/franchise-map` 응답에 `data.brand.currency`, `data.brand.time_zone` 추가 + contract 쿼리에 `currency` 필드 포함
+  - `GET /api/foodcourts/:id/tenancy-map` 응답에 `data.foodcourt.currency`, `data.foodcourt.time_zone` 추가
+- **i18n 4개 언어 추가 키**: `map.primary`, `map.popup.{total,occupied,vacant,type,sales30d}`
+
+**검증**: 빌드 exit 0, `main.41b0e710.js` + chunk 4867/5295/8535 배포, 새 i18n 키 4개 언어 live. API E2E 12/12 (brand franchise-map currency/tz + contract.currency, FC tenancy-map currency/tz, unit_stats 구조 확인, stage transition, module gating). health-check 40/40
+
+### Foodcourt Floor Plan 감사 + 개선
+- **SPA 버그 수정** — `FoodcourtFloorPlanPage.tsx` 의 "Open contract" 가 `<a href>` 였어서 full page reload 유발. opener-aware 패턴(`openInOpener`)으로 교체 — 팝업으로 떠 있으면 opener 창에서 이동 + popup close, 단독 탭이면 in-page navigate
+- **Dead code 제거** — 정의되기만 하고 렌더링 안 되던 `Tabs`, `TabBtn`, `SubHeader`, `OpenLink`, `UNIT_STATUS_COLOR` 제거
+- **i18n 경로 통일** — 코드의 `floorPlan.financial.redacted` → `floorPlan.fin.redacted` (locale 실존 경로에 맞춤). 4개 언어에 `editLayout`, `sec.actions`, `action.advanceToContracting/advanceToSetup/advanceToActive/advanceConfirm/newTenancy/linkPlan` 키 추가
+- **Pipeline 단계 전진 버튼** — proposal→contracting→setup→active 각 단계에 primary CTA 추가. confirm modal → `PUT /api/contracts/:id/stage` 호출 → 성공 시 플로어플랜 자동 리프레시. 기존엔 계약편집 페이지 진입해야만 가능했던 흐름을 원클릭으로 축소 (ops manager 반복 동작 단축)
+- **billing_gap CTA + 모듈 게이팅** — active 계약에 ContractPlan 미연결 시 띄우는 배너에 "Link a plan →" 버튼 추가. `fc_plans` 모듈 없는 basic 고객에겐 배너 자체 숨김 (오늘 구현한 `hasModule` 헬퍼 재사용 — 그들은 수동 청구만 사용하므로 혼란 제거)
+- **Currency/Timezone 하드코딩 제거** — `'RM'`/`'Asia/Kuala_Lumpur'` 하드코딩 6곳 제거. 마운트 시 `/api/foodcourts/:id` fetch → `currency`(통화 심볼 변환) + `operation_settings.timeZone`을 state로 보관 → Clock + 3개 date rendering + financial tile 에 실제 적용
+- **새 tenancy CTA** — expired 상태 유닛에 "Create new tenancy" 버튼 추가 (vacant와 동일한 new=1&unit_id 쿼리)
+- **백엔드 권한 완화 (foodcourts GET /:id)** — Foodcourt Manager 가 자신의 foodcourt_id 매칭 시 접근 허용 (이전엔 owner만 가능해서 Manager 가 floor plan 헤더에서 currency/timezone 조회 실패)
+
+**검증**: 빌드 exit 0, chunk `5295.9c7289aa.chunk.js` 배포, 새 i18n 키 8개 4개 언어 전체 라이브 서빙, API E2E 10/10 (currency+timezone fetch, stage transition advance+restore, fc_plans 모듈 gating, billing_gap 필드 유지), health-check 40/40
+
+### Subscription Plan 모듈 — 실질 티어 차단 (API + URL + UI 3중 가드)
+- **`middleware/requireModule.js` 신설** — 타겟 엔티티(brand/foodcourt)의 활성 `PlanTemplate.included_modules` 를 확인해서 해당 모듈 코드가 없으면 `403 MODULE_NOT_INCLUDED` 반환. SA + demo 계정 bypass. Helpers: `requireBrandModule(code)`, `requireFoodcourtModule(code)`, `requireContractEntityModule({brand: 'brand_plans', foodcourt: 'fc_plans'})`
+- **백엔드 엔드포인트 29개 게이팅**: `routes/brands.js` 의 plan/subscription 엔드포인트 13개 (`brand_plans` / `brand_subscriptions`), `routes/foodcourts.js` 의 대응 13개 (`fc_plans` / `fc_subscriptions`), `routes/contracts.js` 의 plan linkage 3개 (POST/DELETE `/:id/plans`, POST `/:id/create-plan-from-contract`)
+- **프론트 `ProtectedRoute.tsx` URL 가드** — `/pos/brand/plans`, `/pos/brand/subscriptions`, `/pos/manager/plans`, `/pos/manager/subscriptions`, `/pos/foodcourt/plans`, `/pos/foodcourt/subscriptions` 6개 URL 에 대해 모듈 미보유 시 역할 대시보드로 자동 redirect. 이전엔 사이드바만 숨겨져 있어 URL 직접 입력으로 우회 가능했음
+- **검증 (동일 유저의 plan_type 스왑으로 전수)**: Basic tier BG → `GET/POST /brands/:id/plans`, `GET /brands/:id/subscriptions`, `POST /contracts/23/plans` 전부 403 MODULE_NOT_INCLUDED. SA → 200 bypass. Enterprise tier BG → 200. plan_type 원복 검증 포함 10/10 pass. health-check 40/40
+
+### R1/R2 방어선 철회 + Contract Billing Plan 연결 모듈 게이팅
+- **R1/R2 정합성 방어선 전면 제거** — 직전 세션에 도입한 restaurant-contract cross-brand 차단이 잘못된 도메인 모델이었음. Contract UI 에 브랜드 선택 필드가 없어(`entity_id` 는 BG 유저의 `brand_id` 자동 반영) 사용자가 의식적으로 지정하지도 않은 필드로 정당한 브랜드 변경을 400으로 막고 있었음. Restaurant 은 live entity (컨셉/방향/세무 유연 변경), Contract 는 시점 합의 스냅샷이라는 원칙으로 재정립.
+- **수정 대상 5곳**: `routes/restaurants-crud.js` PUT / `routes/brands.js` plan 배정 / `routes/foodcourts.js` plan 배정 / `routes/contracts.js` POST restaurant 연결 / `scripts/cleanup-addresses.js` (brand_id/foodcourt_id 자동 교정 로직 제거, 주소 sanitize + EPR cross-brand informational 경고만 유지)
+- **Subscription Plan UI 게이팅** — `ContractDetail` 의 `LinkedPlansSection` 을 `brand_plans`/`fc_plans` 모듈 보유자에게만 조건부 렌더. Basic 고객은 `financial_terms` + One-time Invoice 만으로 운영. `hooks/useAllowedRoutes` 에 `hasModule(code)` 헬퍼 + `includedModules` 노출
+- **검증**: Restaurant #10 brand_id 1→4 PUT 200 OK, Contract #23 / EPR 2건 snapshot 보존, cross-brand plan assignment 차단 해제, health-check 40/40
+- **설계 문서 회고 추가**: `docs/ADDRESS_STANDARDIZATION.md` §2 에 R1/R2 철회 사유/범위 기록
+
+### Address Standardization — Global Unification
+- **주소 입력 표준화** — 9개 엔티티 주소 관련 DB 스키마 통일: `country CHAR(2) ISO 3166-1 alpha-2`, `latitude/longitude DECIMAL(10,7)`, 전 엔티티에 `address_line_2 VARCHAR(255)` 추가. users/suppliers/hardware_quotes 에 6필드(city/state/postal/country) 확장
+- **공용 `<AddressFields>` 컴포넌트** — 6필드 + lat/lng, 250국가 locale별 이름 select, 줄바꿈 자동차단, autoComplete 지원. Admin/Manager Restaurants, FoodcourtBranches, Suppliers, BrandManagement 5곳에 일괄 적용
+- **AutoSave 패턴 페이지**에도 address_line_2 추가 — CompanyInformation, AdminSettings, BrandCompanyInfo
+- **Cross-brand 정합성 3중 방어선** — (1) plan→restaurant 배정 API, (2) contract 생성 API, (3) restaurant brand_id PUT 에 R1/R2 규칙 강제 (BRAND_MISMATCH / FOODCOURT_MISMATCH 400 차단). 이전 with MIN Cafe 같은 증상 재발 방지
+- **Picker UX 개선** — Manager/RestaurantsPage Link contract/plan 피커 상단에 "Linking restaurant X to Y under brand Z" amber 배너 사전 안내
+- **주소 표시 유틸 `formatAddress()`** — 국가별 포맷 (MY/KR/JP/default), format: `'full' / 'short' / 'oneline' / 'location'`. BrandFranchiseMapPage 상세/리스트/팝업(+XSS escape 보너스), Brand/Foodcourt InvoiceViewModal 에 적용
+- **운영 DB 사전 점검 스크립트** `scripts/audit-addresses.js` (read-only) — schema + country ISO + 줄바꿈/탭 + R1/R2/EPR 정합성 전수 점검
+- **데이터 정제** — `scripts/cleanup-addresses.js` — newline sanitize, "Malaysia" → "MY" 등 country 정규화, R1 정합성 자동 교정 (dev DB 에서 Restaurant #10 brand_id 4→1 수정됨)
+- **franchise-map API 500 에러 수정** — 존재하지 않는 `entity_plans.fixed_amount`/`billing_cycle` 컬럼 참조 제거, `entity_plan_prices.monthly_price` 별도 조회, `currentPlans` 배열로 변경 (한 레스토랑 다중 플랜 지원)
+- **설계 문서**: `docs/ADDRESS_STANDARDIZATION.md` (11장, 30년차 리뷰 반영)
+- **의존성**: `i18n-iso-countries@^7.14.0` (frontend + backend)
+
+### Subscriptions Pending Plan Change + Foodcourt General Parity
 - **Subscriptions 예정 변경 (pending) 플로우** — `/pos/brand/general/subscriptions`, `/pos/foodcourt/general/subscriptions` 에서 이미 플랜이 배정된 레스토랑에 다른 플랜을 배정하면 즉시 교체가 아니라 다음 청구 주기 날짜로 스케줄. 행에 "Scheduled change: X on YYYY-MM-DD" 배너 + Cancel 버튼 표시. 스케줄러(2AM cron)가 활성일 도래 시 자동 전환
 - **Add Subscription 모달 필터** — 이미 플랜 있는 레스토랑은 드롭다운에서 제외 (기존 플랜은 Change Plan 행 버튼으로만 변경). 전부 배정되어 있으면 안내 문구
 - **버튼 silent 실패 수정** — Assign / Unassign / Discount / Cancel-pending 모든 액션의 에러를 페이지 상단 토스트 + 모달 inline 으로 surface (이전엔 `console.error`만)
@@ -17,11 +96,11 @@
 - **contract.json i18n 보정** — `detail.viewAllPlans / viewAllPlansHint / linkExistingPlan / noLinkedPlansHint` 4개 언어 누락 키 추가
 - **DB**: `entity_plan_restaurants` 에 `pending_plan_id`, `pending_activation_date` 컬럼 추가 (backward-compatible)
 
-### 2026-04-23 (Billing 섹션 액션 버튼 정리)
+### Billing 섹션 액션 버튼 정리
 - "All Plans ↗" 버튼 제거 — 인라인 2개 액션(Link / Create)이 95% 케이스를 커버하므로 중복 제거. 플랜 관리는 사이드바 네비게이션 Plans 페이지에서
 - 피커 모달 "No available plans" 빈 상태에 Plans 페이지 링크 추가 — 엣지 케이스만 대비
 
-### 2026-04-23 (Contract Detail 섹션 상태 배지 + 배너 오판 수정)
+### Contract Detail 섹션 상태 배지 + 배너 오판 수정
 - "Billing plan linked" 초록 배너가 **닫힌(end_at SET)** ContractPlan도 카운트해서 잘못 표시되던 버그 — `form.plans.length > 0` → `form.plans.some(p => !p.end_at)` 로 open 링크만 체크
 - 5개 아코디언 섹션(Parties/Contract/Billing/Setup/Documents) 상태 배지 로직 **완전 통일** — 이전엔 섹션마다 다른 라벨("Complete" / "N/4 filled" / "Pending" / "No plan linked" 등)로 비일관적. 수정 후 3-상태 일관:
   - **Required N** (빨강) — 다음 stage 필수 필드 부족

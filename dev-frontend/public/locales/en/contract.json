@@ -145,6 +145,7 @@
     "empty": "No restaurants to display on the map yet.",
     "noCoords": "No restaurants have coordinates yet. Edit a restaurant to add location data.",
     "noBrand": "No brand available.",
+    "allBrands": "All Brands",
     "legend": {
       "active": "Active",
       "trial": "Trial",
@@ -168,7 +169,15 @@
     "tenantsIn": "Tenants ({{count}})",
     "noTenants": "No tenant restaurants in this branch",
     "search": "Search...",
-    "viewFloorPlan": "View floor plan →"
+    "viewFloorPlan": "View floor plan",
+    "primary": "PRIMARY",
+    "popup": {
+      "total": "Total",
+      "occupied": "Occupied",
+      "vacant": "Vacant",
+      "type": "Type",
+      "sales30d": "Sales 30d"
+    }
   },
   "franchiseTabs": {
     "contracts": "Contracts",
@@ -252,8 +261,10 @@
       "contract": "Current Contract",
       "tenant": "Tenant",
       "financial": "Financial Terms",
-      "timeline": "Timeline"
+      "timeline": "Timeline",
+      "actions": "Actions"
     },
+    "editLayout": "Edit Layout",
     "unit": {
       "code": "Code",
       "size": "Size",
@@ -300,8 +311,14 @@
     },
     "action": {
       "open": "Open contract →",
-      "renew": "Renew",
+      "renew": "Renew contract",
       "advance": "Advance to next stage",
+      "advanceToContracting": "Advance to Contracting",
+      "advanceToSetup": "Advance to Setup",
+      "advanceToActive": "Mark Active",
+      "advanceConfirm": "Advance contract {{num}} to \"{{stage}}\"?",
+      "newTenancy": "Create new tenancy",
+      "linkPlan": "Link a plan",
       "reject": "Reject",
       "recordPayment": "Record payment",
       "markVacant": "Mark vacant",

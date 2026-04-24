@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, getManagerScope } = require('../middleware/auth');
+const { requireContractEntityModule } = require('../middleware/requireModule');
+
+// Plan linkage on contracts is an advanced-tier feature. The module gate follows
+// the contract's own entity_type: a brand contract requires brand_plans, a
+// foodcourt contract requires fc_plans.
+const PLAN_LINK_MODULE_MAP = { brand: 'brand_plans', foodcourt: 'fc_plans' };
 const { Contract, ContractDocument, ContractTask, ContractNote, ContractHistory, ContractPlan,
         FoodcourtUnit, Restaurant, Brand, Foodcourt, User, EntityPlan, EntityPlanRestaurant } = require('../models');
 const { Op } = require('sequelize');
@@ -323,6 +329,17 @@ router.post('/', authenticateToken, async (req, res, next) => {
     }
 
     const issuerSnapshot = await buildIssuerSnapshot(entity.entity_type, entity.entity_id);
+
+    // Restaurant linkage is purely referential — restaurant is source of truth for its
+    // own brand/foodcourt membership, which may change over time. Contract just records
+    // the agreement as a snapshot. R1/R2 mismatch checks removed here.
+    // See docs/ADDRESS_STANDARDIZATION.md §2 (retrospective).
+    if (req.body.restaurant_id) {
+      const linkedR = await Restaurant.findByPk(req.body.restaurant_id, { attributes: ['id'] });
+      if (!linkedR) {
+        return res.status(400).json({ success: false, message: 'Restaurant not found' });
+      }
+    }
 
     // Currency: validated against entity.supported_currencies; defaults to entity.currency
     let resolvedCurrency;
@@ -999,7 +1016,7 @@ router.get('/:id/history', authenticateToken, async (req, res, next) => {
 // Link an existing EntityPlan to this contract (replaces any prior open link).
 // Same EPR wiring as the wizard (Phase 2-C): if contract has restaurant_id,
 // deactivate prior plan's EPR + create/reactivate EPR for the new plan.
-router.post('/:id/plans', authenticateToken, async (req, res, next) => {
+router.post('/:id/plans', authenticateToken, requireContractEntityModule(PLAN_LINK_MODULE_MAP), async (req, res, next) => {
   try {
     const contract = await checkContractAccess(req, res);
     if (!contract) return;
@@ -1072,7 +1089,7 @@ router.post('/:id/plans', authenticateToken, async (req, res, next) => {
   }
 });
 
-router.delete('/:id/plans/:planId', authenticateToken, async (req, res, next) => {
+router.delete('/:id/plans/:planId', authenticateToken, requireContractEntityModule(PLAN_LINK_MODULE_MAP), async (req, res, next) => {
   try {
     const contract = await checkContractAccess(req, res);
     if (!contract) return;
@@ -1096,7 +1113,7 @@ router.delete('/:id/plans/:planId', authenticateToken, async (req, res, next) =>
 // POST /api/contracts/:id/create-plan-from-contract
 // Body (all optional — sensible defaults from the contract):
 //   { name?, description?, billing_day? }
-router.post('/:id/create-plan-from-contract', authenticateToken, async (req, res, next) => {
+router.post('/:id/create-plan-from-contract', authenticateToken, requireContractEntityModule(PLAN_LINK_MODULE_MAP), async (req, res, next) => {
   try {
     const contract = await checkContractAccess(req, res);
     if (!contract) return;

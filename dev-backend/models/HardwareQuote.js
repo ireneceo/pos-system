@@ -50,7 +50,23 @@ const HardwareQuote = sequelize.define('HardwareQuote', {
   company_address: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Company address for invoice'
+    comment: 'Company address line 1 for invoice'
+  },
+  address_line_2: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  city: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  state: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  postal_code: {
+    type: DataTypes.STRING(20),
+    allowNull: true
   },
   tax_id: {
     type: DataTypes.STRING(100),

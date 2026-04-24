@@ -29,6 +29,7 @@ interface UseAllowedRoutesParams {
  */
 export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null) => {
   const [allowedRoutes, setAllowedRoutes] = useState<string[]>([]);
+  const [includedModules, setIncludedModules] = useState<string[]>([]);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [planType, setPlanType] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,6 +84,7 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
 
         const data: AllowedRoutesResponse = await response.json();
         setAllowedRoutes(data.allowed_routes || []);
+        setIncludedModules(data.included_modules || []);
         setSubscriptionStatus(data.subscription_status || null);
         setPlanType(data.plan_type || null);
         // Enforce filtering only when entity has a plan assigned
@@ -93,6 +95,7 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
         console.error('useAllowedRoutes Error:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
         setAllowedRoutes([]);
+        setIncludedModules([]);
         setSubscriptionStatus(null);
         setPlanType(null);
         setSkipFiltering(true); // On error, fail-open to avoid blocking users
@@ -132,11 +135,22 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
   /** Whether the entity has an active subscription with a plan */
   const hasActiveSubscription = planType !== null && planType !== '';
 
+  /**
+   * Whether a given addon module code is included in the active subscription plan.
+   * Fail-open when plan filtering is skipped (System Admin / no plan assigned / API error).
+   */
+  const hasModule = (moduleCode: string): boolean => {
+    if (skipFiltering) return true;
+    return includedModules.includes(moduleCode);
+  };
+
   return {
     allowedRoutes,
+    includedModules,
     loading,
     error,
     isRouteAllowed,
+    hasModule,
     subscriptionStatus,
     planType,
     hasActiveSubscription

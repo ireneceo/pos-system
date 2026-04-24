@@ -17,6 +17,7 @@ import ConditionListEditor from './ConditionListEditor';
 import SupportServicesChecklist from './SupportServicesChecklist';
 import LegalTermsEditor from './LegalTermsEditor';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as tzFormatDate } from '../../utils/timezone';
@@ -543,6 +544,16 @@ const STAGE_COLORS: Record<string, { bg: string; color: string }> = {
 const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType, onBack }) => {
   const { t } = useTranslation('contract');
   const { user } = useAuth();
+  // Subscription Plans (brand_plans / fc_plans) is an advanced-tier module.
+  // Gate LinkedPlansSection on module availability — basic-tier customers use
+  // financial_terms only, no plan linkage.
+  const { hasModule } = useAllowedRoutes({
+    role: user?.role || '',
+    brandId: user?.brand_id || null,
+    foodcourtId: user?.foodcourt_id || null
+  });
+  const planModuleCode = entityType === 'brand' ? 'brand_plans' : 'fc_plans';
+  const canUsePlans = hasModule(planModuleCode);
   const [contract, setContract] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<any>({});
@@ -1911,18 +1922,22 @@ const ContractDetail: React.FC<ContractDetailProps> = ({ contractId, entityType,
         );
       })()}
 
-      {/* Recurring Subscriptions (ContractPlans) + Billing Preview */}
-      <LinkedPlansSection
-        contractId={contract.id}
-        entityId={contract.entity_id}
-        plans={Array.isArray(form.plans) ? form.plans : []}
-        currency={entityCurrency}
-        entityType={entityType}
-        canManage={['System Admin', 'Foodcourt General', 'Brand General'].includes(user?.role || '')}
-        onChanged={fetchContract}
-        t={t}
-        financialTerms={form.financial_terms}
-      />
+      {/* Recurring Subscriptions (ContractPlans) + Billing Preview.
+          Gated on brand_plans / fc_plans advanced-tier module. Basic-tier
+          customers bill off financial_terms alone via the One-time Invoices below. */}
+      {canUsePlans && (
+        <LinkedPlansSection
+          contractId={contract.id}
+          entityId={contract.entity_id}
+          plans={Array.isArray(form.plans) ? form.plans : []}
+          currency={entityCurrency}
+          entityType={entityType}
+          canManage={['System Admin', 'Foodcourt General', 'Brand General'].includes(user?.role || '')}
+          onChanged={fetchContract}
+          t={t}
+          financialTerms={form.financial_terms}
+        />
+      )}
 
       {/* One-time Invoices */}
       <Section>

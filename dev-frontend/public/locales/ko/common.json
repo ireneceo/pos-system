@@ -546,5 +546,19 @@
   "tenantSupport.trainingAndWorkshopScheduleGuidance": "교육 및 워크샵 일정 안내",
   "cookie.message": "더 나은 경험과 사이트 트래픽 분석을 위해 쿠키를 사용합니다. \"모두 수락\"을 클릭하면 쿠키 사용에 동의하게 됩니다. 자세한 내용은 <a href=\"/privacy\">개인정보 처리방침</a>을 참조하세요.",
   "cookie.acceptAll": "모두 수락",
-  "cookie.essentialOnly": "필수만"
+  "cookie.essentialOnly": "필수만",
+  "address": {
+    "line1": "주소",
+    "line1Placeholder": "도로명 / 건물 / 지역",
+    "line2": "상세주소 (선택)",
+    "line2Placeholder": "유닛 / 층 / 건물명",
+    "city": "시/군",
+    "state": "시/도",
+    "postalCode": "우편번호",
+    "country": "국가",
+    "selectCountry": "국가 선택",
+    "latitude": "위도",
+    "longitude": "경도",
+    "latLngHint": "저장 시 주소로 자동 조회됩니다 (비워두기 가능)"
+  }
 }

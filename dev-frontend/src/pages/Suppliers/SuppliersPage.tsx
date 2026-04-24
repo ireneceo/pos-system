@@ -10,6 +10,8 @@ import ConfirmModal from '../../components/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { AddressFields } from '../../components/Form';
+import type { Address } from '../../utils/formatAddress';
 interface Brand {
   id: number;
   name: string;
@@ -779,15 +781,26 @@ const SuppliersPage: React.FC = () => {
               </UIFormGroup>
             </UIFormRow>
 
-            <UIFormGroup>
-              <FormLabel>{t('suppliers:suppliersPage.address')}</FormLabel>
-              <FormInput
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="Full address"
-              />
-            </UIFormGroup>
+            <AddressFields
+              value={{
+                address: formData.address || '',
+                address_line_2: (formData as any).address_line_2 || '',
+                city: (formData as any).city || '',
+                state: (formData as any).state || '',
+                postal_code: (formData as any).postal_code || '',
+                country: (formData as any).country || 'MY'
+              }}
+              onChange={(a: Address) => setFormData({
+                ...formData,
+                address: a.address || '',
+                address_line_2: a.address_line_2 || '',
+                city: a.city || '',
+                state: a.state || '',
+                postal_code: a.postal_code || '',
+                country: (a.country || (formData as any).country || 'MY').toUpperCase()
+              } as any)}
+              defaultCountry={(formData as any).country || 'MY'}
+            />
 
             <UIFormRow>
               <UIFormGroup>

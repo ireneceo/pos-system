@@ -32,6 +32,7 @@ router.get('/', async (req, res) => {
     res.json({
       companyName: settings.company_name,
       address: settings.address,
+      address_line_2: settings.address_line_2 || '',
       city: settings.city,
       state: settings.state,
       postalCode: settings.postal_code,
@@ -68,6 +69,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
     const {
       companyName,
       address,
+      address_line_2,
       city,
       state,
       postalCode,
@@ -100,10 +102,11 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
     const settingsData = {
       company_name: companyName,
       address,
+      address_line_2: address_line_2 || null,
       city,
       state,
       postal_code: postalCode,
-      country,
+      country: country ? String(country).toUpperCase().slice(0, 2) : country,
       phone,
       whatsapp: whatsapp || '',
       email,
@@ -144,6 +147,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       data: {
         companyName: settings.company_name,
         address: settings.address,
+        address_line_2: settings.address_line_2 || '',
         city: settings.city,
         state: settings.state,
         postalCode: settings.postal_code,

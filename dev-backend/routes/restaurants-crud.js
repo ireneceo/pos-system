@@ -946,10 +946,13 @@ router.post('/', authenticateToken, requireRole(
       email: req.body.email,
       phone: req.body.phone,
       address: req.body.address,
+      address_line_2: req.body.address_line_2 || null,
       city: req.body.city || null,
       state: req.body.state || null,
       postal_code: req.body.postal_code || null,
-      country: req.body.country || 'MY',
+      country: req.body.country ? String(req.body.country).toUpperCase().slice(0, 2) : 'MY',
+      latitude: req.body.latitude != null && req.body.latitude !== '' ? Number(req.body.latitude) : null,
+      longitude: req.body.longitude != null && req.body.longitude !== '' ? Number(req.body.longitude) : null,
       business_registration: req.body.business_registration || null,
       tax_id: req.body.tax_id || null,
       plan_type: incomingPlanType || 'Basic Plan',
@@ -1192,7 +1195,7 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
   try {
     // Sanitize string inputs to prevent XSS
     const { sanitizeString } = require('../middleware/validation');
-    const stringFields = ['name', 'address', 'phone', 'email', 'cuisine', 'description', 'slug'];
+    const stringFields = ['name', 'address', 'address_line_2', 'phone', 'email', 'cuisine', 'description', 'slug'];
     stringFields.forEach(field => {
       if (typeof req.body[field] === 'string') {
         req.body[field] = sanitizeString(req.body[field]);
@@ -1219,6 +1222,11 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
           return res.status(403).json({ error: 'You can only set brand for restaurants you manage' });
         }
       }
+
+      // Restaurant is source of truth for its brand identity. Brand/concept/tax info
+      // are flexible attributes of the restaurant that can change over time.
+      // Existing contracts and plan assignments remain as historical records and are
+      // NOT re-validated here — see docs/ADDRESS_STANDARDIZATION.md §2 (retrospective).
     }
 
     const restaurant = await Restaurant.findByPk(req.params.id);
@@ -1247,10 +1255,20 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     if (req.body.location !== undefined || req.body.address !== undefined) {
       updateData.address = req.body.location || req.body.address;
     }
+    if (req.body.address_line_2 !== undefined) updateData.address_line_2 = req.body.address_line_2;
     if (req.body.city !== undefined) updateData.city = req.body.city;
     if (req.body.state !== undefined) updateData.state = req.body.state;
     if (req.body.postal_code !== undefined) updateData.postal_code = req.body.postal_code;
-    if (req.body.country !== undefined) updateData.country = req.body.country;
+    if (req.body.country !== undefined) {
+      // Country is now CHAR(2) ISO. Uppercase and take first 2 chars.
+      updateData.country = req.body.country ? String(req.body.country).toUpperCase().slice(0, 2) : null;
+    }
+    if (req.body.latitude !== undefined) {
+      updateData.latitude = req.body.latitude === null || req.body.latitude === '' ? null : Number(req.body.latitude);
+    }
+    if (req.body.longitude !== undefined) {
+      updateData.longitude = req.body.longitude === null || req.body.longitude === '' ? null : Number(req.body.longitude);
+    }
     if (req.body.business_registration !== undefined) updateData.business_registration = req.body.business_registration;
     if (req.body.branch_name !== undefined) updateData.branch_name = req.body.branch_name;
     if (req.body.trade_name !== undefined) updateData.trade_name = req.body.trade_name;

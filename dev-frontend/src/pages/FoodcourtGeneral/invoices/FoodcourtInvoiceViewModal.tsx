@@ -4,6 +4,7 @@ import { Modal as CommonModal } from '../../../components/UI';
 import { formatCurrency } from '../../../utils/currency';
 import { formatDateTime } from '../../../utils/timezone';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
+import { formatAddress, AppLocale } from '../../../utils/formatAddress';
 import { Invoice, Manager, Restaurant, CompanySettings } from './types';
 import {
   Button,
@@ -49,7 +50,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
   handleLinkSearch,
   handleLinkAccount,
 }) => {
-  const { t } = useTranslation('foodcourt');
+  const { t, i18n } = useTranslation('foodcourt');
 
   const formatDate = (dateString: string) => {
     return formatDateTime(dateString, operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -82,11 +83,18 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
               {companySettings?.companyName || 'Company Name'}
             </div>
             <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
-              {companySettings?.address && <div>{companySettings.address}</div>}
-              {(companySettings?.city || companySettings?.state || companySettings?.postalCode) && (
-                <div>{[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}</div>
-              )}
-              {companySettings?.country && <div>{companySettings.country}</div>}
+              {(() => {
+                const locale = (['en', 'ko', 'zh', 'ms'].includes(i18n.language) ? i18n.language : 'en') as AppLocale;
+                const full = formatAddress({
+                  address: companySettings?.address as any,
+                  address_line_2: (companySettings as any)?.address_line_2,
+                  city: companySettings?.city as any,
+                  state: companySettings?.state as any,
+                  postal_code: (companySettings as any)?.postalCode,
+                  country: companySettings?.country as any
+                }, 'full', locale);
+                return full.split('\n').map((line, i) => <div key={i}>{line}</div>);
+              })()}
               {companySettings?.phone && <div>Tel: {companySettings.phone}</div>}
               {companySettings?.email && <div>Email: {companySettings.email}</div>}
             </div>

@@ -25,6 +25,8 @@ import {
 } from '../../components/UI';
 import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput from '../../components/Common/PhoneInput';
+import { AddressFields } from '../../components/Form';
+import type { Address } from '../../utils/formatAddress';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -138,6 +140,11 @@ interface BrandFormData {
   email: string;
   phone: string;
   address: string;
+  address_line_2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
   website: string;
   currency: string;
 }
@@ -229,6 +236,11 @@ const BrandManagement: React.FC = () => {
       email: '',
       phone: '',
       address: '',
+      address_line_2: '',
+      city: '',
+      state: '',
+      postal_code: '',
+      country: 'MY',
       website: '',
       currency: 'RM'
     });
@@ -246,6 +258,11 @@ const BrandManagement: React.FC = () => {
       email: brand.email || '',
       phone: brand.phone || '',
       address: brand.address || '',
+      address_line_2: (brand as any).address_line_2 || '',
+      city: (brand as any).city || '',
+      state: (brand as any).state || '',
+      postal_code: (brand as any).postal_code || '',
+      country: (brand as any).country || 'MY',
       website: brand.website || '',
       currency: (brand as any).currency || 'MYR'
     });
@@ -486,15 +503,26 @@ const BrandManagement: React.FC = () => {
                 />
               </FormGroup>
 
-              <FormGroup>
-                <FormLabel>{t('brand:brandManagement.address')}</FormLabel>
-                <FormInput
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Street address"
-                />
-              </FormGroup>
+              <AddressFields
+                value={{
+                  address: formData.address || '',
+                  address_line_2: (formData as any).address_line_2 || '',
+                  city: (formData as any).city || '',
+                  state: (formData as any).state || '',
+                  postal_code: (formData as any).postal_code || '',
+                  country: (formData as any).country || 'MY'
+                }}
+                onChange={(a: Address) => setFormData(prev => ({
+                  ...prev,
+                  address: a.address || '',
+                  address_line_2: a.address_line_2 || '',
+                  city: a.city || '',
+                  state: a.state || '',
+                  postal_code: a.postal_code || '',
+                  country: (a.country || (prev as any).country || 'MY').toUpperCase()
+                } as any))}
+                defaultCountry={(formData as any).country || 'MY'}
+              />
 
               <FormGroup>
                 <FormLabel>{t('brand:brandManagement.website')}</FormLabel>

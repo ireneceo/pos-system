@@ -9,6 +9,8 @@ import {
   FormRow, FormGroup, FormLabel, FormInput, FormSelect
 } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
+import { AddressFields } from '../../components/Form';
+import type { Address } from '../../utils/formatAddress';
 import { getAuthToken } from '../../utils/auth';
 
 interface Branch {
@@ -19,6 +21,7 @@ interface Branch {
   is_primary: boolean;
   status: 'active' | 'inactive';
   address?: string | null;
+  address_line_2?: string | null;
   city?: string | null;
   state?: string | null;
   postal_code?: string | null;
@@ -200,32 +203,32 @@ const FoodcourtBranchesPage: React.FC = () => {
             </FormSelect>
           </FormGroup>
 
-          <FormGroup>
-            <FormLabel>{t('branches.address', 'Address')}</FormLabel>
-            <FormInput value={form.address || ''} onChange={e => setForm({ ...form, address: e.target.value })} />
-          </FormGroup>
-
-          <FormRow>
-            <FormGroup>
-              <FormLabel>{t('branches.city', 'City')}</FormLabel>
-              <FormInput value={form.city || ''} onChange={e => setForm({ ...form, city: e.target.value })} />
-            </FormGroup>
-            <FormGroup>
-              <FormLabel>{t('branches.state', 'State')}</FormLabel>
-              <FormInput value={form.state || ''} onChange={e => setForm({ ...form, state: e.target.value })} />
-            </FormGroup>
-          </FormRow>
-
-          <FormRow>
-            <FormGroup>
-              <FormLabel>{t('branches.postalCode', 'Postal Code')}</FormLabel>
-              <FormInput value={form.postal_code || ''} onChange={e => setForm({ ...form, postal_code: e.target.value })} />
-            </FormGroup>
-            <FormGroup>
-              <FormLabel>{t('branches.country', 'Country')}</FormLabel>
-              <FormInput value={form.country || ''} onChange={e => setForm({ ...form, country: e.target.value })} />
-            </FormGroup>
-          </FormRow>
+          <AddressFields
+            value={{
+              address: form.address || '',
+              address_line_2: (form as any).address_line_2 || '',
+              city: form.city || '',
+              state: form.state || '',
+              postal_code: form.postal_code || '',
+              country: form.country || 'MY',
+              latitude: form.latitude ?? null,
+              longitude: form.longitude ?? null
+            }}
+            onChange={(a: Address) => setForm({
+              ...form,
+              address: a.address || '',
+              address_line_2: a.address_line_2 || '',
+              city: a.city || '',
+              state: a.state || '',
+              postal_code: a.postal_code || '',
+              country: (a.country || form.country || 'MY').toUpperCase(),
+              latitude: a.latitude as any,
+              longitude: a.longitude as any
+            } as any)}
+            showLatLng
+            defaultCountry={form.country || 'MY'}
+            required={['address']}
+          />
 
           <FormRow>
             <FormGroup>
@@ -235,17 +238,6 @@ const FoodcourtBranchesPage: React.FC = () => {
             <FormGroup>
               <FormLabel>{t('branches.email', 'Email')}</FormLabel>
               <FormInput type="email" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} />
-            </FormGroup>
-          </FormRow>
-
-          <FormRow>
-            <FormGroup>
-              <FormLabel>{t('branches.latitude', 'Latitude')}</FormLabel>
-              <FormInput type="number" step="any" value={form.latitude ?? ''} onChange={e => setForm({ ...form, latitude: e.target.value === '' ? null : parseFloat(e.target.value) })} placeholder="e.g., 3.0725" />
-            </FormGroup>
-            <FormGroup>
-              <FormLabel>{t('branches.longitude', 'Longitude')}</FormLabel>
-              <FormInput type="number" step="any" value={form.longitude ?? ''} onChange={e => setForm({ ...form, longitude: e.target.value === '' ? null : parseFloat(e.target.value) })} placeholder="e.g., 101.6066" />
             </FormGroup>
           </FormRow>
 

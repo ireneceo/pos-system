@@ -145,6 +145,7 @@
     "empty": "Tiada restoran untuk dipaparkan di peta.",
     "noCoords": "Tiada restoran mempunyai koordinat. Edit restoran untuk tambah lokasi.",
     "noBrand": "Tiada jenama tersedia.",
+    "allBrands": "Semua Jenama",
     "legend": {
       "active": "Aktif",
       "trial": "Percubaan",
@@ -168,7 +169,15 @@
     "tenantsIn": "Penyewa ({{count}})",
     "noTenants": "Tiada restoran penyewa di cawangan ini",
     "search": "Cari...",
-    "viewFloorPlan": "Lihat pelan lantai →"
+    "viewFloorPlan": "Lihat pelan lantai",
+    "primary": "UTAMA",
+    "popup": {
+      "total": "Jumlah",
+      "occupied": "Diduduki",
+      "vacant": "Kosong",
+      "type": "Jenis",
+      "sales30d": "Jualan 30 hari"
+    }
   },
   "franchiseTabs": {
     "contracts": "Kontrak",
@@ -252,8 +261,10 @@
       "contract": "Kontrak Semasa",
       "tenant": "Penyewa",
       "financial": "Syarat Kewangan",
-      "timeline": "Garis Masa"
+      "timeline": "Garis Masa",
+      "actions": "Tindakan"
     },
+    "editLayout": "Edit Susun Atur",
     "unit": {
       "code": "Kod",
       "size": "Saiz",
@@ -300,8 +311,14 @@
     },
     "action": {
       "open": "Buka kontrak →",
-      "renew": "Perbaharui",
+      "renew": "Perbaharui kontrak",
       "advance": "Teruskan ke peringkat seterusnya",
+      "advanceToContracting": "Teruskan ke Kontrak",
+      "advanceToSetup": "Teruskan ke Persediaan",
+      "advanceToActive": "Tanda Aktif",
+      "advanceConfirm": "Teruskan kontrak {{num}} ke peringkat \"{{stage}}\"?",
+      "newTenancy": "Buat sewaan baru",
+      "linkPlan": "Pautkan pelan",
       "reject": "Tolak",
       "recordPayment": "Rekod pembayaran",
       "markVacant": "Tanda kosong",

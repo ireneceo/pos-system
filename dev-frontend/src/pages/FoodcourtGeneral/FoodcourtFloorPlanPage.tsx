@@ -5,11 +5,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 import { FloorPlanData, FloorTable, TableStatusInfo } from '../FloorPlan/types';
 import FloorPlanCanvas from '../FloorPlan/FloorPlanCanvas';
 import FoodcourtUnitNode, { UnitDisplay, UnitDisplayStatus } from './FoodcourtUnitNode';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { getCurrencySymbol } from '../../utils/currency';
+import { Button } from '../../components/Button';
 
 // ───── Types ─────
 interface Branch { id: number; name: string; code: string; foodcourt_id: number; is_primary?: boolean; country?: string; }
@@ -101,21 +104,9 @@ const PrimaryBtn = styled(EditBtn)`
   &:hover { background: #5A51E6; border-color: #5A51E6; }
 `;
 
-const SubHeader = styled.div`
-  background: white; padding: 8px 24px; border-bottom: 1px solid #E6EBF1;
-  display: flex; gap: 12px; align-items: center; flex-shrink: 0; flex-wrap: wrap;
-`;
 const Select = styled.select`
   padding: 5px 10px; border: 1px solid #E6EBF1; border-radius: 6px;
   font-size: 13px; background: white; cursor: pointer;
-`;
-const Tabs = styled.div`display: flex; gap: 2px; flex: 1; overflow-x: auto;`;
-const TabBtn = styled.button<{ $active?: boolean }>`
-  padding: 5px 12px; border: none; background: none; cursor: pointer;
-  font-size: 13px; font-weight: 500; white-space: nowrap;
-  color: ${p => p.$active ? '#635BFF' : '#6B7C93'};
-  border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
-  &:hover { color: #635BFF; }
 `;
 
 const MainContent = styled.div`flex: 1; display: flex; min-height: 0;`;
@@ -158,11 +149,6 @@ const BigTitle = styled.div`
   font-size: 22px; font-weight: 700; color: #0A2540; margin-bottom: 4px;
   display: flex; align-items: center; gap: 10px;
 `;
-const OpenLink = styled.a`
-  display: inline-block; margin-top: 6px; font-size: 13px; color: #635BFF;
-  text-decoration: none; font-weight: 600;
-  &:hover { text-decoration: underline; }
-`;
 const EmptyHint = styled.div`font-size: 13px; color: #9CA3AF; font-style: italic; padding: 8px 0;`;
 const RestaurantCard = styled.div`
   display: flex; align-items: center; gap: 12px; padding: 10px;
@@ -190,35 +176,6 @@ const Banner = styled.div<{ $bg: string; $text: string; $border: string }>`
   font-weight: 500;
   margin-bottom: 16px;
   line-height: 1.4;
-`;
-const PrimaryCta = styled.button`
-  width: 100%;
-  margin-top: 12px;
-  padding: 10px 14px;
-  border: none;
-  border-radius: 6px;
-  background: #635BFF;
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  &:hover { background: #5A51E6; }
-`;
-const SecondaryCta = styled.button`
-  padding: 6px 12px;
-  border: 1px solid #F59E0B;
-  border-radius: 6px;
-  background: white;
-  color: #B45309;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  &:hover { background: #FFFBEB; }
-`;
-const ActionRow = styled.div`
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-top: 8px;
 `;
 const TileGrid = styled.div`
   display: grid;
@@ -289,12 +246,6 @@ const TimelineLabel = styled.div<{ $active: boolean; $past: boolean }>`
   text-align: center;
 `;
 
-const UNIT_STATUS_COLOR: Record<string, { bg: string; border: string; text: string }> = {
-  vacant:    { bg: '#F3F4F6', border: '#D1D5DB', text: '#6B7280' },
-  reserved:  { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E' },
-  preparing: { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
-  occupied:  { bg: '#DCFCE7', border: '#16A34A', text: '#15803D' }
-};
 // Palette keyed by display status (matches FoodcourtUnitNode STATUS_PALETTE)
 const DISPLAY_PALETTE: Record<UnitDisplayStatus, { bg: string; border: string; text: string }> = {
   vacant:      { bg: '#F3F4F6', border: '#9CA3AF', text: '#6B7280' },
@@ -449,6 +400,14 @@ const FoodcourtFloorPlanPage: React.FC = () => {
   const branchFromUrl = searchParams.get('branch') ? Number(searchParams.get('branch')) : null;
   const canEdit = user?.role === 'System Admin' || user?.role === 'Foodcourt General';
 
+  // fc_plans module gates the billing_gap CTA — without the advanced plans feature,
+  // the concept of "no plan linked" does not apply.
+  const { hasModule } = useAllowedRoutes({
+    role: user?.role || '',
+    foodcourtId: fcId || null
+  });
+  const canLinkPlans = hasModule('fc_plans');
+
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(branchFromUrl);
   const [floorPlans, setFloorPlans] = useState<FloorPlan[]>([]);
@@ -457,27 +416,57 @@ const FoodcourtFloorPlanPage: React.FC = () => {
   const [contract, setContract] = useState<ContractDetail | null>(null);
   const [clock, setClock] = useState('');
   const [loading, setLoading] = useState(true);
+  // Foodcourt-scoped display settings (currency + timezone) — no more hardcoded 'RM' / 'Asia/Kuala_Lumpur'
+  const [fcCurrency, setFcCurrency] = useState<string>('MYR');
+  const [fcTimeZone, setFcTimeZone] = useState<string>('Asia/Kuala_Lumpur');
+  const [stageActionLoading, setStageActionLoading] = useState<boolean>(false);
 
-  // Clock
+  // Opener-aware navigation: when the page is open as a popup (from tenancy sidebar),
+  // route the parent window to the contract and close this popup. Falls back to in-page navigate.
+  const openInOpener = useCallback((path: string) => {
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.location.href = path;
+        window.opener.focus();
+        window.close();
+        return;
+      } catch { /* cross-origin or opener blocked — fall through to navigate */ }
+    }
+    navigate(path);
+  }, [navigate]);
+
+  // Clock — uses foodcourt's own timezone
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      setClock(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kuala_Lumpur' }));
+      setClock(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: fcTimeZone }));
     };
     tick();
     const id = setInterval(tick, 30000);
     return () => clearInterval(id);
-  }, []);
+  }, [fcTimeZone]);
 
-  // Load branches
+  // Load branches + foodcourt display settings (currency, timezone)
   useEffect(() => {
     if (!fcId) return;
     (async () => {
       const token = getAuthToken();
-      const res = await fetch(`/api/foodcourts/${fcId}/branches`, { headers: { Authorization: `Bearer ${token}` } });
-      const list: Branch[] = (await res.json()).data || [];
+      const headers = { Authorization: `Bearer ${token}` };
+      const [brRes, fcRes] = await Promise.all([
+        fetch(`/api/foodcourts/${fcId}/branches`, { headers }),
+        fetch(`/api/foodcourts/${fcId}`, { headers })
+      ]);
+      const list: Branch[] = (await brRes.json()).data || [];
       setBranches(list);
       if (list.length > 0) setSelectedBranchId(prev => prev ?? list[0].id);
+
+      const fcJson = await fcRes.json().catch(() => ({}));
+      const fc = fcJson.data || fcJson;
+      if (fc?.currency) setFcCurrency(fc.currency);
+      // operation_settings may be JSON string or object depending on serialization
+      let ops: any = fc?.operation_settings;
+      if (typeof ops === 'string') { try { ops = JSON.parse(ops); } catch { ops = null; } }
+      if (ops?.timeZone) setFcTimeZone(ops.timeZone);
     })().catch(() => {});
   }, [fcId]);
 
@@ -557,7 +546,7 @@ const FoodcourtFloorPlanPage: React.FC = () => {
               const url = `/pos/foodcourt/floor-plan-editor?branch=${selectedBranchId}${selectedPlanId ? `&plan=${selectedPlanId}` : ''}`;
               window.open(url, '_blank');
             }}>
-              ✎ {t('floorPlan.editLayout', 'Edit Layout')}
+              {t('floorPlan.editLayout', 'Edit Layout')}
               {currentBranch ? ` · ${currentBranch.name}` : ''}
             </PrimaryBtn>
           )}
@@ -618,9 +607,56 @@ const FoodcourtFloorPlanPage: React.FC = () => {
           })() : null;
           const currentBranchCode = currentBranch?.code || '';
           const fullCode = currentBranchCode ? `${currentBranchCode}-${selectedUnit.unit_number}` : selectedUnit.unit_number;
-          const currency = 'RM'; // TODO: wire up foodcourt.currency via API
+          const currency = getCurrencySymbol(fcCurrency) || fcCurrency;
           const ft = (contract?.financial_terms && !contract.financial_redacted) ? contract.financial_terms : null;
           const isVacant = displayStatus === 'vacant';
+          const isExpired = displayStatus === 'expired';
+
+          // Stage transition map (matches backend validTransitions in routes/contracts.js PUT /:id/stage)
+          const nextStage: Record<string, string | null> = {
+            proposal: 'contracting',
+            contracting: 'setup',
+            setup: 'active',
+            active: null, // active→terminated|renewed handled via Renew flow
+            expired: null,
+            terminated: null,
+            renewed: null
+          };
+          const nextStageLabel: Record<string, string> = {
+            contracting: t('floorPlan.action.advanceToContracting', 'Advance to Contracting'),
+            setup: t('floorPlan.action.advanceToSetup', 'Advance to Setup'),
+            active: t('floorPlan.action.advanceToActive', 'Mark Active')
+          };
+          const nextStageFor = contract ? nextStage[contract.stage] : null;
+
+          const doAdvanceStage = async () => {
+            if (!contract || !nextStageFor) return;
+            const confirmMsg = t('floorPlan.action.advanceConfirm',
+              'Advance contract {{num}} to "{{stage}}"?',
+              { num: contract.contract_number || `#${contract.id}`, stage: nextStageFor });
+            if (!window.confirm(confirmMsg)) return;
+            setStageActionLoading(true);
+            try {
+              const token = getAuthToken();
+              const res = await fetch(`/api/contracts/${contract.id}/stage`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ stage: nextStageFor })
+              });
+              const data = await res.json();
+              if (!res.ok || data.success === false) {
+                alert(data.message || 'Failed to advance stage');
+                return;
+              }
+              // Refresh unit detail + floor plan data
+              const detailRes = await fetch(`/api/foodcourt-units/${selectedUnit.id}/detail`, { headers: { Authorization: `Bearer ${token}` } });
+              const d = await detailRes.json();
+              setContract(d.data?.currentContract || null);
+              await loadPlans();
+            } finally {
+              setStageActionLoading(false);
+            }
+          };
 
           return (
           <DetailPanel>
@@ -650,9 +686,20 @@ const FoodcourtFloorPlanPage: React.FC = () => {
                   {t('floorPlan.banner.expired', 'Contract has expired — unit should be marked vacant or renewed')}
                 </Banner>
               )}
-              {selectedUnit.billing_gap && (
+              {/* billing_gap banner is only meaningful to foodcourts that have the
+                  fc_plans advanced module. Basic-tier operators bill manually and do
+                  not link plans — showing the banner would confuse them. */}
+              {selectedUnit.billing_gap && canLinkPlans && (
                 <Banner $bg="#FEE2E2" $text="#991B1B" $border="#DC2626">
-                  ! {t('floorPlan.banner.billingGap', 'Billing is not configured — no plan linked to this active contract. Open the contract to link or create a plan.')}
+                  <div>{t('floorPlan.banner.billingGap', 'Billing is not configured — no plan linked to this active contract. Open the contract to link or create a plan.')}</div>
+                  {contract && canEdit && (
+                    <div style={{ marginTop: 8 }}>
+                      <Button variant="secondary" size="small" type="button"
+                        onClick={() => openInOpener(`/pos/foodcourt/tenancy?id=${contract.id}#billing`)}>
+                        {t('floorPlan.action.linkPlan', 'Link a plan')}
+                      </Button>
+                    </div>
+                  )}
                 </Banner>
               )}
 
@@ -673,9 +720,12 @@ const FoodcourtFloorPlanPage: React.FC = () => {
                 <Section>
                   <EmptyHint>{t('floorPlan.vacant.noContract', 'This unit has no contract assigned.')}</EmptyHint>
                   {canEdit && (
-                    <PrimaryCta onClick={() => navigate(`/pos/foodcourt/tenancy?new=1&unit_id=${selectedUnit.id}`)}>
-                      + {t('floorPlan.vacant.createProposal', 'Create tenancy proposal')}
-                    </PrimaryCta>
+                    <div style={{ marginTop: 8 }}>
+                      <Button variant="primary" fullWidth type="button"
+                        onClick={() => openInOpener(`/pos/foodcourt/tenancy?new=1&unit_id=${selectedUnit.id}`)}>
+                        {t('floorPlan.vacant.createProposal', 'Create tenancy proposal')}
+                      </Button>
+                    </div>
                   )}
                 </Section>
               )}
@@ -701,9 +751,9 @@ const FoodcourtFloorPlanPage: React.FC = () => {
                     <Row>
                       <span>{t('floorPlan.contract.period', 'Period')}</span>
                       <b>
-                        {contract.start_date ? new Date(contract.start_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' }) : '—'}
+                        {contract.start_date ? new Date(contract.start_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: fcTimeZone }) : '—'}
                         {' → '}
-                        {contract.end_date ? new Date(contract.end_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' }) : '—'}
+                        {contract.end_date ? new Date(contract.end_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: fcTimeZone }) : '—'}
                       </b>
                     </Row>
                   )}
@@ -716,7 +766,7 @@ const FoodcourtFloorPlanPage: React.FC = () => {
                     </Row>
                   )}
                   {contract.signing_date && (
-                    <Row><span>{t('floorPlan.contract.signed', 'Signed on')}</span><b>{new Date(contract.signing_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: 'Asia/Kuala_Lumpur' })}</b></Row>
+                    <Row><span>{t('floorPlan.contract.signed', 'Signed on')}</span><b>{new Date(contract.signing_date).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', timeZone: fcTimeZone })}</b></Row>
                   )}
                   {contract.renewal_type && (
                     <Row>
@@ -770,7 +820,7 @@ const FoodcourtFloorPlanPage: React.FC = () => {
               {contract && contract.financial_redacted && (
                 <Section>
                   <SectionTitle>{t('floorPlan.sec.financial', 'Financial Terms')}</SectionTitle>
-                  <EmptyHint>🔒 {t('floorPlan.financial.redacted', 'Financial terms are visible to Foodcourt General and System Admin only')}</EmptyHint>
+                  <EmptyHint>🔒 {t('floorPlan.fin.redacted', 'Financial terms are visible to Foodcourt General and System Admin only')}</EmptyHint>
                 </Section>
               )}
               {ft && Object.keys(ft).length > 0 && (
@@ -826,18 +876,42 @@ const FoodcourtFloorPlanPage: React.FC = () => {
                 </Section>
               )}
 
-              {/* §6 ACTIONS */}
+              {/* §6 ACTIONS — stage-aware primary + always-on secondary link */}
               {contract && (
-                <ActionRow>
-                  <OpenLink href={`/pos/foodcourt/tenancy?id=${contract.id}`}>
-                    {t('floorPlan.action.open', 'Open contract →')}
-                  </OpenLink>
-                  {canEdit && isExpiring && (
-                    <SecondaryCta onClick={() => navigate(`/pos/foodcourt/tenancy?id=${contract.id}&action=renew`)}>
-                      ↻ {t('floorPlan.action.renew', 'Renew')}
-                    </SecondaryCta>
+                <Section>
+                  <SectionTitle>{t('floorPlan.sec.actions', 'Actions')}</SectionTitle>
+                  {/* Primary action depends on current stage:
+                      - pipeline (proposal/contracting/setup) → advance to next
+                      - expiring → renew
+                      - expired → create new tenancy for this unit
+                      - active (non-expiring) → no primary; just open contract */}
+                  {canEdit && nextStageFor && (
+                    <Button variant="primary" fullWidth type="button"
+                      onClick={doAdvanceStage}
+                      disabled={stageActionLoading}
+                      loading={stageActionLoading}>
+                      {nextStageLabel[nextStageFor]}
+                    </Button>
                   )}
-                </ActionRow>
+                  {canEdit && isExpiring && (
+                    <Button variant="primary" fullWidth type="button"
+                      onClick={() => openInOpener(`/pos/foodcourt/tenancy?id=${contract.id}&action=renew`)}>
+                      {t('floorPlan.action.renew', 'Renew contract')}
+                    </Button>
+                  )}
+                  {canEdit && isExpired && (
+                    <Button variant="primary" fullWidth type="button"
+                      onClick={() => openInOpener(`/pos/foodcourt/tenancy?new=1&unit_id=${selectedUnit.id}`)}>
+                      {t('floorPlan.action.newTenancy', 'Create new tenancy')}
+                    </Button>
+                  )}
+                  <div style={{ marginTop: 10 }}>
+                    <Button variant="secondary" fullWidth type="button"
+                      onClick={() => openInOpener(`/pos/foodcourt/tenancy?id=${contract.id}`)}>
+                      {t('floorPlan.action.open', 'Open contract')}
+                    </Button>
+                  </div>
+                </Section>
               )}
             </PanelBody>
           </DetailPanel>

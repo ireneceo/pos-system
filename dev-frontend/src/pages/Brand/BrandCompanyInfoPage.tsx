@@ -18,6 +18,7 @@ interface CompanyInfo {
   registrationNo: string;
   tradeName: string;
   address: string;
+  address_line_2?: string;
   city: string;
   state: string;
   postalCode: string;
@@ -180,6 +181,7 @@ const BrandCompanyInfoPage: React.FC = () => {
     registrationNo: '',
     tradeName: '',
     address: '',
+    address_line_2: '',
     city: '',
     state: '',
     postalCode: '',
@@ -216,6 +218,7 @@ const BrandCompanyInfoPage: React.FC = () => {
             registrationNo: data.registration_no || '',
             tradeName: data.trade_name || '',
             address: data.address || '',
+            address_line_2: data.address_line_2 || '',
             city: data.city || '',
             state: data.state || '',
             postalCode: data.postal_code || '',
@@ -265,6 +268,7 @@ const BrandCompanyInfoPage: React.FC = () => {
         registration_no: companyInfo.registrationNo,
         trade_name: companyInfo.tradeName,
         address: companyInfo.address,
+        address_line_2: companyInfo.address_line_2 || null,
         city: companyInfo.city,
         state: companyInfo.state,
         postal_code: companyInfo.postalCode,
@@ -352,8 +356,20 @@ const BrandCompanyInfoPage: React.FC = () => {
                   <Input
                     type="text"
                     value={companyInfo.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    onChange={(e) => handleInputChange('address', e.target.value.replace(/[\r\n\t]+/g, ' '))}
                     placeholder="Enter street address"
+                  />
+                </AutoSaveField>
+              </FormGroup>
+
+              <FormGroup fullWidth>
+                <Label>{t('common:address.line2', 'Address Line 2 (optional)')}</Label>
+                <AutoSaveField onSave={handleSave}>
+                  <Input
+                    type="text"
+                    value={companyInfo.address_line_2 || ''}
+                    onChange={(e) => handleInputChange('address_line_2', e.target.value.replace(/[\r\n\t]+/g, ' '))}
+                    placeholder={t('common:address.line2Placeholder', 'Unit / Floor / Building name')}
                   />
                 </AutoSaveField>
               </FormGroup>

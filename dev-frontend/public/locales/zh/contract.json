@@ -145,6 +145,7 @@
     "empty": "暂无可在地图上显示的餐厅。",
     "noCoords": "尚无餐厅拥有坐标。请编辑餐厅以添加位置。",
     "noBrand": "没有可用的品牌。",
+    "allBrands": "所有品牌",
     "legend": {
       "active": "运营中",
       "trial": "试用",
@@ -168,7 +169,15 @@
     "tenantsIn": "入驻商家 ({{count}})",
     "noTenants": "该分店暂无入驻商家",
     "search": "搜索...",
-    "viewFloorPlan": "查看平面图 →"
+    "viewFloorPlan": "查看平面图",
+    "primary": "主要",
+    "popup": {
+      "total": "总数",
+      "occupied": "已占用",
+      "vacant": "空置",
+      "type": "类型",
+      "sales30d": "30日销售"
+    }
   },
   "franchiseTabs": {
     "contracts": "合约",
@@ -252,8 +261,10 @@
       "contract": "当前合约",
       "tenant": "租户",
       "financial": "财务条款",
-      "timeline": "进程"
+      "timeline": "进程",
+      "actions": "操作"
     },
+    "editLayout": "编辑布局",
     "unit": {
       "code": "编号",
       "size": "面积",
@@ -300,8 +311,14 @@
     },
     "action": {
       "open": "打开合约 →",
-      "renew": "续约",
+      "renew": "续约合约",
       "advance": "推进至下一阶段",
+      "advanceToContracting": "推进至签约中",
+      "advanceToSetup": "推进至筹备",
+      "advanceToActive": "标记为营业中",
+      "advanceConfirm": "将合约 {{num}} 推进到 \"{{stage}}\" 阶段?",
+      "newTenancy": "创建新租约",
+      "linkPlan": "关联套餐",
       "reject": "拒绝",
       "recordPayment": "记录付款",
       "markVacant": "标记为空置",

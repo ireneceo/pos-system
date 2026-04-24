@@ -18,6 +18,10 @@ CompanySettings.init({
     type: DataTypes.TEXT,
     allowNull: true
   },
+  address_line_2: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
   city: {
     type: DataTypes.STRING(100),
     allowNull: true
@@ -31,8 +35,9 @@ CompanySettings.init({
     allowNull: true
   },
   country: {
-    type: DataTypes.STRING(100),
-    defaultValue: 'Malaysia'
+    type: DataTypes.CHAR(2),
+    defaultValue: 'MY',
+    allowNull: true
   },
   phone: {
     type: DataTypes.STRING(50),

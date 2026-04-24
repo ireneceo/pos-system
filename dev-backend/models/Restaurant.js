@@ -46,6 +46,10 @@ Restaurant.init({
     type: DataTypes.TEXT,
     allowNull: true
   },
+  address_line_2: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
   city: {
     type: DataTypes.STRING(100),
     allowNull: true
@@ -59,16 +63,15 @@ Restaurant.init({
     allowNull: true
   },
   country: {
-    type: DataTypes.STRING(100),
-    defaultValue: 'Malaysia',
+    type: DataTypes.CHAR(2),
     allowNull: true
   },
   latitude: {
-    type: DataTypes.DOUBLE,
+    type: DataTypes.DECIMAL(10, 7),
     allowNull: true
   },
   longitude: {
-    type: DataTypes.DOUBLE,
+    type: DataTypes.DECIMAL(10, 7),
     allowNull: true
   },
   business_registration: {

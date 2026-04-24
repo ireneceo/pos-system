@@ -145,6 +145,7 @@
     "empty": "아직 지도에 표시할 매장이 없습니다.",
     "noCoords": "좌표가 등록된 매장이 없습니다. 레스토랑 편집에서 위치를 추가하세요.",
     "noBrand": "사용 가능한 브랜드가 없습니다.",
+    "allBrands": "전체 브랜드",
     "legend": {
       "active": "운영중",
       "trial": "체험",
@@ -168,7 +169,15 @@
     "tenantsIn": "입점 매장 ({{count}})",
     "noTenants": "입점 매장이 없습니다",
     "search": "검색...",
-    "viewFloorPlan": "평면도 보기 →"
+    "viewFloorPlan": "평면도 보기",
+    "primary": "PRIMARY",
+    "popup": {
+      "total": "총",
+      "occupied": "입점",
+      "vacant": "공실",
+      "type": "유형",
+      "sales30d": "30일 매출"
+    }
   },
   "franchiseTabs": {
     "contracts": "계약",
@@ -252,8 +261,10 @@
       "contract": "현재 계약",
       "tenant": "테넌트",
       "financial": "재무 조건",
-      "timeline": "진행 타임라인"
+      "timeline": "진행 타임라인",
+      "actions": "액션"
     },
+    "editLayout": "레이아웃 편집",
     "unit": {
       "code": "코드",
       "size": "면적",
@@ -300,8 +311,14 @@
     },
     "action": {
       "open": "계약 열기 →",
-      "renew": "갱신",
+      "renew": "계약 갱신",
       "advance": "다음 단계로 진행",
+      "advanceToContracting": "계약 진행 단계로 이동",
+      "advanceToSetup": "입점 준비 단계로 이동",
+      "advanceToActive": "영업 중으로 전환",
+      "advanceConfirm": "계약 {{num}} 을(를) \"{{stage}}\" 단계로 진행할까요?",
+      "newTenancy": "새 임대 계약 만들기",
+      "linkPlan": "요금제 연결",
       "reject": "거절",
       "recordPayment": "납입 기록",
       "markVacant": "공실 처리",

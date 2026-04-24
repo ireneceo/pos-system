@@ -4,6 +4,7 @@ import { Modal as CommonModal } from '../../../components/UI';
 import { formatCurrency } from '../../../utils/currency';
 import { formatDateTime } from '../../../utils/timezone';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
+import { formatAddress, AppLocale } from '../../../utils/formatAddress';
 import { Invoice, CompanySettings, Manager, Restaurant } from './types';
 import {
   Button,
@@ -53,7 +54,7 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
   handleLinkSearch,
   handleLinkAccount,
 }) => {
-  const { t } = useTranslation('brand');
+  const { t, i18n } = useTranslation('brand');
 
   // Prefer issuerInfo (has bank details from payment_settings), fall back to companySettings.
   const hasIssuerInfo = !!invoice.issuerInfo;
@@ -92,11 +93,18 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
               {displayCompany?.companyName || 'Company Name'}
             </div>
             <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
-              {displayCompany?.address && <div>{displayCompany.address}</div>}
-              {(displayCompany?.city || displayCompany?.state || displayCompany?.postalCode) && (
-                <div>{[displayCompany?.city, displayCompany?.state, displayCompany?.postalCode].filter(Boolean).join(', ')}</div>
-              )}
-              {displayCompany?.country && <div>{displayCompany.country}</div>}
+              {(() => {
+                const locale = (['en', 'ko', 'zh', 'ms'].includes(i18n.language) ? i18n.language : 'en') as AppLocale;
+                const full = formatAddress({
+                  address: displayCompany?.address as any,
+                  address_line_2: (displayCompany as any)?.address_line_2,
+                  city: displayCompany?.city as any,
+                  state: displayCompany?.state as any,
+                  postal_code: (displayCompany as any)?.postalCode,
+                  country: displayCompany?.country as any
+                }, 'full', locale);
+                return full.split('\n').map((line, i) => <div key={i}>{line}</div>);
+              })()}
               {displayCompany?.phone && <div>Tel: {displayCompany.phone}</div>}
               {displayCompany?.email && <div>Email: {displayCompany.email}</div>}
             </div>
@@ -121,17 +129,18 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
             {isReceivedInvoice ? (
               <>
                 <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{companySettings?.companyName || 'Your Company'}</div>
-                {companySettings?.address && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{companySettings.address}</div>
-                )}
-                {(companySettings?.city || companySettings?.state || companySettings?.postalCode) && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                    {[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}
-                  </div>
-                )}
-                {companySettings?.country && (
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{companySettings.country}</div>
-                )}
+                {(() => {
+                  const locale = (['en', 'ko', 'zh', 'ms'].includes(i18n.language) ? i18n.language : 'en') as AppLocale;
+                  const oneline = formatAddress({
+                    address: companySettings?.address as any,
+                    address_line_2: (companySettings as any)?.address_line_2,
+                    city: companySettings?.city as any,
+                    state: companySettings?.state as any,
+                    postal_code: (companySettings as any)?.postalCode,
+                    country: companySettings?.country as any
+                  }, 'oneline', locale);
+                  return oneline ? <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{oneline}</div> : null;
+                })()}
                 {companySettings?.email && (
                   <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{companySettings.email}</div>
                 )}

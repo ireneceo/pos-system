@@ -546,5 +546,19 @@
   "tenantSupport.trainingAndWorkshopScheduleGuidance": "Training and workshop schedule guidance",
   "cookie.message": "We use cookies to enhance your experience and analyze site traffic. By clicking \"Accept All\", you consent to our use of cookies. See our <a href=\"/privacy\">Privacy Policy</a> for details.",
   "cookie.acceptAll": "Accept All",
-  "cookie.essentialOnly": "Essential Only"
+  "cookie.essentialOnly": "Essential Only",
+  "address": {
+    "line1": "Address",
+    "line1Placeholder": "Street, building, area",
+    "line2": "Address Line 2 (optional)",
+    "line2Placeholder": "Unit / Floor / Building name",
+    "city": "City",
+    "state": "State / Province",
+    "postalCode": "Postal Code",
+    "country": "Country",
+    "selectCountry": "Select country",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "latLngHint": "Leave blank to auto-geocode on save"
+  }
 }

@@ -546,5 +546,19 @@
   "tenantSupport.trainingAndWorkshopScheduleGuidance": "Panduan jadual latihan dan bengkel",
   "cookie.message": "Kami menggunakan kuki untuk meningkatkan pengalaman anda dan menganalisis trafik laman. Dengan mengklik \"Terima Semua\", anda bersetuju dengan penggunaan kuki kami. Lihat <a href=\"/privacy\">Dasar Privasi</a> kami untuk butiran.",
   "cookie.acceptAll": "Terima Semua",
-  "cookie.essentialOnly": "Penting Sahaja"
+  "cookie.essentialOnly": "Penting Sahaja",
+  "address": {
+    "line1": "Alamat",
+    "line1Placeholder": "Jalan / Bangunan / Kawasan",
+    "line2": "Baris Alamat 2 (pilihan)",
+    "line2Placeholder": "Unit / Tingkat / Nama bangunan",
+    "city": "Bandar",
+    "state": "Negeri",
+    "postalCode": "Poskod",
+    "country": "Negara",
+    "selectCountry": "Pilih negara",
+    "latitude": "Latitud",
+    "longitude": "Longitud",
+    "latLngHint": "Biarkan kosong untuk geokod automatik"
+  }
 }

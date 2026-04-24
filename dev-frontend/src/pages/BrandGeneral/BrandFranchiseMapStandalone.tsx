@@ -22,10 +22,14 @@ const BrandSelect = styled.select`
   margin-bottom: 16px;
 `;
 
+// Sentinel value for the "All Brands" option in the dropdown.
+const ALL_BRANDS = 'all';
+
 const BrandFranchiseMapStandalone: React.FC = () => {
   const { t } = useTranslation('contract');
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
+  // `null` = not yet initialized. After brands load, defaults to 'all'.
+  const [selection, setSelection] = useState<number | typeof ALL_BRANDS | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -34,15 +38,18 @@ const BrandFranchiseMapStandalone: React.FC = () => {
         const res = await fetch('/api/brands', { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
         const list: Brand[] = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-        // Sort: brands with most restaurants first (so default-select is meaningful)
+        // Sort: brands with most restaurants first
         const sorted = [...list].sort((a, b) => (b.restaurants?.length || 0) - (a.restaurants?.length || 0));
         setBrands(sorted);
-        if (sorted.length > 0) setSelectedBrandId(prev => prev ?? sorted[0].id);
+        if (sorted.length > 0) setSelection(prev => prev ?? ALL_BRANDS);
       } catch {
         setBrands([]);
       }
     })();
   }, []);
+
+  const totalRestaurants = brands.reduce((sum, b) => sum + (b.restaurants?.length || 0), 0);
+  const brandIds = brands.map(b => b.id);
 
   return (
     <Container>
@@ -52,9 +59,15 @@ const BrandFranchiseMapStandalone: React.FC = () => {
       <Content>
         {brands.length > 0 && (
           <BrandSelect
-            value={selectedBrandId || ''}
-            onChange={(e) => setSelectedBrandId(Number(e.target.value))}
+            value={selection ?? ''}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSelection(v === ALL_BRANDS ? ALL_BRANDS : Number(v));
+            }}
           >
+            <option value={ALL_BRANDS}>
+              {t('map.allBrands', 'All Brands')} · {totalRestaurants} {totalRestaurants === 1 ? 'restaurant' : 'restaurants'}
+            </option>
             {brands.map(b => {
               const cnt = b.restaurants?.length || 0;
               return (
@@ -65,9 +78,11 @@ const BrandFranchiseMapStandalone: React.FC = () => {
             })}
           </BrandSelect>
         )}
-        {selectedBrandId
-          ? <BrandFranchiseMapPage brandId={selectedBrandId} />
-          : <div style={{ padding: 24, color: '#6B7280' }}>{t('map.noBrand', 'No brand available.')}</div>}
+        {selection === ALL_BRANDS
+          ? <BrandFranchiseMapPage brandId={brandIds} />
+          : typeof selection === 'number'
+            ? <BrandFranchiseMapPage brandId={selection} />
+            : <div style={{ padding: 24, color: '#6B7280' }}>{t('map.noBrand', 'No brand available.')}</div>}
       </Content>
     </Container>
   );
