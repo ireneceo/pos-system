@@ -549,7 +549,7 @@ router.get('/:id/company-info', authenticateToken, checkRestaurantAccess, async 
   try {
     const restaurant = await Restaurant.findByPk(req.params.id, {
       attributes: [
-        'id', 'name', 'trade_name', 'email', 'phone', 'address',
+        'id', 'name', 'trade_name', 'email', 'phone', 'address', 'address_line_2',
         'city', 'state', 'postal_code', 'country',
         'business_registration', 'tax_id', 'website',
         'bank_name', 'bank_account', 'bank_account_name', 'logo_url'
@@ -568,6 +568,7 @@ router.get('/:id/company-info', authenticateToken, checkRestaurantAccess, async 
       email: restaurant.email || '',
       phone: restaurant.phone || '',
       address: restaurant.address || '',
+      address_line_2: restaurant.address_line_2 || '',
       city: restaurant.city || '',
       state: restaurant.state || '',
       postal_code: restaurant.postal_code || '',
@@ -772,11 +773,14 @@ const validateFoodcourtPermission = async (foodcourtId, userId, userRole) => {
   return { valid: false, error: 'Unauthorized to set foodcourt' };
 };
 
-// Create new restaurant (with Restaurant Admin 1:1 coupling)
+// Create new restaurant (with Restaurant Admin 1:1 coupling).
+// Manager-tier roles (Brand Manager / Foodcourt Manager) are intentionally NOT
+// allowed to create restaurants — they must request their General to do it.
+// This closes the gap noted in DEVELOPMENT_PLAN.md > 선행 보안 이슈.
 router.post('/', authenticateToken, requireRole(
   'System Admin',
-  'Brand General', 'Brand Manager',
-  'Foodcourt General', 'Foodcourt Manager',
+  'Brand General',
+  'Foodcourt General',
   'Restaurant Owner'
 ), validateRestaurantCreation, async (req, res) => {
   const { sequelize } = require('../config/database');

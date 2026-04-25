@@ -16,7 +16,8 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'inquiry_received', label: 'New Inquiry Received', description: 'When a new support inquiry is submitted', section: 'Inquiries & Tickets', roles: ['Brand General', 'Foodcourt General', 'System Admin'] },
   { key: 'inquiry_replied', label: 'Inquiry Reply', description: 'When your inquiry receives a reply', section: 'Inquiries & Tickets', roles: ['Restaurant Admin', 'Restaurant Owner'] },
   { key: 'ticket_status_changed', label: 'Ticket Status Changed', description: 'When a ticket status is updated', section: 'Inquiries & Tickets', roles: ['all'] },
-  { key: 'hardware_quote', label: 'Hardware Quote Request', description: 'When a new hardware package quote is submitted', section: 'Inquiries & Tickets', roles: ['System Admin'] }
+  { key: 'hardware_quote', label: 'Hardware Quote Request', description: 'When a new hardware package quote is submitted', section: 'Inquiries & Tickets', roles: ['System Admin'] },
+  { key: 'trial_expiry_reminder', label: 'Trial Expiry Reminder', description: 'Reminders before and after your trial period ends', section: 'Subscription', roles: ['Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Foodcourt General'] }
 ];
 
 // GET - User notification preferences

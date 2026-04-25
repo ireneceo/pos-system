@@ -21,28 +21,60 @@ class InvoiceScheduler {
   start() {
     // Run daily at 2 AM to check for subscription invoices that need to be generated
     cron.schedule('0 2 * * *', async () => {
+      const SchedulerRun = require('../models/SchedulerRun');
+      const startedAt = new Date();
+      const startMs = Date.now();
       console.log('📅 [INVOICE SCHEDULER] Running daily invoice check...');
       await systemLogger.info('payment', 'invoice-scheduler', 'Daily invoice scheduler run started');
 
-      // Apply any pending plan changes before generating invoices
-      const pendingResult = await this.applyPendingPlanChanges();
+      let run = null;
+      try { run = await SchedulerRun.create({ job_name: 'invoice_generation_daily', started_at: startedAt }); }
+      catch (e) { console.error('[SchedulerRun] create failed:', e.message); }
 
-      const subResult = await this.generateSubscriptionInvoices();
-      const entityResult = await this.generateEntityPlanInvoices();
-      const entitySubResult = await this.generateEntitySubscriptionInvoices();
+      try {
+        // Apply any pending plan changes before generating invoices
+        const pendingResult = await this.applyPendingPlanChanges();
 
-      const summary = {
-        pendingChanges: pendingResult || { applied: 0, errors: 0 },
-        subscription: subResult || { generated: 0, skipped: 0, errors: 0 },
-        entityPlan: entityResult || { generated: 0, skipped: 0, errors: 0 },
-        entitySubscription: entitySubResult || { generated: 0, skipped: 0, errors: 0 }
-      };
-      const totalErrors = (pendingResult?.errors || 0) + (subResult?.errors || 0) + (entityResult?.errors || 0) + (entitySubResult?.errors || 0);
+        const subResult = await this.generateSubscriptionInvoices();
+        const entityResult = await this.generateEntityPlanInvoices();
+        const entitySubResult = await this.generateEntitySubscriptionInvoices();
 
-      if (totalErrors > 0) {
-        await systemLogger.error('payment', 'invoice-scheduler', `Daily run completed with ${totalErrors} error(s)`, summary);
-      } else {
-        await systemLogger.info('payment', 'invoice-scheduler', 'Daily run completed successfully', summary);
+        const summary = {
+          pendingChanges: pendingResult || { applied: 0, errors: 0 },
+          subscription: subResult || { generated: 0, skipped: 0, errors: 0 },
+          entityPlan: entityResult || { generated: 0, skipped: 0, errors: 0 },
+          entitySubscription: entitySubResult || { generated: 0, skipped: 0, errors: 0 }
+        };
+        const totalErrors = (pendingResult?.errors || 0) + (subResult?.errors || 0) + (entityResult?.errors || 0) + (entitySubResult?.errors || 0);
+
+        if (totalErrors > 0) {
+          await systemLogger.error('payment', 'invoice-scheduler', `Daily run completed with ${totalErrors} error(s)`, summary);
+        } else {
+          await systemLogger.info('payment', 'invoice-scheduler', 'Daily run completed successfully', summary);
+        }
+
+        if (run) {
+          try {
+            await run.update({
+              finished_at: new Date(),
+              duration_ms: Date.now() - startMs,
+              status: totalErrors > 0 ? 'partial' : 'success',
+              results: summary
+            });
+          } catch (e) { console.error('[SchedulerRun] update failed:', e.message); }
+        }
+      } catch (error) {
+        console.error('✗ [INVOICE SCHEDULER] Daily run failed:', error);
+        if (run) {
+          try {
+            await run.update({
+              finished_at: new Date(),
+              duration_ms: Date.now() - startMs,
+              status: 'error',
+              error_message: String(error?.message || error)
+            });
+          } catch (e) { console.error('[SchedulerRun] error update failed:', e.message); }
+        }
       }
     });
 

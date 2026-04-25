@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
+import { formatEntityAddress, AppLocale } from '../../utils/formatAddress';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
@@ -333,7 +334,7 @@ type TabType = 'manager_sales' | 'restaurant_sales' | 'subscriptions' | 'restaur
 const COLORS = ['#635BFF', '#6FCF97', '#FF6B6B', '#FFB800', '#0EA5E9', '#8B5CF6'];
 
 const AnalyticsPage: React.FC = () => {
-  const { t } = useTranslation('admin');
+  const { t, i18n } = useTranslation('admin');
   const { operationSettings } = useStore();
   const currency = operationSettings.currency;
   const [searchParams] = useSearchParams();
@@ -948,7 +949,7 @@ const AnalyticsPage: React.FC = () => {
         const subscriptionEnd = restaurant.subscription_end ?
           formatDate(restaurant.subscription_end, null) :
           (restaurant.subscriptionEnd ? formatDate(restaurant.subscriptionEnd, null) : 'N/A');
-        const location = restaurant.address || restaurant.location || 'N/A';
+        const location = formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || restaurant.location || 'N/A';
 
         csv += `${restaurantName},${managerName},${planType},${monthlyFee},${status},${subscriptionStart},${subscriptionEnd},"${location}"\n`;
       });
@@ -2130,7 +2131,7 @@ const AnalyticsPage: React.FC = () => {
                               'N/A'
                             )}
                           </TableCell>
-                          <TableCell>{restaurant.location || restaurant.address || 'N/A'}</TableCell>
+                          <TableCell>{restaurant.location || formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'N/A'}</TableCell>
                         </tr>
                       ));
                     })()}

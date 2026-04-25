@@ -6,15 +6,126 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-04-25
+### 2026-04-26 (DEVELOPMENT_PLAN.md 예정 작업 일괄 완료)
+**보안 fix — POST /api/restaurants 역할 제한**
+- Brand Manager / Foodcourt Manager 제거. `requireRole('System Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner')`만 허용
+- DEVELOPMENT_PLAN.md "선행 보안 이슈 (HIGH)" 해소
+- health-check 회귀 케이스 3개 추가 (BM/FM/Staff POST → 403 검증) — 40 → **43/43 PASS**
+
+**Trial 만료 자동 알림 이메일** (DEVELOPMENT_PLAN.md 예정 #3)
+- 신규 4 컬럼 `last_trial_reminder_day INT NULL` (restaurants/brands/foodcourts/users) — 마지막 발송 임계점 (3/0/-1) 저장, 멱등성 보장
+- `subscriptionScheduler.processTrialReminders` — D-3, D-0, D+1 세 임계점에 발송 (Restaurant + Brand + Foodcourt + Restaurant Owner 4 entity 통합)
+- 이메일 템플릿 `trialExpiringSoonEmail` — 임계점별 톤 변화 (heads-up amber → urgent orange → grace red), CTA 버튼, 발신자 브랜딩
+- 신규 알림 카테고리 `trial_expiry_reminder` (Subscription 섹션, 사용자 opt-out 가능)
+- `EMAIL_NOTIFICATION_MATRIX.md` 갱신
+- 검증: 6 시나리오 (D-3, idempotent, D-0, D+1, D-2 no-op, D-3→D-0 transition) 핵심 로직 100% PASS
+
+**Daily scheduler 모니터링 대시보드** (DEVELOPMENT_PLAN.md 예정 #4)
+- 신규 모델 + 테이블 `scheduler_runs` (job_name, started_at, finished_at, duration_ms, status, results JSON, error_message)
+- subscriptionScheduler.processAllSubscriptions + invoiceScheduler daily cron에 SchedulerRun 기록 통합 (start='running' → end='success/partial/error' + results)
+- 신규 endpoint `GET /api/admin/scheduler-runs?job_name=&status=&limit=&since=` + `GET /api/admin/scheduler-runs/jobs` (per-job summary + 24h error count)
+- 신규 페이지 `pages/Admin/SchedulerMonitorPage.tsx` — Job summary cards (status pill, errors_24h badge, latest run time/duration/results) + Recent runs table (job/status filter)
+- App.tsx 라우트 + MainLayout Admin 사이드바 메뉴
+- 검증: list 200 + jobs 200 + summary count + auth 401
+
+**구독 변경 히스토리 페이지** (DEVELOPMENT_PLAN.md 예정 #2)
+- 신규 컴포넌트 `<InvoiceHistoryModal>` — 타임라인 UI (각 modification 카드: 수정자, 시각, reason quote, field별 from→to diff)
+- 빈 상태 / from line-through / to bold green / arrow / monospace field name pill
+- Admin/Brand/Foodcourt InvoicesPage 통합 — 기존 "Modified" 뱃지를 클릭 가능 button으로 변환 + tooltip
+- (Restaurant Admin은 자기 invoice 수정 권한 없어서 skip)
+
+**인보이스 수동/자동 UI 구분** (DEVELOPMENT_PLAN.md 예정 #6)
+- 확인 결과: 4개 InvoicesPage 모두 이미 `<AutoBadge>` (#10B981) 구현됨. DEVELOPMENT_PLAN.md 항목 stale → 추가 작업 불필요로 마감
+
+**검증**:
+- 빌드 `main.3fc1c132.js` exit 0
+- State hydration 0 warning
+- health-check 43/43 PASS (신규 보안 케이스 3건 포함)
+- scheduler-runs API: list 200 + jobs summary 200 + auth 401
+- Trial reminder 6 시나리오 핵심 로직 통과
+
+### 2026-04-25 (밤)
+**알림 센터 (Inbox) v1**
+- 신규 통합 endpoint `routes/inbox.js`:
+  - `GET /api/inbox?type=...&unread_only=...&limit=...&before=...` — Notice + SupportTicket + OperationTicket UNION 시간순 정렬
+  - `GET /api/inbox/unread-count` — 헤더 배지용 (notice + by-type 카운트)
+  - `POST /api/inbox/notice/:id/read`, `POST /api/inbox/mark-all-read?type=notice`
+  - 읽음 추적: Notice는 `notice_recipients.read_at`, Ticket은 status 휴리스틱 (open/in_progress/pending = unread)
+  - 권한별 가시성: NoticeRecipient (user_id 또는 본인 restaurant) + Ticket (customerId/managerId/requesterId)
+- 신규 컴포넌트 (`components/Inbox/`):
+  - `inboxApi.ts` — fetch 래퍼 + relativeTime + TYPE_COLORS/SEVERITY_COLORS 디자인 토큰
+  - `InboxItemCard` — type별 아이콘 색상 (notice indigo / support amber / ops teal), unread 좌측 색 stripe + bold + bg, severity dot, relative time + absolute tooltip
+  - `InboxBell` — 헤더 종 + 미읽음 빨간 배지 (99+ 캡), 30s polling, 새 알림 도착 시 subtle shake + badge pop, focus ring
+  - `InboxDrawer` — 우측 슬라이드 패널 420px (모바일 fullscreen), filter pills + unreadOnly 토글, skeleton loading, 빈 상태 (📬 + "You're all caught up!"), Mark all read, ESC + focus 관리, body scroll lock
+- 신규 페이지 `pages/Inbox/InboxPage.tsx` — 전체 보기. tab + status segment + search input + result count + 같은 InboxItemCard 재사용
+- App.tsx 라우트 2개: `/pos/inbox`, `/restaurant/:id/inbox` (모든 로그인 사용자)
+- MainLayout 헤더에 InboxBell 마운트 (LanguageSelector 옆)
+- i18n 30+ 키 신규 (`inbox.*`) — en/ko/zh/ms 4언어
+- 접근성: `role="dialog" aria-modal="true"`, bell `aria-live="polite"`, severity dot `title=`, keyboard nav (Enter/Space)
+- 검증: API 12/12 PASS, 빌드 `main.1ec04872.js` exit 0, hydration 0 warning, health-check 40/40
+
+### 2026-04-25 (저녁)
+**Onboarding wizard 강화 (옵션 A)**
+- `<WelcomeModal>` 신설 — 첫 로그인 시 1회 표시되는 환영 modal. setup checklist 미리보기 + "Start Setup" CTA. localStorage `welcome_modal_seen_${userId}` 키로 1회 제어. 진행 중인 사용자(아무 항목 미완료)만 노출, completed > 0 이면 자동 skip
+- `useSetupStatus` 확장:
+  - **Restaurant Owner** 신규 분기 — first_restaurant / assign_admin / activate_plan (3 items)
+  - **System Admin** 신규 분기 — admin_company / admin_smtp / admin_plan_templates / admin_payment (4 items)
+  - **Brand General** 확장 — linked_restaurants 추가 (5 items, 전 4)
+  - **Foodcourt General** 확장 — first_branch + fc_floor_plan 추가 (4 items, 전 2)
+  - 기존 Restaurant Admin 11 items 그대로 유지
+- `SetupItem.dependsOn` 메타 추가 — 의존 미완료 항목은 회색 + lock icon (🔒) + tooltip ("Complete first: ..."), 클릭은 가능하나 시각적 deemphasize (절대 차단 X — feedback_action_button_placement 가이드 따름)
+- Admin/Owner Dashboard에 SetupGuide + WelcomeModal 통합 (이전엔 Brand/Foodcourt/Restaurant 3곳만)
+- Restaurant/Brand/Foodcourt Dashboard에 WelcomeModal 추가
+- i18n 신규 키 `welcomeModal.*` 5개 (greeting/subtitle/moreSteps/skip/start) — en/ko/zh/ms 4언어
+- 빌드 `main.162bf2a4.js`, state hydration 0 warning, health-check 40/40 PASS
+
+
+## [v3.18] — 2026-04-25 배포
+
+**Invoice 정합성 — Single Source of Truth**
+- Invoice 헤더 자동 재계산 — 11개 생성/수정 path에 `finalizeInvoice` 적용. `subtotal/discount/total`은 항상 items + additional_charges + discount 로부터 도출
+- Invoice tax 저장 표준화 (Path B) — `items.tax_amount` 폐기, 모든 tax는 `header.additional_charges`에만. dev 79건 마이그
+- Invoice 이메일 템플릿 보강 — `additional_charges` + `discount` 행 표시, phantom "Tax 0.00" 라인 제거 (산술 모순 해소)
+- Invoice GET 응답 `tax` 필드 보강 — frontend 모달 Tax 0 표시 버그 fix (4 endpoint)
+- Invoice 수정 시 이메일 재발송 옵션 — `PUT /api/invoices/:id` 에 `resend_email: true` 추가
+
+**주소 시스템 통일 — Phase 1 + Phase 2 (Display & AutoSave)**
+- 신규 컴포넌트 `<AutoSaveAddressFields>` — `<AddressFields>` + 600 ms debounce + 코너 저장 배지
+- 신규 유틸 3개 — `formatAddressHtml` (HTML `<br>`), `formatAddressLines` (JSX 배열), `formatEntityAddress` (camelCase 변환 + 레거시 fallback)
+- 입력 폼 6 곳 마이그 — Admin/Brand/Foodcourt/Manager Settings + Restaurant Settings + Owner/Restaurants Modal × 2 (모두 `address_line_2` 추가, country ISO 정규화). CompanyInformationPage MY-only state dropdown 제거
+- 백엔드 4 라우트 보강 — brands/foodcourts/restaurants-crud company-info + store 에 `address_line_2` allowedFields + ISO 정규화
+- 표시 사이트 33+ 파일 통일 — 청구서 HTML/PDF (9), 지점/관리/리스트 (24+), 모두 `formatAddress*` 유틸로 마이그
+- 설계 문서 `docs/ADDRESS_STANDARDIZATION.md` 12장 추가
+
+**주소 보완 — datalist 자동완성 + 정규화 + 검증**
+- 신규 endpoint `GET /api/address/suggestions?field=city|state&country=XX` — 8개 주소 테이블 UNION DISTINCT (utf8mb4 collation 통일), 5분 서버 캐시
+- 유틸 `normalizePlaceName` (Latin Title Case, CJK trim만), `validatePostalCode` (17국 정규식)
+- `<AddressFields>` city/state HTML5 `<datalist>` 통합 + blur 정규화 + postal 형식 amber 경고 (입력 차단 X)
+- i18n 신규 키 `address.postalCodeInvalid` (en/ko/zh/ms 4언어)
+- 외부 API 의존성 0 (Google Places 미사용 — 자체 데이터로 점진적 통일)
+
+**Subscription Plan 게이팅 정합성 fix**
+- `ProtectedRoute.MODULE_GATED_ROUTES` prefix 정합성 — `/pos/brand/subscriptions` → `/pos/brand/general/subscriptions`, `/pos/foodcourt/subscriptions` → `/pos/foodcourt/general/subscriptions`
+- Backend 가드 추가 — `GET /api/brands/:id/subscription` + `GET /api/foodcourts/:id/subscription` 에 `requireBrandModule('brand_subscriptions')` / `requireFoodcourtModule('fc_subscriptions')` 미들웨어 (`docs/V3_18_BASIC_TIER_GAPS.md` audit)
+
+**Invoice 수동 발행 prefill (financial_terms 연동)**
+- `routes/contracts.js` GET 라우트에 `restaurant_id` 필터 추가
+- Brand/Foodcourt InvoicesPage `selectTarget`: restaurant 선택 시 active contract fetch → financial_terms로 amount/description 자동 채움 (Brand: `system_monthly_fee`, Foodcourt: `base_rent + maintenance_fee`). Best-effort
+
+**Email Integrity Audit (F3)**
+- 17개 site / 23개 발송 지점 전수 점검 → `docs/EMAIL_INTEGRITY_AUDIT.md`
+- 결과: 모든 site fresh fetch 확보, 즉시 fix 0건
+
+**운영 데이터 동기화 (사전 작업)**
 - 운영 콘텐츠 sync — release-v3.16 + 다국어 마케팅 12건 + FAQ 11건 (53건) 운영 DB 반영
 - 운영 enum ALTER — `users.subscription_status += 'overdue'`, `notification_settings.entity_type += 'brand'/'foodcourt'`
-- Invoice 헤더 자동 재계산 (Single source of truth) — 11개 invoice 생성/수정 path에 `finalizeInvoice` 적용. 헤더 `subtotal/discount/total`은 항상 items + additional_charges + discount 로부터 도출
-- Invoice tax 저장 표준화 (Path B) — `items.tax_amount` 폐기, 모든 tax는 `header.additional_charges`에만. dev 79건 마이그
-- Invoice 이메일 템플릿 보강 — `additional_charges` + `discount` 행 표시, phantom "Tax 0.00" 라인 제거. INV-2026040005 같은 산술 모순 ("Tax 0 + 179 = 189.74") 해소
-- Invoice GET 응답 `tax` 필드 보강 — frontend 모달이 표시하던 Tax 0 버그 fix (4 endpoint)
-- Invoice 수정 시 이메일 재발송 옵션 — `PUT /api/invoices/:id` 에 `resend_email: true` 추가
-- Restaurant Settings 페이지 주소 통일 — `/restaurant/:id/settings` 에 `<AddressFields>` 통합 + `address_line_2` 추가 + 600 ms debounce save
+
+**검증**:
+- health-check 40/40 PASS
+- API 라운드트립 18/18 (admin/brand/foodcourt/restaurants company-info — address_line_2 + ISO 정규화)
+- Address suggestions 23/23 (city/state for MY/KR + cache + 역할별 + edge)
+- 운영 smoke tests 10/10 (health/login/menu/order/bill/invoices/restaurants/payment/frontend/JS bundle)
+- 빌드 `main.e5103dd0.js` (1.6M)
 
 
 ## [v3.17] — 2026-04-24 배포

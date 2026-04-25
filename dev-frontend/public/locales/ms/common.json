@@ -555,10 +555,61 @@
     "city": "Bandar",
     "state": "Negeri",
     "postalCode": "Poskod",
+    "postalCodeInvalid": "Tidak sepadan dengan format poskod untuk negara yang dipilih (disimpan apa adanya).",
     "country": "Negara",
     "selectCountry": "Pilih negara",
     "latitude": "Latitud",
     "longitude": "Longitud",
     "latLngHint": "Biarkan kosong untuk geokod automatik"
+  },
+  "welcomeModal": {
+    "greeting": "Selamat Datang",
+    "subtitle": "Mari sediakan akaun anda dalam beberapa langkah pantas.",
+    "moreSteps": "+ {{count}} langkah lagi dalam senarai persediaan di bawah.",
+    "skip": "Saya akan terokai sendiri",
+    "start": "Mula Persediaan →"
+  },
+  "inbox": {
+    "bell": {
+      "label": "Peti Masuk",
+      "aria": {
+        "unread": "{{count}} pemberitahuan belum dibaca",
+        "empty": "Tiada pemberitahuan belum dibaca"
+      }
+    },
+    "drawer": { "title": "Pemberitahuan" },
+    "page": { "title": "Peti Masuk" },
+    "filter": {
+      "all": "Semua",
+      "notice": "Notis",
+      "support": "Sokongan",
+      "ops": "Operasi"
+    },
+    "status": {
+      "all": "Semua",
+      "unread": "Belum Baca",
+      "read": "Dibaca"
+    },
+    "type": {
+      "notice": "Notis",
+      "support_ticket": "Sokongan",
+      "operation_ticket": "Operasi"
+    },
+    "severity": {
+      "normal": "Biasa",
+      "important": "Penting",
+      "urgent": "Segera"
+    },
+    "unreadOnly": "Tunjuk yang belum dibaca",
+    "markAllRead": "Tanda semua dibaca",
+    "viewAll": "Lihat semua dalam Peti Masuk →",
+    "searchPlaceholder": "Cari tajuk atau pratonton",
+    "resultCount": "{{count}} item",
+    "empty": {
+      "title": "Anda dah selesai semak semuanya!",
+      "all": "Pemberitahuan baharu akan muncul di sini.",
+      "unread": "Tiada item belum dibaca sekarang.",
+      "search": "Tiada hasil padanan."
+    }
   }
 }

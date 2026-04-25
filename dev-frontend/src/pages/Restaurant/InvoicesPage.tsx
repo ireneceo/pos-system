@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
+import { formatAddressHtml, formatAddressLines, AppLocale } from '../../utils/formatAddress';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
@@ -279,7 +280,7 @@ const FormInput = styled.input`
 type TabType = 'all' | 'to_pay';
 
 const RestaurantInvoicesPage: React.FC = () => {
-  const { t } = useTranslation('settings');
+  const { t, i18n } = useTranslation('settings');
   const { operationSettings } = useStore();
   const { user } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
@@ -818,9 +819,13 @@ const RestaurantInvoicesPage: React.FC = () => {
                 ${issuerInfo?.logoUrl ? `<img src="${issuerInfo.logoUrl}" alt="Company Logo" class="company-logo">` : ''}
                 <div class="company-name" style="${issuerInfo?.logoUrl ? 'font-size: 14px;' : ''}">${issuerInfo?.name || invoice.issuerName || 'Issuer'}</div>
                 <div class="company-details">
-                    ${issuerInfo?.address ? `${issuerInfo.address}<br>` : ''}
-                    ${[issuerInfo?.city, issuerInfo?.state, issuerInfo?.postalCode].filter(Boolean).join(', ')}${issuerInfo?.city || issuerInfo?.state || issuerInfo?.postalCode ? '<br>' : ''}
-                    ${issuerInfo?.country ? `${issuerInfo.country}<br>` : ''}
+                    ${formatAddressHtml({
+                      address: issuerInfo?.address,
+                      city: issuerInfo?.city,
+                      state: issuerInfo?.state,
+                      postal_code: issuerInfo?.postalCode,
+                      country: issuerInfo?.country
+                    }, (i18n.language as AppLocale) || 'en')}
                     ${issuerInfo?.phone ? `Tel: ${issuerInfo.phone}<br>` : ''}
                     ${issuerInfo?.email ? `Email: ${issuerInfo.email}` : ''}
                 </div>
@@ -836,9 +841,16 @@ const RestaurantInvoicesPage: React.FC = () => {
             <div class="bill-to-section">
                 <div class="section-label">${t('settings:invoicesPage.billTo')}</div>
                 <div class="customer-name">${payerCompany?.name || companySettings?.companyName || 'Your Company'}</div>
-                ${payerCompany?.address || companySettings?.address ? `<div class="customer-details">${payerCompany?.address || companySettings?.address}</div>` : ''}
-                ${[payerCompany?.city || companySettings?.city, payerCompany?.state || companySettings?.state, payerCompany?.postalCode || companySettings?.postalCode].filter(Boolean).length > 0 ? `<div class="customer-details">${[payerCompany?.city || companySettings?.city, payerCompany?.state || companySettings?.state, payerCompany?.postalCode || companySettings?.postalCode].filter(Boolean).join(', ')}</div>` : ''}
-                ${payerCompany?.country || companySettings?.country ? `<div class="customer-details">${payerCompany?.country || companySettings?.country}</div>` : ''}
+                ${(() => {
+                  const html = formatAddressHtml({
+                    address: payerCompany?.address || companySettings?.address,
+                    city: payerCompany?.city || companySettings?.city,
+                    state: payerCompany?.state || companySettings?.state,
+                    postal_code: payerCompany?.postalCode || companySettings?.postalCode,
+                    country: payerCompany?.country || companySettings?.country
+                  }, (i18n.language as AppLocale) || 'en');
+                  return html ? `<div class="customer-details">${html.replace(/<br>$/, '')}</div>` : '';
+                })()}
                 ${payerCompany?.email || companySettings?.email ? `<div class="customer-details">${payerCompany?.email || companySettings?.email}</div>` : ''}
             </div>
             <div class="dates-section">
@@ -1228,11 +1240,15 @@ const RestaurantInvoicesPage: React.FC = () => {
                       {issuerInfo?.name || selectedInvoice.issuerName || 'Issuer'}
                     </div>
                     <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
-                      {issuerInfo?.address && <div>{issuerInfo.address}</div>}
-                      {(issuerInfo?.city || issuerInfo?.state || issuerInfo?.postalCode) && (
-                        <div>{[issuerInfo?.city, issuerInfo?.state, issuerInfo?.postalCode].filter(Boolean).join(', ')}</div>
-                      )}
-                      {issuerInfo?.country && <div>{issuerInfo.country}</div>}
+                      {formatAddressLines({
+                        address: issuerInfo?.address,
+                        city: issuerInfo?.city,
+                        state: issuerInfo?.state,
+                        postal_code: issuerInfo?.postalCode,
+                        country: issuerInfo?.country
+                      }, (i18n.language as AppLocale) || 'en').map((line, idx) => (
+                        <div key={idx}>{line}</div>
+                      ))}
                       {issuerInfo?.phone && <div>Tel: {issuerInfo.phone}</div>}
                       {issuerInfo?.email && <div>Email: {issuerInfo.email}</div>}
                     </div>
@@ -1251,17 +1267,15 @@ const RestaurantInvoicesPage: React.FC = () => {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase' }}>{t('settings:invoicesPage.billTo')}</div>
                     <div style={{ fontSize: '15px', fontWeight: '600', color: '#0A2540' }}>{payerCompany?.name || companySettings?.companyName || 'Your Company'}</div>
-                    {(payerCompany?.address || companySettings?.address) && (
-                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '4px' }}>{payerCompany?.address || companySettings?.address}</div>
-                    )}
-                    {(payerCompany?.city || payerCompany?.state || payerCompany?.postalCode || companySettings?.city) && (
-                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                        {[payerCompany?.city || companySettings?.city, payerCompany?.state || companySettings?.state, payerCompany?.postalCode || companySettings?.postalCode].filter(Boolean).join(', ')}
-                      </div>
-                    )}
-                    {(payerCompany?.country || companySettings?.country) && (
-                      <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{payerCompany?.country || companySettings?.country}</div>
-                    )}
+                    {formatAddressLines({
+                      address: payerCompany?.address || companySettings?.address,
+                      city: payerCompany?.city || companySettings?.city,
+                      state: payerCompany?.state || companySettings?.state,
+                      postal_code: payerCompany?.postalCode || companySettings?.postalCode,
+                      country: payerCompany?.country || companySettings?.country
+                    }, (i18n.language as AppLocale) || 'en').map((line, idx) => (
+                      <div key={idx} style={{ fontSize: '13px', color: '#6B7280', marginTop: idx === 0 ? '4px' : '2px' }}>{line}</div>
+                    ))}
                     {(payerCompany?.email || companySettings?.email) && (
                       <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>{payerCompany?.email || companySettings?.email}</div>
                     )}

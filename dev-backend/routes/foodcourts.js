@@ -241,6 +241,7 @@ router.get('/company-info', authenticateToken, async (req, res) => {
       registration_no: foodcourt.registration_no,
       trade_name: foodcourt.trade_name,
       address: foodcourt.address,
+      address_line_2: foodcourt.address_line_2 || '',
       city: foodcourt.city,
       state: foodcourt.state,
       postal_code: foodcourt.postal_code,
@@ -283,10 +284,11 @@ router.put('/company-info', authenticateToken, async (req, res) => {
       registration_no: req.body.registration_no,
       trade_name: req.body.trade_name,
       address: req.body.address,
+      address_line_2: req.body.address_line_2 || null,
       city: req.body.city,
       state: req.body.state,
       postal_code: req.body.postal_code,
-      country: req.body.country,
+      country: req.body.country ? String(req.body.country).toUpperCase().slice(0, 2) : req.body.country,
       phone: req.body.phone,
       email: req.body.email,
       website: req.body.website,
@@ -669,7 +671,7 @@ router.get('/:id/payment-settings/available/:currency', authenticateToken, async
 });
 
 // Get subscription info for a foodcourt (System Admin can set, Foodcourt General can view)
-router.get('/:id/subscription', authenticateToken, async (req, res) => {
+router.get('/:id/subscription', authenticateToken, requireFoodcourtModule('fc_subscriptions'), async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`📋 GET /api/foodcourts/${id}/subscription - User: ${req.user.email}`);

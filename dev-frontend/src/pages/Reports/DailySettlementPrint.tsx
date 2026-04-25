@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
+import { formatAddressLines, AppLocale } from '../../utils/formatAddress';
 import { getPaymentMethodLabel } from '../../constants';
 import { printSettlementReport } from '../../utils/billPrint';
 import { useTranslation } from 'react-i18next';
@@ -417,7 +418,7 @@ const formatDateDisplay = (dateStr: string): string => {
 // ─── Component ───────────────────────────────────────────────────
 
 const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onClose }) => {
-  const { t } = useTranslation('reports');
+  const { t, i18n } = useTranslation('reports');
   const { user } = useAuth();
   const { storeSettings, operationSettings, paymentSettings } = useStore();
   const timeZone = operationSettings.timeZone || 'Asia/Kuala_Lumpur';
@@ -505,9 +506,15 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
 
     // Build store header
     let storeHeader = `<div style="font-size:18px;font-weight:900;letter-spacing:1px;margin-bottom:4px">${storeSettings.name}</div>`;
-    const infoLines: string[] = [];
-    if (storeSettings.address) infoLines.push(storeSettings.address);
-    if (storeSettings.city || storeSettings.state) infoLines.push([storeSettings.city, storeSettings.state, storeSettings.postalCode].filter(Boolean).join(', '));
+    const infoLines: string[] = [
+      ...formatAddressLines({
+        address: storeSettings.address,
+        city: storeSettings.city,
+        state: storeSettings.state,
+        postal_code: storeSettings.postalCode,
+        country: storeSettings.country
+      }, (i18n.language as AppLocale) || 'en')
+    ];
     if (storeSettings.phone) infoLines.push(`Tel: ${storeSettings.phone}`);
     const regParts: string[] = [];
     if (storeSettings.businessRegistration) regParts.push(`Reg No: ${storeSettings.businessRegistration}`);
@@ -776,10 +783,15 @@ const DailySettlementPrint: React.FC<DailySettlementPrintProps> = ({ isOpen, onC
             <ReceiptHeader>
               <ReceiptStoreName>{storeSettings.name}</ReceiptStoreName>
               <ReceiptStoreInfo>
-                {storeSettings.address && <div>{storeSettings.address}</div>}
-                {(storeSettings.city || storeSettings.state) && (
-                  <div>{[storeSettings.city, storeSettings.state, storeSettings.postalCode].filter(Boolean).join(', ')}</div>
-                )}
+                {formatAddressLines({
+                  address: storeSettings.address,
+                  city: storeSettings.city,
+                  state: storeSettings.state,
+                  postal_code: storeSettings.postalCode,
+                  country: storeSettings.country
+                }, (i18n.language as AppLocale) || 'en').map((line, idx) => (
+                  <div key={idx}>{line}</div>
+                ))}
                 {storeSettings.phone && <div>Tel: {storeSettings.phone}</div>}
                 {(storeSettings.businessRegistration || storeSettings.gstRegNo) && (
                   <div>

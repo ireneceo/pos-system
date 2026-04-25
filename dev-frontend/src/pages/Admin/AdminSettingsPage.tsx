@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import AutoSaveAddressFields from '../../components/Form/AutoSaveAddressFields';
 import { useTranslation } from 'react-i18next';
 
 interface CompanySettings {
@@ -379,87 +380,29 @@ const AdminSettingsPage: React.FC = () => {
             </FormRow>
 
             <FormGroup>
-              <FormLabel>Address *</FormLabel>
-              <AutoSaveField onSave={saveSettings}>
-                <FormInput
-                  type="text"
-                  value={settings.address}
-                  onChange={(e) => handleInputChange('address', e.target.value.replace(/[\r\n\t]+/g, ' '))}
-                  placeholder="Street, building, area"
-                  required
-                />
-              </AutoSaveField>
+              <AutoSaveAddressFields
+                value={{
+                  address: settings.address,
+                  address_line_2: settings.address_line_2,
+                  city: settings.city,
+                  state: settings.state,
+                  postal_code: settings.postalCode,
+                  country: settings.country
+                }}
+                onChange={(addr) => setSettings(prev => ({
+                  ...prev,
+                  address: addr.address || '',
+                  address_line_2: addr.address_line_2 || '',
+                  city: addr.city || '',
+                  state: addr.state || '',
+                  postalCode: addr.postal_code || '',
+                  country: (addr.country || '').toUpperCase()
+                }))}
+                onSave={saveSettings}
+                defaultCountry={settings.country || 'MY'}
+                required={['address', 'city']}
+              />
             </FormGroup>
-
-            <FormGroup>
-              <FormLabel>Address Line 2</FormLabel>
-              <AutoSaveField onSave={saveSettings}>
-                <FormInput
-                  type="text"
-                  value={settings.address_line_2 || ''}
-                  onChange={(e) => handleInputChange('address_line_2', e.target.value.replace(/[\r\n\t]+/g, ' '))}
-                  placeholder="Unit / Floor / Building name"
-                />
-              </AutoSaveField>
-            </FormGroup>
-
-            <FormRow>
-              <FormGroup>
-                <FormLabel>City *</FormLabel>
-                <AutoSaveField onSave={saveSettings}>
-                  <FormInput
-                    type="text"
-                    value={settings.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
-                    placeholder="Enter city"
-                    required
-                  />
-                </AutoSaveField>
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>State *</FormLabel>
-                <AutoSaveField onSave={saveSettings}>
-                  <FormInput
-                    type="text"
-                    value={settings.state}
-                    onChange={(e) => handleInputChange('state', e.target.value)}
-                    placeholder="Enter state"
-                    required
-                  />
-                </AutoSaveField>
-              </FormGroup>
-            </FormRow>
-
-            <FormRow>
-              <FormGroup>
-                <FormLabel>Postal Code *</FormLabel>
-                <AutoSaveField onSave={saveSettings}>
-                  <FormInput
-                    type="text"
-                    value={settings.postalCode}
-                    onChange={(e) => handleInputChange('postalCode', e.target.value)}
-                    placeholder="Enter postal code"
-                    required
-                  />
-                </AutoSaveField>
-              </FormGroup>
-              <FormGroup>
-                <FormLabel>Country *</FormLabel>
-                <AutoSaveField onSave={saveSettings} type="select">
-                  <FormSelect
-                    value={settings.country}
-                    onChange={(e) => handleInputChange('country', e.target.value)}
-                    required
-                  >
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </FormSelect>
-                </AutoSaveField>
-              </FormGroup>
-            </FormRow>
 
             <FormRow>
               <FormGroup>

@@ -555,10 +555,61 @@
     "city": "城市",
     "state": "州 / 省",
     "postalCode": "邮政编码",
+    "postalCodeInvalid": "与所选国家/地区的邮政编码格式不匹配（按原样保存）。",
     "country": "国家",
     "selectCountry": "选择国家",
     "latitude": "纬度",
     "longitude": "经度",
     "latLngHint": "留空则保存时自动定位"
+  },
+  "welcomeModal": {
+    "greeting": "欢迎",
+    "subtitle": "几个简单步骤即可完成账户准备。",
+    "moreSteps": "+ 下方设置清单中还有 {{count}} 个步骤。",
+    "skip": "我自己看看",
+    "start": "开始设置 →"
+  },
+  "inbox": {
+    "bell": {
+      "label": "收件箱",
+      "aria": {
+        "unread": "{{count}} 条未读通知",
+        "empty": "没有未读通知"
+      }
+    },
+    "drawer": { "title": "通知" },
+    "page": { "title": "收件箱" },
+    "filter": {
+      "all": "全部",
+      "notice": "公告",
+      "support": "支持",
+      "ops": "运营"
+    },
+    "status": {
+      "all": "全部",
+      "unread": "未读",
+      "read": "已读"
+    },
+    "type": {
+      "notice": "公告",
+      "support_ticket": "支持",
+      "operation_ticket": "运营"
+    },
+    "severity": {
+      "normal": "普通",
+      "important": "重要",
+      "urgent": "紧急"
+    },
+    "unreadOnly": "只显示未读",
+    "markAllRead": "全部标记为已读",
+    "viewAll": "查看全部 →",
+    "searchPlaceholder": "搜索标题或预览",
+    "resultCount": "{{count}} 项",
+    "empty": {
+      "title": "全部已查看!",
+      "all": "新通知将显示在这里。",
+      "unread": "目前没有未读项目。",
+      "search": "没有符合的搜索结果。"
+    }
   }
 }

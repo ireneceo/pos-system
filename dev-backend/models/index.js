@@ -58,6 +58,7 @@ const EntityPlanRestaurant = require('./EntityPlanRestaurant');
 const EntityPlanPrice = require('./EntityPlanPrice');
 const RestaurantIngredientCost = require('./RestaurantIngredientCost');
 const SystemLog = require('./SystemLog');
+const SchedulerRun = require('./SchedulerRun');
 const Comment = require('./Comment');
 const CommentRead = require('./CommentRead');
 const Notice = require('./Notice');
@@ -701,6 +702,7 @@ module.exports = {
   EntityPlanPrice,
   RestaurantIngredientCost,
   SystemLog,
+  SchedulerRun,
   Comment,
   CommentRead,
   Notice,

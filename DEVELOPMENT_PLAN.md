@@ -1,13 +1,54 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-25 (v3.18 진행 중 — 다음 세션 이어서)
+> **최종 업데이트:** 2026-04-25 (v3.18 운영 배포 + 미배포 [Unreleased] 누적)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.18 [Unreleased]** (v3.17 운영 배포 후 누적)
+> **현재 버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 v3.19
 
 ---
 
-## 🔄 진행 중: v3.18 (2026-04-25, 미배포)
+## ✅ 완료: v3.18 후속 — Onboarding/Inbox/Scheduler 일괄 작업 (2026-04-25, 미배포)
+
+### 완료된 작업
+
+| # | 작업 | 설명 | 상태 |
+|---|------|------|:----:|
+| 1 | Onboarding wizard 강화 | `<WelcomeModal>` 신설 (첫 로그인 1회 표시) + useSetupStatus에 Restaurant Owner / System Admin 분기 + Brand/Foodcourt 항목 확장 + dependsOn 메타 (lock UI) | ✅ |
+| 2 | 알림 센터 (Inbox) v1 | 신규 통합 endpoint `/api/inbox` (Notice + SupportTicket + OperationTicket UNION). InboxBell 헤더 종 + 30s polling + shake animation. InboxDrawer 우측 슬라이드 420px. InboxPage 전체 보기. 4언어 30+ 키 | ✅ |
+| 3 | 보안 fix — POST /api/restaurants 역할 제한 | Brand Manager / Foodcourt Manager 차단. health-check 회귀 케이스 3건 추가 → 43/43 PASS. `DEVELOPMENT_PLAN.md` "선행 보안 이슈 (HIGH)" 해소 | ✅ |
+| 4 | Trial 만료 자동 알림 이메일 | D-3/D-0/D+1 3 임계점 발송. 4 entity (Restaurant/Brand/Foodcourt/Owner). 4 컬럼 `last_trial_reminder_day` 추가 (멱등성). 신규 카테고리 `trial_expiry_reminder` (사용자 opt-out 가능). 6 시나리오 검증 PASS | ✅ |
+| 5 | Daily scheduler 모니터링 대시보드 | 신규 테이블 `scheduler_runs` + subscription/invoice scheduler 통합 (start/finish/results JSON/error). `GET /api/admin/scheduler-runs` + `/jobs` (per-job summary + 24h error count). `pages/Admin/SchedulerMonitorPage.tsx` (job cards + recent runs table) | ✅ |
+| 6 | 구독 변경 히스토리 페이지 | 신규 `<InvoiceHistoryModal>` 타임라인 UI (dot+line, 수정자/시각/reason quote, field별 from→to diff, line-through/green). Admin/Brand/Foodcourt InvoicesPage 통합 (Modified 뱃지를 클릭 button으로) | ✅ |
+| 7 | 인보이스 수동/자동 UI 구분 | 확인 결과 4 페이지 모두 이미 `<AutoBadge>` (#10B981) 구현됨. DEVELOPMENT_PLAN.md 항목 stale → 마감 | ✅ |
+
+### 신규 파일 (10)
+- `dev-backend/routes/inbox.js`
+- `dev-backend/routes/scheduler-runs.js`
+- `dev-backend/routes/address-suggestions.js` (이전)
+- `dev-backend/models/SchedulerRun.js`
+- `dev-frontend/src/components/Common/WelcomeModal.tsx`
+- `dev-frontend/src/components/Form/AutoSaveAddressFields.tsx` (이전)
+- `dev-frontend/src/components/Inbox/{inboxApi.ts, InboxBell.tsx, InboxDrawer.tsx, InboxItemCard.tsx}`
+- `dev-frontend/src/components/Invoice/InvoiceHistoryModal.tsx`
+- `dev-frontend/src/pages/Admin/SchedulerMonitorPage.tsx`
+- `dev-frontend/src/pages/Inbox/InboxPage.tsx`
+- `docs/EMAIL_INTEGRITY_AUDIT.md`, `docs/V3_18_BASIC_TIER_GAPS.md` (이전)
+
+### DB 변경
+- ALTER 4 (`last_trial_reminder_day INT NULL` on restaurants/brands/foodcourts/users)
+- CREATE 1 (`scheduler_runs`)
+
+### 검증
+- 빌드 `main.3fc1c132.js`
+- State hydration 0 warnings
+- health-check 43/43 PASS (보안 신규 3건 포함)
+- Inbox API 12/12 + 5 역할 30/30
+- Trial reminder 6 시나리오 핵심 로직 PASS
+- Scheduler-runs API list/jobs/auth 401
+
+---
+
+## ✓ 완료: v3.18 운영 배포 (2026-04-25)
 
 ### 완료된 묶음 (이번 세션, dev only)
 
@@ -32,13 +73,22 @@
 - `routes/store.js` `address_line_2` allowedFields + GET 응답
 - 빌드 `main.a952c113.js`
 
-### 다음 세션 우선순위 (A → B → C)
+#### 4. 주소 시스템 통일 — Phase 2 (Display & AutoSave Unification) ✓
+**Irene 결정 (2026-04-25):**
+- 자동완성: 브라우저 네이티브 (외부 API 불필요)
+- 솔루션 전체 주소 패턴 통일
+- 운영 #10 데이터는 Irene 직접 수정
 
-#### A. 주소 시스템 — Phase 2 (Task #12 잔여)
-**Irene 결정 필요:**
-1. 자동완성 방식 (Google Places / Nominatim / 안 함)
-2. AutoSave 패턴 페이지 (BrandCompanyInfo/CompanyInformation/AdminSettings) 통일?
-3. 운영 #10 데이터 정리 방식
+**적용 범위:**
+- 신규 컴포넌트 1: `<AutoSaveAddressFields>` (debounce + 저장 배지)
+- 신규 유틸 3: `formatAddressHtml`, `formatAddressLines`, `formatEntityAddress`
+- 입력 폼 6 곳 마이그 (5 AutoSave 페이지 + 1 Modal × 2)
+- 백엔드 3 라우트 보강 (brands/foodcourts/restaurants-crud company-info: `address_line_2` + ISO 정규화)
+- 표시 사이트 33+ 파일 통일 (청구서 9 + 지점/관리/리스트 24+)
+- `docs/ADDRESS_STANDARDIZATION.md` 12장 추가
+- 검증: 빌드 `main.bc7d0df7.js`, API 18/18, health-check 40/40
+
+### 다음 세션 우선순위 (B → C)
 
 #### B. F3 — 17 이메일 발송 site audit (Task #10 잔여)
 `docs/EMAIL_INTEGRITY_AUDIT.md` 작성. 각 site fresh fetch / hardcoded / stale 점검.

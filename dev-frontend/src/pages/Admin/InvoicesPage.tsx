@@ -3,6 +3,8 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { useSearchParams } from 'react-router-dom';
 import { formatCurrency, getCurrencyDecimals, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
+import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
+import InvoiceHistoryModal from '../../components/Invoice/InvoiceHistoryModal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -61,7 +63,7 @@ import InvoiceCreateModal from './invoices/InvoiceCreateModal';
 import InvoiceCategoryManager from './invoices/InvoiceCategoryManager';
 
 const InvoicesPage: React.FC = () => {
-  const { t } = useTranslation('admin');
+  const { t, i18n } = useTranslation('admin');
   const { operationSettings } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -70,6 +72,7 @@ const InvoicesPage: React.FC = () => {
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
+  const [historyInvoice, setHistoryInvoice] = useState<Invoice | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
@@ -780,9 +783,13 @@ const InvoicesPage: React.FC = () => {
                 ${companySettings.companyLogo ? `<img src="${companySettings.companyLogo}" alt="Company Logo" class="company-logo">` : ''}
                 <div class="company-name">${companySettings.companyName || 'Company Name'}</div>
                 <div class="company-details">
-                    ${companySettings.address ? `${companySettings.address}<br>` : ''}
-                    ${[companySettings.city, companySettings.state, companySettings.postalCode].filter(Boolean).join(', ')}${companySettings.city || companySettings.state || companySettings.postalCode ? '<br>' : ''}
-                    ${companySettings.country ? `${companySettings.country}<br>` : ''}
+                    ${formatAddressHtml({
+                      address: companySettings.address,
+                      city: companySettings.city,
+                      state: companySettings.state,
+                      postal_code: companySettings.postalCode,
+                      country: companySettings.country
+                    }, (i18n.language as AppLocale) || 'en')}
                     ${companySettings.phone ? `Tel: ${companySettings.phone}<br>` : ''}
                     ${companySettings.email ? `Email: ${companySettings.email}` : ''}
                 </div>
@@ -1589,7 +1596,12 @@ const InvoicesPage: React.FC = () => {
                       {getStatusDisplay(getEffectiveStatus(invoice))}
                     </StatusBadge>
                     {invoice.isModified && (
-                      <span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('admin:invoicesPage.modified')}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }}
+                        title={t('invoiceHistory.viewTooltip', 'View modification history')}
+                        style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}
+                      >{t('admin:invoicesPage.modified')}</button>
                     )}
                   </DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
@@ -1757,6 +1769,14 @@ const InvoicesPage: React.FC = () => {
             onToggleCategoryActive={handleToggleCategoryActive}
           />
         )}
+
+        {/* Modification History Modal */}
+        <InvoiceHistoryModal
+          isOpen={!!historyInvoice}
+          onClose={() => setHistoryInvoice(null)}
+          invoiceNumber={historyInvoice?.invoiceNumber}
+          history={(historyInvoice as any)?.modificationHistory || []}
+        />
 
         {/* Create Invoice Modal */}
         <InvoiceCreateModal

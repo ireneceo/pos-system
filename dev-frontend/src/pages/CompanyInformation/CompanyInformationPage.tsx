@@ -3,8 +3,8 @@ import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
-import { COUNTRIES } from '../../constants/countries';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import AutoSaveAddressFields from '../../components/Form/AutoSaveAddressFields';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -395,93 +395,28 @@ const CompanyInformationPage: React.FC = () => {
             <SectionTitle>{t('settings:companyInformationPage.contactInformation')}</SectionTitle>
             <FormGrid>
               <FormGroup fullWidth>
-                <Label>{t('settings:companyInformationPage.address')}<span>*</span></Label>
-                <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companyInfo.address}
-                    onChange={(e) => handleInputChange('address', e.target.value.replace(/[\r\n\t]+/g, ' '))}
-                    placeholder="Street address"
-                  />
-                </AutoSaveField>
-              </FormGroup>
-
-              <FormGroup fullWidth>
-                <Label>{t('common:address.line2', 'Address Line 2 (optional)')}</Label>
-                <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companyInfo.address_line_2 || ''}
-                    onChange={(e) => handleInputChange('address_line_2', e.target.value.replace(/[\r\n\t]+/g, ' '))}
-                    placeholder={t('common:address.line2Placeholder', 'Unit / Floor / Building name')}
-                  />
-                </AutoSaveField>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('settings:companyInformationPage.city')}<span>*</span></Label>
-                <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companyInfo.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
-                    placeholder="e.g., Kuala Lumpur"
-                  />
-                </AutoSaveField>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('settings:companyInformationPage.state')}<span>*</span></Label>
-                <AutoSaveField onSave={handleSave} type="select">
-                  <Select
-                    value={companyInfo.state}
-                    onChange={(e) => handleInputChange('state', e.target.value)}
-                  >
-                    <option value="">{t('settings:companyInformationPage.selectState')}</option>
-                    <option value="Wilayah Persekutuan">{t('settings:companyInformationPage.wilayahPersekutuan')}</option>
-                    <option value="Selangor">{t('settings:companyInformationPage.selangor')}</option>
-                    <option value="Penang">{t('settings:companyInformationPage.penang')}</option>
-                    <option value="Johor">{t('settings:companyInformationPage.johor')}</option>
-                    <option value="Perak">{t('settings:companyInformationPage.perak')}</option>
-                    <option value="Kedah">{t('settings:companyInformationPage.kedah')}</option>
-                    <option value="Kelantan">{t('settings:companyInformationPage.kelantan')}</option>
-                    <option value="Melaka">{t('settings:companyInformationPage.melaka')}</option>
-                    <option value="Negeri Sembilan">{t('settings:companyInformationPage.negeriSembilan')}</option>
-                    <option value="Pahang">{t('settings:companyInformationPage.pahang')}</option>
-                    <option value="Perlis">{t('settings:companyInformationPage.perlis')}</option>
-                    <option value="Sabah">{t('settings:companyInformationPage.sabah')}</option>
-                    <option value="Sarawak">{t('settings:companyInformationPage.sarawak')}</option>
-                    <option value="Terengganu">{t('settings:companyInformationPage.terengganu')}</option>
-                  </Select>
-                </AutoSaveField>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('settings:companyInformationPage.postcode')}<span>*</span></Label>
-                <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companyInfo.postcode}
-                    onChange={(e) => handleInputChange('postcode', e.target.value)}
-                    placeholder="e.g., 50250"
-                  />
-                </AutoSaveField>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('settings:companyInformationPage.country')}<span>*</span></Label>
-                <AutoSaveField onSave={handleSave} type="select">
-                  <Select
-                    value={companyInfo.country}
-                    onChange={(e) => handleInputChange('country', e.target.value)}
-                  >
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </Select>
-                </AutoSaveField>
+                <AutoSaveAddressFields
+                  value={{
+                    address: companyInfo.address,
+                    address_line_2: companyInfo.address_line_2,
+                    city: companyInfo.city,
+                    state: companyInfo.state,
+                    postal_code: companyInfo.postcode,
+                    country: companyInfo.country
+                  }}
+                  onChange={(addr) => setCompanyInfo(prev => ({
+                    ...prev,
+                    address: addr.address || '',
+                    address_line_2: addr.address_line_2 || '',
+                    city: addr.city || '',
+                    state: addr.state || '',
+                    postcode: addr.postal_code || '',
+                    country: (addr.country || '').toUpperCase()
+                  }))}
+                  onSave={handleSave}
+                  defaultCountry={companyInfo.country || 'MY'}
+                  required={['address', 'city', 'country']}
+                />
               </FormGroup>
 
               <FormGroup>

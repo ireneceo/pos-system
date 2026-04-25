@@ -25,7 +25,7 @@ import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
 import DateRangeField from '../../components/Common/DateRangeField';
 import { AddressFields } from '../../components/Form';
-import type { Address } from '../../utils/formatAddress';
+import { formatAddress, AppLocale, type Address } from '../../utils/formatAddress';
 import { COUNTRIES } from '../../constants/countries';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
@@ -603,7 +603,7 @@ const ActiveButton = styled.button`
 `;
 
 const RestaurantsPage: React.FC = () => {
-  const { t } = useTranslation('admin');
+  const { t, i18n } = useTranslation('admin');
   const { operationSettings } = useStore();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -2982,14 +2982,14 @@ const RestaurantsPage: React.FC = () => {
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Address</DetailLabel>
-                <DetailValue>{selectedRestaurant.address || selectedRestaurant.location || 'N/A'}</DetailValue>
+                <DetailValue>{formatAddress({
+                  address: selectedRestaurant.address,
+                  city: selectedRestaurant.city,
+                  state: selectedRestaurant.state,
+                  postal_code: selectedRestaurant.postalCode,
+                  country: selectedRestaurant.country
+                }, 'oneline', (i18n.language as AppLocale) || 'en') || selectedRestaurant.location || 'N/A'}</DetailValue>
               </DetailRow>
-              {(selectedRestaurant.city || selectedRestaurant.state || selectedRestaurant.postalCode) && (
-                <DetailRow>
-                  <DetailLabel>City / State / Postal</DetailLabel>
-                  <DetailValue>{[selectedRestaurant.city, selectedRestaurant.state, selectedRestaurant.postalCode].filter(Boolean).join(', ') || 'N/A'}</DetailValue>
-                </DetailRow>
-              )}
               <DetailRow>
                 <DetailLabel>Country</DetailLabel>
                 <DetailValue>{COUNTRIES.find(c => c.code === selectedRestaurant.country)?.name || selectedRestaurant.country || 'N/A'}</DetailValue>

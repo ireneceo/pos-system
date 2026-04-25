@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../utils/currency';
+import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
+import InvoiceHistoryModal from '../../components/Invoice/InvoiceHistoryModal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
 import { useAuth } from '../../contexts/AuthContext';
@@ -72,7 +74,7 @@ import BrandInvoiceCreateModal from './invoices/BrandInvoiceCreateModal';
 import BrandInvoiceCategoryManager from './invoices/BrandInvoiceCategoryManager';
 
 const BrandInvoicesPage: React.FC = () => {
-  const { t } = useTranslation('brand');
+  const { t, i18n } = useTranslation('brand');
   const { operationSettings } = useStore();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -82,6 +84,7 @@ const BrandInvoicesPage: React.FC = () => {
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
+  const [historyInvoice, setHistoryInvoice] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
@@ -685,6 +688,34 @@ const BrandInvoicesPage: React.FC = () => {
       if (currency === 'RM') currency = 'MYR';
       setNewInvoice({ ...newInvoice, restaurantId: restaurant.id, restaurantName: restaurant.name, managerId: restaurant.admin_id, managerName: manager ? manager.fullName : '', companyName: restaurant.name, currency });
       await checkBrandPaymentMethods(currency);
+      // Prefill amount/description from active Brand contract's financial_terms
+      // (system_monthly_fee for franchise subscription billing). Optional — silent
+      // on failure so the user can fill manually if no contract is linked.
+      try {
+        const token = getAuthToken();
+        const r = await fetch(`/api/contracts?restaurant_id=${restaurant.id}&stage=active`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (r.ok) {
+          const j = await r.json();
+          const list = j.data || j.contracts || j || [];
+          const contract = Array.isArray(list) ? list[0] : null;
+          const ft = contract?.financial_terms || {};
+          const fee = Number(ft.system_monthly_fee) || 0;
+          if (fee > 0) {
+            const cnum = contract.contract_number || `#${contract.id}`;
+            setNewInvoice(prev => ({
+              ...prev,
+              amount: String(fee),
+              total: String(fee),
+              description: `Monthly subscription — Contract ${cnum}`,
+              invoiceCategory: 'subscription',
+              billingCycle: 'monthly'
+            }));
+            setPrefillContractId(contract.id);
+          }
+        }
+      } catch { /* prefill is best-effort */ }
     }
   };
 
@@ -833,9 +864,13 @@ const BrandInvoicesPage: React.FC = () => {
                 ${displayCompany.companyLogo ? `<img src="${displayCompany.companyLogo}" alt="Company Logo" class="company-logo">` : ''}
                 <div class="company-name" style="${displayCompany.companyLogo ? 'font-size: 14px;' : ''}">${displayCompany.companyName || 'Company Name'}</div>
                 <div class="company-details">
-                    ${displayCompany.address ? `${displayCompany.address}<br>` : ''}
-                    ${[displayCompany.city, displayCompany.state, displayCompany.postalCode].filter(Boolean).join(', ')}${displayCompany.city || displayCompany.state || displayCompany.postalCode ? '<br>' : ''}
-                    ${displayCompany.country ? `${displayCompany.country}<br>` : ''}
+                    ${formatAddressHtml({
+                      address: displayCompany.address,
+                      city: displayCompany.city,
+                      state: displayCompany.state,
+                      postal_code: displayCompany.postalCode,
+                      country: displayCompany.country
+                    }, (i18n.language as AppLocale) || 'en')}
                     ${displayCompany.phone ? `Tel: ${displayCompany.phone}<br>` : ''}
                     ${displayCompany.email ? `Email: ${displayCompany.email}` : ''}
                 </div>
@@ -851,9 +886,16 @@ const BrandInvoicesPage: React.FC = () => {
                 <div class="section-label">${t('brand:brandInvoicesPage.billTo')}</div>
                 ${isReceivedInvoice ? `
                 <div class="customer-name">${companySettings?.companyName || 'Your Company'}</div>
-                ${companySettings?.address ? `<div class="customer-details">${companySettings.address}</div>` : ''}
-                ${[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).length > 0 ? `<div class="customer-details">${[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}</div>` : ''}
-                ${companySettings?.country ? `<div class="customer-details">${companySettings.country}</div>` : ''}
+                ${(() => {
+                  const html = formatAddressHtml({
+                    address: companySettings?.address,
+                    city: companySettings?.city,
+                    state: companySettings?.state,
+                    postal_code: companySettings?.postalCode,
+                    country: companySettings?.country
+                  }, (i18n.language as AppLocale) || 'en');
+                  return html ? `<div class="customer-details">${html.replace(/<br>$/, '')}</div>` : '';
+                })()}
                 ${companySettings?.email ? `<div class="customer-details">${companySettings.email}</div>` : ''}
                 ` : `
                 <div class="customer-name">${invoice.customerName || invoice.managerName || 'Customer'}</div>
@@ -1352,7 +1394,7 @@ const BrandInvoicesPage: React.FC = () => {
                   <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
                   <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
                   <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
-                  <DataTableCell data-label="Status" align="center"><StatusBadge status={getEffectiveStatus(invoice)}>{getStatusDisplay(getEffectiveStatus(invoice))}</StatusBadge>{invoice.isModified && (<span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.modified')}</span>)}</DataTableCell>
+                  <DataTableCell data-label="Status" align="center"><StatusBadge status={getEffectiveStatus(invoice)}>{getStatusDisplay(getEffectiveStatus(invoice))}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('brand:brandInvoicesPage.modified')}</button>)}</DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>{renderInvoiceActions(invoice)}</DataTableCell>
@@ -1387,7 +1429,7 @@ const BrandInvoicesPage: React.FC = () => {
                   <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
                   <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
                   <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
-                  <DataTableCell data-label="Status" align="center"><StatusBadge status={getEffectiveStatus(invoice)}>{getStatusDisplay(getEffectiveStatus(invoice))}</StatusBadge>{invoice.isModified && (<span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('brand:brandInvoicesPage.modified')}</span>)}</DataTableCell>
+                  <DataTableCell data-label="Status" align="center"><StatusBadge status={getEffectiveStatus(invoice)}>{getStatusDisplay(getEffectiveStatus(invoice))}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('brand:brandInvoicesPage.modified')}</button>)}</DataTableCell>
                   <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('brand:brandInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>{renderInvoiceActions(invoice, true)}</DataTableCell>
@@ -1501,6 +1543,13 @@ const BrandInvoicesPage: React.FC = () => {
         )}
 
         {/* Create Invoice Modal */}
+        <InvoiceHistoryModal
+          isOpen={!!historyInvoice}
+          onClose={() => setHistoryInvoice(null)}
+          invoiceNumber={historyInvoice?.invoiceNumber}
+          history={historyInvoice?.modificationHistory || []}
+        />
+
         {showCreateInvoiceModal && (
           <BrandInvoiceCreateModal
             newInvoice={newInvoice} setNewInvoice={setNewInvoice}

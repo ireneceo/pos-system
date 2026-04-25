@@ -151,6 +151,7 @@ router.get('/', authenticateToken, async (req, res, next) => {
       where.entity_id = entity.entity_id;
     }
     if (req.query.stage) where.stage = req.query.stage;
+    if (req.query.restaurant_id) where.restaurant_id = req.query.restaurant_id;
 
     // Foodcourt Manager with branch scope: limit to contracts whose unit belongs to the branch
     const scope = getManagerScope(req.user);

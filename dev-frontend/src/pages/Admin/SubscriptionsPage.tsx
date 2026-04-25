@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
+import { formatEntityAddress, AppLocale } from '../../utils/formatAddress';
 import {
   Container,
   Header,
@@ -270,7 +271,7 @@ const FormSelect = styled.select`
 `;
 
 const SubscriptionsPage: React.FC = () => {
-  const { t } = useTranslation('admin');
+  const { t, i18n } = useTranslation('admin');
   const [subscriptions, setSubscriptions] = useState<RestaurantSubscription[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -1436,7 +1437,7 @@ const SubscriptionsPage: React.FC = () => {
                             <div style={{fontSize: '13px', color: '#6B7280'}}>
                               {selectedTarget.type === 'manager'
                                 ? `Manager`
-                                : `${selectedTarget.data.admin ? `Admin: ${selectedTarget.data.admin.name}` : 'No Admin'} • ${selectedTarget.data.address || 'No address'}`}
+                                : `${selectedTarget.data.admin ? `Admin: ${selectedTarget.data.admin.name}` : 'No Admin'} • ${formatEntityAddress(selectedTarget.data, (i18n.language as AppLocale) || 'en') || 'No address'}`}
                             </div>
                           </div>
                           <button

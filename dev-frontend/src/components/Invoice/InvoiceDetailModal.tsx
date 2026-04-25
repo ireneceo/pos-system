@@ -2,6 +2,8 @@ import React, { useRef } from 'react';
 import styled from 'styled-components';
 import { Invoice, STATUS_CONFIG, CURRENCY_CONFIG, CompanyInfo } from './types';
 import { formatDate as tzFormatDate } from '../../utils/timezone';
+import { formatAddressLines, AppLocale } from '../../utils/formatAddress';
+import { useTranslation } from 'react-i18next';
 
 // Styled Components
 const ModalOverlay = styled.div`
@@ -394,20 +396,48 @@ const renderCompanyInfo = (company: CompanyInfo | undefined, defaultName: string
     );
   }
 
+  return <BillingBlock company={company} defaultName={defaultName} />;
+};
+
+const BillingBlock: React.FC<{ company: any; defaultName: string }> = ({ company, defaultName }) => {
+  const { i18n } = useTranslation();
   return (
     <>
       <BillingName>{company.name || defaultName}</BillingName>
       <BillingDetail>
-        {company.address && <>{company.address}<br /></>}
-        {(company.city || company.state || company.postalCode) && (
-          <>{[company.city, company.state, company.postalCode].filter(Boolean).join(', ')}<br /></>
-        )}
-        {company.country && <>{company.country}<br /></>}
+        {formatAddressLines({
+          address: company.address,
+          city: company.city,
+          state: company.state,
+          postal_code: company.postalCode,
+          country: company.country
+        }, (i18n.language as AppLocale) || 'en').map((line, idx) => (
+          <React.Fragment key={idx}>{line}<br /></React.Fragment>
+        ))}
         {company.phone && <>Tel: {company.phone}<br /></>}
         {company.email && <>Email: {company.email}<br /></>}
         {company.taxId && <>Tax ID: {company.taxId}</>}
       </BillingDetail>
     </>
+  );
+};
+
+const IssuerCompanyDetail: React.FC<{ company: any }> = ({ company }) => {
+  const { i18n } = useTranslation();
+  return (
+    <CompanyDetail>
+      {formatAddressLines({
+        address: company.address,
+        city: company.city,
+        state: company.state,
+        postal_code: company.postalCode,
+        country: company.country
+      }, (i18n.language as AppLocale) || 'en').map((line, idx) => (
+        <React.Fragment key={idx}>{line}<br /></React.Fragment>
+      ))}
+      {company.phone && <>Tel: {company.phone}<br /></>}
+      {company.email && <>Email: {company.email}</>}
+    </CompanyDetail>
   );
 };
 
@@ -463,15 +493,7 @@ const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               ) : (
                 <CompanyName>{issuerCompany.name}</CompanyName>
               )}
-              <CompanyDetail>
-                {issuerCompany.address && <>{issuerCompany.address}<br /></>}
-                {(issuerCompany.city || issuerCompany.state || issuerCompany.postalCode) && (
-                  <>{[issuerCompany.city, issuerCompany.state, issuerCompany.postalCode].filter(Boolean).join(', ')}<br /></>
-                )}
-                {issuerCompany.country && <>{issuerCompany.country}<br /></>}
-                {issuerCompany.phone && <>Tel: {issuerCompany.phone}<br /></>}
-                {issuerCompany.email && <>Email: {issuerCompany.email}</>}
-              </CompanyDetail>
+              <IssuerCompanyDetail company={issuerCompany} />
             </CompanySection>
 
             <InvoiceInfo>

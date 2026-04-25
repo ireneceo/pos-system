@@ -7,7 +7,10 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
 import { useStore } from '../../contexts/StoreContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { SetupGuide, WelcomeModal } from '../../components/Common';
+import { useSetupStatus } from '../../hooks/useSetupStatus';
 
 import { getAuthToken } from '../../utils/auth';
 interface CurrencyRevenue {
@@ -551,7 +554,9 @@ const Badge = styled.span<{ variant: string }>`
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation('admin');
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { operationSettings, siteTimezone } = useStore();
+  const { items: setupItems } = useSetupStatus({ role: user?.role || '' });
   const [activeTab, handleTabChange] = useTabParam<'overview' | 'performance' | 'health' | 'system'>('overview');
   const [managers, setManagers] = useState<Manager[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
@@ -958,6 +963,15 @@ const AdminDashboard: React.FC = () => {
         </Header>
 
         <Content>
+          {user?.id && (
+            <WelcomeModal
+              userKey={user.id}
+              userName={user.fullName || user.username}
+              roleLabel={user.role}
+              items={setupItems}
+            />
+          )}
+          {setupItems.length > 0 && <SetupGuide items={setupItems} entityId={user?.id} />}
           {/* Currency Filter - only show supported currencies from payment settings */}
           {supportedCurrencies.length > 0 && (
             <CurrencyFilterBar>

@@ -7,6 +7,7 @@ import { useOrders } from '../../contexts/OrderContext';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
+import { formatAddressLines, AppLocale } from '../../utils/formatAddress';
 import { formatPaymentDisplay } from '../../constants';
 import { formatDateTime as formatDateTimeUtil } from '../../utils/timezone';
 import { useTranslation } from 'react-i18next';
@@ -261,7 +262,7 @@ const ReceiptPointsSection = styled.div`
 `;
 
 const BillPrintPage: React.FC = () => {
-  const { t } = useTranslation('pos');
+  const { t, i18n } = useTranslation('pos');
   const { orders } = useOrders();
   const storeContext = useStore();
   const companyInfo = (storeContext as any).companyInfo;
@@ -353,10 +354,15 @@ const BillPrintPage: React.FC = () => {
               )}
               <StoreName>{getRestaurantDisplayName({ name: storeContext.storeSettings.name, branchName: storeContext.storeSettings.branchName })}</StoreName>
               <StoreInfo>
-                {storeContext.storeSettings.address && <>{storeContext.storeSettings.address}<br /></>}
-                {(storeContext.storeSettings.city || storeContext.storeSettings.state) && (
-                  <>{[storeContext.storeSettings.city, storeContext.storeSettings.state, storeContext.storeSettings.postalCode].filter(Boolean).join(', ')}<br /></>
-                )}
+                {formatAddressLines({
+                  address: storeContext.storeSettings.address,
+                  city: storeContext.storeSettings.city,
+                  state: storeContext.storeSettings.state,
+                  postal_code: storeContext.storeSettings.postalCode,
+                  country: storeContext.storeSettings.country
+                }, (i18n.language as AppLocale) || 'en').map((line, idx) => (
+                  <React.Fragment key={idx}>{line}<br /></React.Fragment>
+                ))}
                 {storeContext.storeSettings.phone && <>Tel: {storeContext.storeSettings.phone}<br /></>}
                 {(storeContext.storeSettings.businessRegistration || storeContext.storeSettings.gstRegNo) && (
                   <>

@@ -224,6 +224,35 @@ function defineSecurityTests({ customerToken, member }) {
     const r = await request('POST', '/restaurants', { name: 'x' }, { Authorization: `Bearer ${raToken}` });
     return r.status === 403 && /Insufficient permissions/i.test(JSON.stringify(r.body));
   });
+
+  // Manager-tier roles must not create restaurants either (must request General).
+  // Closes the v3.18+ pre-existing gap.
+  test('security', 'Brand Manager가 POST /restaurants → 403', async () => {
+    const User = require('../models/User');
+    const bm = await User.findOne({ where: { role: 'Brand Manager' } });
+    if (!bm) return true;
+    const tk = jwt.sign({ userId: bm.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('POST', '/restaurants', { name: 'x' }, { Authorization: `Bearer ${tk}` });
+    return r.status === 403 && /Insufficient permissions/i.test(JSON.stringify(r.body));
+  });
+
+  test('security', 'Foodcourt Manager가 POST /restaurants → 403', async () => {
+    const User = require('../models/User');
+    const fm = await User.findOne({ where: { role: 'Foodcourt Manager' } });
+    if (!fm) return true;
+    const tk = jwt.sign({ userId: fm.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('POST', '/restaurants', { name: 'x' }, { Authorization: `Bearer ${tk}` });
+    return r.status === 403 && /Insufficient permissions/i.test(JSON.stringify(r.body));
+  });
+
+  test('security', 'Staff가 POST /restaurants → 403', async () => {
+    const User = require('../models/User');
+    const st = await User.findOne({ where: { role: 'Staff' } });
+    if (!st) return true;
+    const tk = jwt.sign({ userId: st.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('POST', '/restaurants', { name: 'x' }, { Authorization: `Bearer ${tk}` });
+    return r.status === 403 && /Insufficient permissions/i.test(JSON.stringify(r.body));
+  });
 }
 
 // ============================================

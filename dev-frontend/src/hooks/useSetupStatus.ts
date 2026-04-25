@@ -177,14 +177,16 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               label: 'Set Currency & Timezone',
               description: 'Configure your currency and timezone for accurate transactions',
               path: `/restaurant/${restaurantId}/settings?tab=store`,
-              completed: storeComplete
+              completed: storeComplete,
+              dependsOn: ['company_info']
             },
             {
               key: 'operating_hours',
               label: 'Set Operating Hours',
               description: 'Configure opening/closing times for your restaurant',
               path: `/restaurant/${restaurantId}/settings?tab=operations`,
-              completed: hasHours
+              completed: hasHours,
+              dependsOn: ['store_settings']
             },
             {
               key: 'categories',
@@ -198,7 +200,8 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               label: 'Add Menu Items',
               description: 'Register at least one menu item to start taking orders',
               path: `/restaurant/${restaurantId}/menu`,
-              completed: hasMenu
+              completed: hasMenu,
+              dependsOn: ['categories']
             },
             {
               key: 'payment_methods',
@@ -212,7 +215,8 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               label: 'Set up Kitchen Stations',
               description: 'Configure kitchen stations to route orders to the right preparation area',
               path: `/restaurant/${restaurantId}/settings?tab=kitchenStations`,
-              completed: hasKitchenStations
+              completed: hasKitchenStations,
+              dependsOn: ['categories']
             },
             {
               key: 'floor_plan',
@@ -226,7 +230,8 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               label: 'Configure Mobile Order',
               description: 'Enable order types (dine-in, takeaway, delivery) for your restaurant',
               path: `/restaurant/${restaurantId}/settings?tab=mobileOrder`,
-              completed: hasMobileOrder
+              completed: hasMobileOrder,
+              dependsOn: ['menu_items']
             },
             {
               key: 'notifications',
@@ -240,23 +245,26 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               label: 'Set up QR Codes',
               description: 'Generate QR codes for tables to enable mobile ordering',
               path: `/restaurant/${restaurantId}/settings?tab=operations`,
-              completed: hasQRCodes
+              completed: hasQRCodes,
+              dependsOn: ['floor_plan']
             }
           ];
           setItems(setupItems);
 
         } else if ((role === 'Brand General' || role === 'Brand Manager') && brandId) {
-          const [companyRes, brandProductsRes, recipesRes, ingredientsRes] = await Promise.all([
+          const [companyRes, brandProductsRes, recipesRes, ingredientsRes, restaurantsRes] = await Promise.all([
             fetch('/api/brands/company-info', { headers }),
             fetch('/api/brand-products?limit=1', { headers }),
             fetch('/api/product-recipes?limit=1', { headers }),
-            fetch('/api/product-ingredients?limit=1', { headers })
+            fetch('/api/product-ingredients?limit=1', { headers }),
+            fetch(`/api/brands/${brandId}`, { headers })
           ]);
 
           let companyData: CompanyData | null = null;
           let hasBrandProducts = false;
           let hasRecipes = false;
           let hasIngredients = false;
+          let hasLinkedRestaurants = false;
 
           if (companyRes.ok) {
             const result = await companyRes.json();
@@ -277,6 +285,12 @@ export function useSetupStatus(params: UseSetupStatusParams) {
             const ingredients = result.data || [];
             hasIngredients = Array.isArray(ingredients) ? ingredients.length > 0 : false;
           }
+          if (restaurantsRes.ok) {
+            const result = await restaurantsRes.json();
+            const brand = result.data || result;
+            const list = brand?.restaurants || [];
+            hasLinkedRestaurants = Array.isArray(list) ? list.length > 0 : false;
+          }
 
           setItems([
             {
@@ -285,6 +299,21 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               description: 'Add business registration, tax ID, and contact details for invoicing',
               path: '/pos/brand/company-info',
               completed: isCompanyInfoComplete(companyData)
+            },
+            {
+              key: 'linked_restaurants',
+              label: 'Link Your First Restaurant',
+              description: 'Connect a restaurant location to your brand to start operating',
+              path: '/pos/brand/general/management',
+              completed: hasLinkedRestaurants,
+              dependsOn: ['company_info']
+            },
+            {
+              key: 'brand_ingredients',
+              label: 'Add Brand Ingredients',
+              description: 'Define ingredients shared across all brand recipes',
+              path: '/pos/brand-ingredients',
+              completed: hasIngredients
             },
             {
               key: 'brand_products',
@@ -298,25 +327,22 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               label: 'Set up Product Recipes',
               description: 'Define recipes for your brand products to track ingredient usage',
               path: '/pos/brand-product-recipes',
-              completed: hasRecipes
-            },
-            {
-              key: 'brand_ingredients',
-              label: 'Add Brand Ingredients',
-              description: 'Add ingredients used in your brand product recipes',
-              path: '/pos/brand-ingredients',
-              completed: hasIngredients
+              completed: hasRecipes,
+              dependsOn: ['brand_products', 'brand_ingredients']
             }
           ]);
 
         } else if ((role === 'Foodcourt General' || role === 'Foodcourt Manager') && foodcourtId) {
-          const [companyRes, restaurantsRes] = await Promise.all([
+          const [companyRes, restaurantsRes, branchesRes] = await Promise.all([
             fetch('/api/foodcourts/company-info', { headers }),
-            fetch(`/api/foodcourts/${foodcourtId}/restaurants`, { headers })
+            fetch(`/api/foodcourts/${foodcourtId}/restaurants`, { headers }),
+            fetch(`/api/foodcourts/${foodcourtId}/branches`, { headers })
           ]);
 
           let companyData: CompanyData | null = null;
           let hasTenantRestaurants = false;
+          let hasBranch = false;
+          let hasFloorPlanFc = false;
 
           if (companyRes.ok) {
             const result = await companyRes.json();
@@ -326,6 +352,15 @@ export function useSetupStatus(params: UseSetupStatusParams) {
             const result = await restaurantsRes.json();
             const restaurants = result.data || [];
             hasTenantRestaurants = Array.isArray(restaurants) ? restaurants.length > 0 : false;
+          }
+          if (branchesRes.ok) {
+            const result = await branchesRes.json();
+            const branches = result.data || result || [];
+            hasBranch = Array.isArray(branches) ? branches.length > 0 : false;
+            // any branch with units → floor plan considered set up
+            hasFloorPlanFc = Array.isArray(branches) && branches.some((b: any) =>
+              Array.isArray(b.units) ? b.units.length > 0 : (b.unit_count || 0) > 0
+            );
           }
 
           setItems([
@@ -337,11 +372,135 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               completed: isCompanyInfoComplete(companyData)
             },
             {
+              key: 'first_branch',
+              label: 'Add Your First Branch',
+              description: 'Register a foodcourt branch (location) to start managing tenants',
+              path: '/pos/foodcourt/general/branches',
+              completed: hasBranch,
+              dependsOn: ['company_info']
+            },
+            {
+              key: 'fc_floor_plan',
+              label: 'Set up Floor Plan & Units',
+              description: 'Add units to your branch so tenants can be placed on the floor plan',
+              path: '/pos/foodcourt/general/floor-plan',
+              completed: hasFloorPlanFc,
+              dependsOn: ['first_branch']
+            },
+            {
               key: 'tenant_restaurants',
               label: 'Add Tenant Restaurants',
               description: 'Link restaurants to your foodcourt to manage them together',
               path: '/pos/foodcourt/general/management',
-              completed: hasTenantRestaurants
+              completed: hasTenantRestaurants,
+              dependsOn: ['first_branch']
+            }
+          ]);
+
+        } else if (role === 'Restaurant Owner') {
+          const ownerRes = await fetch('/api/owner/restaurants', { headers });
+          let restaurants: any[] = [];
+          if (ownerRes.ok) {
+            const result = await ownerRes.json();
+            restaurants = result.data || result || [];
+            if (!Array.isArray(restaurants)) restaurants = [];
+          }
+          const hasRestaurant = restaurants.length > 0;
+          const hasAdmin = restaurants.some(r => r.admin_id || r.adminId);
+          const hasActivePlan = restaurants.some(r =>
+            r.subscription_status === 'active' ||
+            (Number(r.plan_amount) || 0) > 0
+          );
+
+          setItems([
+            {
+              key: 'first_restaurant',
+              label: 'Add Your First Restaurant',
+              description: 'Create the first restaurant under your account to start operating',
+              path: '/pos/owner/restaurants',
+              completed: hasRestaurant
+            },
+            {
+              key: 'assign_admin',
+              label: 'Assign a Restaurant Admin',
+              description: 'Each restaurant needs an admin to manage day-to-day operations',
+              path: '/pos/owner/restaurants',
+              completed: hasAdmin,
+              dependsOn: ['first_restaurant']
+            },
+            {
+              key: 'activate_plan',
+              label: 'Activate a Subscription Plan',
+              description: 'Choose a plan so the restaurant can take live orders and invoices',
+              path: '/pos/owner/subscriptions',
+              completed: hasActivePlan,
+              dependsOn: ['first_restaurant']
+            }
+          ]);
+
+        } else if (role === 'System Admin') {
+          const [adminSettingsRes, plansRes, paymentRes, siteSettingsRes] = await Promise.all([
+            fetch('/api/admin/settings', { headers }),
+            fetch('/api/plans?type=template&limit=1', { headers }),
+            fetch('/api/admin/payment-settings', { headers }),
+            fetch('/api/site-settings', { headers })
+          ]);
+
+          let adminCompany: CompanyData | null = null;
+          let hasPlanTemplate = false;
+          let hasPaymentChannel = false;
+          let hasSmtp = false;
+
+          if (adminSettingsRes.ok) {
+            const result = await adminSettingsRes.json();
+            adminCompany = result.data || result;
+          }
+          if (plansRes.ok) {
+            const result = await plansRes.json();
+            const list = result.data || result || [];
+            hasPlanTemplate = Array.isArray(list) ? list.length > 0 : false;
+          }
+          if (paymentRes.ok) {
+            const result = await paymentRes.json();
+            const settings = result.data || result || {};
+            hasPaymentChannel = Object.entries(settings).some(([k, v]: [string, any]) =>
+              k !== '_order' && v && typeof v === 'object' && v.enabled === true
+            );
+          }
+          if (siteSettingsRes.ok) {
+            const result = await siteSettingsRes.json();
+            const s = result.data || result || {};
+            hasSmtp = !!(s.smtp_host || s.smtpHost);
+          }
+
+          setItems([
+            {
+              key: 'admin_company',
+              label: 'Complete Platform Company Information',
+              description: 'Add the platform operator company details for invoices and emails',
+              path: '/pos/admin/settings',
+              completed: isCompanyInfoComplete(adminCompany)
+            },
+            {
+              key: 'admin_smtp',
+              label: 'Configure SMTP / Email',
+              description: 'Set up the outbound email server so notifications and invoices can be sent',
+              path: '/pos/admin/site-settings?tab=email',
+              completed: hasSmtp
+            },
+            {
+              key: 'admin_plan_templates',
+              label: 'Create Subscription Plan Templates',
+              description: 'Define at least one plan template that customers can subscribe to',
+              path: '/pos/admin/plans',
+              completed: hasPlanTemplate
+            },
+            {
+              key: 'admin_payment',
+              label: 'Enable Platform Payment Channel',
+              description: 'Enable at least one payment channel (Stripe, bank transfer, etc.) for subscription billing',
+              path: '/pos/admin/payment-settings',
+              completed: hasPaymentChannel
             }
           ]);
 

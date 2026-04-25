@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import AutoSaveAddressFields from '../../components/Form/AutoSaveAddressFields';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -18,6 +18,7 @@ interface CompanyInfo {
   registrationNo: string;
   tradeName: string;
   address: string;
+  address_line_2?: string;
   city: string;
   state: string;
   postalCode: string;
@@ -183,6 +184,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
     registrationNo: '',
     tradeName: '',
     address: '',
+    address_line_2: '',
     city: '',
     state: '',
     postalCode: '',
@@ -222,6 +224,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
             registrationNo: data.registration_no || '',
             tradeName: data.trade_name || '',
             address: data.address || '',
+            address_line_2: data.address_line_2 || '',
             city: data.city || '',
             state: data.state || '',
             postalCode: data.postal_code || '',
@@ -274,6 +277,7 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
         registration_no: companyInfo.registrationNo,
         trade_name: companyInfo.tradeName,
         address: companyInfo.address,
+        address_line_2: companyInfo.address_line_2 || null,
         city: companyInfo.city,
         state: companyInfo.state,
         postal_code: companyInfo.postalCode,
@@ -357,71 +361,28 @@ const FoodcourtCompanyInfoPage: React.FC = () => {
 
           <Section>
             <SectionTitle>{t('common:foodcourtCompanyInfoPage.address')}</SectionTitle>
-            <FormGrid>
-              <FormGroup fullWidth>
-                <Label>{t('common:foodcourtCompanyInfoPage.streetAddress')}<span>*</span></Label>
-                <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companyInfo.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
-                    placeholder="Enter street address"
-                  />
-                </AutoSaveField>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('common:foodcourtCompanyInfoPage.city')}</Label>
-                <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companyInfo.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
-                    placeholder="e.g., Kuala Lumpur"
-                  />
-                </AutoSaveField>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('common:foodcourtCompanyInfoPage.state')}</Label>
-                <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companyInfo.state}
-                    onChange={(e) => handleInputChange('state', e.target.value)}
-                    placeholder="e.g., Wilayah Persekutuan"
-                  />
-                </AutoSaveField>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('common:foodcourtCompanyInfoPage.postalCode')}</Label>
-                <AutoSaveField onSave={handleSave}>
-                  <Input
-                    type="text"
-                    value={companyInfo.postalCode}
-                    onChange={(e) => handleInputChange('postalCode', e.target.value)}
-                    placeholder="e.g., 50000"
-                  />
-                </AutoSaveField>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>{t('common:foodcourtCompanyInfoPage.country')}<span>*</span></Label>
-                <AutoSaveField onSave={handleSave} type="select">
-                  <Select
-                    value={companyInfo.country}
-                    onChange={(e) => handleInputChange('country', e.target.value)}
-                  >
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </Select>
-                </AutoSaveField>
-              </FormGroup>
-            </FormGrid>
+            <AutoSaveAddressFields
+              value={{
+                address: companyInfo.address,
+                address_line_2: companyInfo.address_line_2,
+                city: companyInfo.city,
+                state: companyInfo.state,
+                postal_code: companyInfo.postalCode,
+                country: companyInfo.country
+              }}
+              onChange={(addr) => setCompanyInfo(prev => ({
+                ...prev,
+                address: addr.address || '',
+                address_line_2: addr.address_line_2 || '',
+                city: addr.city || '',
+                state: addr.state || '',
+                postalCode: addr.postal_code || '',
+                country: (addr.country || '').toUpperCase()
+              }))}
+              onSave={handleSave}
+              defaultCountry={companyInfo.country || 'MY'}
+              required={['address', 'country']}
+            />
           </Section>
 
           <Section>

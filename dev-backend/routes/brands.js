@@ -44,6 +44,7 @@ router.get('/company-info', authenticateToken, async (req, res) => {
       registration_no: brand.registration_no,
       trade_name: brand.trade_name,
       address: brand.address,
+      address_line_2: brand.address_line_2 || '',
       city: brand.city,
       state: brand.state,
       postal_code: brand.postal_code,
@@ -95,10 +96,11 @@ router.put('/company-info', authenticateToken, async (req, res) => {
       registration_no: req.body.registration_no,
       trade_name: req.body.trade_name,
       address: req.body.address,
+      address_line_2: req.body.address_line_2 || null,
       city: req.body.city,
       state: req.body.state,
       postal_code: req.body.postal_code,
-      country: req.body.country,
+      country: req.body.country ? String(req.body.country).toUpperCase().slice(0, 2) : req.body.country,
       phone: req.body.phone,
       email: req.body.email,
       website: req.body.website,
@@ -689,7 +691,7 @@ router.get('/:id/payment-settings/available/:currency', authenticateToken, async
 });
 
 // Get subscription info for a brand (System Admin can set, Brand General can view)
-router.get('/:id/subscription', authenticateToken, async (req, res) => {
+router.get('/:id/subscription', authenticateToken, requireBrandModule('brand_subscriptions'), async (req, res) => {
   try {
     const { id } = req.params;
     console.log(`📋 GET /api/brands/${id}/subscription - User: ${req.user.email}`);

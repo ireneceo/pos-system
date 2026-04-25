@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../../utils/currency';
+import { formatAddressLines, AppLocale } from '../../utils/formatAddress';
 import { formatPaymentDisplay } from '../../constants';
 import { DbOrder, CompanyInfo } from './types';
 import { formatPickupTimeRange } from './helpers';
@@ -21,7 +22,7 @@ interface BillPrintPortalProps {
 const BillPrintPortal: React.FC<BillPrintPortalProps> = ({
   selectedOrder, companyInfo, receiptSettings, operationSettings, paymentSettings, formatDateTime
 }) => {
-  const { t } = useTranslation('orders');
+  const { t, i18n } = useTranslation('orders');
 
   return ReactDOM.createPortal(
     <BillPrintContainer id="bill-print-content">
@@ -32,8 +33,15 @@ const BillPrintPortal: React.FC<BillPrintPortalProps> = ({
         <BillTitle>{companyInfo?.companyName || 'Restaurant'}</BillTitle>
         {companyInfo && (
           <>
-            <div style={{ fontSize: '11px', marginTop: '5px' }}>{companyInfo.address}</div>
-            <div style={{ fontSize: '11px' }}>{companyInfo.city}, {companyInfo.state} {companyInfo.postcode}</div>
+            {formatAddressLines({
+              address: (companyInfo as any).address,
+              city: (companyInfo as any).city,
+              state: (companyInfo as any).state,
+              postal_code: (companyInfo as any).postcode || (companyInfo as any).postal_code || (companyInfo as any).postalCode,
+              country: (companyInfo as any).country
+            }, (i18n.language as AppLocale) || 'en').map((line, idx) => (
+              <div key={idx} style={{ fontSize: '11px', marginTop: idx === 0 ? '5px' : '0' }}>{line}</div>
+            ))}
             <div style={{ fontSize: '11px' }}>Tel: {companyInfo.phone}</div>
             {companyInfo.email && (<div style={{ fontSize: '11px' }}>Email: {companyInfo.email}</div>)}
             {companyInfo.taxNo && (<div style={{ fontSize: '11px', marginTop: '3px' }}>Tax No: {companyInfo.taxNo}</div>)}

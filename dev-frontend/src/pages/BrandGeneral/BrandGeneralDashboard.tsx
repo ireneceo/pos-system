@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
-import { SetupGuide } from '../../components/Common';
+import { SetupGuide, WelcomeModal } from '../../components/Common';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
@@ -729,6 +729,14 @@ const BrandGeneralDashboard: React.FC = () => {
       </Header>
 
       <Content>
+        {user?.id && (
+          <WelcomeModal
+            userKey={user.id}
+            userName={user.fullName || user.username}
+            roleLabel={user.role}
+            items={setupItems}
+          />
+        )}
         {setupItems.length > 0 && (
           <SetupGuide items={setupItems} entityId={`brand_${user?.brand_id}`} />
         )}

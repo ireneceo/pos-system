@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
+import { formatEntityAddress, AppLocale } from '../../utils/formatAddress';
 import {
   Container,
   Header,
@@ -381,7 +382,7 @@ const ErrorMessage = styled.div`
 `;
 
 const AdminStaffManagementPage: React.FC = () => {
-  const { t } = useTranslation('admin');
+  const { t, i18n } = useTranslation('admin');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const auth = useAuth();
   const { operationSettings } = useStore();
@@ -1663,7 +1664,7 @@ const AdminStaffManagementPage: React.FC = () => {
                         >
                           <DropdownItemTitle>{getRestaurantDisplayName(restaurant)}</DropdownItemTitle>
                           <DropdownItemSubtitle>
-                            {restaurant.address || 'No address provided'}
+                            {formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address provided'}
                           </DropdownItemSubtitle>
                         </DropdownItem>
                       ))}
@@ -1844,7 +1845,7 @@ const AdminStaffManagementPage: React.FC = () => {
                             >
                               <DropdownItemTitle>{getRestaurantDisplayName(restaurant)}</DropdownItemTitle>
                               <DropdownItemSubtitle>
-                                {restaurant.address || 'No address provided'}
+                                {formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address provided'}
                               </DropdownItemSubtitle>
                             </DropdownItem>
                           ))}

@@ -7,6 +7,8 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { SetupGuide, WelcomeModal } from '../../components/Common';
+import { useSetupStatus } from '../../hooks/useSetupStatus';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as tzFormatDate } from '../../utils/timezone';
@@ -431,6 +433,7 @@ const OwnerDashboardPage: React.FC = () => {
   const { paymentStatus } = usePaymentStatus();
   const [loading, setLoading] = useState(true);
   const [chartPeriod, setChartPeriod] = useState('month');
+  const { items: setupItems } = useSetupStatus({ role: user?.role || '' });
 
   const [stats, setStats] = useState({
     totalRestaurants: 0,
@@ -634,6 +637,15 @@ const OwnerDashboardPage: React.FC = () => {
       </Header>
 
       <Content>
+        {user?.id && (
+          <WelcomeModal
+            userKey={user.id}
+            userName={user.fullName || user.username}
+            roleLabel={user.role}
+            items={setupItems}
+          />
+        )}
+        {setupItems.length > 0 && <SetupGuide items={setupItems} entityId={user?.id} />}
         {/* Subscription Status Banner */}
         {paymentStatus.subscriptionStatus === 'trial' && paymentStatus.trialEndDate && (
           <SubscriptionBanner $type="trial">

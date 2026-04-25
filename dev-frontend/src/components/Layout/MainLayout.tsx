@@ -9,6 +9,7 @@ import { BrandThemeProvider } from '../../contexts/BrandThemeContext';
 import { PaymentStatusModals } from '../PaymentStatus/PaymentStatusModals';
 import { AccessBlocked } from '../PaymentStatus/AccessBlocked';
 import LanguageSelector from '../Common/LanguageSelector';
+import InboxBell from '../Inbox/InboxBell';
 import { useTranslation } from 'react-i18next';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
@@ -920,6 +921,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <img src={globalAudioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'} alt="Sound" style={{ width: '20px', height: '20px' }} />
             </button>
           )}
+          {isLoggedIn && <InboxBell />}
           <LanguageSelector variant="globe" />
           {isLoggedIn && currentStaff ? (
             <ProfileButton onClick={() => {
@@ -1858,6 +1860,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/admin/system-config" active={isActive('/pos/admin/system-config')} onClick={closeSidebar}>
                   <NavIcon>⚙</NavIcon>
                   {t("nav.systemConfig")}
+                </NavItem>
+                <NavItem to="/pos/admin/scheduler-monitor" active={isActive('/pos/admin/scheduler-monitor')} onClick={closeSidebar}>
+                  <NavIcon>⏱</NavIcon>
+                  {t("nav.schedulerMonitor", "Scheduler Monitor")}
                 </NavItem>
                 <NavItem to="/pos/admin/content" active={isActive('/pos/admin/content')} onClick={closeSidebar}>
                   <NavIcon>☰</NavIcon>

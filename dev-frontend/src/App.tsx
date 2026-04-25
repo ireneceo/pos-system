@@ -129,6 +129,8 @@ const SiteSettingsPage = React.lazy(() => import('./pages/Admin/SiteSettingsPage
 const RestaurantDashboard = React.lazy(() => import('./pages/Restaurant/RestaurantDashboard'));
 const BasicDashboard = React.lazy(() => import('./pages/Basic/BasicDashboard'));
 const NotificationSettingsPage = React.lazy(() => import('./pages/NotificationSettings/NotificationSettingsPage'));
+const InboxPage = React.lazy(() => import('./pages/Inbox/InboxPage'));
+const SchedulerMonitorPage = React.lazy(() => import('./pages/Admin/SchedulerMonitorPage'));
 
 // Manager Role Dashboards
 const FoodcourtGeneralDashboard = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtGeneralDashboard'));
@@ -608,6 +610,25 @@ function App() {
                       <Route path="/pos/profile" element={
                         <ProtectedRoute>
                           <ProfilePage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Unified Inbox — all logged-in roles */}
+                      <Route path="/pos/inbox" element={
+                        <ProtectedRoute>
+                          <InboxPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Scheduler monitoring — System Admin only */}
+                      <Route path="/pos/admin/scheduler-monitor" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <SchedulerMonitorPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/restaurant/:id/inbox" element={
+                        <ProtectedRoute>
+                          <InboxPage />
                         </ProtectedRoute>
                       } />
 

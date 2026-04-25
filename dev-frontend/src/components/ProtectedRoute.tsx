@@ -12,11 +12,11 @@ import styled from 'styled-components';
 // typing the URL directly.
 const MODULE_GATED_ROUTES: Array<{ prefix: string; module: string }> = [
   { prefix: '/pos/brand/plans', module: 'brand_plans' },
-  { prefix: '/pos/brand/subscriptions', module: 'brand_subscriptions' },
+  { prefix: '/pos/brand/general/subscriptions', module: 'brand_subscriptions' },
   { prefix: '/pos/manager/plans', module: 'brand_plans' },
   { prefix: '/pos/manager/subscriptions', module: 'brand_subscriptions' },
   { prefix: '/pos/foodcourt/plans', module: 'fc_plans' },
-  { prefix: '/pos/foodcourt/subscriptions', module: 'fc_subscriptions' }
+  { prefix: '/pos/foodcourt/general/subscriptions', module: 'fc_subscriptions' }
 ];
 
 interface ProtectedRouteProps {

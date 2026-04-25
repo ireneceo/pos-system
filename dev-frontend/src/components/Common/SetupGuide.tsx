@@ -8,6 +8,13 @@ export interface SetupItem {
   description: string;
   path: string;
   completed: boolean;
+  /**
+   * Optional list of other setup-item keys that should be completed first.
+   * If any dependency is not yet completed AND this item itself is not done,
+   * the SetupGuide renders the row in a "locked" visual state (still clickable
+   * — never block the user, just guide them to the natural order).
+   */
+  dependsOn?: string[];
 }
 
 interface SetupGuideProps {
@@ -60,16 +67,26 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ items, entityId }) => {
       </ProgressBar>
 
       <ItemList>
-        {incomplete.map(item => (
-          <Item key={item.key} onClick={() => navigate(item.path)}>
-            <ItemIcon>&#x25CB;</ItemIcon>
-            <ItemContent>
-              <ItemLabel>{item.label}</ItemLabel>
-              <ItemDesc>{item.description}</ItemDesc>
-            </ItemContent>
-            <ItemArrow>&rarr;</ItemArrow>
-          </Item>
-        ))}
+        {incomplete.map(item => {
+          const deps = item.dependsOn || [];
+          const blockingDeps = deps
+            .map(k => items.find(i => i.key === k))
+            .filter((i): i is SetupItem => !!i && !i.completed);
+          const locked = blockingDeps.length > 0;
+          const tooltip = locked
+            ? `Complete first: ${blockingDeps.map(d => d.label).join(', ')}`
+            : '';
+          return (
+            <Item key={item.key} $locked={locked} title={tooltip} onClick={() => navigate(item.path)}>
+              <ItemIcon>{locked ? '\u{1F512}' : '○'}</ItemIcon>
+              <ItemContent>
+                <ItemLabel>{item.label}</ItemLabel>
+                <ItemDesc>{item.description}</ItemDesc>
+              </ItemContent>
+              <ItemArrow>&rarr;</ItemArrow>
+            </Item>
+          );
+        })}
       </ItemList>
     </Container>
   );
@@ -149,7 +166,7 @@ const ItemList = styled.div`
   gap: 8px;
 `;
 
-const Item = styled.div`
+const Item = styled.div<{ $locked?: boolean }>`
   display: flex;
   align-items: center;
   gap: 12px;
@@ -157,9 +174,11 @@ const Item = styled.div`
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
+  opacity: ${p => p.$locked ? 0.55 : 1};
 
   &:hover {
     background: #F8FAFC;
+    opacity: ${p => p.$locked ? 0.75 : 1};
   }
 `;
 

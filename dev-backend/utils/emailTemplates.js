@@ -660,4 +660,74 @@ function passwordResetEmail(data) {
   return { subject, html: emailLayout(bodyContent), text };
 }
 
-module.exports = { emailLayout, getLogoAttachment, welcomeEmail, invoiceEmail, entityPlanInvoiceEmail, signupWelcomeEmail, passwordResetEmail };
+/**
+ * Trial expiry reminder — sent at 3 days before, on the day, and 1 day after.
+ * Tone shifts based on `daysLeft`: friendly heads-up → urgent → grace-period notice.
+ */
+function trialExpiringSoonEmail(data) {
+  const { entityName, recipientName, daysLeft, expiryDate, payNowUrl, supportUrl } = data;
+  const brandColor = '#635BFF';
+
+  let headline, urgency, urgencyColor, urgencyBg, urgencyBorder;
+  if (daysLeft > 0) {
+    headline = `Your trial ends in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`;
+    urgency = `Subscribe before <strong>${expiryDate}</strong> to keep ${entityName} running without interruption.`;
+    urgencyColor = '#92400E'; urgencyBg = '#FEF3C7'; urgencyBorder = '#FDE68A';
+  } else if (daysLeft === 0) {
+    headline = `Your trial ends today`;
+    urgency = `Today is the last day of your free trial for <strong>${entityName}</strong>. Subscribe now to avoid service interruption.`;
+    urgencyColor = '#9A3412'; urgencyBg = '#FED7AA'; urgencyBorder = '#FB923C';
+  } else {
+    headline = `Your trial has ended — service may be limited`;
+    urgency = `Your trial expired on <strong>${expiryDate}</strong>. ${entityName} is now in a grace period — pay your invoice to restore full access.`;
+    urgencyColor = '#7F1D1D'; urgencyBg = '#FEE2E2'; urgencyBorder = '#FCA5A5';
+  }
+
+  const bodyContent = `
+    <h2 style="margin:0 0 8px;color:#0A2540;font-size:20px;">${headline}</h2>
+    <p style="color:#4B5563;font-size:15px;line-height:1.6;">
+      Hi ${recipientName || 'there'},
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
+      <tr><td style="background:${urgencyBg};border:1px solid ${urgencyBorder};border-radius:8px;padding:14px 18px;">
+        <p style="margin:0;color:${urgencyColor};font-size:14px;line-height:1.5;">${urgency}</p>
+      </td></tr>
+    </table>
+    <p style="color:#4B5563;font-size:14px;line-height:1.6;">
+      Subscribing keeps your data, settings, and team access exactly as they are today.
+    </p>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${payNowUrl}" style="display:inline-block;background:${brandColor};color:white;padding:14px 40px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">
+        ${daysLeft < 0 ? 'Pay Outstanding Invoice' : 'Subscribe Now'}
+      </a>
+    </div>
+    ${supportUrl ? `
+    <p style="color:#6B7280;font-size:13px;text-align:center;margin-top:16px;">
+      Questions? <a href="${supportUrl}" style="color:${brandColor};text-decoration:none;font-weight:500;">Contact support</a>
+    </p>` : ''}`;
+
+  const subject = daysLeft > 0
+    ? `[${entityName}] Trial ends in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} — subscribe to continue`
+    : daysLeft === 0
+    ? `[${entityName}] Trial ends today — action needed`
+    : `[${entityName}] Trial expired — pay invoice to restore service`;
+
+  const text = [
+    headline,
+    '',
+    `Hi ${recipientName || 'there'},`,
+    '',
+    daysLeft > 0
+      ? `Subscribe before ${expiryDate} to keep ${entityName} running without interruption.`
+      : daysLeft === 0
+      ? `Today is the last day of your free trial for ${entityName}. Subscribe now to avoid service interruption.`
+      : `Your trial expired on ${expiryDate}. ${entityName} is now in a grace period — pay your invoice to restore full access.`,
+    '',
+    `Subscribe / pay: ${payNowUrl}`,
+    supportUrl ? `Support: ${supportUrl}` : ''
+  ].filter(Boolean).join('\n');
+
+  return { subject, html: emailLayout(bodyContent), text };
+}
+
+module.exports = { emailLayout, getLogoAttachment, welcomeEmail, invoiceEmail, entityPlanInvoiceEmail, signupWelcomeEmail, passwordResetEmail, trialExpiringSoonEmail };

@@ -5,6 +5,7 @@ import DateField from '../../../components/Common/DateField';
 import { formatCurrency } from '../../../utils/currency';
 import { formatDateTime } from '../../../utils/timezone';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
+import { formatEntityAddress, AppLocale } from '../../../utils/formatAddress';
 import { Invoice, Manager, Restaurant, InvoiceCategory, AdditionalChargeConfig } from './types';
 import {
   Button,
@@ -63,7 +64,7 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
   onClose,
   onSave,
 }) => {
-  const { t } = useTranslation('brand');
+  const { t, i18n } = useTranslation('brand');
 
   return (
     <CommonModal isOpen={true} onClose={onClose} title={`Edit Invoice - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={onClose}> Cancel </Button><Button variant="primary" onClick={onSave}> Save Changes </Button></>}>
@@ -140,7 +141,7 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
                       >
                         <div style={{fontWeight: '500', color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
                         <div style={{fontSize: '13px', color: '#6B7280'}}>
-                          {manager ? `Manager: ${manager.fullName}` : 'No manager assigned'} • {restaurant.address || 'No address'}
+                          {manager ? `Manager: ${manager.fullName}` : 'No manager assigned'} • {formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}
                         </div>
                       </div>
                     );
@@ -170,7 +171,7 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
               <div style={{fontSize: '13px', color: '#6B7280'}}>
                 {editSelectedTarget.type === 'manager'
                   ? `${(editSelectedTarget.data as Manager).companyName} • Manager`
-                  : `${(editSelectedTarget.data as Restaurant).address || 'No address'} • Restaurant`}
+                  : `${formatEntityAddress(editSelectedTarget.data as Restaurant, (i18n.language as AppLocale) || 'en') || 'No address'} • Restaurant`}
               </div>
             </div>
             <button

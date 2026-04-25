@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../../../utils/currency';
 import { formatDateTime } from '../../../utils/timezone';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
+import { formatEntityAddress, AppLocale } from '../../../utils/formatAddress';
 import { Modal as CommonModal } from '../../../components/UI';
 import DateField from '../../../components/Common/DateField';
 import { Invoice, Manager, Restaurant, InvoiceCategory } from './types';
@@ -67,7 +68,7 @@ const InvoiceEditModal: React.FC<InvoiceEditModalProps> = ({
   operationSettings,
   getChargesForCurrency,
 }) => {
-  const { t } = useTranslation('admin');
+  const { t, i18n } = useTranslation('admin');
 
   if (!show || !selectedInvoice || !editInvoice) return null;
 
@@ -146,7 +147,7 @@ const InvoiceEditModal: React.FC<InvoiceEditModalProps> = ({
                       >
                         <div style={{fontWeight: '500', color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
                         <div style={{fontSize: '13px', color: '#6B7280'}}>
-                          {manager ? `Manager: ${manager.fullName}` : 'No manager assigned'} • {restaurant.address || 'No address'}
+                          {manager ? `Manager: ${manager.fullName}` : 'No manager assigned'} • {formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}
                         </div>
                       </div>
                     );
@@ -176,7 +177,7 @@ const InvoiceEditModal: React.FC<InvoiceEditModalProps> = ({
               <div style={{fontSize: '13px', color: '#6B7280'}}>
                 {editSelectedTarget.type === 'manager'
                   ? `${(editSelectedTarget.data as Manager).companyName} • Manager`
-                  : `${(editSelectedTarget.data as Restaurant).address || 'No address'} • Restaurant`}
+                  : `${formatEntityAddress(editSelectedTarget.data as Restaurant, (i18n.language as AppLocale) || 'en') || 'No address'} • Restaurant`}
               </div>
             </div>
             <button

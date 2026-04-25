@@ -555,10 +555,61 @@
     "city": "City",
     "state": "State / Province",
     "postalCode": "Postal Code",
+    "postalCodeInvalid": "Doesn't match the postal-code format for the selected country (saved as-is).",
     "country": "Country",
     "selectCountry": "Select country",
     "latitude": "Latitude",
     "longitude": "Longitude",
     "latLngHint": "Leave blank to auto-geocode on save"
+  },
+  "welcomeModal": {
+    "greeting": "Welcome",
+    "subtitle": "Let's get your account ready in a few quick steps.",
+    "moreSteps": "+ {{count}} more steps in your setup checklist below.",
+    "skip": "I will explore on my own",
+    "start": "Start Setup →"
+  },
+  "inbox": {
+    "bell": {
+      "label": "Inbox",
+      "aria": {
+        "unread": "{{count}} unread notifications",
+        "empty": "No unread notifications"
+      }
+    },
+    "drawer": { "title": "Notifications" },
+    "page": { "title": "Inbox" },
+    "filter": {
+      "all": "All",
+      "notice": "Notices",
+      "support": "Support",
+      "ops": "Ops"
+    },
+    "status": {
+      "all": "All",
+      "unread": "Unread",
+      "read": "Read"
+    },
+    "type": {
+      "notice": "Notice",
+      "support_ticket": "Support",
+      "operation_ticket": "Ops"
+    },
+    "severity": {
+      "normal": "Normal",
+      "important": "Important",
+      "urgent": "Urgent"
+    },
+    "unreadOnly": "Show unread only",
+    "markAllRead": "Mark all read",
+    "viewAll": "View all in Inbox →",
+    "searchPlaceholder": "Search title or preview",
+    "resultCount": "{{count}} items",
+    "empty": {
+      "title": "You're all caught up!",
+      "all": "New notifications will appear here.",
+      "unread": "No unread items right now.",
+      "search": "No items match your search."
+    }
   }
 }

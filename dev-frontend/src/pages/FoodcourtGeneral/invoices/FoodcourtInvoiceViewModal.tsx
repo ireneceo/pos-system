@@ -4,7 +4,7 @@ import { Modal as CommonModal } from '../../../components/UI';
 import { formatCurrency } from '../../../utils/currency';
 import { formatDateTime } from '../../../utils/timezone';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
-import { formatAddress, AppLocale } from '../../../utils/formatAddress';
+import { formatAddress, formatEntityAddress, AppLocale } from '../../../utils/formatAddress';
 import { Invoice, Manager, Restaurant, CompanySettings } from './types';
 import {
   Button,
@@ -322,7 +322,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
                     {linkSearchResults.restaurants.map(restaurant => (
                       <div key={restaurant.id} onClick={() => handleLinkAccount('restaurant', restaurant)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
                         <div style={{fontWeight: '500', color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
-                        <div style={{fontSize: '13px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
+                        <div style={{fontSize: '13px', color: '#6B7280'}}>{formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}</div>
                       </div>
                     ))}
                   </div>

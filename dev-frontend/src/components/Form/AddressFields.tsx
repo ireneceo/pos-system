@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { FormRow, FormGroup, FormLabel, FormInput, FormSelect, FormHelperText } from './FormComponents';
-import { Address, getCountryList, AppLocale } from '../../utils/formatAddress';
+import { Address, getCountryList, AppLocale, normalizePlaceName, validatePostalCode } from '../../utils/formatAddress';
+import { getAuthToken } from '../../utils/auth';
 
 export interface AddressFieldsProps {
   value: Address;
@@ -23,12 +24,45 @@ const Section = styled.div<{ $compact?: boolean }>`
 
 const Required = styled.span`color: #DC2626; margin-left: 2px;`;
 
+const WarnText = styled(FormHelperText)`color: #B45309;`;
+
 const LatLngRow = styled(FormRow)`
   input { font-family: monospace; font-size: 13px; }
 `;
 
 function sanitizeSingleLine(v: string) {
   return v.replace(/[\r\n\t]/g, ' ');
+}
+
+// Module-level cache so navigating between pages doesn't re-fetch the same country
+const SUGGEST_CACHE = new Map<string, { city: string[]; state: string[]; ts: number }>();
+const SUGGEST_TTL = 5 * 60 * 1000;
+
+async function fetchSuggestions(country: string): Promise<{ city: string[]; state: string[] }> {
+  const key = (country || '').toUpperCase();
+  if (!key) return { city: [], state: [] };
+  const cached = SUGGEST_CACHE.get(key);
+  if (cached && Date.now() - cached.ts < SUGGEST_TTL) {
+    return { city: cached.city, state: cached.state };
+  }
+  try {
+    const token = getAuthToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    const [cityR, stateR] = await Promise.all([
+      fetch(`/api/address/suggestions?field=city&country=${encodeURIComponent(key)}`, { headers }),
+      fetch(`/api/address/suggestions?field=state&country=${encodeURIComponent(key)}`, { headers })
+    ]);
+    const cityJ = cityR.ok ? await cityR.json() : { suggestions: [] };
+    const stateJ = stateR.ok ? await stateR.json() : { suggestions: [] };
+    const result = {
+      city: Array.isArray(cityJ.suggestions) ? cityJ.suggestions : [],
+      state: Array.isArray(stateJ.suggestions) ? stateJ.suggestions : []
+    };
+    SUGGEST_CACHE.set(key, { ...result, ts: Date.now() });
+    return result;
+  } catch {
+    return { city: [], state: [] };
+  }
 }
 
 const AddressFields: React.FC<AddressFieldsProps> = ({
@@ -46,8 +80,29 @@ const AddressFields: React.FC<AddressFieldsProps> = ({
 
   const country = (value.country || '').toUpperCase() || defaultCountry;
 
+  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
+  const [stateSuggestions, setStateSuggestions] = useState<string[]>([]);
+  const fetchSeqRef = useRef(0);
+
+  // Fetch datalist suggestions whenever country changes
+  useEffect(() => {
+    if (!country) return;
+    const seq = ++fetchSeqRef.current;
+    fetchSuggestions(country).then(({ city, state }) => {
+      // ignore stale responses if user changed country quickly
+      if (seq !== fetchSeqRef.current) return;
+      setCitySuggestions(city);
+      setStateSuggestions(state);
+    });
+  }, [country]);
+
   const set = (partial: Partial<Address>) => onChange({ ...value, ...partial });
   const req = (f: keyof Address) => required.includes(f);
+
+  const postalValid = validatePostalCode(country, value.postal_code);
+
+  const cityListId = `addr-city-${country || 'NA'}`;
+  const stateListId = `addr-state-${country || 'NA'}`;
 
   return (
     <div>
@@ -91,9 +146,17 @@ const AddressFields: React.FC<AddressFieldsProps> = ({
             value={value.city || ''}
             disabled={disabled}
             onChange={e => set({ city: sanitizeSingleLine(e.target.value) })}
+            onBlur={e => {
+              const normalized = normalizePlaceName(e.target.value);
+              if (normalized !== value.city) set({ city: normalized });
+            }}
             maxLength={100}
             autoComplete="address-level2"
+            list={cityListId}
           />
+          <datalist id={cityListId}>
+            {citySuggestions.map(c => <option key={c} value={c} />)}
+          </datalist>
         </FormGroup>
 
         <FormGroup style={{ marginBottom: 0 }}>
@@ -106,6 +169,11 @@ const AddressFields: React.FC<AddressFieldsProps> = ({
             maxLength={20}
             autoComplete="postal-code"
           />
+          {!postalValid && (
+            <WarnText>
+              {t('address.postalCodeInvalid', "Doesn't match the postal-code format for the selected country (saved as-is).")}
+            </WarnText>
+          )}
         </FormGroup>
       </Section>
 
@@ -117,9 +185,17 @@ const AddressFields: React.FC<AddressFieldsProps> = ({
             value={value.state || ''}
             disabled={disabled}
             onChange={e => set({ state: sanitizeSingleLine(e.target.value) })}
+            onBlur={e => {
+              const normalized = normalizePlaceName(e.target.value);
+              if (normalized !== value.state) set({ state: normalized });
+            }}
             maxLength={100}
             autoComplete="address-level1"
+            list={stateListId}
           />
+          <datalist id={stateListId}>
+            {stateSuggestions.map(s => <option key={s} value={s} />)}
+          </datalist>
         </FormGroup>
 
         <FormGroup style={{ marginBottom: 0 }}>

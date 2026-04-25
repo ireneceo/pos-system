@@ -5,8 +5,8 @@ import { EmptyState } from '../../components/UI/TableComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend , Modal as CommonModal } from '../../components/UI';
-import { COUNTRIES } from '../../constants/countries';
 import PhoneInput from '../../components/Common/PhoneInput';
+import AddressFields from '../../components/Form/AddressFields';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -512,6 +512,7 @@ const OwnerRestaurantsPage: React.FC = () => {
     email: '',
     phone: '',
     address: '',
+    address_line_2: '',
     city: '',
     state: '',
     postalCode: '',
@@ -612,7 +613,7 @@ const OwnerRestaurantsPage: React.FC = () => {
 
   const handleAddRestaurant = () => {
     setNewRestaurant({
-      name: '', email: '', phone: '', address: '', city: '', state: '',
+      name: '', email: '', phone: '', address: '', address_line_2: '', city: '', state: '',
       postalCode: '', country: 'MY', businessRegistration: '', taxId: '', cuisine: ''
     });
     setAdminAction('create');
@@ -674,6 +675,7 @@ const OwnerRestaurantsPage: React.FC = () => {
       const restaurantData: any = {
         name: newRestaurant.name,
         address: newRestaurant.address,
+        address_line_2: newRestaurant.address_line_2 || null,
         city: newRestaurant.city,
         state: newRestaurant.state,
         postal_code: newRestaurant.postalCode,
@@ -782,17 +784,19 @@ const OwnerRestaurantsPage: React.FC = () => {
     setFormError('');
     setEditingRestaurant(restaurant);
 
+    const r = restaurant as any;
     setNewRestaurant({
       name: restaurant.name,
       email: restaurant.email,
       phone: restaurant.phone,
       address: restaurant.address,
-      city: '',
-      state: '',
-      postalCode: '',
-      country: 'MY',
-      businessRegistration: '',
-      taxId: '',
+      address_line_2: r.address_line_2 || '',
+      city: r.city || '',
+      state: r.state || '',
+      postalCode: r.postal_code || r.postalCode || '',
+      country: (r.country || 'MY').toString().toUpperCase(),
+      businessRegistration: r.business_registration || r.businessRegistration || '',
+      taxId: r.tax_id || r.taxId || '',
       cuisine: restaurant.cuisine
     });
     setShowEditModal(true);
@@ -810,6 +814,7 @@ const OwnerRestaurantsPage: React.FC = () => {
         email: newRestaurant.email,
         phone: newRestaurant.phone,
         address: newRestaurant.address,
+        address_line_2: newRestaurant.address_line_2 || null,
         city: newRestaurant.city,
         state: newRestaurant.state,
         postal_code: newRestaurant.postalCode,
@@ -1125,20 +1130,6 @@ const OwnerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Country *</FormLabel>
-                  <FormSelect
-                    value={newRestaurant.country}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, country: e.target.value})}
-                  >
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </FormSelect>
-                </FormGroup>
-
-                <FormGroup>
                   <FormLabel>Phone Number *</FormLabel>
                   <PhoneInput
                     value={newRestaurant.phone}
@@ -1148,33 +1139,27 @@ const OwnerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup style={{gridColumn: '1 / -1'}}>
-                  <FormLabel>Address *</FormLabel>
-                  <FormTextarea
-                    placeholder="Enter street address"
-                    value={newRestaurant.address}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, address: e.target.value})}
+                  <AddressFields
+                    value={{
+                      address: newRestaurant.address,
+                      address_line_2: newRestaurant.address_line_2,
+                      city: newRestaurant.city,
+                      state: newRestaurant.state,
+                      postal_code: newRestaurant.postalCode,
+                      country: newRestaurant.country
+                    }}
+                    onChange={(addr) => setNewRestaurant({
+                      ...newRestaurant,
+                      address: addr.address || '',
+                      address_line_2: addr.address_line_2 || '',
+                      city: addr.city || '',
+                      state: addr.state || '',
+                      postalCode: addr.postal_code || '',
+                      country: (addr.country || '').toUpperCase()
+                    })}
+                    defaultCountry={newRestaurant.country || 'MY'}
+                    required={['address', 'country']}
                   />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('owner:ownerRestaurantsPage.city')}</FormLabel>
-                  <FormInput type="text" placeholder="e.g., Kuala Lumpur"
-                    value={newRestaurant.city}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})} />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('owner:ownerRestaurantsPage.stateProvince')}</FormLabel>
-                  <FormInput type="text" placeholder="e.g., Wilayah Persekutuan"
-                    value={newRestaurant.state}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})} />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('owner:ownerRestaurantsPage.postalCode')}</FormLabel>
-                  <FormInput type="text" placeholder="e.g., 50000"
-                    value={newRestaurant.postalCode}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})} />
                 </FormGroup>
 
                 <FormGroup>
@@ -1198,7 +1183,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                     onChange={(e) => setNewRestaurant({...newRestaurant, taxId: e.target.value})} />
                 </FormGroup>
               </FormGrid>
-            
+
         </CommonModal>
       )}
 
@@ -1222,16 +1207,6 @@ const OwnerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup>
-                  <FormLabel>Country *</FormLabel>
-                  <FormSelect value={newRestaurant.country}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, country: e.target.value})}>
-                    {COUNTRIES.map(country => (
-                      <option key={country.code} value={country.code}>{country.name}</option>
-                    ))}
-                  </FormSelect>
-                </FormGroup>
-
-                <FormGroup>
                   <FormLabel>Phone Number *</FormLabel>
                   <PhoneInput
                     value={newRestaurant.phone}
@@ -1241,31 +1216,27 @@ const OwnerRestaurantsPage: React.FC = () => {
                 </FormGroup>
 
                 <FormGroup style={{gridColumn: '1 / -1'}}>
-                  <FormLabel>Address *</FormLabel>
-                  <FormTextarea placeholder="Enter street address"
-                    value={newRestaurant.address}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, address: e.target.value})} />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('owner:ownerRestaurantsPage.city')}</FormLabel>
-                  <FormInput type="text" placeholder="e.g., Kuala Lumpur"
-                    value={newRestaurant.city}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, city: e.target.value})} />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('owner:ownerRestaurantsPage.stateProvince')}</FormLabel>
-                  <FormInput type="text" placeholder="e.g., Wilayah Persekutuan"
-                    value={newRestaurant.state}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, state: e.target.value})} />
-                </FormGroup>
-
-                <FormGroup>
-                  <FormLabel>{t('owner:ownerRestaurantsPage.postalCode')}</FormLabel>
-                  <FormInput type="text" placeholder="e.g., 50000"
-                    value={newRestaurant.postalCode}
-                    onChange={(e) => setNewRestaurant({...newRestaurant, postalCode: e.target.value})} />
+                  <AddressFields
+                    value={{
+                      address: newRestaurant.address,
+                      address_line_2: newRestaurant.address_line_2,
+                      city: newRestaurant.city,
+                      state: newRestaurant.state,
+                      postal_code: newRestaurant.postalCode,
+                      country: newRestaurant.country
+                    }}
+                    onChange={(addr) => setNewRestaurant({
+                      ...newRestaurant,
+                      address: addr.address || '',
+                      address_line_2: addr.address_line_2 || '',
+                      city: addr.city || '',
+                      state: addr.state || '',
+                      postalCode: addr.postal_code || '',
+                      country: (addr.country || '').toUpperCase()
+                    })}
+                    defaultCountry={newRestaurant.country || 'MY'}
+                    required={['address', 'country']}
+                  />
                 </FormGroup>
 
                 <FormGroup>

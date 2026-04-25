@@ -166,6 +166,11 @@ User.init({
     allowNull: true,
     comment: 'Grace period start date for Owner'
   },
+  last_trial_reminder_day: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Last threshold (3/0/-1) at which trial-expiry reminder was sent.'
+  },
   pending_plan_type: {
     type: DataTypes.STRING(100),
     allowNull: true,

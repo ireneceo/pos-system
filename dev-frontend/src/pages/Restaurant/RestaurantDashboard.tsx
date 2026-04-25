@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
-import { SetupGuide } from '../../components/Common';
+import { SetupGuide, WelcomeModal } from '../../components/Common';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
@@ -675,6 +675,14 @@ const RestaurantDashboard: React.FC = () => {
         </Header>
 
         <Content>
+          {user?.id && (
+            <WelcomeModal
+              userKey={user.id}
+              userName={user.fullName || user.username}
+              roleLabel={user.role}
+              items={setupItems}
+            />
+          )}
           {setupItems.length > 0 && (
             <SetupGuide items={setupItems} entityId={restaurantId} />
           )}

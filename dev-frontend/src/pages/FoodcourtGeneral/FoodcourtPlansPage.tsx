@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as tzFormatDate } from '../../utils/timezone';
+import { formatEntityAddress, AppLocale } from '../../utils/formatAddress';
 // ============================================
 // Types
 // ============================================
@@ -461,7 +462,7 @@ const REVENUE_BASE_LABELS: Record<string, string> = {
 // ============================================
 
 const FoodcourtPlansPage: React.FC = () => {
-  const { t } = useTranslation('foodcourt');
+  const { t, i18n } = useTranslation('foodcourt');
   const { user } = useAuth();
 
   const [plans, setPlans] = useState<EntityPlan[]>([]);
@@ -1559,7 +1560,7 @@ const FoodcourtPlansPage: React.FC = () => {
                       <RestaurantItem key={restaurant.id} isAssigned={isAssigned}>
                         <div>
                           <div style={{fontWeight: 600, color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
-                          <div style={{fontSize: '12px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
+                          <div style={{fontSize: '12px', color: '#6B7280'}}>{formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}</div>
                         </div>
                         {isAssigned ? (
                           <Button variant="danger-outline" onClick={() => removeRestaurant(restaurant.id)} style={{padding: '6px 12px', fontSize: '12px'}}>{t('foodcourt:foodcourtPlansPage.remove')}</Button>

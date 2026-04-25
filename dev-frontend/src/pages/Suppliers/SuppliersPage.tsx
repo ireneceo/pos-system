@@ -7,6 +7,7 @@ import { FilterBar, SearchInput } from '../../components/Common/FilterComponents
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormTextArea, FormRow as UIFormRow } from '../../components/UI/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import { formatEntityAddress, AppLocale } from '../../utils/formatAddress';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -239,7 +240,7 @@ const ViewDivider = styled.hr`
 `;
 
 const SuppliersPage: React.FC = () => {
-  const { t } = useTranslation('suppliers');
+  const { t, i18n } = useTranslation('suppliers');
   const { user } = useAuth();
   const effectiveRestaurantId = user?.restaurant_id || (user as any)?.restaurantId;
 
@@ -897,7 +898,7 @@ const SuppliersPage: React.FC = () => {
 
               <ViewField>
                 <ViewLabel>{t('suppliers:suppliersPage.address')}</ViewLabel>
-                <ViewValue>{viewSupplier.address || '-'}</ViewValue>
+                <ViewValue>{formatEntityAddress(viewSupplier, (i18n.language as AppLocale) || 'en') || '-'}</ViewValue>
               </ViewField>
 
               <ViewRow>

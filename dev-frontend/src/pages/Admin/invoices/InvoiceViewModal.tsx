@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { formatCurrency } from '../../../utils/currency';
 import { formatDateTime } from '../../../utils/timezone';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
+import { formatAddressLines, formatEntityAddress, AppLocale } from '../../../utils/formatAddress';
 import { Modal as CommonModal } from '../../../components/UI';
 import { Invoice, Manager, Restaurant, CompanySettings } from './types';
 import {
@@ -51,7 +52,7 @@ const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({
   linkSearchResults,
   onLinkAccount,
 }) => {
-  const { t } = useTranslation('admin');
+  const { t, i18n } = useTranslation('admin');
 
   const getStatusDisplay = (status: string) => {
     switch(status) {
@@ -82,11 +83,15 @@ const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({
               {companySettings?.companyName || 'Company Name'}
             </div>
             <div style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6' }}>
-              {companySettings?.address && <div>{companySettings.address}</div>}
-              {(companySettings?.city || companySettings?.state || companySettings?.postalCode) && (
-                <div>{[companySettings?.city, companySettings?.state, companySettings?.postalCode].filter(Boolean).join(', ')}</div>
-              )}
-              {companySettings?.country && <div>{companySettings.country}</div>}
+              {formatAddressLines({
+                address: companySettings?.address,
+                city: companySettings?.city,
+                state: companySettings?.state,
+                postal_code: companySettings?.postalCode,
+                country: companySettings?.country
+              }, (i18n.language as AppLocale) || 'en').map((line, idx) => (
+                <div key={idx}>{line}</div>
+              ))}
               {companySettings?.phone && <div>Tel: {companySettings.phone}</div>}
               {companySettings?.email && <div>Email: {companySettings.email}</div>}
             </div>
@@ -333,7 +338,7 @@ const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({
                       {linkSearchResults.restaurants.map(restaurant => (
                         <div key={restaurant.id} onClick={() => onLinkAccount('restaurant', restaurant)} style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6' }} onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'} onMouseLeave={(e) => e.currentTarget.style.background = 'white'}>
                           <div style={{fontWeight: '500', color: '#0A2540'}}>{getRestaurantDisplayName(restaurant)}</div>
-                          <div style={{fontSize: '13px', color: '#6B7280'}}>{restaurant.address || 'No address'}</div>
+                          <div style={{fontSize: '13px', color: '#6B7280'}}>{formatEntityAddress(restaurant, (i18n.language as AppLocale) || 'en') || 'No address'}</div>
                         </div>
                       ))}
                     </div>

@@ -150,6 +150,11 @@ Restaurant.init({
     allowNull: true,
     comment: 'When the trial period ends'
   },
+  last_trial_reminder_day: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Last threshold (3/0/-1) at which trial-expiry reminder was sent. Reset when trial_end_date changes.'
+  },
   last_payment_date: {
     type: DataTypes.DATE,
     allowNull: true,

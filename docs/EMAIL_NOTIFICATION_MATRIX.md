@@ -39,6 +39,7 @@
 | inquiry_replied | Inquiry Reply | Restaurant Admin, Owner | Inquiries |
 | ticket_status_changed | Ticket Status Changed | all | Inquiries |
 | hardware_quote | Hardware Quote Request | System Admin | Inquiries |
+| trial_expiry_reminder | Trial Expiry Reminder | RA / Owner / BG / FG | Subscription |
 
 ## 전체 이메일 발송 매트릭스
 
@@ -62,6 +63,7 @@
 | 견적 확인 | public.js | sendPlatformEmail | 제출자 | Platform | ✗ |
 | 견적 Admin 알림 | public.js | sendNotificationBatch | System Admin | Receiver | ✓ hardware_quote |
 | 시스템 로그 알림 | systemLogger.js | sendPlatformEmail | Admin | Platform | ✗ |
+| Trial 만료 알림 (D-3/D-0/D+1) | subscriptionScheduler.processTrialReminders | sendNotification | RA / Owner / BG / FG | Receiver | ✓ trial_expiry_reminder |
 
 ## 개발 시 체크리스트
 

@@ -93,6 +93,42 @@ export function formatAddress(addr: Address | null | undefined, format: AddressF
   }
 }
 
+/**
+ * Multi-line HTML rendering for invoice/receipt templates.
+ * Each formatAddress line becomes a `<br>` separated row. Empty inputs return ''.
+ */
+export function formatAddressHtml(addr: Address | null | undefined, locale: AppLocale = DEFAULT_LOCALE): string {
+  const s = formatAddress(addr, 'full', locale);
+  return s ? s.split('\n').filter(Boolean).map(l => `${l}<br>`).join('') : '';
+}
+
+/**
+ * Returns formatAddress output split into individual non-empty lines.
+ * Useful when rendering address as discrete React nodes (one per line).
+ */
+export function formatAddressLines(addr: Address | null | undefined, locale: AppLocale = DEFAULT_LOCALE): string[] {
+  const s = formatAddress(addr, 'full', locale);
+  return s ? s.split('\n').filter(Boolean) : [];
+}
+
+/**
+ * Convenience wrapper for list/modal sites that hold a Restaurant-shaped object
+ * (camelCase `postalCode` from REST responses). Returns 'oneline' formatted output,
+ * falling back to the raw `address` string for legacy records.
+ */
+export function formatEntityAddress(entity: any, locale: AppLocale = DEFAULT_LOCALE, format: AddressFormat = 'oneline'): string {
+  if (!entity) return '';
+  const a: Address = {
+    address: entity.address,
+    address_line_2: entity.address_line_2 ?? entity.addressLine2,
+    city: entity.city,
+    state: entity.state,
+    postal_code: entity.postal_code ?? entity.postalCode,
+    country: entity.country
+  };
+  return formatAddress(a, format, locale) || entity.address || '';
+}
+
 export function sanitizeAddressFields<T extends Address>(addr: T): T {
   const out: Address = {
     address: addr.address != null ? clean(addr.address) : addr.address,
@@ -103,6 +139,59 @@ export function sanitizeAddressFields<T extends Address>(addr: T): T {
     country: addr.country != null ? String(addr.country).toUpperCase().slice(0, 2) : addr.country
   };
   return { ...addr, ...out };
+}
+
+/**
+ * Trim, collapse internal whitespace, and Title-Case Latin script names.
+ * Preserves CJK / non-Latin scripts as-is (Title Case is meaningless there).
+ * Used for `city` / `state` blur normalization to keep "Kuala Lumpur" /
+ * "kuala lumpur" / "KUALA LUMPUR" from grouping as distinct values.
+ */
+export function normalizePlaceName(s: string | null | undefined): string {
+  if (s == null) return '';
+  const trimmed = String(s).replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!trimmed) return '';
+  // If contains only Latin letters / spaces / common punct → Title Case
+  if (/^[A-Za-z0-9 .,'’\-/&()]+$/.test(trimmed)) {
+    return trimmed.toLowerCase().replace(/(^|[\s\-'’/(])([a-z])/g, (_m, p, ch) => p + ch.toUpperCase());
+  }
+  // CJK / other scripts → just trim
+  return trimmed;
+}
+
+/**
+ * Per-country postal code regex. Returns true if no country, no postal value,
+ * or if country is not in the validation table (graceful — never blocks input).
+ * Returning false means the format is wrong; the UI should warn but still
+ * accept the input.
+ */
+const POSTAL_PATTERNS: Record<string, RegExp> = {
+  MY: /^\d{5}$/,
+  KR: /^\d{5}$|^\d{6}$/,         // 2015~ 5자리 표준, 6자리 레거시 허용
+  SG: /^\d{6}$/,
+  JP: /^\d{3}-?\d{4}$/,
+  US: /^\d{5}(-\d{4})?$/,
+  GB: /^[A-Za-z]{1,2}\d[A-Za-z\d]?\s?\d[A-Za-z]{2}$/,
+  AU: /^\d{4}$/,
+  CN: /^\d{6}$/,
+  TW: /^\d{3}$|^\d{5}$/,
+  TH: /^\d{5}$/,
+  VN: /^\d{6}$/,
+  ID: /^\d{5}$/,
+  PH: /^\d{4}$/,
+  IN: /^\d{6}$/,
+  CA: /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/,
+  DE: /^\d{5}$/,
+  FR: /^\d{5}$/,
+  HK: /.*/  // Hong Kong has no postal code — accept anything
+};
+
+export function validatePostalCode(country: string | null | undefined, postal: string | null | undefined): boolean {
+  if (!country || !postal) return true;
+  const code = String(country).toUpperCase();
+  const pattern = POSTAL_PATTERNS[code];
+  if (!pattern) return true;  // unknown country → no validation
+  return pattern.test(String(postal).trim());
 }
 
 export function isSameAddress(a: Address | null | undefined, b: Address | null | undefined): boolean {

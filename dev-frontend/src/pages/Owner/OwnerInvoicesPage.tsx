@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../../utils/currency';
+import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import {
@@ -274,7 +275,7 @@ const FormInput = styled.input`
 type TabType = 'all' | 'to_pay';
 
 const OwnerInvoicesPage: React.FC = () => {
-  const { t } = useTranslation('owner');
+  const { t, i18n } = useTranslation('owner');
   const [searchParams, setSearchParams] = useSearchParams();
 
   // States
@@ -732,9 +733,13 @@ const OwnerInvoicesPage: React.FC = () => {
                 ${issuerInfo?.logoUrl ? `<img src="${issuerInfo.logoUrl}" alt="Company Logo" class="company-logo">` : ''}
                 <div class="company-name" style="${issuerInfo?.logoUrl ? 'font-size: 14px;' : ''}">${issuerInfo?.name || invoice.issuerName || 'Issuer'}</div>
                 <div class="company-details">
-                    ${issuerInfo?.address ? `${issuerInfo.address}<br>` : ''}
-                    ${[issuerInfo?.city, issuerInfo?.state, issuerInfo?.postalCode].filter(Boolean).join(', ')}${issuerInfo?.city || issuerInfo?.state || issuerInfo?.postalCode ? '<br>' : ''}
-                    ${issuerInfo?.country ? `${issuerInfo.country}<br>` : ''}
+                    ${formatAddressHtml({
+                      address: issuerInfo?.address,
+                      city: issuerInfo?.city,
+                      state: issuerInfo?.state,
+                      postal_code: issuerInfo?.postalCode,
+                      country: issuerInfo?.country
+                    }, (i18n.language as AppLocale) || 'en')}
                     ${issuerInfo?.phone ? `Tel: ${issuerInfo.phone}<br>` : ''}
                     ${issuerInfo?.email ? `Email: ${issuerInfo.email}` : ''}
                 </div>
@@ -750,9 +755,16 @@ const OwnerInvoicesPage: React.FC = () => {
             <div class="bill-to-section">
                 <div class="section-label">${t('owner:ownerInvoicesPage.billTo')}</div>
                 <div class="customer-name">${payerCompany?.name || invoice.restaurantName || 'Restaurant'}</div>
-                ${payerCompany?.address ? `<div class="customer-details">${payerCompany.address}</div>` : ''}
-                ${[payerCompany?.city, payerCompany?.state, payerCompany?.postalCode].filter(Boolean).length > 0 ? `<div class="customer-details">${[payerCompany?.city, payerCompany?.state, payerCompany?.postalCode].filter(Boolean).join(', ')}</div>` : ''}
-                ${payerCompany?.country ? `<div class="customer-details">${payerCompany.country}</div>` : ''}
+                ${(() => {
+                  const html = formatAddressHtml({
+                    address: payerCompany?.address,
+                    city: payerCompany?.city,
+                    state: payerCompany?.state,
+                    postal_code: payerCompany?.postalCode,
+                    country: payerCompany?.country
+                  }, (i18n.language as AppLocale) || 'en');
+                  return html ? `<div class="customer-details">${html.replace(/<br>$/, '')}</div>` : '';
+                })()}
                 ${payerCompany?.email ? `<div class="customer-details">${payerCompany.email}</div>` : ''}
             </div>
             <div class="dates-section">

@@ -555,10 +555,61 @@
     "city": "시/군",
     "state": "시/도",
     "postalCode": "우편번호",
+    "postalCodeInvalid": "선택한 국가의 우편번호 형식과 일치하지 않습니다 (입력된 그대로 저장됩니다).",
     "country": "국가",
     "selectCountry": "국가 선택",
     "latitude": "위도",
     "longitude": "경도",
     "latLngHint": "저장 시 주소로 자동 조회됩니다 (비워두기 가능)"
+  },
+  "welcomeModal": {
+    "greeting": "환영합니다",
+    "subtitle": "몇 단계만 거치면 계정 준비가 완료됩니다.",
+    "moreSteps": "+ 셋업 체크리스트에 {{count}}개 단계가 더 있습니다.",
+    "skip": "직접 둘러볼게요",
+    "start": "셋업 시작 →"
+  },
+  "inbox": {
+    "bell": {
+      "label": "알림함",
+      "aria": {
+        "unread": "읽지 않은 알림 {{count}}건",
+        "empty": "읽지 않은 알림이 없습니다"
+      }
+    },
+    "drawer": { "title": "알림" },
+    "page": { "title": "알림함" },
+    "filter": {
+      "all": "전체",
+      "notice": "공지",
+      "support": "지원",
+      "ops": "운영"
+    },
+    "status": {
+      "all": "전체",
+      "unread": "읽지 않음",
+      "read": "읽음"
+    },
+    "type": {
+      "notice": "공지",
+      "support_ticket": "지원",
+      "operation_ticket": "운영"
+    },
+    "severity": {
+      "normal": "일반",
+      "important": "중요",
+      "urgent": "긴급"
+    },
+    "unreadOnly": "읽지 않은 것만 보기",
+    "markAllRead": "모두 읽음으로",
+    "viewAll": "알림함 전체 보기 →",
+    "searchPlaceholder": "제목 또는 본문 검색",
+    "resultCount": "{{count}}건",
+    "empty": {
+      "title": "모두 확인했어요!",
+      "all": "새 알림이 도착하면 여기에 표시됩니다.",
+      "unread": "지금 읽지 않은 항목이 없습니다.",
+      "search": "검색 결과가 없습니다."
+    }
   }
 }

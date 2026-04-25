@@ -303,6 +303,75 @@ interface AddressFieldsProps {
 
 ---
 
+## 12. Phase 2 — Display & AutoSave Unification (v3.18, 2026-04-25)
+
+v3.17에서 입력 폼 5곳, 표시 사이트 3곳을 통일했지만, **그 외 모든 사이트**에서 여전히 직접 input × 6 또는 `[city, state, postal].filter(Boolean).join(', ')` 패턴이 남아 있었다. v3.18 Phase 2 에서 솔루션 전체에 걸쳐 잔여 패턴을 모두 마이그.
+
+### 12.1 신규 컴포넌트/유틸
+
+| 항목 | 위치 | 용도 |
+|---|---|---|
+| `<AutoSaveAddressFields>` | `components/Form/AutoSaveAddressFields.tsx` | AutoSave 페이지용 래퍼 — `<AddressFields>` + 600 ms debounce + 저장 상태 배지 (top-right) |
+| `formatAddressHtml(addr, locale)` | `utils/formatAddress.ts` | invoice/receipt 인쇄 템플릿용 — `<br>` 구분 멀티라인 |
+| `formatAddressLines(addr, locale)` | `utils/formatAddress.ts` | JSX 렌더용 — line 배열 반환 |
+| `formatEntityAddress(entity, locale)` | `utils/formatAddress.ts` | 리스트/모달용 — camelCase `postalCode` 자동 변환 + `oneline` + 레거시 fallback |
+
+### 12.2 입력 폼 마이그 (6곳)
+
+| 페이지 | 패턴 | 비고 |
+|---|---|---|
+| `Admin/AdminSettingsPage` | AutoSaveAddressFields | postalCode → postal_code |
+| `Brand/BrandCompanyInfoPage` | AutoSaveAddressFields | postalCode → postal_code |
+| `CompanyInformation/CompanyInformationPage` | AutoSaveAddressFields | **postcode** → postal_code, MY-only 주(州) dropdown 제거 (free text 통일) |
+| `Foodcourt/FoodcourtCompanyInfoPage` | AutoSaveAddressFields | address_line_2 추가 |
+| `Manager/CompanySettingsPage` | AutoSaveAddressFields | address_line_2 + country 추가 |
+| `Owner/OwnerRestaurantsPage` | `<AddressFields>` (modal × 2) | 직접 state, address_line_2 추가 |
+
+### 12.3 백엔드 라우트 보강
+
+| 라우트 | 변경 |
+|---|---|
+| `routes/brands.js` GET/PUT `/company-info` | `address_line_2` allowed + GET 응답 + country ISO 정규화 |
+| `routes/foodcourts.js` GET/PUT `/company-info` | 위와 동일 |
+| `routes/restaurants-crud.js` GET `/:id/company-info` | `address_line_2` 필드 + 응답 추가 |
+
+### 12.4 표시 사이트 마이그 (33+ 파일)
+
+**청구서/영수증/리포트** (Phase A — 9 파일):
+`FoodcourtInvoicesPage`, `Owner/OwnerInvoicesPage`, `BrandInvoicesPage`, `Restaurant/InvoicesPage`, `Admin/InvoicesPage`, `LiveOrders/BillPrintPortal`, `BillPrint/BillPrintPage`, `Reports/DailySettlementPrint`, `components/Invoice/InvoiceDetailModal`
+
+**지점 지도/관리/리스트** (Phase B/C/D):
+`FoodcourtGeneral/FoodcourtTenancyMapPage` (4 사이트), `FoodcourtPlansPage`, `BrandPlansPage`, `Foodcourt/Brand/Admin InvoiceViewModal & InvoiceEditModal`, `Admin/RestaurantsPage`, `Admin/StaffManagementPage`, `Admin/SubscriptionsPage`, `Admin/AnalyticsPage`, `Suppliers/SuppliersPage`
+
+패턴:
+- 인쇄용 HTML 템플릿: `formatAddressHtml(addr, locale)`
+- JSX 멀티라인: `formatAddressLines(...).map(line => <div>{line}</div>)`
+- 인라인 한 줄: `formatEntityAddress(entity, locale) || 'No address'` (레거시 `address` 필드 fallback)
+
+### 12.5 자동완성
+
+`<AddressFields>` 의 모든 input 에 표준 `autoComplete` 속성 (street-address / address-line2 / address-level2 / postal-code / address-level1 / country) 이미 적용. **외부 API (Google Places / Nominatim) 도입 안 함** — 브라우저 네이티브 자동완성으로 충분 (Irene 결정).
+
+### 12.6 Out of scope (의도적 제외)
+
+| 사이트 | 이유 |
+|---|---|
+| `mobile/OrderTrackingPage` `delivery_info.address` | 단일 string 배달주소 — 6필드 구조 아님 |
+| `LiveOrders/OrderDetailModal` 동일 | 위와 동일 |
+| `mobile/DeliveryAddressPage`, `PaymentPage` | 단순 textarea + zone 선택 |
+| `Manager/ManagerDashboard` data prep, `Owner/OwnerRestaurantsPage` data prep | 표시가 아닌 state 저장. 다른 곳에서 표시 |
+| 운영 Restaurant #10 기존 데이터 정리 | Irene 직접 수정 (지시) |
+
+### 12.7 검증
+
+- 빌드: `npm run build:dev` exit 0
+- API: `/api/admin/settings`, `/api/brands/company-info`, `/api/foodcourts/company-info`, `/api/restaurants/:id/company-info` GET/PUT 라운드트립 (`address_line_2`, country ISO)
+- health-check 40/40
+- 5개 역할 (Admin / Brand General / Foodcourt General / Restaurant Manager / Owner) Settings/CompanyInfo 페이지 + Invoice 인쇄 흐름
+
+---
+
 ## 11. 문서 변경 이력
 
 - 2026-04-24: 최초 설계 (with MIN Cafe 증상에서 촉발). 30년차 리뷰 반영 (address_line_2 추가, 자동 파싱 배제, additive 마이그레이션, postal regex 경고-only).
+- 2026-04-25 (v3.18): Phase 2 — Display & AutoSave Unification 추가. 입력 폼 6곳 + 표시 33+ 파일 + 백엔드 3 라우트 보강 + 4개 신규 헬퍼 (`AutoSaveAddressFields`, `formatAddressHtml`, `formatAddressLines`, `formatEntityAddress`).

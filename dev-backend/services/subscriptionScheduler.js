@@ -17,7 +17,8 @@ const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const User = require('../models/User');
 const { sendIssuerEmail } = require('../utils/emailService');
-const { emailLayout, getLogoAttachment } = require('../utils/emailTemplates');
+const { emailLayout, getLogoAttachment, trialExpiringSoonEmail } = require('../utils/emailTemplates');
+const { sendNotification } = require('../utils/notificationService');
 
 // Configuration
 const TRIAL_PERIOD_DAYS = 7;
@@ -46,8 +47,16 @@ class SubscriptionScheduler {
    * Process all subscriptions and update statuses
    */
   async processAllSubscriptions() {
+    const SchedulerRun = require('../models/SchedulerRun');
     const startTime = Date.now();
+    const startedAt = new Date();
     console.log('🔄 [SUBSCRIPTION SCHEDULER] Processing subscription status transitions...');
+
+    // Open a SchedulerRun row up-front so a crash mid-job is still visible
+    // in the monitoring dashboard (status='running' until updated).
+    let run = null;
+    try { run = await SchedulerRun.create({ job_name: 'subscription_daily', started_at: startedAt }); }
+    catch (e) { console.error('[SchedulerRun] create failed:', e.message); }
 
     try {
       // 1. Process Trial -> Overdue transitions
@@ -68,7 +77,11 @@ class SubscriptionScheduler {
       // 6. Contract expiry reminders (renewal_alert_months threshold + D-7) + auto stage='expired'
       const contractResults = await this.processContractExpiryReminders();
 
-      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      // 7. Trial-expiry reminders (D-3, D-0, D+1) — preventive notification before service interruption
+      const trialReminderResults = await this.processTrialReminders();
+
+      const elapsedMs = Date.now() - startTime;
+      const duration = (elapsedMs / 1000).toFixed(2);
       console.log(`✓ [SUBSCRIPTION SCHEDULER] Completed in ${duration}s`);
       console.log(`   - Trial expired: ${trialResults.updated} restaurants`);
       console.log(`   - Grace period expired: ${graceResults.updated} restaurants`);
@@ -76,18 +89,38 @@ class SubscriptionScheduler {
       console.log(`   - Entity subscriptions: ${entityResults.updated} entities`);
       console.log(`   - Overdue reminders sent: ${reminderResults.sent}`);
       console.log(`   - Contract expiry reminders: ${contractResults.sent} sent, ${contractResults.expired} auto-expired`);
+      console.log(`   - Trial expiry reminders: ${trialReminderResults.sent} sent (${trialReminderResults.byThreshold || ''})`);
 
-      return {
-        success: true,
-        trialExpired: trialResults.updated,
-        gracePeriodExpired: graceResults.updated,
-        overduePayments: paymentResults.updated,
-        remindersSent: reminderResults.sent,
-        duration
+      const results = {
+        trial_expired: trialResults.updated,
+        grace_period_expired: graceResults.updated,
+        overdue_payments: paymentResults.updated,
+        entity_subscriptions: entityResults.updated,
+        overdue_reminders_sent: reminderResults.sent,
+        contract_expiry_reminders_sent: contractResults.sent,
+        contract_auto_expired: contractResults.expired,
+        trial_reminders_sent: trialReminderResults.sent
       };
+
+      if (run) {
+        try { await run.update({ finished_at: new Date(), duration_ms: elapsedMs, status: 'success', results }); }
+        catch (e) { console.error('[SchedulerRun] update failed:', e.message); }
+      }
+
+      return { success: true, ...results, duration };
 
     } catch (error) {
       console.error('✗ [SUBSCRIPTION SCHEDULER] Error processing subscriptions:', error);
+      if (run) {
+        try {
+          await run.update({
+            finished_at: new Date(),
+            duration_ms: Date.now() - startTime,
+            status: 'error',
+            error_message: String(error?.message || error)
+          });
+        } catch (e) { console.error('[SchedulerRun] error update failed:', e.message); }
+      }
       return { success: false, error: error.message };
     }
   }
@@ -968,6 +1001,176 @@ class SubscriptionScheduler {
       console.log(`[Subscription] Sent '${type}' email to ${recipientEmail} (${entityLabel} entity)`);
     } catch (e) {
       console.error(`[Subscription] Entity email failed for ${displayName}:`, e.message);
+    }
+  }
+
+  /**
+   * Trial-expiry reminders — sent at three thresholds:
+   *   D-3 (3 days before trial ends — friendly heads-up)
+   *   D-0 (the day trial ends — urgent)
+   *   D+1 (one day after — grace-period notice with pay link)
+   *
+   * Idempotency: each entity has `last_trial_reminder_day`. We only send when
+   * the current threshold differs from the stored value, so reruns the same
+   * day don't double-send. Threshold values stored: 3, 0, -1.
+   *
+   * Covers Restaurant + Brand + Foodcourt + Restaurant Owner (User row).
+   * Skips demo / test rows.
+   */
+  async processTrialReminders() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startOfToday = today.getTime();
+
+    /**
+     * Returns the reminder threshold (3/0/-1) for the given trial_end_date,
+     * or null when none of the thresholds match today.
+     */
+    function thresholdFor(trialEndDate) {
+      if (!trialEndDate) return null;
+      const end = new Date(trialEndDate);
+      end.setHours(0, 0, 0, 0);
+      const days = Math.round((end.getTime() - startOfToday) / 86400000);
+      if (days === 3) return 3;
+      if (days === 0) return 0;
+      if (days === -1) return -1;
+      return null;
+    }
+
+    function frontendUrl() {
+      return process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
+    }
+
+    function fmtDate(d) {
+      try { return new Date(d).toISOString().split('T')[0]; } catch { return ''; }
+    }
+
+    let sent = 0;
+    const byThreshold = { '3': 0, '0': 0, '-1': 0 };
+
+    const sendOne = async ({ entityType, entity, recipientUserId, recipientName, displayName, threshold, payNowUrl }) => {
+      try {
+        const mail = trialExpiringSoonEmail({
+          entityName: displayName,
+          recipientName,
+          daysLeft: threshold,
+          expiryDate: fmtDate(entity.trial_end_date),
+          payNowUrl,
+          supportUrl: `${frontendUrl()}/contact`
+        });
+        // Per-user notification respects opt-out via `trial_expiry_reminder` category.
+        if (recipientUserId) {
+          await sendNotification(recipientUserId, 'trial_expiry_reminder', mail);
+        } else {
+          // Fallback: direct entity email when no user id available
+          const recipientEmail = entity.email;
+          if (!recipientEmail) return false;
+          await sendIssuerEmail('system_admin', null, {
+            to: recipientEmail,
+            subject: mail.subject,
+            html: mail.html,
+            text: mail.text,
+            attachments: getLogoAttachment()
+          });
+        }
+        await entity.update({ last_trial_reminder_day: threshold });
+        sent++;
+        byThreshold[String(threshold)]++;
+        console.log(`[TrialReminder] ${entityType} "${displayName}" → threshold=${threshold} sent`);
+        return true;
+      } catch (e) {
+        console.error(`[TrialReminder] failed for ${entityType} ${displayName}:`, e.message);
+        return false;
+      }
+    };
+
+    try {
+      // 1. Restaurants
+      const restaurants = await Restaurant.findAll({
+        where: {
+          status: 'trial',
+          is_demo: { [Op.ne]: true },
+          is_test: { [Op.ne]: true },
+          trial_end_date: { [Op.ne]: null }
+        }
+      });
+      for (const r of restaurants) {
+        const t = thresholdFor(r.trial_end_date);
+        if (t === null) continue;
+        if (r.last_trial_reminder_day === t) continue;
+        await sendOne({
+          entityType: 'Restaurant',
+          entity: r,
+          recipientUserId: r.admin_id,
+          recipientName: r.name,
+          displayName: r.name,
+          threshold: t,
+          payNowUrl: `${frontendUrl()}/restaurant/${r.id}/invoices`
+        });
+      }
+
+      // 2. Brand
+      const brands = await Brand.findAll({
+        where: { subscription_status: 'trial', trial_end_date: { [Op.ne]: null } }
+      });
+      for (const b of brands) {
+        const t = thresholdFor(b.trial_end_date);
+        if (t === null) continue;
+        if (b.last_trial_reminder_day === t) continue;
+        await sendOne({
+          entityType: 'Brand',
+          entity: b,
+          recipientUserId: b.owner_id,
+          recipientName: b.name,
+          displayName: b.name,
+          threshold: t,
+          payNowUrl: `${frontendUrl()}/pos/brand/general/invoices`
+        });
+      }
+
+      // 3. Foodcourt
+      const foodcourts = await Foodcourt.findAll({
+        where: { subscription_status: 'trial', trial_end_date: { [Op.ne]: null } }
+      });
+      for (const f of foodcourts) {
+        const t = thresholdFor(f.trial_end_date);
+        if (t === null) continue;
+        if (f.last_trial_reminder_day === t) continue;
+        await sendOne({
+          entityType: 'Foodcourt',
+          entity: f,
+          recipientUserId: f.owner_id,
+          recipientName: f.name,
+          displayName: f.name,
+          threshold: t,
+          payNowUrl: `${frontendUrl()}/pos/foodcourt/general/invoices`
+        });
+      }
+
+      // 4. Restaurant Owner subscription (User row)
+      const owners = await User.findAll({
+        where: { role: 'Restaurant Owner', subscription_status: 'trial', trial_end_date: { [Op.ne]: null } }
+      });
+      for (const u of owners) {
+        const t = thresholdFor(u.trial_end_date);
+        if (t === null) continue;
+        if (u.last_trial_reminder_day === t) continue;
+        await sendOne({
+          entityType: 'Owner',
+          entity: u,
+          recipientUserId: u.id,
+          recipientName: u.full_name || u.username,
+          displayName: u.full_name || u.username,
+          threshold: t,
+          payNowUrl: `${frontendUrl()}/pos/owner/invoices`
+        });
+      }
+
+      const summary = Object.entries(byThreshold).filter(([, n]) => n > 0).map(([k, n]) => `D${k === '-1' ? '-1' : '+' + k}: ${n}`).join(', ');
+      return { sent, byThreshold: summary };
+    } catch (error) {
+      console.error('✗ Error in processTrialReminders:', error);
+      return { sent: 0, error: error.message };
     }
   }
 

@@ -5,6 +5,8 @@ import { formatCurrency, normalizeCurrencyCode, getCurrencySymbol } from '../../
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
+import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
+import InvoiceHistoryModal from '../../components/Invoice/InvoiceHistoryModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatusMessage } from '../../components/UI/CommonStyles';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -50,7 +52,7 @@ import { FoodcourtInvoiceEditModal } from './invoices';
 import { FoodcourtInvoiceCreateModal } from './invoices';
 
 const FoodcourtInvoicesPage: React.FC = () => {
-  const { t } = useTranslation('foodcourt');
+  const { t, i18n } = useTranslation('foodcourt');
   const { operationSettings } = useStore();
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -73,6 +75,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   const [paidIsCustomDateRange, setPaidIsCustomDateRange] = useState(false);
   const [paidDateRange, setPaidDateRange] = useState(() => calculatePeriodDateRange('month'));
   const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
+  const [historyInvoice, setHistoryInvoice] = useState<any>(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
@@ -643,6 +646,37 @@ const FoodcourtInvoicesPage: React.FC = () => {
       if (currency === 'RM') currency = 'MYR';
       setNewInvoice({ ...newInvoice, restaurantId: restaurant.id, restaurantName: restaurant.name, managerId: restaurant.admin_id, managerName: manager ? manager.fullName : '', companyName: restaurant.name });
       await checkFoodcourtPaymentMethods(currency);
+      // Prefill from active Foodcourt tenancy contract: base_rent + maintenance_fee.
+      // Silent on failure — user can fill manually if no contract is linked.
+      try {
+        const token = getAuthToken();
+        const r = await fetch(`/api/contracts?restaurant_id=${restaurant.id}&stage=active`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (r.ok) {
+          const j = await r.json();
+          const list = j.data || j.contracts || j || [];
+          const contract = Array.isArray(list) ? list[0] : null;
+          const ft = contract?.financial_terms || {};
+          const baseRent = Number(ft.base_rent) || 0;
+          const maintenance = Number(ft.maintenance_fee) || 0;
+          const total = baseRent + maintenance;
+          if (total > 0) {
+            const cnum = contract.contract_number || `#${contract.id}`;
+            setNewInvoice(prev => ({
+              ...prev,
+              amount: String(total),
+              total: String(total),
+              description: maintenance > 0
+                ? `Monthly rent (${baseRent}) + maintenance (${maintenance}) — Contract ${cnum}`
+                : `Monthly rent — Contract ${cnum}`,
+              invoiceCategory: 'subscription',
+              billingCycle: 'monthly'
+            }));
+            setPrefillContractId(contract.id);
+          }
+        }
+      } catch { /* prefill is best-effort */ }
     }
   };
 
@@ -756,9 +790,13 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 ${companySettings.companyLogo ? `<img src="${companySettings.companyLogo}" alt="Company Logo" class="company-logo">` : ''}
                 <div class="company-name">${companySettings.companyName || 'Company Name'}</div>
                 <div class="company-details">
-                    ${companySettings.address ? `${companySettings.address}<br>` : ''}
-                    ${[companySettings.city, companySettings.state, companySettings.postalCode].filter(Boolean).join(', ')}${companySettings.city || companySettings.state || companySettings.postalCode ? '<br>' : ''}
-                    ${companySettings.country ? `${companySettings.country}<br>` : ''}
+                    ${formatAddressHtml({
+                      address: companySettings.address,
+                      city: companySettings.city,
+                      state: companySettings.state,
+                      postal_code: companySettings.postalCode,
+                      country: companySettings.country
+                    }, (i18n.language as AppLocale) || 'en')}
                     ${companySettings.phone ? `Tel: ${companySettings.phone}<br>` : ''}
                     ${companySettings.email ? `Email: ${companySettings.email}` : ''}
                 </div>
@@ -1296,7 +1334,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 <MobileValue className="col-period"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.period')}</MobileLabel><div style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</div></MobileValue>
                 <MobileValue className="col-issued"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.issued')}</MobileLabel><div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div></MobileValue>
                 <MobileValue className="col-due"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.due')}</MobileLabel><div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div></MobileValue>
-                <MobileValue className="col-status"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel><div><StatusBadge status={invoice.status}>{getStatusDisplay(invoice.status)}</StatusBadge>{invoice.isModified && (<span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</span>)}</div></MobileValue>
+                <MobileValue className="col-status"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel><div><StatusBadge status={invoice.status}>{getStatusDisplay(invoice.status)}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</button>)}</div></MobileValue>
                 <MobileValue className="col-amount"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel><Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount></MobileValue>
                 <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
               </MobileGrid>
@@ -1348,7 +1386,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       <MobileValue className="col-period"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.period')}</MobileLabel><div style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</div></MobileValue>
                       <MobileValue className="col-issued"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.issued')}</MobileLabel><div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div></MobileValue>
                       <MobileValue className="col-due"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.due')}</MobileLabel><div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div></MobileValue>
-                      <MobileValue className="col-status"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel><StatusBadge status={invoice.status}>{getStatusDisplay(invoice.status)}</StatusBadge>{invoice.isModified && (<span style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</span>)}</MobileValue>
+                      <MobileValue className="col-status"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel><StatusBadge status={invoice.status}>{getStatusDisplay(invoice.status)}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</button>)}</MobileValue>
                       <MobileValue className="col-amount"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel><Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount></MobileValue>
                       <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
                     </MobileGrid>
@@ -1460,6 +1498,13 @@ const FoodcourtInvoicesPage: React.FC = () => {
         <ConfirmModal isOpen={deleteCategoryModalOpen} onCancel={() => setDeleteCategoryModalOpen(false)} onConfirm={handleDeleteCategoryConfirm} title="Delete Category" message={`Are you sure you want to delete "${categoryToDelete?.name}"? This action cannot be undone.`} confirmText="Delete" cancelText="Cancel" type="danger" />
 
         {/* Create Invoice Modal */}
+        <InvoiceHistoryModal
+          isOpen={!!historyInvoice}
+          onClose={() => setHistoryInvoice(null)}
+          invoiceNumber={historyInvoice?.invoiceNumber}
+          history={historyInvoice?.modificationHistory || []}
+        />
+
         {showCreateInvoiceModal && (
           <FoodcourtInvoiceCreateModal
             newInvoice={newInvoice} setNewInvoice={setNewInvoice}

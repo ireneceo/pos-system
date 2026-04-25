@@ -8,6 +8,7 @@ import 'leaflet.markercluster';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import { formatAddress, AppLocale } from '../../utils/formatAddress';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 import { getAuthToken } from '../../utils/auth';
@@ -384,7 +385,7 @@ const PinsLayer: React.FC<{
         <div style="min-width:220px">
           <h4 style="margin:0 0 6px;font-size:14px;color:#0A2540">${esc(b.name)}${b.is_primary ? ` <span style="font-size:10px;background:#F0EDFF;color:#635BFF;padding:1px 5px;border-radius:3px">${esc(popupLabels.primary)}</span>` : ''}</h4>
           <div style="font-size:11px;color:#9CA3AF;margin:2px 0">${esc(b.code)}</div>
-          ${b.address ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${esc(b.address)}</div>` : ''}
+          ${(() => { const a = formatAddress(b, 'short', (i18n.language as AppLocale) || 'en'); return a ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${esc(a)}</div>` : (b.address ? `<div style="font-size:12px;color:#6B7280;margin:2px 0">${esc(b.address)}</div>` : ''); })()}
           <div style="display:flex;gap:10px;margin-top:8px;font-size:11px">
             <span><b>${esc(popupLabels.total)}:</b> ${b.unit_stats.total}</span>
             <span style="color:#10B981"><b>${esc(popupLabels.occupied)}:</b> ${occ}</span>
@@ -426,7 +427,7 @@ const PinsLayer: React.FC<{
 };
 
 const FoodcourtTenancyMapPage: React.FC = () => {
-  const { t } = useTranslation('contract');
+  const { t, i18n } = useTranslation('contract');
   const { user } = useAuth();
   const fcId = user?.foodcourt_id;
   const navigate = useNavigate();
@@ -583,7 +584,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                       <span className="occupancy" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{pct}%</span>
                     </h4>
                     <div className="code">{b.code}</div>
-                    {b.address && <div className="addr">{b.address}</div>}
+                    {(formatAddress(b, 'short', (i18n.language as AppLocale) || 'en') || b.address) && <div className="addr">{formatAddress(b, 'short', (i18n.language as AppLocale) || 'en') || b.address}</div>}
                     <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
                       <b style={{ color: '#0A2540' }}>{b.unit_stats.total}</b> {t('map.units', 'units')}
                       {b.latitude == null && <span style={{ color: '#EF4444', marginLeft: 6 }}>no coords</span>}
@@ -888,7 +889,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
               {/* Branch info */}
               <DetailSection>
                 <DetailSectionTitle>{t('map.branchInfo', 'Branch Info')}</DetailSectionTitle>
-                {selectedBranch.address && <InfoRow><span>{t('map.address', 'Address')}</span><b>{selectedBranch.address}</b></InfoRow>}
+                {selectedBranch.address && <InfoRow><span>{t('map.address', 'Address')}</span><b>{formatAddress(selectedBranch, 'oneline', (i18n.language as AppLocale) || 'en') || selectedBranch.address}</b></InfoRow>}
                 {selectedBranch.city && <InfoRow><span>{t('map.city', 'City')}</span><b>{selectedBranch.city}{selectedBranch.state ? `, ${selectedBranch.state}` : ''}</b></InfoRow>}
                 {selectedBranch.phone && <InfoRow><span>{t('map.phone', 'Phone')}</span><b><a href={`tel:${selectedBranch.phone}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{selectedBranch.phone}</a></b></InfoRow>}
                 {selectedBranch.email && <InfoRow><span>{t('map.email', 'Email')}</span><b><a href={`mailto:${selectedBranch.email}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{selectedBranch.email}</a></b></InfoRow>}

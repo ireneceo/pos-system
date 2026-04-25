@@ -5,6 +5,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import AutoSaveAddressFields from '../../components/Form/AutoSaveAddressFields';
 
 interface CompanyInfo {
   id: string;
@@ -13,6 +14,7 @@ interface CompanyInfo {
   registrationNo: string;
   taxNo: string;
   address: string;
+  address_line_2?: string;
   city: string;
   state: string;
   country: string;
@@ -492,27 +494,29 @@ const ManagerCompanySettingsPage: React.FC = () => {
 
       <Section>
         <SectionTitle>{t('admin:companySettingsPage.contactInformation')}</SectionTitle>
-        <FormRow>
-          <FormGroup>
-            <Label>Address *</Label>
-            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.address} onChange={(e) => handleInputChange('address', e.target.value)} placeholder="Street address" /></AutoSaveField>
-          </FormGroup>
-          <FormGroup>
-            <Label>City *</Label>
-            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.city} onChange={(e) => handleInputChange('city', e.target.value)} placeholder="City" /></AutoSaveField>
-          </FormGroup>
-        </FormRow>
-        <FormRow>
-          <FormGroup>
-            <Label>State/Province *</Label>
-            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.state} onChange={(e) => handleInputChange('state', e.target.value)} placeholder="State or province" /></AutoSaveField>
-          </FormGroup>
-          <FormGroup>
-            <Label>Postal Code *</Label>
-            <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.postalCode} onChange={(e) => handleInputChange('postalCode', e.target.value)} placeholder="Postal code" /></AutoSaveField>
-          </FormGroup>
-        </FormRow>
-        <FormRow>
+        <AutoSaveAddressFields
+          value={{
+            address: companyInfo.address,
+            address_line_2: companyInfo.address_line_2,
+            city: companyInfo.city,
+            state: companyInfo.state,
+            postal_code: companyInfo.postalCode,
+            country: companyInfo.country
+          }}
+          onChange={(addr) => setCompanyInfo(prev => ({
+            ...prev,
+            address: addr.address || '',
+            address_line_2: addr.address_line_2 || '',
+            city: addr.city || '',
+            state: addr.state || '',
+            postalCode: addr.postal_code || '',
+            country: (addr.country || '').toUpperCase()
+          }))}
+          onSave={handleSaveSettings}
+          defaultCountry={companyInfo.country || 'MY'}
+          required={['address', 'city']}
+        />
+        <FormRow style={{ marginTop: 16 }}>
           <FormGroup>
             <Label>Phone Number *</Label>
             <AutoSaveField onSave={handleSaveSettings}><Input value={companyInfo.phone} onChange={(e) => handleInputChange('phone', e.target.value)} placeholder="+60 3-1234 5678" /></AutoSaveField>
