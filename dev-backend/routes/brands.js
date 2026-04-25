@@ -1739,6 +1739,10 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
         }));
         await InvoiceItem.bulkCreate(invoiceItems);
 
+        // Single source of truth: items + additional_charges + discount drive header.
+        const { finalizeInvoice } = require('../utils/invoiceCalculation');
+        await finalizeInvoice(invoice.id);
+
         generated++;
         results.push({
           restaurant: restaurant.name,

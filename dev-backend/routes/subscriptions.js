@@ -607,6 +607,9 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
             total_amount: proration.net_amount
           }, { transaction });
 
+          const { finalizeInvoice } = require('../utils/invoiceCalculation');
+          await finalizeInvoice(invoice.id, transaction);
+
           prorationInvoice = {
             invoice_id: invoice.id,
             invoice_number: invoiceNumber,

@@ -331,7 +331,13 @@ const OwnerInvoicesPage: React.FC = () => {
     status: inv.status || '',
     currency: inv.currency || 'MYR',
     amount: parseFloat(inv.subtotal || inv.amount || 0),
-    tax: parseFloat(inv.tax_amount || inv.tax || 0),
+    // Tax now lives in additional_charges (Path B canonical). Sum charge amounts;
+    // legacy `tax_amount` column was retired so we keep it as a final fallback only.
+    tax: parseFloat(
+      (Array.isArray(inv.additional_charges)
+        ? inv.additional_charges.reduce((s: number, c: any) => s + (parseFloat(c?.amount) || 0), 0)
+        : 0) || inv.tax_amount || inv.tax || 0
+    ),
     total: parseFloat(inv.total_amount || inv.total || 0),
     items: inv.items || [],
     billingPeriod: inv.billing_period_start && inv.billing_period_end

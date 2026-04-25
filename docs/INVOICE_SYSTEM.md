@@ -40,6 +40,8 @@
 3. **발행 전 결제방법 검증**: 발행자가 해당 통화의 결제방법을 등록하지 않으면 인보이스 발행 차단
 4. **통화 범위 제한**: 지원 가능한 통화는 System Admin이 설정한 범위 내에서만 선택 가능
 5. **이메일 독립**: 각 발행자가 자기 SMTP 설정으로 자기 인보이스를 발송
+6. **Single source of truth (v3.18)**: 인보이스 헤더의 `subtotal`/`discount_amount`/`total_amount` 는 항상 `items` + `additional_charges` + `discount_value` 로부터 자동 재계산됨 (`utils/invoiceCalculation.js`의 `recomputeInvoiceTotals` / `finalizeInvoice`). Frontend가 보낸 헤더 합계 값은 무시되며 모든 invoice 생성/수정 path (POST/PUT, scheduler, brands, foodcourts, hardware-quotes, subscriptions, restaurants-subscription, subscriptionInvoiceService) 에서 동일 helper를 호출함.
+7. **Tax는 `additional_charges`에만 (Path B, v3.18)**: 과거에는 `items.tax_amount` 와 `header.additional_charges` 양쪽에 같은 tax 금액을 저장하는 패턴이 일부 존재해 double-count risk가 있었음. v3.18 마이그레이션 (`scripts/recompute-invoice-totals.js`) 로 `items.tax_amount = 0` 강제 + tax는 `additional_charges`에만. 이메일 템플릿/GET 응답의 `tax` 필드는 `additional_charges` 합으로 도출.
 
 ### 1.3 통화 매칭 체인
 

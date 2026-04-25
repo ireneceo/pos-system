@@ -363,7 +363,13 @@ router.get('/', authenticateToken, async (req, res) => {
           : parseFloat(invoice.discount_amount || 0) > 0
             ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
             : parseFloat(invoice.total_amount) - parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
-        tax: parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
+        // Tax displayed in invoice list/modals = legacy items.tax_amount + canonical
+        // additional_charges. After Path B migration items.tax_amount=0, so this is
+        // effectively the additional_charges sum. Both kept for backward compat.
+        tax: parseFloat(invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0)
+           + (Array.isArray(invoice.additional_charges)
+               ? invoice.additional_charges.reduce((s, c) => s + (parseFloat(c?.amount) || 0), 0)
+               : 0),
         total: parseFloat(invoice.total_amount),
         items: (invoice.items && invoice.items.length > 0) ? invoice.items.map(item => {
           // Build description: category name + user description
@@ -498,7 +504,12 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
 
       // Calculate amounts from items if available
       const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
-      const taxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
+      // Tax = legacy item-level tax + canonical additional_charges (Path B).
+      const itemsTaxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
+      const chargesTotal = Array.isArray(invoice.additional_charges)
+        ? invoice.additional_charges.reduce((s, c) => s + (parseFloat(c?.amount) || 0), 0)
+        : 0;
+      const taxTotal = itemsTaxTotal + chargesTotal;
 
       // Transform items to frontend format
       const transformedItems = (invoice.items || []).map(item => ({
@@ -681,7 +692,11 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
           : parseFloat(invoice.discount_amount || 0) > 0
             ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
             : parseFloat(invoice.total_amount),
-        tax: invoiceItems?.reduce((sum, item) => sum + parseFloat(item.taxAmount || 0), 0) || 0,
+        // Tax = legacy item-level tax + canonical additional_charges (Path B).
+        tax: (invoiceItems?.reduce((sum, item) => sum + parseFloat(item.taxAmount || 0), 0) || 0)
+           + (Array.isArray(invoice.additional_charges)
+               ? invoice.additional_charges.reduce((s, c) => s + (parseFloat(c?.amount) || 0), 0)
+               : 0),
         total: parseFloat(invoice.total_amount),
         billingPeriod: invoice.billing_period_start
           ? `${invoice.billing_period_start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
@@ -1044,9 +1059,14 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
 
     // Transform for frontend - include all fields needed by frontend
     const transformedInvoices = await Promise.all(invoices.map(async (invoice) => {
-      // Calculate amount from items or estimate from total
+      // Calculate amount from items or estimate from total. Tax = legacy
+      // item-level tax + canonical additional_charges (Path B).
       const itemsTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.calculated_amount || item.fixed_amount || 0), 0) || 0;
-      const taxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
+      const itemsTaxTotal = invoice.items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0;
+      const chargesTotal = Array.isArray(invoice.additional_charges)
+        ? invoice.additional_charges.reduce((s, c) => s + (parseFloat(c?.amount) || 0), 0)
+        : 0;
+      const taxTotal = itemsTaxTotal + chargesTotal;
       const amount = itemsTotal || (parseFloat(invoice.total_amount) - taxTotal) || parseFloat(invoice.total_amount);
 
       // Format billing period
@@ -1230,7 +1250,11 @@ router.get('/:id', authenticateToken, async (req, res) => {
         : parseFloat(invoice.discount_amount || 0) > 0
           ? parseFloat(invoice.total_amount) + parseFloat(invoice.discount_amount)
           : parseFloat(invoice.total_amount) - (items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0),
-      tax: items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0,
+      // Tax = legacy item-level tax + canonical additional_charges (Path B).
+      tax: (items?.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0) || 0)
+         + (Array.isArray(invoice.additional_charges)
+             ? invoice.additional_charges.reduce((s, c) => s + (parseFloat(c?.amount) || 0), 0)
+             : 0),
       total: parseFloat(invoice.total_amount),
       items: items?.map(item => ({
         id: item.id?.toString(),
@@ -1287,11 +1311,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
   try {
     const { invoice_data, items } = req.body;
-
-    // Calculate total amount from items if not provided
-    if (!invoice_data.total_amount && items && items.length > 0) {
-      invoice_data.total_amount = items.reduce((sum, item) => sum + (parseFloat(item.total_amount) || 0), 0);
-    }
+    const { recomputeInvoiceTotals } = require('../utils/invoiceCalculation');
 
     // Auto-fill issued_by from authenticated user if not provided
     if (!invoice_data.issued_by) {
@@ -1333,6 +1353,13 @@ router.post('/', authenticateToken, async (req, res) => {
       delete invoice_data.subtotal_before_discount;
     }
 
+    // Single source of truth: items + additional_charges + discount drive
+    // header.subtotal, .discount_amount, .total_amount. Caller-supplied values
+    // are overwritten so the email/UI never disagrees with the DB rows.
+    const recomputed = recomputeInvoiceTotals(invoice_data, items);
+    Object.assign(invoice_data, recomputed.header);
+    const normalizedItems = recomputed.items;
+
     // Generate invoice number using standardized format
     invoice_data.invoice_number = await generateInvoiceNumber(issuerType, issuerId, transaction);
 
@@ -1340,8 +1367,8 @@ router.post('/', authenticateToken, async (req, res) => {
     const invoice = await Invoice.create(invoice_data, { transaction });
 
     // Create invoice items within same transaction
-    if (items && items.length > 0) {
-      const invoiceItems = items.map(item => ({
+    if (normalizedItems.length > 0) {
+      const invoiceItems = normalizedItems.map(item => ({
         ...item,
         invoice_id: invoice.id
       }));
@@ -1496,31 +1523,67 @@ router.put('/:id', authenticateToken, async (req, res) => {
       updateData.modification_history = history;
     }
 
+    // Determine items to use for recalculation: incoming `items` if provided,
+    // else existing rows (so an additional_charges/discount edit alone still
+    // recomputes header against the items already on disk).
+    let itemsForRecalc;
+    if (items && Array.isArray(items)) {
+      itemsForRecalc = items.map(item => ({
+        invoice_id: invoiceId,
+        item_type: item.itemType || item.item_type || 'service',
+        description: item.description || '',
+        quantity: item.quantity || 1,
+        unit_price: item.unitPrice || item.unit_price || 0,
+        calculation_method: item.calculationMethod || 'fixed',
+        calculated_amount: item.unitPrice || item.unit_price || item.calculatedAmount || 0,
+        tax_rate: item.taxRate || item.tax_rate || 0,
+        tax_amount: item.taxAmount || item.tax_amount || 0,
+        total_amount: item.total || item.total_amount || 0
+      }));
+    } else {
+      const existingItems = await InvoiceItem.findAll({
+        where: { invoice_id: invoiceId },
+        transaction
+      });
+      itemsForRecalc = existingItems.map(r => r.toJSON());
+    }
+
+    // Single source of truth recalculation. Merge incoming partial updates
+    // with the existing invoice row so unspecified fields (e.g. existing
+    // additional_charges or discount) are still considered.
+    const { recomputeInvoiceTotals } = require('../utils/invoiceCalculation');
+    const mergedHeader = {
+      subtotal: updateData.subtotal !== undefined ? updateData.subtotal : invoice.subtotal,
+      additional_charges: updateData.additional_charges !== undefined ? updateData.additional_charges : invoice.additional_charges,
+      discount_type: updateData.discount_type !== undefined ? updateData.discount_type : invoice.discount_type,
+      discount_value: updateData.discount_value !== undefined ? updateData.discount_value : invoice.discount_value
+    };
+    const recomputed = recomputeInvoiceTotals(mergedHeader, itemsForRecalc);
+    updateData.subtotal = recomputed.header.subtotal;
+    updateData.discount_amount = recomputed.header.discount_amount;
+    updateData.total_amount = recomputed.header.total_amount;
+
     await invoice.update(updateData, { transaction });
 
-    // Update items if provided
+    // Update items if provided (replace) or normalize existing rows so each
+    // row's total_amount = calculated_amount + tax_amount.
     if (items && Array.isArray(items)) {
-      // Delete existing items
       await InvoiceItem.destroy({
         where: { invoice_id: invoiceId },
         transaction
       });
-
-      // Create new items
-      if (items.length > 0) {
-        const invoiceItems = items.map(item => ({
-          invoice_id: invoiceId,
-          item_type: item.itemType || item.item_type || 'service',
-          description: item.description || '',
-          quantity: item.quantity || 1,
-          unit_price: item.unitPrice || item.unit_price || 0,
-          calculation_method: item.calculationMethod || 'fixed',
-          calculated_amount: item.unitPrice || item.unit_price || item.calculatedAmount || 0,
-          tax_rate: item.taxRate || item.tax_rate || 0,
-          tax_amount: item.taxAmount || item.tax_amount || 0,
-          total_amount: item.total || item.total_amount || 0
-        }));
-        await InvoiceItem.bulkCreate(invoiceItems, { transaction });
+      if (recomputed.items.length > 0) {
+        await InvoiceItem.bulkCreate(
+          recomputed.items.map(it => ({ ...it, invoice_id: invoiceId })),
+          { transaction }
+        );
+      }
+    } else if (recomputed.items.length > 0) {
+      for (const it of recomputed.items) {
+        await InvoiceItem.update(
+          { calculated_amount: it.calculated_amount, tax_amount: it.tax_amount, total_amount: it.total_amount },
+          { where: { id: it.id }, transaction }
+        );
       }
     }
 
@@ -1534,7 +1597,28 @@ router.put('/:id', authenticateToken, async (req, res) => {
       }]
     });
 
-    res.json({ success: true, invoice: updatedInvoice });
+    // Optional: resend invoice email after update so the recipient sees the
+    // current totals/items. Caller passes `resend_email: true` (or `resendEmail`).
+    let emailResendStatus = null;
+    if (req.body.resend_email === true || req.body.resendEmail === true) {
+      try {
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const resp = await fetch(`${baseUrl}/api/invoices/${invoiceId}/send-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': req.headers.authorization || ''
+          },
+          body: JSON.stringify({})
+        });
+        emailResendStatus = resp.ok ? 'sent' : `failed_${resp.status}`;
+      } catch (e) {
+        console.error('Resend email after update failed:', e.message);
+        emailResendStatus = 'error';
+      }
+    }
+
+    res.json({ success: true, invoice: updatedInvoice, emailResendStatus });
   } catch (error) {
     await transaction.rollback();
     console.error('Error updating invoice:', error.message, error.sql || '');
@@ -2349,7 +2433,14 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
       if (adminUser) recipientName = adminUser.full_name || adminUser.username;
     }
 
-    // Build email based on invoice type
+    // Build email based on invoice type. additional_charges + discount come
+    // from the invoice header (recomputed at write time so they're authoritative).
+    const additionalCharges = Array.isArray(invoice.additional_charges) ? invoice.additional_charges : [];
+    const discountAmount = parseFloat(invoice.discount_amount || 0);
+    const discountLabel = invoice.discount_type === 'percentage' && invoice.discount_value
+      ? `Discount (${invoice.discount_value}%)`
+      : (invoice.discount_type && invoice.discount_type !== 'none' ? 'Discount' : null);
+
     let emailContent;
     if (issuerType !== 'system_admin' && invoice.items && invoice.items.length > 0) {
       // Entity plan invoice (brand/foodcourt) — use multi-item template
@@ -2373,6 +2464,9 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
         items,
         subtotal,
         taxAmount: taxTotal,
+        additionalCharges,
+        discountAmount,
+        discountLabel,
         totalAmount: parseFloat(invoice.total_amount),
         currency: invoice.currency || 'MYR',
         billingPeriodStart: formatDate(invoice.billing_period_start),
@@ -2384,7 +2478,8 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
       });
     } else {
       // POS subscription invoice (system_admin) — use simple template
-      const subtotal = invoice.items?.reduce((sum, i) => sum + parseFloat(i.calculated_amount || 0), 0) || parseFloat(invoice.total_amount);
+      const subtotal = invoice.items?.reduce((sum, i) => sum + parseFloat(i.calculated_amount || 0), 0)
+        || parseFloat(invoice.subtotal || invoice.total_amount);
       const taxTotal = invoice.items?.reduce((sum, i) => sum + parseFloat(i.tax_amount || 0), 0) || 0;
 
       emailContent = invoiceEmail({
@@ -2394,8 +2489,11 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
         planType: invoice.category_display_name || invoice.restaurant?.plan_type || 'Subscription',
         billingCycle: 'Monthly',
         subtotal,
-        taxRate: invoice.items?.[0]?.tax_rate || 6,
+        taxRate: invoice.items?.[0]?.tax_rate || 0,
         taxAmount: taxTotal,
+        additionalCharges,
+        discountAmount,
+        discountLabel,
         totalAmount: parseFloat(invoice.total_amount),
         currency: invoice.currency || 'MYR',
         billingPeriodStart: formatDate(invoice.billing_period_start),

@@ -286,6 +286,9 @@ router.post('/:id/invoice', authenticateToken, requireRole('System Admin'), asyn
       }
     }
 
+    const { finalizeInvoice } = require('../utils/invoiceCalculation');
+    await finalizeInvoice(invoice.id);
+
     // Update quote - link invoice but keep current status (not closed)
     await quote.update({
       invoice_id: invoice.id
@@ -466,6 +469,11 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
       });
     }
 
+    {
+      const { finalizeInvoice } = require('../utils/invoiceCalculation');
+      await finalizeInvoice(hwInvoice.id);
+    }
+
     results.hardware_invoice = { id: hwInvoice.id, invoice_number: hwInvoiceNumber, total_amount: hwTotal };
 
     // === 2. Subscription Invoice (if plan selected) ===
@@ -534,6 +542,11 @@ router.post('/:id/proceed', authenticateToken, requireRole('System Admin'), asyn
           tax_rate: 0, tax_amount: 0,
           total_amount: price
         });
+
+        {
+          const { finalizeInvoice } = require('../utils/invoiceCalculation');
+          await finalizeInvoice(subInvoice.id);
+        }
 
         results.subscription_invoice = { id: subInvoice.id, invoice_number: subInvoiceNumber, total_amount: price };
       }

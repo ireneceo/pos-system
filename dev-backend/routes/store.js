@@ -68,6 +68,7 @@ router.get('/settings', authenticateToken, async (req, res) => {
         email: restaurant.email,
         phone: restaurant.phone,
         address: restaurant.address,
+        address_line_2: restaurant.address_line_2,
         city: restaurant.city,
         state: restaurant.state,
         postal_code: restaurant.postal_code,
@@ -164,9 +165,11 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
     console.log('✓ Restaurant found:', restaurant.name);
 
-    // Update allowed fields
+    // Update allowed fields. address_line_2 is part of the canonical 6-field
+    // address schema unified in v3.17 — Settings page now sends it via the
+    // shared <AddressFields> component and we must accept it here.
     const allowedFields = [
-      'name', 'email', 'phone', 'address', 'city', 'state',
+      'name', 'email', 'phone', 'address', 'address_line_2', 'city', 'state',
       'postal_code', 'country', 'website', 'logo_url',
       'business_registration', 'tax_id',
       'payment_settings', 'operation_settings', 'table_settings', 'mobile_settings',

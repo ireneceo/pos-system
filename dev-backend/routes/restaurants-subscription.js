@@ -395,7 +395,7 @@ router.post('/subscriptions', authenticateToken, async (req, res) => {
       issued_at: new Date()
     });
 
-    // Create invoice item
+    // Create invoice item — header recalc below makes tax_amount=0 (Path B)
     await require('../models/InvoiceItem').create({
       invoice_id: invoice.id,
       item_type: 'subscription',
@@ -404,9 +404,16 @@ router.post('/subscriptions', authenticateToken, async (req, res) => {
       fixed_amount: billingCycle === 'annual' ? fees.annual : fees.monthly,
       calculated_amount: billingCycle === 'annual' ? fees.annual : fees.monthly,
       tax_rate: 6.0,
-      tax_amount: (billingCycle === 'annual' ? fees.annual : fees.monthly) * 0.06,
-      total_amount: (billingCycle === 'annual' ? fees.annual : fees.monthly) * 1.06
+      tax_amount: 0,
+      total_amount: billingCycle === 'annual' ? fees.annual : fees.monthly
     });
+
+    // Persist tax as additional_charges so the recompute helper preserves it.
+    const taxAmt = Math.round((billingCycle === 'annual' ? fees.annual : fees.monthly) * 0.06 * 100) / 100;
+    await invoice.update({ additional_charges: [{ name: 'SST', rate: 6, amount: taxAmt }] });
+
+    const { finalizeInvoice } = require('../utils/invoiceCalculation');
+    await finalizeInvoice(invoice.id);
 
     // Send Invoice Email (non-blocking, system_admin SMTP for POS subscriptions)
     try {

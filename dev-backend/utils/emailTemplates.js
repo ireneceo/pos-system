@@ -203,6 +203,9 @@ function welcomeEmail(data) {
  * @param {number} data.subtotal
  * @param {number} data.taxRate
  * @param {number} data.taxAmount
+ * @param {Array}  [data.additionalCharges] - [{name, rate, amount}] header-level charges (SST, etc.)
+ * @param {number} [data.discountAmount] - applied discount (>0)
+ * @param {string} [data.discountLabel]  - e.g. "Discount (10%)" or "Promo"
  * @param {number} data.totalAmount
  * @param {string} data.currency
  * @param {string} data.billingPeriodStart
@@ -214,13 +217,38 @@ function welcomeEmail(data) {
 function invoiceEmail(data) {
   const {
     adminName, restaurantName, invoiceNumber, planType, billingCycle,
-    subtotal, taxRate, taxAmount, totalAmount, currency,
+    subtotal, taxRate, taxAmount, additionalCharges, discountAmount, discountLabel,
+    totalAmount, currency,
     billingPeriodStart, billingPeriodEnd, dueDate, dashboardUrl, issuerInfo
   } = data;
 
   const sym = (currency === 'MYR' || currency === 'RM') ? 'RM' : currency;
   const brandColor = issuerInfo?.color || '#635BFF';
   const issuerName = issuerInfo?.name || 'PurpleHere POS';
+
+  // Header-level charges (e.g. SST 6% applied to whole invoice). Item-level
+  // tax is shown only if any item carries a non-zero tax_amount; otherwise
+  // it's suppressed so the email never reads "Tax 0.00" as a phantom line.
+  const showItemTax = (Number(taxAmount) || 0) > 0;
+  const chargesArr = Array.isArray(additionalCharges) ? additionalCharges : [];
+  const chargeRows = chargesArr.map(c => `
+      <tr>
+        <td style="padding:8px 20px;">
+          <span style="color:#6B7C93;font-size:13px;">${c.name}${c.rate ? ` (${c.rate}%)` : ''}</span>
+        </td>
+        <td style="padding:8px 20px;text-align:right;">
+          <span style="color:#6B7C93;font-size:13px;">${sym} ${(Number(c.amount) || 0).toFixed(2)}</span>
+        </td>
+      </tr>`).join('');
+  const discountRow = (Number(discountAmount) || 0) > 0 ? `
+      <tr>
+        <td style="padding:8px 20px;">
+          <span style="color:#15803D;font-size:13px;">${discountLabel || 'Discount'}</span>
+        </td>
+        <td style="padding:8px 20px;text-align:right;">
+          <span style="color:#15803D;font-size:13px;">− ${sym} ${(Number(discountAmount) || 0).toFixed(2)}</span>
+        </td>
+      </tr>` : '';
 
   const bodyContent = `
     <h2 style="margin:0 0 8px;color:#0A2540;font-size:20px;">Invoice for ${restaurantName}</h2>
@@ -255,14 +283,16 @@ function invoiceEmail(data) {
           <span style="color:#0A2540;font-size:14px;">${sym} ${subtotal.toFixed(2)}</span>
         </td>
       </tr>
-      <tr>
+      ${discountRow}
+      ${showItemTax ? `<tr>
         <td style="padding:8px 20px;">
-          <span style="color:#6B7C93;font-size:13px;">Tax (${taxRate}%)</span>
+          <span style="color:#6B7C93;font-size:13px;">Tax${taxRate ? ` (${taxRate}%)` : ''}</span>
         </td>
         <td style="padding:8px 20px;text-align:right;">
           <span style="color:#6B7C93;font-size:13px;">${sym} ${taxAmount.toFixed(2)}</span>
         </td>
-      </tr>
+      </tr>` : ''}
+      ${chargeRows}
       <tr>
         <td style="padding:16px 20px;border-top:2px solid ${brandColor};">
           <strong style="color:#0A2540;font-size:16px;">Total</strong>
@@ -280,6 +310,9 @@ function invoiceEmail(data) {
 
   const subject = `Invoice ${invoiceNumber} - ${issuerName}`;
 
+  const chargeLines = chargesArr.map(c =>
+    `${c.name}${c.rate ? ` (${c.rate}%)` : ''}: ${sym} ${(Number(c.amount) || 0).toFixed(2)}`
+  );
   const text = [
     `Invoice for ${restaurantName}`,
     ``,
@@ -292,11 +325,13 @@ function invoiceEmail(data) {
     `Billing Period: ${billingPeriodStart} - ${billingPeriodEnd}`,
     ``,
     `${planType} - ${billingCycle} Subscription: ${sym} ${subtotal.toFixed(2)}`,
-    `Tax (${taxRate}%): ${sym} ${taxAmount.toFixed(2)}`,
+    (Number(discountAmount) || 0) > 0 ? `${discountLabel || 'Discount'}: -${sym} ${(Number(discountAmount) || 0).toFixed(2)}` : '',
+    showItemTax ? `Tax${taxRate ? ` (${taxRate}%)` : ''}: ${sym} ${taxAmount.toFixed(2)}` : '',
+    ...chargeLines,
     `Total: ${sym} ${totalAmount.toFixed(2)}`,
     ``,
     `View invoice: ${dashboardUrl}`
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   return { subject, html: emailLayout(bodyContent, issuerInfo), text };
 }
@@ -312,6 +347,9 @@ function invoiceEmail(data) {
  * @param {Array} data.items - [{description, calculated_amount, tax_amount, total_amount}]
  * @param {number} data.subtotal
  * @param {number} data.taxAmount
+ * @param {Array}  [data.additionalCharges] - [{name, rate, amount}] header-level charges
+ * @param {number} [data.discountAmount]
+ * @param {string} [data.discountLabel]
  * @param {number} data.totalAmount
  * @param {string} data.currency
  * @param {string} data.billingPeriodStart
@@ -324,7 +362,8 @@ function invoiceEmail(data) {
 function entityPlanInvoiceEmail(data) {
   const {
     recipientName, restaurantName, invoiceNumber, planName,
-    items, subtotal, taxAmount, totalAmount, currency,
+    items, subtotal, taxAmount, additionalCharges, discountAmount, discountLabel,
+    totalAmount, currency,
     billingPeriodStart, billingPeriodEnd, dueDate, revenue,
     dashboardUrl, issuerInfo
   } = data;
@@ -351,6 +390,29 @@ function entityPlanInvoiceEmail(data) {
         </td>
       </tr>`
     : '';
+
+  // Header-level charges (e.g. SST 6%) and discount, only when non-zero so
+  // the email never shows phantom 0.00 lines.
+  const showItemTax = (Number(taxAmount) || 0) > 0;
+  const chargesArr = Array.isArray(additionalCharges) ? additionalCharges : [];
+  const chargeRows = chargesArr.map(c => `
+      <tr>
+        <td style="padding:8px 20px;">
+          <span style="color:#6B7C93;font-size:13px;">${c.name}${c.rate ? ` (${c.rate}%)` : ''}</span>
+        </td>
+        <td style="padding:8px 20px;text-align:right;">
+          <span style="color:#6B7C93;font-size:13px;">${sym} ${(Number(c.amount) || 0).toFixed(2)}</span>
+        </td>
+      </tr>`).join('');
+  const discountRow = (Number(discountAmount) || 0) > 0 ? `
+      <tr>
+        <td style="padding:8px 20px;">
+          <span style="color:#15803D;font-size:13px;">${discountLabel || 'Discount'}</span>
+        </td>
+        <td style="padding:8px 20px;text-align:right;">
+          <span style="color:#15803D;font-size:13px;">− ${sym} ${(Number(discountAmount) || 0).toFixed(2)}</span>
+        </td>
+      </tr>` : '';
 
   const bodyContent = `
     <h2 style="margin:0 0 8px;color:#0A2540;font-size:20px;">Invoice for ${restaurantName}</h2>
@@ -379,14 +441,16 @@ function entityPlanInvoiceEmail(data) {
       </tr>
       ${revenueBlock}
       ${itemRows}
-      <tr>
+      ${discountRow}
+      ${showItemTax ? `<tr>
         <td style="padding:8px 20px;">
           <span style="color:#6B7C93;font-size:13px;">Tax</span>
         </td>
         <td style="padding:8px 20px;text-align:right;">
           <span style="color:#6B7C93;font-size:13px;">${sym} ${taxAmount.toFixed(2)}</span>
         </td>
-      </tr>
+      </tr>` : ''}
+      ${chargeRows}
       <tr>
         <td style="padding:16px 20px;border-top:2px solid ${brandColor};">
           <strong style="color:#0A2540;font-size:16px;">Total</strong>
@@ -409,6 +473,9 @@ function entityPlanInvoiceEmail(data) {
     `${item.description}: ${sym} ${parseFloat(item.calculated_amount).toFixed(2)}`
   ).join('\n');
 
+  const chargeLines = chargesArr.map(c =>
+    `${c.name}${c.rate ? ` (${c.rate}%)` : ''}: ${sym} ${(Number(c.amount) || 0).toFixed(2)}`
+  );
   const text = [
     `Invoice for ${restaurantName}`,
     ``,
@@ -422,7 +489,9 @@ function entityPlanInvoiceEmail(data) {
     revenue !== undefined ? `Period Revenue: ${sym} ${parseFloat(revenue).toFixed(2)}` : '',
     ``,
     itemsText,
-    `Tax: ${sym} ${taxAmount.toFixed(2)}`,
+    (Number(discountAmount) || 0) > 0 ? `${discountLabel || 'Discount'}: -${sym} ${(Number(discountAmount) || 0).toFixed(2)}` : '',
+    showItemTax ? `Tax: ${sym} ${taxAmount.toFixed(2)}` : '',
+    ...chargeLines,
     `Total: ${sym} ${totalAmount.toFixed(2)}`,
     ``,
     `View invoice: ${dashboardUrl}`

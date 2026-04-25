@@ -309,6 +309,10 @@ class InvoiceScheduler {
       total_amount: discountedAmount
     });
 
+    // Single source of truth — header recomputed from items + additional_charges + discount.
+    const { finalizeInvoice } = require('../utils/invoiceCalculation');
+    await finalizeInvoice(invoice.id);
+
     console.log(`✓ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}`);
 
     // Send email notification (non-blocking)
@@ -592,6 +596,11 @@ class InvoiceScheduler {
             }));
             await InvoiceItem.bulkCreate(invoiceItems);
 
+            // Recompute header against the items + additional_charges so the
+            // email/UI never disagree with the DB.
+            const { finalizeInvoice } = require('../utils/invoiceCalculation');
+            await finalizeInvoice(invoice.id);
+
             result.generated++;
             console.log(`✓ [ENTITY PLAN] ${invoiceNumber} for ${restaurant.name} - ${invoiceCurrency} ${finalTotalAmount.toFixed(2)} (billing_day: ${effectiveBillingDay})`);
 
@@ -779,6 +788,9 @@ class InvoiceScheduler {
             total_amount: planAmount,
             item_type: 'subscription'
           });
+
+          const { finalizeInvoice } = require('../utils/invoiceCalculation');
+          await finalizeInvoice(invoice.id);
 
           result.generated++;
           console.log(`✓ [ENTITY SUB] ${invoiceNumber} for ${name} - ${currency} ${planAmount.toFixed(2)}`);
@@ -1224,6 +1236,9 @@ class InvoiceScheduler {
       amount: planAmount,
       item_type: 'subscription'
     });
+
+    const { finalizeInvoice } = require('../utils/invoiceCalculation');
+    await finalizeInvoice(invoice.id);
 
     console.log(`✓ Entity subscription invoice created: ${invoiceNumber} (${currency} ${planAmount})`);
     return invoice;

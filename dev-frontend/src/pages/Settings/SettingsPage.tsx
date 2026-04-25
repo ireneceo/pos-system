@@ -12,6 +12,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
+import AddressFields from '../../components/Form/AddressFields';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useTabParam } from '../../hooks/useTabParam';
 import { getPrinterMode, setPrinterMode, connectQZTray, disconnectQZTray, isQZTrayConnected, getQZTrayPrinters, qzTrayTestPrint } from '../../utils/billPrint';
@@ -377,6 +378,7 @@ interface StoreSettings {
   phone: string;
   email: string;
   address: string;
+  address_line_2: string;
   city: string;
   state: string;
   postalCode: string;
@@ -579,6 +581,8 @@ const SettingsPage: React.FC = () => {
   const [, setSaveStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // Debounce timer for AddressFields onChange — avoids hammering /api on every keystroke.
+  const addressSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveCallbackRef = useRef<(() => Promise<void>) | null>(null);
 
   const markChanged = () => {
@@ -701,6 +705,7 @@ const SettingsPage: React.FC = () => {
         phone: '+60 3-1234-5678',
         email: 'contact@foodcourt.com',
         address: '123 Main Street, City Center',
+        address_line_2: '',
         city: 'Kuala Lumpur',
         state: 'Wilayah Persekutuan',
         postalCode: '50000',
@@ -983,10 +988,11 @@ const SettingsPage: React.FC = () => {
               phone: restaurant.phone || '',
               email: restaurant.email || '',
               address: restaurant.address || '',
+              address_line_2: restaurant.address_line_2 || '',
               city: restaurant.city || '',
               state: restaurant.state || '',
               postalCode: restaurant.postal_code || '',
-              country: restaurant.country || 'MY',
+              country: (restaurant.country || 'MY').toString().toUpperCase(),
               gstRegNo: restaurant.tax_id || '',
               logo: restaurant.logo_url || ''
             });
@@ -1854,6 +1860,7 @@ const SettingsPage: React.FC = () => {
           phone: storeSettings.phone,
           email: storeSettings.email,
           address: storeSettings.address,
+          address_line_2: storeSettings.address_line_2,
           city: storeSettings.city,
           state: storeSettings.state,
           postal_code: storeSettings.postalCode,
@@ -2737,54 +2744,45 @@ const SettingsPage: React.FC = () => {
 
               <SettingsCard>
                 <CardTitle>{t('settings:settingsPage.location')}</CardTitle>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.address')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                    <Input type="text" value={storeSettings.address}
-                      onChange={(e) => setStoreSettings(prev => ({ ...prev, address: e.target.value }))}
-                      placeholder="123 Main Street, City Center" />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.city')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                    <Input type="text" value={storeSettings.city}
-                      onChange={(e) => setStoreSettings(prev => ({ ...prev, city: e.target.value }))}
-                      placeholder="Kuala Lumpur" />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.state')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                    <Input type="text" value={storeSettings.state}
-                      onChange={(e) => setStoreSettings(prev => ({ ...prev, state: e.target.value }))}
-                      placeholder="Wilayah Persekutuan" />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.postalCode')}</Label>
-                  <AutoSaveField onSave={handleSave}>
-                    <Input type="text" value={storeSettings.postalCode}
-                      onChange={(e) => setStoreSettings(prev => ({ ...prev, postalCode: e.target.value }))}
-                      placeholder="50000" />
-                  </AutoSaveField>
-                </FormGroup>
-                <FormGroup>
-                  <Label>{t('settings:settingsPage.country')}</Label>
-                  <AutoSaveField onSave={handleSave} type="select">
-                    <Select value={storeSettings.country}
-                      onChange={(e) => {
-                        const newCountry = e.target.value;
-                        setStoreSettings(prev => ({ ...prev, country: newCountry }));
-                        const countryInfo = COUNTRIES.find(c => c.code === newCountry);
-                        if (countryInfo) setOperationSettings(prev => ({ ...prev, timeZone: countryInfo.timezone }));
-                      }}>
-                      {COUNTRIES.map(country => (
-                        <option key={country.code} value={country.code}>{country.name}</option>
-                      ))}
-                    </Select>
-                  </AutoSaveField>
-                </FormGroup>
+                {/*
+                  Unified address input — same `<AddressFields>` component used
+                  across Admin/Manager/Brand/Foodcourt/Suppliers pages, so the
+                  6 canonical fields (line1, line2, city, state, postal, ISO
+                  country) stay 1:1 with the DB columns. Edits are persisted
+                  via the existing handleSave with a 600 ms debounce so each
+                  keystroke does not hammer the API.
+                */}
+                <AddressFields
+                  value={{
+                    address: storeSettings.address,
+                    address_line_2: storeSettings.address_line_2,
+                    city: storeSettings.city,
+                    state: storeSettings.state,
+                    postal_code: storeSettings.postalCode,
+                    country: storeSettings.country
+                  }}
+                  onChange={(addr) => {
+                    const newCountry = (addr.country || '').toUpperCase();
+                    const next: StoreSettings = {
+                      ...storeSettings,
+                      address: addr.address || '',
+                      address_line_2: addr.address_line_2 || '',
+                      city: addr.city || '',
+                      state: addr.state || '',
+                      postalCode: addr.postal_code || '',
+                      country: newCountry
+                    };
+                    setStoreSettings(next);
+                    setHasChanges(true);
+                    if (newCountry !== storeSettings.country) {
+                      const countryInfo = COUNTRIES.find(c => c.code === newCountry);
+                      if (countryInfo) setOperationSettings(prev => ({ ...prev, timeZone: countryInfo.timezone }));
+                    }
+                    if (addressSaveTimerRef.current) clearTimeout(addressSaveTimerRef.current);
+                    addressSaveTimerRef.current = setTimeout(() => { handleSave(); }, 600);
+                  }}
+                  defaultCountry={storeSettings.country || 'MY'}
+                />
               </SettingsCard>
               </SettingsGrid>
 

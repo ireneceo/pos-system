@@ -1530,6 +1530,10 @@ router.post('/:id/generate-invoices', authenticateToken, async (req, res) => {
         });
 
         await InvoiceItem.bulkCreate(charges.items.map(item => ({ ...item, invoice_id: invoice.id })));
+
+        const { finalizeInvoice } = require('../utils/invoiceCalculation');
+        await finalizeInvoice(invoice.id);
+
         generated++;
         results.push({ restaurant: restaurant.name, status: 'generated', invoice_number: invoiceNumber, amount: charges.totalAmount, revenue });
       }

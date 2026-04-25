@@ -6,6 +6,16 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-25
+- 운영 콘텐츠 sync — release-v3.16 + 다국어 마케팅 12건 + FAQ 11건 (53건) 운영 DB 반영
+- 운영 enum ALTER — `users.subscription_status += 'overdue'`, `notification_settings.entity_type += 'brand'/'foodcourt'`
+- Invoice 헤더 자동 재계산 (Single source of truth) — 11개 invoice 생성/수정 path에 `finalizeInvoice` 적용. 헤더 `subtotal/discount/total`은 항상 items + additional_charges + discount 로부터 도출
+- Invoice tax 저장 표준화 (Path B) — `items.tax_amount` 폐기, 모든 tax는 `header.additional_charges`에만. dev 79건 마이그
+- Invoice 이메일 템플릿 보강 — `additional_charges` + `discount` 행 표시, phantom "Tax 0.00" 라인 제거. INV-2026040005 같은 산술 모순 ("Tax 0 + 179 = 189.74") 해소
+- Invoice GET 응답 `tax` 필드 보강 — frontend 모달이 표시하던 Tax 0 버그 fix (4 endpoint)
+- Invoice 수정 시 이메일 재발송 옵션 — `PUT /api/invoices/:id` 에 `resend_email: true` 추가
+- Restaurant Settings 페이지 주소 통일 — `/restaurant/:id/settings` 에 `<AddressFields>` 통합 + `address_line_2` 추가 + 600 ms debounce save
+
 
 ## [v3.17] — 2026-04-24 배포
 

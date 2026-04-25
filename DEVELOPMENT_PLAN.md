@@ -1,9 +1,62 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-24 (v3.17 배포 완료)
+> **최종 업데이트:** 2026-04-25 (v3.18 진행 중 — 다음 세션 이어서)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.17 (2026-04-24 운영 배포)**
+> **현재 버전:** **v3.18 [Unreleased]** (v3.17 운영 배포 후 누적)
+
+---
+
+## 🔄 진행 중: v3.18 (2026-04-25, 미배포)
+
+### 완료된 묶음 (이번 세션, dev only)
+
+#### 1. 운영 동기화 보강 ✓
+- 운영 누락 콘텐츠 53건 sync (`scripts/sync-content-to-prod.js`): release-v3.16 + 다국어 마케팅 12건 + FAQ 11건
+- 운영 enum ALTER 2건: `users.subscription_status += 'overdue'`, `notification_settings.entity_type += 'brand', 'foodcourt'`
+- dev `entity_plan_charges` dead 테이블 drop
+
+#### 2. Invoice 정합성 — Single Source of Truth ✓
+- 근본 원인: header(subtotal/discount/total) vs items(calc/tax/total) 별도 path → 산술 모순 + 17건 tax double-count risk
+- `utils/invoiceCalculation.js` (recompute + finalize) — 11곳 invoice 생성/수정 site 적용
+- 데이터 모델 정리: `items.tax_amount = 0` 강제 (Path A 폐기), tax는 `additional_charges`만 (Path B)
+- 79건 마이그 (46 touched, 33 unchanged)
+- 이메일 템플릿: `additional_charges` 행 + `discount` 행 + phantom 0 라인 suppress
+- Backend GET 응답 4곳 tax 필드 보강 (frontend modal Tax 0 표시 버그 fix)
+- PUT `resend_email: true` 옵션 (수정 후 fresh fetch 재발송)
+- Frontend `Restaurant/InvoicesPage.tsx`, `Owner/OwnerInvoicesPage.tsx` tax field 보강
+
+#### 3. 주소 시스템 통일 — Phase 1 ✓
+- `Settings/SettingsPage.tsx` (`/restaurant/:id/settings`) → `<AddressFields>` 통합
+- `address_line_2` 필드 추가, 600 ms debounce save
+- `routes/store.js` `address_line_2` allowedFields + GET 응답
+- 빌드 `main.a952c113.js`
+
+### 다음 세션 우선순위 (A → B → C)
+
+#### A. 주소 시스템 — Phase 2 (Task #12 잔여)
+**Irene 결정 필요:**
+1. 자동완성 방식 (Google Places / Nominatim / 안 함)
+2. AutoSave 패턴 페이지 (BrandCompanyInfo/CompanyInformation/AdminSettings) 통일?
+3. 운영 #10 데이터 정리 방식
+
+#### B. F3 — 17 이메일 발송 site audit (Task #10 잔여)
+`docs/EMAIL_INTEGRITY_AUDIT.md` 작성. 각 site fresh fetch / hardcoded / stale 점검.
+
+#### C. v3.18 잔여 (Task #2~7, #9)
+- Task #9: `MODULE_GATED_ROUTES` prefix 정합성 (`/pos/brand/subscriptions` 불일치)
+- Task #2: Basic 전수 체험 + gap 기록
+- Task #3: Basic UI gap 보강
+- Task #4: Invoice 수동 발행 prefill
+- Task #5: Contract Detail Open contract → 검증
+- Task #6: Pricing/FAQ/블로그 갱신
+- Task #7: 검증 + CHANGELOG + 배포
+
+### 미배포
+이번 세션 누적 변경분은 **운영 미배포**. `/배포` 시:
+1. 코드 rsync
+2. 운영 invoice 마이그 (audit-tax-pattern.js 먼저 → dry-run → apply)
+3. 운영 Restaurant #10 주소 정리 (Irene 직접 입력 권장)
 
 ---
 

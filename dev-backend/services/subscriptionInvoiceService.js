@@ -313,6 +313,9 @@ async function createInitialInvoice(subject) {
     total_amount: data.totalAmount
   });
 
+  const { finalizeInvoice } = require('../utils/invoiceCalculation');
+  await finalizeInvoice(invoice.id);
+
   console.log(`[SubInvoice] Created ${invoiceNumber} for ${subject.kind} ${subject.id} (${data.currency} ${data.totalAmount.toFixed(2)})`);
   return { invoice, invoiceNumber };
 }
