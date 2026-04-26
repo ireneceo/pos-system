@@ -28,7 +28,16 @@
       "Bash(scp /tmp/img_audit.js irene@87.106.78.146:/tmp/img_audit.js)",
       "Bash(pm2 status *)",
       "Bash(scp -q irene@87.106.78.146:/tmp/prod_schema_now.json /tmp/prod_schema_now.json)",
-      "Bash(echo \"Prod schema fetched, $\\(node -e \"console.log\\(Object.keys\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('/tmp/prod_schema_now.json','utf8'\\)\\)\\).length\\)\"\\) tables\")"
+      "Bash(echo \"Prod schema fetched, $\\(node -e \"console.log\\(Object.keys\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('/tmp/prod_schema_now.json','utf8'\\)\\)\\).length\\)\"\\) tables\")",
+      "Bash(who am *)",
+      "Bash(last -n 5 irene)",
+      "Bash(npx tsc *)",
+      "Bash(python3 *)",
+      "Bash(npm run *)",
+      "Bash(npx eslint *)",
+      "Bash(awk NR>=720 && NR<=780 *)",
+      "Bash(pkill -f \"react-scripts\")",
+      "Bash(git rm *)"
     ],
     "deny": [],
     "ask": []

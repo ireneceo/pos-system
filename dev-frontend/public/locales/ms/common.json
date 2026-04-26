@@ -163,7 +163,8 @@
     "foodcourtManager": "Pengurus Medan Selera",
     "restaurantOwner": "Pemilik Restoran",
     "restaurantAdmin": "Pentadbir Restoran",
-    "staff": "Kakitangan"
+    "staff": "Kakitangan",
+    "supplier_admin": "Pentadbir Pembekal"
   },
   "nav": {
     "dashboard": "Papan Pemuka",

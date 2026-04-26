@@ -533,6 +533,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       case 'System Admin': return '/pos/admin/dashboard';
       case 'Brand General': case 'Brand Manager': return '/pos/brand/general/dashboard';
       case 'Foodcourt General': case 'Foodcourt Manager': return '/pos/foodcourt/general/dashboard';
+      case 'Supplier Admin': return '/pos/supplier/dashboard';
       case 'Restaurant Owner': return '/pos/owner/dashboard';
       case 'Restaurant Admin': case 'Staff': return `/restaurant/${restaurantId}/dashboard`;
       default: return '/pos/dashboard';
@@ -1001,6 +1002,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   {t("nav.staff")}
                 </NavItem>
 
+                <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
+                <NavItem to="/pos/admin/supplier-companies" active={isActive('/pos/admin/supplier-companies')} onClick={closeSidebar}>
+                  <NavIcon>◉</NavIcon>
+                  {t("nav.supplierCompanies", "Supplier Companies")}
+                </NavItem>
+                <NavItem to="/pos/admin/supplier-invitations" active={isActive('/pos/admin/supplier-invitations')} onClick={closeSidebar}>
+                  <NavIcon>@</NavIcon>
+                  {t("nav.supplierInvitations", "Supplier Invitations")}
+                </NavItem>
+
                 <NavTitle>{t("nav.section.operations")}</NavTitle>
                 <NavItem to="/pos/admin/invoices" active={isActive('/pos/admin/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
                   <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
@@ -1158,6 +1169,47 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </>
                 )}
 
+                {hasManagerPermission('products') && (
+                  isRouteAllowed('/pos/suppliers/directory') ||
+                  isRouteAllowed('/pos/suppliers/contracts') ||
+                  isRouteAllowed('/pos/purchase-orders') ||
+                  isRouteAllowed('/pos/purchase-invoices')
+                ) && (
+                  <>
+                    <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
+                    {isRouteAllowed('/pos/suppliers/directory') && (
+                      <NavItem to="/pos/suppliers/directory" active={isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                        <NavIcon>◉</NavIcon>
+                        {t("nav.findSuppliers", "Find Suppliers")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/suppliers/contracts') && (
+                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        {t("nav.mySuppliers", "My Suppliers")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/purchase-orders') && (
+                      <NavItem to="/pos/purchase-orders" active={isActive('/pos/purchase-orders')} onClick={closeSidebar}>
+                        <NavIcon>▤</NavIcon>
+                        {t("nav.purchaseOrders", "Purchase Orders")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/purchase-invoices') && (
+                      <NavItem to="/pos/purchase-invoices" active={isActive('/pos/purchase-invoices')} onClick={closeSidebar}>
+                        <NavIcon>▦</NavIcon>
+                        {t("nav.purchaseInvoices", "Purchase Invoices")}
+                      </NavItem>
+                    )}
+                    {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
+                      <NavItem to="/pos/brand/general/incoming-orders" active={isActive('/pos/brand/general/incoming-orders')} onClick={closeSidebar}>
+                        <NavIcon>↓</NavIcon>
+                        {t("nav.incomingOrders", "Incoming Orders")}
+                      </NavItem>
+                    )}
+                  </>
+                )}
+
                 {hasManagerPermission('operations') && (
                   isRouteAllowed('/pos/brand/invoices') ||
                   isRouteAllowed('/pos/brand/general/reports') ||
@@ -1300,6 +1352,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   isRouteAllowed('/pos/manager/restaurants') ||
                   isRouteAllowed('/pos/manager/staff') ||
                   isRouteAllowed('/pos/foodcourt/manager') ||
+                  isRouteAllowed('/pos/foodcourt/general/products') ||
+                  isRouteAllowed('/pos/foodcourt/general/inventory') ||
                   user?.role === 'Foodcourt General'
                 ) && (
                   <>
@@ -1326,6 +1380,59 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       <NavItem to="/pos/foodcourt/manager" active={isActive('/pos/foodcourt/manager')} onClick={closeSidebar}>
                         <NavIcon>◇</NavIcon>
                         {t("nav.managers")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/foodcourt/general/products') && (
+                      <NavItem to="/pos/foodcourt/general/products" active={isActive('/pos/foodcourt/general/products')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        {t("nav.products")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/foodcourt/general/inventory') && (
+                      <NavItem to="/pos/foodcourt/general/inventory" active={isActive('/pos/foodcourt/general/inventory')} onClick={closeSidebar}>
+                        <NavIcon>▦</NavIcon>
+                        {t("nav.inventory")}
+                      </NavItem>
+                    )}
+                  </>
+                )}
+
+                {hasManagerPermission('management') && (
+                  isRouteAllowed('/pos/suppliers/directory') ||
+                  isRouteAllowed('/pos/suppliers/contracts') ||
+                  isRouteAllowed('/pos/purchase-orders') ||
+                  isRouteAllowed('/pos/purchase-invoices')
+                ) && (
+                  <>
+                    <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
+                    {isRouteAllowed('/pos/suppliers/directory') && (
+                      <NavItem to="/pos/suppliers/directory" active={isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                        <NavIcon>◉</NavIcon>
+                        {t("nav.findSuppliers", "Find Suppliers")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/suppliers/contracts') && (
+                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        {t("nav.mySuppliers", "My Suppliers")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/purchase-orders') && (
+                      <NavItem to="/pos/purchase-orders" active={isActive('/pos/purchase-orders')} onClick={closeSidebar}>
+                        <NavIcon>▤</NavIcon>
+                        {t("nav.purchaseOrders", "Purchase Orders")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/purchase-invoices') && (
+                      <NavItem to="/pos/purchase-invoices" active={isActive('/pos/purchase-invoices')} onClick={closeSidebar}>
+                        <NavIcon>▦</NavIcon>
+                        {t("nav.purchaseInvoices", "Purchase Invoices")}
+                      </NavItem>
+                    )}
+                    {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
+                      <NavItem to="/pos/foodcourt/general/incoming-orders" active={isActive('/pos/foodcourt/general/incoming-orders')} onClick={closeSidebar}>
+                        <NavIcon>↓</NavIcon>
+                        {t("nav.incomingOrders", "Incoming Orders")}
                       </NavItem>
                     )}
                   </>
@@ -1441,6 +1548,36 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </NavItem>
                 )}
 
+                {(isRouteAllowed('/pos/suppliers/directory') || isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/purchase-orders') || isRouteAllowed('/pos/purchase-invoices')) && (
+                  <>
+                    <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
+                    {isRouteAllowed('/pos/suppliers/directory') && (
+                      <NavItem to="/pos/suppliers/directory" active={isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                        <NavIcon>◉</NavIcon>
+                        {t("nav.findSuppliers", "Find Suppliers")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/suppliers/contracts') && (
+                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        {t("nav.mySuppliers", "My Suppliers")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/purchase-orders') && (
+                      <NavItem to="/pos/purchase-orders" active={isActive('/pos/purchase-orders')} onClick={closeSidebar}>
+                        <NavIcon>▤</NavIcon>
+                        {t("nav.purchaseOrders", "Purchase Orders")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/purchase-invoices') && (
+                      <NavItem to="/pos/purchase-invoices" active={isActive('/pos/purchase-invoices')} onClick={closeSidebar}>
+                        <NavIcon>▦</NavIcon>
+                        {t("nav.purchaseInvoices", "Purchase Invoices")}
+                      </NavItem>
+                    )}
+                  </>
+                )}
+
                 {(isRouteAllowed('/pos/owner/invoices') || isRouteAllowed('/pos/owner/performance') || isRouteAllowed('/pos/owner/reports')) && (
                   <>
                     <NavTitle>{t("nav.section.operations")}</NavTitle>
@@ -1497,45 +1634,74 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </>
             )}
 
-            {/* ========== SUPPLIER ADMIN (NEW) ========== */}
+            {/* ========== SUPPLIER ADMIN ========== */}
             {user?.role === 'Supplier Admin' && (
               <>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/supplier/dashboard" active={isActive('/pos/supplier/dashboard')} onClick={closeSidebar}>
+                  <NavIcon>■</NavIcon>
                   {t("nav.dashboard")}
-                </DisabledNavItem>
+                </NavItem>
 
-                <NavTitle>{t("nav.section.orders")}</NavTitle>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  {t("nav.purchaseOrders")}
-                </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  {t("nav.orderHistory")}
-                </DisabledNavItem>
+                {isRouteAllowed('/pos/supplier/products') && (
+                  <NavItem to="/pos/supplier/products" active={isActive('/pos/supplier/products')} onClick={closeSidebar}>
+                    <NavIcon>◇</NavIcon>
+                    {t("nav.products")}
+                  </NavItem>
+                )}
 
-                <NavTitle>{t("nav.section.products")}</NavTitle>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  {t("nav.products")}
-                </DisabledNavItem>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  {t("nav.priceList")}
-                </DisabledNavItem>
+                {isRouteAllowed('/pos/supplier/inventory') && (
+                  <NavItem to="/pos/supplier/inventory" active={isActive('/pos/supplier/inventory')} onClick={closeSidebar}>
+                    <NavIcon>▦</NavIcon>
+                    {t("nav.inventory")}
+                  </NavItem>
+                )}
 
-                <NavTitle>{t("nav.section.customers")}</NavTitle>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  {t("nav.restaurants")}
-                </DisabledNavItem>
+                <NavItem to="/pos/supplier/customers" active={isActive('/pos/supplier/customers')} onClick={closeSidebar}>
+                  <NavIcon>◯</NavIcon>
+                  {t("nav.customers", "Customers")}
+                </NavItem>
+                <NavItem to="/pos/supplier/contracts" active={isActive('/pos/supplier/contracts')} onClick={closeSidebar}>
+                  <NavIcon>◇</NavIcon>
+                  {t("nav.contracts", "Contracts")}
+                </NavItem>
+                <NavItem to="/pos/supplier/orders" active={isActive('/pos/supplier/orders')} onClick={closeSidebar}>
+                  <NavIcon>▤</NavIcon>
+                  {t("nav.orders", "Orders")}
+                </NavItem>
+                <NavItem to="/pos/supplier/trade-invoices" active={isActive('/pos/supplier/trade-invoices')} onClick={closeSidebar}>
+                  <NavIcon>▦</NavIcon>
+                  {t("nav.tradeInvoices", "Trade Invoices")}
+                </NavItem>
+                <NavItem to="/pos/supplier/soa" active={isActive('/pos/supplier/soa')} onClick={closeSidebar}>
+                  <NavIcon>≡</NavIcon>
+                  {t("nav.soa", "Statement of Account")}
+                </NavItem>
 
-                <NavTitle>{t("nav.section.analytics")}</NavTitle>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
-                  {t("nav.salesReport")}
-                </DisabledNavItem>
+                <NavTitle>{t("nav.section.settings", "Settings")}</NavTitle>
+                <NavItem to="/pos/supplier/company-info" active={isActive('/pos/supplier/company-info')} onClick={closeSidebar}>
+                  <NavIcon>◉</NavIcon>
+                  {t("nav.companyInfo", "Company Info")}
+                </NavItem>
+                <NavItem to="/pos/supplier/payment-settings" active={isActive('/pos/supplier/payment-settings')} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  {t("nav.paymentSettings")}
+                </NavItem>
+                <NavItem to="/pos/supplier/invoice-settings" active={isActive('/pos/supplier/invoice-settings')} onClick={closeSidebar}>
+                  <NavIcon>≡</NavIcon>
+                  {t("nav.invoiceSettings", "Invoice Settings")}
+                </NavItem>
+                <NavItem to="/pos/supplier/invoices" active={isActive('/pos/supplier/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
+                  {t("nav.invoices")}
+                </NavItem>
+                <NavItem to="/pos/supplier/notices" active={isActive('/pos/supplier/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
+                  {t("nav.notices")}
+                </NavItem>
+                <NavItem to="/pos/supplier/system-inquiry" active={isActive('/pos/supplier/system-inquiry')} hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.systemInquiry > 0 || badgeCounts.unreadComments?.systemInquiry > 0}>?</NavIcon>
+                  {t("nav.systemInquiry")}
+                </NavItem>
               </>
             )}
 
@@ -1707,6 +1873,42 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to={`/restaurant/${restaurantId}/suppliers`} active={isActive(`/restaurant/${restaurantId}/suppliers`)} onClick={closeSidebar}>
                   <NavIcon>◇</NavIcon>
                   {t("nav.suppliers")}
+                </NavItem>
+              )}
+            </NavSection>
+          )}
+
+          {/* Restaurant Admin & Staff - Suppliers Directory + Contracts (buyer-side) */}
+          {(user?.role === 'Restaurant Admin' || user?.role === 'Staff') && hasMenuPermission('inventory') && (
+            isRouteAllowed('/pos/suppliers/directory') ||
+            isRouteAllowed('/pos/suppliers/contracts') ||
+            isRouteAllowed('/pos/purchase-orders') ||
+            isRouteAllowed('/pos/purchase-invoices')
+          ) && (
+            <NavSection>
+              <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
+              {isRouteAllowed('/pos/suppliers/directory') && (
+                <NavItem to="/pos/suppliers/directory" active={isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                  <NavIcon>◉</NavIcon>
+                  {t("nav.findSuppliers", "Find Suppliers")}
+                </NavItem>
+              )}
+              {isRouteAllowed('/pos/suppliers/contracts') && (
+                <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts')} onClick={closeSidebar}>
+                  <NavIcon>◇</NavIcon>
+                  {t("nav.mySuppliers", "My Suppliers")}
+                </NavItem>
+              )}
+              {isRouteAllowed('/pos/purchase-orders') && (
+                <NavItem to="/pos/purchase-orders" active={isActive('/pos/purchase-orders')} onClick={closeSidebar}>
+                  <NavIcon>▤</NavIcon>
+                  {t("nav.purchaseOrders", "Purchase Orders")}
+                </NavItem>
+              )}
+              {isRouteAllowed('/pos/purchase-invoices') && (
+                <NavItem to="/pos/purchase-invoices" active={isActive('/pos/purchase-invoices')} onClick={closeSidebar}>
+                  <NavIcon>▦</NavIcon>
+                  {t("nav.purchaseInvoices", "Purchase Invoices")}
                 </NavItem>
               )}
             </NavSection>

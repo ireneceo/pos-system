@@ -1,0 +1,78 @@
+{
+  "list": {
+    "title": "구매 인보이스",
+    "subtitle": "공급업체와 파트너가 발행한 거래 인보이스입니다.",
+    "loading": "인보이스를 불러오는 중...",
+    "stats": {
+      "outstanding": "미수금",
+      "paid": "결제 완료",
+      "overdue": "연체",
+      "thisMonth": "이번 달 발행"
+    },
+    "filter": {
+      "searchIssuer": "발행자명 또는 인보이스 번호 검색",
+      "allStatuses": "모든 상태",
+      "from": "시작일",
+      "to": "종료일"
+    },
+    "table": {
+      "invoiceNumber": "인보이스 번호",
+      "issuer": "발행자",
+      "total": "합계",
+      "status": "상태",
+      "issuedAt": "발행일",
+      "dueDate": "마감일",
+      "actions": "작업"
+    },
+    "empty": {
+      "title": "구매 인보이스가 없습니다",
+      "hint": "공급업체가 인보이스를 발행하면 여기에 표시됩니다."
+    },
+    "view": "보기",
+    "pay": "결제",
+    "tabs": {
+      "all": "전체 인보이스",
+      "soa": "월별 SOA"
+    }
+  },
+  "detail": {
+    "title": "인보이스 {{number}}",
+    "issuedBy": "발행자",
+    "issuedAt": "발행일",
+    "dueDate": "마감일",
+    "status": "상태",
+    "items": "품목",
+    "subtotal": "소계",
+    "discount": "할인",
+    "tax": "세금",
+    "total": "합계",
+    "paid": "결제 완료",
+    "outstanding": "미결제",
+    "notes": "비고",
+    "noItems": "인보이스에 항목이 없습니다.",
+    "close": "닫기",
+    "pay": "지금 결제"
+  },
+  "soa": {
+    "title": "월별 거래명세서 (SOA)",
+    "subtitle": "현재 기간의 공급업체별 미결제 잔액입니다.",
+    "supplier": "공급업체",
+    "invoiceCount": "인보이스 수",
+    "totalBilled": "청구액",
+    "totalPaid": "결제액",
+    "outstanding": "미결제 잔액",
+    "payAll": "전체 결제",
+    "empty": "활성 월별 SOA 계약이 없습니다."
+  },
+  "status": {
+    "draft": "임시 저장",
+    "pending_payment": "결제 대기",
+    "payment_submitted": "결제 제출됨",
+    "paid": "결제 완료",
+    "overdue": "연체",
+    "cancelled": "취소됨"
+  },
+  "common": {
+    "close": "닫기"
+  }
+}

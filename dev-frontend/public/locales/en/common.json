@@ -163,7 +163,8 @@
     "foodcourtManager": "Foodcourt Manager",
     "restaurantOwner": "Restaurant Owner",
     "restaurantAdmin": "Restaurant Admin",
-    "staff": "Staff"
+    "staff": "Staff",
+    "supplier_admin": "Supplier Admin"
   },
   "nav": {
     "dashboard": "Dashboard",

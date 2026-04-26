@@ -32,7 +32,7 @@ interface CurrencyInfo {
   decimals: number;
 }
 
-type AccountRole = 'Restaurant Admin' | 'Brand General' | 'Foodcourt General' | 'Restaurant Owner';
+type AccountRole = 'Restaurant Admin' | 'Brand General' | 'Foodcourt General' | 'Restaurant Owner' | 'Supplier Admin';
 
 interface FormData {
   // Step 1
@@ -53,8 +53,19 @@ interface FormData {
   foodcourt_name: string;
   foodcourt_address: string;
   company_name: string;
+  // Supplier-specific
+  supplier_name: string;
+  supplier_phone: string;
+  supplier_website: string;
   plan_id: number | null;
   billing_cycle: 'monthly' | 'annual';
+}
+
+interface InvitationPrefill {
+  email: string;
+  supplier_name: string;
+  plan?: number | null;
+  expires_at?: string;
 }
 
 // Country code → currency mapping for IP detection
@@ -108,6 +119,15 @@ const OwnerIcon = () => (
   </svg>
 );
 
+const SupplierIcon = () => (
+  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10 17h4V5H2v12h3" />
+    <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h2" />
+    <circle cx="7.5" cy="17.5" r="2.5" />
+    <circle cx="17.5" cy="17.5" r="2.5" />
+  </svg>
+);
+
 const ROLE_CONFIG: Record<AccountRole, {
   icon: React.FC;
   title: string;
@@ -137,6 +157,12 @@ const ROLE_CONFIG: Record<AccountRole, {
     title: 'Owner',
     subtitle: 'Own and oversee multiple restaurants',
     planTarget: 'owner'
+  },
+  'Supplier Admin': {
+    icon: SupplierIcon,
+    title: 'Supplier',
+    subtitle: 'Sell products to restaurants, brands, and food courts',
+    planTarget: 'supplier'
   }
 };
 
@@ -156,6 +182,9 @@ const INITIAL_FORM: FormData = {
   foodcourt_name: '',
   foodcourt_address: '',
   company_name: '',
+  supplier_name: '',
+  supplier_phone: '',
+  supplier_website: '',
   plan_id: null,
   billing_cycle: 'monthly'
 };
@@ -206,6 +235,51 @@ const SignupPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // ─── Supplier invitation state ──────────────────────────────
+  const [invitationToken, setInvitationToken] = useState<string | null>(null);
+  const [invitationPrefill, setInvitationPrefill] = useState<InvitationPrefill | null>(null);
+  const [invitationStatus, setInvitationStatus] = useState<'none' | 'loading' | 'valid' | 'invalid'>('none');
+  const [invitationError, setInvitationError] = useState<string>('');
+
+  // Detect & validate invitation token from ?invitation=<token>
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('invitation');
+    if (!token) return;
+
+    setInvitationToken(token);
+    setInvitationStatus('loading');
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/auth/invitation/${encodeURIComponent(token)}`);
+        const result = await res.json();
+        if (!res.ok || result?.success === false) {
+          setInvitationStatus('invalid');
+          setInvitationError(result?.message || 'This invitation is invalid or has expired.');
+          return;
+        }
+        const data: InvitationPrefill = result.data || result;
+        setInvitationPrefill(data);
+        setInvitationStatus('valid');
+        // Pre-fill: role + email + supplier_name + plan
+        setForm(prev => ({
+          ...prev,
+          role: 'Supplier Admin',
+          email: data.email || prev.email,
+          supplier_name: data.supplier_name || prev.supplier_name,
+          plan_id: data.plan != null ? Number(data.plan) : prev.plan_id
+        }));
+        // Auto-skip Step 1 (role already chosen via invitation)
+        setStep(prev => (prev === 1 ? 2 : prev));
+      } catch (e: any) {
+        setInvitationStatus('invalid');
+        setInvitationError(e?.message || 'Could not verify invitation.');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // IP-based currency detection
   const detectCurrencyFromIP = async (): Promise<string> => {
     try {
@@ -231,7 +305,8 @@ const SignupPage: React.FC = () => {
         restaurant: 'Restaurant Admin',
         brand: 'Brand General',
         foodcourt: 'Foodcourt General',
-        owner: 'Restaurant Owner'
+        owner: 'Restaurant Owner',
+        supplier: 'Supplier Admin'
       };
       if (roleMap[state.plan_target]) {
         setForm(prev => ({ ...prev, role: roleMap[state.plan_target] }));
@@ -338,6 +413,9 @@ const SignupPage: React.FC = () => {
     if (role === 'Foodcourt General' && !form.foodcourt_name.trim()) {
       errors.foodcourt_name = 'Food court name is required';
     }
+    if (role === 'Supplier Admin' && !form.supplier_name.trim()) {
+      errors.supplier_name = 'Supplier company name is required';
+    }
     if (!form.plan_id) {
       errors.plan_id = 'Please select a plan';
     }
@@ -357,6 +435,7 @@ const SignupPage: React.FC = () => {
       if (role === 'Restaurant Admin' && !form.restaurant_name.trim()) return false;
       if (role === 'Brand General' && !form.brand_name.trim()) return false;
       if (role === 'Foodcourt General' && !form.foodcourt_name.trim()) return false;
+      if (role === 'Supplier Admin' && !form.supplier_name.trim()) return false;
       return !!form.plan_id;
     }
     if (step === 4) return true; // 리뷰 단계
@@ -417,9 +496,13 @@ const SignupPage: React.FC = () => {
           foodcourt_name: form.foodcourt_name || undefined,
           foodcourt_address: form.foodcourt_address || undefined,
           company_name: form.company_name || undefined,
+          supplier_name: form.supplier_name || undefined,
+          supplier_phone: form.supplier_phone || undefined,
+          supplier_website: form.supplier_website || undefined,
           plan_id: form.plan_id,
           billing_cycle: form.billing_cycle,
-          currency: selectedCurrency
+          currency: selectedCurrency,
+          invitation_token: invitationToken || undefined
         })
       });
 
@@ -450,6 +533,8 @@ const SignupPage: React.FC = () => {
           navigate('/pos/foodcourt/general/dashboard', { replace: true });
         } else if (user.role === 'Restaurant Owner') {
           navigate('/pos/owner/dashboard', { replace: true });
+        } else if (user.role === 'Supplier Admin') {
+          navigate('/pos/supplier/dashboard', { replace: true });
         } else {
           navigate('/pos', { replace: true });
         }
@@ -698,12 +783,53 @@ const SignupPage: React.FC = () => {
           </FormGrid>
         )}
 
+        {role === 'Supplier Admin' && (
+          <FormGrid>
+            <FormGroup fullWidth>
+              <FormLabel>{t('landing:signupPage.supplierCompanyName')} *</FormLabel>
+              <FormInput
+                type="text"
+                value={form.supplier_name}
+                onChange={e => updateField('supplier_name', e.target.value)}
+                placeholder="Enter your supplier company name"
+                hasError={!!fieldErrors.supplier_name}
+                disabled={invitationStatus === 'valid' && !!invitationPrefill?.supplier_name}
+              />
+              {fieldErrors.supplier_name && <FieldError>{fieldErrors.supplier_name}</FieldError>}
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>{t('landing:signupPage.supplierPhone')}</FormLabel>
+              <FormInput
+                type="tel"
+                value={form.supplier_phone}
+                onChange={e => updateField('supplier_phone', e.target.value)}
+                placeholder="Company phone (optional)"
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>{t('landing:signupPage.supplierWebsite')}</FormLabel>
+              <FormInput
+                type="url"
+                value={form.supplier_website}
+                onChange={e => updateField('supplier_website', e.target.value)}
+                placeholder="https://example.com (optional)"
+              />
+            </FormGroup>
+          </FormGrid>
+        )}
+
         {/* Info notice for non-restaurant roles */}
-        {role !== 'Restaurant Admin' && (
+        {role !== 'Restaurant Admin' && role !== 'Supplier Admin' && (
           <InfoNotice>
             {role === 'Restaurant Owner'
               ? 'Link your restaurants after signing up from the dashboard. Each restaurant will need its own POS subscription. Restaurants can also be linked to a brand or food court.'
               : 'You can add and manage restaurants after signing up. Each restaurant will need its own POS subscription.'}
+          </InfoNotice>
+        )}
+
+        {role === 'Supplier Admin' && (
+          <InfoNotice>
+            {t('landing:signupPage.supplierInfoNotice')}
           </InfoNotice>
         )}
 
@@ -783,6 +909,9 @@ const SignupPage: React.FC = () => {
                   {plan.plan_target === 'owner' && (
                     <PlanFeature>Restaurants: {formatLimit(plan.restaurant_limit)}</PlanFeature>
                   )}
+                  {plan.plan_target === 'supplier' && (
+                    <PlanFeature>Managers: {formatLimit(plan.manager_limit)}</PlanFeature>
+                  )}
                 </PlanFeatures>
                 {form.plan_id === plan.id && <PlanSelected>{t('landing:signupPage.selected')}</PlanSelected>}
               </PlanCard>
@@ -849,6 +978,12 @@ const SignupPage: React.FC = () => {
             <ReviewGroup>
               <ReviewLabel>{t('landing:signupPage.company')}</ReviewLabel>
               <ReviewValue>{form.company_name}</ReviewValue>
+            </ReviewGroup>
+          )}
+          {role === 'Supplier Admin' && (
+            <ReviewGroup>
+              <ReviewLabel>{t('landing:signupPage.supplier')}</ReviewLabel>
+              <ReviewValue>{form.supplier_name}</ReviewValue>
             </ReviewGroup>
           )}
 
@@ -922,6 +1057,28 @@ const SignupPage: React.FC = () => {
 
       <ContentSection>
         <SignupCard>
+          {/* Supplier invitation banner */}
+          {invitationStatus === 'loading' && (
+            <InvitationBanner variant="loading">
+              {t('landing:signupPage.invitationVerifying')}
+            </InvitationBanner>
+          )}
+          {invitationStatus === 'valid' && invitationPrefill && (
+            <InvitationBanner variant="valid">
+              <InvitationBannerTitle>{t('landing:signupPage.invitationBannerTitle')}</InvitationBannerTitle>
+              <InvitationBannerBody>
+                {t('landing:signupPage.invitationBannerBody')}{' '}
+                <strong>{invitationPrefill.email}</strong>
+              </InvitationBannerBody>
+            </InvitationBanner>
+          )}
+          {invitationStatus === 'invalid' && (
+            <InvitationBanner variant="invalid">
+              <InvitationBannerTitle>{t('landing:signupPage.invitationInvalidTitle')}</InvitationBannerTitle>
+              <InvitationBannerBody>{invitationError || t('landing:signupPage.invitationInvalidBody')}</InvitationBannerBody>
+            </InvitationBanner>
+          )}
+
           {/* Progress bar */}
           <ProgressBar>
             {[1, 2, 3, 4].map(s => (
@@ -1447,6 +1604,36 @@ const ErrorMessage = styled.div`
   color: #DC2626;
   font-size: 14px;
   margin-bottom: 20px;
+`;
+
+const InvitationBanner = styled.div<{ variant: 'loading' | 'valid' | 'invalid' }>`
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  background: ${({ variant }) =>
+    variant === 'valid' ? 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)' :
+    variant === 'invalid' ? '#FEF2F2' :
+    '#F3F4F6'};
+  border: 1px solid ${({ variant }) =>
+    variant === 'valid' ? '#A7F3D0' :
+    variant === 'invalid' ? '#FCA5A5' :
+    '#E5E7EB'};
+  color: ${({ variant }) =>
+    variant === 'valid' ? '#065F46' :
+    variant === 'invalid' ? '#991B1B' :
+    '#374151'};
+`;
+
+const InvitationBannerTitle = styled.div`
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+`;
+
+const InvitationBannerBody = styled.div`
+  font-size: 13px;
 `;
 
 const ButtonRow = styled.div`

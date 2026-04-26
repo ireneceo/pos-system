@@ -1397,5 +1397,26 @@
     "longitude": "Longitude",
     "latitudeHint": "e.g., 3.1390 (auto-filled from address)",
     "longitudeHint": "e.g., 101.6869"
+  },
+  "supplierCompanies": {
+    "title": "Supplier Companies",
+    "description": "Manage all supplier companies on the platform."
+  },
+  "supplierInvitations": {
+    "title": "Supplier Invitations",
+    "description": "Send invitations to new suppliers.",
+    "send": "Send Invitation",
+    "fields": {
+      "email": "Email",
+      "supplier_name": "Suggested Company Name (optional)",
+      "plan": "Default Plan (optional)",
+      "message": "Personal Message (optional)"
+    },
+    "status": {
+      "pending": "Pending",
+      "used": "Used",
+      "expired": "Expired",
+      "revoked": "Revoked"
+    }
   }
 }

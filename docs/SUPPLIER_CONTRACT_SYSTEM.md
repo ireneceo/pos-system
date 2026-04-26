@@ -635,3 +635,233 @@ Frontend:
 - 필터: FilterComponents 재사용
 - AutoSaveField: 결제 조건 수정에 재사용
 - 넘버링: HardwareQuote 패턴 참고 (공통 유틸 아닌 개별 구현 — 현상 유지)
+
+---
+
+# 📌 Sprint 2 Implementation Spec (2026-04-26 — /기능설계)
+
+> Sprint 1 (Design 1) 완료 후 진입. Irene 결정사항 반영 + 자율 검증 후 작성.
+
+## A. 확정 결정사항
+
+1. **활성 계약 1건 원칙**: 한 (supplier_company_id, entity_type, entity_id) 쌍에 대해 status='active' 인 SupplierContract 최대 1건. 어플리케이션 레벨 검증 (POST 시 활성 contract 존재 시 400).
+2. **신규 모듈 등록**: `buyer_supplier_directory`, `buyer_supplier_contracts` (target_user_type='all'). 기존 `brand_suppliers` 와 충돌 회피 (그건 legacy 거래처 메뉴).
+3. **양방향 종료 + 사유 필수**: `terminated_by` ENUM('buyer','supplier','system')으로 누가 종료했는지 추적.
+4. **Buyer 폴리모픽**: `entity_type` ENUM('restaurant','brand','foodcourt') + `entity_id`. Sprint 1 Contract 패턴 미러.
+5. **Payment Terms JSON**: 승인 시 설정. `{ terms, invoice_cycle, payment_due_day, credit_limit, currency, notes }`.
+
+## B. API 엔드포인트 (Stage 2)
+
+### B-1. Buyer Side (`routes/supplier-directory.js` 신규)
+
+`authenticateToken + requireBuyerRole` (Restaurant Admin / Restaurant Owner / Brand General / Brand Manager / Foodcourt General / Foodcourt Manager / System Admin).
+
+| # | METHOD 경로 | 역할 | Body | 응답 | 비고 |
+|---|------------|------|------|------|------|
+| 1 | `GET /api/supplier-directory` | Buyer | query: `?category_id=&country=&state=&search=&page=&limit=` | paginated cards | active SupplierCompany 만 |
+| 2 | `GET /api/supplier-directory/:supplierCompanyId` | Buyer | - | 프로필 + 카탈로그 + my_contract_status | catalog products = is_active 만 |
+| 3 | `GET /api/supplier-contracts` | Buyer | query: `?status=&supplier_id=&page=` | 자기 계약 리스트 | entity_type/id 자동 매칭 |
+| 4 | `GET /api/supplier-contracts/:contractId` | Buyer | - | 계약 상세 | IDOR 방어 |
+| 5 | `POST /api/supplier-contracts` | Buyer | `{ supplier_company_id, message? }` | 201 + 계약 row | 활성 1건 검증, sanitize, Inbox 알림 |
+| 6 | `POST /api/supplier-contracts/:contractId/terminate` | Buyer | `{ reason }` | 200 | status='active' + 본인이 buyer 검증 |
+
+### B-2. Supplier Side (`routes/supplier.js` 확장)
+
+`authenticateToken + requireSupplierScope`.
+
+| # | METHOD 경로 | Body | 응답 | 비고 |
+|---|------------|------|------|------|
+| 7 | `GET /api/supplier/contracts` | query: `?status=&page=` | paginated | requireSupplierModule('supplier_contracts') |
+| 8 | `GET /api/supplier/contracts/:contractId` | - | 단건 | IDOR (내 supplier_company_id 일치) |
+| 9 | `POST /api/supplier/contracts/:contractId/approve` | `{ payment_terms: {...} }` | 200 | status='requested' 검증 |
+| 10 | `POST /api/supplier/contracts/:contractId/reject` | `{ reason }` | 200 | reason 필수 |
+| 11 | `POST /api/supplier/contracts/:contractId/terminate` | `{ reason }` | 200 | status='active' 검증 |
+| 12 | `PUT /api/supplier/contracts/:contractId/payment-terms` | `{ payment_terms }` | 200 | status='active' 만 가능 |
+| 13 | `GET /api/supplier/customers` | query: `?status=&search=` | active 계약 + buyer 정보 + payment_terms 요약 | requireSupplierModule('supplier_customers') |
+
+**총 13 endpoints.**
+
+### B-3. 신규 미들웨어
+
+`middleware/buyerScope.js`:
+- `requireBuyerRole` — 위 buyer 역할 7종 통과
+- `resolveBuyerEntity(req)` 헬퍼: 역할 기반 (entity_type, entity_id) 도출
+  - Restaurant Admin/Owner: `('restaurant', user.restaurant_id)`
+  - Brand General/Manager: `('brand', user.brand_id)`
+  - Foodcourt General/Manager: `('foodcourt', user.foodcourt_id)`
+  - System Admin: 옵션 query param 으로 override
+
+## C. DB 스키마 (Stage 3)
+
+### C-1. 신규 테이블 1개
+
+```sql
+CREATE TABLE supplier_contracts (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  supplier_company_id INT NOT NULL,
+  entity_type ENUM('restaurant','brand','foodcourt') NOT NULL,
+  entity_id INT NOT NULL,
+
+  status ENUM('requested','active','rejected','terminated') NOT NULL DEFAULT 'requested',
+
+  -- Request
+  requested_by_user_id INT NOT NULL,
+  request_message TEXT,
+  requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  -- Approval
+  approved_by_user_id INT NULL,
+  approved_at DATETIME NULL,
+  payment_terms JSON COMMENT 'Set on approval, editable later',
+
+  -- Reject
+  rejected_by_user_id INT NULL,
+  rejected_at DATETIME NULL,
+  rejection_reason TEXT,
+
+  -- Terminate
+  terminated_by ENUM('buyer','supplier','system') NULL,
+  terminated_by_user_id INT NULL,
+  terminated_at DATETIME NULL,
+  termination_reason TEXT,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+
+  FOREIGN KEY (supplier_company_id) REFERENCES supplier_companies(id) ON DELETE CASCADE,
+  FOREIGN KEY (requested_by_user_id) REFERENCES users(id),
+  FOREIGN KEY (approved_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (rejected_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (terminated_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_supplier (supplier_company_id),
+  INDEX idx_supplier_status (supplier_company_id, status),
+  INDEX idx_buyer (entity_type, entity_id),
+  INDEX idx_buyer_status (entity_type, entity_id, status),
+  INDEX idx_status (status)
+);
+```
+
+### C-2. Sequelize 모델 + Association
+
+`models/SupplierContract.js` 신규.
+
+`models/index.js` 추가:
+```javascript
+SupplierContract.belongsTo(SupplierCompany, { foreignKey: 'supplier_company_id', as: 'supplierCompany' });
+SupplierCompany.hasMany(SupplierContract, { foreignKey: 'supplier_company_id', as: 'contracts' });
+SupplierContract.belongsTo(User, { foreignKey: 'requested_by_user_id', as: 'requestedBy' });
+SupplierContract.belongsTo(User, { foreignKey: 'approved_by_user_id', as: 'approvedBy' });
+SupplierContract.belongsTo(User, { foreignKey: 'rejected_by_user_id', as: 'rejectedBy' });
+SupplierContract.belongsTo(User, { foreignKey: 'terminated_by_user_id', as: 'terminatedBy' });
+// Polymorphic buyer 관계는 컬럼 직접 조회 (entity_type / entity_id)
+```
+
+### C-3. AddonModule + Plan 시드 추가
+
+```js
+const NEW_MODULES = [
+  { module_code: 'buyer_supplier_directory', name: 'Supplier Directory', category: 'basic', target_user_type: 'all' },
+  { module_code: 'buyer_supplier_contracts', name: 'Supplier Contracts', category: 'basic', target_user_type: 'all' }
+];
+```
+
+기존 buyer 플랜 (Restaurant basic / Brand basic / Foodcourt basic 모두) 에 자동 포함 (basic 모듈은 모든 플랜 default 포함).
+
+## D. UI 흐름 (Stage 4)
+
+### D-1. 신규 페이지 4개 (Buyer side)
+
+| 경로 | 컴포넌트 | 기능 |
+|------|----------|------|
+| `/pos/suppliers/directory` | `pages/SupplierDirectory/SupplierDirectoryPage.tsx` | 공급업체 검색/카드 그리드 + 필터 |
+| `/pos/suppliers/directory/:supplierId` | `pages/SupplierDirectory/SupplierProfilePage.tsx` | 프로필 + 상품 카탈로그 + Request 버튼 |
+| `/pos/suppliers/contracts` | `pages/SupplierDirectory/MySuppliersPage.tsx` | 자기 계약 리스트 |
+| `/pos/suppliers/contracts/:contractId` | `pages/SupplierDirectory/ContractDetailPage.tsx` (또는 모달) | 계약 상세 + Terminate |
+
+### D-2. 페이지 2개 (Supplier side, 기존 placeholder 교체)
+
+| 경로 | 컴포넌트 | 기능 |
+|------|----------|------|
+| `/pos/supplier/contracts` | `pages/Supplier/SupplierContractsPage.tsx` (REPLACE) | Pending/Active 탭 + Approve/Reject 모달 |
+| `/pos/supplier/customers` | `pages/Supplier/SupplierCustomersPage.tsx` (REPLACE) | 활성 buyer 리스트 + payment_terms 표시 + 편집 |
+
+### D-3. 사이드바 추가
+
+**Restaurant Admin 사이드바:**
+- `Find Suppliers` → `/pos/suppliers/directory`
+- `My Suppliers` → `/pos/suppliers/contracts`
+
+**Brand General / Foodcourt General 사이드바:**
+- 동일 2개 항목 추가
+
+**Supplier Admin:**
+- 기존 placeholder "Customers" / "Contracts" → 활성화 (disabled 제거)
+
+### D-4. 모달 / Form
+
+- **Request Contract 모달**: message textarea + 신청자 정보 미리보기 + Send
+- **Approve 모달**: Payment Terms (terms / invoice_cycle / payment_due_day / credit_limit / currency / notes) → POST + 알림
+- **Reject 모달**: reason textarea (required) → POST
+- **Terminate 모달**: reason textarea (required) → POST
+
+### D-5. i18n 4 언어
+
+신규 namespace: `supplierDirectory.json` (en/ko/zh/ms) + 기존 `supplier.json` 확장 (`contracts.*`, `customers.*`)
+
+### D-6. 알림 (이메일 + Inbox)
+
+`utils/notificationTemplates.js` 신규 4 templates:
+- `supplierContractRequested` (to Supplier)
+- `supplierContractApproved` (to Buyer)
+- `supplierContractRejected` (to Buyer)
+- `supplierContractTerminated` (to opposite party)
+
+`NOTIFICATION_CATEGORIES` 신규: `supplier_contract`
+
+## E. 구현 순서 (Stage 5)
+
+| Phase | 작업 | 예상 |
+|-------|------|------|
+| 5A | Migration 스크립트 + supplier_contracts 테이블 + 모듈 시드 | 10분 |
+| 5B | SupplierContract 모델 + association | 10분 |
+| 5C | requireBuyerRole 미들웨어 + 헬퍼 | 10분 |
+| 5D | Backend 라우트 (supplier-directory.js + supplier.js 확장) | 30분 |
+| 5E | server.js 마운트 | 5분 |
+| 5F | 알림 템플릿 + NOTIFICATION_CATEGORIES | 10분 |
+| 5G | Frontend 6 페이지 (병렬 agent) | 60분 |
+| 5H | 사이드바 + AuthContext + App.tsx 확장 | 20분 |
+| 5I | i18n 4 언어 (병렬 agent) | 15분 |
+
+## F. 검증 (Stage 6)
+
+### F-1. test-supplier-contract.js
+
+```
+1. Restaurant Admin 로그인 → /supplier-directory 검색 → 공급업체 N건 확인
+2. Profile 조회 → 카탈로그 N건 + my_contract_status='none' 확인
+3. POST /supplier-contracts → status='requested' + 알림 발송
+4. 동일 (supplier, buyer) 활성 계약 시도 → 400 (활성 1건 원칙)
+5. Supplier 로그인 → /supplier/contracts → 신청 1건 확인
+6. POST /supplier/contracts/:id/approve { payment_terms } → status='active'
+7. Buyer Profile 재조회 → my_contract_status='active' 확인
+8. PUT /supplier/contracts/:id/payment-terms → 200 (수정)
+9. Buyer POST /supplier-contracts/:id/terminate { reason } → status='terminated'
+10. Buyer 재신청 (POST) → 새 row 201 (이전 terminated 와 별개)
+11. Supplier reject → status='rejected'
+12. IDOR: 다른 buyer 의 계약 GET → 404
+13. IDOR: 다른 supplier 의 계약 approve → 403/404
+14. Anon → 401
+```
+
+### F-2. health-check 확장 (43 → 49)
+
+- `Anon /supplier-directory → 401`
+- `Buyer /supplier-directory → 200`
+- `Supplier /supplier/contracts → 200`
+- `IDOR: cross-supplier approve → 404`
+- `Approve invalid status → 400`
+
+### F-3. UI 검증
+- 4 언어 + 빈 상태 + 로딩 + 반응형 + 회귀
+

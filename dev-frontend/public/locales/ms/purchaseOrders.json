@@ -1,0 +1,209 @@
+{
+  "list": {
+    "title": "Pesanan Belian",
+    "subtitle": "Buat dan jejak pesanan kepada penjual anda",
+    "newOrder": "+ Pesanan Baharu",
+    "stats": {
+      "draft": "Draf",
+      "pending": "Menunggu",
+      "shipped": "Dihantar",
+      "received": "Diterima"
+    },
+    "filter": {
+      "allStatuses": "Semua Status",
+      "searchSeller": "Cari penjual...",
+      "from": "Dari",
+      "to": "Hingga"
+    },
+    "table": {
+      "poNumber": "PO #",
+      "seller": "Penjual",
+      "items": "Item",
+      "total": "Jumlah",
+      "status": "Status",
+      "expected": "Penghantaran Dijangka",
+      "createdAt": "Dicipta",
+      "actions": "Tindakan"
+    },
+    "view": "Lihat",
+    "empty": {
+      "title": "Tiada pesanan belian lagi",
+      "hint": "Cipta pesanan pertama anda kepada penjual untuk bermula.",
+      "cta": "+ Pesanan Baharu"
+    },
+    "loading": "Memuatkan pesanan...",
+    "loadFailed": "Gagal memuat pesanan belian.",
+    "suggestions": {
+      "badge": "{{n}} cadangan PAR",
+      "title": "Cadangan Pesan Semula PAR",
+      "subtitle": "Item di bawah ambang PAR, dikumpul mengikut penjual pilihan",
+      "createPO": "Cipta PO",
+      "noPreferred": "Tiada penjual pilihan",
+      "ingredient": "Bahan",
+      "currentStock": "Stok Semasa",
+      "suggested": "Kuantiti Dicadangkan",
+      "loadFailed": "Gagal memuat cadangan.",
+      "empty": "Tiada cadangan pesan semula buat masa ini."
+    }
+  },
+  "new": {
+    "title": "Pesanan Belian Baharu",
+    "back": "Kembali ke Pesanan Belian",
+    "step": {
+      "seller": "Penjual",
+      "items": "Item",
+      "review": "Semak"
+    },
+    "stepLabel": "Langkah {{current}} dari {{total}}",
+    "next": "Seterusnya",
+    "previous": "Kembali",
+    "saveDraft": "Simpan sebagai Draf",
+    "submit": "Hantar Pesanan",
+    "seller": {
+      "title": "Pilih penjual",
+      "subtitle": "Pilih katalog yang anda mahu pesan daripada",
+      "search": "Cari penjual...",
+      "type": {
+        "system": "Katalog Sistem",
+        "brand": "Katalog Jenama",
+        "foodcourt": "Katalog Medan Selera",
+        "supplier": "Pembekal"
+      },
+      "contractActive": "Kontrak Aktif",
+      "contractRequired": "Kontrak Diperlukan",
+      "noSellers": "Tiada penjual tersedia.",
+      "noSellersHint": "Pastikan anda mempunyai kontrak pembekal aktif atau katalog sistem tersedia."
+    },
+    "items": {
+      "title": "Tambah item",
+      "subtitle": "Cari bahan dan pilih produk penjual yang sepadan",
+      "search": "Cari bahan...",
+      "addRow": "+ Tambah Item",
+      "remove": "Buang",
+      "ingredient": "Bahan",
+      "sellerProduct": "Produk Penjual",
+      "selectProduct": "Pilih produk...",
+      "quantity": "Kuantiti",
+      "unitPrice": "Harga Unit",
+      "lineTotal": "Jumlah Baris",
+      "subtotal": "Subjumlah",
+      "noItemsHint": "Belum ada item ditambah. Gunakan carian untuk menambah bahan.",
+      "noProductMatch": "Tiada produk penjual yang sepadan",
+      "parSuggested": "PAR cadangan: {{n}}"
+    },
+    "review": {
+      "title": "Semak pesanan",
+      "subtitle": "Sahkan butiran sebelum menghantar",
+      "sellerInfo": "Penjual",
+      "items": "Item",
+      "expectedDelivery": "Penghantaran Dijangka",
+      "deliveryAddress": "Alamat Penghantaran",
+      "deliveryAddressPlaceholder": "Ke mana pesanan harus dihantar?",
+      "notes": "Nota",
+      "notesPlaceholder": "Nota dalaman untuk pesanan ini (pilihan)",
+      "subtotal": "Subjumlah",
+      "tax": "Cukai",
+      "total": "Jumlah"
+    },
+    "errors": {
+      "selectSeller": "Sila pilih penjual.",
+      "noItems": "Tambah sekurang-kurangnya satu item.",
+      "missingProduct": "Setiap baris memerlukan produk penjual dipilih.",
+      "invalidQty": "Kuantiti mesti lebih daripada 0.",
+      "createFailed": "Gagal mencipta pesanan belian.",
+      "submitFailed": "Gagal menghantar pesanan belian."
+    }
+  },
+  "detail": {
+    "back": "Kembali ke Pesanan Belian",
+    "loadFailed": "Gagal memuat pesanan belian.",
+    "timeline": {
+      "title": "Garis Masa Status",
+      "draft": "Draf",
+      "submitted": "Dihantar",
+      "confirmed": "Disahkan",
+      "shipped": "Dihantar",
+      "received": "Diterima",
+      "partial_received": "Diterima Sebahagian",
+      "cancelled": "Dibatalkan"
+    },
+    "section": {
+      "items": "Item",
+      "delivery": "Penghantaran",
+      "notes": "Nota"
+    },
+    "items": {
+      "ingredient": "Bahan",
+      "qtyOrdered": "Dipesan",
+      "qtyReceived": "Diterima",
+      "unitPrice": "Harga Unit",
+      "lineTotal": "Jumlah Baris",
+      "subtotal": "Subjumlah",
+      "tax": "Cukai",
+      "total": "Jumlah"
+    },
+    "delivery": {
+      "expected": "Tarikh Dijangka",
+      "actual": "Tarikh Sebenar",
+      "address": "Alamat"
+    },
+    "actions": {
+      "edit": "Edit",
+      "submit": "Hantar",
+      "cancel": "Batal",
+      "markShipped": "Tanda Dihantar",
+      "receive": "Terima"
+    },
+    "noNotes": "Tiada nota."
+  },
+  "receive": {
+    "modalTitle": "Terima Pesanan",
+    "subtitle": "Rekodkan apa yang tiba dari penghantaran ini",
+    "ingredient": "Bahan",
+    "ordered": "Dipesan",
+    "alreadyReceived": "Diterima",
+    "receivingNow": "Terima sekarang",
+    "batchNo": "No. Batch",
+    "expiryDate": "Tamat Tempoh",
+    "unitCost": "Harga Unit",
+    "submit": "Sahkan Penerimaan",
+    "submitting": "Menyimpan...",
+    "submitFailed": "Gagal merekod penerimaan.",
+    "noChanges": "Masukkan sekurang-kurangnya satu kuantiti untuk diterima.",
+    "exceedsRemaining": "Kuantiti melebihi baki dipesan."
+  },
+  "cancel": {
+    "modalTitle": "Batalkan Pesanan Belian",
+    "warning": "Pembatalan akan memaklumkan penjual dan mengunci PO daripada perubahan lanjut.",
+    "reasonLabel": "Sebab",
+    "reasonPlaceholder": "Mengapa anda membatalkan?",
+    "reasonRequired": "Sila berikan sebab.",
+    "submit": "Batalkan Pesanan",
+    "submitFailed": "Gagal membatalkan pesanan belian."
+  },
+  "markShipped": {
+    "modalTitle": "Tanda sebagai Dihantar",
+    "hint": "Gunakan apabila penjual tidak mengemas kini PO sendiri.",
+    "trackingLabel": "No. Penjejakan (pilihan)",
+    "trackingPlaceholder": "Pembawa atau rujukan penjejakan",
+    "submit": "Tanda Dihantar",
+    "submitFailed": "Gagal menanda pesanan sebagai dihantar."
+  },
+  "status": {
+    "draft": "Draf",
+    "submitted": "Dihantar",
+    "confirmed": "Disahkan",
+    "shipped": "Dihantar",
+    "partial_received": "Sebahagian",
+    "received": "Diterima",
+    "cancelled": "Dibatalkan"
+  },
+  "common": {
+    "save": "Simpan",
+    "saving": "Menyimpan...",
+    "submitting": "Menghantar...",
+    "close": "Tutup",
+    "cancel": "Batal",
+    "confirm": "Sahkan"
+  }
+}

@@ -1397,5 +1397,26 @@
     "longitude": "Longitud",
     "latitudeHint": "cth: 3.1390 (auto dari alamat)",
     "longitudeHint": "cth: 101.6869"
+  },
+  "supplierCompanies": {
+    "title": "Syarikat Pembekal",
+    "description": "Urus semua syarikat pembekal di platform."
+  },
+  "supplierInvitations": {
+    "title": "Jemputan Pembekal",
+    "description": "Hantar jemputan kepada pembekal baharu.",
+    "send": "Hantar Jemputan",
+    "fields": {
+      "email": "E-mel",
+      "supplier_name": "Cadangan Nama Syarikat (pilihan)",
+      "plan": "Pelan Lalai (pilihan)",
+      "message": "Mesej Peribadi (pilihan)"
+    },
+    "status": {
+      "pending": "Menunggu",
+      "used": "Digunakan",
+      "expired": "Tamat Tempoh",
+      "revoked": "Dibatalkan"
+    }
   }
 }

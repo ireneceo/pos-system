@@ -1,0 +1,16 @@
+{
+  "role": {
+    "supplier_admin": {
+      "title": "供应商",
+      "description": "向餐厅、品牌和美食广场销售商品。"
+    }
+  },
+  "fields": {
+    "supplier_name": "供应商公司名称"
+  },
+  "invitation": {
+    "banner_valid": "您正通过邀请链接注册。欢迎加入 PurpleHere。",
+    "banner_invalid": "此邀请链接无效、已过期或已被使用。您仍可在下方进行常规注册。",
+    "loading": "正在验证邀请链接..."
+  }
+}

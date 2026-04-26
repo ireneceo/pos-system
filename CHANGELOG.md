@@ -6,6 +6,21 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-26 (Supply Chain System 4-Design 시리즈 완료)
+**🎉 Supply Chain System — Supplier 사업체 도입 + Buyer-Seller 거래 흐름 완성**
+- Sprint 1: Seller Product & Inventory — Supplier 사업체 신규 도입 (Brand/Foodcourt 패턴 미러). 12 모델 + 66 endpoints + 16 페이지. Supplier signup A+B (SA invitation + Landing 일반 가입). Foodcourt 자체 상품/재고 추가.
+- Sprint 2: Supplier Contract — 구매자(Restaurant/Brand/Foodcourt) ↔ 공급업체 계약 시스템. 디렉터리 검색 + 계약 신청/승인/거절/종료. 활성 계약 1건 원칙. 13 endpoints + 5 페이지.
+- Sprint 3: Purchase Order & Receiving — 발주관리 본체. Ingredient ↔ Seller Product 다중 연결. PO 작성 + 입고 (재고 자동 update + lock). PAR Level 자동 추천. 14 endpoints + 3 페이지 (3-step wizard).
+- Sprint 4: Seller Order Mgmt + Trade Invoice + Monthly SOA — Seller-side PO 처리 (confirm/ship/reject). PO Received 시 Trade Invoice 자동 발행. Monthly SOA cron (매월 1일). 9 endpoints + 6 페이지 (BG/FG incoming-orders + Buyer purchase-invoices).
+- 신규 16 DB 모델, 102 endpoints, 30 UI 페이지, 5 i18n namespace (4 언어)
+- 신규 미들웨어 4종 (requireSupplierScope / requireBuyerRole / requireSellerRole / requirePlanLimit / requireSupplierModule)
+- 신규 service 2종 (purchaseOrderService.createTradeInvoice / soaScheduler)
+- 보안: IDOR 12건 + Anon 16건 + Cross-role 8건 + Validation 8건 = **44 시나리오 PASS**
+- API E2E **86/86 PASS** (Sprint 30+18+18+20)
+- health-check 43/43, hydration 0, i18n 0 errors (5292 키)
+- 빌드 `main.6f22a419.js`
+- 설계 문서: SUPPLY_CHAIN_SYSTEM_OVERVIEW.md + 4 Design 문서 (각 850~1400줄)
+
 ### 2026-04-26 (DEVELOPMENT_PLAN.md 예정 작업 일괄 완료)
 **보안 fix — POST /api/restaurants 역할 제한**
 - Brand Manager / Foodcourt Manager 제거. `requireRole('System Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner')`만 허용

@@ -1,0 +1,235 @@
+{
+  "menu": {
+    "dashboard": "仪表盘",
+    "products": "商品",
+    "inventory": "库存",
+    "customers": "客户",
+    "contracts": "合同",
+    "orders": "订单",
+    "tradeInvoices": "交易发票",
+    "settings": "设置",
+    "companyInfo": "公司信息",
+    "paymentSettings": "支付设置",
+    "invoiceSettings": "发票设置",
+    "invoices": "发票",
+    "notices": "公告",
+    "systemInquiry": "系统咨询",
+    "comingSoon": "敬请期待"
+  },
+  "dashboard": {
+    "title": "供应商仪表盘",
+    "totalProducts": "商品总数",
+    "activeProducts": "已上架商品",
+    "lowStockAlert": "低库存提醒",
+    "inventoryValue": "库存价值",
+    "subscription": "订阅",
+    "trial": "Trial",
+    "daysLeft": "剩余 {{n}} 天",
+    "noLowStock": "所有库存水平正常。"
+  },
+  "products": {
+    "title": "商品目录",
+    "addProduct": "添加商品",
+    "categoryFilter": "按分类筛选",
+    "searchPlaceholder": "搜索商品...",
+    "fields": {
+      "name": "商品名称",
+      "sku": "SKU",
+      "unit": "单位",
+      "baseQuantity": "基础数量",
+      "unitPrice": "单价",
+      "minOrderQuantity": "最低起订量",
+      "category": "分类",
+      "image": "图片",
+      "currentStock": "当前库存",
+      "lowStockThreshold": "低库存阈值",
+      "leadTimeDays": "交货周期（天）",
+      "isActive": "启用"
+    },
+    "categoryManagement": "分类管理",
+    "optionGroups": "选项组",
+    "addCategory": "添加分类",
+    "addOptionGroup": "添加选项组",
+    "planLimitReached": "已达到当前套餐的商品数量上限，请升级套餐。",
+    "noProducts": "暂无商品。点击\"添加商品\"开始建立目录。",
+    "deleteConfirm": "确定要删除此商品吗？",
+    "copySuffix": "（副本）"
+  },
+  "inventory": {
+    "title": "库存管理",
+    "summary": {
+      "totalProducts": "商品数量",
+      "lowStock": "低库存",
+      "outOfStock": "缺货",
+      "value": "总价值"
+    },
+    "actions": {
+      "adjust": "调整库存",
+      "receive": "入库",
+      "viewHistory": "交易记录"
+    },
+    "modals": {
+      "adjustTitle": "调整库存数量",
+      "receiveTitle": "库存入库",
+      "delta": "数量变更 (+/-)",
+      "quantity": "入库数量",
+      "reason": "原因",
+      "notes": "备注",
+      "batchNo": "批次号（可选）",
+      "expiryDate": "有效期（可选）",
+      "unitCost": "单位成本（可选）"
+    },
+    "history": {
+      "title": "交易记录",
+      "empty": "交易记录将在 Sprint 3（采购单集成）中提供。"
+    },
+    "lowStockBadge": "低",
+    "outOfStockBadge": "无"
+  },
+  "company": {
+    "title": "公司信息",
+    "tabs": {
+      "general": "基本信息",
+      "address": "地址",
+      "banking": "银行信息",
+      "branding": "品牌"
+    }
+  },
+  "invoices": {
+    "title": "我的发票",
+    "subtitle": "由 PurpleHere 开具的订阅发票",
+    "noInvoices": "暂无发票。Trial 开始后将显示首张发票。"
+  },
+  "comingSoon": {
+    "title": "敬请期待",
+    "sprint2": "此功能将在 Supply Chain Sprint 2（供应商合同与客户管理）中推出。",
+    "sprint4": "此功能将在 Supply Chain Sprint 4（订单管理与交易发票）中推出。",
+    "joinWaitlist": "准备就绪后我们会通知您。"
+  },
+  "orders": {
+    "title": "进货订单",
+    "subtitle": "买家提交的采购订单。",
+    "stats": {
+      "pending": "待审核",
+      "confirmed": "已确认",
+      "shipped": "已发货",
+      "received": "本月已收货"
+    },
+    "tabs": {
+      "submitted": "待处理",
+      "confirmed": "已确认",
+      "shipped": "已发货",
+      "received": "已收货",
+      "cancelled": "已取消"
+    },
+    "table": {
+      "poNumber": "PO 编号",
+      "buyer": "买家",
+      "items": "商品数",
+      "total": "总额",
+      "status": "状态",
+      "createdAt": "创建日期",
+      "actions": "操作"
+    },
+    "actions": {
+      "view": "查看",
+      "confirm": "确认",
+      "ship": "标记发货",
+      "reject": "拒绝"
+    },
+    "confirm": {
+      "title": "确认订单",
+      "message": "确认此采购订单？买家将收到通知。",
+      "submit": "确认订单",
+      "cancel": "取消"
+    },
+    "ship": {
+      "title": "标记为已发货",
+      "carrier": "承运商",
+      "carrierPlaceholder": "如 DHL、Pos Laju、自送",
+      "trackingNumber": "运单号",
+      "trackingPlaceholder": "可选",
+      "estArrival": "预计送达日期",
+      "notes": "备注",
+      "submit": "标记发货",
+      "cancel": "取消"
+    },
+    "reject": {
+      "title": "拒绝订单",
+      "reason": "原因",
+      "reasonPlaceholder": "请说明无法处理此订单的原因。",
+      "submit": "拒绝订单",
+      "cancel": "取消"
+    },
+    "empty": "此状态下没有进货订单。"
+  },
+  "tradeInvoicesPage": {
+    "title": "交易发票",
+    "subtitle": "订单送达后自动生成的发票。",
+    "stats": {
+      "outstanding": "未付款总额",
+      "paidThisMonth": "本月已收款",
+      "overdue": "逾期",
+      "totalIssued": "已开具总数"
+    },
+    "filter": {
+      "searchBuyer": "搜索买家或发票编号",
+      "allStatuses": "所有状态"
+    },
+    "table": {
+      "invoiceNumber": "发票编号",
+      "buyer": "买家",
+      "total": "总额",
+      "status": "状态",
+      "issuedAt": "开具日期",
+      "dueDate": "到期日",
+      "actions": "操作"
+    },
+    "view": "查看",
+    "empty": "尚未开具交易发票。"
+  },
+  "soaPage": {
+    "title": "对账单（月度 SOA）",
+    "subtitle": "拥有月度 SOA 合同的买家月度对账摘要。",
+    "filter": {
+      "month": "月份",
+      "searchBuyer": "搜索买家"
+    },
+    "table": {
+      "buyer": "买家",
+      "month": "月份",
+      "invoiceCount": "发票数",
+      "totalBilled": "账单金额",
+      "totalPaid": "已付款",
+      "outstanding": "未付款",
+      "actions": "操作"
+    },
+    "view": "查看明细",
+    "empty": "没有活跃的月度 SOA 合同。",
+    "detail": {
+      "title": "{{buyer}} — {{month}}",
+      "invoiceNumber": "发票编号",
+      "issuedAt": "开具日期",
+      "dueDate": "到期日",
+      "total": "总额",
+      "paid": "已付",
+      "outstanding": "未付",
+      "status": "状态",
+      "noInvoices": "本期没有发票。",
+      "close": "关闭"
+    }
+  },
+  "status": {
+    "draft": "草稿",
+    "submitted": "待处理",
+    "confirmed": "已确认",
+    "shipped": "已发货",
+    "partial_received": "部分收货",
+    "received": "已收货",
+    "cancelled": "已取消",
+    "pending_payment": "待付款",
+    "payment_submitted": "已提交付款",
+    "paid": "已付款",
+    "overdue": "逾期"
+  }
+}

@@ -16,7 +16,18 @@ const MODULE_GATED_ROUTES: Array<{ prefix: string; module: string }> = [
   { prefix: '/pos/manager/plans', module: 'brand_plans' },
   { prefix: '/pos/manager/subscriptions', module: 'brand_subscriptions' },
   { prefix: '/pos/foodcourt/plans', module: 'fc_plans' },
-  { prefix: '/pos/foodcourt/general/subscriptions', module: 'fc_subscriptions' }
+  { prefix: '/pos/foodcourt/general/subscriptions', module: 'fc_subscriptions' },
+  { prefix: '/pos/supplier/products', module: 'supplier_products' },
+  { prefix: '/pos/supplier/inventory', module: 'supplier_inventory' },
+  { prefix: '/pos/foodcourt/general/products', module: 'fc_products' },
+  { prefix: '/pos/foodcourt/general/inventory', module: 'fc_inventory' },
+  { prefix: '/pos/suppliers/directory', module: 'buyer_supplier_directory' },
+  { prefix: '/pos/suppliers/contracts', module: 'buyer_supplier_contracts' },
+  { prefix: '/pos/purchase-orders', module: 'buyer_purchase_orders' },
+  { prefix: '/pos/supplier/orders', module: 'supplier_orders' },
+  { prefix: '/pos/supplier/trade-invoices', module: 'supplier_trade_invoices' },
+  { prefix: '/pos/supplier/soa', module: 'supplier_soa' },
+  { prefix: '/pos/purchase-invoices', module: 'buyer_purchase_invoices' }
 ];
 
 interface ProtectedRouteProps {
@@ -209,6 +220,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       '/pos/brand-ingredients',
       '/pos/brand-inventory',
       '/pos/suppliers',
+      '/pos/purchase-orders',
       '/pos/brand/company-info',
       '/pos/brand/invoices',
       '/pos/brand/plans',
@@ -302,6 +314,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <Navigate to="/pos/foodcourt/general/dashboard" replace />;
       case 'Foodcourt Manager':
         return <Navigate to="/pos/foodcourt/dashboard" replace />;
+      case 'Supplier Admin':
+        return <Navigate to="/pos/supplier/dashboard" replace />;
       default:
         return <Navigate to="/pos" replace />;
     }

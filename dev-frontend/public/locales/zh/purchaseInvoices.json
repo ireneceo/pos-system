@@ -1,0 +1,78 @@
+{
+  "list": {
+    "title": "采购发票",
+    "subtitle": "由供应商和合作伙伴开具的贸易发票。",
+    "loading": "正在加载发票...",
+    "stats": {
+      "outstanding": "未付款",
+      "paid": "已付款",
+      "overdue": "逾期",
+      "thisMonth": "本月开具"
+    },
+    "filter": {
+      "searchIssuer": "搜索开票方名称或发票编号",
+      "allStatuses": "所有状态",
+      "from": "起始日期",
+      "to": "结束日期"
+    },
+    "table": {
+      "invoiceNumber": "发票编号",
+      "issuer": "来自",
+      "total": "总额",
+      "status": "状态",
+      "issuedAt": "开具日期",
+      "dueDate": "到期日",
+      "actions": "操作"
+    },
+    "empty": {
+      "title": "暂无采购发票",
+      "hint": "供应商开具发票后将在此显示。"
+    },
+    "view": "查看",
+    "pay": "付款",
+    "tabs": {
+      "all": "全部发票",
+      "soa": "月度对账单"
+    }
+  },
+  "detail": {
+    "title": "发票 {{number}}",
+    "issuedBy": "开票方",
+    "issuedAt": "开具日期",
+    "dueDate": "到期日",
+    "status": "状态",
+    "items": "明细",
+    "subtotal": "小计",
+    "discount": "折扣",
+    "tax": "税额",
+    "total": "总额",
+    "paid": "已付款",
+    "outstanding": "未付款",
+    "notes": "备注",
+    "noItems": "发票中没有明细项目。",
+    "close": "关闭",
+    "pay": "立即付款"
+  },
+  "soa": {
+    "title": "月度对账单 (SOA)",
+    "subtitle": "按供应商分组的本期未结余额。",
+    "supplier": "供应商",
+    "invoiceCount": "发票数",
+    "totalBilled": "账单金额",
+    "totalPaid": "已付金额",
+    "outstanding": "未付余额",
+    "payAll": "全部付款",
+    "empty": "没有活跃的月度对账单合同。"
+  },
+  "status": {
+    "draft": "草稿",
+    "pending_payment": "待付款",
+    "payment_submitted": "已提交付款",
+    "paid": "已付款",
+    "overdue": "逾期",
+    "cancelled": "已取消"
+  },
+  "common": {
+    "close": "关闭"
+  }
+}

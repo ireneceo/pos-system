@@ -640,3 +640,219 @@ Frontend:
 ### 중복 인지 (의도적)
 - PO receive 로직 ≈ 기존 inventory receive 로직: 기존 안 건드리기 위한 의도적 중복
 - PO 넘버링 ≈ Invoice/HardwareQuote 넘버링: 공통 유틸 아닌 개별 구현 유지
+
+---
+
+# 📌 Sprint 3 Implementation Spec (2026-04-26 — /기능설계)
+
+> Sprint 1+2 완료 후 진입. Irene 자율 위임 (모든 결정 confirmed).
+
+## A. 확정 결정사항
+
+1. **PO Buyer/Seller 폴리모픽**: `entity_type` (buyer) + `seller_type`(seller) ENUM. Sprint 2 패턴 미러.
+2. **PAR Level → `Ingredient.min_stock` 재사용** (par_level 컬럼 추가 없음). 추천 = `(min_stock × 1.5) - current_stock` when `current_stock < min_stock`.
+3. **활성 SupplierContract 게이트** — supplier seller PO 생성 시 검증.
+4. **재고 트랜잭션 + lock** — receive 시 `Ingredient.findByPk(id, { lock, transaction })` + Batch + Transaction + Update 모두 같은 transaction.
+5. **PO 상태 머신 (Sprint 3)**: draft → submitted → confirmed → shipped → partial_received → received → closed. cancelled (draft 만). Sprint 3 임시: buyer 가 셀프로 confirmed/shipped 진행 (Sprint 4 에서 supplier 측 분리).
+6. **IngredientSellerProduct 폴리모픽**: seller_type 4종 (system_admin/brand/foodcourt/supplier).
+
+## B. DB 스키마 (Stage 3)
+
+### B-1. 신규 테이블 3개
+
+#### `ingredient_seller_products` (1 ingredient : N seller products N:M)
+```sql
+CREATE TABLE ingredient_seller_products (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  ingredient_id INT NOT NULL,
+  seller_type ENUM('system_admin','brand','foodcourt','supplier') NOT NULL,
+  seller_entity_id INT NULL COMMENT 'brand_id / foodcourt_id / supplier_company_id (system_admin=null)',
+  seller_product_id INT NOT NULL COMMENT 'SystemProduct/BrandProduct/FoodcourtProduct/SupplierProduct id',
+
+  unit_price DECIMAL(10,2) NOT NULL,
+  unit_conversion DECIMAL(10,4) DEFAULT 1 COMMENT 'recipe unit -> seller product unit ratio',
+  min_order_quantity INT DEFAULT 1,
+  lead_time_days INT DEFAULT 0,
+  is_preferred TINYINT(1) DEFAULT 0,
+  is_active TINYINT(1) DEFAULT 1,
+  notes VARCHAR(255),
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (ingredient_id) REFERENCES ingredients(id) ON DELETE CASCADE,
+  INDEX idx_ingredient (ingredient_id),
+  INDEX idx_seller (seller_type, seller_entity_id),
+  INDEX idx_preferred (ingredient_id, is_preferred)
+);
+```
+
+#### `purchase_orders`
+```sql
+CREATE TABLE purchase_orders (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  po_number VARCHAR(50) UNIQUE,
+
+  -- Buyer (polymorphic, mirror Sprint 2 SupplierContract)
+  entity_type ENUM('restaurant','brand','foodcourt') NOT NULL,
+  entity_id INT NOT NULL,
+
+  -- Seller (polymorphic)
+  seller_type ENUM('system_admin','brand','foodcourt','supplier') NOT NULL,
+  seller_entity_id INT NULL,
+
+  contract_id INT NULL COMMENT 'SupplierContract FK when seller_type=supplier',
+
+  status ENUM('draft','submitted','confirmed','shipped','partial_received','received','cancelled','closed')
+    NOT NULL DEFAULT 'draft',
+
+  subtotal DECIMAL(10,2) DEFAULT 0,
+  tax_amount DECIMAL(10,2) DEFAULT 0,
+  total_amount DECIMAL(10,2) DEFAULT 0,
+  currency VARCHAR(10) DEFAULT 'MYR',
+
+  expected_delivery_date DATE NULL,
+  actual_delivery_date DATE NULL,
+  delivery_address TEXT,
+  notes TEXT,
+
+  created_by_user_id INT NOT NULL,
+  submitted_at DATETIME NULL,
+  confirmed_at DATETIME NULL,
+  shipped_at DATETIME NULL,
+  received_at DATETIME NULL,
+  cancelled_at DATETIME NULL,
+  cancelled_reason TEXT,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+
+  FOREIGN KEY (contract_id) REFERENCES supplier_contracts(id) ON DELETE SET NULL,
+  FOREIGN KEY (created_by_user_id) REFERENCES users(id),
+  INDEX idx_buyer (entity_type, entity_id),
+  INDEX idx_seller (seller_type, seller_entity_id),
+  INDEX idx_status (status),
+  INDEX idx_buyer_status (entity_type, entity_id, status),
+  INDEX idx_po_number (po_number)
+);
+```
+
+#### `purchase_order_items`
+```sql
+CREATE TABLE purchase_order_items (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  purchase_order_id INT NOT NULL,
+  ingredient_id INT NOT NULL,
+  ingredient_seller_product_id INT NULL COMMENT 'snapshot of which seller product was used',
+
+  description VARCHAR(255) COMMENT 'snapshot of seller product name',
+  quantity_ordered DECIMAL(10,2) NOT NULL,
+  quantity_received DECIMAL(10,2) DEFAULT 0,
+  unit VARCHAR(50),
+  unit_price DECIMAL(10,2) NOT NULL,
+  line_total DECIMAL(10,2) NOT NULL,
+  unit_conversion DECIMAL(10,4) DEFAULT 1,
+  notes VARCHAR(255),
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  FOREIGN KEY (ingredient_id) REFERENCES ingredients(id),
+  FOREIGN KEY (ingredient_seller_product_id) REFERENCES ingredient_seller_products(id) ON DELETE SET NULL,
+  INDEX idx_po (purchase_order_id),
+  INDEX idx_ingredient (ingredient_id)
+);
+```
+
+### B-2. Sequelize 모델 + Association
+
+```javascript
+// models/IngredientSellerProduct.js — 1 ingredient : N seller products
+IngredientSellerProduct.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(IngredientSellerProduct, { foreignKey: 'ingredient_id', as: 'sellerSources' });
+
+// models/PurchaseOrder.js
+PurchaseOrder.hasMany(PurchaseOrderItem, { foreignKey: 'purchase_order_id', as: 'items' });
+PurchaseOrder.belongsTo(SupplierContract, { foreignKey: 'contract_id', as: 'contract' });
+PurchaseOrder.belongsTo(User, { foreignKey: 'created_by_user_id', as: 'createdBy' });
+
+// models/PurchaseOrderItem.js
+PurchaseOrderItem.belongsTo(PurchaseOrder, { foreignKey: 'purchase_order_id', as: 'order' });
+PurchaseOrderItem.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+PurchaseOrderItem.belongsTo(IngredientSellerProduct, { foreignKey: 'ingredient_seller_product_id', as: 'sellerSource' });
+```
+
+## C. API (Stage 2)
+
+### C-1. Buyer Side (`routes/purchase-orders.js` 신규)
+
+`authenticateToken + requireBuyerRole`. 모듈 게이트 `requireModule('buyer_purchase_orders')` (신규).
+
+| # | METHOD 경로 | 설명 |
+|---|------------|------|
+| 1 | `GET /api/purchase-orders` | 자기 PO 목록 (paginated, filter status) |
+| 2 | `GET /api/purchase-orders/:id` | PO 상세 + items |
+| 3 | `POST /api/purchase-orders` | PO 생성 (draft) — body: `{ seller_type, seller_entity_id, items: [{ ingredient_id, ingredient_seller_product_id, quantity_ordered, unit_price?, notes? }], expected_delivery_date?, delivery_address?, notes? }` |
+| 4 | `PUT /api/purchase-orders/:id` | draft 만 수정 가능 |
+| 5 | `POST /api/purchase-orders/:id/submit` | draft → submitted (Sprint 3 임시: 자동 confirmed) |
+| 6 | `POST /api/purchase-orders/:id/mark-shipped` | confirmed → shipped (Sprint 3 buyer self) |
+| 7 | `POST /api/purchase-orders/:id/receive` | body: `{ items: [{ item_id, quantity_received, batch_no?, expiry_date?, unit_cost? }] }` → InventoryBatch + Transaction + Ingredient.current_stock += → status='partial_received' or 'received' |
+| 8 | `POST /api/purchase-orders/:id/cancel` | draft 만 가능 |
+| 9 | `GET /api/purchase-orders/suggestions` | PAR 기반 자동 추천 (Ingredient.current_stock < min_stock 인 항목 + 추천 수량) |
+
+### C-2. Ingredient Seller Sources (`routes/ingredient-seller-products.js` 신규)
+
+`authenticateToken + requireBuyerRole`.
+
+| # | METHOD 경로 | 설명 |
+|---|------------|------|
+| 10 | `GET /api/ingredients/:ingredientId/seller-sources` | ingredient 의 모든 연결 (자기 ingredient 만) |
+| 11 | `POST /api/ingredients/:ingredientId/seller-sources` | 연결 추가 |
+| 12 | `PUT /api/ingredient-seller-products/:id` | 단가/preferred/active 수정 |
+| 13 | `DELETE /api/ingredient-seller-products/:id` | 연결 제거 |
+| 14 | `GET /api/seller-catalog?seller_type=&seller_entity_id=` | 연결 가능한 상품 검색 (active contract 필요) |
+
+## D. UI (Stage 4)
+
+### D-1. 페이지 4개 신규
+
+| 경로 | 컴포넌트 | 기능 |
+|------|----------|------|
+| `/pos/purchase-orders` | `pages/PurchaseOrders/PurchaseOrdersPage.tsx` | PO 목록 + 필터 + Stat cards (Draft/Pending/Shipped/Received) |
+| `/pos/purchase-orders/new` | `pages/PurchaseOrders/NewPurchaseOrderPage.tsx` | 3-step wizard (Seller → Items → Review) |
+| `/pos/purchase-orders/:id` | `pages/PurchaseOrders/PurchaseOrderDetailPage.tsx` | 상세 + Status timeline + Receive 모달 + Cancel 모달 |
+| (Ingredient 페이지 확장) | 기존 IngredientsPage 에 `[Add Supplier Source]` 모달 | IngredientSellerProduct CRUD |
+
+### D-2. 사이드바 추가
+- Restaurant Admin / Restaurant Owner / BG / FG 4 buyer 역할 모두 `/pos/purchase-orders` 추가 (Inventory 섹션 인근).
+
+### D-3. i18n
+신규 namespace: `purchaseOrders.json` (4 언어). 60+ 키.
+
+### D-4. 모듈 시드 추가
+- `buyer_purchase_orders` AddonModule (target='all', basic 카테고리). 모든 buyer 플랜에 자동 포함.
+
+## E. 검증 (Stage 6)
+
+### E-1. test-sprint3.js 시나리오 (목표 25+)
+1. Setup: Supplier active contract + Ingredient 연결
+2. POST seller-source → 201
+3. GET ingredient seller-sources → 1건
+4. POST purchase-order (draft) → 201, items 검증
+5. PUT 수정 (draft) → 200
+6. PUT (submitted) → 400 (state lock)
+7. POST submit → submitted (Sprint 3 임시 confirmed)
+8. POST mark-shipped → shipped
+9. GET suggestions → low-stock ingredient 추천
+10. POST receive (전량) → InventoryBatch 1 + Transaction 1 + Ingredient stock 정확
+11. status=received 검증
+12. POST receive (부분) → partial_received
+13. Cancel (draft) → cancelled
+14. Cancel (submitted) → 400
+15. IDOR: 다른 buyer PO GET → 404
+16. Active contract 없는 supplier PO → 400
+17. Anon → 401
+18. Cross-role → 403
+

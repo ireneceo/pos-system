@@ -1,0 +1,209 @@
+{
+  "list": {
+    "title": "Purchase Orders",
+    "subtitle": "Create and track orders to your sellers",
+    "newOrder": "+ New Order",
+    "stats": {
+      "draft": "Draft",
+      "pending": "Pending",
+      "shipped": "Shipped",
+      "received": "Received"
+    },
+    "filter": {
+      "allStatuses": "All Statuses",
+      "searchSeller": "Search seller...",
+      "from": "From",
+      "to": "To"
+    },
+    "table": {
+      "poNumber": "PO #",
+      "seller": "Seller",
+      "items": "Items",
+      "total": "Total",
+      "status": "Status",
+      "expected": "Expected Delivery",
+      "createdAt": "Created",
+      "actions": "Actions"
+    },
+    "view": "View",
+    "empty": {
+      "title": "No purchase orders yet",
+      "hint": "Create your first order to a seller to get started.",
+      "cta": "+ New Order"
+    },
+    "loading": "Loading orders...",
+    "loadFailed": "Failed to load purchase orders.",
+    "suggestions": {
+      "badge": "{{n}} PAR suggestions",
+      "title": "PAR-based Reorder Suggestions",
+      "subtitle": "Items below their PAR threshold, grouped by preferred seller",
+      "createPO": "Create PO",
+      "noPreferred": "No preferred seller",
+      "ingredient": "Ingredient",
+      "currentStock": "Current Stock",
+      "suggested": "Suggested Qty",
+      "loadFailed": "Failed to load suggestions.",
+      "empty": "No reorder suggestions right now."
+    }
+  },
+  "new": {
+    "title": "New Purchase Order",
+    "back": "Back to Purchase Orders",
+    "step": {
+      "seller": "Seller",
+      "items": "Items",
+      "review": "Review"
+    },
+    "stepLabel": "Step {{current}} of {{total}}",
+    "next": "Next",
+    "previous": "Back",
+    "saveDraft": "Save as Draft",
+    "submit": "Submit Order",
+    "seller": {
+      "title": "Choose a seller",
+      "subtitle": "Pick the catalog you want to order from",
+      "search": "Search sellers...",
+      "type": {
+        "system": "System Catalog",
+        "brand": "Brand Catalog",
+        "foodcourt": "Foodcourt Catalog",
+        "supplier": "Supplier"
+      },
+      "contractActive": "Contract Active",
+      "contractRequired": "Contract Required",
+      "noSellers": "No sellers available.",
+      "noSellersHint": "Make sure you have an active supplier contract or available system catalog."
+    },
+    "items": {
+      "title": "Add items",
+      "subtitle": "Search ingredients and pick the matching seller product",
+      "search": "Search ingredients...",
+      "addRow": "+ Add Item",
+      "remove": "Remove",
+      "ingredient": "Ingredient",
+      "sellerProduct": "Seller Product",
+      "selectProduct": "Select product...",
+      "quantity": "Qty",
+      "unitPrice": "Unit Price",
+      "lineTotal": "Line Total",
+      "subtotal": "Subtotal",
+      "noItemsHint": "No items added yet. Use search to add an ingredient.",
+      "noProductMatch": "No matching seller product",
+      "parSuggested": "PAR suggested: {{n}}"
+    },
+    "review": {
+      "title": "Review order",
+      "subtitle": "Confirm details before submitting",
+      "sellerInfo": "Seller",
+      "items": "Items",
+      "expectedDelivery": "Expected Delivery",
+      "deliveryAddress": "Delivery Address",
+      "deliveryAddressPlaceholder": "Where should the order be delivered?",
+      "notes": "Notes",
+      "notesPlaceholder": "Internal notes for this order (optional)",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "total": "Total"
+    },
+    "errors": {
+      "selectSeller": "Please select a seller.",
+      "noItems": "Add at least one item.",
+      "missingProduct": "Each row needs a seller product selected.",
+      "invalidQty": "Quantity must be greater than 0.",
+      "createFailed": "Failed to create purchase order.",
+      "submitFailed": "Failed to submit purchase order."
+    }
+  },
+  "detail": {
+    "back": "Back to Purchase Orders",
+    "loadFailed": "Failed to load purchase order.",
+    "timeline": {
+      "title": "Status Timeline",
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "confirmed": "Confirmed",
+      "shipped": "Shipped",
+      "received": "Received",
+      "partial_received": "Partially Received",
+      "cancelled": "Cancelled"
+    },
+    "section": {
+      "items": "Items",
+      "delivery": "Delivery",
+      "notes": "Notes"
+    },
+    "items": {
+      "ingredient": "Ingredient",
+      "qtyOrdered": "Qty Ordered",
+      "qtyReceived": "Qty Received",
+      "unitPrice": "Unit Price",
+      "lineTotal": "Line Total",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "total": "Total"
+    },
+    "delivery": {
+      "expected": "Expected Date",
+      "actual": "Actual Date",
+      "address": "Address"
+    },
+    "actions": {
+      "edit": "Edit",
+      "submit": "Submit",
+      "cancel": "Cancel",
+      "markShipped": "Mark Shipped",
+      "receive": "Receive"
+    },
+    "noNotes": "No notes."
+  },
+  "receive": {
+    "modalTitle": "Receive Order",
+    "subtitle": "Record what arrived from this delivery",
+    "ingredient": "Ingredient",
+    "ordered": "Ordered",
+    "alreadyReceived": "Received",
+    "receivingNow": "Receive now",
+    "batchNo": "Batch #",
+    "expiryDate": "Expiry",
+    "unitCost": "Unit Cost",
+    "submit": "Confirm Receipt",
+    "submitting": "Saving...",
+    "submitFailed": "Failed to record receipt.",
+    "noChanges": "Enter at least one quantity to receive.",
+    "exceedsRemaining": "Quantity exceeds remaining ordered amount."
+  },
+  "cancel": {
+    "modalTitle": "Cancel Purchase Order",
+    "warning": "Cancelling will notify the seller and lock this PO from further changes.",
+    "reasonLabel": "Reason",
+    "reasonPlaceholder": "Why are you cancelling?",
+    "reasonRequired": "Please provide a reason.",
+    "submit": "Cancel Order",
+    "submitFailed": "Failed to cancel purchase order."
+  },
+  "markShipped": {
+    "modalTitle": "Mark as Shipped",
+    "hint": "Use this when the seller has not updated the PO themselves.",
+    "trackingLabel": "Tracking # (optional)",
+    "trackingPlaceholder": "Carrier or tracking reference",
+    "submit": "Mark Shipped",
+    "submitFailed": "Failed to mark order as shipped."
+  },
+  "status": {
+    "draft": "Draft",
+    "submitted": "Submitted",
+    "confirmed": "Confirmed",
+    "shipped": "Shipped",
+    "partial_received": "Partial",
+    "received": "Received",
+    "cancelled": "Cancelled"
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "submitting": "Submitting...",
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "directory": {
+    "title": "Cari Pembekal",
+    "subtitle": "Cari dan hubungi pembekal yang disahkan mengikut kategori",
+    "search": "Cari pembekal...",
+    "category": "Kategori",
+    "country": "Negara",
+    "state": "Negeri",
+    "allCategories": "Semua Kategori",
+    "allCountries": "Semua Negara",
+    "allStates": "Semua Negeri",
+    "products": "{{n}} produk",
+    "noResults": "Tiada pembekal dijumpai",
+    "noResultsHint": "Cuba laraskan penapis atau kata kunci carian.",
+    "loading": "Memuatkan pembekal...",
+    "viewProfile": "Lihat Profil",
+    "page": "Halaman {{page}} daripada {{total}}"
+  },
+  "profile": {
+    "back": "Kembali ke Direktori",
+    "about": "Mengenai",
+    "catalog": "Katalog Produk",
+    "categories": "Kategori",
+    "contact": "Hubungan",
+    "address": "Alamat",
+    "requestContract": "Mohon Kontrak",
+    "requestAgain": "Mohon Semula",
+    "contractActive": "Kontrak Aktif",
+    "pendingReview": "Menunggu Semakan",
+    "rejected": "Ditolak",
+    "terminated": "Ditamatkan",
+    "viewContract": "Lihat Kontrak",
+    "noProducts": "Tiada produk lagi.",
+    "searchProducts": "Cari produk...",
+    "moq": "MOQ {{n}}",
+    "perUnit": "/{{unit}}",
+    "loadFailed": "Gagal memuatkan profil pembekal."
+  },
+  "myContracts": {
+    "title": "Pembekal Saya",
+    "subtitle": "Urus kontrak dengan pembekal anda",
+    "findSuppliers": "Cari Pembekal",
+    "filter": {
+      "all": "Semua Status",
+      "requested": "Dimohon",
+      "active": "Aktif",
+      "rejected": "Ditolak",
+      "terminated": "Ditamatkan"
+    },
+    "stats": {
+      "total": "Jumlah",
+      "active": "Aktif",
+      "pending": "Menunggu",
+      "ended": "Tamat"
+    },
+    "table": {
+      "supplier": "Pembekal",
+      "requestedAt": "Tarikh Mohon",
+      "status": "Status",
+      "paymentTerms": "Syarat Pembayaran",
+      "actions": "Tindakan"
+    },
+    "view": "Lihat",
+    "terminate": "Tamatkan",
+    "noContracts": "Belum ada kontrak pembekal.",
+    "noContractsHint": "Layari direktori pembekal untuk menghantar permohonan pertama anda."
+  },
+  "contractDetail": {
+    "title": "Butiran Kontrak",
+    "back": "Kembali ke Pembekal Saya",
+    "supplierInfo": "Maklumat Pembekal",
+    "statusTimeline": "Garis Masa Status",
+    "paymentTerms": "Syarat Pembayaran",
+    "messages": "Mesej",
+    "yourMessage": "Mesej Anda",
+    "supplierNotes": "Catatan Pembekal",
+    "rejectionReason": "Sebab Penolakan",
+    "terminationReason": "Sebab Penamatan",
+    "events": {
+      "requested": "Dimohon",
+      "approved": "Diluluskan",
+      "rejected": "Ditolak",
+      "terminated": "Ditamatkan"
+    },
+    "loadFailed": "Gagal memuatkan kontrak."
+  },
+  "request": {
+    "modalTitle": "Mohon Kontrak",
+    "supplierLabel": "Pembekal",
+    "messageLabel": "Mesej (pilihan)",
+    "messagePlaceholder": "Mengapa anda berminat dengan pembekal ini?",
+    "yourCompany": "Maklumat syarikat anda akan dikongsi dengan pembekal:",
+    "entity": "Entiti",
+    "entityType": {
+      "restaurant": "Restaurant",
+      "brand": "Brand",
+      "foodcourt": "Foodcourt"
+    },
+    "submit": "Hantar Permohonan",
+    "alreadyActive": "Anda sudah ada kontrak aktif dengan pembekal ini.",
+    "alreadyPending": "Anda sudah menghantar permohonan kepada pembekal ini.",
+    "submitFailed": "Gagal menghantar permohonan."
+  },
+  "terminate": {
+    "modalTitle": "Tamatkan Kontrak",
+    "warning": "Penamatan akan menghentikan paparan produk pembekal ini di skrin pesanan anda.",
+    "reasonLabel": "Sebab",
+    "reasonPlaceholder": "Beritahu pembekal sebab penamatan",
+    "reasonRequired": "Sila berikan sebab.",
+    "submit": "Tamatkan Kontrak",
+    "submitFailed": "Gagal menamatkan kontrak."
+  },
+  "approve": {
+    "modalTitle": "Lulus & Aktifkan",
+    "buyerLabel": "Pembeli",
+    "paymentTerms": "Syarat Pembayaran",
+    "termsLabel": "Syarat",
+    "termsCOD": "Tunai Semasa Penghantaran",
+    "termsNET15": "Net 15 hari",
+    "termsNET30": "Net 30 hari",
+    "termsNET60": "Net 60 hari",
+    "invoiceCycle": "Kitaran Invois",
+    "cycleImmediate": "Segera (setiap penghantaran)",
+    "cycleMonthly": "SOA Bulanan",
+    "paymentDueDay": "Tarikh Bayaran (1–31)",
+    "paymentDueDayHint": "Hari pada bulan berikutnya untuk bayaran.",
+    "creditLimit": "Had Kredit (pilihan)",
+    "currency": "Mata Wang",
+    "notes": "Catatan (pilihan)",
+    "submit": "Lulus & Aktifkan",
+    "submitFailed": "Gagal meluluskan kontrak.",
+    "invalidDueDay": "Tarikh Bayaran mestilah antara 1 dan 31."
+  },
+  "reject": {
+    "modalTitle": "Tolak Kontrak",
+    "warning": "Pembeli akan melihat sebab penolakan ini.",
+    "reasonLabel": "Sebab",
+    "reasonPlaceholder": "Mengapa menolak permohonan ini?",
+    "reasonRequired": "Sila berikan sebab.",
+    "submit": "Tolak",
+    "submitFailed": "Gagal menolak kontrak."
+  },
+  "editTerms": {
+    "modalTitle": "Sunting Syarat Pembayaran",
+    "submit": "Simpan Perubahan",
+    "submitFailed": "Gagal mengemas kini syarat pembayaran."
+  },
+  "supplierContracts": {
+    "title": "Permohonan Kontrak",
+    "subtitle": "Semak dan urus permohonan kontrak masuk",
+    "tabs": {
+      "pending": "Menunggu",
+      "active": "Aktif",
+      "rejected": "Ditolak",
+      "terminated": "Ditamatkan"
+    },
+    "card": {
+      "from": "Dari",
+      "type": "Jenis",
+      "requestedAt": "Tarikh Mohon",
+      "message": "Mesej",
+      "noMessage": "Tiada mesej."
+    },
+    "actions": {
+      "approve": "Lulus",
+      "reject": "Tolak",
+      "terminate": "Tamatkan",
+      "editTerms": "Sunting Syarat"
+    },
+    "empty": {
+      "pending": "Tiada permohonan kontrak menunggu.",
+      "active": "Belum ada kontrak aktif.",
+      "rejected": "Tiada permohonan ditolak.",
+      "terminated": "Tiada kontrak ditamatkan."
+    }
+  },
+  "customers": {
+    "title": "Pelanggan",
+    "subtitle": "Pembeli dengan kontrak aktif",
+    "search": "Cari pelanggan...",
+    "filter": {
+      "all": "Semua Jenis",
+      "restaurant": "Restaurant",
+      "brand": "Brand",
+      "foodcourt": "Foodcourt"
+    },
+    "table": {
+      "customer": "Pelanggan",
+      "type": "Jenis",
+      "activeSince": "Aktif Sejak",
+      "paymentTerms": "Syarat Pembayaran",
+      "actions": "Tindakan"
+    },
+    "viewContract": "Lihat Kontrak",
+    "editTerms": "Sunting Syarat",
+    "noCustomers": "Belum ada pelanggan aktif.",
+    "noCustomersHint": "Kontrak yang diluluskan akan muncul di sini setelah anda menerima permohonan pembeli."
+  },
+  "status": {
+    "requested": "Dimohon",
+    "active": "Aktif",
+    "rejected": "Ditolak",
+    "terminated": "Ditamatkan",
+    "none": "Tiada Kontrak"
+  },
+  "common": {
+    "save": "Simpan",
+    "cancel": "Batal",
+    "saving": "Menyimpan...",
+    "submitting": "Menghantar...",
+    "close": "Tutup"
+  }
+}

@@ -323,6 +323,49 @@ Staff의 권한은 **메뉴 보이기/숨기기**로 제어됨. Restaurant Admin
 
 ---
 
+## 9. Supplier Admin (공급업체 관리자) — Sprint 1 추가 (2026-04-26)
+
+> **Supply Chain System** 도입으로 신설된 9번째 역할. SupplierCompany 사업체의 owner. Brand/Foodcourt 와 동급.
+
+### 가입 진입점 (둘 다 지원)
+- **A: System Admin Invitation** — SA가 `/pos/admin/supplier-invitations` 에서 토큰 발송 → 7일 유효 → 수신자 가입 (BG/FC 패턴 미러)
+- **B: Open Signup** — Landing `/signup` 에서 "Supplier" 역할 옵션 선택 → 일반 가입
+
+### 권한
+- 자기 SupplierCompany 정보/설정/구독 조회·편집 (기본 자격)
+- 자기 상품 카탈로그 CRUD (`supplier_products` 모듈)
+- 자기 재고 관리 (`supplier_inventory`)
+- 자기 앞으로 들어온 PO 처리 (Sprint 4: confirm/ship/reject)
+- 발행한 trade invoice 조회 (Sprint 4)
+- Monthly SOA 조회 (Sprint 4)
+- 계약 신청 받고 승인/거절 (Sprint 2)
+- 고객별 결제조건 설정 (Sprint 2: Immediate / Monthly SOA + payment_due_day)
+
+### 접근 가능 페이지
+- `/pos/supplier/dashboard`
+- `/pos/supplier/products` (Sprint 1, 모듈 게이팅)
+- `/pos/supplier/inventory` (Sprint 1)
+- `/pos/supplier/customers` (Sprint 2)
+- `/pos/supplier/contracts` (Sprint 2)
+- `/pos/supplier/orders` (Sprint 4 활성)
+- `/pos/supplier/trade-invoices` (Sprint 4)
+- `/pos/supplier/soa` (Sprint 4)
+- `/pos/supplier/company-info` / `payment-settings` / `invoice-settings` / `invoices` / `notices` / `system-inquiry`
+
+### Plan 2-Tier
+- `supplier_basic` ($149 참고) — 기본 자격 + Basic 9 모듈 (products/inventory/directory/contracts/customers/orders/shipping/trade_invoices/soa). 한도: product 100, customer 50, order 1000/mo, staff 1.
+- `supplier_advanced` ($299 참고) — Basic + Advanced 4 모듈 (admin_staff/performance/activity_logs/multi_warehouse). 한도: 무제한 + staff 10.
+
+### 제한 사항
+- Restaurant POS 기능 사용 불가
+- 다른 SupplierCompany 데이터 접근 불가 (IDOR 방어)
+- Buyer 라우트 (/pos/suppliers/directory, /pos/purchase-orders 등) 접근 불가 (cross-role 차단)
+- 활성 SupplierContract 없으면 buyer 측 발주 화면에 노출되지 않음
+
+**상세 설계**: `docs/SUPPLY_CHAIN_SYSTEM_OVERVIEW.md` + `SELLER_PRODUCT_INVENTORY_SYSTEM.md` + `SUPPLIER_CONTRACT_SYSTEM.md` + `PURCHASE_ORDER_SYSTEM.md` + `SELLER_ORDER_MANAGEMENT_SYSTEM.md`
+
+---
+
 ## 권한 매트릭스
 
 | 기능 | System Admin | Brand General | Brand Manager | Foodcourt General | Foodcourt Manager | Restaurant Admin | Staff |

@@ -1,0 +1,213 @@
+{
+  "directory": {
+    "title": "공급업체 찾기",
+    "subtitle": "카테고리별 검증된 공급업체를 검색하고 연결하세요",
+    "search": "공급업체 검색...",
+    "category": "카테고리",
+    "country": "국가",
+    "state": "지역",
+    "allCategories": "전체 카테고리",
+    "allCountries": "전체 국가",
+    "allStates": "전체 지역",
+    "products": "상품 {{n}}개",
+    "noResults": "공급업체를 찾을 수 없습니다",
+    "noResultsHint": "필터나 검색어를 조정해 보세요.",
+    "loading": "공급업체를 불러오는 중...",
+    "viewProfile": "프로필 보기",
+    "page": "{{page}} / {{total}} 페이지"
+  },
+  "profile": {
+    "back": "목록으로 돌아가기",
+    "about": "소개",
+    "catalog": "상품 카탈로그",
+    "categories": "카테고리",
+    "contact": "연락처",
+    "address": "주소",
+    "requestContract": "계약 신청",
+    "requestAgain": "다시 신청",
+    "contractActive": "계약 활성",
+    "pendingReview": "검토 대기",
+    "rejected": "거절됨",
+    "terminated": "종료됨",
+    "viewContract": "계약 보기",
+    "noProducts": "등록된 상품이 없습니다.",
+    "searchProducts": "상품 검색...",
+    "moq": "최소 주문 {{n}}",
+    "perUnit": "/{{unit}}",
+    "loadFailed": "공급업체 프로필을 불러오지 못했습니다."
+  },
+  "myContracts": {
+    "title": "내 공급업체",
+    "subtitle": "공급업체 계약을 관리하세요",
+    "findSuppliers": "공급업체 찾기",
+    "filter": {
+      "all": "전체 상태",
+      "requested": "신청됨",
+      "active": "활성",
+      "rejected": "거절됨",
+      "terminated": "종료됨"
+    },
+    "stats": {
+      "total": "전체",
+      "active": "활성",
+      "pending": "대기",
+      "ended": "종료"
+    },
+    "table": {
+      "supplier": "공급업체",
+      "requestedAt": "신청일",
+      "status": "상태",
+      "paymentTerms": "결제 조건",
+      "actions": "작업"
+    },
+    "view": "상세",
+    "terminate": "종료",
+    "noContracts": "공급업체 계약이 없습니다.",
+    "noContractsHint": "공급업체 디렉토리에서 첫 계약을 신청해 보세요."
+  },
+  "contractDetail": {
+    "title": "계약 상세",
+    "back": "내 공급업체로 돌아가기",
+    "supplierInfo": "공급업체 정보",
+    "statusTimeline": "상태 타임라인",
+    "paymentTerms": "결제 조건",
+    "messages": "메시지",
+    "yourMessage": "내가 보낸 메시지",
+    "supplierNotes": "공급업체 메모",
+    "rejectionReason": "거절 사유",
+    "terminationReason": "종료 사유",
+    "events": {
+      "requested": "신청",
+      "approved": "승인",
+      "rejected": "거절",
+      "terminated": "종료"
+    },
+    "loadFailed": "계약을 불러오지 못했습니다."
+  },
+  "request": {
+    "modalTitle": "계약 신청",
+    "supplierLabel": "공급업체",
+    "messageLabel": "메시지 (선택)",
+    "messagePlaceholder": "이 공급업체에 관심을 가진 이유를 알려주세요",
+    "yourCompany": "회사 정보가 공급업체에게 공유됩니다:",
+    "entity": "법인",
+    "entityType": {
+      "restaurant": "Restaurant",
+      "brand": "Brand",
+      "foodcourt": "Foodcourt"
+    },
+    "submit": "신청 보내기",
+    "alreadyActive": "이미 이 공급업체와 활성 계약이 있습니다.",
+    "alreadyPending": "이미 이 공급업체에 신청한 건이 있습니다.",
+    "submitFailed": "신청 전송에 실패했습니다."
+  },
+  "terminate": {
+    "modalTitle": "계약 종료",
+    "warning": "종료하면 발주 화면에서 이 공급업체의 상품이 더 이상 노출되지 않습니다.",
+    "reasonLabel": "사유",
+    "reasonPlaceholder": "종료 사유를 입력해 주세요",
+    "reasonRequired": "사유를 입력해 주세요.",
+    "submit": "계약 종료",
+    "submitFailed": "계약 종료에 실패했습니다."
+  },
+  "approve": {
+    "modalTitle": "승인 및 활성화",
+    "buyerLabel": "구매자",
+    "paymentTerms": "결제 조건",
+    "termsLabel": "조건",
+    "termsCOD": "현금 결제",
+    "termsNET15": "Net 15일",
+    "termsNET30": "Net 30일",
+    "termsNET60": "Net 60일",
+    "invoiceCycle": "인보이스 주기",
+    "cycleImmediate": "즉시 (배송 건별)",
+    "cycleMonthly": "월간 SOA",
+    "paymentDueDay": "결제일 (1–31)",
+    "paymentDueDayHint": "익월 결제일을 입력하세요.",
+    "creditLimit": "여신 한도 (선택)",
+    "currency": "통화",
+    "notes": "메모 (선택)",
+    "submit": "승인 및 활성화",
+    "submitFailed": "계약 승인에 실패했습니다.",
+    "invalidDueDay": "결제일은 1~31 사이여야 합니다."
+  },
+  "reject": {
+    "modalTitle": "계약 거절",
+    "warning": "거절 사유는 구매자에게 표시됩니다.",
+    "reasonLabel": "사유",
+    "reasonPlaceholder": "거절 사유를 입력해 주세요",
+    "reasonRequired": "사유를 입력해 주세요.",
+    "submit": "거절",
+    "submitFailed": "계약 거절에 실패했습니다."
+  },
+  "editTerms": {
+    "modalTitle": "결제 조건 수정",
+    "submit": "변경 저장",
+    "submitFailed": "결제 조건 수정에 실패했습니다."
+  },
+  "supplierContracts": {
+    "title": "계약 요청",
+    "subtitle": "수신된 계약 요청을 검토하고 관리하세요",
+    "tabs": {
+      "pending": "대기",
+      "active": "활성",
+      "rejected": "거절",
+      "terminated": "종료"
+    },
+    "card": {
+      "from": "신청자",
+      "type": "유형",
+      "requestedAt": "신청일",
+      "message": "메시지",
+      "noMessage": "메시지가 없습니다."
+    },
+    "actions": {
+      "approve": "승인",
+      "reject": "거절",
+      "terminate": "종료",
+      "editTerms": "조건 수정"
+    },
+    "empty": {
+      "pending": "대기 중인 계약 요청이 없습니다.",
+      "active": "활성 계약이 없습니다.",
+      "rejected": "거절된 요청이 없습니다.",
+      "terminated": "종료된 계약이 없습니다."
+    }
+  },
+  "customers": {
+    "title": "고객",
+    "subtitle": "활성 계약을 맺은 구매자",
+    "search": "고객 검색...",
+    "filter": {
+      "all": "전체 유형",
+      "restaurant": "Restaurant",
+      "brand": "Brand",
+      "foodcourt": "Foodcourt"
+    },
+    "table": {
+      "customer": "고객",
+      "type": "유형",
+      "activeSince": "활성 시작일",
+      "paymentTerms": "결제 조건",
+      "actions": "작업"
+    },
+    "viewContract": "계약 보기",
+    "editTerms": "조건 수정",
+    "noCustomers": "활성 고객이 없습니다.",
+    "noCustomersHint": "구매자 요청을 승인하면 여기에 표시됩니다."
+  },
+  "status": {
+    "requested": "신청됨",
+    "active": "활성",
+    "rejected": "거절됨",
+    "terminated": "종료됨",
+    "none": "계약 없음"
+  },
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "saving": "저장 중...",
+    "submitting": "전송 중...",
+    "close": "닫기"
+  }
+}

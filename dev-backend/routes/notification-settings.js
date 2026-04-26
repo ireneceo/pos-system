@@ -17,7 +17,13 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'inquiry_replied', label: 'Inquiry Reply', description: 'When your inquiry receives a reply', section: 'Inquiries & Tickets', roles: ['Restaurant Admin', 'Restaurant Owner'] },
   { key: 'ticket_status_changed', label: 'Ticket Status Changed', description: 'When a ticket status is updated', section: 'Inquiries & Tickets', roles: ['all'] },
   { key: 'hardware_quote', label: 'Hardware Quote Request', description: 'When a new hardware package quote is submitted', section: 'Inquiries & Tickets', roles: ['System Admin'] },
-  { key: 'trial_expiry_reminder', label: 'Trial Expiry Reminder', description: 'Reminders before and after your trial period ends', section: 'Subscription', roles: ['Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Foodcourt General'] }
+  { key: 'trial_expiry_reminder', label: 'Trial Expiry Reminder', description: 'Reminders before and after your trial period ends', section: 'Subscription', roles: ['Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Foodcourt General'] },
+  { key: 'supplier_contract', label: 'Supplier Contract Updates', description: 'Contract requests, approvals, rejections, and terminations between buyers and suppliers', section: 'Supply Chain', roles: ['Supplier Admin', 'Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
+  // Sprint 4 — Supply Chain Order Lifecycle
+  { key: 'seller_order_received', label: 'New Purchase Order Received', description: 'When a buyer submits a purchase order to your company', section: 'Supply Chain', roles: ['Supplier Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
+  { key: 'trade_invoice_created', label: 'Trade Invoice Issued', description: 'When a supplier issues a trade invoice for your purchase order', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
+  { key: 'trade_invoice_paid', label: 'Trade Invoice Paid', description: 'When a buyer pays a trade invoice you issued', section: 'Supply Chain', roles: ['Supplier Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
+  { key: 'monthly_soa', label: 'Monthly Statement of Account', description: 'Monthly summary of trade invoices for monthly_soa contracts', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] }
 ];
 
 // GET - User notification preferences

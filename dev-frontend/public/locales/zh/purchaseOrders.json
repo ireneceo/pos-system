@@ -1,0 +1,209 @@
+{
+  "list": {
+    "title": "采购订单",
+    "subtitle": "向供应商创建并跟踪采购订单",
+    "newOrder": "+ 新订单",
+    "stats": {
+      "draft": "草稿",
+      "pending": "待处理",
+      "shipped": "已发货",
+      "received": "已收货"
+    },
+    "filter": {
+      "allStatuses": "全部状态",
+      "searchSeller": "搜索供应商...",
+      "from": "起始日期",
+      "to": "结束日期"
+    },
+    "table": {
+      "poNumber": "采购单号",
+      "seller": "供应商",
+      "items": "项目",
+      "total": "金额",
+      "status": "状态",
+      "expected": "预计送达",
+      "createdAt": "创建时间",
+      "actions": "操作"
+    },
+    "view": "查看",
+    "empty": {
+      "title": "暂无采购订单",
+      "hint": "创建您的第一个采购订单以开始。",
+      "cta": "+ 新订单"
+    },
+    "loading": "正在加载订单...",
+    "loadFailed": "加载采购订单失败。",
+    "suggestions": {
+      "badge": "{{n}} 条 PAR 建议",
+      "title": "基于 PAR 的补货建议",
+      "subtitle": "低于 PAR 阈值的库存项目，按首选供应商分组",
+      "createPO": "创建采购单",
+      "noPreferred": "未指定首选供应商",
+      "ingredient": "原料",
+      "currentStock": "当前库存",
+      "suggested": "建议数量",
+      "loadFailed": "加载建议失败。",
+      "empty": "目前没有补货建议。"
+    }
+  },
+  "new": {
+    "title": "新建采购订单",
+    "back": "返回采购订单",
+    "step": {
+      "seller": "供应商",
+      "items": "项目",
+      "review": "确认"
+    },
+    "stepLabel": "第 {{current}} 步 / 共 {{total}} 步",
+    "next": "下一步",
+    "previous": "上一步",
+    "saveDraft": "保存为草稿",
+    "submit": "提交订单",
+    "seller": {
+      "title": "选择供应商",
+      "subtitle": "选择要订购的目录",
+      "search": "搜索供应商...",
+      "type": {
+        "system": "系统目录",
+        "brand": "品牌目录",
+        "foodcourt": "美食广场目录",
+        "supplier": "供应商"
+      },
+      "contractActive": "合同生效",
+      "contractRequired": "需要合同",
+      "noSellers": "没有可用的供应商。",
+      "noSellersHint": "请确保您有有效的供应商合同或可用的系统目录。"
+    },
+    "items": {
+      "title": "添加项目",
+      "subtitle": "搜索原料并选择匹配的供应商商品",
+      "search": "搜索原料...",
+      "addRow": "+ 添加项目",
+      "remove": "删除",
+      "ingredient": "原料",
+      "sellerProduct": "供应商商品",
+      "selectProduct": "选择商品...",
+      "quantity": "数量",
+      "unitPrice": "单价",
+      "lineTotal": "小计",
+      "subtotal": "合计",
+      "noItemsHint": "尚未添加任何项目。请使用搜索添加原料。",
+      "noProductMatch": "无匹配的供应商商品",
+      "parSuggested": "PAR 建议: {{n}}"
+    },
+    "review": {
+      "title": "确认订单",
+      "subtitle": "提交前请检查详细信息",
+      "sellerInfo": "供应商",
+      "items": "项目",
+      "expectedDelivery": "预计送达",
+      "deliveryAddress": "送货地址",
+      "deliveryAddressPlaceholder": "订单应送至何处？",
+      "notes": "备注",
+      "notesPlaceholder": "此订单的内部备注（可选）",
+      "subtotal": "小计",
+      "tax": "税费",
+      "total": "总计"
+    },
+    "errors": {
+      "selectSeller": "请选择一个供应商。",
+      "noItems": "请至少添加一个项目。",
+      "missingProduct": "每行都需要选择一个供应商商品。",
+      "invalidQty": "数量必须大于 0。",
+      "createFailed": "创建采购订单失败。",
+      "submitFailed": "提交采购订单失败。"
+    }
+  },
+  "detail": {
+    "back": "返回采购订单",
+    "loadFailed": "加载采购订单失败。",
+    "timeline": {
+      "title": "状态时间线",
+      "draft": "草稿",
+      "submitted": "已提交",
+      "confirmed": "已确认",
+      "shipped": "已发货",
+      "received": "已收货",
+      "partial_received": "部分收货",
+      "cancelled": "已取消"
+    },
+    "section": {
+      "items": "项目",
+      "delivery": "配送",
+      "notes": "备注"
+    },
+    "items": {
+      "ingredient": "原料",
+      "qtyOrdered": "订购数量",
+      "qtyReceived": "已收数量",
+      "unitPrice": "单价",
+      "lineTotal": "小计",
+      "subtotal": "合计",
+      "tax": "税费",
+      "total": "总计"
+    },
+    "delivery": {
+      "expected": "预计日期",
+      "actual": "实际日期",
+      "address": "地址"
+    },
+    "actions": {
+      "edit": "编辑",
+      "submit": "提交",
+      "cancel": "取消",
+      "markShipped": "标记已发货",
+      "receive": "收货"
+    },
+    "noNotes": "无备注。"
+  },
+  "receive": {
+    "modalTitle": "收货登记",
+    "subtitle": "记录本次配送实际收到的数量",
+    "ingredient": "原料",
+    "ordered": "订购",
+    "alreadyReceived": "已收",
+    "receivingNow": "本次收货",
+    "batchNo": "批次号",
+    "expiryDate": "保质期",
+    "unitCost": "单价",
+    "submit": "确认收货",
+    "submitting": "保存中...",
+    "submitFailed": "记录收货失败。",
+    "noChanges": "请至少输入一项收货数量。",
+    "exceedsRemaining": "数量超过剩余订购量。"
+  },
+  "cancel": {
+    "modalTitle": "取消采购订单",
+    "warning": "取消后将通知供应商，且此采购单将无法再修改。",
+    "reasonLabel": "原因",
+    "reasonPlaceholder": "请输入取消原因",
+    "reasonRequired": "请提供原因。",
+    "submit": "取消订单",
+    "submitFailed": "取消采购订单失败。"
+  },
+  "markShipped": {
+    "modalTitle": "标记已发货",
+    "hint": "当供应商未自行更新采购单时使用。",
+    "trackingLabel": "运单号（可选）",
+    "trackingPlaceholder": "承运商或追踪号",
+    "submit": "标记已发货",
+    "submitFailed": "标记发货失败。"
+  },
+  "status": {
+    "draft": "草稿",
+    "submitted": "已提交",
+    "confirmed": "已确认",
+    "shipped": "已发货",
+    "partial_received": "部分收货",
+    "received": "已收货",
+    "cancelled": "已取消"
+  },
+  "common": {
+    "save": "保存",
+    "saving": "保存中...",
+    "submitting": "提交中...",
+    "close": "关闭",
+    "cancel": "取消",
+    "confirm": "确认"
+  }
+}

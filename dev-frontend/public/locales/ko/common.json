@@ -163,7 +163,8 @@
     "foodcourtManager": "푸드코트 매니저",
     "restaurantOwner": "레스토랑 오너",
     "restaurantAdmin": "레스토랑 관리자",
-    "staff": "직원"
+    "staff": "직원",
+    "supplier_admin": "공급업체 관리자"
   },
   "nav": {
     "dashboard": "대시보드",

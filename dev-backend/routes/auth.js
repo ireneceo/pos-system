@@ -46,6 +46,7 @@ router.post('/signup', async (req, res, next) => {
             brand_name,
             foodcourt_name, foodcourt_address,
             company_name,
+            supplier_name, invitation_token,
             plan_id, billing_cycle, currency } = req.body;
 
     // Validate required fields
@@ -54,7 +55,7 @@ router.post('/signup', async (req, res, next) => {
     }
 
     // Validate allowed roles for self-signup
-    const allowedRoles = ['Restaurant Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner'];
+    const allowedRoles = ['Restaurant Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner', 'Supplier Admin'];
     if (!allowedRoles.includes(role)) {
       return errorResponse(res, 'Invalid account type', 400, 'VALIDATION_ERROR');
     }
@@ -68,6 +69,9 @@ router.post('/signup', async (req, res, next) => {
     }
     if (role === 'Foodcourt General' && !foodcourt_name) {
       return errorResponse(res, 'Food court name is required', 400, 'VALIDATION_ERROR');
+    }
+    if (role === 'Supplier Admin' && !supplier_name) {
+      return errorResponse(res, 'Supplier name is required', 400, 'VALIDATION_ERROR');
     }
 
     // Password strength validation
@@ -88,6 +92,7 @@ router.post('/signup', async (req, res, next) => {
       brand_name,
       foodcourt_name, foodcourt_address,
       company_name,
+      supplier_name, invitation_token,
       plan_id, billing_cycle, currency
     });
 
@@ -100,6 +105,39 @@ router.post('/signup', async (req, res, next) => {
       return errorResponse(res, error.message, 400, 'VALIDATION_ERROR');
     }
     next(error);
+  }
+});
+
+// Public: validate invitation token + return prefill data (Sprint 1 — Supplier Admin signup A flow)
+router.get('/invitation/:token', async (req, res) => {
+  try {
+    const SupplierInvitation = require('../models/SupplierInvitation');
+    const PlanTemplate = require('../models/PlanTemplate');
+    const invitation = await SupplierInvitation.findOne({
+      where: { token: req.params.token },
+      include: [{ model: PlanTemplate, as: 'plan', attributes: ['id', 'name', 'display_name'] }]
+    });
+    if (!invitation) {
+      return errorResponse(res, 'Invalid invitation', 404, 'INVITATION_NOT_FOUND');
+    }
+    if (invitation.status === 'used') {
+      return errorResponse(res, 'Invitation already used', 400, 'INVITATION_USED');
+    }
+    if (invitation.status === 'revoked') {
+      return errorResponse(res, 'Invitation revoked', 400, 'INVITATION_REVOKED');
+    }
+    if (invitation.expires_at < new Date()) {
+      return errorResponse(res, 'Invitation expired', 400, 'INVITATION_EXPIRED');
+    }
+    successResponse(res, {
+      email: invitation.email,
+      supplier_name: invitation.supplier_name,
+      plan: invitation.plan,
+      expires_at: invitation.expires_at
+    });
+  } catch (e) {
+    console.error('GET /auth/invitation/:token:', e);
+    errorResponse(res, e.message, 500);
   }
 });
 

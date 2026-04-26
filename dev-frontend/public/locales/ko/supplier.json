@@ -1,0 +1,235 @@
+{
+  "menu": {
+    "dashboard": "대시보드",
+    "products": "상품",
+    "inventory": "재고",
+    "customers": "거래처",
+    "contracts": "계약",
+    "orders": "주문",
+    "tradeInvoices": "거래 인보이스",
+    "settings": "설정",
+    "companyInfo": "회사 정보",
+    "paymentSettings": "결제 설정",
+    "invoiceSettings": "인보이스 설정",
+    "invoices": "인보이스",
+    "notices": "공지사항",
+    "systemInquiry": "시스템 문의",
+    "comingSoon": "출시 예정"
+  },
+  "dashboard": {
+    "title": "공급업체 대시보드",
+    "totalProducts": "전체 상품",
+    "activeProducts": "활성 상품",
+    "lowStockAlert": "재고 부족 알림",
+    "inventoryValue": "재고 가치",
+    "subscription": "구독",
+    "trial": "Trial",
+    "daysLeft": "{{n}}일 남음",
+    "noLowStock": "모든 재고가 정상 수준입니다."
+  },
+  "products": {
+    "title": "상품 카탈로그",
+    "addProduct": "상품 추가",
+    "categoryFilter": "카테고리로 필터",
+    "searchPlaceholder": "상품 검색...",
+    "fields": {
+      "name": "상품명",
+      "sku": "SKU",
+      "unit": "단위",
+      "baseQuantity": "기본 수량",
+      "unitPrice": "단가",
+      "minOrderQuantity": "최소 주문 수량",
+      "category": "카테고리",
+      "image": "이미지",
+      "currentStock": "현재 재고",
+      "lowStockThreshold": "재고 부족 임계값",
+      "leadTimeDays": "리드 타임 (일)",
+      "isActive": "활성화"
+    },
+    "categoryManagement": "카테고리 관리",
+    "optionGroups": "옵션 그룹",
+    "addCategory": "카테고리 추가",
+    "addOptionGroup": "옵션 그룹 추가",
+    "planLimitReached": "현재 플랜의 상품 등록 한도에 도달했습니다. 업그레이드해 주세요.",
+    "noProducts": "등록된 상품이 없습니다. \"상품 추가\"를 눌러 카탈로그를 만들어 보세요.",
+    "deleteConfirm": "이 상품을 삭제하시겠습니까?",
+    "copySuffix": " (복사본)"
+  },
+  "inventory": {
+    "title": "재고 관리",
+    "summary": {
+      "totalProducts": "상품 수",
+      "lowStock": "재고 부족",
+      "outOfStock": "재고 없음",
+      "value": "총 가치"
+    },
+    "actions": {
+      "adjust": "재고 조정",
+      "receive": "입고",
+      "viewHistory": "거래 내역"
+    },
+    "modals": {
+      "adjustTitle": "재고 수량 조정",
+      "receiveTitle": "재고 입고",
+      "delta": "수량 변경 (+/-)",
+      "quantity": "입고 수량",
+      "reason": "사유",
+      "notes": "메모",
+      "batchNo": "배치 번호 (선택)",
+      "expiryDate": "유통기한 (선택)",
+      "unitCost": "단가 (선택)"
+    },
+    "history": {
+      "title": "거래 내역",
+      "empty": "거래 내역은 Sprint 3 (PO 연동)에서 제공됩니다."
+    },
+    "lowStockBadge": "부족",
+    "outOfStockBadge": "없음"
+  },
+  "company": {
+    "title": "회사 정보",
+    "tabs": {
+      "general": "기본 정보",
+      "address": "주소",
+      "banking": "은행 정보",
+      "branding": "브랜딩"
+    }
+  },
+  "invoices": {
+    "title": "내 인보이스",
+    "subtitle": "PurpleHere에서 발행한 구독 인보이스",
+    "noInvoices": "아직 발행된 인보이스가 없습니다. Trial 시작 후 첫 인보이스가 표시됩니다."
+  },
+  "comingSoon": {
+    "title": "출시 예정",
+    "sprint2": "이 기능은 Supply Chain Sprint 2 (공급업체 계약 및 거래처 관리)에서 출시됩니다.",
+    "sprint4": "이 기능은 Supply Chain Sprint 4 (주문 관리 및 거래 인보이스)에서 출시됩니다.",
+    "joinWaitlist": "준비가 되면 알려 드리겠습니다."
+  },
+  "orders": {
+    "title": "수신 주문",
+    "subtitle": "구매자가 제출한 발주서 목록입니다.",
+    "stats": {
+      "pending": "검토 대기",
+      "confirmed": "확정됨",
+      "shipped": "배송 중",
+      "received": "이번 달 수령"
+    },
+    "tabs": {
+      "submitted": "대기",
+      "confirmed": "확정",
+      "shipped": "배송",
+      "received": "수령",
+      "cancelled": "취소"
+    },
+    "table": {
+      "poNumber": "PO 번호",
+      "buyer": "구매자",
+      "items": "품목 수",
+      "total": "합계",
+      "status": "상태",
+      "createdAt": "생성일",
+      "actions": "작업"
+    },
+    "actions": {
+      "view": "보기",
+      "confirm": "확정",
+      "ship": "배송 처리",
+      "reject": "거부"
+    },
+    "confirm": {
+      "title": "주문 확정",
+      "message": "이 발주서를 확정하시겠습니까? 구매자에게 알림이 전송됩니다.",
+      "submit": "확정",
+      "cancel": "취소"
+    },
+    "ship": {
+      "title": "배송 처리",
+      "carrier": "배송업체",
+      "carrierPlaceholder": "예: DHL, Pos Laju, 자체 배송",
+      "trackingNumber": "운송장 번호",
+      "trackingPlaceholder": "선택 입력",
+      "estArrival": "예상 도착일",
+      "notes": "비고",
+      "submit": "배송 처리",
+      "cancel": "취소"
+    },
+    "reject": {
+      "title": "주문 거부",
+      "reason": "사유",
+      "reasonPlaceholder": "주문을 처리할 수 없는 이유를 입력해 주세요.",
+      "submit": "거부",
+      "cancel": "취소"
+    },
+    "empty": "해당 상태의 수신 주문이 없습니다."
+  },
+  "tradeInvoicesPage": {
+    "title": "거래 인보이스",
+    "subtitle": "주문이 배송 완료되면 자동으로 발행되는 인보이스입니다.",
+    "stats": {
+      "outstanding": "총 미수금",
+      "paidThisMonth": "이번 달 수금",
+      "overdue": "연체",
+      "totalIssued": "총 발행 건수"
+    },
+    "filter": {
+      "searchBuyer": "구매자명 또는 인보이스 번호 검색",
+      "allStatuses": "모든 상태"
+    },
+    "table": {
+      "invoiceNumber": "인보이스 번호",
+      "buyer": "구매자",
+      "total": "합계",
+      "status": "상태",
+      "issuedAt": "발행일",
+      "dueDate": "마감일",
+      "actions": "작업"
+    },
+    "view": "보기",
+    "empty": "발행된 거래 인보이스가 없습니다."
+  },
+  "soaPage": {
+    "title": "거래명세서 (월별 SOA)",
+    "subtitle": "월별 SOA 계약이 활성화된 구매자별 청구 요약입니다.",
+    "filter": {
+      "month": "월",
+      "searchBuyer": "구매자 검색"
+    },
+    "table": {
+      "buyer": "구매자",
+      "month": "월",
+      "invoiceCount": "인보이스 수",
+      "totalBilled": "청구액",
+      "totalPaid": "수금액",
+      "outstanding": "미수금",
+      "actions": "작업"
+    },
+    "view": "상세 보기",
+    "empty": "활성 월별 SOA 계약이 없습니다.",
+    "detail": {
+      "title": "{{buyer}} — {{month}}",
+      "invoiceNumber": "인보이스 번호",
+      "issuedAt": "발행일",
+      "dueDate": "마감일",
+      "total": "합계",
+      "paid": "수금",
+      "outstanding": "미수",
+      "status": "상태",
+      "noInvoices": "해당 기간의 인보이스가 없습니다.",
+      "close": "닫기"
+    }
+  },
+  "status": {
+    "draft": "임시 저장",
+    "submitted": "대기",
+    "confirmed": "확정",
+    "shipped": "배송 중",
+    "partial_received": "부분 수령",
+    "received": "수령 완료",
+    "cancelled": "취소됨",
+    "pending_payment": "결제 대기",
+    "payment_submitted": "결제 제출됨",
+    "paid": "결제 완료",
+    "overdue": "연체"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "list": {
+    "title": "Invois Pembelian",
+    "subtitle": "Invois dagangan yang dikeluarkan oleh pembekal dan rakan kongsi anda.",
+    "loading": "Memuatkan invois...",
+    "stats": {
+      "outstanding": "Belum Dijelaskan",
+      "paid": "Dibayar",
+      "overdue": "Tertunggak",
+      "thisMonth": "Dikeluarkan Bulan Ini"
+    },
+    "filter": {
+      "searchIssuer": "Cari nama pengeluar atau nombor invois",
+      "allStatuses": "Semua status",
+      "from": "Dari",
+      "to": "Hingga"
+    },
+    "table": {
+      "invoiceNumber": "No Invois",
+      "issuer": "Daripada",
+      "total": "Jumlah",
+      "status": "Status",
+      "issuedAt": "Dikeluarkan",
+      "dueDate": "Tamat Tempoh",
+      "actions": "Tindakan"
+    },
+    "empty": {
+      "title": "Belum ada invois pembelian",
+      "hint": "Apabila pembekal anda mengeluarkan invois, ia akan muncul di sini."
+    },
+    "view": "Lihat",
+    "pay": "Bayar",
+    "tabs": {
+      "all": "Semua Invois",
+      "soa": "SOA Bulanan"
+    }
+  },
+  "detail": {
+    "title": "Invois {{number}}",
+    "issuedBy": "Dikeluarkan oleh",
+    "issuedAt": "Tarikh dikeluarkan",
+    "dueDate": "Tarikh tamat",
+    "status": "Status",
+    "items": "Item",
+    "subtotal": "Subjumlah",
+    "discount": "Diskaun",
+    "tax": "Cukai",
+    "total": "Jumlah",
+    "paid": "Dibayar",
+    "outstanding": "Belum Dijelaskan",
+    "notes": "Nota",
+    "noItems": "Tiada item baris pada invois ini.",
+    "close": "Tutup",
+    "pay": "Bayar Sekarang"
+  },
+  "soa": {
+    "title": "Penyata Akaun Bulanan",
+    "subtitle": "Baki tertunggak dikumpulkan mengikut pembekal untuk tempoh semasa.",
+    "supplier": "Pembekal",
+    "invoiceCount": "Invois",
+    "totalBilled": "Dibilkan",
+    "totalPaid": "Dibayar",
+    "outstanding": "Belum Dijelaskan",
+    "payAll": "Bayar Semua",
+    "empty": "Tiada kontrak SOA bulanan aktif."
+  },
+  "status": {
+    "draft": "Draf",
+    "pending_payment": "Menunggu Pembayaran",
+    "payment_submitted": "Pembayaran Dihantar",
+    "paid": "Dibayar",
+    "overdue": "Tertunggak",
+    "cancelled": "Dibatalkan"
+  },
+  "common": {
+    "close": "Tutup"
+  }
+}

@@ -106,6 +106,7 @@ const { syncDatabase } = require('./db');
 const invoiceScheduler = require('./services/invoiceScheduler');
 const subscriptionScheduler = require('./services/subscriptionScheduler');
 const demoResetScheduler = require('./services/demoResetScheduler');
+const { startSoaCron } = require('./services/soaScheduler');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initSocketServer } = require('./services/socketService');
 
@@ -506,6 +507,22 @@ const brandProductsRouter = require('./routes/brand-products');
 const suppliersRouter = require('./routes/suppliers');
 const inventoryRouter = require('./routes/inventory-routes');
 const brandInventoryRouter = require('./routes/brand-inventory');
+// Sprint 1 — Supply Chain Design 1
+const supplierRouter = require('./routes/supplier');
+const supplierProductsRouter = require('./routes/supplier-products');
+const supplierInventoryRouter = require('./routes/supplier-inventory');
+const supplierCompaniesRouter = require('./routes/supplier-companies');
+const adminSupplierInvitationsRouter = require('./routes/admin-supplier-invitations');
+// Sprint 2 — Supply Chain Design 2 (Buyer-side directory + contracts)
+const supplierDirectoryRouter = require('./routes/supplier-directory');
+// Sprint 3 — Supply Chain Design 3 (Purchase orders + ingredient ↔ seller mapping)
+const purchaseOrdersRouter = require('./routes/purchase-orders');
+// Sprint 4 — Supply Chain Design 4 (Seller-side order management + buyer-side trade invoices)
+const sellerOrdersRouter = require('./routes/seller-orders');
+const purchaseInvoicesRouter = require('./routes/purchase-invoices');
+const ingredientSellerProductsRouter = require('./routes/ingredient-seller-products');
+const foodcourtProductsRouter = require('./routes/foodcourt-products');
+const foodcourtInventoryRouter = require('./routes/foodcourt-inventory');
 const productRecipeRouter = require('./routes/product-recipe');
 const productRecipesRouter = require('./routes/product-recipes');
 const productIngredientsRouter = require('./routes/product-ingredients');
@@ -597,6 +614,23 @@ app.use('/api', suppliersRouter);
 app.use('/api/currencies', currenciesRouter);
 app.use('/api/restaurants', inventoryRouter);
 app.use('/api', brandInventoryRouter);
+// Sprint 1 — Supply Chain Design 1
+app.use('/api/supplier', supplierRouter);
+app.use('/api', supplierProductsRouter);  // exposes /api/supplier-products + /api/supplier-product-categories + /api/supplier-product-option-groups
+app.use('/api/supplier-inventory', supplierInventoryRouter);  // routes are relative (/, /summary, /receive, etc.)
+app.use('/api/supplier-companies', supplierCompaniesRouter);
+app.use('/api/admin/supplier-invitations', adminSupplierInvitationsRouter);
+// Sprint 4 — seller routes FIRST (avoid buyer-role middleware blocking)
+app.use('/api/seller-orders', sellerOrdersRouter);  // routes are relative inside the router
+// Sprint 2 — Supply Chain Design 2
+app.use('/api', supplierDirectoryRouter);  // exposes /api/supplier-directory + /api/supplier-contracts
+// Sprint 3 — Supply Chain Design 3
+app.use('/api', purchaseOrdersRouter);  // exposes /api/purchase-orders/*
+// Sprint 4 — buyer-side
+app.use('/api', purchaseInvoicesRouter);  // exposes /api/purchase-invoices/*
+app.use('/api', ingredientSellerProductsRouter);  // exposes /api/ingredients/:id/seller-sources, /api/ingredient-seller-products/:id, /api/seller-catalog
+app.use('/api', foodcourtProductsRouter);  // exposes /api/foodcourt-products + /api/foodcourt-product-categories + /api/foodcourt-product-option-groups
+app.use('/api', foodcourtInventoryRouter);  // exposes /api/foodcourts/:foodcourtId/inventory/*
 app.use('/api', productRecipeRouter);
 app.use('/api/product-recipes', productRecipesRouter);
 app.use('/api/product-ingredients', productIngredientsRouter);
@@ -699,6 +733,9 @@ async function startServer() {
 
     // Start demo data reset scheduler (daily at midnight, site timezone)
     demoResetScheduler.start();
+
+    // Start monthly SOA scheduler (Sprint 4) — runs at 00:30 on the 1st of each month
+    startSoaCron();
 
     // 포트 충돌 체크 - PM2 환경에서는 더 유연하게 처리
     server.listen(PORT, '0.0.0.0', () => {

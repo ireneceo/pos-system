@@ -798,3 +798,594 @@ Frontend:
 | 23 | SystemProductManagementPage에 Consumable 탭/필터 |
 | 24 | SA sync_to_ingredients for consumable products |
 | 25 | SA Inventory 페이지 (consumable 재고 관리, InventoryManager mode="system" 활용) |
+
+---
+
+# 📌 Sprint 1 Implementation Spec (2026-04-26 — /기능설계)
+
+> 위 원본 설계(2026-04-07)를 베이스로 Irene 결정사항 반영하여 Sprint 1 구현 스펙 확정.
+> Sprint 2~4 (SupplierContract/PO/Trade Invoice/Order Mgmt)은 별도 Sprint로 진행. 이 섹션은 Sprint 1만 다룸.
+
+## A. 확정된 결정사항
+
+### A-1. Supplier 가입 진입점 (둘 다 지원)
+- **방법 A (SA Invitation):** SA가 `Suppliers` 페이지에서 invitation 발송 → 7일 유효 토큰 → 이메일 링크 → 수신자 가입
+- **방법 B (Open Signup):** Landing 페이지 `/signup` 에서 "Supplier" 역할 선택 → 일반 가입 흐름
+
+### A-2. 모듈 13개 (Basic 9 + Advanced 4)
+- **Basic (전 플랜 포함):** `supplier_products`, `supplier_inventory`, `supplier_directory`, `supplier_contracts`, `supplier_customers`, `supplier_orders`, `supplier_shipping`, `supplier_trade_invoices`, `supplier_soa`
+- **Advanced (`supplier_advanced` 플랜만):** `supplier_admin_staff`, `supplier_performance`, `supplier_activity_logs`, `supplier_multi_warehouse`
+- **Sprint 1 활성:** `supplier_products`, `supplier_inventory` 만 실제 페이지/UI. 나머지 11개는 모듈 등록만 (Sprint 2~4에서 활성).
+
+### A-3. Plan Template 2개 + 한도
+| Plan | category | 모듈 | product_limit | customer_limit | order_limit | staff_limit |
+|------|----------|------|:---:|:---:|:---:|:---:|
+| `supplier_basic` | basic | 기본자격 + Basic 9 | 100 | 50 | 1000 | 1 |
+| `supplier_advanced` | basic | 기본자격 + Basic 9 + Advanced 4 | -1 | -1 | -1 | 10 |
+
+`-1` = 무제한 (기존 컨벤션). 가격은 Irene이 운영에서 직접 설정 (시드 스크립트 0 원 또는 임의값).
+
+### A-4. ENUM 확장 6개 + 컬럼 추가 2개
+- `users.role` ENUM + `'Supplier Admin'`
+- `plan_templates.plan_target` ENUM + `'supplier'`
+- `invoices.issuer_type` ENUM + `'supplier'`
+- `invoices.invoice_category` ENUM + `'trade'` (Sprint 1 등록만, 사용은 Sprint 4)
+- `ingredients.owner_type` ENUM + `'foodcourt'`, `'supplier'`
+- `addon_modules.target_user_type` ENUM + `'supplier'`
+- `plan_templates` 테이블 + `product_limit INT NULL DEFAULT NULL`, `customer_limit INT NULL DEFAULT NULL`
+
+---
+
+## B. DB 스키마 (Stage 3)
+
+### B-1. 신규 테이블 11개
+
+#### `supplier_companies` (Brand 패턴 미러)
+```sql
+CREATE TABLE supplier_companies (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  code VARCHAR(50) UNIQUE,
+  description TEXT,
+  logo_url TEXT,
+  owner_id INT NULL COMMENT 'Supplier Admin user',
+  status ENUM('active','inactive','suspended') DEFAULT 'active',
+
+  -- Company info
+  company_name VARCHAR(255), registration_no VARCHAR(100), trade_name VARCHAR(255), tax_no VARCHAR(100),
+
+  -- Contact / Address (formatAddress 표준)
+  email VARCHAR(100), phone VARCHAR(20),
+  address TEXT, address_line_2 VARCHAR(255),
+  city VARCHAR(100), state VARCHAR(100), postal_code VARCHAR(20),
+  country CHAR(2) DEFAULT 'MY',
+  website VARCHAR(255),
+  latitude DECIMAL(10,7), longitude DECIMAL(10,7),
+
+  -- Banking
+  bank_name VARCHAR(100), bank_account VARCHAR(50), bank_account_name VARCHAR(255),
+  currency VARCHAR(10) NOT NULL DEFAULT 'MYR',
+  supported_currencies TEXT COMMENT 'JSON array',
+
+  -- Settings (Brand 패턴 동일 JSON)
+  operation_settings TEXT COMMENT 'JSON',
+  payment_settings MEDIUMTEXT COMMENT 'JSON',
+  invoice_settings TEXT COMMENT 'JSON',
+
+  -- Subscription (Brand/Foodcourt 패턴 동일)
+  subscription_status ENUM('trial','active','past_due','cancelled','suspended','overdue') DEFAULT 'trial',
+  subscription_start_date DATE, subscription_end_date DATE,
+  trial_end_date DATE,
+  grace_period_start DATE,
+  last_trial_reminder_day INT NULL COMMENT 'Trial reminder dedup',
+  plan_id INT NULL COMMENT 'FK to plan_templates',
+  plan_amount DECIMAL(10,2),
+  billing_cycle ENUM('monthly','annual') DEFAULT 'monthly',
+
+  -- Flags
+  is_demo TINYINT(1) DEFAULT 0,
+  is_test TINYINT(1) DEFAULT 0,
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL,
+
+  FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (plan_id) REFERENCES plan_templates(id) ON DELETE SET NULL,
+  INDEX idx_owner (owner_id),
+  INDEX idx_status (status),
+  INDEX idx_subscription_status (subscription_status),
+  INDEX idx_deleted (deleted_at)
+);
+```
+
+#### `supplier_product_categories` (BrandProductCategory 미러)
+```sql
+CREATE TABLE supplier_product_categories (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  supplier_company_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  sort_order INT DEFAULT 0,
+  is_active TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (supplier_company_id) REFERENCES supplier_companies(id) ON DELETE CASCADE,
+  INDEX idx_company (supplier_company_id),
+  INDEX idx_company_active (supplier_company_id, is_active)
+);
+```
+
+#### `supplier_products` (BrandProduct 미러, recipe-related 제외)
+```sql
+CREATE TABLE supplier_products (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  supplier_company_id INT NOT NULL,
+  category_id INT NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  sku VARCHAR(100) COMMENT 'Product code',
+  unit VARCHAR(50) COMMENT 'kg, L, piece, etc.',
+  base_quantity DECIMAL(10,2) DEFAULT 1,
+  unit_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+  min_order_quantity INT DEFAULT 1,
+  image_url MEDIUMTEXT,
+  image_thumbnail TEXT,
+  is_active TINYINT(1) DEFAULT 1,
+  sort_order INT DEFAULT 0,
+  -- Inventory fields (own stock tracking, no PO yet in Sprint 1)
+  current_stock DECIMAL(10,2) DEFAULT 0 COMMENT 'Owned stock quantity',
+  low_stock_threshold DECIMAL(10,2) DEFAULT 0,
+  lead_time_days INT DEFAULT 0,
+  emoji VARCHAR(10),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL,
+  FOREIGN KEY (supplier_company_id) REFERENCES supplier_companies(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES supplier_product_categories(id) ON DELETE SET NULL,
+  INDEX idx_company (supplier_company_id),
+  INDEX idx_company_active (supplier_company_id, is_active),
+  INDEX idx_category (category_id),
+  INDEX idx_low_stock (supplier_company_id, low_stock_threshold)
+);
+```
+
+#### `supplier_product_option_groups` (BrandProductOptionGroup 미러)
+```sql
+CREATE TABLE supplier_product_option_groups (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  supplier_company_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  is_required TINYINT(1) DEFAULT 0,
+  min_selections INT DEFAULT 0,
+  max_selections INT DEFAULT 1,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (supplier_company_id) REFERENCES supplier_companies(id) ON DELETE CASCADE,
+  INDEX idx_company (supplier_company_id)
+);
+```
+
+#### `supplier_product_options` (BrandProductOption 미러)
+```sql
+CREATE TABLE supplier_product_options (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  option_group_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  price_adjustment DECIMAL(10,2) DEFAULT 0,
+  sort_order INT DEFAULT 0,
+  is_active TINYINT(1) DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (option_group_id) REFERENCES supplier_product_option_groups(id) ON DELETE CASCADE,
+  INDEX idx_group (option_group_id)
+);
+```
+
+#### `supplier_product_option_group_products` (junction N:M)
+```sql
+CREATE TABLE supplier_product_option_group_products (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  product_id INT NOT NULL,
+  option_group_id INT NOT NULL,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (product_id) REFERENCES supplier_products(id) ON DELETE CASCADE,
+  FOREIGN KEY (option_group_id) REFERENCES supplier_product_option_groups(id) ON DELETE CASCADE,
+  UNIQUE KEY uniq_product_group (product_id, option_group_id),
+  INDEX idx_group (option_group_id)
+);
+```
+
+#### `foodcourt_product_categories`, `foodcourt_products`, `foodcourt_product_option_groups`, `foodcourt_product_options`, `foodcourt_product_option_group_products`
+→ Supplier 5개 모델 1:1 미러. `supplier_company_id` 대신 `foodcourt_id INT NOT NULL` (foodcourts FK).
+
+#### `supplier_invitations` (SA invitation 토큰 관리)
+```sql
+CREATE TABLE supplier_invitations (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  token VARCHAR(64) NOT NULL UNIQUE,
+  email VARCHAR(255) NOT NULL,
+  supplier_name VARCHAR(255),
+  plan_id INT NULL,
+  message TEXT,
+  invited_by INT NOT NULL COMMENT 'SA user id',
+  expires_at DATETIME NOT NULL,
+  used_at DATETIME NULL,
+  used_by_user_id INT NULL,
+  status ENUM('pending','used','expired','revoked') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (invited_by) REFERENCES users(id),
+  FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (plan_id) REFERENCES plan_templates(id) ON DELETE SET NULL,
+  INDEX idx_token (token),
+  INDEX idx_email (email),
+  INDEX idx_status (status)
+);
+```
+
+### B-2. 기존 테이블 ALTER
+
+```sql
+-- ENUM 확장
+ALTER TABLE users MODIFY role ENUM(... existing ..., 'Supplier Admin');
+ALTER TABLE plan_templates MODIFY plan_target ENUM('restaurant','brand','foodcourt','owner','supplier');
+ALTER TABLE invoices MODIFY issuer_type ENUM(... existing ..., 'supplier');
+ALTER TABLE invoices MODIFY invoice_category ENUM(... existing ..., 'trade');
+ALTER TABLE ingredients MODIFY owner_type ENUM('brand','restaurant','foodcourt','supplier');
+ALTER TABLE addon_modules MODIFY target_user_type ENUM('restaurant','brand','foodcourt','owner','all','supplier');
+
+-- 컬럼 추가
+ALTER TABLE plan_templates
+  ADD COLUMN product_limit INT NULL DEFAULT NULL COMMENT '-1 unlimited, NULL not applicable',
+  ADD COLUMN customer_limit INT NULL DEFAULT NULL COMMENT '-1 unlimited, NULL not applicable';
+
+-- ingredients FK 확장 (Sprint 3 PO 시 사용)
+ALTER TABLE ingredients
+  ADD COLUMN supplier_product_id INT NULL,
+  ADD COLUMN foodcourt_product_id INT NULL,
+  ADD CONSTRAINT fk_ing_sup_prod FOREIGN KEY (supplier_product_id) REFERENCES supplier_products(id) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_ing_fc_prod FOREIGN KEY (foodcourt_product_id) REFERENCES foodcourt_products(id) ON DELETE SET NULL;
+```
+
+### B-3. Sequelize Model + index.js association
+
+11 신규 모델 파일:
+- `models/SupplierCompany.js`, `SupplierProduct.js`, `SupplierProductCategory.js`, `SupplierProductOption.js`, `SupplierProductOptionGroup.js`, `SupplierProductOptionGroupProduct.js`
+- `models/FoodcourtProduct.js`, `FoodcourtProductCategory.js`, `FoodcourtProductOption.js`, `FoodcourtProductOptionGroup.js`, `FoodcourtProductOptionGroupProduct.js`
+- `models/SupplierInvitation.js`
+
+`models/index.js` association 추가:
+```javascript
+// Supplier
+SupplierCompany.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
+User.hasOne(SupplierCompany, { foreignKey: 'owner_id', as: 'supplierCompany' });
+SupplierCompany.belongsTo(PlanTemplate, { foreignKey: 'plan_id', as: 'plan' });
+SupplierCompany.hasMany(SupplierProduct, { foreignKey: 'supplier_company_id', as: 'products' });
+SupplierCompany.hasMany(SupplierProductCategory, { foreignKey: 'supplier_company_id', as: 'categories' });
+SupplierCompany.hasMany(SupplierProductOptionGroup, { foreignKey: 'supplier_company_id', as: 'optionGroups' });
+SupplierProductCategory.hasMany(SupplierProduct, { foreignKey: 'category_id', as: 'products' });
+SupplierProduct.belongsTo(SupplierCompany, { foreignKey: 'supplier_company_id', as: 'company' });
+SupplierProduct.belongsTo(SupplierProductCategory, { foreignKey: 'category_id', as: 'category' });
+SupplierProduct.belongsToMany(SupplierProductOptionGroup, { through: SupplierProductOptionGroupProduct, foreignKey: 'product_id', otherKey: 'option_group_id', as: 'optionGroups' });
+SupplierProductOptionGroup.belongsToMany(SupplierProduct, { through: SupplierProductOptionGroupProduct, foreignKey: 'option_group_id', otherKey: 'product_id', as: 'products' });
+SupplierProductOptionGroup.hasMany(SupplierProductOption, { foreignKey: 'option_group_id', as: 'options' });
+SupplierProductOption.belongsTo(SupplierProductOptionGroup, { foreignKey: 'option_group_id', as: 'group' });
+
+// Foodcourt Products (mirror)
+Foodcourt.hasMany(FoodcourtProduct, { foreignKey: 'foodcourt_id', as: 'products' });
+Foodcourt.hasMany(FoodcourtProductCategory, { foreignKey: 'foodcourt_id', as: 'productCategories' });
+// ... (동일 패턴)
+
+// Supplier Invitation
+SupplierInvitation.belongsTo(User, { foreignKey: 'invited_by', as: 'inviter' });
+SupplierInvitation.belongsTo(User, { foreignKey: 'used_by_user_id', as: 'usedBy' });
+SupplierInvitation.belongsTo(PlanTemplate, { foreignKey: 'plan_id', as: 'plan' });
+
+// Ingredient FK 확장
+Ingredient.belongsTo(SupplierProduct, { foreignKey: 'supplier_product_id', as: 'supplierProduct' });
+Ingredient.belongsTo(FoodcourtProduct, { foreignKey: 'foodcourt_product_id', as: 'foodcourtProduct' });
+```
+
+### B-4. Migration 전략
+
+`scripts/sprint1-supply-chain-migration.js` 신규:
+1. ENUM 확장 (ALTER TABLE MODIFY)
+2. plan_templates 컬럼 2개 추가
+3. ingredients FK 컬럼 2개 추가
+4. CREATE TABLE (11개 신규)
+5. 기본 SupplierCompany 시드 (운영 미실행 옵션)
+6. AddonModule 13개 시드
+7. PlanTemplate 2개 시드 (`supplier_basic`, `supplier_advanced`)
+8. Idempotent (재실행 안전)
+
+---
+
+## C. UI 흐름 (Stage 4)
+
+### C-1. 신규 페이지 16개
+
+#### Supplier Admin 영역 (8 페이지)
+| 경로 | 컴포넌트 | 기능 |
+|------|----------|------|
+| `/pos/supplier/dashboard` | `pages/Supplier/SupplierDashboard.tsx` | 카드 4개 (상품수/저재고/재고가치/구독상태) |
+| `/pos/supplier/products` | `pages/Supplier/SupplierProductsPage.tsx` | 상품 CRUD + 카테고리 + 옵션그룹 (BG `BrandProductManagementPage` 패턴 미러) |
+| `/pos/supplier/inventory` | `pages/Supplier/SupplierInventoryPage.tsx` | 재고 리스트 + adjust/receive 모달 + 거래내역 |
+| `/pos/supplier/company-info` | `pages/Supplier/SupplierCompanyInfoPage.tsx` | AutoSaveField + AddressFields (BG `BrandCompanyInfoPage` 패턴 미러) |
+| `/pos/supplier/payment-settings` | `pages/Supplier/SupplierPaymentSettingsPage.tsx` | BG `BrandPaymentSettingsPage` 패턴 미러 |
+| `/pos/supplier/invoice-settings` | `pages/Supplier/SupplierInvoiceSettingsPage.tsx` | InvoiceSettings 패턴 |
+| `/pos/supplier/invoices` | `pages/Supplier/SupplierInvoicesPage.tsx` | 자기 구독 인보이스 보기 (Owner `OwnerInvoicesPage` 패턴 미러) |
+| `/pos/supplier/notices` | `pages/Notices/NoticesPage.tsx` (재사용) | 공지 수신 |
+
+#### Foodcourt General 신규 (2 페이지)
+| 경로 | 컴포넌트 |
+|------|----------|
+| `/pos/foodcourt/general/products` | `pages/FoodcourtGeneral/FoodcourtProductsPage.tsx` (BG `BrandProductManagementPage` 패턴) |
+| `/pos/foodcourt/general/inventory` | `pages/FoodcourtGeneral/FoodcourtInventoryPage.tsx` (BG inventory 패턴) |
+
+#### System Admin 신규 (2 페이지 + Landing 변경)
+| 경로 | 컴포넌트 | 기능 |
+|------|----------|------|
+| `/pos/admin/supplier-companies` | `pages/Admin/SupplierCompaniesPage.tsx` | SA가 SupplierCompany 전수 관리 |
+| `/pos/admin/supplier-invitations` | `pages/Admin/SupplierInvitationsPage.tsx` | SA가 invitation 발송/관리 |
+| `/signup` (확장) | 기존 `pages/Login/SignupPage.tsx` | "Supplier" 역할 옵션 추가 + invitation_token 처리 |
+
+### C-2. 사이드바 (`MainLayout.tsx`)
+
+**Supplier Admin 메뉴 (신규):**
+```
+Dashboard       (icon: home)
+Products        (icon: box, requireSupplierModule('supplier_products'))
+Inventory       (icon: warehouse, requireSupplierModule('supplier_inventory'))
+─────
+Customers       (Coming Soon, supplier_customers, Sprint 2)
+Contracts       (Coming Soon, supplier_contracts, Sprint 2)
+Orders          (Coming Soon, supplier_orders, Sprint 4)
+─────
+Company Info
+Payment Settings
+Invoice Settings
+Invoices
+Notices
+System Inquiry
+```
+
+**Foodcourt General 메뉴 추가 (Management 섹션 하단):**
+```
+... 기존 ...
+Products        (신규, requireFoodcourtModule('fc_products'))
+Inventory       (신규, requireFoodcourtModule('fc_inventory'))
+```
+(주: FC도 모듈 등록 필요 — `fc_products`, `fc_inventory`)
+
+**System Admin 메뉴 추가 (Suppliers 섹션):**
+```
+Supplier Companies  (신규)
+Supplier Invitations (신규)
+```
+
+### C-3. 라우트 (`App.tsx`) + ProtectedRoute
+
+**App.tsx React.lazy:**
+```tsx
+const SupplierDashboard = lazy(() => import('./pages/Supplier/SupplierDashboard'));
+const SupplierProductsPage = lazy(() => import('./pages/Supplier/SupplierProductsPage'));
+const SupplierInventoryPage = lazy(() => import('./pages/Supplier/SupplierInventoryPage'));
+const SupplierCompanyInfoPage = lazy(() => import('./pages/Supplier/SupplierCompanyInfoPage'));
+const SupplierPaymentSettingsPage = lazy(() => import('./pages/Supplier/SupplierPaymentSettingsPage'));
+const SupplierInvoiceSettingsPage = lazy(() => import('./pages/Supplier/SupplierInvoiceSettingsPage'));
+const SupplierInvoicesPage = lazy(() => import('./pages/Supplier/SupplierInvoicesPage'));
+const FoodcourtProductsPage = lazy(() => import('./pages/FoodcourtGeneral/FoodcourtProductsPage'));
+const FoodcourtInventoryPage = lazy(() => import('./pages/FoodcourtGeneral/FoodcourtInventoryPage'));
+const SupplierCompaniesPage = lazy(() => import('./pages/Admin/SupplierCompaniesPage'));
+const SupplierInvitationsPage = lazy(() => import('./pages/Admin/SupplierInvitationsPage'));
+```
+
+**ProtectedRoute** 화이트리스트 확장:
+- `supplierLevelRoutes` 신규 (Supplier Admin 전용)
+- `MODULE_GATED_ROUTES` 에 `/pos/supplier/products` `/pos/supplier/inventory` 추가
+
+### C-4. 기존 컴포넌트 재사용 (절대 새로 만들지 않음)
+
+| 컴포넌트 | 위치 | 재사용 페이지 |
+|----------|------|-------------|
+| `<AddressFields>` | `components/Form/AddressFields.tsx` | SupplierCompanyInfoPage |
+| `<AutoSaveField>` | `components/Common/AutoSaveField.tsx` | SupplierCompanyInfoPage, SupplierInvoiceSettingsPage |
+| `<AutoSaveAddressFields>` | `components/Form/AutoSaveAddressFields.tsx` | SupplierCompanyInfoPage |
+| Modal/CommonModal | `components/UI/` | All CRUD modals |
+| FormAccordion | `components/UI/FormAccordion.tsx` | Detail 페이지 |
+| DataTable, FilterBar | `components/UI/` | List 페이지 |
+| Button | `components/Button/` | All 액션 |
+| `<DateField>`, `<DateRangeField>` | `components/Common/` | Date 입력 |
+| `formatAddress`, `formatDateTime`, `formatDate` | `utils/` | Display |
+| `<InvoiceHistoryModal>` | `components/Invoice/` | SupplierInvoicesPage |
+| LoadingContainer, EmptyState, ErrorBanner | `components/UI/` | All |
+
+### C-5. i18n (4개 언어)
+
+**신규 namespace:** `public/locales/{en,ko,zh,ms}/supplier.json` (50+ 키)
+**확장:** `common.json` (`role.supplier_admin` 등), `signup.json` (Supplier 옵션), `admin.json` (SupplierCompanies 페이지)
+
+---
+
+## D. 보안 + Plan Limit (구현 표준)
+
+### D-1. 미들웨어 3개 신규
+
+`middleware/auth.js` 확장:
+```javascript
+const requireSupplierScope = async (req, res, next) => {
+  if (req.user.role !== 'Supplier Admin') {
+    return res.status(403).json({ success: false, message: 'Supplier Admin only' });
+  }
+  const supplierCompany = await SupplierCompany.findOne({ where: { owner_id: req.user.id, deleted_at: null } });
+  if (!supplierCompany) {
+    return res.status(404).json({ success: false, message: 'No supplier company found for this user' });
+  }
+  req.supplierCompany = supplierCompany;
+  next();
+};
+```
+
+`middleware/requirePlanLimit.js` 신규:
+```javascript
+const requirePlanLimit = (limitField) => async (req, res, next) => {
+  const company = req.supplierCompany || req.foodcourt;
+  const plan = await PlanTemplate.findByPk(company.plan_id);
+  const limit = plan?.[limitField];
+  if (limit === null || limit === undefined || limit === -1) return next();
+
+  // 카운트 (모델별 분기)
+  let currentCount = 0;
+  if (limitField === 'product_limit') {
+    currentCount = await SupplierProduct.count({ where: { supplier_company_id: company.id, deleted_at: null } });
+  } else if (limitField === 'customer_limit') { /* Sprint 2 */ }
+
+  if (currentCount >= limit) {
+    return res.status(400).json({
+      success: false,
+      message: 'Plan limit reached. Upgrade to Advanced.',
+      data: { limit, current: currentCount }
+    });
+  }
+  next();
+};
+```
+
+`middleware/requireSupplierModule.js` 신규:
+```javascript
+const requireSupplierModule = (moduleCode) => async (req, res, next) => {
+  const plan = await PlanTemplate.findByPk(req.supplierCompany.plan_id);
+  const modules = plan?.included_modules || [];
+  if (!modules.includes(moduleCode)) {
+    return res.status(403).json({ success: false, message: `Module ${moduleCode} not included in your plan` });
+  }
+  next();
+};
+```
+
+### D-2. 보안 체크리스트 (모든 신규 endpoint)
+
+- [x] `authenticateToken` (공개 endpoint 제외)
+- [x] 역할 가드 (`requireRole` 또는 scope 미들웨어)
+- [x] IDOR 방어 (`:id` 파라미터 owner 검증)
+- [x] 입력 검증 (`validation.js` + `sanitizeString`)
+- [x] Rate limit (express-rate-limit 글로벌 1000/15min, 가입 20/15min)
+- [x] CORS 화이트리스트
+- [x] SQL Injection (Sequelize ORM)
+- [x] Cookie 보안 (HttpOnly + Secure + SameSite=strict)
+
+---
+
+## E. 검증 (Stage 6 미리 명세)
+
+### E-1. health-check 신규 케이스 (43 → 49)
+1. `Supplier Admin login (auth)` — 토큰 발급 성공
+2. `Supplier Admin can access /api/supplier/dashboard` — 200
+3. `Supplier Admin cannot access /api/admin/supplier-companies` — 403
+4. `Anonymous on /api/supplier-products → 401`
+5. `Supplier Admin POST product hits plan limit (basic 100 max) → 400`
+6. `IDOR: other supplier's product PUT → 404`
+
+### E-2. API 라운드트립 테스트 (`test-supplier.js`)
+
+```
+1. Signup B (Landing): Supplier Admin 가입 → SupplierCompany 생성 → trial 7일 → 구독 인보이스 1건
+2. Login → 토큰
+3. POST /api/supplier-product-categories → 카테고리 1건
+4. POST /api/supplier-products → 상품 5건
+5. GET /api/supplier-products → 5건 일치
+6. PUT /api/supplier-products/:id → 가격 수정
+7. POST /api/supplier-inventory/receive → 입고 100
+8. GET /api/supplier-inventory → 현재고 100
+9. POST /api/supplier-inventory/adjust { delta: -20 } → 80
+10. 다른 Supplier Admin 로그인 → :id 접근 시도 → 404 (IDOR)
+11. POST /api/supplier-products 100건 → 101번째 400 plan_limit
+12. SA Login → POST /api/admin/supplier-invitations → 토큰 생성
+13. GET /api/auth/invitation/:token → prefill 확인
+14. POST /api/auth/signup with invitation_token → SupplierCompany 생성
+15. SA → DELETE supplier-companies/:id → soft delete
+16. 클린업
+```
+
+### E-3. UI 검증
+- 4개 언어 (en/ko/zh/ms) 각 페이지 렌더 확인
+- 빈 상태/로딩/에러
+- 반응형 (데스크톱/태블릿/모바일)
+- AutoSaveField indicator 동작 (Setting 페이지)
+- Modal close + refresh 패턴 (성공 시 alert 안 띄움)
+
+### E-4. 회귀 검증
+- BrandProduct/BG flow 무영향 확인
+- 기존 Supplier (거래처 연락처) 모델 무영향 (BG의 SuppliersPage 작동)
+- 기존 Ingredient 차감 로직 무영향 (recipe-driven inventory deduction)
+- health-check 43/43 → 49/49 PASS
+
+---
+
+## F. 구현 순서 (Stage 5)
+
+### Phase 5A: DB 기반 (Sequential, 30분)
+1. ENUM/컬럼 ALTER 스크립트 작성 + 실행 (`scripts/sprint1-migration.js`)
+2. 11개 신규 모델 파일
+3. `models/index.js` association 추가
+4. `sync-database.js` 실행 (테이블 생성)
+
+### Phase 5B: 시드 (Sequential, 15분)
+5. AddonModule 13개 시드 (`scripts/seed-supplier-modules.js`)
+6. PlanTemplate 2개 시드 (`scripts/seed-supplier-plans.js`)
+7. fc_products / fc_inventory 모듈 추가 시드
+
+### Phase 5C: 미들웨어 (Sequential, 15분)
+8. `middleware/auth.js` 에 `requireSupplierScope` 추가
+9. `middleware/requirePlanLimit.js` 신규
+10. `middleware/requireSupplierModule.js` 신규
+
+### Phase 5D: Backend Routes (Parallel via agent, 60분)
+11. `routes/supplier.js` (11 endpoints)
+12. `routes/supplier-products.js` (16 endpoints)
+13. `routes/supplier-inventory.js` (6 endpoints)
+14. `routes/supplier-companies.js` (5 endpoints)
+15. `routes/admin-supplier-invitations.js` (4 endpoints)
+16. `routes/foodcourt-products.js` (16 endpoints, BG 패턴 미러)
+17. `routes/foodcourt-inventory.js` (6 endpoints, BG 패턴 미러)
+18. `routes/auth.js` 확장 (signup + invitation flow)
+19. `server.js` 라우트 마운트
+20. `routes/plans.js` 확장 (?target=supplier)
+
+### Phase 5E: Frontend Auth/Layout (Sequential, 30분)
+21. `AuthContext` ROLE_PERMISSIONS / ROLE_ROUTES + Supplier Admin
+22. `ProtectedRoute` `supplierLevelRoutes` + MODULE_GATED_ROUTES
+23. `MainLayout` 사이드바 메뉴 (Supplier 12개 + FG 추가 2개 + SA 추가 2개)
+24. `App.tsx` 16개 lazy import + Route 등록
+25. `SignupPage` 확장 (Supplier 역할 옵션 + invitation_token 처리)
+
+### Phase 5F: Frontend Pages (Parallel via agent, 90분)
+26. SupplierDashboard
+27. SupplierProductsPage (CRUD + Categories + OptionGroups)
+28. SupplierInventoryPage
+29. SupplierCompanyInfoPage
+30. SupplierPaymentSettingsPage
+31. SupplierInvoiceSettingsPage
+32. SupplierInvoicesPage
+33. FoodcourtProductsPage
+34. FoodcourtInventoryPage
+35. Admin/SupplierCompaniesPage
+36. Admin/SupplierInvitationsPage
+
+### Phase 5G: i18n (Parallel via agent, 20분)
+37. 4개 언어 번역 파일 (`supplier.json` 신규 + 기존 namespace 확장)
+
+### Phase 5H: 검증 (Sequential, 30분)
+38. 빌드 확인 (`npm run build:dev`)
+39. State hydration check
+40. health-check 신규 6 케이스 추가
+41. `test-supplier.js` 실행 (16 시나리오)
+42. UI 4언어 + 반응형 + 회귀 확인
+
+**예상 총시간:** 약 5시간 (병렬화로 단축 가능)
+
+---
+

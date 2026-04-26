@@ -175,7 +175,19 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'view_kitchen_display',
     'view_customer_display'
   ],
-  'Supplier Admin': []
+  'Supplier Admin': [
+    'view_supplier_dashboard',
+    'view_supplier_company',
+    'edit_supplier_company',
+    'view_supplier_products',
+    'manage_supplier_products',
+    'view_supplier_inventory',
+    'manage_supplier_inventory',
+    'view_supplier_invoices',
+    'view_supplier_payment_settings',
+    'edit_supplier_payment_settings',
+    'view_supplier_reports'
+  ]
 };
 
 // 역할별 접근 가능 라우트
@@ -194,6 +206,9 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/foodcourt/payment-settings',
     '/pos/foodcourt/history',
     '/pos/foodcourt/manager',
+    '/pos/suppliers/*',
+    '/pos/purchase-orders/*',
+    '/pos/purchase-invoices/*',
     '/pos/manager/*',
     '/pos/restaurant/*',
     '/pos/pos-terminal',
@@ -225,6 +240,9 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/brand-products',
     '/pos/recipes',
     '/pos/ingredients',
+    '/pos/suppliers/*',
+    '/pos/purchase-orders/*',
+    '/pos/purchase-invoices/*',
     '/pos/manager/*',
     '/pos/restaurant/*',
     '/pos/pos-terminal',
@@ -246,6 +264,9 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   ],
   'Foodcourt Manager': [
     '/pos/foodcourt/*',
+    '/pos/suppliers/*',
+    '/pos/purchase-orders/*',
+    '/pos/purchase-invoices/*',
     '/pos/manager/*',
     '/pos/restaurant/*',
     '/pos/pos-terminal',
@@ -270,6 +291,9 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/brand-products',
     '/pos/recipes',
     '/pos/ingredients',
+    '/pos/suppliers/*',
+    '/pos/purchase-orders/*',
+    '/pos/purchase-invoices/*',
     '/pos/manager/*',
     '/pos/restaurant/*',
     '/pos/pos-terminal',
@@ -291,6 +315,9 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   ],
   'Restaurant Owner': [
     '/pos/owner/*',
+    '/pos/suppliers/*',
+    '/pos/purchase-orders/*',
+    '/pos/purchase-invoices/*',
     '/pos/profile'
   ],
   'Restaurant Admin': [
@@ -315,6 +342,9 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/company-information',
     '/pos/profile',
     '/pos/inventory',
+    '/pos/suppliers/*',
+    '/pos/purchase-orders/*',
+    '/pos/purchase-invoices/*',
     '/pos/support',
     '/pos/operation-inquiry',
     '/pos/invoices',
@@ -340,12 +370,20 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/company-information',
     '/pos/profile',
     '/pos/inventory',
+    '/pos/suppliers/*',
+    '/pos/purchase-orders/*',
+    '/pos/purchase-invoices/*',
     '/pos/support',
     '/pos/operation-inquiry',
     '/pos/invoices',
     '/pos/history'
   ],
-  'Supplier Admin': []
+  'Supplier Admin': [
+    '/pos/supplier/*',
+    '/pos/profile',
+    '/pos/notices',
+    '/pos/system-inquiry'
+  ]
 };
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {

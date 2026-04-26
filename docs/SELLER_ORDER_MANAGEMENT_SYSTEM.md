@@ -756,3 +756,160 @@ Frontend:
 - TradeInvoicesPage → 기존 InvoicesPage 탭 추가로 대체 (신규 페이지 불필요)
 - PurchaseInvoicesPage → 기존 InvoicesPage 탭 추가로 대체 (신규 페이지 불필요)
 - batch 결제: 기존 개별 결제 안 건드림, 독립 구현
+
+---
+
+# 📌 Sprint 4 Implementation Spec (2026-04-26 — /기능설계)
+
+> Sprint 1+2+3 완료 후 진입. Sprint 4 마지막 단계. Irene 자율 위임 (전 결정 confirmed).
+
+## A. 확정 결정사항
+
+1. **Buyer 구조 (Irene 명시):**
+   - Restaurant → 발주: BG/FG/Supplier 3종
+   - BG → 발주: Supplier 만 (자기 ingredient 용)
+   - FG → 발주: Supplier 만 (자기 ingredient 용)
+2. **Seller 구조:**
+   - Supplier — 외부, 계약 필수 (Sprint 2)
+   - BG → Restaurant 자동 (brand_id 매칭)
+   - FG → Restaurant 자동 (foodcourt_id 매칭)
+   - SA → Restaurant 자동 (장비/소모품)
+3. **Sprint 4 활성 페이지 4종 (Sprint 1 placeholder 교체)** + 신규 4종:
+   - **Supplier 측**: SupplierOrdersPage / SupplierShippingPage(통합 가능) / SupplierTradeInvoicesPage / SupplierSoaPage
+   - **BG/FG 측**: BrandIncomingOrdersPage / FoodcourtIncomingOrdersPage (산하 Restaurant 의 PO 처리)
+   - **SA 측**: SystemIncomingOrdersPage (장비 PO 처리, optional Sprint 4 minimal)
+   - **Buyer 측**: PurchaseInvoicesPage (받은 trade invoice 조회/결제)
+4. **PaymentTerms default**: Supplier seller = SupplierContract.payment_terms / BG/FG/SA seller = Immediate (post-MVP 에서 per-entity 정책)
+5. **Sprint 3 buyer-self progression 보존** (POS 미사용 seller fallback)
+
+## B. API (Stage 2)
+
+### B-1. Seller-side (`routes/seller-orders.js` 신규)
+
+`authenticateToken + requireSellerRole`. 신규 미들웨어 `requireSellerRole` (Supplier Admin / Brand General / Brand Manager / Foodcourt General / Foodcourt Manager / System Admin) — 자기 seller scope 자동 도출.
+
+| # | METHOD 경로 | 설명 |
+|---|------------|------|
+| 1 | `GET /api/seller-orders` | 자기 앞으로 온 PO list (filter status, date) |
+| 2 | `GET /api/seller-orders/:id` | 단건 상세 |
+| 3 | `POST /api/seller-orders/:id/confirm` | submitted → confirmed |
+| 4 | `POST /api/seller-orders/:id/ship` | confirmed → shipped, body: `{ tracking_info? }` (JSON) |
+| 5 | `POST /api/seller-orders/:id/reject` | submitted → cancelled, body: `{ reason }` 필수 |
+| 6 | `GET /api/seller-orders/stats` | dashboard 카드 (pending/confirmed/shipped/received this month) |
+
+### B-2. Trade Invoice 자동 발행 (`services/purchaseOrderService.js` 신규)
+
+```javascript
+// 내부 헬퍼, Sprint 3 receive endpoint 끝에서 호출
+async function createTradeInvoice(po, opts = {}) {
+  // Idempotent: 이미 trade invoice 있으면 skip
+  // Issuer/Payer mapping (Stage 1 명시)
+  // Due date 계산 (Immediate=+7days, Monthly SOA=익월 due_day)
+  // generateInvoiceNumber: TRD-{prefix}{id}-{date}-{seq}
+  // finalizeInvoice() 호출 (v3.18 패턴)
+  // 이메일 발송 (entity 브랜딩, non-blocking)
+  // Inbox 알림
+  return invoice;
+}
+```
+
+### B-3. Monthly SOA Cron (`services/soaScheduler.js` 신규)
+
+```javascript
+// 매월 1일 00:30 cron
+// SupplierContract WHERE status='active' AND payment_terms.invoice_cycle='monthly_soa'
+// 각 계약별 지난 달 발행된 trade invoice 그룹 → SOA 이메일 발송
+// SchedulerRun 기록 (Sprint 1 monitoring 자동 노출)
+```
+
+API endpoint:
+- `GET /api/supplier/soa` — supplier 측 월별 buyer SOA 요약
+- `GET /api/supplier/soa/:contractId/:month` — 특정 계약/월의 SOA 상세
+
+### B-4. Buyer Purchase Invoices (`routes/purchase-invoices.js` 신규)
+
+`authenticateToken + requireBuyerRole`.
+
+| # | METHOD 경로 | 설명 |
+|---|------------|------|
+| 7 | `GET /api/purchase-invoices` | 받은 trade invoice list (filter status) |
+| 8 | `GET /api/purchase-invoices/:id` | 단건 (기존 invoice 응답 형식) |
+| 9 | `GET /api/purchase-invoices/soa/current` | 이번 달 monthly_soa 결제조건 invoice 묶음 |
+
+결제 flow 는 기존 invoice 결제 API (`POST /api/invoices/:id/submit-payment` 등) 활용.
+
+## C. DB (Stage 3)
+
+### C-1. PurchaseOrder 컬럼 추가
+```sql
+ALTER TABLE purchase_orders
+  ADD COLUMN tracking_info JSON NULL COMMENT 'Sprint 4: shipping carrier/tracking number',
+  ADD COLUMN trade_invoice_id INT NULL COMMENT 'FK to invoices.id (auto-issued)';
+```
+
+### C-2. 신규 모델 0개 (Invoice 모델 재사용)
+
+### C-3. AddonModule 시드 추가
+
+```js
+// buyer 측 신규
+{ module_code: 'buyer_purchase_invoices', name: 'Purchase Invoices', category: 'basic', target_user_type: 'all' }
+
+// seller 측 신규 (Restaurant Admin 은 seller 안 됨 — supplier/BG/FG/SA 만)
+// Sprint 1 에서 등록한 supplier_orders/shipping/trade_invoices/soa 는 이미 존재 → 사이드바 활성만
+```
+
+## D. UI (Stage 4)
+
+### D-1. 페이지
+
+**Supplier 측 (Sprint 1 placeholder 교체 + 신규):**
+- `/pos/supplier/orders` (REPLACE) — Incoming PO 관리, Tabs: Pending/Confirmed/Shipped/Received/Cancelled
+- `/pos/supplier/trade-invoices` (REPLACE) — 발행한 trade invoice 리스트 + 결제 상태
+- `/pos/supplier/soa` (NEW) — buyer 별 월별 SOA, 결제 현황
+
+**BG/FG/SA 측 (NEW):**
+- `/pos/brand/general/incoming-orders` (BG)
+- `/pos/foodcourt/general/incoming-orders` (FG)
+- `/pos/admin/incoming-orders` (SA, optional Sprint 4 minimal)
+
+**Buyer 측 (NEW):**
+- `/pos/purchase-invoices` — 받은 trade invoice 리스트 + 상세 모달 + 결제 흐름
+- `/pos/purchase-invoices/soa` — Monthly SOA buyer 의 이번 달 미결제 묶음 + Pay All
+
+### D-2. 사이드바
+- Supplier: orders/trade-invoices/soa 활성화 (placeholder 교체)
+- BG: "Incoming Orders" 추가 (Suppliers 섹션 아래)
+- FG: 동일
+- Buyer 4 역할: "Purchase Invoices" 추가 (Suppliers 섹션 아래, /pos/suppliers/contracts 옆)
+
+### D-3. i18n
+- `purchaseInvoices.json` 신규 namespace (4 언어)
+- `supplier.json` 확장 (orders/tradeInvoices/soa 키)
+
+### D-4. 알림 카테고리 신규 4종
+- `seller_order_received` (Supplier/BG/FG seller 에게 — PO submitted 시점)
+- `trade_invoice_created` (Buyer 에게 — receive 시 자동 발행)
+- `trade_invoice_paid` (Seller 에게 — buyer 결제 시)
+- `monthly_soa` (Monthly SOA buyer 에게)
+
+### D-5. 이메일 템플릿 신규
+- `tradeInvoiceCreatedEmail` (entity 브랜딩 적용)
+- `monthlySoaEmail` (월말 요약, invoice 리스트 + 합계)
+
+## E. 검증 (Stage 6)
+
+### E-1. test-sprint4.js 시나리오
+1. Setup: SupplierContract active + PO submitted (Sprint 3 활용)
+2. Seller: GET /seller-orders → submitted PO 1건 보임
+3. Seller: POST /confirm → confirmed
+4. Buyer (Sprint 3): mark-shipped 또는 Seller: ship → shipped
+5. Buyer (Sprint 3): receive → status=received + **Trade Invoice 자동 발행**
+6. Trade Invoice 검증: issuer_type='supplier', payer_type, total_amount, due_date, contract_id
+7. Buyer: GET /purchase-invoices → 1건 보임
+8. Buyer: 결제 흐름 (기존 API)
+9. Seller reject: submitted → cancelled
+10. IDOR: 다른 supplier 의 PO confirm → 404
+11. Anon → 401
+12. Cross-role: Buyer → /seller-orders → 403
+

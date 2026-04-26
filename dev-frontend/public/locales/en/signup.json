@@ -1,0 +1,16 @@
+{
+  "role": {
+    "supplier_admin": {
+      "title": "Supplier",
+      "description": "Sell products to restaurants, brands, and food courts."
+    }
+  },
+  "fields": {
+    "supplier_name": "Supplier Company Name"
+  },
+  "invitation": {
+    "banner_valid": "You're signing up via invitation. Welcome to PurpleHere.",
+    "banner_invalid": "This invitation link is invalid, expired, or already used. You can still sign up normally below.",
+    "loading": "Validating invitation..."
+  }
+}

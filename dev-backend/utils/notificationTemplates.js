@@ -377,6 +377,264 @@ function contractExpiryApplicantEmail(contract, daysRemaining, issuerName, lang 
   }, title, body, lang);
 }
 
+/**
+ * Supplier Contract Requested — sent to Supplier Admin
+ */
+function supplierContractRequestedEmail({ buyerName, buyerType, message, link }) {
+  const title = 'New Contract Request';
+  const safeMessage = (message || '').replace(/<[^>]*>/g, '').slice(0, 600);
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      <strong>${buyerName || 'A buyer'}</strong> (${buyerType || 'buyer'}) has requested a supply contract with your company.
+    </p>
+    ${safeMessage ? `<div style="background:#F9FAFB;border-left:4px solid ${BRAND_COLOR};padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;">
+      <p style="color:#374151;font-size:14px;margin:0;">${safeMessage}</p>
+    </div>` : ''}
+    <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
+      Review the request and approve or reject it. On approval, please define payment terms (terms, invoice cycle, credit limit, currency).
+    </p>
+    ${ctaButton('Review Request', link || `${BASE_URL}/supplier/contracts`)}`;
+
+  return withRenderMeta({
+    subject: `New Contract Request from ${buyerName || 'a buyer'}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `New contract request from ${buyerName || 'a buyer'} (${buyerType}). ${safeMessage ? '\n\n' + safeMessage : ''}`
+  }, title, body, 'en');
+}
+
+/**
+ * Supplier Contract Approved — sent to Buyer
+ */
+function supplierContractApprovedEmail({ supplierName, paymentTerms, link }) {
+  const title = 'Contract Approved';
+  const pt = paymentTerms || {};
+  const ptRows =
+    infoRow('Payment Terms', pt.terms || '—') +
+    infoRow('Invoice Cycle', pt.invoice_cycle || '—') +
+    (pt.payment_due_day !== undefined && pt.payment_due_day !== null
+      ? infoRow('Payment Due Day', String(pt.payment_due_day))
+      : '') +
+    (pt.credit_limit !== undefined && pt.credit_limit !== null
+      ? infoRow('Credit Limit', `${pt.currency || ''} ${pt.credit_limit}`.trim())
+      : '') +
+    (pt.currency ? infoRow('Currency', pt.currency) : '');
+
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      Your contract request with <strong>${supplierName || 'the supplier'}</strong> has been approved.
+    </p>
+    ${infoTable(ptRows)}
+    ${pt.notes ? `<div style="background:#F9FAFB;border-left:4px solid ${BRAND_COLOR};padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;">
+      <p style="color:#374151;font-size:14px;margin:0;">${(pt.notes || '').replace(/<[^>]*>/g, '').slice(0, 500)}</p>
+    </div>` : ''}
+    ${ctaButton('View Contract', link || `${BASE_URL}/pos/supply/contracts`)}`;
+
+  return withRenderMeta({
+    subject: `Contract Approved by ${supplierName || 'Supplier'}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `Contract approved by ${supplierName || 'supplier'}. Terms: ${pt.terms || ''} / ${pt.invoice_cycle || ''}.`
+  }, title, body, 'en');
+}
+
+/**
+ * Supplier Contract Rejected — sent to Buyer
+ */
+function supplierContractRejectedEmail({ supplierName, reason, link }) {
+  const title = 'Contract Request Rejected';
+  const safeReason = (reason || '').replace(/<[^>]*>/g, '').slice(0, 600);
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      Your contract request with <strong>${supplierName || 'the supplier'}</strong> has been rejected.
+    </p>
+    ${safeReason ? `<div style="background:#FEF2F2;border-left:4px solid #DC2626;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;">
+      <p style="color:#991B1B;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
+      <p style="color:#374151;font-size:14px;margin:0;">${safeReason}</p>
+    </div>` : ''}
+    ${ctaButton('View Details', link || `${BASE_URL}/pos/supply/contracts`)}`;
+
+  return withRenderMeta({
+    subject: `Contract Request Rejected by ${supplierName || 'Supplier'}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `Your contract request with ${supplierName || 'supplier'} was rejected.${safeReason ? '\nReason: ' + safeReason : ''}`
+  }, title, body, 'en');
+}
+
+/**
+ * Supplier Contract Terminated — sent to opposite party
+ */
+function supplierContractTerminatedEmail({ otherPartyName, terminatedBy, reason, link }) {
+  const title = 'Contract Terminated';
+  const safeReason = (reason || '').replace(/<[^>]*>/g, '').slice(0, 600);
+  const actor = terminatedBy === 'buyer' ? 'The buyer'
+    : terminatedBy === 'supplier' ? 'The supplier'
+    : 'The system';
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      ${actor} has terminated the supply contract with <strong>${otherPartyName || 'the other party'}</strong>.
+    </p>
+    ${safeReason ? `<div style="background:#FEF3C7;border-left:4px solid #F59E0B;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;">
+      <p style="color:#92400E;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
+      <p style="color:#374151;font-size:14px;margin:0;">${safeReason}</p>
+    </div>` : ''}
+    ${ctaButton('View Contract', link || `${BASE_URL}/pos/supply/contracts`)}`;
+
+  return withRenderMeta({
+    subject: `Contract Terminated — ${otherPartyName || 'Supply Contract'}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `${actor} terminated the supply contract with ${otherPartyName || 'the other party'}.${safeReason ? '\nReason: ' + safeReason : ''}`
+  }, title, body, 'en');
+}
+
+/**
+ * Sprint 4 — Supply Chain Order Lifecycle templates
+ */
+
+function fmtMoney(amount, currency) {
+  const cur = currency || 'MYR';
+  const n = Number(amount || 0);
+  return `${cur} ${n.toFixed(2)}`;
+}
+
+function fmtDate(date, lang = 'en') {
+  if (!date) return '—';
+  try {
+    const locale = lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US';
+    return new Date(date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return String(date);
+  }
+}
+
+/**
+ * Seller Order Received — sent to Seller (Supplier/Brand/Foodcourt) when buyer submits PO.
+ */
+function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link }) {
+  const title = 'New Purchase Order Received';
+  const safeBuyer = (buyerName || 'A buyer').toString().slice(0, 120);
+  const safePo = (poNumber || '—').toString().slice(0, 80);
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      <strong>${safeBuyer}</strong> has submitted a new purchase order to your company.
+    </p>
+    ${infoTable(
+      infoRow('PO Number', safePo) +
+      infoRow('Buyer', safeBuyer) +
+      infoRow('Total', `<span style="color:${BRAND_COLOR};font-weight:700;">${fmtMoney(total, currency)}</span>`) +
+      infoRow('Status', '<span style="color:#F59E0B;font-weight:600;">Awaiting Confirmation</span>')
+    )}
+    <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
+      Please review the order and confirm or reject it. After confirmation you can mark it shipped with tracking info.
+    </p>
+    ${ctaButton('Review Order', link || `${BASE_URL}/pos/seller/orders`)}`;
+
+  return withRenderMeta({
+    subject: `New PO ${safePo} from ${safeBuyer}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `New purchase order ${safePo} from ${safeBuyer}. Total: ${fmtMoney(total, currency)}.`
+  }, title, body, 'en');
+}
+
+/**
+ * Trade Invoice Created — sent to Buyer (Restaurant/Brand/Foodcourt) when supplier issues a trade invoice.
+ */
+function tradeInvoiceCreatedEmail({ sellerName, invoiceNumber, total, currency, dueDate, link }) {
+  const title = 'New Trade Invoice';
+  const safeSeller = (sellerName || 'Your supplier').toString().slice(0, 120);
+  const safeInv = (invoiceNumber || '—').toString().slice(0, 80);
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      <strong>${safeSeller}</strong> has issued a new trade invoice for your purchase.
+    </p>
+    ${infoTable(
+      infoRow('Invoice No.', safeInv) +
+      infoRow('Supplier', safeSeller) +
+      infoRow('Amount', `<span style="color:${BRAND_COLOR};font-weight:700;">${fmtMoney(total, currency)}</span>`) +
+      infoRow('Due Date', fmtDate(dueDate)) +
+      infoRow('Status', '<span style="color:#F59E0B;font-weight:600;">Pending</span>')
+    )}
+    ${ctaButton('View Invoice', link || `${BASE_URL}/pos/purchase-invoices`)}`;
+
+  return withRenderMeta({
+    subject: `Trade Invoice ${safeInv} - ${fmtMoney(total, currency)}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `Trade invoice ${safeInv} from ${safeSeller}. Amount: ${fmtMoney(total, currency)}. Due: ${fmtDate(dueDate)}.`
+  }, title, body, 'en');
+}
+
+/**
+ * Trade Invoice Paid — sent to Seller when buyer settles a trade invoice.
+ */
+function tradeInvoicePaidEmail({ buyerName, invoiceNumber, total, currency, link }) {
+  const title = 'Trade Invoice Paid';
+  const safeBuyer = (buyerName || 'A buyer').toString().slice(0, 120);
+  const safeInv = (invoiceNumber || '—').toString().slice(0, 80);
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      <strong>${safeBuyer}</strong> has paid trade invoice <strong>${safeInv}</strong>.
+    </p>
+    ${infoTable(
+      infoRow('Invoice No.', safeInv) +
+      infoRow('Buyer', safeBuyer) +
+      infoRow('Amount', `<span style="color:#10B981;font-weight:700;">${fmtMoney(total, currency)}</span>`) +
+      infoRow('Status', '<span style="color:#10B981;font-weight:600;">Paid</span>')
+    )}
+    ${ctaButton('View Details', link || `${BASE_URL}/pos/seller/orders`)}`;
+
+  return withRenderMeta({
+    subject: `Payment Received: ${safeInv} - ${fmtMoney(total, currency)}`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `${safeBuyer} paid trade invoice ${safeInv}. Amount: ${fmtMoney(total, currency)}.`
+  }, title, body, 'en');
+}
+
+/**
+ * Monthly SOA — sent to Buyer for monthly_soa contracts. Aggregates last month's invoices.
+ */
+function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency, dueDate, link }) {
+  const title = 'Monthly Statement of Account';
+  const safeSeller = (sellerName || 'Your supplier').toString().slice(0, 120);
+  const safeMonth = (month || '—').toString().slice(0, 40);
+
+  const rowsHtml = (invoices || []).slice(0, 50).map(inv => `
+    <tr>
+      <td style="padding:8px 12px;font-size:13px;color:#111827;border-bottom:1px solid #E5E7EB;">${(inv.invoice_number || '—').toString().slice(0, 60)}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#6B7280;border-bottom:1px solid #E5E7EB;">${fmtDate(inv.created_at || inv.createdAt)}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#111827;border-bottom:1px solid #E5E7EB;text-align:right;">${fmtMoney(inv.total_amount, inv.currency || currency)}</td>
+    </tr>`).join('');
+
+  const invoicesTable = `
+    <table style="width:100%;border-collapse:collapse;margin:0 0 24px;border:1px solid #E5E7EB;border-radius:8px;">
+      <thead>
+        <tr style="background:#F9FAFB;">
+          <th style="padding:10px 12px;font-size:12px;color:#374151;text-align:left;border-bottom:1px solid #E5E7EB;">Invoice</th>
+          <th style="padding:10px 12px;font-size:12px;color:#374151;text-align:left;border-bottom:1px solid #E5E7EB;">Date</th>
+          <th style="padding:10px 12px;font-size:12px;color:#374151;text-align:right;border-bottom:1px solid #E5E7EB;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml || `<tr><td colspan="3" style="padding:14px;color:#6B7280;text-align:center;font-size:13px;">No invoices in this period.</td></tr>`}</tbody>
+    </table>`;
+
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      Your monthly statement of account from <strong>${safeSeller}</strong> for <strong>${safeMonth}</strong> is ready.
+    </p>
+    ${infoTable(
+      infoRow('Supplier', safeSeller) +
+      infoRow('Period', safeMonth) +
+      infoRow('Invoices', String((invoices || []).length)) +
+      infoRow('Total Due', `<span style="color:${BRAND_COLOR};font-weight:700;font-size:16px;">${fmtMoney(totalDue, currency)}</span>`) +
+      infoRow('Due Date', fmtDate(dueDate))
+    )}
+    ${invoicesTable}
+    ${ctaButton('View SOA & Pay', link || `${BASE_URL}/pos/purchase-invoices/soa`)}`;
+
+  return withRenderMeta({
+    subject: `Monthly SOA from ${safeSeller} - ${safeMonth} (${fmtMoney(totalDue, currency)})`,
+    html: wrapTemplate(title, body, 'en'),
+    text: `Monthly statement from ${safeSeller} for ${safeMonth}. Invoices: ${(invoices || []).length}. Total due: ${fmtMoney(totalDue, currency)}. Due: ${fmtDate(dueDate)}.`
+  }, title, body, 'en');
+}
+
 module.exports = {
   wrapTemplate,
   noticeReceivedEmail,
@@ -389,5 +647,14 @@ module.exports = {
   invoicePaidEmail,
   emailVerificationEmail,
   contractExpiryIssuerEmail,
-  contractExpiryApplicantEmail
+  contractExpiryApplicantEmail,
+  supplierContractRequestedEmail,
+  supplierContractApprovedEmail,
+  supplierContractRejectedEmail,
+  supplierContractTerminatedEmail,
+  // Sprint 4 — Supply Chain Order Lifecycle
+  sellerOrderReceivedEmail,
+  tradeInvoiceCreatedEmail,
+  tradeInvoicePaidEmail,
+  monthlySoaEmail
 };

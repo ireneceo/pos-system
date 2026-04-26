@@ -214,6 +214,38 @@ const FoodcourtWorkManualsPage = React.lazy(() => import('./pages/Foodcourt/Work
 const OwnerWorkManualsPage = React.lazy(() => import('./pages/Owner/WorkManualsPage'));
 const RestaurantWorkManualsPage = React.lazy(() => import('./pages/Restaurant/WorkManualsPage'));
 
+// Sprint 1 — Supply Chain Design 1
+const SupplierDashboard = React.lazy(() => import('./pages/Supplier/SupplierDashboard'));
+const SupplierProductsPage = React.lazy(() => import('./pages/Supplier/SupplierProductsPage'));
+const SupplierInventoryPage = React.lazy(() => import('./pages/Supplier/SupplierInventoryPage'));
+const SupplierCompanyInfoPage = React.lazy(() => import('./pages/Supplier/SupplierCompanyInfoPage'));
+const SupplierPaymentSettingsPage = React.lazy(() => import('./pages/Supplier/SupplierPaymentSettingsPage'));
+const SupplierInvoiceSettingsPage = React.lazy(() => import('./pages/Supplier/SupplierInvoiceSettingsPage'));
+const SupplierInvoicesPage = React.lazy(() => import('./pages/Supplier/SupplierInvoicesPage'));
+const SupplierSystemInquiryPage = React.lazy(() => import('./pages/Supplier/SupplierSystemInquiryPage'));
+const SupplierCustomersPage = React.lazy(() => import('./pages/Supplier/SupplierCustomersPage'));
+const SupplierContractsPage = React.lazy(() => import('./pages/Supplier/SupplierContractsPage'));
+const SupplierOrdersPage = React.lazy(() => import('./pages/Supplier/SupplierOrdersPage'));
+const SupplierTradeInvoicesPage = React.lazy(() => import('./pages/Supplier/SupplierTradeInvoicesPage'));
+const SupplierSoaPage = React.lazy(() => import('./pages/Supplier/SupplierSoaPage'));
+const BrandIncomingOrdersPage = React.lazy(() => import('./pages/IncomingOrders/BrandIncomingOrdersPage'));
+const FoodcourtIncomingOrdersPage = React.lazy(() => import('./pages/IncomingOrders/FoodcourtIncomingOrdersPage'));
+const PurchaseInvoicesPage = React.lazy(() => import('./pages/PurchaseInvoices/PurchaseInvoicesPage'));
+const FoodcourtProductsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtProductsPage'));
+const FoodcourtInventoryPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtInventoryPage'));
+const SupplierCompaniesPage = React.lazy(() => import('./pages/Admin/SupplierCompaniesPage'));
+const SupplierInvitationsPage = React.lazy(() => import('./pages/Admin/SupplierInvitationsPage'));
+
+// Sprint 2 — Supply Chain Design 2 (Buyer-side Supplier Directory + Contracts)
+const SupplierDirectoryPage = React.lazy(() => import('./pages/SupplierDirectory/SupplierDirectoryPage'));
+const SupplierProfilePage = React.lazy(() => import('./pages/SupplierDirectory/SupplierProfilePage'));
+const MySuppliersPage = React.lazy(() => import('./pages/SupplierDirectory/MySuppliersPage'));
+// Sprint 2: Contract detail uses MySuppliersPage with auto-open modal (no separate page)
+// Sprint 3 — Purchase Orders (buyer-side ordering)
+const PurchaseOrdersPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrdersPage'));
+const NewPurchaseOrderPage = React.lazy(() => import('./pages/PurchaseOrders/NewPurchaseOrderPage'));
+const PurchaseOrderDetailPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderDetailPage'));
+
 // Shown when a restaurant-scoped user logs in without an assigned restaurant.
 // Avoids the previous silent fallback to `/restaurant/1/dashboard` which leaked
 // into another tenant and cascaded into 403/404 on every API call.
@@ -1160,6 +1192,149 @@ function App() {
                       <Route path="/restaurant/:restaurantId/product-recipes" element={
                         <ProtectedRoute requireRestaurantMatch={true} requiredRole={['System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Admin', 'Staff']}>
                           <ProductRecipePage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Sprint 1 — Supply Chain Design 1 */}
+                      <Route path="/pos/supplier/dashboard" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierDashboard />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/products" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierProductsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/inventory" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierInventoryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/company-info" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierCompanyInfoPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/payment-settings" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierPaymentSettingsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/invoice-settings" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierInvoiceSettingsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/invoices" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierInvoicesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/system-inquiry" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierSystemInquiryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/customers" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierCustomersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/contracts" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierContractsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/orders" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierOrdersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/supplier/trade-invoices" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <SupplierTradeInvoicesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/general/products" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager', 'System Admin']}>
+                          <FoodcourtProductsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/general/inventory" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager', 'System Admin']}>
+                          <FoodcourtInventoryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/supplier-companies" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <SupplierCompaniesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/supplier-invitations" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <SupplierInvitationsPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Sprint 2 — Supply Chain Design 2 (Buyer-side Supplier Directory + Contracts) */}
+                      <Route path="/pos/suppliers/directory" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <SupplierDirectoryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/suppliers/directory/:supplierId" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <SupplierProfilePage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/suppliers/contracts" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <MySuppliersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/suppliers/contracts/:contractId" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <MySuppliersPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Sprint 3 — Purchase Orders */}
+                      <Route path="/pos/purchase-orders" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <PurchaseOrdersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/purchase-orders/new" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <NewPurchaseOrderPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/purchase-orders/:id" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <PurchaseOrderDetailPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Sprint 4 — Seller-side Incoming Orders + Buyer-side Purchase Invoices */}
+                      <Route path="/pos/supplier/soa" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin','System Admin']}>
+                          <SupplierSoaPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/general/incoming-orders" element={
+                        <ProtectedRoute requiredRole={['Brand General','Brand Manager','System Admin']}>
+                          <BrandIncomingOrdersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/foodcourt/general/incoming-orders" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <FoodcourtIncomingOrdersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/purchase-invoices" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <PurchaseInvoicesPage />
                         </ProtectedRoute>
                       } />
 

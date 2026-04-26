@@ -1,0 +1,235 @@
+{
+  "menu": {
+    "dashboard": "Papan Pemuka",
+    "products": "Produk",
+    "inventory": "Inventori",
+    "customers": "Pelanggan",
+    "contracts": "Kontrak",
+    "orders": "Pesanan",
+    "tradeInvoices": "Invois Dagangan",
+    "settings": "Tetapan",
+    "companyInfo": "Maklumat Syarikat",
+    "paymentSettings": "Tetapan Pembayaran",
+    "invoiceSettings": "Tetapan Invois",
+    "invoices": "Invois",
+    "notices": "Pemberitahuan",
+    "systemInquiry": "Pertanyaan Sistem",
+    "comingSoon": "Akan Datang"
+  },
+  "dashboard": {
+    "title": "Papan Pemuka Pembekal",
+    "totalProducts": "Jumlah Produk",
+    "activeProducts": "Produk Aktif",
+    "lowStockAlert": "Amaran Stok Rendah",
+    "inventoryValue": "Nilai Inventori",
+    "subscription": "Langganan",
+    "trial": "Trial",
+    "daysLeft": "Tinggal {{n}} hari",
+    "noLowStock": "Semua tahap stok dalam keadaan baik."
+  },
+  "products": {
+    "title": "Katalog Produk",
+    "addProduct": "Tambah Produk",
+    "categoryFilter": "Tapis mengikut kategori",
+    "searchPlaceholder": "Cari produk...",
+    "fields": {
+      "name": "Nama Produk",
+      "sku": "SKU",
+      "unit": "Unit",
+      "baseQuantity": "Kuantiti Asas",
+      "unitPrice": "Harga Seunit",
+      "minOrderQuantity": "Kuantiti Pesanan Minimum",
+      "category": "Kategori",
+      "image": "Imej",
+      "currentStock": "Stok Semasa",
+      "lowStockThreshold": "Had Stok Rendah",
+      "leadTimeDays": "Masa Hantaran (hari)",
+      "isActive": "Aktif"
+    },
+    "categoryManagement": "Pengurusan Kategori",
+    "optionGroups": "Kumpulan Pilihan",
+    "addCategory": "Tambah Kategori",
+    "addOptionGroup": "Tambah Kumpulan Pilihan",
+    "planLimitReached": "Had produk pelan anda telah dicapai. Sila naik taraf.",
+    "noProducts": "Tiada produk lagi. Klik \"Tambah Produk\" untuk mula membina katalog anda.",
+    "deleteConfirm": "Adakah anda pasti mahu memadam produk ini?",
+    "copySuffix": " (Salinan)"
+  },
+  "inventory": {
+    "title": "Pengurusan Inventori",
+    "summary": {
+      "totalProducts": "Produk",
+      "lowStock": "Stok Rendah",
+      "outOfStock": "Habis Stok",
+      "value": "Nilai Keseluruhan"
+    },
+    "actions": {
+      "adjust": "Laraskan Stok",
+      "receive": "Terima Stok",
+      "viewHistory": "Sejarah Transaksi"
+    },
+    "modals": {
+      "adjustTitle": "Laraskan Kuantiti Stok",
+      "receiveTitle": "Terima Stok",
+      "delta": "Perubahan Kuantiti (+/-)",
+      "quantity": "Kuantiti Diterima",
+      "reason": "Sebab",
+      "notes": "Nota",
+      "batchNo": "Nombor Kelompok (pilihan)",
+      "expiryDate": "Tarikh Luput (pilihan)",
+      "unitCost": "Kos Seunit (pilihan)"
+    },
+    "history": {
+      "title": "Sejarah Transaksi",
+      "empty": "Sejarah transaksi akan dipaparkan di sini dalam Sprint 3 (integrasi PO)."
+    },
+    "lowStockBadge": "RENDAH",
+    "outOfStockBadge": "HABIS"
+  },
+  "company": {
+    "title": "Maklumat Syarikat",
+    "tabs": {
+      "general": "Umum",
+      "address": "Alamat",
+      "banking": "Perbankan",
+      "branding": "Penjenamaan"
+    }
+  },
+  "invoices": {
+    "title": "Invois Saya",
+    "subtitle": "Invois langganan dikeluarkan oleh PurpleHere",
+    "noInvoices": "Tiada invois lagi. Invois pertama anda akan muncul selepas Trial bermula."
+  },
+  "comingSoon": {
+    "title": "Akan Datang",
+    "sprint2": "Ciri ini akan dilancarkan dalam Sprint 2 pelancaran Supply Chain (Kontrak Pembekal & Pengurusan Pelanggan).",
+    "sprint4": "Ciri ini akan dilancarkan dalam Sprint 4 pelancaran Supply Chain (Pengurusan Pesanan & Invois Dagangan).",
+    "joinWaitlist": "Kami akan memberitahu anda apabila ia sedia."
+  },
+  "orders": {
+    "title": "Pesanan Masuk",
+    "subtitle": "Pesanan pembelian yang dihantar oleh pembeli anda.",
+    "stats": {
+      "pending": "Menunggu Semakan",
+      "confirmed": "Disahkan",
+      "shipped": "Dihantar",
+      "received": "Diterima Bulan Ini"
+    },
+    "tabs": {
+      "submitted": "Menunggu",
+      "confirmed": "Disahkan",
+      "shipped": "Dihantar",
+      "received": "Diterima",
+      "cancelled": "Dibatalkan"
+    },
+    "table": {
+      "poNumber": "No PO",
+      "buyer": "Pembeli",
+      "items": "Item",
+      "total": "Jumlah",
+      "status": "Status",
+      "createdAt": "Dicipta",
+      "actions": "Tindakan"
+    },
+    "actions": {
+      "view": "Lihat",
+      "confirm": "Sahkan",
+      "ship": "Tanda Dihantar",
+      "reject": "Tolak"
+    },
+    "confirm": {
+      "title": "Sahkan Pesanan",
+      "message": "Sahkan pesanan pembelian ini? Pembeli akan dimaklumkan.",
+      "submit": "Sahkan",
+      "cancel": "Batal"
+    },
+    "ship": {
+      "title": "Tanda Sebagai Dihantar",
+      "carrier": "Pembawa",
+      "carrierPlaceholder": "cth. DHL, Pos Laju, Penghantaran Sendiri",
+      "trackingNumber": "Nombor Penjejakan",
+      "trackingPlaceholder": "Pilihan",
+      "estArrival": "Anggaran Ketibaan",
+      "notes": "Nota",
+      "submit": "Tanda Dihantar",
+      "cancel": "Batal"
+    },
+    "reject": {
+      "title": "Tolak Pesanan",
+      "reason": "Sebab",
+      "reasonPlaceholder": "Terangkan kenapa anda tidak dapat memenuhi pesanan ini.",
+      "submit": "Tolak",
+      "cancel": "Batal"
+    },
+    "empty": "Tiada pesanan masuk dalam status ini."
+  },
+  "tradeInvoicesPage": {
+    "title": "Invois Dagangan",
+    "subtitle": "Invois yang dikeluarkan secara automatik apabila pesanan dihantar.",
+    "stats": {
+      "outstanding": "Jumlah Tertunggak",
+      "paidThisMonth": "Dibayar Bulan Ini",
+      "overdue": "Tertunggak",
+      "totalIssued": "Jumlah Dikeluarkan"
+    },
+    "filter": {
+      "searchBuyer": "Cari pembeli atau no invois",
+      "allStatuses": "Semua status"
+    },
+    "table": {
+      "invoiceNumber": "No Invois",
+      "buyer": "Pembeli",
+      "total": "Jumlah",
+      "status": "Status",
+      "issuedAt": "Dikeluarkan",
+      "dueDate": "Tamat",
+      "actions": "Tindakan"
+    },
+    "view": "Lihat",
+    "empty": "Tiada invois dagangan dikeluarkan."
+  },
+  "soaPage": {
+    "title": "Penyata Akaun (SOA Bulanan)",
+    "subtitle": "Ringkasan bil bulanan setiap pembeli dengan kontrak SOA bulanan aktif.",
+    "filter": {
+      "month": "Bulan",
+      "searchBuyer": "Cari pembeli"
+    },
+    "table": {
+      "buyer": "Pembeli",
+      "month": "Bulan",
+      "invoiceCount": "Invois",
+      "totalBilled": "Dibilkan",
+      "totalPaid": "Dibayar",
+      "outstanding": "Tertunggak",
+      "actions": "Tindakan"
+    },
+    "view": "Lihat Detail",
+    "empty": "Tiada kontrak SOA bulanan aktif.",
+    "detail": {
+      "title": "{{buyer}} — {{month}}",
+      "invoiceNumber": "No Invois",
+      "issuedAt": "Dikeluarkan",
+      "dueDate": "Tamat",
+      "total": "Jumlah",
+      "paid": "Dibayar",
+      "outstanding": "Tertunggak",
+      "status": "Status",
+      "noInvoices": "Tiada invois untuk tempoh ini.",
+      "close": "Tutup"
+    }
+  },
+  "status": {
+    "draft": "Draf",
+    "submitted": "Menunggu",
+    "confirmed": "Disahkan",
+    "shipped": "Dihantar",
+    "partial_received": "Sebahagian",
+    "received": "Diterima",
+    "cancelled": "Dibatalkan",
+    "pending_payment": "Menunggu Pembayaran",
+    "payment_submitted": "Pembayaran Dihantar",
+    "paid": "Dibayar",
+    "overdue": "Tertunggak"
+  }
+}

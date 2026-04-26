@@ -1,7 +1,14 @@
 # 인보이스 시스템 기술 문서
 
-> **최종 업데이트:** 2026-03-11
+> **최종 업데이트:** 2026-04-26 (Sprint 4 — Supply Chain Trade Invoice 추가)
 > **상태:** 구현 완료 (수동 결제 확인 방식, 결제 게이트웨이 미연동)
+>
+> **Sprint 4 (2026-04-26) 추가**: Supply Chain Trade Invoice 자동 발행 시스템.
+> - `invoice_category='trade'` + `issuer_type IN ('supplier','brand','foodcourt','system_admin')` 활용
+> - PO Received 시 `services/purchaseOrderService.createTradeInvoice()` 자동 호출 (idempotent)
+> - Monthly SOA cron (`services/soaScheduler.js`, 매월 1일 00:30)
+> - 결제 흐름은 기존 invoice payment API (`POST /api/invoices/:id/submit-payment`) 그대로 재사용
+> - **상세 설계**: `docs/SELLER_ORDER_MANAGEMENT_SYSTEM.md` "Sprint 4 Implementation Spec" 섹션
 
 ---
 

@@ -1219,6 +1219,11 @@ class InvoiceScheduler {
       payerType = 'foodcourt_manager';
       payerId = entity.owner_id;
       payerName = entity.name;
+    } else if (entityType === 'supplier') {
+      // Supplier Admin pays for own SupplierCompany subscription (Sprint 1)
+      payerType = 'external';
+      payerId = entity.owner_id;
+      payerName = entity.name;
     } else {
       // owner
       payerType = 'restaurant_owner';
@@ -1228,7 +1233,10 @@ class InvoiceScheduler {
 
     // Generate invoice number
     const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-    const prefix = entityType === 'brand' ? 'BRD' : entityType === 'foodcourt' ? 'FC' : 'OWN';
+    const prefix = entityType === 'brand' ? 'BRD'
+      : entityType === 'foodcourt' ? 'FC'
+      : entityType === 'supplier' ? 'SUP'
+      : 'OWN';
     const invoiceNumber = `INV-${prefix}-${dateStr}-${entity.id}`;
 
     // Check duplicate

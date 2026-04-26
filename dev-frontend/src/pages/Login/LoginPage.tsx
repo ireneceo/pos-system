@@ -495,6 +495,9 @@ const LoginPage: React.FC = () => {
           case 'Restaurant Owner':
             navigate('/pos/owner/dashboard', { replace: true });
             break;
+          case 'Supplier Admin':
+            navigate('/pos/supplier/dashboard', { replace: true });
+            break;
           case 'Staff':
             if (user.restaurantId) {
               navigate(`/restaurant/${user.restaurantId}/dashboard`, { replace: true });

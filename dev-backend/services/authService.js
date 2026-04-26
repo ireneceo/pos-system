@@ -4,6 +4,8 @@ const User = require('../models/User');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const Restaurant = require('../models/Restaurant');
+const SupplierCompany = require('../models/SupplierCompany');
+const SupplierInvitation = require('../models/SupplierInvitation');
 const PlanTemplate = require('../models/PlanTemplate');
 const PlanPrice = require('../models/PlanPrice');
 // EntityPlanRestaurant is used by Brand/Foodcourt plan assignment, not self-signup
@@ -355,6 +357,65 @@ async function signup(data) {
         dashboardUrl: 'https://purplehere.com/pos/owner/dashboard'
       });
       notifyAdminNewSignup({ user, role: 'Restaurant Owner', entityName: data.company_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
+
+      return { email_verification_required: true, email: user.email };
+
+    } else if (data.role === 'Supplier Admin') {
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + 7);
+
+      const supplierCompany = await SupplierCompany.create({
+        name: data.supplier_name,
+        status: 'active',
+        subscription_status: 'trial',
+        plan_id: plan.id,
+        plan_type: plan.display_name || plan.name,
+        plan_amount: planAmount,
+        billing_cycle: data.billing_cycle || 'monthly',
+        currency: currency,
+        subscription_start: new Date(),
+        trial_end_date: trialEndDate
+      }, { transaction });
+
+      // Supplier Admin doesn't have brand_id/foodcourt_id; uses owner_id reverse FK on SupplierCompany
+      const user = await User.create(userFields, { transaction });
+
+      await supplierCompany.update({ owner_id: user.id }, { transaction });
+
+      // If signup via invitation, mark used
+      if (data.invitation_token) {
+        const invitation = await SupplierInvitation.findOne({
+          where: { token: data.invitation_token, status: 'pending' },
+          transaction
+        });
+        if (invitation && invitation.expires_at > new Date()) {
+          await invitation.update({
+            status: 'used',
+            used_at: new Date(),
+            used_by_user_id: user.id
+          }, { transaction });
+        }
+      }
+
+      await transaction.commit();
+
+      // Generate first invoice (non-blocking, after commit)
+      try {
+        const invoiceScheduler = require('./invoiceScheduler');
+        await invoiceScheduler.createEntitySubscriptionInvoice(supplierCompany, 'supplier', plan, currency, trialEndDate);
+        console.log(`[Signup] Supplier invoice generated for ${supplierCompany.name}`);
+      } catch (e) {
+        console.error('[Signup] Supplier invoice generation failed:', e.message);
+      }
+
+      sendVerificationEmail(user);
+
+      sendSignupWelcomeEmail({
+        user, role: 'Supplier', entityName: data.supplier_name,
+        planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly',
+        dashboardUrl: 'https://purplehere.com/pos/supplier/dashboard'
+      });
+      notifyAdminNewSignup({ user, role: 'Supplier Admin', entityName: data.supplier_name, planName: plan.display_name || plan.name, billingCycle: data.billing_cycle || 'monthly' });
 
       return { email_verification_required: true, email: user.email };
 

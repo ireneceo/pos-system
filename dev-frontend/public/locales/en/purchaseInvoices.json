@@ -1,0 +1,78 @@
+{
+  "list": {
+    "title": "Purchase Invoices",
+    "subtitle": "Trade invoices issued by your suppliers and partners.",
+    "loading": "Loading invoices...",
+    "stats": {
+      "outstanding": "Outstanding",
+      "paid": "Paid",
+      "overdue": "Overdue",
+      "thisMonth": "Issued This Month"
+    },
+    "filter": {
+      "searchIssuer": "Search issuer name or invoice #",
+      "allStatuses": "All statuses",
+      "from": "From",
+      "to": "To"
+    },
+    "table": {
+      "invoiceNumber": "Invoice #",
+      "issuer": "From",
+      "total": "Total",
+      "status": "Status",
+      "issuedAt": "Issued",
+      "dueDate": "Due",
+      "actions": "Actions"
+    },
+    "empty": {
+      "title": "No purchase invoices yet",
+      "hint": "Once your suppliers issue invoices, they will appear here."
+    },
+    "view": "View",
+    "pay": "Pay",
+    "tabs": {
+      "all": "All Invoices",
+      "soa": "Monthly SOA"
+    }
+  },
+  "detail": {
+    "title": "Invoice {{number}}",
+    "issuedBy": "Issued by",
+    "issuedAt": "Issued",
+    "dueDate": "Due date",
+    "status": "Status",
+    "items": "Items",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "tax": "Tax",
+    "total": "Total",
+    "paid": "Paid",
+    "outstanding": "Outstanding",
+    "notes": "Notes",
+    "noItems": "No line items on this invoice.",
+    "close": "Close",
+    "pay": "Pay Now"
+  },
+  "soa": {
+    "title": "Monthly Statement of Account",
+    "subtitle": "Outstanding balances grouped by supplier for the current period.",
+    "supplier": "Supplier",
+    "invoiceCount": "Invoices",
+    "totalBilled": "Billed",
+    "totalPaid": "Paid",
+    "outstanding": "Outstanding",
+    "payAll": "Pay All",
+    "empty": "No active monthly SOA contracts."
+  },
+  "status": {
+    "draft": "Draft",
+    "pending_payment": "Pending Payment",
+    "payment_submitted": "Payment Submitted",
+    "paid": "Paid",
+    "overdue": "Overdue",
+    "cancelled": "Cancelled"
+  },
+  "common": {
+    "close": "Close"
+  }
+}

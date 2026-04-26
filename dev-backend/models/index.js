@@ -38,6 +38,25 @@ const BrandProductOptionGroupProduct = require('./BrandProductOptionGroupProduct
 const Supplier = require('./Supplier');
 const SupplierCategory = require('./SupplierCategory');
 const SupplierBrand = require('./SupplierBrand');
+// Sprint 1 (Supply Chain Design 1) — Supplier/Foodcourt seller catalog + inventory
+const SupplierCompany = require('./SupplierCompany');
+const SupplierProduct = require('./SupplierProduct');
+const SupplierProductCategory = require('./SupplierProductCategory');
+const SupplierProductOptionGroup = require('./SupplierProductOptionGroup');
+const SupplierProductOption = require('./SupplierProductOption');
+const SupplierProductOptionGroupProduct = require('./SupplierProductOptionGroupProduct');
+const SupplierInvitation = require('./SupplierInvitation');
+const FoodcourtProduct = require('./FoodcourtProduct');
+const FoodcourtProductCategory = require('./FoodcourtProductCategory');
+const FoodcourtProductOptionGroup = require('./FoodcourtProductOptionGroup');
+const FoodcourtProductOption = require('./FoodcourtProductOption');
+const FoodcourtProductOptionGroupProduct = require('./FoodcourtProductOptionGroupProduct');
+// Sprint 2 (Supply Chain Design 2) — Supplier Contract
+const SupplierContract = require('./SupplierContract');
+// Sprint 3 (Supply Chain Design 3) — Purchase Order
+const IngredientSellerProduct = require('./IngredientSellerProduct');
+const PurchaseOrder = require('./PurchaseOrder');
+const PurchaseOrderItem = require('./PurchaseOrderItem');
 const InventoryTransaction = require('./InventoryTransaction');
 const StockTake = require('./StockTake');
 const StockTakeItem = require('./StockTakeItem');
@@ -627,6 +646,100 @@ const syncIssuerToContracts = async (entityType, entityId, master) => {
   }
 };
 
+// =====================================================================
+// Sprint 1 (Supply Chain Design 1) — Associations
+// =====================================================================
+
+// SupplierCompany ↔ User (owner) + PlanTemplate
+SupplierCompany.belongsTo(User, { foreignKey: 'owner_id', as: 'owner' });
+User.hasOne(SupplierCompany, { foreignKey: 'owner_id', as: 'supplierCompany' });
+SupplierCompany.belongsTo(PlanTemplate, { foreignKey: 'plan_id', as: 'plan' });
+
+// SupplierCompany hasMany products/categories/option groups
+SupplierCompany.hasMany(SupplierProduct, { foreignKey: 'supplier_company_id', as: 'products' });
+SupplierCompany.hasMany(SupplierProductCategory, { foreignKey: 'supplier_company_id', as: 'productCategories' });
+SupplierCompany.hasMany(SupplierProductOptionGroup, { foreignKey: 'supplier_company_id', as: 'productOptionGroups' });
+
+// SupplierProduct relationships
+SupplierProduct.belongsTo(SupplierCompany, { foreignKey: 'supplier_company_id', as: 'company' });
+SupplierProduct.belongsTo(SupplierProductCategory, { foreignKey: 'category_id', as: 'category' });
+SupplierProductCategory.hasMany(SupplierProduct, { foreignKey: 'category_id', as: 'products' });
+SupplierProductCategory.belongsTo(SupplierCompany, { foreignKey: 'supplier_company_id', as: 'company' });
+
+// SupplierProduct ↔ OptionGroup N:M via SupplierProductOptionGroupProduct
+SupplierProduct.belongsToMany(SupplierProductOptionGroup, {
+  through: { model: SupplierProductOptionGroupProduct, unique: false },
+  foreignKey: 'product_id',
+  otherKey: 'option_group_id',
+  as: 'optionGroups'
+});
+SupplierProductOptionGroup.belongsToMany(SupplierProduct, {
+  through: { model: SupplierProductOptionGroupProduct, unique: false },
+  foreignKey: 'option_group_id',
+  otherKey: 'product_id',
+  as: 'products'
+});
+SupplierProductOptionGroup.belongsTo(SupplierCompany, { foreignKey: 'supplier_company_id', as: 'company' });
+SupplierProductOptionGroup.hasMany(SupplierProductOption, { foreignKey: 'option_group_id', as: 'options' });
+SupplierProductOption.belongsTo(SupplierProductOptionGroup, { foreignKey: 'option_group_id', as: 'group' });
+
+// FoodcourtProduct mirrors (Foodcourt as parent)
+Foodcourt.hasMany(FoodcourtProduct, { foreignKey: 'foodcourt_id', as: 'products' });
+Foodcourt.hasMany(FoodcourtProductCategory, { foreignKey: 'foodcourt_id', as: 'productCategories' });
+Foodcourt.hasMany(FoodcourtProductOptionGroup, { foreignKey: 'foodcourt_id', as: 'productOptionGroups' });
+
+FoodcourtProduct.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
+FoodcourtProduct.belongsTo(FoodcourtProductCategory, { foreignKey: 'category_id', as: 'category' });
+FoodcourtProductCategory.hasMany(FoodcourtProduct, { foreignKey: 'category_id', as: 'products' });
+FoodcourtProductCategory.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
+
+FoodcourtProduct.belongsToMany(FoodcourtProductOptionGroup, {
+  through: { model: FoodcourtProductOptionGroupProduct, unique: false },
+  foreignKey: 'product_id',
+  otherKey: 'option_group_id',
+  as: 'optionGroups'
+});
+FoodcourtProductOptionGroup.belongsToMany(FoodcourtProduct, {
+  through: { model: FoodcourtProductOptionGroupProduct, unique: false },
+  foreignKey: 'option_group_id',
+  otherKey: 'product_id',
+  as: 'products'
+});
+FoodcourtProductOptionGroup.belongsTo(Foodcourt, { foreignKey: 'foodcourt_id', as: 'foodcourt' });
+FoodcourtProductOptionGroup.hasMany(FoodcourtProductOption, { foreignKey: 'option_group_id', as: 'options' });
+FoodcourtProductOption.belongsTo(FoodcourtProductOptionGroup, { foreignKey: 'option_group_id', as: 'group' });
+
+// Sprint 2 — SupplierContract
+SupplierContract.belongsTo(SupplierCompany, { foreignKey: 'supplier_company_id', as: 'supplierCompany' });
+SupplierCompany.hasMany(SupplierContract, { foreignKey: 'supplier_company_id', as: 'contracts' });
+SupplierContract.belongsTo(User, { foreignKey: 'requested_by_user_id', as: 'requestedBy' });
+SupplierContract.belongsTo(User, { foreignKey: 'approved_by_user_id', as: 'approvedBy' });
+SupplierContract.belongsTo(User, { foreignKey: 'rejected_by_user_id', as: 'rejectedBy' });
+SupplierContract.belongsTo(User, { foreignKey: 'terminated_by_user_id', as: 'terminatedByUser' });
+// Polymorphic buyer 관계는 라우트에서 entity_type/entity_id 로 직접 조회
+
+// Sprint 3 — Purchase Order associations
+IngredientSellerProduct.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+Ingredient.hasMany(IngredientSellerProduct, { foreignKey: 'ingredient_id', as: 'sellerSources' });
+
+PurchaseOrder.hasMany(PurchaseOrderItem, { foreignKey: 'purchase_order_id', as: 'items' });
+PurchaseOrderItem.belongsTo(PurchaseOrder, { foreignKey: 'purchase_order_id', as: 'order' });
+PurchaseOrder.belongsTo(SupplierContract, { foreignKey: 'contract_id', as: 'contract' });
+PurchaseOrder.belongsTo(User, { foreignKey: 'created_by_user_id', as: 'createdBy' });
+PurchaseOrderItem.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
+PurchaseOrderItem.belongsTo(IngredientSellerProduct, { foreignKey: 'ingredient_seller_product_id', as: 'sellerSource' });
+
+// SupplierInvitation
+SupplierInvitation.belongsTo(User, { foreignKey: 'invited_by', as: 'inviter' });
+SupplierInvitation.belongsTo(User, { foreignKey: 'used_by_user_id', as: 'usedBy' });
+SupplierInvitation.belongsTo(PlanTemplate, { foreignKey: 'plan_id', as: 'plan' });
+
+// Ingredient FK extensions (Sprint 3 PO 준비)
+Ingredient.belongsTo(SupplierProduct, { foreignKey: 'supplier_product_id', as: 'supplierProduct' });
+Ingredient.belongsTo(FoodcourtProduct, { foreignKey: 'foodcourt_product_id', as: 'foodcourtProduct' });
+SupplierProduct.hasMany(Ingredient, { foreignKey: 'supplier_product_id', as: 'ingredients' });
+FoodcourtProduct.hasMany(Ingredient, { foreignKey: 'foodcourt_product_id', as: 'ingredients' });
+
 Brand.addHook('afterUpdate', async (brand) => {
   const relevant = ['company_name', 'name', 'registration_no', 'website',
                     'bank_name', 'bank_account', 'bank_account_name'];
@@ -728,5 +841,24 @@ module.exports = {
   FoodcourtBranch,
   FoodcourtFloorPlan,
   WorkManual,
-  WorkManualCategory
+  WorkManualCategory,
+  // Sprint 1 (Supply Chain Design 1)
+  SupplierCompany,
+  SupplierProduct,
+  SupplierProductCategory,
+  SupplierProductOptionGroup,
+  SupplierProductOption,
+  SupplierProductOptionGroupProduct,
+  SupplierInvitation,
+  FoodcourtProduct,
+  FoodcourtProductCategory,
+  FoodcourtProductOptionGroup,
+  FoodcourtProductOption,
+  FoodcourtProductOptionGroupProduct,
+  // Sprint 2 (Supply Chain Design 2)
+  SupplierContract,
+  // Sprint 3 (Supply Chain Design 3)
+  IngredientSellerProduct,
+  PurchaseOrder,
+  PurchaseOrderItem
 };

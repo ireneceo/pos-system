@@ -1,0 +1,213 @@
+{
+  "directory": {
+    "title": "Find Suppliers",
+    "subtitle": "Search and connect with verified suppliers across categories",
+    "search": "Search suppliers...",
+    "category": "Category",
+    "country": "Country",
+    "state": "State",
+    "allCategories": "All Categories",
+    "allCountries": "All Countries",
+    "allStates": "All States",
+    "products": "{{n}} products",
+    "noResults": "No suppliers found",
+    "noResultsHint": "Try adjusting your filters or search keywords.",
+    "loading": "Loading suppliers...",
+    "viewProfile": "View Profile",
+    "page": "Page {{page}} of {{total}}"
+  },
+  "profile": {
+    "back": "Back to Directory",
+    "about": "About",
+    "catalog": "Product Catalog",
+    "categories": "Categories",
+    "contact": "Contact",
+    "address": "Address",
+    "requestContract": "Request Contract",
+    "requestAgain": "Request Again",
+    "contractActive": "Contract Active",
+    "pendingReview": "Pending Review",
+    "rejected": "Rejected",
+    "terminated": "Terminated",
+    "viewContract": "View Contract",
+    "noProducts": "No products available yet.",
+    "searchProducts": "Search products...",
+    "moq": "MOQ {{n}}",
+    "perUnit": "/{{unit}}",
+    "loadFailed": "Failed to load supplier profile."
+  },
+  "myContracts": {
+    "title": "My Suppliers",
+    "subtitle": "Manage contracts with your suppliers",
+    "findSuppliers": "Find Suppliers",
+    "filter": {
+      "all": "All Statuses",
+      "requested": "Requested",
+      "active": "Active",
+      "rejected": "Rejected",
+      "terminated": "Terminated"
+    },
+    "stats": {
+      "total": "Total",
+      "active": "Active",
+      "pending": "Pending",
+      "ended": "Ended"
+    },
+    "table": {
+      "supplier": "Supplier",
+      "requestedAt": "Requested",
+      "status": "Status",
+      "paymentTerms": "Payment Terms",
+      "actions": "Actions"
+    },
+    "view": "View",
+    "terminate": "Terminate",
+    "noContracts": "No supplier contracts yet.",
+    "noContractsHint": "Browse the supplier directory to send your first contract request."
+  },
+  "contractDetail": {
+    "title": "Contract Details",
+    "back": "Back to My Suppliers",
+    "supplierInfo": "Supplier Information",
+    "statusTimeline": "Status Timeline",
+    "paymentTerms": "Payment Terms",
+    "messages": "Messages",
+    "yourMessage": "Your Message",
+    "supplierNotes": "Supplier Notes",
+    "rejectionReason": "Rejection Reason",
+    "terminationReason": "Termination Reason",
+    "events": {
+      "requested": "Requested",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "terminated": "Terminated"
+    },
+    "loadFailed": "Failed to load contract."
+  },
+  "request": {
+    "modalTitle": "Request Contract",
+    "supplierLabel": "Supplier",
+    "messageLabel": "Message (optional)",
+    "messagePlaceholder": "Why are you interested in this supplier?",
+    "yourCompany": "Your company info will be shared with the supplier:",
+    "entity": "Entity",
+    "entityType": {
+      "restaurant": "Restaurant",
+      "brand": "Brand",
+      "foodcourt": "Foodcourt"
+    },
+    "submit": "Send Request",
+    "alreadyActive": "You already have an active contract with this supplier.",
+    "alreadyPending": "You already sent a request to this supplier.",
+    "submitFailed": "Failed to send request."
+  },
+  "terminate": {
+    "modalTitle": "Terminate Contract",
+    "warning": "Terminating will stop product visibility from this supplier on your ordering screens.",
+    "reasonLabel": "Reason",
+    "reasonPlaceholder": "Tell the supplier why you are terminating",
+    "reasonRequired": "Please provide a reason.",
+    "submit": "Terminate Contract",
+    "submitFailed": "Failed to terminate contract."
+  },
+  "approve": {
+    "modalTitle": "Approve & Activate",
+    "buyerLabel": "Buyer",
+    "paymentTerms": "Payment Terms",
+    "termsLabel": "Terms",
+    "termsCOD": "Cash on Delivery",
+    "termsNET15": "Net 15 days",
+    "termsNET30": "Net 30 days",
+    "termsNET60": "Net 60 days",
+    "invoiceCycle": "Invoice Cycle",
+    "cycleImmediate": "Immediate (per delivery)",
+    "cycleMonthly": "Monthly SOA",
+    "paymentDueDay": "Payment Due Day (1–31)",
+    "paymentDueDayHint": "Day of the next month when payment is due.",
+    "creditLimit": "Credit Limit (optional)",
+    "currency": "Currency",
+    "notes": "Notes (optional)",
+    "submit": "Approve & Activate",
+    "submitFailed": "Failed to approve contract.",
+    "invalidDueDay": "Payment Due Day must be between 1 and 31."
+  },
+  "reject": {
+    "modalTitle": "Reject Contract",
+    "warning": "The buyer will see this rejection reason.",
+    "reasonLabel": "Reason",
+    "reasonPlaceholder": "Why are you rejecting this request?",
+    "reasonRequired": "Please provide a reason.",
+    "submit": "Reject",
+    "submitFailed": "Failed to reject contract."
+  },
+  "editTerms": {
+    "modalTitle": "Edit Payment Terms",
+    "submit": "Save Changes",
+    "submitFailed": "Failed to update payment terms."
+  },
+  "supplierContracts": {
+    "title": "Contract Requests",
+    "subtitle": "Review and manage incoming contract requests",
+    "tabs": {
+      "pending": "Pending",
+      "active": "Active",
+      "rejected": "Rejected",
+      "terminated": "Terminated"
+    },
+    "card": {
+      "from": "From",
+      "type": "Type",
+      "requestedAt": "Requested",
+      "message": "Message",
+      "noMessage": "No message provided."
+    },
+    "actions": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "terminate": "Terminate",
+      "editTerms": "Edit Terms"
+    },
+    "empty": {
+      "pending": "No pending contract requests.",
+      "active": "No active contracts yet.",
+      "rejected": "No rejected requests.",
+      "terminated": "No terminated contracts."
+    }
+  },
+  "customers": {
+    "title": "Customers",
+    "subtitle": "Buyers with active contracts",
+    "search": "Search customers...",
+    "filter": {
+      "all": "All Types",
+      "restaurant": "Restaurant",
+      "brand": "Brand",
+      "foodcourt": "Foodcourt"
+    },
+    "table": {
+      "customer": "Customer",
+      "type": "Type",
+      "activeSince": "Active Since",
+      "paymentTerms": "Payment Terms",
+      "actions": "Actions"
+    },
+    "viewContract": "View Contract",
+    "editTerms": "Edit Terms",
+    "noCustomers": "No active customers yet.",
+    "noCustomersHint": "Approved contracts will appear here once you accept buyer requests."
+  },
+  "status": {
+    "requested": "Requested",
+    "active": "Active",
+    "rejected": "Rejected",
+    "terminated": "Terminated",
+    "none": "No Contract"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "submitting": "Submitting...",
+    "close": "Close"
+  }
+}

@@ -1,9 +1,17 @@
 # Feature-Based Subscription System - 개발 계획서
 
 **작성일:** 2025-01-19
-**수정일:** 2026-04-24 (v3.17 실질 티어 차단 구현)
+**수정일:** 2026-04-26 (Sprint 1 — Supplier 사업체 + 모듈 13개 + Plan 2-tier 추가)
 **프로젝트:** OrderHere POS System
 **목표:** 모듈형 구독 시스템 + 레시피-재고-발주 통합 관리
+
+> ## 🚚 2026-04-26 Sprint 1: Supplier Subscription 추가
+> - **신규 plan_target**: `'supplier'` (PlanTemplate ENUM 확장)
+> - **신규 PlanTemplate 2개**: `supplier_basic`, `supplier_advanced`
+> - **신규 한도 2개**: `plan_templates.product_limit`, `customer_limit` 컬럼
+> - **신규 모듈 13개** (Supplier 전용): supplier_products / supplier_inventory / supplier_directory / supplier_contracts / supplier_customers / supplier_orders / supplier_shipping / supplier_trade_invoices / supplier_soa (Basic 9) + supplier_admin_staff / supplier_performance / supplier_activity_logs / supplier_multi_warehouse (Advanced 4)
+> - **buyer 측 신규 모듈 3개**: buyer_supplier_directory / buyer_supplier_contracts / buyer_purchase_orders / buyer_purchase_invoices (모든 buyer 플랜 자동 포함)
+> - **상세**: `docs/SUPPLY_CHAIN_SYSTEM_OVERVIEW.md` + 4 Design 문서
 
 > ## 🔒 v3.17 업데이트: 실질 티어 차단 (API + URL + UI 3중 가드)
 >

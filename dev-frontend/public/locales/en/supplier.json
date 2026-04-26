@@ -1,0 +1,235 @@
+{
+  "menu": {
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "inventory": "Inventory",
+    "customers": "Customers",
+    "contracts": "Contracts",
+    "orders": "Orders",
+    "tradeInvoices": "Trade Invoices",
+    "settings": "Settings",
+    "companyInfo": "Company Info",
+    "paymentSettings": "Payment Settings",
+    "invoiceSettings": "Invoice Settings",
+    "invoices": "Invoices",
+    "notices": "Notices",
+    "systemInquiry": "System Inquiry",
+    "comingSoon": "Coming Soon"
+  },
+  "dashboard": {
+    "title": "Supplier Dashboard",
+    "totalProducts": "Total Products",
+    "activeProducts": "Active Products",
+    "lowStockAlert": "Low Stock Alert",
+    "inventoryValue": "Inventory Value",
+    "subscription": "Subscription",
+    "trial": "Trial",
+    "daysLeft": "{{n}} days left",
+    "noLowStock": "All stock levels are healthy."
+  },
+  "products": {
+    "title": "Product Catalog",
+    "addProduct": "Add Product",
+    "categoryFilter": "Filter by category",
+    "searchPlaceholder": "Search products...",
+    "fields": {
+      "name": "Product Name",
+      "sku": "SKU",
+      "unit": "Unit",
+      "baseQuantity": "Base Quantity",
+      "unitPrice": "Unit Price",
+      "minOrderQuantity": "Min Order Quantity",
+      "category": "Category",
+      "image": "Image",
+      "currentStock": "Current Stock",
+      "lowStockThreshold": "Low Stock Threshold",
+      "leadTimeDays": "Lead Time (days)",
+      "isActive": "Active"
+    },
+    "categoryManagement": "Category Management",
+    "optionGroups": "Option Groups",
+    "addCategory": "Add Category",
+    "addOptionGroup": "Add Option Group",
+    "planLimitReached": "Product limit reached for your plan. Please upgrade.",
+    "noProducts": "No products yet. Click \"Add Product\" to start building your catalog.",
+    "deleteConfirm": "Are you sure you want to delete this product?",
+    "copySuffix": " (Copy)"
+  },
+  "inventory": {
+    "title": "Inventory Management",
+    "summary": {
+      "totalProducts": "Products",
+      "lowStock": "Low Stock",
+      "outOfStock": "Out of Stock",
+      "value": "Total Value"
+    },
+    "actions": {
+      "adjust": "Adjust Stock",
+      "receive": "Receive Stock",
+      "viewHistory": "Transaction History"
+    },
+    "modals": {
+      "adjustTitle": "Adjust Stock Quantity",
+      "receiveTitle": "Receive Stock",
+      "delta": "Quantity Change (+/-)",
+      "quantity": "Quantity Received",
+      "reason": "Reason",
+      "notes": "Notes",
+      "batchNo": "Batch Number (optional)",
+      "expiryDate": "Expiry Date (optional)",
+      "unitCost": "Unit Cost (optional)"
+    },
+    "history": {
+      "title": "Transaction History",
+      "empty": "Transaction history will appear here in Sprint 3 (PO integration)."
+    },
+    "lowStockBadge": "LOW",
+    "outOfStockBadge": "OUT"
+  },
+  "company": {
+    "title": "Company Information",
+    "tabs": {
+      "general": "General",
+      "address": "Address",
+      "banking": "Banking",
+      "branding": "Branding"
+    }
+  },
+  "invoices": {
+    "title": "My Invoices",
+    "subtitle": "Subscription invoices issued by PurpleHere",
+    "noInvoices": "No invoices yet. Your first invoice will appear after your trial begins."
+  },
+  "comingSoon": {
+    "title": "Coming Soon",
+    "sprint2": "This feature ships in Sprint 2 of the Supply Chain rollout (Supplier Contracts & Customer Management).",
+    "sprint4": "This feature ships in Sprint 4 of the Supply Chain rollout (Order Management & Trade Invoices).",
+    "joinWaitlist": "We'll notify you when this is ready."
+  },
+  "orders": {
+    "title": "Incoming Orders",
+    "subtitle": "Purchase orders submitted by your buyers.",
+    "stats": {
+      "pending": "Pending Review",
+      "confirmed": "Confirmed",
+      "shipped": "Shipped",
+      "received": "Received This Month"
+    },
+    "tabs": {
+      "submitted": "Pending",
+      "confirmed": "Confirmed",
+      "shipped": "Shipped",
+      "received": "Received",
+      "cancelled": "Cancelled"
+    },
+    "table": {
+      "poNumber": "PO #",
+      "buyer": "Buyer",
+      "items": "Items",
+      "total": "Total",
+      "status": "Status",
+      "createdAt": "Created",
+      "actions": "Actions"
+    },
+    "actions": {
+      "view": "View",
+      "confirm": "Confirm",
+      "ship": "Mark Shipped",
+      "reject": "Reject"
+    },
+    "confirm": {
+      "title": "Confirm Order",
+      "message": "Confirm this purchase order? The buyer will be notified.",
+      "submit": "Confirm Order",
+      "cancel": "Cancel"
+    },
+    "ship": {
+      "title": "Mark As Shipped",
+      "carrier": "Carrier",
+      "carrierPlaceholder": "e.g. DHL, Pos Laju, Self Delivery",
+      "trackingNumber": "Tracking Number",
+      "trackingPlaceholder": "Optional",
+      "estArrival": "Estimated Arrival",
+      "notes": "Notes",
+      "submit": "Mark Shipped",
+      "cancel": "Cancel"
+    },
+    "reject": {
+      "title": "Reject Order",
+      "reason": "Reason",
+      "reasonPlaceholder": "Explain why you cannot fulfill this order.",
+      "submit": "Reject Order",
+      "cancel": "Cancel"
+    },
+    "empty": "No incoming orders in this status."
+  },
+  "tradeInvoicesPage": {
+    "title": "Trade Invoices",
+    "subtitle": "Invoices auto-issued when orders are delivered.",
+    "stats": {
+      "outstanding": "Total Outstanding",
+      "paidThisMonth": "Paid This Month",
+      "overdue": "Overdue",
+      "totalIssued": "Total Issued"
+    },
+    "filter": {
+      "searchBuyer": "Search buyer or invoice #",
+      "allStatuses": "All statuses"
+    },
+    "table": {
+      "invoiceNumber": "Invoice #",
+      "buyer": "Buyer",
+      "total": "Total",
+      "status": "Status",
+      "issuedAt": "Issued",
+      "dueDate": "Due",
+      "actions": "Actions"
+    },
+    "view": "View",
+    "empty": "No trade invoices issued yet."
+  },
+  "soaPage": {
+    "title": "Statement of Account (Monthly SOA)",
+    "subtitle": "Monthly billing summary per buyer with active monthly_soa contracts.",
+    "filter": {
+      "month": "Month",
+      "searchBuyer": "Search buyer"
+    },
+    "table": {
+      "buyer": "Buyer",
+      "month": "Month",
+      "invoiceCount": "Invoices",
+      "totalBilled": "Billed",
+      "totalPaid": "Paid",
+      "outstanding": "Outstanding",
+      "actions": "Actions"
+    },
+    "view": "View Detail",
+    "empty": "No monthly SOA contracts active.",
+    "detail": {
+      "title": "{{buyer}} — {{month}}",
+      "invoiceNumber": "Invoice #",
+      "issuedAt": "Issued",
+      "dueDate": "Due",
+      "total": "Total",
+      "paid": "Paid",
+      "outstanding": "Outstanding",
+      "status": "Status",
+      "noInvoices": "No invoices for this period.",
+      "close": "Close"
+    }
+  },
+  "status": {
+    "draft": "Draft",
+    "submitted": "Pending",
+    "confirmed": "Confirmed",
+    "shipped": "Shipped",
+    "partial_received": "Partial",
+    "received": "Received",
+    "cancelled": "Cancelled",
+    "pending_payment": "Pending Payment",
+    "payment_submitted": "Payment Submitted",
+    "paid": "Paid",
+    "overdue": "Overdue"
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "directory": {
+    "title": "查找供应商",
+    "subtitle": "在各类目中搜索并连接已验证的供应商",
+    "search": "搜索供应商...",
+    "category": "类别",
+    "country": "国家",
+    "state": "地区",
+    "allCategories": "全部类别",
+    "allCountries": "全部国家",
+    "allStates": "全部地区",
+    "products": "{{n}} 个产品",
+    "noResults": "未找到供应商",
+    "noResultsHint": "请尝试调整筛选或搜索关键词。",
+    "loading": "正在加载供应商...",
+    "viewProfile": "查看资料",
+    "page": "第 {{page}} 页 / 共 {{total}} 页"
+  },
+  "profile": {
+    "back": "返回目录",
+    "about": "关于",
+    "catalog": "产品目录",
+    "categories": "类别",
+    "contact": "联系方式",
+    "address": "地址",
+    "requestContract": "申请合同",
+    "requestAgain": "再次申请",
+    "contractActive": "合同生效中",
+    "pendingReview": "待审核",
+    "rejected": "已拒绝",
+    "terminated": "已终止",
+    "viewContract": "查看合同",
+    "noProducts": "暂无产品。",
+    "searchProducts": "搜索产品...",
+    "moq": "起订量 {{n}}",
+    "perUnit": "/{{unit}}",
+    "loadFailed": "加载供应商资料失败。"
+  },
+  "myContracts": {
+    "title": "我的供应商",
+    "subtitle": "管理您的供应商合同",
+    "findSuppliers": "查找供应商",
+    "filter": {
+      "all": "全部状态",
+      "requested": "已申请",
+      "active": "生效中",
+      "rejected": "已拒绝",
+      "terminated": "已终止"
+    },
+    "stats": {
+      "total": "总计",
+      "active": "生效中",
+      "pending": "待处理",
+      "ended": "已结束"
+    },
+    "table": {
+      "supplier": "供应商",
+      "requestedAt": "申请时间",
+      "status": "状态",
+      "paymentTerms": "付款条件",
+      "actions": "操作"
+    },
+    "view": "查看",
+    "terminate": "终止",
+    "noContracts": "暂无供应商合同。",
+    "noContractsHint": "前往供应商目录提交您的第一份合同申请。"
+  },
+  "contractDetail": {
+    "title": "合同详情",
+    "back": "返回我的供应商",
+    "supplierInfo": "供应商信息",
+    "statusTimeline": "状态时间轴",
+    "paymentTerms": "付款条件",
+    "messages": "消息",
+    "yourMessage": "您的消息",
+    "supplierNotes": "供应商备注",
+    "rejectionReason": "拒绝原因",
+    "terminationReason": "终止原因",
+    "events": {
+      "requested": "申请",
+      "approved": "批准",
+      "rejected": "拒绝",
+      "terminated": "终止"
+    },
+    "loadFailed": "加载合同失败。"
+  },
+  "request": {
+    "modalTitle": "申请合同",
+    "supplierLabel": "供应商",
+    "messageLabel": "消息（可选）",
+    "messagePlaceholder": "为什么对该供应商感兴趣？",
+    "yourCompany": "您的公司信息将共享给供应商：",
+    "entity": "实体",
+    "entityType": {
+      "restaurant": "Restaurant",
+      "brand": "Brand",
+      "foodcourt": "Foodcourt"
+    },
+    "submit": "发送申请",
+    "alreadyActive": "您已与该供应商存在生效中合同。",
+    "alreadyPending": "您已向该供应商提交过申请。",
+    "submitFailed": "提交申请失败。"
+  },
+  "terminate": {
+    "modalTitle": "终止合同",
+    "warning": "终止后，您的下单页面将不再显示该供应商的产品。",
+    "reasonLabel": "原因",
+    "reasonPlaceholder": "请填写终止原因",
+    "reasonRequired": "请填写原因。",
+    "submit": "终止合同",
+    "submitFailed": "终止合同失败。"
+  },
+  "approve": {
+    "modalTitle": "批准并激活",
+    "buyerLabel": "买家",
+    "paymentTerms": "付款条件",
+    "termsLabel": "条件",
+    "termsCOD": "货到付款",
+    "termsNET15": "Net 15 天",
+    "termsNET30": "Net 30 天",
+    "termsNET60": "Net 60 天",
+    "invoiceCycle": "开票周期",
+    "cycleImmediate": "即时（按交付）",
+    "cycleMonthly": "月度对账单",
+    "paymentDueDay": "付款日（1–31）",
+    "paymentDueDayHint": "下月需支付的日期。",
+    "creditLimit": "信用额度（可选）",
+    "currency": "币种",
+    "notes": "备注（可选）",
+    "submit": "批准并激活",
+    "submitFailed": "批准合同失败。",
+    "invalidDueDay": "付款日必须在 1–31 之间。"
+  },
+  "reject": {
+    "modalTitle": "拒绝合同",
+    "warning": "买家将看到此拒绝原因。",
+    "reasonLabel": "原因",
+    "reasonPlaceholder": "为什么拒绝此申请？",
+    "reasonRequired": "请填写原因。",
+    "submit": "拒绝",
+    "submitFailed": "拒绝合同失败。"
+  },
+  "editTerms": {
+    "modalTitle": "编辑付款条件",
+    "submit": "保存更改",
+    "submitFailed": "更新付款条件失败。"
+  },
+  "supplierContracts": {
+    "title": "合同申请",
+    "subtitle": "审核并管理收到的合同申请",
+    "tabs": {
+      "pending": "待处理",
+      "active": "生效中",
+      "rejected": "已拒绝",
+      "terminated": "已终止"
+    },
+    "card": {
+      "from": "来自",
+      "type": "类型",
+      "requestedAt": "申请时间",
+      "message": "消息",
+      "noMessage": "未提供消息。"
+    },
+    "actions": {
+      "approve": "批准",
+      "reject": "拒绝",
+      "terminate": "终止",
+      "editTerms": "编辑条件"
+    },
+    "empty": {
+      "pending": "暂无待处理的合同申请。",
+      "active": "暂无生效中合同。",
+      "rejected": "暂无已拒绝的申请。",
+      "terminated": "暂无已终止的合同。"
+    }
+  },
+  "customers": {
+    "title": "客户",
+    "subtitle": "拥有生效合同的买家",
+    "search": "搜索客户...",
+    "filter": {
+      "all": "全部类型",
+      "restaurant": "Restaurant",
+      "brand": "Brand",
+      "foodcourt": "Foodcourt"
+    },
+    "table": {
+      "customer": "客户",
+      "type": "类型",
+      "activeSince": "生效起始",
+      "paymentTerms": "付款条件",
+      "actions": "操作"
+    },
+    "viewContract": "查看合同",
+    "editTerms": "编辑条件",
+    "noCustomers": "暂无生效中客户。",
+    "noCustomersHint": "批准买家申请后，他们将在此显示。"
+  },
+  "status": {
+    "requested": "已申请",
+    "active": "生效中",
+    "rejected": "已拒绝",
+    "terminated": "已终止",
+    "none": "无合同"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "saving": "保存中...",
+    "submitting": "提交中...",
+    "close": "关闭"
+  }
+}

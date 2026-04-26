@@ -19,11 +19,12 @@
 const { Op } = require('sequelize');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
+const SupplierCompany = require('../models/SupplierCompany');
 const User = require('../models/User');
 const PlanTemplate = require('../models/PlanTemplate');
 
 async function resolveEntityModules(entityType, entityId) {
-  const Model = entityType === 'brand' ? Brand : Foodcourt;
+  const Model = entityType === 'brand' ? Brand : entityType === 'foodcourt' ? Foodcourt : SupplierCompany;
   const entity = await Model.findByPk(entityId);
   if (!entity) return { planType: null, modules: [], demo: false };
 
@@ -44,6 +45,25 @@ async function resolveEntityModules(entityType, entityId) {
   });
 
   return { planType, modules: plan?.included_modules || [], demo };
+}
+
+/**
+ * Resolve modules from a SupplierCompany using its plan_id FK directly
+ * (Supplier doesn't use plan_type string; uses plan_id like other newer entities).
+ */
+async function resolveSupplierModules(supplierCompany) {
+  if (!supplierCompany) return { planType: null, modules: [], demo: false };
+  const demo = !!supplierCompany.is_demo;
+  if (demo) {
+    const enterprise = await PlanTemplate.findOne({
+      where: { plan_target: 'supplier', name: 'supplier_advanced' }
+    });
+    return { planType: enterprise?.display_name || 'Supplier Advanced', modules: enterprise?.included_modules || [], demo };
+  }
+  const plan = supplierCompany.plan_id
+    ? await PlanTemplate.findByPk(supplierCompany.plan_id)
+    : null;
+  return { planType: plan?.display_name, modules: plan?.included_modules || [], demo };
 }
 
 /**
@@ -126,9 +146,34 @@ function requireContractEntityModule(map) {
   };
 }
 
+/**
+ * Check Supplier Admin's SupplierCompany plan for a module code.
+ * Use for routes that already have requireSupplierScope (req.supplierCompany set).
+ */
+function requireSupplierModule(moduleCode) {
+  return async (req, res, next) => {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Not authenticated' });
+    if (req.user.role === 'System Admin') return next();
+    if (!req.supplierCompany) return res.status(404).json({ success: false, message: 'Supplier company not resolved' });
+
+    const { planType, modules } = await resolveSupplierModules(req.supplierCompany);
+    if (!modules.includes(moduleCode)) {
+      return res.status(403).json({
+        success: false,
+        code: 'MODULE_NOT_INCLUDED',
+        message: `This feature (${moduleCode}) is not included in the current subscription plan${planType ? ` (${planType})` : ''}.`,
+        required_module: moduleCode
+      });
+    }
+    next();
+  };
+}
+
 module.exports = {
   requireBrandModule,
   requireFoodcourtModule,
   requireContractEntityModule,
-  resolveEntityModules
+  requireSupplierModule,
+  resolveEntityModules,
+  resolveSupplierModules
 };

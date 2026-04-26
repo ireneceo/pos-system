@@ -1397,5 +1397,26 @@
     "longitude": "经度",
     "latitudeHint": "例: 3.1390 (从地址自动填充)",
     "longitudeHint": "例: 101.6869"
+  },
+  "supplierCompanies": {
+    "title": "供应商公司",
+    "description": "管理平台上的所有供应商公司。"
+  },
+  "supplierInvitations": {
+    "title": "供应商邀请",
+    "description": "向新供应商发送邀请。",
+    "send": "发送邀请",
+    "fields": {
+      "email": "电子邮件",
+      "supplier_name": "建议公司名称（可选）",
+      "plan": "默认套餐（可选）",
+      "message": "个人留言（可选）"
+    },
+    "status": {
+      "pending": "待处理",
+      "used": "已使用",
+      "expired": "已过期",
+      "revoked": "已撤销"
+    }
   }
 }

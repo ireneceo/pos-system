@@ -20,7 +20,8 @@ i18n
       'invoices', 'staff', 'customers', 'pos', 'kitchen', 'settings',
       'reports', 'brand', 'foodcourt', 'owner', 'admin', 'landing',
       'plans', 'notifications', 'floorplan', 'recipes', 'suppliers',
-      'validation', 'contract'
+      'validation', 'contract', 'supplier', 'supplierDirectory',
+      'purchaseOrders', 'purchaseInvoices'
     ],
     defaultNS: 'common',
 

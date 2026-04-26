@@ -163,7 +163,8 @@
     "foodcourtManager": "美食广场经理",
     "restaurantOwner": "餐厅业主",
     "restaurantAdmin": "餐厅管理员",
-    "staff": "员工"
+    "staff": "员工",
+    "supplier_admin": "供应商管理员"
   },
   "nav": {
     "dashboard": "仪表盘",

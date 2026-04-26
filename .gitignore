@@ -81,3 +81,4 @@ public/uploads/
 .npm/
 .eslintcache
 backups/
+.claude/worktrees/

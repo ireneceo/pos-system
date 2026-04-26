@@ -1,0 +1,209 @@
+{
+  "list": {
+    "title": "구매 주문",
+    "subtitle": "공급처에 발주를 생성하고 진행 상황을 추적합니다",
+    "newOrder": "+ 새 주문",
+    "stats": {
+      "draft": "작성 중",
+      "pending": "대기 중",
+      "shipped": "배송 중",
+      "received": "수령 완료"
+    },
+    "filter": {
+      "allStatuses": "전체 상태",
+      "searchSeller": "공급처 검색...",
+      "from": "시작일",
+      "to": "종료일"
+    },
+    "table": {
+      "poNumber": "PO 번호",
+      "seller": "공급처",
+      "items": "품목",
+      "total": "금액",
+      "status": "상태",
+      "expected": "예상 배송일",
+      "createdAt": "생성일",
+      "actions": "작업"
+    },
+    "view": "보기",
+    "empty": {
+      "title": "구매 주문이 없습니다",
+      "hint": "공급처에 첫 발주를 생성해 시작하세요.",
+      "cta": "+ 새 주문"
+    },
+    "loading": "주문을 불러오는 중...",
+    "loadFailed": "구매 주문을 불러오지 못했습니다.",
+    "suggestions": {
+      "badge": "PAR 추천 {{n}}건",
+      "title": "PAR 기반 재주문 추천",
+      "subtitle": "PAR 기준 미만의 재고 항목을 우선 공급처별로 묶어 보여줍니다",
+      "createPO": "PO 생성",
+      "noPreferred": "기본 공급처 미지정",
+      "ingredient": "재료",
+      "currentStock": "현재 재고",
+      "suggested": "추천 수량",
+      "loadFailed": "추천을 불러오지 못했습니다.",
+      "empty": "지금은 재주문 추천이 없습니다."
+    }
+  },
+  "new": {
+    "title": "새 구매 주문",
+    "back": "구매 주문 목록으로",
+    "step": {
+      "seller": "공급처",
+      "items": "품목",
+      "review": "검토"
+    },
+    "stepLabel": "{{total}}단계 중 {{current}}단계",
+    "next": "다음",
+    "previous": "이전",
+    "saveDraft": "임시 저장",
+    "submit": "주문 제출",
+    "seller": {
+      "title": "공급처 선택",
+      "subtitle": "주문할 카탈로그를 선택하세요",
+      "search": "공급처 검색...",
+      "type": {
+        "system": "시스템 카탈로그",
+        "brand": "브랜드 카탈로그",
+        "foodcourt": "푸드코트 카탈로그",
+        "supplier": "공급사"
+      },
+      "contractActive": "계약 활성",
+      "contractRequired": "계약 필요",
+      "noSellers": "사용 가능한 공급처가 없습니다.",
+      "noSellersHint": "활성 공급사 계약 또는 시스템 카탈로그가 필요합니다."
+    },
+    "items": {
+      "title": "품목 추가",
+      "subtitle": "재료를 검색하고 매칭되는 공급처 상품을 선택하세요",
+      "search": "재료 검색...",
+      "addRow": "+ 항목 추가",
+      "remove": "삭제",
+      "ingredient": "재료",
+      "sellerProduct": "공급처 상품",
+      "selectProduct": "상품 선택...",
+      "quantity": "수량",
+      "unitPrice": "단가",
+      "lineTotal": "합계",
+      "subtotal": "소계",
+      "noItemsHint": "추가된 품목이 없습니다. 검색으로 재료를 추가하세요.",
+      "noProductMatch": "매칭되는 공급처 상품이 없습니다",
+      "parSuggested": "PAR 추천: {{n}}"
+    },
+    "review": {
+      "title": "주문 검토",
+      "subtitle": "제출 전 내용을 확인하세요",
+      "sellerInfo": "공급처",
+      "items": "품목",
+      "expectedDelivery": "예상 배송일",
+      "deliveryAddress": "배송 주소",
+      "deliveryAddressPlaceholder": "어디로 배송될까요?",
+      "notes": "메모",
+      "notesPlaceholder": "이 주문에 대한 내부 메모 (선택)",
+      "subtotal": "소계",
+      "tax": "세금",
+      "total": "합계"
+    },
+    "errors": {
+      "selectSeller": "공급처를 선택해주세요.",
+      "noItems": "최소 1개의 품목을 추가해주세요.",
+      "missingProduct": "각 행에 공급처 상품을 선택해야 합니다.",
+      "invalidQty": "수량은 0보다 커야 합니다.",
+      "createFailed": "구매 주문 생성에 실패했습니다.",
+      "submitFailed": "구매 주문 제출에 실패했습니다."
+    }
+  },
+  "detail": {
+    "back": "구매 주문 목록으로",
+    "loadFailed": "구매 주문을 불러오지 못했습니다.",
+    "timeline": {
+      "title": "상태 타임라인",
+      "draft": "작성 중",
+      "submitted": "제출됨",
+      "confirmed": "확정됨",
+      "shipped": "배송 중",
+      "received": "수령 완료",
+      "partial_received": "부분 수령",
+      "cancelled": "취소됨"
+    },
+    "section": {
+      "items": "품목",
+      "delivery": "배송",
+      "notes": "메모"
+    },
+    "items": {
+      "ingredient": "재료",
+      "qtyOrdered": "주문 수량",
+      "qtyReceived": "수령 수량",
+      "unitPrice": "단가",
+      "lineTotal": "합계",
+      "subtotal": "소계",
+      "tax": "세금",
+      "total": "합계"
+    },
+    "delivery": {
+      "expected": "예상일",
+      "actual": "실제일",
+      "address": "주소"
+    },
+    "actions": {
+      "edit": "수정",
+      "submit": "제출",
+      "cancel": "취소",
+      "markShipped": "배송 처리",
+      "receive": "수령"
+    },
+    "noNotes": "메모 없음."
+  },
+  "receive": {
+    "modalTitle": "주문 수령",
+    "subtitle": "이번 배송으로 도착한 수량을 기록하세요",
+    "ingredient": "재료",
+    "ordered": "주문",
+    "alreadyReceived": "수령",
+    "receivingNow": "이번 수령",
+    "batchNo": "배치 번호",
+    "expiryDate": "유통기한",
+    "unitCost": "단가",
+    "submit": "수령 확인",
+    "submitting": "저장 중...",
+    "submitFailed": "수령 기록에 실패했습니다.",
+    "noChanges": "수령 수량을 1개 이상 입력해주세요.",
+    "exceedsRemaining": "수량이 남은 주문 수량을 초과합니다."
+  },
+  "cancel": {
+    "modalTitle": "구매 주문 취소",
+    "warning": "취소하면 공급처에 알림이 가고 PO가 더 이상 수정되지 않습니다.",
+    "reasonLabel": "사유",
+    "reasonPlaceholder": "취소 사유를 입력하세요",
+    "reasonRequired": "사유를 입력해주세요.",
+    "submit": "주문 취소",
+    "submitFailed": "구매 주문 취소에 실패했습니다."
+  },
+  "markShipped": {
+    "modalTitle": "배송 처리",
+    "hint": "공급처가 직접 PO를 업데이트하지 않은 경우에 사용합니다.",
+    "trackingLabel": "운송장 번호 (선택)",
+    "trackingPlaceholder": "택배사 또는 추적 번호",
+    "submit": "배송 처리",
+    "submitFailed": "배송 처리에 실패했습니다."
+  },
+  "status": {
+    "draft": "작성 중",
+    "submitted": "제출됨",
+    "confirmed": "확정",
+    "shipped": "배송 중",
+    "partial_received": "부분 수령",
+    "received": "수령 완료",
+    "cancelled": "취소됨"
+  },
+  "common": {
+    "save": "저장",
+    "saving": "저장 중...",
+    "submitting": "제출 중...",
+    "close": "닫기",
+    "cancel": "취소",
+    "confirm": "확인"
+  }
+}

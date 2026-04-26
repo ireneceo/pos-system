@@ -1,0 +1,16 @@
+{
+  "role": {
+    "supplier_admin": {
+      "title": "Pembekal",
+      "description": "Jual produk kepada restoran, jenama dan medan selera."
+    }
+  },
+  "fields": {
+    "supplier_name": "Nama Syarikat Pembekal"
+  },
+  "invitation": {
+    "banner_valid": "Anda sedang mendaftar melalui jemputan. Selamat datang ke PurpleHere.",
+    "banner_invalid": "Pautan jemputan ini tidak sah, telah luput, atau telah digunakan. Anda masih boleh mendaftar secara biasa di bawah.",
+    "loading": "Mengesahkan jemputan..."
+  }
+}
