@@ -89,6 +89,7 @@
 | Rest Admin | demo-restaurant (ID:25) | Restaurant Admin | Seoul Garden BBQ (ID:13) | 로그인 페이지 데모 |
 | Staff | teststaff_kdine (ID:26) | Staff | K-Dine Korean Restaurant (ID:5) | 테스트 |
 | Owner | owner_test (ID:27) | Restaurant Owner | Seoul BBQ House, Downtown Pizza, Sunset Cafe | 테스트 |
+| Supplier | demo-supplier (ID:227) | Supplier Admin | SupplierCompany: Demo Supplier Co. (ID:20, plan=supplier_advanced) | 로그인 페이지 데모 (2026-04-27 추가) |
 
 ### 데모/테스트 레스토랑 (is_demo = true)
 

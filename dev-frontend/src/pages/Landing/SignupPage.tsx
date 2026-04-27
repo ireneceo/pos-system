@@ -509,7 +509,7 @@ const SignupPage: React.FC = () => {
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.message || 'Signup failed');
+        throw new Error(result.error?.message || result.message || 'Signup failed');
       }
 
       clearDraft();

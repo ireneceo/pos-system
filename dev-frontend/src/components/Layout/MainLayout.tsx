@@ -1642,20 +1642,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   {t("nav.dashboard")}
                 </NavItem>
 
+                <NavTitle>{t("nav.section.operations")}</NavTitle>
                 {isRouteAllowed('/pos/supplier/products') && (
                   <NavItem to="/pos/supplier/products" active={isActive('/pos/supplier/products')} onClick={closeSidebar}>
                     <NavIcon>◇</NavIcon>
                     {t("nav.products")}
                   </NavItem>
                 )}
-
                 {isRouteAllowed('/pos/supplier/inventory') && (
                   <NavItem to="/pos/supplier/inventory" active={isActive('/pos/supplier/inventory')} onClick={closeSidebar}>
                     <NavIcon>▦</NavIcon>
                     {t("nav.inventory")}
                   </NavItem>
                 )}
-
                 <NavItem to="/pos/supplier/customers" active={isActive('/pos/supplier/customers')} onClick={closeSidebar}>
                   <NavIcon>◯</NavIcon>
                   {t("nav.customers", "Customers")}
@@ -1668,6 +1667,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>▤</NavIcon>
                   {t("nav.orders", "Orders")}
                 </NavItem>
+
+                <NavTitle>{t("nav.section.plansPayments")}</NavTitle>
                 <NavItem to="/pos/supplier/trade-invoices" active={isActive('/pos/supplier/trade-invoices')} onClick={closeSidebar}>
                   <NavIcon>▦</NavIcon>
                   {t("nav.tradeInvoices", "Trade Invoices")}
@@ -1676,24 +1677,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>≡</NavIcon>
                   {t("nav.soa", "Statement of Account")}
                 </NavItem>
-
-                <NavTitle>{t("nav.section.settings", "Settings")}</NavTitle>
-                <NavItem to="/pos/supplier/company-info" active={isActive('/pos/supplier/company-info')} onClick={closeSidebar}>
-                  <NavIcon>◉</NavIcon>
-                  {t("nav.companyInfo", "Company Info")}
-                </NavItem>
-                <NavItem to="/pos/supplier/payment-settings" active={isActive('/pos/supplier/payment-settings')} onClick={closeSidebar}>
-                  <NavIcon>$</NavIcon>
-                  {t("nav.paymentSettings")}
-                </NavItem>
-                <NavItem to="/pos/supplier/invoice-settings" active={isActive('/pos/supplier/invoice-settings')} onClick={closeSidebar}>
-                  <NavIcon>≡</NavIcon>
-                  {t("nav.invoiceSettings", "Invoice Settings")}
-                </NavItem>
                 <NavItem to="/pos/supplier/invoices" active={isActive('/pos/supplier/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
                   <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
                   {t("nav.invoices")}
                 </NavItem>
+
+                <NavTitle>{t("nav.section.communication")}</NavTitle>
                 <NavItem to="/pos/supplier/notices" active={isActive('/pos/supplier/notices')} hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0} onClick={closeSidebar}>
                   <NavIcon hasPending={badgeCounts.notices > 0 || badgeCounts.unreadComments?.notices > 0}>◈</NavIcon>
                   {t("nav.notices")}
@@ -2032,11 +2021,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavIcon>◯</NavIcon>
                 {t("nav.myProfile")}
               </NavItem>
-            ) : user?.role === 'Supplier Admin' ? (
-              <DisabledNavItem title="Coming Soon">
-                <DisabledNavIcon>⊘</DisabledNavIcon>
-                {t("nav.myProfile")}
-              </DisabledNavItem>
             ) : (
               <NavItem to="/pos/profile" active={isActive('/pos/profile')} onClick={closeSidebar}>
                 <NavIcon>◯</NavIcon>
@@ -2117,10 +2101,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             {/* Supplier Admin Settings */}
             {user?.role === 'Supplier Admin' && (
               <>
-                <DisabledNavItem title="Coming Soon">
-                  <DisabledNavIcon>⊘</DisabledNavIcon>
+                <NavItem to="/pos/supplier/company-info" active={isActive('/pos/supplier/company-info')} onClick={closeSidebar}>
+                  <NavIcon>◐</NavIcon>
                   {t("nav.companyInfo")}
-                </DisabledNavItem>
+                </NavItem>
+                <NavItem to="/pos/supplier/payment-settings" active={isActive('/pos/supplier/payment-settings')} onClick={closeSidebar}>
+                  <NavIcon>$</NavIcon>
+                  {t("nav.paymentSettings")}
+                </NavItem>
+                <NavItem to="/pos/supplier/invoice-settings" active={isActive('/pos/supplier/invoice-settings')} onClick={closeSidebar}>
+                  <NavIcon>≡</NavIcon>
+                  {t("nav.invoiceSettings", "Invoice Settings")}
+                </NavItem>
               </>
             )}
 

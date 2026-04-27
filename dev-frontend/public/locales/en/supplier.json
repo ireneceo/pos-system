@@ -20,12 +20,31 @@
     "title": "Supplier Dashboard",
     "totalProducts": "Total Products",
     "activeProducts": "Active Products",
-    "lowStockAlert": "Low Stock Alert",
+    "lowStockAlert": "Low Stock Items",
     "inventoryValue": "Inventory Value",
     "subscription": "Subscription",
     "trial": "Trial",
     "daysLeft": "{{n}} days left",
-    "noLowStock": "All stock levels are healthy."
+    "noLowStock": "All stock levels are healthy.",
+    "pendingOrders": "Pending Orders",
+    "confirmedOrders": "Confirmed Orders",
+    "shippedOrders": "Shipped Orders",
+    "receivedThisMonth": "Received This Month",
+    "monthlyRevenue": "Monthly Revenue",
+    "outstandingBalance": "Outstanding Balance",
+    "activeCustomers": "Active Customers",
+    "revenueTrend6m": "Revenue Trend (Last 6 Months)",
+    "alerts": "Alerts & Notifications",
+    "allClear": "All clear — no items need your attention.",
+    "recentOrders": "Recent Orders",
+    "recentTradeInvoices": "Recent Trade Invoices",
+    "poNumber": "PO #",
+    "invoiceNumber": "Invoice #",
+    "customer": "Customer",
+    "status": "Status",
+    "total": "Total",
+    "noRecentOrders": "No orders yet.",
+    "noRecentInvoices": "No invoices yet."
   },
   "products": {
     "title": "Product Catalog",
@@ -81,7 +100,27 @@
     },
     "history": {
       "title": "Transaction History",
-      "empty": "Transaction history will appear here in Sprint 3 (PO integration)."
+      "empty": "No transactions yet.",
+      "date": "Date",
+      "delta": "Change",
+      "stockAfter": "Stock After",
+      "referenceNotes": "Reference / Notes",
+      "allTypes": "All Types",
+      "allProducts": "All Products",
+      "totalCount": "{{count}} transactions",
+      "type": {
+        "label": "Type",
+        "initial": "Initial",
+        "manual_receive": "Receive",
+        "manual_adjust": "Adjust",
+        "po_shipped": "Shipped (PO)",
+        "sale": "Sale",
+        "waste": "Waste"
+      }
+    },
+    "tabs": {
+      "list": "Stock List",
+      "history": "Transaction History"
     },
     "lowStockBadge": "LOW",
     "outOfStockBadge": "OUT"

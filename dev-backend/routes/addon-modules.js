@@ -3,13 +3,16 @@ const router = express.Router();
 const AddonModule = require('../models/AddonModule');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
-// Get all addon modules (인증 필수)
-router.get('/', authenticateToken, async (req, res) => {
+// Get all addon modules
+// active_only=true: public (Pricing/Landing 카탈로그용, 활성 모듈만)
+// otherwise: 인증 필요 (Admin)
+router.get('/', async (req, res, next) => {
+  if (req.query.active_only === 'true') return next();
+  return authenticateToken(req, res, next);
+}, async (req, res) => {
   try {
-    const { active_only } = req.query;
-
     const whereCondition = {};
-    if (active_only === 'true') {
+    if (req.query.active_only === 'true') {
       whereCondition.is_active = true;
     }
 

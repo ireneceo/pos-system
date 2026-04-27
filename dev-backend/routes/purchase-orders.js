@@ -33,8 +33,8 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 
-router.use(authenticateToken);
-router.use(requireBuyerRole);
+// Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
+router.use('/purchase-orders', authenticateToken, requireBuyerRole);
 
 // ============================================
 // Helpers

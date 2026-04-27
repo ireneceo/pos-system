@@ -20,7 +20,8 @@ const router = express.Router();
 const { Op } = require('sequelize');
 const {
   SupplierProduct,
-  SupplierProductCategory
+  SupplierProductCategory,
+  SupplierInventoryTransaction
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { requireSupplierScope } = require('../middleware/supplierScope');
@@ -239,6 +240,19 @@ router.post('/adjust', async (req, res) => {
     product.current_stock = newStock;
     await product.save();
 
+    await SupplierInventoryTransaction.create({
+      supplier_company_id: product.supplier_company_id,
+      supplier_product_id: product.id,
+      transaction_type: 'manual_adjust',
+      quantity_change: delta,
+      unit: product.unit,
+      stock_after: newStock,
+      reason: sanitizeString(reason),
+      reference_type: 'manual',
+      notes: notes ? sanitizeString(notes) : null,
+      created_by: req.user?.id || null
+    });
+
     res.json({
       success: true,
       data: {
@@ -250,7 +264,6 @@ router.post('/adjust', async (req, res) => {
         notes: notes ? sanitizeString(notes) : null
       },
       message: 'Stock adjusted'
-      // TODO Sprint 3: persist InventoryTransaction record (type='adjustment')
     });
   } catch (err) {
     console.error('[supplier-inventory] adjust error:', err);
@@ -282,6 +295,22 @@ router.post('/receive', async (req, res) => {
     product.current_stock = newStock;
     await product.save();
 
+    const ucost = (unit_cost !== undefined && unit_cost !== null && unit_cost !== '')
+      ? parseFloat(unit_cost) : null;
+    await SupplierInventoryTransaction.create({
+      supplier_company_id: product.supplier_company_id,
+      supplier_product_id: product.id,
+      transaction_type: 'manual_receive',
+      quantity_change: qty,
+      unit: product.unit,
+      stock_after: newStock,
+      reference_type: 'manual',
+      unit_cost: Number.isFinite(ucost) ? ucost : null,
+      batch_no: batch_no ? sanitizeString(batch_no) : null,
+      notes: notes ? sanitizeString(notes) : null,
+      created_by: req.user?.id || null
+    });
+
     res.json({
       success: true,
       data: {
@@ -289,14 +318,12 @@ router.post('/receive', async (req, res) => {
         previous_stock: currentStock,
         quantity_received: qty,
         current_stock: newStock,
-        // Echo batch fields back to UI; not persisted in Sprint 1.
         batch_no: batch_no || null,
         expiry_date: expiry_date || null,
-        unit_cost: unit_cost !== undefined && unit_cost !== null ? parseFloat(unit_cost) : null,
+        unit_cost: Number.isFinite(ucost) ? ucost : null,
         notes: notes ? sanitizeString(notes) : null
       },
       message: 'Stock received'
-      // TODO Sprint 3: create InventoryBatch row + InventoryTransaction (type='in', reference_type='manual_receive')
     });
   } catch (err) {
     console.error('[supplier-inventory] receive error:', err);
@@ -306,20 +333,66 @@ router.post('/receive', async (req, res) => {
 
 /**
  * GET /api/supplier-inventory/transactions
- * Query: ?product_id=&type=&from=&to=&page=
- *
- * Sprint 1: returns empty paginated payload.
- * TODO Sprint 3: query supplier_inventory_transactions or per-batch movements.
+ * Query: ?product_id=&type=&from=&to=&page=&limit=
  */
 router.get('/transactions', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 20));
+
+    const where = {};
+    if (!req.supplierIsAdmin || req.supplierCompany) {
+      where.supplier_company_id = req.supplierCompany.id;
+    }
+    if (req.query.product_id) where.supplier_product_id = parseInt(req.query.product_id, 10);
+    if (req.query.type) where.transaction_type = req.query.type;
+    if (req.query.from || req.query.to) {
+      where.created_at = {};
+      if (req.query.from) where.created_at[Op.gte] = new Date(req.query.from);
+      if (req.query.to) where.created_at[Op.lte] = new Date(req.query.to);
+    }
+
+    const { count, rows } = await SupplierInventoryTransaction.findAndCountAll({
+      where,
+      order: [['created_at', 'DESC'], ['id', 'DESC']],
+      limit,
+      offset: (page - 1) * limit
+    });
+
+    const productIds = [...new Set(rows.map(r => r.supplier_product_id))];
+    const productsMap = productIds.length > 0
+      ? Object.fromEntries((await SupplierProduct.findAll({
+          where: { id: productIds },
+          attributes: ['id', 'name', 'sku', 'unit']
+        })).map(p => [p.id, p]))
+      : {};
+
+    const data = rows.map(tx => {
+      const p = productsMap[tx.supplier_product_id];
+      return {
+        id: tx.id,
+        product_id: tx.supplier_product_id,
+        product_name: p ? p.name : null,
+        product_sku: p ? p.sku : null,
+        transaction_type: tx.transaction_type,
+        quantity_change: parseFloat(tx.quantity_change) || 0,
+        unit: tx.unit || (p ? p.unit : null),
+        stock_after: parseFloat(tx.stock_after) || 0,
+        reason: tx.reason,
+        reference_type: tx.reference_type,
+        reference_id: tx.reference_id,
+        unit_cost: tx.unit_cost !== null ? parseFloat(tx.unit_cost) : null,
+        batch_no: tx.batch_no,
+        notes: tx.notes,
+        created_at: tx.created_at,
+        created_by: tx.created_by
+      };
+    });
+
     res.json({
       success: true,
-      data: [],
-      pagination: { total: 0, page, limit, totalPages: 0 }
-      // Sprint 1: transaction history not implemented; Sprint 3 will populate this endpoint.
+      data,
+      pagination: { total: count, page, limit, totalPages: Math.ceil(count / limit) }
     });
   } catch (err) {
     console.error('[supplier-inventory] transactions error:', err);

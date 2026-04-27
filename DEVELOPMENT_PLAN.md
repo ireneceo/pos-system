@@ -1,9 +1,110 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-26 (Sprint 1+2+3+4 — **Supply Chain System 4-Design 전체 완료**, 미배포)
+> **최종 업데이트:** 2026-04-27 (Supplier Portal Polish — Sidebar 통일 + Dashboard 8 KPI + Inventory Transaction + Demo Data + Notices/Inquiry wiring)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 v3.19
+
+---
+
+## ✅ 완료: Supplier Portal Polish — 사이드바/Dashboard/Inventory/Demo Data 통일 (2026-04-27, 미배포)
+
+### 배경
+Sprint 1~4 완료 후 demo-supplier 계정으로 사이드바 클릭 시 발견된 통일성 누락 + 미완료 wiring 일괄 정리. 모든 supplier 메뉴가 다른 역할(Brand/Foodcourt) 동일 기능과 패턴 통일 + 실데이터 노출.
+
+### 완료된 작업
+
+| # | 영역 | 작업 | 상태 |
+|---|------|------|:----:|
+| 1 | **사이드바 통일** | "Settings" NavTitle 본문 + 공통 영역 두 번 렌더 fix. Operations / Plans & Payments / Communication 3 섹션으로 재구성. Profile disabled → 활성화 (`/pos/profile` 사용) | ✓ |
+| 2 | **SupplierDashboard 재작성** | 4 stat → 8 KPI + 6mo Revenue Trend Chart (recharts) + Alerts panel (clickable deep-link) + Recent Orders/Trade Invoices 2-col 테이블 + Subscription card. 313줄 → 540줄. Backend `/api/supplier/dashboard` 응답 4 필드 → 18 필드 확장 (orders by status / monthly_revenue / outstanding_balance / overdue / active_customers / recent_* / revenue_trend_6m / alerts) | ✓ |
+| 3 | **Inventory Tab + Transaction History** | Sprint 1 의 `Sprint 3 TODO` 마무리. 신규 모델 `SupplierInventoryTransaction` + 테이블 (transaction_type/quantity_change/stock_after/reason/reference/batch_no 등). adjust/receive 시 자동 기록. `/api/supplier-inventory/transactions` endpoint 정상화. Frontend Stock List + Transaction History 2 tab 구조 + 8 transaction 시드 (Initial 6 + Receive 1 + Adjust 1) | ✓ |
+| 4 | **Demo data 종합 시드** | demo-supplier@purplehere.com 계정 (User#227, SupplierCompany#20 `is_demo=true` → supplier_advanced 모듈 자동). 시드: 3 Categories + 6 Products (low-stock 1 포함) + 1 Active Contract w/ Restaurant#38 (monthly_soa) + 3 IngredientSellerProduct mapping + 4 PurchaseOrders (submitted/confirmed/shipped/received) + 1 Trade Invoice (TRD-SUP20-20260415-001 RM405) + 2 Subscription Invoices (3월 paid + 4월 pending) + 2 Notices + 2 SupportTickets | ✓ |
+| 5 | **Notices 라우트 + 시드** | `/pos/supplier/notices` 라우트 신규 (BrandNoticesPage 재사용). 백엔드 `/api/notices/received` 는 user_id 매칭으로 supplier 자동 처리. NoticeRecipient 시드 1건 (Maintenance May 2026 important) | ✓ |
+| 6 | **System Inquiry 데이터** | 백엔드 wiring 변경 없이 (customerId 매칭) 시드 2건 (open + resolved) | ✓ |
+| 7 | **Subscription Invoices 시드** | System Admin 발행 supplier 자체 구독 invoice 2건 (issuer='system_admin', payer_type='external'). Brand/Foodcourt 패턴과 동일 | ✓ |
+| 8 | **Pricing Supplier 탭 + 가격** | PricingPage VALID_TABS/TAB_ORDER/TAB_LABELS/plan_target type 4곳 'supplier' 추가. PlanPrice 시드: Basic MYR 99/990, Advanced MYR 299/2990 (KRW × 300) | ✓ |
+| 9 | **LoginPage Demo 카드** | DEMO_ACCOUNTS 에 Supplier Admin 카드 추가 (Brand/Restaurant 옆 보라 #9333EA) | ✓ |
+| 10 | **회원가입 에러 안내 + MX 검증** | SignupPage 에러 처리 `result.error?.message` 우선 → 백엔드 메시지 정확히 노출 (예: "The email domain X does not have a mail server"). MX 검증 자체는 dev/prod 모두 유지 | ✓ |
+| 11 | **Router-level middleware path-level 좁힘** | 6개 라우터 (`supplier-directory`, `purchase-orders`, `purchase-invoices`, `ingredient-seller-products`, `foodcourt-products`, `foodcourt-inventory`) 가 `/api` prefix mount + router-level `requireBuyerRole`/`requireFoodcourtScope` 로 supplier 요청까지 차단. path-level use 로 좁힘 | ✓ |
+| 12 | **addon-modules public** | Pricing 페이지가 호출하는 `/api/addon-modules?active_only=true` 만 공개 처리 (그 외는 인증 유지) | ✓ |
+| 13 | **i18n 4언어** | supplier.json 의 dashboard.* (21 키) + inventory.history.* / inventory.tabs.* (15 키) 4 언어 동기화 | ✓ |
+| 14 | **검증** | Backend endpoint 15/15 200 OK + 데이터 노출 / 회귀 health-check 43/43 PASS / Buyer-Brand 측 endpoint 회귀 없음 / 빌드 exit 0 (`main.2c0a88a3.js`) | ✓ |
+
+### 사이드바 최종 구조 (Brand/Foodcourt 패턴 통일)
+```
+Dashboard
+[Operations]
+  Products / Inventory / Customers / Contracts / Orders
+[Plans & Payments]
+  Trade Invoices / SOA / Invoices(구독)
+[Communication]
+  Notices / System Inquiry
+[Settings] (공통)
+  My Profile / Company Info / Payment Settings / Invoice Settings
+```
+
+### 검증 매트릭스 (모든 메뉴)
+| 메뉴 | API endpoint | HTTP | 데이터 | 다른 역할 패턴 동일성 |
+|---|---|:-:|:-:|:-:|
+| Dashboard | /api/supplier/dashboard | 200 | 18 fields | ✓ BG/FG Stats+Chart+Alerts+Tables |
+| Products | /api/supplier-products | 200 | 6 | ✓ Brand 3-tab Products/Cat/Options |
+| Inventory(List) | /api/supplier-inventory | 200 | 6 (low 1) | ✓ Tab 패턴 |
+| Inventory(History) | /api/supplier-inventory/transactions | 200 | 8 | 신규 |
+| Customers | /api/supplier/customers | 200 | 1 | 도메인 고유 |
+| Contracts | /api/supplier/contracts | 200 | 1 active | 도메인 고유 |
+| Orders | /api/seller-orders | 200 | 4 | ✓ IncomingOrdersView 공유 |
+| Trade Invoices | (관련 endpoints) | 200 | 1 | 도메인 고유 |
+| SOA | /api/supplier/soa | 200 | (cron) | 도메인 고유 |
+| Invoices(구독) | /api/supplier/invoices | 200 | 2 | ✓ Brand 자체 구독 패턴 |
+| Notices | /api/notices/received | 200 | 1 | ✓ BrandNoticesPage 재사용 |
+| System Inquiry | /api/support-tickets | 200 | 2 | ✓ Brand SystemInquiryPage 동등 |
+| Profile/Company/Payment/Invoice settings | /api/supplier/* | 200 | obj | ✓ Brand Settings 패턴 |
+
+### 신규 / 수정 파일
+
+**Backend**
+- `models/SupplierInventoryTransaction.js` (신규)
+- `models/index.js` (모델 등록)
+- `routes/supplier.js` (dashboard 응답 확장 + PurchaseOrder/Invoice 통계)
+- `routes/supplier-inventory.js` (transaction 자동 기록 + /transactions endpoint)
+- `routes/supplier-directory.js`, `purchase-orders.js`, `purchase-invoices.js`, `ingredient-seller-products.js`, `foodcourt-products.js`, `foodcourt-inventory.js` (path-level middleware)
+- `routes/addon-modules.js` (active_only=true public)
+- `utils/emailValidator.js` (MX 메시지 그대로 노출되도록 fix)
+- `scripts/seed-demo-supplier-data.js` (신규 시드 스크립트)
+
+**Frontend**
+- `components/Layout/MainLayout.tsx` (Supplier 사이드바 재구성, Profile disabled 제거)
+- `pages/Supplier/SupplierDashboard.tsx` (재작성, 313 → 540줄)
+- `pages/Supplier/SupplierInventoryPage.tsx` (Tab + Transaction History)
+- `pages/Login/LoginPage.tsx` (DEMO_ACCOUNTS Supplier 카드)
+- `pages/Landing/SignupPage.tsx` (에러 메시지 표시)
+- `pages/Landing/PricingPage.tsx` (Supplier 탭)
+- `App.tsx` (`/pos/supplier/notices` 라우트)
+- `public/locales/{en,ko,zh,ms}/supplier.json` (36+ 신규 키)
+
+### 다음 섹션 작업 (Supplier Portal Polish — Phase 2)
+
+**SupplierDashboard 추가 보강** (BG/FG 패턴 1136~1160줄 수준 도달):
+- Quick Actions Grid (Add Product / View Pending Orders / Issue Trade Invoice / View Customers — 카드 4~6개)
+- Setup Status Panel (신규 supplier 온보딩 진행률: 회사 정보 / 결제 설정 / 첫 상품 / 첫 계약)
+- Top Customers PieChart (이번 달 매출 기준 buyer별 분포)
+- Receivables Aging table (0-30일 / 31-60일 / 60일+ 미수금 분류)
+
+**SupplierContractsPage 보강:**
+- 계약 종료 알림 (autopilot이 곧 end_date 임박 시)
+- 계약 별 누적 매출 / 발주 건수 표시
+
+**Sales Order/Trade Invoice 흐름 보강:**
+- PO ship 시 SupplierProduct.current_stock 자동 차감 + SupplierInventoryTransaction (transaction_type='po_shipped') 자동 기록
+- Trade Invoice 결제 시 SupplierCompany 매출 누적
+
+**Post-MVP Supply Chain:**
+- 외부 carrier API 연동 (배송 추적)
+- Returns / Credit Notes
+- Auto-pay (carded billing)
+- Real-time Socket.IO 알림 (Supplier 새 PO 핀)
+- Brand seller 의 산하 매장 일괄 인보이스
 
 ---
 

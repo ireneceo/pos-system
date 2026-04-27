@@ -20,12 +20,31 @@
     "title": "供应商仪表盘",
     "totalProducts": "商品总数",
     "activeProducts": "已上架商品",
-    "lowStockAlert": "低库存提醒",
+    "lowStockAlert": "低库存商品",
     "inventoryValue": "库存价值",
     "subscription": "订阅",
     "trial": "Trial",
     "daysLeft": "剩余 {{n}} 天",
-    "noLowStock": "所有库存水平正常。"
+    "noLowStock": "所有库存水平正常。",
+    "pendingOrders": "待处理订单",
+    "confirmedOrders": "已确认订单",
+    "shippedOrders": "运输中订单",
+    "receivedThisMonth": "本月已签收",
+    "monthlyRevenue": "本月营收",
+    "outstandingBalance": "应收账款",
+    "activeCustomers": "活跃客户",
+    "revenueTrend6m": "营收趋势 (近 6 个月)",
+    "alerts": "提醒",
+    "allClear": "状态良好 — 暂无需处理事项。",
+    "recentOrders": "最近订单",
+    "recentTradeInvoices": "最近交易发票",
+    "poNumber": "订单号",
+    "invoiceNumber": "发票号",
+    "customer": "客户",
+    "status": "状态",
+    "total": "合计",
+    "noRecentOrders": "暂无订单。",
+    "noRecentInvoices": "暂无发票。"
   },
   "products": {
     "title": "商品目录",
@@ -81,7 +100,27 @@
     },
     "history": {
       "title": "交易记录",
-      "empty": "交易记录将在 Sprint 3（采购单集成）中提供。"
+      "empty": "暂无交易记录。",
+      "date": "日期",
+      "delta": "变动量",
+      "stockAfter": "交易后库存",
+      "referenceNotes": "参考 / 备注",
+      "allTypes": "所有类型",
+      "allProducts": "所有商品",
+      "totalCount": "共 {{count}} 笔交易",
+      "type": {
+        "label": "类型",
+        "initial": "初始",
+        "manual_receive": "入库",
+        "manual_adjust": "调整",
+        "po_shipped": "发货 (PO)",
+        "sale": "销售",
+        "waste": "报废"
+      }
+    },
+    "tabs": {
+      "list": "库存列表",
+      "history": "交易记录"
     },
     "lowStockBadge": "低",
     "outOfStockBadge": "无"

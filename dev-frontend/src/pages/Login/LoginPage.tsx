@@ -20,6 +20,13 @@ const DEMO_ACCOUNTS = [
     password: 'Demo@2024',
     description: 'Full restaurant management experience with all features',
     color: '#0891B2'
+  },
+  {
+    role: 'Supplier Admin',
+    email: 'demo-supplier@purplehere.com',
+    password: 'Demo@2024',
+    description: 'B2B supplier portal — products, contracts, purchase orders, trade invoices',
+    color: '#9333EA'
   }
 ];
 

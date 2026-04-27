@@ -20,12 +20,31 @@
     "title": "Papan Pemuka Pembekal",
     "totalProducts": "Jumlah Produk",
     "activeProducts": "Produk Aktif",
-    "lowStockAlert": "Amaran Stok Rendah",
+    "lowStockAlert": "Item Stok Rendah",
     "inventoryValue": "Nilai Inventori",
     "subscription": "Langganan",
     "trial": "Trial",
     "daysLeft": "Tinggal {{n}} hari",
-    "noLowStock": "Semua tahap stok dalam keadaan baik."
+    "noLowStock": "Semua tahap stok dalam keadaan baik.",
+    "pendingOrders": "Pesanan Menunggu",
+    "confirmedOrders": "Pesanan Disahkan",
+    "shippedOrders": "Pesanan Dihantar",
+    "receivedThisMonth": "Diterima Bulan Ini",
+    "monthlyRevenue": "Hasil Bulanan",
+    "outstandingBalance": "Baki Tertunggak",
+    "activeCustomers": "Pelanggan Aktif",
+    "revenueTrend6m": "Trend Hasil (6 Bulan Lepas)",
+    "alerts": "Pemberitahuan",
+    "allClear": "Semua jelas — tiada item memerlukan perhatian anda.",
+    "recentOrders": "Pesanan Terkini",
+    "recentTradeInvoices": "Invois Dagangan Terkini",
+    "poNumber": "No. PO",
+    "invoiceNumber": "No. Invois",
+    "customer": "Pelanggan",
+    "status": "Status",
+    "total": "Jumlah",
+    "noRecentOrders": "Tiada pesanan lagi.",
+    "noRecentInvoices": "Tiada invois lagi."
   },
   "products": {
     "title": "Katalog Produk",
@@ -81,7 +100,27 @@
     },
     "history": {
       "title": "Sejarah Transaksi",
-      "empty": "Sejarah transaksi akan dipaparkan di sini dalam Sprint 3 (integrasi PO)."
+      "empty": "Tiada transaksi lagi.",
+      "date": "Tarikh",
+      "delta": "Perubahan",
+      "stockAfter": "Stok Selepas",
+      "referenceNotes": "Rujukan / Nota",
+      "allTypes": "Semua Jenis",
+      "allProducts": "Semua Produk",
+      "totalCount": "{{count}} transaksi",
+      "type": {
+        "label": "Jenis",
+        "initial": "Permulaan",
+        "manual_receive": "Terima",
+        "manual_adjust": "Laras",
+        "po_shipped": "Dihantar (PO)",
+        "sale": "Jualan",
+        "waste": "Pembaziran"
+      }
+    },
+    "tabs": {
+      "list": "Senarai Stok",
+      "history": "Sejarah Transaksi"
     },
     "lowStockBadge": "RENDAH",
     "outOfStockBadge": "HABIS"

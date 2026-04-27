@@ -37,7 +37,10 @@
       "Bash(npx eslint *)",
       "Bash(awk NR>=720 && NR<=780 *)",
       "Bash(pkill -f \"react-scripts\")",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(git commit -m ' *)",
+      "Bash(kill 3024792)",
+      "Bash(ps *)"
     ],
     "deny": [],
     "ask": []

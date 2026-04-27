@@ -50,9 +50,9 @@ const PUBLIC_SUPPLIER_ATTRS = [
   'status', 'created_at'
 ];
 
-// All endpoints require: authenticateToken → requireBuyerRole
-router.use(authenticateToken);
-router.use(requireBuyerRole);
+// Buyer-only middleware applied per-path so unrelated /api/* requests
+// (e.g. /api/supplier/notices) are not blocked by router-level guards.
+router.use(['/supplier-directory', '/supplier-contracts'], authenticateToken, requireBuyerRole);
 
 // ============================================
 // Helpers

@@ -58,6 +58,7 @@ const IngredientSellerProduct = require('./IngredientSellerProduct');
 const PurchaseOrder = require('./PurchaseOrder');
 const PurchaseOrderItem = require('./PurchaseOrderItem');
 const InventoryTransaction = require('./InventoryTransaction');
+const SupplierInventoryTransaction = require('./SupplierInventoryTransaction');
 const StockTake = require('./StockTake');
 const StockTakeItem = require('./StockTakeItem');
 const StockAlert = require('./StockAlert');
@@ -796,6 +797,7 @@ module.exports = {
   SupplierCategory,
   SupplierBrand,
   InventoryTransaction,
+  SupplierInventoryTransaction,
   StockTake,
   StockTakeItem,
   StockAlert,

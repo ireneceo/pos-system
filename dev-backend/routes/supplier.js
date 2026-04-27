@@ -16,6 +16,8 @@ const {
   SupplierCompany,
   SupplierProduct,
   SupplierContract,
+  PurchaseOrder,
+  PurchaseOrderItem,
   Invoice,
   InvoiceItem,
   PlanTemplate,
@@ -92,15 +94,22 @@ router.get('/dashboard', async (req, res) => {
     if (!requireResolvedCompany(req, res)) return;
     const company = req.supplierCompany;
 
+    // Time anchors
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sixMonthsStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    // ─── Products ───────────────────────────────────────────────
     const products = await SupplierProduct.findAll({
       where: { supplier_company_id: company.id },
-      attributes: ['id', 'is_active', 'current_stock', 'low_stock_threshold', 'unit_price']
+      attributes: ['id', 'name', 'is_active', 'current_stock', 'low_stock_threshold', 'unit_price', 'unit']
     });
 
     let products_total = products.length;
     let products_active = 0;
     let low_stock_count = 0;
     let inventory_value = 0;
+    const lowStockItems = [];
 
     for (const p of products) {
       if (p.is_active) {
@@ -111,10 +120,167 @@ router.get('/dashboard', async (req, res) => {
         inventory_value += stock * price;
         if (stock <= 0 || (threshold > 0 && stock <= threshold)) {
           low_stock_count += 1;
+          if (lowStockItems.length < 5) {
+            lowStockItems.push({ id: p.id, name: p.name, current_stock: stock, low_stock_threshold: threshold, unit: p.unit });
+          }
         }
       }
     }
 
+    // ─── Orders ─────────────────────────────────────────────────
+    const orderStatusCounts = await PurchaseOrder.findAll({
+      where: { seller_type: 'supplier', seller_entity_id: company.id },
+      attributes: [
+        'status',
+        [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count']
+      ],
+      group: ['status'],
+      raw: true
+    });
+    const ordCount = (s) => {
+      const row = orderStatusCounts.find(r => r.status === s);
+      return row ? parseInt(row.count, 10) : 0;
+    };
+
+    const orders_pending = ordCount('submitted');
+    const orders_confirmed = ordCount('confirmed');
+    const orders_shipped = ordCount('shipped');
+
+    const orders_received_this_month = await PurchaseOrder.count({
+      where: {
+        seller_type: 'supplier',
+        seller_entity_id: company.id,
+        status: 'received',
+        received_at: { [Op.gte]: monthStart }
+      }
+    });
+
+    // ─── Trade Invoices (financials) ────────────────────────────
+    const tradeInvoices = await Invoice.findAll({
+      where: {
+        invoice_category: 'trade',
+        issuer_type: 'supplier',
+        issuer_id: company.id
+      },
+      attributes: ['id', 'invoice_number', 'total_amount', 'status', 'issued_at', 'due_date', 'payer_type', 'payer_id'],
+      order: [['issued_at', 'DESC']]
+    });
+
+    let monthly_revenue = 0;
+    let outstanding_balance = 0;
+    let overdue_invoices_count = 0;
+    const revenueByMonth = new Map();
+
+    for (const inv of tradeInvoices) {
+      const total = parseFloat(inv.total_amount) || 0;
+      const issuedAt = inv.issued_at ? new Date(inv.issued_at) : null;
+      if (issuedAt && issuedAt >= monthStart) {
+        monthly_revenue += total;
+      }
+      if (inv.status === 'pending_payment') {
+        outstanding_balance += total;
+        if (inv.due_date && new Date(inv.due_date) < now) {
+          overdue_invoices_count += 1;
+        }
+      }
+      if (issuedAt && issuedAt >= sixMonthsStart) {
+        const key = `${issuedAt.getFullYear()}-${String(issuedAt.getMonth() + 1).padStart(2, '0')}`;
+        revenueByMonth.set(key, (revenueByMonth.get(key) || 0) + total);
+      }
+    }
+
+    // 6-month series with zero-fill
+    const revenue_trend_6m = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      revenue_trend_6m.push({ month: key, revenue: Number((revenueByMonth.get(key) || 0).toFixed(2)) });
+    }
+
+    // ─── Customers / Contracts ──────────────────────────────────
+    const active_customers = await SupplierContract.count({
+      where: { supplier_company_id: company.id, status: 'active' }
+    });
+    const pending_contract_requests = await SupplierContract.count({
+      where: { supplier_company_id: company.id, status: 'requested' }
+    });
+
+    // ─── Customer name resolver (cached per dashboard call) ─────
+    const restaurantIds = new Set();
+    const brandIds = new Set();
+    const foodcourtIds = new Set();
+    const recentPOsRaw = await PurchaseOrder.findAll({
+      where: { seller_type: 'supplier', seller_entity_id: company.id },
+      attributes: ['id', 'po_number', 'status', 'total_amount', 'currency', 'entity_type', 'entity_id', 'submitted_at', 'created_at'],
+      order: [['created_at', 'DESC']],
+      limit: 5
+    });
+    const recentInvoicesRaw = tradeInvoices.slice(0, 5);
+
+    [...recentPOsRaw, ...recentInvoicesRaw].forEach(row => {
+      const eType = row.entity_type || row.payer_type;
+      const eId = row.entity_id || row.payer_id;
+      if (eType === 'restaurant') restaurantIds.add(eId);
+      else if (eType === 'brand_manager' || eType === 'brand') brandIds.add(eId);
+      else if (eType === 'foodcourt_manager' || eType === 'foodcourt') foodcourtIds.add(eId);
+    });
+
+    const restaurantsMap = restaurantIds.size > 0
+      ? Object.fromEntries((await Restaurant.findAll({ where: { id: [...restaurantIds] }, attributes: ['id', 'name'] })).map(r => [r.id, r.name]))
+      : {};
+    const brandsMap = brandIds.size > 0
+      ? Object.fromEntries((await Brand.findAll({ where: { id: [...brandIds] }, attributes: ['id', 'name'] })).map(b => [b.id, b.name]))
+      : {};
+    const foodcourtsMap = foodcourtIds.size > 0
+      ? Object.fromEntries((await Foodcourt.findAll({ where: { id: [...foodcourtIds] }, attributes: ['id', 'name'] })).map(f => [f.id, f.name]))
+      : {};
+
+    const resolveCustomer = (eType, eId) => {
+      if (eType === 'restaurant') return restaurantsMap[eId] || `Restaurant #${eId}`;
+      if (eType === 'brand_manager' || eType === 'brand') return brandsMap[eId] || `Brand #${eId}`;
+      if (eType === 'foodcourt_manager' || eType === 'foodcourt') return foodcourtsMap[eId] || `Foodcourt #${eId}`;
+      return `${eType} #${eId}`;
+    };
+
+    const recent_orders = recentPOsRaw.map(po => ({
+      id: po.id,
+      po_number: po.po_number,
+      status: po.status,
+      total_amount: parseFloat(po.total_amount) || 0,
+      currency: po.currency,
+      customer: resolveCustomer(po.entity_type, po.entity_id),
+      created_at: po.created_at
+    }));
+
+    const recent_invoices = recentInvoicesRaw.map(inv => ({
+      id: inv.id,
+      invoice_number: inv.invoice_number,
+      status: inv.status,
+      total_amount: parseFloat(inv.total_amount) || 0,
+      customer: resolveCustomer(inv.payer_type, inv.payer_id),
+      issued_at: inv.issued_at,
+      due_date: inv.due_date
+    }));
+
+    // ─── Alerts (computed) ──────────────────────────────────────
+    const alerts = [];
+    if (orders_pending > 0) {
+      alerts.push({ type: 'warning', title: `${orders_pending} new order${orders_pending > 1 ? 's' : ''} awaiting confirmation`, message: 'Review and confirm new orders to keep customers updated.', link: '/pos/supplier/orders?status=submitted' });
+    }
+    if (orders_confirmed > 0) {
+      alerts.push({ type: 'info', title: `${orders_confirmed} order${orders_confirmed > 1 ? 's' : ''} ready to ship`, message: 'Add tracking and mark as shipped.', link: '/pos/supplier/orders?status=confirmed' });
+    }
+    if (overdue_invoices_count > 0) {
+      alerts.push({ type: 'error', title: `${overdue_invoices_count} overdue invoice${overdue_invoices_count > 1 ? 's' : ''}`, message: 'Outstanding payment is past due. Follow up with customers.', link: '/pos/supplier/trade-invoices?status=pending_payment' });
+    }
+    if (low_stock_count > 0) {
+      alerts.push({ type: 'warning', title: `${low_stock_count} product${low_stock_count > 1 ? 's' : ''} low on stock`, message: lowStockItems.map(i => i.name).slice(0, 3).join(', ') + (lowStockItems.length > 3 ? '…' : ''), link: '/pos/supplier/inventory' });
+    }
+    if (pending_contract_requests > 0) {
+      alerts.push({ type: 'info', title: `${pending_contract_requests} new contract request${pending_contract_requests > 1 ? 's' : ''}`, message: 'New buyers want to work with you. Review and approve.', link: '/pos/supplier/customers' });
+    }
+
+    // ─── Subscription ───────────────────────────────────────────
     let plan_name = null;
     if (company.plan_id) {
       const plan = await PlanTemplate.findByPk(company.plan_id, {
@@ -136,6 +302,21 @@ router.get('/dashboard', async (req, res) => {
         products_active,
         low_stock_count,
         inventory_value: Number(inventory_value.toFixed(2)),
+        orders_pending,
+        orders_confirmed,
+        orders_shipped,
+        orders_received_this_month,
+        monthly_revenue: Number(monthly_revenue.toFixed(2)),
+        outstanding_balance: Number(outstanding_balance.toFixed(2)),
+        overdue_invoices_count,
+        active_customers,
+        pending_contract_requests,
+        currency: company.currency || 'MYR',
+        recent_orders,
+        recent_invoices,
+        revenue_trend_6m,
+        low_stock_items: lowStockItems,
+        alerts,
         subscription: {
           plan_name,
           status: company.subscription_status,

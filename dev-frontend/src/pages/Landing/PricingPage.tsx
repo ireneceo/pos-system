@@ -411,7 +411,7 @@ interface Plan {
   base_price_monthly: number;
   base_price_annual: number;
   features: string[];
-  plan_target: 'restaurant' | 'brand' | 'foodcourt' | 'owner';
+  plan_target: 'restaurant' | 'brand' | 'foodcourt' | 'owner' | 'supplier';
   order_limit: number;
   menu_item_limit: number;
   staff_limit: number;
@@ -541,7 +541,7 @@ const PricingPage: React.FC = () => {
   const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const VALID_TABS = ['restaurant', 'brand', 'foodcourt', 'owner'] as const;
+  const VALID_TABS = ['restaurant', 'brand', 'foodcourt', 'owner', 'supplier'] as const;
   type TabKey = typeof VALID_TABS[number];
   const initialTab = (VALID_TABS.includes(searchParams.get('tab') as TabKey) ? searchParams.get('tab') : 'restaurant') as TabKey;
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
@@ -727,9 +727,10 @@ const PricingPage: React.FC = () => {
     restaurant: 'Restaurant',
     brand: 'Brand',
     foodcourt: 'Foodcourt',
-    owner: 'Owner'
+    owner: 'Owner',
+    supplier: 'Supplier'
   };
-  const TAB_ORDER = ['restaurant', 'brand', 'foodcourt', 'owner'];
+  const TAB_ORDER = ['restaurant', 'brand', 'foodcourt', 'owner', 'supplier'];
   const availableTabs = TAB_ORDER.filter(target =>
     normalizedPlans.some(plan => plan.plan_target === target)
   );

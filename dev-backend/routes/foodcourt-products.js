@@ -128,8 +128,9 @@ function resolveTargetFoodcourtId(req, res) {
   return null;
 }
 
-// All routes below: auth + scope + module gate
-router.use(authenticateToken, requireFoodcourtScope, requireProductsModule);
+// Path-level guards so unrelated /api/* requests aren't caught by foodcourt scope.
+router.use(['/foodcourt-products', '/foodcourt-product-categories', '/foodcourt-product-option-groups'],
+  authenticateToken, requireFoodcourtScope, requireProductsModule);
 
 /**
  * Generate unique product SKU

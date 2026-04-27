@@ -28,8 +28,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 
-router.use(authenticateToken);
-router.use(requireBuyerRole);
+router.use(['/ingredients', '/ingredient-seller-products', '/seller-catalog'], authenticateToken, requireBuyerRole);
 
 const VALID_SELLER_TYPES = ['system_admin', 'brand', 'foodcourt', 'supplier'];
 

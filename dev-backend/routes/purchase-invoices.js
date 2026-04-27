@@ -26,8 +26,7 @@ const {
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 
-router.use(authenticateToken);
-router.use(requireBuyerRole);
+router.use('/purchase-invoices', authenticateToken, requireBuyerRole);
 
 // ============================================
 // Helpers

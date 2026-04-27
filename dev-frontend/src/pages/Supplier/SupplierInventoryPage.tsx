@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import {
   Container, Header, Title, Content,
   StatsGrid, StatCard, StatValue, StatLabel,
+  TabContainer, Tab,
   DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell,
   DataTableHeaderCell, DataTableActions, DataTableEmpty, DataTableStatus,
   Modal as CommonModal, ModalButton,
@@ -12,7 +14,26 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
+import { formatDateTime } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
+
+interface TransactionRow {
+  id: number;
+  product_id: number;
+  product_name: string | null;
+  product_sku: string | null;
+  transaction_type: 'initial' | 'manual_receive' | 'manual_adjust' | 'po_shipped' | 'sale' | 'waste';
+  quantity_change: number;
+  unit: string | null;
+  stock_after: number;
+  reason: string | null;
+  reference_type: string;
+  reference_id: number | null;
+  unit_cost: number | null;
+  batch_no: string | null;
+  notes: string | null;
+  created_at: string;
+}
 
 interface InventorySummary {
   total_products: number;
@@ -70,6 +91,13 @@ const ErrorBox = styled.div`
 
 const SupplierInventoryPage: React.FC = () => {
   const { t } = useTranslation(['supplier', 'common']);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get('tab') === 'history' ? 'history' : 'list') as 'list' | 'history';
+  const setActiveTab = (tab: 'list' | 'history') => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  };
 
   const [summary, setSummary] = useState<InventorySummary>({
     total_products: 0,
@@ -80,6 +108,12 @@ const SupplierInventoryPage: React.FC = () => {
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [transactions, setTransactions] = useState<TransactionRow[]>([]);
+  const [txTotal, setTxTotal] = useState(0);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txTypeFilter, setTxTypeFilter] = useState<string>('all');
+  const [txProductFilter, setTxProductFilter] = useState<string>('all');
 
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [lowStockOnly, setLowStockOnly] = useState(false);
@@ -159,6 +193,28 @@ const SupplierInventoryPage: React.FC = () => {
     }
   }, []);
 
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setTxLoading(true);
+      const token = getAuthToken();
+      const params = new URLSearchParams({ limit: '50' });
+      if (txTypeFilter !== 'all') params.set('type', txTypeFilter);
+      if (txProductFilter !== 'all') params.set('product_id', txProductFilter);
+      const res = await fetch(`/api/supplier-inventory/transactions?${params.toString()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTransactions(data.data || []);
+        setTxTotal(data.pagination?.total || 0);
+      }
+    } catch (err) {
+      console.error('Failed to fetch transactions:', err);
+    } finally {
+      setTxLoading(false);
+    }
+  }, [txTypeFilter, txProductFilter]);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -167,6 +223,10 @@ const SupplierInventoryPage: React.FC = () => {
     };
     load();
   }, [fetchSummary, fetchRows, fetchCategories]);
+
+  useEffect(() => {
+    if (activeTab === 'history') fetchTransactions();
+  }, [activeTab, fetchTransactions]);
 
   const openAdjust = (row: InventoryRow) => {
     setActiveRow(row);
@@ -312,6 +372,17 @@ const SupplierInventoryPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
+        <TabContainer>
+          <Tab active={activeTab === 'list'} onClick={() => setActiveTab('list')}>
+            {t('supplier:inventory.tabs.list', 'Stock List')}
+          </Tab>
+          <Tab active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
+            {t('supplier:inventory.tabs.history', 'Transaction History')}
+          </Tab>
+        </TabContainer>
+
+        {activeTab === 'list' ? (
+          <>
         <FilterBar>
           <SearchInput
             type="text"
@@ -415,6 +486,87 @@ const SupplierInventoryPage: React.FC = () => {
             </tbody>
           </DataTable>
         </DataTableContainer>
+          </>
+        ) : (
+          <>
+            <FilterBar>
+              <FilterSelect value={txTypeFilter} onChange={(e) => setTxTypeFilter(e.target.value)}>
+                <option value="all">{t('supplier:inventory.history.allTypes', 'All Types')}</option>
+                <option value="initial">{t('supplier:inventory.history.type.initial', 'Initial')}</option>
+                <option value="manual_receive">{t('supplier:inventory.history.type.manual_receive', 'Receive')}</option>
+                <option value="manual_adjust">{t('supplier:inventory.history.type.manual_adjust', 'Adjust')}</option>
+                <option value="po_shipped">{t('supplier:inventory.history.type.po_shipped', 'Shipped (PO)')}</option>
+                <option value="sale">{t('supplier:inventory.history.type.sale', 'Sale')}</option>
+                <option value="waste">{t('supplier:inventory.history.type.waste', 'Waste')}</option>
+              </FilterSelect>
+              <FilterSelect value={txProductFilter} onChange={(e) => setTxProductFilter(e.target.value)}>
+                <option value="all">{t('supplier:inventory.history.allProducts', 'All Products')}</option>
+                {rows.map(r => (
+                  <option key={r.product_id} value={r.product_id.toString()}>{r.name}</option>
+                ))}
+              </FilterSelect>
+            </FilterBar>
+
+            <DataTableContainer>
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell align="left">{t('supplier:inventory.history.date', 'Date')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('supplier:inventory.history.type.label', 'Type')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('common:product', 'Product')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('supplier:inventory.history.delta', 'Change')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('supplier:inventory.history.stockAfter', 'Stock After')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('supplier:inventory.history.referenceNotes', 'Reference / Notes')}</DataTableHeaderCell>
+                  </tr>
+                </DataTableHead>
+                <tbody>
+                  {txLoading ? (
+                    <tr><td colSpan={6}><DataTableEmpty>{t('common:loading', 'Loading...')}</DataTableEmpty></td></tr>
+                  ) : transactions.length === 0 ? (
+                    <tr><td colSpan={6}><DataTableEmpty>{t('supplier:inventory.history.empty', 'No transactions yet.')}</DataTableEmpty></td></tr>
+                  ) : transactions.map(tx => {
+                    const positive = tx.quantity_change >= 0;
+                    const typeLabel = t(`supplier:inventory.history.type.${tx.transaction_type}`, tx.transaction_type);
+                    const variant: 'success' | 'warning' | 'error' | 'neutral' = tx.transaction_type === 'waste' ? 'error'
+                      : tx.transaction_type === 'manual_adjust' ? 'warning'
+                      : tx.transaction_type === 'initial' ? 'neutral'
+                      : 'success';
+                    return (
+                      <DataTableRow key={tx.id}>
+                        <DataTableCell data-label={t('supplier:inventory.history.date', 'Date') as string}>
+                          {formatDateTime(tx.created_at) || tx.created_at.slice(0, 10)}
+                        </DataTableCell>
+                        <DataTableCell data-label={t('supplier:inventory.history.type.label', 'Type') as string}>
+                          <DataTableStatus variant={variant}>{typeLabel}</DataTableStatus>
+                        </DataTableCell>
+                        <DataTableCell data-label={t('common:product', 'Product') as string}>
+                          {tx.product_name || `#${tx.product_id}`}
+                        </DataTableCell>
+                        <DataTableCell data-label={t('supplier:inventory.history.delta', 'Change') as string} align="right">
+                          <span style={{ color: positive ? '#059669' : '#DC2626', fontWeight: 600 }}>
+                            {positive ? '+' : ''}{Number(tx.quantity_change).toFixed(2)} {tx.unit || ''}
+                          </span>
+                        </DataTableCell>
+                        <DataTableCell data-label={t('supplier:inventory.history.stockAfter', 'Stock After') as string} align="right">
+                          {Number(tx.stock_after).toFixed(2)} {tx.unit || ''}
+                        </DataTableCell>
+                        <DataTableCell data-label={t('supplier:inventory.history.referenceNotes', 'Reference / Notes') as string}>
+                          {tx.reason && <span style={{ color: '#6B7280', marginRight: 8 }}>[{tx.reason}]</span>}
+                          {tx.batch_no && <span style={{ color: '#6B7280', marginRight: 8 }}>{tx.batch_no}</span>}
+                          {tx.reference_id && <span style={{ color: '#6B7280', marginRight: 8 }}>{tx.reference_type}#{tx.reference_id}</span>}
+                          {tx.notes}
+                        </DataTableCell>
+                      </DataTableRow>
+                    );
+                  })}
+                </tbody>
+              </DataTable>
+            </DataTableContainer>
+            <div style={{ marginTop: 12, fontSize: 12, color: '#6B7280', textAlign: 'right' }}>
+              {t('supplier:inventory.history.totalCount', '{{count}} transactions', { count: txTotal })}
+            </div>
+          </>
+        )}
       </Content>
 
       {/* Adjust modal */}

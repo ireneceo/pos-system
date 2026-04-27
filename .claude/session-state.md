@@ -1,116 +1,104 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-26 (Sprint 1+2+3+4 — **Supply Chain System 4-Design 전체 완료**)
+**마지막 업데이트:** 2026-04-27 (Supplier Portal Polish — Sidebar/Dashboard/Inventory Transaction/Demo Data 통일)
 **버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 v3.19
 **작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 — 2026-04-26)
+### 완료된 작업 (이번 세션 — 2026-04-27)
 
-**🎉 Supply Chain System 4-Design 시리즈 완료 + /검증 풀 통과**
+**Supplier Portal Polish — Brand/Foodcourt 와 동일 패턴으로 통일성 + 모든 메뉴 데이터 노출**
 
-`/기능설계` 6단계 × 4 Sprint 자율 진행. Supply Chain 거래 흐름 완성: Supplier 등록 → 계약 → 발주 → 입고 → Trade Invoice 자동 발행 → 결제 → Monthly SOA cron.
+#### 1) Sidebar 재구성
+- "Settings" NavTitle 본문 + 공통 영역 두 번 렌더 fix
+- Operations / Plans & Payments / Communication 3 섹션 + 공통 Settings
+- Profile disabled 제거 → `/pos/profile` 정상 사용
 
-#### Sprint 1 — Seller Product & Inventory (Design 1)
-- DB: 12 신규 모델 (SupplierCompany / SupplierProduct + Category + OptionGroup + Option + junction / FoodcourtProduct + Category + OptionGroup + Option + junction / SupplierInvitation)
-- ENUM 6개 확장 + plan_templates 2개 컬럼 + ingredients 2개 FK
-- Backend: 8 라우트 파일 / 66 endpoints
-- Frontend: 16 페이지 (12 활성 + 4 Coming Soon)
-- AddonModule 시드 15개 + PlanTemplate 2개 (`supplier_basic`/`supplier_advanced`)
-- Signup A+B (SA invitation + Landing 일반 가입)
-- E2E: 30/30 PASS
+#### 2) Dashboard 재작성 (313 → 540줄)
+- 8 KPI: pending/confirmed/shipped/received_this_month + monthly_revenue/outstanding/active_customers/low_stock
+- 6개월 매출 추이 LineChart (recharts)
+- Alerts panel (clickable deep-link)
+- Recent Orders + Recent Trade Invoices 2-col 테이블 (customer name resolve)
+- Backend `/api/supplier/dashboard` 응답 18 필드 확장
 
-#### Sprint 2 — Supplier Contract System (Design 2)
-- DB: SupplierContract 모델 1개
-- Backend: 13 endpoints (`routes/supplier-directory.js` 6 + `routes/supplier.js` 확장 7)
-- 신규 미들웨어 `requireBuyerRole` (buyerScope.js)
-- Frontend: 3 buyer 페이지 (Directory/Profile/MySuppliers w/ 모달) + 2 supplier 교체 (Contracts/Customers)
-- 활성 계약 1건 원칙 (앱 레벨 검증)
-- 4 알림 템플릿 (request/approve/reject/terminate)
-- E2E: 18/18 PASS
+#### 3) Inventory Transaction (Sprint 1 의 TODO 마무리)
+- 신규 모델 `SupplierInventoryTransaction` + 테이블 (transaction_type/quantity_change/stock_after/reason/reference/batch_no)
+- adjust/receive 자동 기록
+- `/api/supplier-inventory/transactions` endpoint 정상 구현
+- Frontend Tab 구조 (Stock List + Transaction History) + 색상 (양수 녹색/음수 빨강)
+- 시드 8건 (Initial 6 + Receive 1 + Adjust 1)
 
-#### Sprint 3 — Purchase Order & Receiving (Design 3)
-- DB: 3 모델 (IngredientSellerProduct / PurchaseOrder / PurchaseOrderItem)
-- Backend: 14 endpoints (`routes/purchase-orders.js` 9 + `routes/ingredient-seller-products.js` 5)
-- 재고 정합성: receive 시 Ingredient lock + InventoryBatch + Transaction + Stock 트랜잭션 단일
-- 활성 SupplierContract 게이트 (Supplier seller 만)
-- PAR 자동 추천 (`Ingredient.min_stock` 활용)
-- Frontend: 3 페이지 (List + 3-step wizard + Detail w/ timeline)
-- E2E: 18/18 PASS (Stock 정확성 검증 +125 = 5 × 25 unit_conversion)
+#### 4) Demo Data 종합 시드 (`scripts/seed-demo-supplier-data.js`)
+- demo-supplier@purplehere.com (User#227, SupplierCompany#20 `is_demo=true`)
+- 6 Products + 3 Categories (Vegetables/Meat/Pantry)
+- 1 Active Contract w/ Restaurant#38 (monthly_soa)
+- 3 IngredientSellerProduct mapping
+- 4 PurchaseOrders (submitted/confirmed/shipped/received)
+- 1 Trade Invoice (TRD-SUP20-20260415-001 RM405 pending_payment)
+- 2 Subscription Invoices (3월 paid + 4월 pending)
+- 2 Notices + 2 SupportTickets
 
-#### Sprint 4 — Seller Order Mgmt + Trade Invoice + Monthly SOA (Design 4)
-- DB: PurchaseOrder 컬럼 2개 추가 (tracking_info JSON + trade_invoice_id FK). 신규 모델 0개 (Invoice 재사용).
-- Backend: 9 endpoints (`routes/seller-orders.js` 6 + `routes/purchase-invoices.js` 3)
-- 신규 미들웨어 `requireSellerRole` (sellerScope.js)
-- 신규 service: `purchaseOrderService.createTradeInvoice()` (PO Received 자동 발행, idempotent)
-- 신규 cron: `services/soaScheduler.js` (매월 1일 00:30, SchedulerRun 기록)
-- Frontend: 6 페이지 — Supplier 3 (Orders/TradeInvoices/SOA) + BG/FG 2 (incoming-orders, IncomingOrdersView 공유 컴포넌트로 DRY) + Buyer 1 (Purchase Invoices)
-- 4 이메일 템플릿 + 4 알림 카테고리
-- E2E: 13/13 + /검증 stage3 20/20 PASS
+#### 5) Notices/System Inquiry/Subscription Invoices wiring
+- `/pos/supplier/notices` 라우트 추가 (BrandNoticesPage 재사용)
+- NoticeRecipient user_id 매칭 → supplier 자동 처리
+- SupportTicket customerId 매칭 (변경 없이 시드만)
+- System Admin 발행 supplier 구독 invoice 2건 시드
 
-#### 종합 (4 Sprint 누적)
-- 16 신규 모델
-- 102 신규 endpoints
-- 30 신규 UI 페이지
-- API E2E **86/86 PASS**
-- 보안 **44건 시나리오 PASS** (IDOR 12 / Anon 16 / Cross-role 8 / Validation 8)
+#### 6) Pricing Supplier 탭
+- VALID_TABS / TAB_ORDER / TAB_LABELS / plan_target type 4곳 'supplier' 추가
+- PlanPrice 시드: Basic MYR 99/990, Advanced MYR 299/2990 (KRW × 300)
 
-### Trade Invoice 자동 발행 검증 사례
-```
-TRD-SUP18-20260426-001
-  total: 500.00 (5 × 100), status: pending_payment
-  due_date: 2026-05-15 (Monthly SOA payment_due_day=15 익월)
-  issuer: supplier#18, payer: restaurant#5
-  contract_id: SupplierContract.id (Sprint 2 link)
-```
+#### 7) LoginPage Demo 카드
+- DEMO_ACCOUNTS에 Supplier Admin 카드 추가 (보라 #9333EA)
 
-### /검증 10단계 (Sprint 4 정식 통과)
-- 0단계 hydration: 0 warnings
-- 1단계 빌드 exit 0 (`main.6f22a419.js` 배포)
-- 2단계 backend 30분+ uptime, 4 신규 라우트 401
-- 3단계 API E2E 20/20
-- 4단계 6 페이지 HTML 200
-- 5단계 5 역할 18/18
-- 6단계 요구사항 100% 매핑
-- 7단계 기존 모델 0건 변경, Subscription invoice 30건 무영향
-- 8단계 alert/toast 0, type=date 0, timezoneless 0, i18n 0 errors
-- 9단계 6 라우트 + 4 MODULE_GATED + 17 사이드바 매칭
+#### 8) Signup 에러 안내
+- `result.error?.message` 우선 노출
+- MX 검증 dev/prod 모두 유지 + 백엔드 메시지 그대로 사용자에게
 
-### 발견 + 수정
-- DateField 6 파일 named import → default import 일괄 수정 (Sprint 3+4)
-- Invoice.status ENUM = `pending_payment` (not `pending`) 수정
-- Invoice.issued_by NOT NULL → seller owner_id 자동 도출
-- supplier-inventory 라우트 마운트 path 수정 (`/api/seller-orders` 직접 마운트)
-- unit_conversion fallback (POST 시 IngredientSellerProduct에서 자동 채움)
+#### 9) Path-level middleware fix (6개 라우터 silent 버그)
+- supplier-directory.js, purchase-orders.js, purchase-invoices.js, ingredient-seller-products.js, foodcourt-products.js, foodcourt-inventory.js
+- `app.use('/api', router)` 광범위 prefix + router-level `requireBuyerRole`/`requireFoodcourtScope` 가 다른 역할 요청까지 차단하던 cross-role silent 버그
+- path-level use로 좁힘
+- 메모리에 패턴 저장 (`reference_path_level_middleware.md`)
+
+#### 10) addon-modules public 처리
+- `/api/addon-modules?active_only=true` 만 공개 (Pricing 카탈로그용)
+- 그 외 인증 유지
+
+#### 11) i18n 4언어 36+ 신규 키
+- `supplier.json` dashboard.* + inventory.history.* + inventory.tabs.*
+
+### 검증 결과
+- 빌드 `main.2c0a88a3.js` exit 0
+- Supplier 모든 endpoint 15/15 200 OK + 데이터 노출
+- 회귀 health-check 43/43 PASS
+- Buyer (demo-restaurant) / Brand (demo-brand) 측 endpoint 영향 없음
 
 ### 핵심 파일 (이번 세션)
-- 설계: `docs/SELLER_PRODUCT_INVENTORY_SYSTEM.md` (1391줄), `SUPPLIER_CONTRACT_SYSTEM.md` (867줄), `PURCHASE_ORDER_SYSTEM.md` (858줄), `SELLER_ORDER_MANAGEMENT_SYSTEM.md` (915줄)
-- Backend 신규: 16 모델 + 8 라우트 + 5 미들웨어 (Supplier/Buyer/Seller scope + PlanLimit) + 2 service (purchaseOrderService + soaScheduler) + 4 마이그레이션
-- Frontend 신규: 30 페이지 + 5 신규 i18n namespace (4 언어) + AuthContext/ProtectedRoute/MainLayout 확장
+**Backend (신규)**
+- `models/SupplierInventoryTransaction.js`
+- `scripts/seed-demo-supplier-data.js`
 
-### 다음 할 일
+**Backend (수정)**
+- `routes/supplier.js` — dashboard 응답 확장
+- `routes/supplier-inventory.js` — transaction 자동 기록 + /transactions
+- `routes/supplier-directory.js`, `purchase-orders.js`, `purchase-invoices.js`, `ingredient-seller-products.js`, `foodcourt-products.js`, `foodcourt-inventory.js` — path-level middleware
+- `routes/addon-modules.js` — active_only=true public
+- `utils/emailValidator.js` — MX 메시지 노출 fix
+- `models/index.js`
 
-#### 다음 세션 (Irene 다음 섹션 예고)
-- (a) **`/배포` v3.19** — Supply Chain 4-Design 전체 + 미배포 누적 11건 운영 배포
-- (b) **post-MVP 후속**:
-  - 외부 carrier API 연동 (배송 추적)
-  - Returns / Credit Notes
-  - Auto-pay (carded billing)
-  - Real-time Socket.IO 알림 (Supplier 새 PO 핀)
-  - Brand seller 의 산하 매장 일괄 인보이스 (PO 분배)
-- (c) 다른 신규 기능 (DEVELOPMENT_PLAN.md 참조)
-
-#### 운영 배포 시 마이그레이션 순서 (v3.19)
-1. `node scripts/sprint1-supply-chain-migration.js`
-2. Sequelize sync (16 신규 테이블)
-3. `node scripts/seed-supplier-modules-and-plans.js`
-4. `node scripts/seed-buyer-supplier-modules.js`
-5. `node scripts/seed-purchase-orders-module.js`
-6. `node scripts/sprint4-migration.js`
-7. PM2 restart + frontend rebuild
+**Frontend (수정)**
+- `components/Layout/MainLayout.tsx` — 사이드바 재구성 + Profile 활성
+- `pages/Supplier/SupplierDashboard.tsx` — 재작성
+- `pages/Supplier/SupplierInventoryPage.tsx` — Tab + Transaction History
+- `pages/Login/LoginPage.tsx` — Supplier 데모 카드
+- `pages/Landing/SignupPage.tsx` — 에러 메시지
+- `pages/Landing/PricingPage.tsx` — Supplier 탭
+- `App.tsx` — `/pos/supplier/notices` 라우트
+- `public/locales/{en,ko,zh,ms}/supplier.json`
 
 ### 미배포 [Unreleased] 누적 (다음 `/배포` 시 v3.19)
 - Onboarding wizard 강화
@@ -119,17 +107,50 @@ TRD-SUP18-20260426-001
 - Trial 만료 자동 알림
 - Scheduler 모니터링 대시보드
 - 구독 변경 히스토리 페이지
-- **Sprint 1 — Supply Chain Design 1 (Seller Product & Inventory)** ← 이번 세션
-- **Sprint 2 — Supply Chain Design 2 (Supplier Contract System)** ← 이번 세션
-- **Sprint 3 — Supply Chain Design 3 (Purchase Order & Receiving)** ← 이번 세션
-- **Sprint 4 — Supply Chain Design 4 (Seller Order Mgmt + Trade Invoice + Monthly SOA)** ← 이번 세션
+- Sprint 1 — Supply Chain Design 1 (Seller Product & Inventory)
+- Sprint 2 — Supply Chain Design 2 (Supplier Contract System)
+- Sprint 3 — Supply Chain Design 3 (Purchase Order & Receiving)
+- Sprint 4 — Supply Chain Design 4 (Seller Order Mgmt + Trade Invoice + Monthly SOA)
+- **Supplier Portal Polish** ← 이번 세션
 
-**검증 상태:**
-- 빌드 `main.6f22a419.js` exit 0
-- health-check 43/43 PASS
-- API E2E 86/86 PASS (4 Sprint 누적)
-- state-hydration 0 warnings
-- i18n 4 언어 5292 키 동기화 PASS
+### 다음 할 일
+
+**다음 섹션 작업 — Supplier Portal Polish Phase 2** (DEVELOPMENT_PLAN.md "다음 섹션 작업" 참조):
+
+1. **SupplierDashboard 추가 보강** (BG/FG 1136~1160줄 패턴 도달)
+   - Quick Actions Grid (Add Product / View Pending Orders / Issue Trade Invoice / View Customers)
+   - Setup Status Panel (신규 supplier 온보딩 진행률)
+   - Top Customers PieChart (이번 달 매출 buyer별 분포)
+   - Receivables Aging table (0-30일/31-60일/60일+ 미수금)
+
+2. **SupplierContractsPage 보강**
+   - 계약 종료 알림 (end_date 임박)
+   - 계약별 누적 매출/발주 건수 표시
+
+3. **Sales Order/Trade Invoice 흐름 보강**
+   - PO ship 시 SupplierProduct.current_stock 자동 차감 + SupplierInventoryTransaction (transaction_type='po_shipped') 자동 기록
+   - Trade Invoice 결제 시 SupplierCompany 매출 누적
+
+4. **Post-MVP Supply Chain**
+   - 외부 carrier API 연동 (배송 추적)
+   - Returns / Credit Notes
+   - Auto-pay (carded billing)
+   - Real-time Socket.IO 알림
+   - Brand seller 산하 매장 일괄 인보이스
+
+**그 외 옵션:**
+- (a) `/배포` v3.19 — 운영 배포 (밤에 — Irene 결정)
+- (b) DEVELOPMENT_PLAN.md 의 다른 미완료 항목
+
+### 운영 배포 시 마이그레이션 순서 (v3.19)
+1. `node scripts/sprint1-supply-chain-migration.js`
+2. Sequelize sync (16 신규 테이블 + supplier_inventory_transactions)
+3. `node scripts/seed-supplier-modules-and-plans.js`
+4. `node scripts/seed-buyer-supplier-modules.js`
+5. `node scripts/seed-purchase-orders-module.js`
+6. `node scripts/sprint4-migration.js`
+7. (선택, dev에만) `node scripts/seed-demo-supplier-data.js`
+8. PM2 restart + frontend rebuild
 
 ---
 

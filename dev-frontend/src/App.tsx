@@ -1201,6 +1201,11 @@ function App() {
                           <SupplierDashboard />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/supplier/notices" element={
+                        <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
+                          <BrandNoticesPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/supplier/products" element={
                         <ProtectedRoute requiredRole={['Supplier Admin', 'System Admin']}>
                           <SupplierProductsPage />

@@ -23,7 +23,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { sanitizeString } = require('../middleware/validation');
 const { resolveEntityModules } = require('../middleware/requireModule');
 
-router.use(authenticateToken);
+router.use('/foodcourts', authenticateToken);
 
 /**
  * Verify the caller can access :foodcourtId. Sets req.foodcourtId on success.

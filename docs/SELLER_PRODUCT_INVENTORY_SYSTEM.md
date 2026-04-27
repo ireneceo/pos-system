@@ -319,6 +319,35 @@ SupplierProduct → Ingredient 동기화 (owner_type: 'supplier')
 - 발주 수신 시 current_stock 차감만
 - 나중에 배치 추적이 필요하면 확장
 
+**Implementation Update (2026-04-27 — Supplier Portal Polish):**
+Sprint 1 의 `Sprint 3 TODO` (transaction 기록 미구현) 마무리. 별도 모델 추가:
+
+```
+SupplierInventoryTransaction (table: supplier_inventory_transactions):
+  id, supplier_company_id, supplier_product_id
+  transaction_type ENUM('initial','manual_receive','manual_adjust','po_shipped','sale','waste')
+  quantity_change DECIMAL(12,2)  -- 양수: 증가, 음수: 감소
+  unit, stock_after DECIMAL(12,2)
+  reason VARCHAR(40)              -- adjustment 시: lost/damaged/correction/other
+  reference_type ENUM('manual','purchase_order','sales_order')
+  reference_id INT
+  unit_cost, batch_no, notes, created_by, created_at
+  indexes: supplier_company_id / supplier_product_id / created_at
+```
+
+**자동 기록 시점:**
+- POST `/api/supplier-inventory/adjust` → `manual_adjust` row
+- POST `/api/supplier-inventory/receive` → `manual_receive` row
+- (예정 — Phase 2) POST `/api/seller-orders/:id/ship` → `po_shipped` (current_stock 차감 + transaction)
+
+**조회:**
+- GET `/api/supplier-inventory/transactions?product_id=&type=&from=&to=&page=&limit=`
+- 페이지네이션 + product_id/type/날짜 필터 + product join (name/sku/unit)
+
+**UI 통일 (InventoryManager 패턴 차용):**
+- SupplierInventoryPage 에 Tab 구조 추가: Stock List + Transaction History
+- TransactionHistory 섹션: type 필터 + product 필터 + DataTable + 색상 (양수 녹색, 음수 빨강)
+
 ---
 
 ## 3. UI Design

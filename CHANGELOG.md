@@ -6,6 +6,21 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-27 (Supplier Portal Polish — UX 통일성 + 데이터 + Inventory Transaction)
+**Supplier 포털 사용성 — Brand/Foodcourt 와 동일 패턴으로 통일**
+- Sidebar 재구성: "Settings" NavTitle 두 번 렌더 fix. Operations / Plans & Payments / Communication 3 섹션. Profile disabled 제거.
+- Dashboard 재작성 (313 → 540줄): 4 stat → **8 KPI** (pending/confirmed/shipped orders + monthly_revenue + outstanding + active_customers + low_stock + received_this_month) + **6개월 매출 추이 LineChart** + **Alerts panel** (clickable deep-link) + **Recent Orders/Trade Invoices 2-col 테이블** + Subscription card. Backend `/api/supplier/dashboard` 응답 18 필드.
+- **Inventory Transaction 신규** (Sprint 1 의 Sprint 3 TODO 마무리): SupplierInventoryTransaction 모델 + 테이블, adjust/receive 자동 기록, `/transactions` endpoint. Frontend Tab 구조 (Stock List / Transaction History) + 8 transaction 시드.
+- Demo data 종합: demo-supplier@purplehere.com (is_demo=true → supplier_advanced 모듈 자동). 6 Products / 1 Active Contract / 4 PurchaseOrders (다양 상태) / 1 Trade Invoice / 2 Subscription Invoices / 2 Notices / 2 SupportTickets.
+- Notices 라우트 추가 (`/pos/supplier/notices`, BrandNoticesPage 재사용) + System Inquiry/Subscription Invoices 시드.
+- Pricing Supplier 탭 추가 + 가격 시드 (Basic MYR 99 / Advanced MYR 299).
+- LoginPage Demo 카드에 Supplier Admin 추가.
+- 회원가입 에러 메시지 정확 노출 (MX 검증 메시지 그대로 사용자에게).
+- **Path-level middleware fix** (6개 라우터): supplier-directory / purchase-orders / purchase-invoices / ingredient-seller-products / foodcourt-products / foodcourt-inventory — `/api` 광범위 prefix 시 router-level use가 다른 역할 요청까지 차단하던 silent 버그 fix.
+- addon-modules `?active_only=true` public 처리.
+- i18n 4언어 36+ 신규 키.
+- 회귀 health-check 43/43, Buyer/Brand 측 endpoint 영향 없음.
+
 ### 2026-04-26 (Supply Chain System 4-Design 시리즈 완료)
 **🎉 Supply Chain System — Supplier 사업체 도입 + Buyer-Seller 거래 흐름 완성**
 - Sprint 1: Seller Product & Inventory — Supplier 사업체 신규 도입 (Brand/Foodcourt 패턴 미러). 12 모델 + 66 endpoints + 16 페이지. Supplier signup A+B (SA invitation + Landing 일반 가입). Foodcourt 자체 상품/재고 추가.

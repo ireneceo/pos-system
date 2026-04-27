@@ -20,12 +20,31 @@
     "title": "공급업체 대시보드",
     "totalProducts": "전체 상품",
     "activeProducts": "활성 상품",
-    "lowStockAlert": "재고 부족 알림",
+    "lowStockAlert": "재고 부족 상품",
     "inventoryValue": "재고 가치",
     "subscription": "구독",
     "trial": "Trial",
     "daysLeft": "{{n}}일 남음",
-    "noLowStock": "모든 재고가 정상 수준입니다."
+    "noLowStock": "모든 재고가 정상 수준입니다.",
+    "pendingOrders": "처리 대기 주문",
+    "confirmedOrders": "확정 주문",
+    "shippedOrders": "배송 중",
+    "receivedThisMonth": "이번 달 입고 완료",
+    "monthlyRevenue": "월 매출",
+    "outstandingBalance": "미수금",
+    "activeCustomers": "활성 고객사",
+    "revenueTrend6m": "월별 매출 추이 (최근 6개월)",
+    "alerts": "알림",
+    "allClear": "모든 상태가 양호합니다 — 처리할 항목이 없습니다.",
+    "recentOrders": "최근 주문",
+    "recentTradeInvoices": "최근 거래 인보이스",
+    "poNumber": "주문번호",
+    "invoiceNumber": "인보이스번호",
+    "customer": "고객사",
+    "status": "상태",
+    "total": "합계",
+    "noRecentOrders": "주문이 아직 없습니다.",
+    "noRecentInvoices": "인보이스가 아직 없습니다."
   },
   "products": {
     "title": "상품 카탈로그",
@@ -81,7 +100,27 @@
     },
     "history": {
       "title": "거래 내역",
-      "empty": "거래 내역은 Sprint 3 (PO 연동)에서 제공됩니다."
+      "empty": "거래 내역이 없습니다.",
+      "date": "날짜",
+      "delta": "변동량",
+      "stockAfter": "거래 후 재고",
+      "referenceNotes": "참고 / 비고",
+      "allTypes": "모든 유형",
+      "allProducts": "모든 상품",
+      "totalCount": "거래 {{count}}건",
+      "type": {
+        "label": "유형",
+        "initial": "최초 등록",
+        "manual_receive": "입고",
+        "manual_adjust": "조정",
+        "po_shipped": "출하 (PO)",
+        "sale": "판매",
+        "waste": "폐기"
+      }
+    },
+    "tabs": {
+      "list": "재고 목록",
+      "history": "거래 내역"
     },
     "lowStockBadge": "부족",
     "outOfStockBadge": "없음"
