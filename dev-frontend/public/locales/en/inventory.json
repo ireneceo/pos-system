@@ -39,5 +39,18 @@
   "stockTakePage.regularStockTakesHelpReduceLossAndImproveInventoryAccuracy": "Regular stock takes help reduce loss and improve inventory accuracy",
   "stockTakePage.weRecommendDoingAStockTakeAtLeastOnceAWeek": "We recommend doing a stock take at least once a week",
   "stockTakePage.readyToStart": "Ready to Start?",
-  "stockTakePage.previousStockTakes": "Previous Stock Takes"
+  "stockTakePage.previousStockTakes": "Previous Stock Takes",
+  "bulkOrder": {
+    "title": "Bulk Order — by Seller",
+    "sendAll": "Send All",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "successTitle": "Orders sent successfully",
+    "successHint": "Sellers will receive a real-time notification.",
+    "empty": "No items selected. Pick low-stock ingredients with a preferred seller mapping first.",
+    "grandTotal": "Grand Total",
+    "stockShort": "Current",
+    "minShort": "Min"
+  }
 }

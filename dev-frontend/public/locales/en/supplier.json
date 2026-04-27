@@ -146,8 +146,8 @@
     "joinWaitlist": "We'll notify you when this is ready."
   },
   "orders": {
-    "title": "Incoming Orders",
-    "subtitle": "Purchase orders submitted by your buyers.",
+    "title": "Live Orders",
+    "subtitle": "Real-time incoming purchase orders",
     "stats": {
       "pending": "Pending Review",
       "confirmed": "Confirmed",
@@ -168,13 +168,19 @@
       "total": "Total",
       "status": "Status",
       "createdAt": "Created",
-      "actions": "Actions"
+      "actions": "Actions",
+      "delivery": "Delivery",
+      "time": "Time",
+      "amount": "Amount",
+      "itemsUnit": "items"
     },
     "actions": {
       "view": "View",
       "confirm": "Confirm",
       "ship": "Mark Shipped",
-      "reject": "Reject"
+      "reject": "Reject",
+      "deliver": "Mark Delivered",
+      "editTracking": "Edit tracking"
     },
     "confirm": {
       "title": "Confirm Order",
@@ -200,7 +206,13 @@
       "submit": "Reject Order",
       "cancel": "Cancel"
     },
-    "empty": "No incoming orders in this status."
+    "empty": "No incoming orders in this status.",
+    "sound": {
+      "on": "Sound on",
+      "off": "Sound off"
+    },
+    "emptyHint": "New orders will appear here in real time.",
+    "loading": "Loading…"
   },
   "tradeInvoicesPage": {
     "title": "Trade Invoices",
@@ -269,6 +281,7 @@
     "pending_payment": "Pending Payment",
     "payment_submitted": "Payment Submitted",
     "paid": "Paid",
-    "overdue": "Overdue"
+    "overdue": "Overdue",
+    "delivered": "Delivered"
   }
 }

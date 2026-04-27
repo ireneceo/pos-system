@@ -250,6 +250,7 @@ const NavIcon = styled.span<{ hasPending?: boolean }>`
   }
 `;
 
+
 // Disabled menu item for undeveloped features
 const DisabledNavItem = styled.div`
   display: flex;
@@ -558,6 +559,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     notices: 0,
     invoices: 0,
     pendingOrders: 0,
+    livePoCount: 0,  // Sprint 6: incoming PO submissions for sellers
     unreadComments: { notices: 0, systemInquiry: 0, operationInquiry: 0 }
   });
 
@@ -1073,6 +1075,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </NavItem>
                 )}
 
+                {/* Sprint 6: Live Orders right under Dashboard */}
+                <NavItem to="/pos/brand/general/incoming-orders" active={isActive('/pos/brand/general/incoming-orders')} hasPending={badgeCounts.livePoCount > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.livePoCount > 0}>▤</NavIcon>
+                  {t("nav.liveOrders", "Live Orders")}
+
+                </NavItem>
+
                 {isRouteAllowed('/pos/brand/franchise') && (
                   <NavItem to="/pos/brand/franchise" active={isActive('/pos/brand/franchise') && !isActive('/pos/brand/franchise-map')} onClick={closeSidebar}>
                     <NavIcon>◇</NavIcon>
@@ -1201,12 +1210,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                         {t("nav.purchaseInvoices", "Purchase Invoices")}
                       </NavItem>
                     )}
-                    {(user?.role === 'Brand General' || user?.role === 'Brand Manager') && (
-                      <NavItem to="/pos/brand/general/incoming-orders" active={isActive('/pos/brand/general/incoming-orders')} onClick={closeSidebar}>
-                        <NavIcon>↓</NavIcon>
-                        {t("nav.incomingOrders", "Incoming Orders")}
-                      </NavItem>
-                    )}
+                    {/* Live Orders moved to top — under Dashboard (Sprint 6) */}
                   </>
                 )}
 
@@ -1320,6 +1324,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   </NavItem>
                 )}
 
+                {/* Sprint 6: Live Orders right under Dashboard */}
+                <NavItem to="/pos/foodcourt/general/incoming-orders" active={isActive('/pos/foodcourt/general/incoming-orders')} hasPending={badgeCounts.livePoCount > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.livePoCount > 0}>▤</NavIcon>
+                  {t("nav.liveOrders", "Live Orders")}
+
+                </NavItem>
+
                 {isRouteAllowed('/pos/foodcourt/tenancy') && (
                   <NavItem to="/pos/foodcourt/tenancy" active={isActive('/pos/foodcourt/tenancy') && !isActive('/pos/foodcourt/tenancy-map')} onClick={closeSidebar}>
                     <NavIcon>◇</NavIcon>
@@ -1429,12 +1440,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                         {t("nav.purchaseInvoices", "Purchase Invoices")}
                       </NavItem>
                     )}
-                    {(user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') && (
-                      <NavItem to="/pos/foodcourt/general/incoming-orders" active={isActive('/pos/foodcourt/general/incoming-orders')} onClick={closeSidebar}>
-                        <NavIcon>↓</NavIcon>
-                        {t("nav.incomingOrders", "Incoming Orders")}
-                      </NavItem>
-                    )}
+                    {/* Live Orders moved to top — under Dashboard (Sprint 6) */}
                   </>
                 )}
 
@@ -1641,6 +1647,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>■</NavIcon>
                   {t("nav.dashboard")}
                 </NavItem>
+                {/* Sprint 6: Live Orders right under Dashboard for visibility */}
+                <NavItem to="/pos/supplier/orders" active={isActive('/pos/supplier/orders')} hasPending={badgeCounts.livePoCount > 0} onClick={closeSidebar}>
+                  <NavIcon hasPending={badgeCounts.livePoCount > 0}>▤</NavIcon>
+                  {t("nav.liveOrders", "Live Orders")}
+
+                </NavItem>
 
                 <NavTitle>{t("nav.section.operations")}</NavTitle>
                 {isRouteAllowed('/pos/supplier/products') && (
@@ -1662,10 +1674,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/supplier/contracts" active={isActive('/pos/supplier/contracts')} onClick={closeSidebar}>
                   <NavIcon>◇</NavIcon>
                   {t("nav.contracts", "Contracts")}
-                </NavItem>
-                <NavItem to="/pos/supplier/orders" active={isActive('/pos/supplier/orders')} onClick={closeSidebar}>
-                  <NavIcon>▤</NavIcon>
-                  {t("nav.orders", "Orders")}
                 </NavItem>
 
                 <NavTitle>{t("nav.section.plansPayments")}</NavTitle>
@@ -2038,6 +2046,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/admin/site-settings" active={isActive('/pos/admin/site-settings')} onClick={closeSidebar}>
                   <NavIcon>◈</NavIcon>
                   {t("nav.siteSettings")}
+                </NavItem>
+                <NavItem to="/pos/admin/carriers" active={isActive('/pos/admin/carriers')} onClick={closeSidebar}>
+                  <NavIcon>📦</NavIcon>
+                  {t("nav.carriers", "Carriers")}
                 </NavItem>
                 <NavItem to="/pos/admin/notification-settings" active={isActive('/pos/admin/notification-settings')} onClick={closeSidebar}>
                   <NavIcon>✉</NavIcon>

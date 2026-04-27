@@ -1418,5 +1418,27 @@
       "expired": "Tamat Tempoh",
       "revoked": "Dibatalkan"
     }
+  },
+  "carriers": {
+    "title": "Pembawa",
+    "subtitle": "Pembawa penghantaran yang digunakan oleh penjual semasa menghantar pesanan",
+    "add": "Tambah Pembawa",
+    "addTitle": "Tambah Pembawa",
+    "empty": "Tiada pembawa",
+    "codeHint": "a-z, 0-9, _ sahaja",
+    "templateHint": "Gunakan {tracking_number} sebagai pemegang.",
+    "fields": {
+      "name": "Nama",
+      "code": "Kod",
+      "template": "Templat URL Jejak",
+      "logoUrl": "URL Logo",
+      "country": "Negara",
+      "sortOrder": "Susunan",
+      "status": "Status",
+      "active": "Aktif"
+    },
+    "errors": {
+      "required": "Kod dan Nama diperlukan"
+    }
   }
 }

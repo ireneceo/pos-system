@@ -37,8 +37,8 @@ const CommonFilterBar = styled.div`
 // Common Search Input
 const CommonSearchInput = styled.input`
   flex: 1;
-  min-width: 180px;
-  max-width: 300px;
+  min-width: 320px;
+  max-width: 480px;
   padding: 12px 16px;
   border: 1px solid #E6EBF1;
   border-radius: 8px;
@@ -56,13 +56,13 @@ const CommonSearchInput = styled.input`
   }
 
   @media (max-width: 1024px) {
-    min-width: 150px;
-    max-width: 250px;
+    min-width: 280px;
+    max-width: 400px;
   }
 
   @media (max-width: 768px) {
-    min-width: 120px;
-    max-width: 200px;
+    min-width: 240px;
+    max-width: 320px;
   }
 
   @media (max-width: 600px) {
@@ -76,17 +76,17 @@ const SearchInputWrapper = styled.div`
   position: relative;
   display: inline-flex;
   flex: 1;
-  min-width: 180px;
-  max-width: 300px;
+  min-width: 320px;
+  max-width: 480px;
 
   @media (max-width: 1024px) {
-    min-width: 150px;
-    max-width: 250px;
+    min-width: 280px;
+    max-width: 400px;
   }
 
   @media (max-width: 768px) {
-    min-width: 120px;
-    max-width: 200px;
+    min-width: 240px;
+    max-width: 320px;
   }
 
   @media (max-width: 600px) {

@@ -40,7 +40,19 @@
       "Bash(git rm *)",
       "Bash(git commit -m ' *)",
       "Bash(kill 3024792)",
-      "Bash(ps *)"
+      "Bash(ps *)",
+      "Bash(git commit *)",
+      "Bash(awk '/Compiled with warnings|Treating warnings|warning  in|Compiled successfully/{flag=1} flag{print; n++; if\\(n>50\\) exit}' /tmp/claude-1000/-var-www/a58e0279-7247-461e-b551-28dd510905c2/tasks/b3kbkg0ex.output)",
+      "Bash(xargs -I{} grep -l \"search\\\\|Search\" {})",
+      "Bash(echo \"TS exit: $?\")",
+      "Bash(echo \"exit:$?\")",
+      "Bash(echo \"TS exit:$?\")",
+      "Bash(echo \"  exit:$?\")",
+      "Bash(sed -n '12,40p' /var/www/dev-frontend/src/pages/LiveOrders/styles.ts)",
+      "Bash(sed -n '84,110p' /var/www/dev-frontend/src/pages/LiveOrders/styles.ts)",
+      "Bash(sed -n '210,290p' /var/www/dev-frontend/src/pages/LiveOrders/styles.ts)",
+      "Bash(sed -n '280,330p' /var/www/dev-frontend/src/pages/LiveOrders/styles.ts)",
+      "Bash(echo \"=== 임시 test 파일 잔재 확인 ===\" ls /var/www/dev-backend/test-*.js echo \"\\(empty=clean\\)\" echo echo \"=== Final state ===\" echo \"Build: $\\(curl -s https://dev.purplehere.com/)"
     ],
     "deny": [],
     "ask": []

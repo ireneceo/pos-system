@@ -10,16 +10,14 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 
-type SellerType = 'system' | 'brand' | 'foodcourt' | 'supplier';
+type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
 
 interface SellerOption {
-  seller_id: number;
+  seller_id: number | null;
   seller_type: SellerType;
-  seller_name: string;
+  name: string;
+  logo_url?: string | null;
   contract_id?: number | null;
-  contract_status?: 'active' | 'requested' | 'rejected' | 'terminated' | null;
-  product_count?: number;
-  currency?: string;
 }
 
 interface SellerProductOption {
@@ -152,7 +150,7 @@ const TypeBadge = styled.span<{ variant?: SellerType }>`
   border-radius: 999px;
   background: ${(p) => {
     switch (p.variant) {
-      case 'system': return '#EEF2FF';
+      case 'system_admin': return '#EEF2FF';
       case 'brand': return '#ECFEFF';
       case 'foodcourt': return '#FEF3C7';
       case 'supplier': return '#DCFCE7';
@@ -161,7 +159,7 @@ const TypeBadge = styled.span<{ variant?: SellerType }>`
   }};
   color: ${(p) => {
     switch (p.variant) {
-      case 'system': return '#3730A3';
+      case 'system_admin': return '#3730A3';
       case 'brand': return '#0E7490';
       case 'foodcourt': return '#92400E';
       case 'supplier': return '#166534';
@@ -366,12 +364,12 @@ const NewPurchaseOrderPage: React.FC = () => {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Step 1: load seller catalog
-  const fetchSellerCatalog = useCallback(async () => {
+  // Step 1: load buyer-facing seller picker (Phase 2 — 2026-04-27)
+  const fetchBuyerSellers = useCallback(async () => {
     setSellerLoading(true);
     try {
       const token = getAuthToken();
-      const res = await fetch('/api/seller-catalog', {
+      const res = await fetch('/api/buyer-sellers', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -393,14 +391,14 @@ const NewPurchaseOrderPage: React.FC = () => {
         }
       }
     } catch (err) {
-      console.error('Failed to fetch seller catalog:', err);
+      console.error('Failed to fetch buyer sellers:', err);
       setSellers([]);
     } finally {
       setSellerLoading(false);
     }
   }, [prefSellerId, prefSellerType]);
 
-  useEffect(() => { fetchSellerCatalog(); }, [fetchSellerCatalog]);
+  useEffect(() => { fetchBuyerSellers(); }, [fetchBuyerSellers]);
 
   // Step 2: ingredient search (debounced via simple effect)
   useEffect(() => {
@@ -434,7 +432,9 @@ const NewPurchaseOrderPage: React.FC = () => {
       const token = getAuthToken();
       const params = new URLSearchParams();
       params.set('ingredient_id', String(ingredientId));
-      params.set('seller_id', String(selectedSeller.seller_id));
+      if (selectedSeller.seller_id != null) {
+        params.set('seller_id', String(selectedSeller.seller_id));
+      }
       params.set('seller_type', selectedSeller.seller_type);
       const res = await fetch(`/api/seller-catalog/products?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -553,7 +553,7 @@ const NewPurchaseOrderPage: React.FC = () => {
   const filteredSellers = useMemo(() => {
     const term = sellerSearch.trim().toLowerCase();
     if (!term) return sellers;
-    return sellers.filter(s => (s.seller_name || '').toLowerCase().includes(term));
+    return sellers.filter(s => (s.name || '').toLowerCase().includes(term));
   }, [sellers, sellerSearch]);
 
   const goNext = () => {
@@ -589,16 +589,15 @@ const NewPurchaseOrderPage: React.FC = () => {
   };
 
   const buildPayload = () => ({
-    seller_id: selectedSeller!.seller_id,
     seller_type: selectedSeller!.seller_type,
-    contract_id: selectedSeller!.contract_id || null,
+    seller_entity_id: selectedSeller!.seller_id,
     expected_delivery_date: expectedDate || null,
     delivery_address: deliveryAddress.trim() || null,
     notes: notes.trim() || null,
     items: orderRows.map(r => ({
       ingredient_id: r.ingredient_id,
-      seller_product_id: r.seller_product_id,
-      quantity: Number(r.quantity),
+      ingredient_seller_product_id: r.seller_product_id,
+      quantity_ordered: Number(r.quantity),
       unit_price: Number(r.unit_price)
     }))
   });
@@ -699,21 +698,20 @@ const NewPurchaseOrderPage: React.FC = () => {
                 onClick={() => setSelectedSeller(s)}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <strong style={{ color: '#0A2540', fontSize: 15 }}>{s.seller_name}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    {s.logo_url && (
+                      <img
+                        src={s.logo_url}
+                        alt=""
+                        style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+                      />
+                    )}
+                    <strong style={{ color: '#0A2540', fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {s.name}
+                    </strong>
+                  </div>
                   <TypeBadge variant={s.seller_type}>{t(`new.seller.type.${s.seller_type}`)}</TypeBadge>
                 </div>
-                {s.product_count != null && (
-                  <div style={{ fontSize: 12, color: '#6B7280' }}>
-                    {t('list.suggestions.ingredient')}: {s.product_count}
-                  </div>
-                )}
-                {s.seller_type === 'supplier' && (
-                  <div style={{ fontSize: 12 }}>
-                    <TypeBadge variant={s.contract_status === 'active' ? 'supplier' : 'foodcourt'}>
-                      {s.contract_status === 'active' ? t('new.seller.contractActive') : t('new.seller.contractRequired')}
-                    </TypeBadge>
-                  </div>
-                )}
               </SellerCard>
             );
           })}
@@ -845,7 +843,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       <ReviewKv>
         <KvKey>{t('new.review.sellerInfo')}</KvKey>
         <KvValue>
-          <strong>{selectedSeller?.seller_name}</strong>
+          <strong>{selectedSeller?.name}</strong>
           {selectedSeller && (
             <span style={{ marginLeft: 8 }}>
               <TypeBadge variant={selectedSeller.seller_type}>

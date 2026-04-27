@@ -67,12 +67,13 @@
         "system": "Katalog Sistem",
         "brand": "Katalog Jenama",
         "foodcourt": "Katalog Medan Selera",
-        "supplier": "Pembekal"
+        "supplier": "Pembekal",
+        "system_admin": "Katalog Sistem"
       },
       "contractActive": "Kontrak Aktif",
       "contractRequired": "Kontrak Diperlukan",
       "noSellers": "Tiada penjual tersedia.",
-      "noSellersHint": "Pastikan anda mempunyai kontrak pembekal aktif atau katalog sistem tersedia."
+      "noSellersHint": "Pastikan anda mempunyai kontrak pembekal aktif, milik jenama/pusat makanan, atau gunakan katalog POS."
     },
     "items": {
       "title": "Tambah item",
@@ -196,7 +197,8 @@
     "shipped": "Dihantar",
     "partial_received": "Sebahagian",
     "received": "Diterima",
-    "cancelled": "Dibatalkan"
+    "cancelled": "Dibatalkan",
+    "delivered": "Sampai"
   },
   "common": {
     "save": "Simpan",

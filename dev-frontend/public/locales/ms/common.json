@@ -259,7 +259,9 @@
     "branches": "Cawangan",
     "franchiseMap": "Peta Francais",
     "tenancyMap": "Peta Penyewaan",
-    "branchMap": "Peta Cawangan"
+    "branchMap": "Peta Cawangan",
+    "incomingOrders": "Pesanan Langsung",
+    "carriers": "Pembawa"
   },
   "language": {
     "en": "English",
@@ -578,8 +580,12 @@
         "empty": "Tiada pemberitahuan belum dibaca"
       }
     },
-    "drawer": { "title": "Pemberitahuan" },
-    "page": { "title": "Peti Masuk" },
+    "drawer": {
+      "title": "Pemberitahuan"
+    },
+    "page": {
+      "title": "Peti Masuk"
+    },
     "filter": {
       "all": "Semua",
       "notice": "Notis",
@@ -611,6 +617,20 @@
       "all": "Pemberitahuan baharu akan muncul di sini.",
       "unread": "Tiada item belum dibaca sekarang.",
       "search": "Tiada hasil padanan."
+    }
+  },
+  "delivery": {
+    "title": "Garis Masa Penghantaran",
+    "track": "Jejak →",
+    "estimatedArrival": "Jangkaan tiba:",
+    "cancelled": "Pesanan dibatalkan",
+    "steps": {
+      "submitted": "Dihantar",
+      "confirmed": "Disahkan",
+      "shipped": "Dihantar",
+      "inTransit": "Dalam Transit",
+      "received": "Diterima",
+      "delivered": "Sampai"
     }
   }
 }

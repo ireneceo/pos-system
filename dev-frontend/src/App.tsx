@@ -124,6 +124,8 @@ const ManagerReportsPage = React.lazy(() => import('./pages/Manager/ManagerRepor
 const ManagerPromotionsPage = React.lazy(() => import('./pages/Manager/ManagerPromotionsPage'));
 const ManagerPlansPage = React.lazy(() => import('./pages/Manager/PlansPage'));
 const AdminSettingsPage = React.lazy(() => import('./pages/Admin/AdminSettingsPage'));
+const CarriersPage = React.lazy(() => import('./pages/Admin/CarriersPage'));
+const PurchaseOrderPrintPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderPrintPage'));
 const AdminPaymentSettingsPage = React.lazy(() => import('./pages/Admin/PaymentSettingsPage'));
 const SiteSettingsPage = React.lazy(() => import('./pages/Admin/SiteSettingsPage'));
 const RestaurantDashboard = React.lazy(() => import('./pages/Restaurant/RestaurantDashboard'));
@@ -610,6 +612,11 @@ function App() {
                       <Route path="/pos/admin/settings" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <AdminSettingsPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/carriers" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <CarriersPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/history" element={
@@ -1318,6 +1325,11 @@ function App() {
                       <Route path="/pos/purchase-orders/:id" element={
                         <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <PurchaseOrderDetailPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/purchase-orders/:id/print" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <PurchaseOrderPrintPage />
                         </ProtectedRoute>
                       } />
 

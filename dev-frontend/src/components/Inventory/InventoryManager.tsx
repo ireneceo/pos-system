@@ -14,6 +14,7 @@ import { useGeneralStockReceiveModal } from './hooks/useGeneralStockReceiveModal
 import { useGeneralStockForm } from './hooks/useGeneralStockForm';
 import { useInlineStockEdit } from './hooks/useInlineStockEdit';
 import { useOrderModal } from './hooks/useOrderModal';
+import { useBulkOrder } from './hooks/useBulkOrder';
 import { useDeleteConfirm } from './hooks/useDeleteConfirm';
 import { useAlertResolver } from './hooks/useAlertResolver';
 
@@ -26,6 +27,7 @@ import WasteModal from './modals/WasteModal';
 import InitialStockModal from './modals/InitialStockModal';
 import GeneralStockReceiveModal from './modals/GeneralStockReceiveModal';
 import OrderModal from './modals/OrderModal';
+import BulkOrderModal from './modals/BulkOrderModal';
 import SettingsModal from './modals/SettingsModal';
 import GeneralStockFormModal from './modals/GeneralStockFormModal';
 import DeleteConfirmModal from './modals/DeleteConfirmModal';
@@ -98,6 +100,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   });
 
   const order = useOrderModal();
+  const bulk = useBulkOrder();
 
   const deleteConfirm = useDeleteConfirm({
     mode,
@@ -207,6 +210,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             onWaste={adjust.openWaste}
             onSettings={settings.open}
             onDelete={deleteConfirm.open}
+            suggestionsById={bulk.suggestionsById}
+            selectedIds={bulk.selectedIds}
+            onToggleSelect={bulk.toggleSelect}
           />
         ) : activeTab === 'categories' ? (
           <GeneralStockCategoriesTab
@@ -286,7 +292,100 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         onQuantityChange={order.setOrderQuantity}
         currency={data.selectedCurrency}
         onSend={order.handleSend}
+        sellers={order.orderSellers}
+        selectedSellerId={order.selectedSellerId}
+        onSellerChange={order.setSelectedSellerId}
+        error={order.orderError}
+        submitting={order.orderSubmitting}
+        lastResult={order.lastOrderResult}
       />
+
+      <BulkOrderModal
+        isOpen={bulk.showBulkModal}
+        onClose={bulk.closeBulk}
+        items={bulk.bulkItems}
+        currency={data.selectedCurrency}
+        submitting={bulk.submitting}
+        error={bulk.error}
+        resultPos={bulk.resultPos}
+        onUpdateItem={bulk.updateBulkItem}
+        onRemoveItem={bulk.removeBulkItem}
+        onSend={bulk.sendBulk}
+      />
+
+      {/* Sticky bottom bar — shown when items selected on the list tab */}
+      {activeTab === 'list' && bulk.selectedIds.size > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: 0, left: 0, right: 0,
+          background: 'white',
+          borderTop: '1px solid #E6EBF1',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+          padding: '14px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 16,
+          zIndex: 100
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              minWidth: 32, height: 32, padding: '0 10px',
+              borderRadius: 999, background: '#635BFF', color: 'white',
+              fontSize: 13, fontWeight: 700
+            }}>
+              {bulk.selectedIds.size}
+            </span>
+            <span style={{ fontSize: 14, color: '#0A2540', fontWeight: 600 }}>
+              ingredient{bulk.selectedIds.size === 1 ? '' : 's'} selected
+            </span>
+            <button
+              type="button"
+              onClick={bulk.clearSelection}
+              style={{
+                background: 'transparent', border: 'none', color: '#6B7280',
+                fontSize: 13, cursor: 'pointer', textDecoration: 'underline'
+              }}
+            >Clear</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={bulk.selectAllSuggested}
+              style={{
+                padding: '8px 14px',
+                background: '#F3F4F6',
+                border: '1px solid #E6EBF1',
+                borderRadius: 8,
+                color: '#0A2540',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Select all suggestions ({bulk.suggestionsById.size})
+            </button>
+            <button
+              type="button"
+              onClick={bulk.openBulk}
+              style={{
+                padding: '10px 22px',
+                background: '#635BFF',
+                border: 'none',
+                borderRadius: 8,
+                color: 'white',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(99,91,255,0.3)'
+              }}
+            >
+              Order Selected →
+            </button>
+          </div>
+        </div>
+      )}
 
       <SettingsModal
         isOpen={settings.showSettingsModal}

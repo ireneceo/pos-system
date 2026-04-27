@@ -13,8 +13,9 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
+import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 
-type POStatus = 'draft' | 'submitted' | 'confirmed' | 'shipped' | 'partial_received' | 'received' | 'cancelled';
+type POStatus = 'draft' | 'submitted' | 'confirmed' | 'shipped' | 'delivered' | 'partial_received' | 'received' | 'cancelled';
 
 interface POItem {
   id: number;
@@ -222,12 +223,13 @@ const StatusVariantMap: Record<POStatus, 'success' | 'warning' | 'error' | 'info
   submitted: 'warning',
   confirmed: 'warning',
   shipped: 'info',
+  delivered: 'info',
   partial_received: 'warning',
   received: 'success',
   cancelled: 'error'
 };
 
-const STAGES: POStatus[] = ['draft', 'submitted', 'confirmed', 'shipped', 'received'];
+const STAGES: POStatus[] = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'received'];
 
 const PurchaseOrderDetailPage: React.FC = () => {
   const { t } = useTranslation(['purchaseOrders', 'common']);
@@ -255,6 +257,78 @@ const PurchaseOrderDetailPage: React.FC = () => {
   const [shippedSubmitting, setShippedSubmitting] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+
+  // Sprint 6: Returns
+  const [showReturnsModal, setShowReturnsModal] = useState(false);
+  const [returnLines, setReturnLines] = useState<Array<{ purchase_order_item_id: number; quantity: string; reason: string }>>([]);
+  const [returnSubmitting, setReturnSubmitting] = useState(false);
+  const [returnError, setReturnError] = useState<string | null>(null);
+  const [existingReturns, setExistingReturns] = useState<any[]>([]);
+
+  const loadReturns = useCallback(async () => {
+    if (!Number.isFinite(id)) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${id}/returns`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) setExistingReturns(Array.isArray(data.data) ? data.data : []);
+    } catch (err) { /* ignore */ }
+  }, [id]);
+
+  useEffect(() => { loadReturns(); }, [loadReturns]);
+
+  useEffect(() => {
+    if (showReturnsModal && detail) {
+      // Initialize lines from received items
+      const lines = detail.items
+        .filter(it => parseFloat(String(it.quantity_received)) > 0)
+        .map(it => ({
+          purchase_order_item_id: it.id,
+          quantity: '',
+          reason: ''
+        }));
+      setReturnLines(lines);
+      setReturnError(null);
+    }
+  }, [showReturnsModal, detail]);
+
+  const submitReturns = useCallback(async () => {
+    if (!detail) return;
+    const items = returnLines
+      .filter(l => parseFloat(l.quantity) > 0)
+      .map(l => ({
+        purchase_order_item_id: l.purchase_order_item_id,
+        quantity: parseFloat(l.quantity),
+        reason: l.reason || undefined
+      }));
+    if (items.length === 0) {
+      setReturnError(t('detail.returns.noItems', 'Enter at least one return quantity') as string);
+      return;
+    }
+    setReturnSubmitting(true);
+    setReturnError(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${detail.id}/returns`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ items })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setReturnError(data?.message || (t('detail.returns.failed', 'Failed to submit return') as string));
+        return;
+      }
+      setShowReturnsModal(false);
+      loadReturns();
+    } catch (err) {
+      setReturnError(t('detail.returns.networkError', 'Network error') as string);
+    } finally {
+      setReturnSubmitting(false);
+    }
+  }, [detail, returnLines, t, loadReturns]);
 
   const fetchDetail = useCallback(async () => {
     if (!Number.isFinite(id)) return;
@@ -488,6 +562,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
       submitted: detail.submitted_at,
       confirmed: detail.confirmed_at,
       shipped: detail.shipped_at,
+      delivered: detail.shipped_at,
       partial_received: detail.shipped_at,
       received: detail.received_at,
       cancelled: detail.cancelled_at
@@ -496,7 +571,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
     return (
       <Timeline>
         {STAGES.map((stage, idx) => {
-          const active = !isCancelled && (stage === status || (stage === 'shipped' && status === 'partial_received'));
+          const active = !isCancelled && (stage === status || (stage === 'shipped' && status === 'partial_received') || (stage === 'delivered' && status === 'partial_received'));
           const done = !isCancelled && idx < stageIndex;
           return (
             <TimelineItem key={stage} active={active} done={done}>
@@ -557,16 +632,39 @@ const PurchaseOrderDetailPage: React.FC = () => {
             </ThemedButton>
           </>
         )}
-        {(s === 'shipped' || s === 'partial_received') && (
+        {(s === 'shipped' || s === 'delivered' || s === 'partial_received') && (
           <ThemedButton variant="primary" onClick={openReceive}>
             {t('detail.actions.receive')}
           </ThemedButton>
         )}
         {(s === 'submitted') && (
-          <ThemedButton variant="danger-outline" onClick={openCancel}>
-            {t('detail.actions.cancel')}
+          <>
+            <ThemedButton
+              variant="outline"
+              onClick={() => navigate(`/pos/purchase-orders/new?edit=${detail!.id}`)}
+            >
+              {t('detail.actions.edit')}
+            </ThemedButton>
+            <ThemedButton variant="danger-outline" onClick={openCancel}>
+              {t('detail.actions.cancel')}
+            </ThemedButton>
+          </>
+        )}
+        {(s === 'received' || s === 'partial_received' || s === 'delivered') && (
+          <ThemedButton
+            variant="outline"
+            onClick={() => setShowReturnsModal(true)}
+            title={t('detail.actions.returns', 'Request Return') as string}
+          >
+            ↩ {t('detail.actions.returns', 'Request Return')}
           </ThemedButton>
         )}
+        <ThemedButton
+          variant="outline"
+          onClick={() => window.open(`/pos/purchase-orders/${detail!.id}/print`, '_blank')}
+        >
+          🖨 {t('detail.actions.print', 'Print')}
+        </ThemedButton>
       </HeaderActions>
     );
   };
@@ -608,6 +706,19 @@ const PurchaseOrderDetailPage: React.FC = () => {
               <h3>{t('detail.timeline.title')}</h3>
               {renderTimeline()}
             </Section>
+
+            {(detail as any).tracking_info && (
+              <Section>
+                <DeliveryTimeline
+                  events={(detail as any).tracking_info?.events}
+                  carrier_name={(detail as any).tracking_info?.carrier_name}
+                  carrier_code={(detail as any).tracking_info?.carrier_code}
+                  tracking_number={(detail as any).tracking_info?.tracking_number}
+                  tracking_url={(detail as any).tracking_info?.tracking_url}
+                  estimated_arrival={(detail as any).tracking_info?.estimated_arrival}
+                />
+              </Section>
+            )}
 
             <Section>
               <h3>{t('detail.section.items')}</h3>
@@ -860,6 +971,88 @@ const PurchaseOrderDetailPage: React.FC = () => {
           </FormGroup>
           {shippedError && <ErrorBox>{shippedError}</ErrorBox>}
         </form>
+      </CommonModal>
+
+      {/* Sprint 6 — Returns Modal */}
+      <CommonModal
+        isOpen={showReturnsModal}
+        onClose={() => !returnSubmitting && setShowReturnsModal(false)}
+        title={t('detail.returns.title', 'Request Return') as string}
+        size="medium"
+        footer={
+          <>
+            <ModalButton type="button" onClick={() => setShowReturnsModal(false)} disabled={returnSubmitting}>
+              {t('common.close', 'Close')}
+            </ModalButton>
+            <ModalButton type="button" variant="primary" onClick={submitReturns} disabled={returnSubmitting}>
+              {returnSubmitting ? t('common.submitting', 'Submitting…') : t('detail.returns.submit', 'Submit Return')}
+            </ModalButton>
+          </>
+        }
+      >
+        <div style={{ padding: 12, background: '#FFFBEB', border: '1px solid #F59E0B', borderRadius: 8, fontSize: 13, color: '#78350F', marginBottom: 16 }}>
+          {t('detail.returns.hint', 'Specify return quantity per line. Returns require seller approval.')}
+        </div>
+
+        {existingReturns.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 6 }}>
+              {t('detail.returns.existing', 'Existing returns')}
+            </div>
+            <div style={{ display: 'grid', gap: 6 }}>
+              {existingReturns.map(r => (
+                <div key={r.id} style={{ padding: 8, border: '1px solid #E6EBF1', borderRadius: 6, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+                  <span>#{r.id} · qty {r.quantity} {r.unit || ''} · {r.reason || '—'}</span>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                    background: r.status === 'approved' ? '#ECFDF5' : r.status === 'rejected' ? '#FEF2F2' : '#FEF3C7',
+                    color: r.status === 'approved' ? '#065F46' : r.status === 'rejected' ? '#991B1B' : '#92400E'
+                  }}>{r.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          {returnLines.length === 0 ? (
+            <div style={{ padding: 16, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+              {t('detail.returns.noReceived', 'No received items to return') as string}
+            </div>
+          ) : returnLines.map((line, idx) => {
+            const item = detail?.items.find(it => it.id === line.purchase_order_item_id);
+            const maxQty = item ? parseFloat(String(item.quantity_received)) : 0;
+            return (
+              <div key={line.purchase_order_item_id} style={{ padding: 12, border: '1px solid #E6EBF1', borderRadius: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 8 }}>
+                  {item?.ingredient_name || `Item #${line.purchase_order_item_id}`}
+                </div>
+                <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 8 }}>
+                  {t('detail.returns.received', 'Received')}: {maxQty} {item?.ingredient_unit || ''}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8 }}>
+                  <FormInput
+                    type="number"
+                    min="0"
+                    max={maxQty}
+                    step="0.01"
+                    placeholder={`Max ${maxQty}`}
+                    value={line.quantity}
+                    onChange={(e) => setReturnLines(arr => arr.map((l, i) => i === idx ? { ...l, quantity: e.target.value } : l))}
+                  />
+                  <FormInput
+                    type="text"
+                    placeholder={t('detail.returns.reasonPlaceholder', 'Reason (optional)') as string}
+                    value={line.reason}
+                    onChange={(e) => setReturnLines(arr => arr.map((l, i) => i === idx ? { ...l, reason: e.target.value } : l))}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {returnError && <ErrorBox style={{ marginTop: 12 }}>{returnError}</ErrorBox>}
       </CommonModal>
     </Container>
   );

@@ -169,7 +169,7 @@
   "nav": {
     "dashboard": "대시보드",
     "orders": "주문",
-    "liveOrders": "실시간 주문",
+    "liveOrders": "라이브 오더",
     "orderHistory": "주문 내역",
     "menu": "메뉴",
     "categories": "카테고리",
@@ -259,7 +259,9 @@
     "branches": "지점",
     "franchiseMap": "가맹 지도",
     "tenancyMap": "입점 지도",
-    "branchMap": "지점 지도"
+    "branchMap": "지점 지도",
+    "incomingOrders": "라이브 오더",
+    "carriers": "운송업체"
   },
   "language": {
     "en": "English",
@@ -578,8 +580,12 @@
         "empty": "읽지 않은 알림이 없습니다"
       }
     },
-    "drawer": { "title": "알림" },
-    "page": { "title": "알림함" },
+    "drawer": {
+      "title": "알림"
+    },
+    "page": {
+      "title": "알림함"
+    },
     "filter": {
       "all": "전체",
       "notice": "공지",
@@ -611,6 +617,20 @@
       "all": "새 알림이 도착하면 여기에 표시됩니다.",
       "unread": "지금 읽지 않은 항목이 없습니다.",
       "search": "검색 결과가 없습니다."
+    }
+  },
+  "delivery": {
+    "title": "배송 타임라인",
+    "track": "배송 추적 →",
+    "estimatedArrival": "예상 도착:",
+    "cancelled": "주문 취소",
+    "steps": {
+      "submitted": "발주",
+      "confirmed": "확정",
+      "shipped": "배송 시작",
+      "inTransit": "운송 중",
+      "received": "수령",
+      "delivered": "도착"
     }
   }
 }

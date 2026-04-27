@@ -146,8 +146,8 @@
     "joinWaitlist": "准备就绪后我们会通知您。"
   },
   "orders": {
-    "title": "进货订单",
-    "subtitle": "买家提交的采购订单。",
+    "title": "实时订单",
+    "subtitle": "实时收到的采购订单",
     "stats": {
       "pending": "待审核",
       "confirmed": "已确认",
@@ -168,13 +168,19 @@
       "total": "总额",
       "status": "状态",
       "createdAt": "创建日期",
-      "actions": "操作"
+      "actions": "操作",
+      "delivery": "配送",
+      "time": "时间",
+      "amount": "金额",
+      "itemsUnit": "件"
     },
     "actions": {
       "view": "查看",
       "confirm": "确认",
       "ship": "标记发货",
-      "reject": "拒绝"
+      "reject": "拒绝",
+      "deliver": "标记已送达",
+      "editTracking": "编辑追踪"
     },
     "confirm": {
       "title": "确认订单",
@@ -200,7 +206,13 @@
       "submit": "拒绝订单",
       "cancel": "取消"
     },
-    "empty": "此状态下没有进货订单。"
+    "empty": "此状态下没有进货订单。",
+    "sound": {
+      "on": "声音开",
+      "off": "声音关"
+    },
+    "emptyHint": "新订单到达时将在此处实时显示。",
+    "loading": "加载中…"
   },
   "tradeInvoicesPage": {
     "title": "交易发票",
@@ -269,6 +281,7 @@
     "pending_payment": "待付款",
     "payment_submitted": "已提交付款",
     "paid": "已付款",
-    "overdue": "逾期"
+    "overdue": "逾期",
+    "delivered": "已送达"
   }
 }

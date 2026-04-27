@@ -1418,5 +1418,27 @@
       "expired": "已过期",
       "revoked": "已撤销"
     }
+  },
+  "carriers": {
+    "title": "承运商",
+    "subtitle": "卖家发货时使用的承运商",
+    "add": "添加承运商",
+    "addTitle": "添加承运商",
+    "empty": "暂无承运商",
+    "codeHint": "仅 a-z, 0-9, _",
+    "templateHint": "使用 {tracking_number} 作为占位符。",
+    "fields": {
+      "name": "名称",
+      "code": "代码",
+      "template": "追踪 URL 模板",
+      "logoUrl": "Logo URL",
+      "country": "国家",
+      "sortOrder": "排序",
+      "status": "状态",
+      "active": "活动"
+    },
+    "errors": {
+      "required": "代码和名称是必填项"
+    }
   }
 }

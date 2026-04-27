@@ -1,156 +1,104 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-27 (Supplier Portal Polish — Sidebar/Dashboard/Inventory Transaction/Demo Data 통일)
-**버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 v3.19
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-04-27 (Sprint 5+6 완성 — 발주/주문 라이프사이클 통합)
+**버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 `/배포` 시 v3.19
+**작업 상태:** 완료 — 다음 세션 운영 테스트 → 배포
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 — 2026-04-27)
+### 완료된 작업 (이번 세션 — 2026-04-27 후속 #1~#5)
 
-**Supplier Portal Polish — Brand/Foodcourt 와 동일 패턴으로 통일성 + 모든 메뉴 데이터 노출**
+**🎯 Sprint 5+6 — 발주/주문 라이프사이클 완성**
 
-#### 1) Sidebar 재구성
-- "Settings" NavTitle 본문 + 공통 영역 두 번 렌더 fix
-- Operations / Plans & Payments / Communication 3 섹션 + 공통 Settings
-- Profile disabled 제거 → `/pos/profile` 정상 사용
+#### Sprint 5 (Smart Reorder + Live Sales Order + Delivery Tracking)
+- Backend: Carrier 모델/라우트 + 5 시드, poRealtimeService (events + emit + carrier 매칭), bulk PO endpoint, Socket.IO seller-order-created/updated, /api/buyer-sellers
+- Frontend: IncomingOrdersView Socket.IO + chime, BulkOrderModal + multi-select, useOrderModal 실 API 연결, StockListSection 추천 컬럼, DeliveryTimeline 공유 컴포넌트, CarrierAdminPage, PO Phase 2 사이드바 라벨
 
-#### 2) Dashboard 재작성 (313 → 540줄)
-- 8 KPI: pending/confirmed/shipped/received_this_month + monthly_revenue/outstanding/active_customers/low_stock
-- 6개월 매출 추이 LineChart (recharts)
-- Alerts panel (clickable deep-link)
-- Recent Orders + Recent Trade Invoices 2-col 테이블 (customer name resolve)
-- Backend `/api/supplier/dashboard` 응답 18 필드 확장
+#### Sprint 6 (Lifecycle Completion)
+- PurchaseOrder.status enum +`'delivered'`. Invoice.status +`'credit'`
+- POST /api/seller-orders/:id/deliver, PUT /api/seller-orders/:id/tracking, Buyer cancel/edit submitted, ship→supplier stock 차감
+- PurchaseOrderReturn 모델 + 4 endpoints (initiate/approve/reject/list) + Credit Note 자동 + 양쪽 stock reversal
+- PO PrintView 신규 (window.print A4)
+- 마이그레이션: sprint5/sprint6 (Carrier 테이블 + status enum + returns 테이블)
 
-#### 3) Inventory Transaction (Sprint 1 의 TODO 마무리)
-- 신규 모델 `SupplierInventoryTransaction` + 테이블 (transaction_type/quantity_change/stock_after/reason/reference/batch_no)
-- adjust/receive 자동 기록
-- `/api/supplier-inventory/transactions` endpoint 정상 구현
-- Frontend Tab 구조 (Stock List + Transaction History) + 색상 (양수 녹색/음수 빨강)
-- 시드 8건 (Initial 6 + Receive 1 + Adjust 1)
+#### Sprint 6 마무리 (Live Orders Restaurant 패턴 일치)
+- 사이드바 BG/FG/Supplier 모두 Live Orders → Dashboard 직후
+- NavIcon `hasPending` pulse 만 (NavCount/NavDot 폐기)
+- AudioToggleButton + speaker SVG (emoji 폐기)
+- DataTable 형식 (카드 그리드 폐기) + DatePeriodFilter + StatusTabs/TabBadge + StatisticsBar
+- Backend `livePoCount` badge + `/api/seller-orders` date filter
+- 새 PO 행 highlight (#EEF2FF + NEW 배지)
+- TDZ crash fix (cross-chunk styled → 인라인 복제)
+- po_number race condition fix (MAX-based)
 
-#### 4) Demo Data 종합 시드 (`scripts/seed-demo-supplier-data.js`)
-- demo-supplier@purplehere.com (User#227, SupplierCompany#20 `is_demo=true`)
-- 6 Products + 3 Categories (Vegetables/Meat/Pantry)
-- 1 Active Contract w/ Restaurant#38 (monthly_soa)
-- 3 IngredientSellerProduct mapping
-- 4 PurchaseOrders (submitted/confirmed/shipped/received)
-- 1 Trade Invoice (TRD-SUP20-20260415-001 RM405 pending_payment)
-- 2 Subscription Invoices (3월 paid + 4월 pending)
-- 2 Notices + 2 SupportTickets
+### 데이터 상태 (Irene 직접 운영 테스트 가능)
+- R#38 PO: draft 1 / submitted 12 / confirmed 4 / shipped 7 / received 16
+- Carriers: 5 active (Lalamove/Grab/JNT/Ninja Van/Pos Laju)
+- Returns: approved 1 + rejected 1
+- Credit Notes: 1
+- 모든 lifecycle 상태 + Returns/Credit Note 데모 가능
 
-#### 5) Notices/System Inquiry/Subscription Invoices wiring
-- `/pos/supplier/notices` 라우트 추가 (BrandNoticesPage 재사용)
-- NoticeRecipient user_id 매칭 → supplier 자동 처리
-- SupportTicket customerId 매칭 (변경 없이 시드만)
-- System Admin 발행 supplier 구독 invoice 2건 시드
-
-#### 6) Pricing Supplier 탭
-- VALID_TABS / TAB_ORDER / TAB_LABELS / plan_target type 4곳 'supplier' 추가
-- PlanPrice 시드: Basic MYR 99/990, Advanced MYR 299/2990 (KRW × 300)
-
-#### 7) LoginPage Demo 카드
-- DEMO_ACCOUNTS에 Supplier Admin 카드 추가 (보라 #9333EA)
-
-#### 8) Signup 에러 안내
-- `result.error?.message` 우선 노출
-- MX 검증 dev/prod 모두 유지 + 백엔드 메시지 그대로 사용자에게
-
-#### 9) Path-level middleware fix (6개 라우터 silent 버그)
-- supplier-directory.js, purchase-orders.js, purchase-invoices.js, ingredient-seller-products.js, foodcourt-products.js, foodcourt-inventory.js
-- `app.use('/api', router)` 광범위 prefix + router-level `requireBuyerRole`/`requireFoodcourtScope` 가 다른 역할 요청까지 차단하던 cross-role silent 버그
-- path-level use로 좁힘
-- 메모리에 패턴 저장 (`reference_path_level_middleware.md`)
-
-#### 10) addon-modules public 처리
-- `/api/addon-modules?active_only=true` 만 공개 (Pricing 카탈로그용)
-- 그 외 인증 유지
-
-#### 11) i18n 4언어 36+ 신규 키
-- `supplier.json` dashboard.* + inventory.history.* + inventory.tabs.*
-
-### 검증 결과
-- 빌드 `main.2c0a88a3.js` exit 0
-- Supplier 모든 endpoint 15/15 200 OK + 데이터 노출
-- 회귀 health-check 43/43 PASS
-- Buyer (demo-restaurant) / Brand (demo-brand) 측 endpoint 영향 없음
-
-### 핵심 파일 (이번 세션)
-**Backend (신규)**
-- `models/SupplierInventoryTransaction.js`
-- `scripts/seed-demo-supplier-data.js`
-
-**Backend (수정)**
-- `routes/supplier.js` — dashboard 응답 확장
-- `routes/supplier-inventory.js` — transaction 자동 기록 + /transactions
-- `routes/supplier-directory.js`, `purchase-orders.js`, `purchase-invoices.js`, `ingredient-seller-products.js`, `foodcourt-products.js`, `foodcourt-inventory.js` — path-level middleware
-- `routes/addon-modules.js` — active_only=true public
-- `utils/emailValidator.js` — MX 메시지 노출 fix
-- `models/index.js`
-
-**Frontend (수정)**
-- `components/Layout/MainLayout.tsx` — 사이드바 재구성 + Profile 활성
-- `pages/Supplier/SupplierDashboard.tsx` — 재작성
-- `pages/Supplier/SupplierInventoryPage.tsx` — Tab + Transaction History
-- `pages/Login/LoginPage.tsx` — Supplier 데모 카드
-- `pages/Landing/SignupPage.tsx` — 에러 메시지
-- `pages/Landing/PricingPage.tsx` — Supplier 탭
-- `App.tsx` — `/pos/supplier/notices` 라우트
-- `public/locales/{en,ko,zh,ms}/supplier.json`
-
-### 미배포 [Unreleased] 누적 (다음 `/배포` 시 v3.19)
-- Onboarding wizard 강화
-- 알림 센터 (Inbox) v1
-- 보안 fix (POST /api/restaurants)
-- Trial 만료 자동 알림
-- Scheduler 모니터링 대시보드
-- 구독 변경 히스토리 페이지
-- Sprint 1 — Supply Chain Design 1 (Seller Product & Inventory)
-- Sprint 2 — Supply Chain Design 2 (Supplier Contract System)
-- Sprint 3 — Supply Chain Design 3 (Purchase Order & Receiving)
-- Sprint 4 — Supply Chain Design 4 (Seller Order Mgmt + Trade Invoice + Monthly SOA)
-- **Supplier Portal Polish** ← 이번 세션
+### 검증 결과 (누적)
+- Sprint 5 38/38 + Sprint 6 29/29 + Phase 2 21/21 + Live Orders 마무리 9/9 = 97+ E2E
+- health-check 43/43 PASS
+- Stage 0 hydration 0 warning
+- TS 0 error
+- Build `main.bd3df29e.js` deployed
+- 3 라우트 (Supplier/BG/FG Live Orders) 모두 HTTP 200
 
 ### 다음 할 일
 
-**다음 섹션 작업 — Supplier Portal Polish Phase 2** (DEVELOPMENT_PLAN.md "다음 섹션 작업" 참조):
+**Irene 직접 운영 테스트 — `docs/SPRINT_5_6_TEST_GUIDE.md`**
 
-1. **SupplierDashboard 추가 보강** (BG/FG 1136~1160줄 패턴 도달)
-   - Quick Actions Grid (Add Product / View Pending Orders / Issue Trade Invoice / View Customers)
-   - Setup Status Panel (신규 supplier 온보딩 진행률)
-   - Top Customers PieChart (이번 달 매출 buyer별 분포)
-   - Receivables Aging table (0-30일/31-60일/60일+ 미수금)
+1. 시나리오 1: Restaurant 단일 발주
+2. 시나리오 2: 다중 Bulk 발주
+3. 시나리오 3: Supplier Live Orders 실시간 + 사운드 + 필터
+4. 시나리오 4: Confirm → Ship (carrier select) → Edit Tracking → Mark Delivered
+5. 시나리오 5: Restaurant Receive (Trade Invoice 자동)
+6. 시나리오 6: Returns → Approve (Credit Note 자동)
+7. 시나리오 7: PO Print
+8. 시나리오 8: System Admin Carriers CRUD
 
-2. **SupplierContractsPage 보강**
-   - 계약 종료 알림 (end_date 임박)
-   - 계약별 누적 매출/발주 건수 표시
+**검증 후 `/배포` v3.19 운영 배포** (마이그레이션: sprint1~4 + sprint5 + sprint6 순서)
 
-3. **Sales Order/Trade Invoice 흐름 보강**
-   - PO ship 시 SupplierProduct.current_stock 자동 차감 + SupplierInventoryTransaction (transaction_type='po_shipped') 자동 기록
-   - Trade Invoice 결제 시 SupplierCompany 매출 누적
+### 핵심 파일 (이번 세션)
 
-4. **Post-MVP Supply Chain**
-   - 외부 carrier API 연동 (배송 추적)
-   - Returns / Credit Notes
-   - Auto-pay (carded billing)
-   - Real-time Socket.IO 알림
-   - Brand seller 산하 매장 일괄 인보이스
+**Backend 신규 (5)**
+- `models/Carrier.js`, `models/PurchaseOrderReturn.js`
+- `routes/carriers.js`, `routes/buyer-sellers.js`, `routes/po-returns.js`
+- `services/poRealtimeService.js`
+- `scripts/sprint5-migration.js`, `scripts/sprint6-migration.js`
 
-**그 외 옵션:**
-- (a) `/배포` v3.19 — 운영 배포 (밤에 — Irene 결정)
-- (b) DEVELOPMENT_PLAN.md 의 다른 미완료 항목
+**Backend 수정 (6)**
+- `models/PurchaseOrder.js` (status enum +'delivered'), `models/Invoice.js` (status +'credit'), `models/index.js`
+- `routes/purchase-orders.js` (bulk + Phase 2 cost + state machine + MAX po_number)
+- `routes/seller-orders.js` (deliver + tracking + supplier stock 차감 + emit)
+- `routes/badgeCounts.js` (livePoCount), `services/socketService.js` (join-seller/buyer)
+- `server.js` (라우트 mount)
 
-### 운영 배포 시 마이그레이션 순서 (v3.19)
-1. `node scripts/sprint1-supply-chain-migration.js`
-2. Sequelize sync (16 신규 테이블 + supplier_inventory_transactions)
-3. `node scripts/seed-supplier-modules-and-plans.js`
-4. `node scripts/seed-buyer-supplier-modules.js`
-5. `node scripts/seed-purchase-orders-module.js`
-6. `node scripts/sprint4-migration.js`
-7. (선택, dev에만) `node scripts/seed-demo-supplier-data.js`
-8. PM2 restart + frontend rebuild
+**Frontend 신규 (5)**
+- `components/Inventory/DeliveryTimeline.tsx`
+- `components/Inventory/hooks/useBulkOrder.ts`, `components/Inventory/modals/BulkOrderModal.tsx`
+- `pages/Admin/CarriersPage.tsx`
+- `pages/PurchaseOrders/PurchaseOrderPrintPage.tsx`
+
+**Frontend 수정 (다수)**
+- `pages/IncomingOrders/IncomingOrdersView.tsx` (Live Orders 전면 개편)
+- `components/Layout/MainLayout.tsx` (사이드바 + livePoCount)
+- `pages/PurchaseOrders/PurchaseOrderDetailPage.tsx` (Returns + Print + DeliveryTimeline)
+- `components/Inventory/InventoryManager.tsx`, `StockListSection.tsx`, `OrderModal.tsx`, `useOrderModal.ts`
+- `pages/PurchaseOrders/NewPurchaseOrderPage.tsx`, `App.tsx`
+- i18n 4 언어 (en/ko/zh/ms) — common/supplier/admin/inventory/purchaseOrders
+
+**문서 (수정 + 신규)**
+- `docs/SELLER_ORDER_MANAGEMENT_SYSTEM.md` (Sprint 5/6 섹션 추가)
+- `docs/PURCHASE_ORDER_SYSTEM.md` (Phase 2 섹션)
+- `docs/SPRINT_5_6_TEST_GUIDE.md` (신규 — 8 시나리오)
+- `CHANGELOG.md` Unreleased 2026-04-27 추가
+- `DEVELOPMENT_PLAN.md` Sprint 5+6 섹션
+- Memory: `reference_live_orders_pattern.md` 추가
 
 ---
 

@@ -146,8 +146,8 @@
     "joinWaitlist": "준비가 되면 알려 드리겠습니다."
   },
   "orders": {
-    "title": "수신 주문",
-    "subtitle": "구매자가 제출한 발주서 목록입니다.",
+    "title": "라이브 오더",
+    "subtitle": "실시간 들어오는 발주",
     "stats": {
       "pending": "검토 대기",
       "confirmed": "확정됨",
@@ -168,13 +168,19 @@
       "total": "합계",
       "status": "상태",
       "createdAt": "생성일",
-      "actions": "작업"
+      "actions": "작업",
+      "delivery": "배송",
+      "time": "시간",
+      "amount": "금액",
+      "itemsUnit": "건"
     },
     "actions": {
       "view": "보기",
       "confirm": "확정",
       "ship": "배송 처리",
-      "reject": "거부"
+      "reject": "거부",
+      "deliver": "배송 완료",
+      "editTracking": "배송정보 수정"
     },
     "confirm": {
       "title": "주문 확정",
@@ -200,7 +206,13 @@
       "submit": "거부",
       "cancel": "취소"
     },
-    "empty": "해당 상태의 수신 주문이 없습니다."
+    "empty": "해당 상태의 수신 주문이 없습니다.",
+    "sound": {
+      "on": "소리 켜짐",
+      "off": "소리 꺼짐"
+    },
+    "emptyHint": "새 발주가 도착하면 실시간으로 여기에 표시됩니다.",
+    "loading": "불러오는 중…"
   },
   "tradeInvoicesPage": {
     "title": "거래 인보이스",
@@ -269,6 +281,7 @@
     "pending_payment": "결제 대기",
     "payment_submitted": "결제 제출됨",
     "paid": "결제 완료",
-    "overdue": "연체"
+    "overdue": "연체",
+    "delivered": "도착"
   }
 }

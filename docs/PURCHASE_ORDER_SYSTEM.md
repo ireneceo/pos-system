@@ -856,3 +856,124 @@ PurchaseOrderItem.belongsTo(IngredientSellerProduct, { foreignKey: 'ingredient_s
 17. Anon → 401
 18. Cross-role → 403
 
+---
+
+# 📌 Phase 2 — Contract Gate + Cost Sync (2026-04-27)
+
+## 배경
+Sprint 1~4 완료 후 점검 결과, **Restaurant 가 buyer 일 때 BG/FG 발주에 대해 계약(소속) 검증이 누락** + **Receive 시 RestaurantIngredientCost 갱신 누락** + **Seller product↔Ingredient 매핑이 optional fallback** 인 갭 발견. 직전 Supplier 측 흐름은 이미 구현돼 있고, 본 Phase 는 buyer-side 검증 + cost 동기화만 보강.
+
+## A. 확정 정책
+
+### A-1. Seller 별 발주 가능 조건 (Irene 확정 2026-04-27)
+| seller_type | Restaurant 발주 가능 조건 | 모델 참조 |
+|---|---|---|
+| `supplier` | `SupplierContract` status='active' 존재 | 기존 그대로 |
+| `brand` (BG) | `Restaurant.brand_id === seller_entity_id` | **소속 자체가 계약** (Brand-Restaurant Contract 별도 관리되므로 PO 시점 검증 불필요) |
+| `foodcourt` (FG) | `Restaurant.foodcourt_id === seller_entity_id` | 동일 (입점 자체가 계약) |
+| `system_admin` (SA) | 항상 가능 | POS 자체 카탈로그 |
+
+### A-2. Cost 모델
+**가중평균** — Receive 시 `RestaurantIngredientCost` upsert:
+```
+new_cost = (old_stock × old_cost + incoming × incoming_cost_per_ingredient_unit) / new_stock
+```
+- `incoming_cost_per_ingredient_unit = item.unit_price / item.unit_conversion`
+- InventoryBatch 별 `unit_cost` 는 그대로 유지 (FIFO 출고 시 사용)
+- Restaurant 가 buyer 일 때만 적용 (Brand/Foodcourt buyer 는 Phase 3 범위)
+
+### A-3. Seller Product 매핑 강제
+- `seller_type ∈ {supplier, brand, foodcourt}` → `IngredientSellerProduct` (`is_active=true`) 매핑 필수. 없으면 400 거부
+- `seller_type === 'system_admin'` → 매핑 없이 발주 허용 (SA 카탈로그)
+
+## B. Backend 변경
+
+### B-1. `routes/purchase-orders.js`
+**`findActiveSupplierContract` → `verifySellerRelation(sellerType, sellerId, buyerEntity)` 통합 헬퍼:**
+- `supplier` → SupplierContract status='active' 조회 → `{ allowed, contractId }`
+- `brand` → Restaurant.brand_id === sellerId 검증 → `{ allowed, contractId: null }`
+- `foodcourt` → Restaurant.foodcourt_id === sellerId 검증 → `{ allowed, contractId: null }`
+- `system_admin` → `{ allowed: true, contractId: null }`
+- buyer.type !== 'restaurant' 인데 brand/foodcourt seller 발주 시도 → 거부 (Restaurant buyer 만 BG/FG 발주 가능)
+
+**POST `/purchase-orders` 변경:**
+- 기존 `seller_type === 'supplier'` 분기 제거 → 모든 seller_type 에 대해 `verifySellerRelation` 호출
+- Item 매핑 검증: seller≠system_admin 시 `IngredientSellerProduct` 활성 매핑 필수, 없으면 400 `MAPPING_REQUIRED`
+
+**POST `/purchase-orders/:id/receive` 변경:**
+- Receive 루프 안에 RestaurantIngredientCost upsert 추가 (Restaurant buyer 한정):
+  ```js
+  if (po.entity_type === 'restaurant') {
+    const incomingCostPerIng = (item.unit_price || 0) / (item.unit_conversion || 1);
+    const newAvg = oldStock > 0
+      ? (oldStock * oldCost + stockDelta * incomingCostPerIng) / newStock
+      : incomingCostPerIng;
+    await RestaurantIngredientCost.upsert({
+      restaurant_id: po.entity_id,
+      ingredient_id: item.ingredient_id,
+      unit_cost: round(newAvg, 4),
+      notes: `PO ${po.po_number}`,
+      updated_by: req.user.id
+    }, { transaction: t });
+  }
+  ```
+- Ingredient master 의 `unit_cost` 는 건드리지 않음 (brand-shared ingredient 는 brand cost 가 master, restaurant override 만 갱신)
+
+### B-2. 신규 `routes/buyer-sellers.js`
+`GET /api/buyer/sellers` — Restaurant buyer 한정 (BG/FG buyer 는 supplier 만):
+- Supplier: SupplierContract status='active' 의 SupplierCompany 목록
+- Brand: Restaurant.brand_id 의 Brand (있으면 1건)
+- Foodcourt: Restaurant.foodcourt_id 의 Foodcourt (있으면 1건)
+- System Admin: 항상 1건 (POS 카탈로그)
+
+응답 형식:
+```json
+{ "success": true, "data": [
+  { "seller_type": "supplier", "seller_id": 17, "name": "ABC Supplies", "logo_url": "..." },
+  { "seller_type": "brand", "seller_id": 5, "name": "My Brand", "logo_url": "..." },
+  { "seller_type": "foodcourt", "seller_id": 2, "name": "Mall Foodcourt", "logo_url": "..." },
+  { "seller_type": "system_admin", "seller_id": null, "name": "POS Catalog" }
+]}
+```
+
+`server.js` 에 `app.use('/api/buyer', authenticateToken, requireBuyerRole, buyerSellersRouter)` path-level mount.
+
+## C. Frontend 변경
+
+### C-1. `pages/PurchaseOrders/NewPurchaseOrderPage.tsx`
+- 기존 supplier-directory fetch 를 `/api/buyer/sellers` 로 교체
+- Seller picker 카드에 BG/FG 도 동일 UI 로 노출 (TypeBadge 4 variant)
+- "발주 가능한 seller 가 0건" 빈 상태 처리 (계약된 supplier 없고 brand/foodcourt 미소속)
+
+### C-2. i18n
+`purchaseOrders.json` 4 언어 — 신규 키:
+- `new.seller.type.system_admin`
+- `new.seller.empty` ("발주 가능한 거래처가 없습니다. Supplier 와 계약하거나 Brand/Foodcourt 에 입점해 주세요.")
+
+## D. 검증 (Phase 2)
+
+### D-1. test-phase2-po-integration.js (신규)
+1. Setup: Restaurant#R 이 brand#B 소속, foodcourt#F 입점, supplier#S 와 active contract
+2. R → S 발주 (active contract) → 201
+3. R → S 발주 (계약 종료된 supplier) → 400 NO_ACTIVE_CONTRACT
+4. R → B (Restaurant.brand_id 일치) 발주 → 201
+5. R → 다른 brand B' 발주 → 400 NO_ACTIVE_CONTRACT
+6. R → F (Restaurant.foodcourt_id 일치) 발주 → 201
+7. R → 다른 foodcourt F' 발주 → 400 NO_ACTIVE_CONTRACT
+8. R → SA 발주 → 201 (항상 허용)
+9. Mapping 없는 ingredient × supplier 발주 → 400 MAPPING_REQUIRED
+10. SA 발주는 매핑 없어도 → 201
+11. Receive 시 RestaurantIngredientCost upsert 가중평균 검증:
+    - 첫 PO: stock=0 → cost = incomingCost
+    - 두 번째 PO 다른 단가: cost = 가중평균 (수동 계산값과 일치)
+12. GET /api/buyer/sellers (Restaurant) → supplier(active 만) + brand(있으면) + foodcourt(있으면) + system_admin
+13. Health-check 회귀 통과
+
+### D-2. 회귀 (기존 흐름 깨지지 않음)
+- 기존 supplier PO → 정상 (active contract 검증 동일)
+- BG/FG seller-side incoming-orders → 정상 (변경 없음)
+- Trade Invoice 자동 발행 → 정상 (서비스 로직 변경 없음)
+
+## E. 배포 마이그레이션
+없음 (DB 스키마 변경 없음, 시드 변경 없음). 코드 변경만으로 적용.
+

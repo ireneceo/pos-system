@@ -50,6 +50,7 @@ router.get('/', authenticateToken, async (req, res) => {
       notices: 0,
       invoices: 0,
       pendingOrders: 0,
+      livePoCount: 0,  // Sprint 6: Live Orders (incoming PO submissions)
       unreadComments: {
         notices: 0,
         systemInquiry: 0,
@@ -237,6 +238,32 @@ router.get('/', authenticateToken, async (req, res) => {
       counts.unreadComments.operationInquiry = await countUnreadComments(
         userId, 'operation_ticket', myOpTickets.map(t => t.id)
       );
+    }
+
+    // --- Live Orders (Sprint 6): incoming PO submissions for sellers ---
+    try {
+      const { PurchaseOrder, SupplierCompany } = require('../models');
+      let sellerWhere = null;
+      if (role === 'Supplier Admin') {
+        const company = await SupplierCompany.findOne({ where: { owner_id: userId }, attributes: ['id'] });
+        if (company) sellerWhere = { seller_type: 'supplier', seller_entity_id: company.id };
+      } else if (role === 'Brand General' || role === 'Brand Manager') {
+        const brandId = user.brand_id || user.brandId;
+        if (brandId) sellerWhere = { seller_type: 'brand', seller_entity_id: parseInt(brandId, 10) };
+      } else if (role === 'Foodcourt General' || role === 'Foodcourt Manager') {
+        const foodcourtId = user.foodcourt_id || user.foodcourtId;
+        if (foodcourtId) sellerWhere = { seller_type: 'foodcourt', seller_entity_id: parseInt(foodcourtId, 10) };
+      } else if (role === 'System Admin') {
+        // SA can see all submitted POs
+        sellerWhere = {};
+      }
+      if (sellerWhere !== null) {
+        counts.livePoCount = await PurchaseOrder.count({
+          where: { ...sellerWhere, status: 'submitted' }
+        });
+      }
+    } catch (e) {
+      console.error('[badge-counts] livePoCount error:', e.message);
     }
 
     res.json({ success: true, data: counts });

@@ -39,5 +39,18 @@
   "stockTakePage.regularStockTakesHelpReduceLossAndImproveInventoryAccuracy": "定期盘点有助于减少损失并提高库存准确性",
   "stockTakePage.weRecommendDoingAStockTakeAtLeastOnceAWeek": "我们建议至少每周进行一次盘点",
   "stockTakePage.readyToStart": "准备好开始了吗？",
-  "stockTakePage.previousStockTakes": "之前的盘点"
+  "stockTakePage.previousStockTakes": "之前的盘点",
+  "bulkOrder": {
+    "title": "批量订单 — 按卖家",
+    "sendAll": "全部发送",
+    "sending": "发送中…",
+    "cancel": "取消",
+    "close": "关闭",
+    "successTitle": "订单发送成功",
+    "successHint": "卖家将收到实时通知。",
+    "empty": "未选择任何商品。请先选择有首选卖家映射的低库存原料。",
+    "grandTotal": "总计",
+    "stockShort": "当前",
+    "minShort": "最低"
+  }
 }

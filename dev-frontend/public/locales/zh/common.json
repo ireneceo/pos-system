@@ -259,7 +259,9 @@
     "branches": "分店",
     "franchiseMap": "加盟地图",
     "tenancyMap": "入驻地图",
-    "branchMap": "分店地图"
+    "branchMap": "分店地图",
+    "incomingOrders": "实时订单",
+    "carriers": "承运商"
   },
   "language": {
     "en": "English",
@@ -578,8 +580,12 @@
         "empty": "没有未读通知"
       }
     },
-    "drawer": { "title": "通知" },
-    "page": { "title": "收件箱" },
+    "drawer": {
+      "title": "通知"
+    },
+    "page": {
+      "title": "收件箱"
+    },
     "filter": {
       "all": "全部",
       "notice": "公告",
@@ -611,6 +617,20 @@
       "all": "新通知将显示在这里。",
       "unread": "目前没有未读项目。",
       "search": "没有符合的搜索结果。"
+    }
+  },
+  "delivery": {
+    "title": "配送时间表",
+    "track": "追踪 →",
+    "estimatedArrival": "预计到达:",
+    "cancelled": "订单取消",
+    "steps": {
+      "submitted": "已提交",
+      "confirmed": "已确认",
+      "shipped": "已发货",
+      "inTransit": "运输中",
+      "received": "已收货",
+      "delivered": "已送达"
     }
   }
 }

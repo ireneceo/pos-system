@@ -1418,5 +1418,27 @@
       "expired": "만료",
       "revoked": "취소"
     }
+  },
+  "carriers": {
+    "title": "운송업체",
+    "subtitle": "발주 배송 시 판매자가 사용하는 운송업체",
+    "add": "운송업체 추가",
+    "addTitle": "운송업체 추가",
+    "empty": "운송업체 없음",
+    "codeHint": "a-z, 0-9, _ 만 가능",
+    "templateHint": "{tracking_number} 자리표시자를 사용하세요.",
+    "fields": {
+      "name": "이름",
+      "code": "코드",
+      "template": "추적 URL 템플릿",
+      "logoUrl": "로고 URL",
+      "country": "국가",
+      "sortOrder": "정렬",
+      "status": "상태",
+      "active": "활성"
+    },
+    "errors": {
+      "required": "코드와 이름은 필수입니다"
+    }
   }
 }

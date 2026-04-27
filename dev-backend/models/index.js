@@ -59,6 +59,8 @@ const PurchaseOrder = require('./PurchaseOrder');
 const PurchaseOrderItem = require('./PurchaseOrderItem');
 const InventoryTransaction = require('./InventoryTransaction');
 const SupplierInventoryTransaction = require('./SupplierInventoryTransaction');
+const Carrier = require('./Carrier');
+const PurchaseOrderReturn = require('./PurchaseOrderReturn');
 const StockTake = require('./StockTake');
 const StockTakeItem = require('./StockTakeItem');
 const StockAlert = require('./StockAlert');
@@ -798,6 +800,8 @@ module.exports = {
   SupplierBrand,
   InventoryTransaction,
   SupplierInventoryTransaction,
+  Carrier,
+  PurchaseOrderReturn,
   StockTake,
   StockTakeItem,
   StockAlert,

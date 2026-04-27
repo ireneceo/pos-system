@@ -1418,5 +1418,27 @@
       "expired": "Expired",
       "revoked": "Revoked"
     }
+  },
+  "carriers": {
+    "title": "Carriers",
+    "subtitle": "Delivery carriers used by sellers when shipping purchase orders",
+    "add": "Add Carrier",
+    "addTitle": "Add Carrier",
+    "empty": "No carriers yet",
+    "codeHint": "a-z, 0-9, _",
+    "templateHint": "Use {tracking_number} as the placeholder.",
+    "fields": {
+      "name": "Name",
+      "code": "Code",
+      "template": "Tracking URL Template",
+      "logoUrl": "Logo URL",
+      "country": "Country",
+      "sortOrder": "Sort",
+      "status": "Status",
+      "active": "Active"
+    },
+    "errors": {
+      "required": "Code and Name are required"
+    }
   }
 }

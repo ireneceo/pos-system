@@ -39,6 +39,7 @@ import {
   StockItemType,
   DeleteTarget,
 } from '../types';
+import { SuggestionRow } from '../hooks/useBulkOrder';
 
 type StockTypeFilter = 'all' | 'ingredients' | 'general_stock';
 type StatusFilter = string;
@@ -89,6 +90,11 @@ interface Props {
 
   // Delete
   onDelete: (target: DeleteTarget) => void;
+
+  // Sprint 5: bulk selection + suggestions
+  suggestionsById?: Map<number, SuggestionRow>;
+  selectedIds?: Set<number>;
+  onToggleSelect?: (id: number) => void;
 }
 
 const StockListSection: React.FC<Props> = ({
@@ -115,6 +121,9 @@ const StockListSection: React.FC<Props> = ({
   onWaste,
   onSettings,
   onDelete,
+  suggestionsById,
+  selectedIds,
+  onToggleSelect,
 }) => {
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -348,7 +357,8 @@ const StockListSection: React.FC<Props> = ({
             </EmptyState>
           ) : (
             <Table>
-              <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px">
+              <InventoryTableHeader columns="36px 2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px">
+                <span></span>
                 <span className="col-info">Ingredient</span>
                 <span>Status</span>
                 <span>Current Stock</span>
@@ -359,8 +369,25 @@ const StockListSection: React.FC<Props> = ({
                 <span>Order</span>
                 <span className="col-action">Actions</span>
               </InventoryTableHeader>
-              {filteredInventory.map(item => (
-                <InventoryTableRow key={item.id} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px">
+              {filteredInventory.map(item => {
+                const sugg = suggestionsById?.get(item.id);
+                const hasMapping = !!sugg && !!sugg.seller_type;
+                const isChecked = selectedIds?.has(item.id) || false;
+                return (
+                <InventoryTableRow key={item.id} columns="36px 2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {hasMapping && onToggleSelect ? (
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => onToggleSelect(item.id)}
+                        aria-label={`Select ${item.name} for bulk order`}
+                        style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#635BFF' }}
+                      />
+                    ) : (
+                      <span style={{ width: 18, height: 18, display: 'inline-block' }} />
+                    )}
+                  </div>
                   <MobileGrid>
                     <MobileValue className="col-info">
                       <MobileLabel>Ingredient</MobileLabel>
@@ -426,9 +453,23 @@ const StockListSection: React.FC<Props> = ({
                     </MobileValue>
                     <MobileValue className="col-supplier">
                       <MobileLabel>Supplier</MobileLabel>
-                      <div style={{ color: item.supplier_name ? '#0A2540' : '#9CA3AF', fontSize: '13px' }}>
-                        {item.supplier_name || '-'}
-                      </div>
+                      {sugg && sugg.seller_name ? (
+                        <div>
+                          <div style={{ color: '#0A2540', fontSize: '13px', fontWeight: 600 }}>
+                            {sugg.seller_name}
+                          </div>
+                          <div style={{ display: 'inline-block', marginTop: 2, fontSize: 10, padding: '1px 6px',
+                            background: '#FEF3C7', color: '#92400E', borderRadius: 999, fontWeight: 600 }}>
+                            ↓ {sugg.suggested_qty} {sugg.unit}
+                          </div>
+                        </div>
+                      ) : item.supplier_name ? (
+                        <div style={{ color: '#0A2540', fontSize: '13px' }}>{item.supplier_name}</div>
+                      ) : (
+                        <span style={{ display: 'inline-block', padding: '1px 6px', background: '#F3F4F6', color: '#9CA3AF', borderRadius: 999, fontWeight: 600, fontSize: 10 }}>
+                          No mapping
+                        </span>
+                      )}
                     </MobileValue>
                     <MobileValue className="col-last">
                       <MobileLabel>Last Stock Take</MobileLabel>
@@ -442,7 +483,7 @@ const StockListSection: React.FC<Props> = ({
                       type="number"
                       min="0"
                       step="1"
-                      value={orderQuantities[item.id] || ''}
+                      value={orderQuantities[item.id] || (sugg ? String(sugg.suggested_qty) : '')}
                       onChange={(e) => setOrderQuantities(prev => ({
                         ...prev,
                         [item.id]: e.target.value,
@@ -501,7 +542,8 @@ const StockListSection: React.FC<Props> = ({
                     </DeleteButton>
                   </ActionButtons>
                 </InventoryTableRow>
-              ))}
+                );
+              })}
             </Table>
           )}
         </>

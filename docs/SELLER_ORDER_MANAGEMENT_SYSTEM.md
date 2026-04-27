@@ -913,3 +913,313 @@ ALTER TABLE purchase_orders
 11. Anon → 401
 12. Cross-role: Buyer → /seller-orders → 403
 
+
+---
+
+# 📌 Sprint 5 — Smart Reorder + Live Sales Order + Delivery Tracking (2026-04-27)
+
+## 배경
+Sprint 4 후 점검 결과:
+1. **Inventory list 의 Order 버튼이 UI 만 있고 실제 발주 미구현** (`useOrderModal.handleSend` TODO/alert)
+2. **Seller IncomingOrdersView 가 단순 테이블** — Restaurant LiveOrdersPage 의 Socket.IO/사운드/카드 패턴 미적용
+3. **`tracking_info` JSON 필드는 있으나 timeline 시각화 부족 + carrier 카탈로그 부재**
+
+본 Sprint 가 위 3가지를 한 번에 해결. Restaurant LiveOrders 의 카드/탭/Socket.IO/사운드 패턴을 **추출 → 공유 hook + 컴포넌트** 로 만들고, Seller 측 Live Sales Order 가 동일 패턴 사용. Buyer-Seller 양쪽이 같은 Delivery Timeline 공유.
+
+## A. 확정 정책 (Irene 2026-04-27)
+
+| # | 결정 | 정책 |
+|---|------|------|
+| Q1 | 다중 발주 (Cart) | ✓ 추가 — checkbox + sticky bottom CTA + seller 자동 그룹화 |
+| Q2 | IncomingOrdersView | **deprecated → Live Sales Order 로 대체**. 사이드바 라벨 통일 ("Live Orders") |
+| Q3 | Carrier 카탈로그 | ✓ system_admin 마스터 + free input fallback |
+| Q4 | 작업 범위 | 3 모듈 (Reorder + LiveSalesOrder + DeliveryTracking) 통째 1 sprint |
+
+## B. API (Stage 2)
+
+### B-1. 신규 endpoints
+
+| Method | Path | 권한 | 용도 |
+|--------|------|------|------|
+| GET | /api/carriers | optionalAuth | 활성 carrier 카탈로그 (Seller ship 시 select) |
+| GET | /api/admin/carriers | System Admin | CRUD list (비활성 포함) |
+| POST | /api/admin/carriers | System Admin | Create |
+| PUT | /api/admin/carriers/:id | System Admin | Update |
+| DELETE | /api/admin/carriers/:id | System Admin | Soft delete |
+| **POST** | **/api/purchase-orders/bulk** | Buyer | 다중 PO 일괄 생성 (seller 별 그룹화). req.body.groups: `[{ seller_type, seller_entity_id, items, expected_delivery_date?, notes? }, ...]` |
+| GET | /api/seller-orders/live-stream | Seller | (선택) Polling fallback for clients without Socket.IO. 마지막 30초 변경 PO ID 목록 |
+
+### B-2. 보강 endpoints (기존)
+- `POST /purchase-orders/:id/submit`: 성공 후 `io.of('/orders').to(sellerRoom).emit('seller-order-created', { id, status, seller_type, seller_entity_id })`. tracking_info.events 에 `{ at, status: 'submitted', note }` push
+- `POST /seller-orders/:id/confirm`: 성공 후 양쪽 room 에 `seller-order-updated` emit. events push
+- `POST /seller-orders/:id/ship`: 동일 + tracking_info 의 carrier_code 에서 carrier 마스터 join 해서 tracking_url 자동 생성
+- `POST /seller-orders/:id/reject`: 동일 (status=cancelled)
+- `POST /purchase-orders/:id/receive`: 동일 + receive 시 events push
+
+### B-3. Socket.IO 이벤트 정리
+
+**Namespace:** `/orders` (이미 존재 — Restaurant Live Orders 와 공용)
+
+**신규 join 이벤트:**
+- `join-seller` — `{ seller_type, seller_id }` → room `seller_${type}_${id}` (system_admin 은 `seller_system_admin_0`)
+- `join-buyer` — `{ buyer_type, buyer_id }` → room `buyer_${type}_${id}`
+
+**Emit 이벤트 (server → client):**
+- `seller-order-created` — buyer submit 시 → seller room
+- `seller-order-updated` — confirm/ship/reject/receive 시 → seller room + buyer room
+
+**Payload 형식:**
+```json
+{
+  "id": 31, "po_number": "PO-R38-...", "status": "shipped",
+  "seller_type": "supplier", "seller_entity_id": 20,
+  "buyer_type": "restaurant", "buyer_id": 38,
+  "total_amount": "31.50", "currency": "MYR",
+  "tracking_info": { ... }
+}
+```
+
+## C. DB (Stage 3)
+
+### C-1. 신규 모델 — `Carrier`
+
+```js
+{
+  id: INTEGER PK AI,
+  code: STRING(50) UNIQUE NOT NULL,        // 'lalamove', 'grab_express', 'jnt', 'pos_laju'
+  name: STRING(100) NOT NULL,              // display name
+  tracking_url_template: STRING(500),      // e.g. 'https://www.lalamove.com/track/{tracking_number}'
+  logo_url: TEXT,
+  country: CHAR(2),                        // 'MY' / null=global
+  is_active: BOOLEAN DEFAULT true,
+  sort_order: INTEGER DEFAULT 0,
+  created_at, updated_at
+}
+```
+
+테이블: `carriers`. Seed 5건: Lalamove / Grab Express / J&T Express / Ninja Van / Pos Laju (MY)
+
+### C-2. tracking_info JSON 표준 (PurchaseOrder.tracking_info)
+
+```js
+{
+  carrier_code: 'lalamove',         // FK to Carrier.code (선택)
+  carrier_name: 'Lalamove',         // 자유 입력 fallback
+  tracking_number: 'LA12345',
+  tracking_url: 'https://...',      // 서버가 carrier 마스터에서 자동 생성
+  estimated_arrival: '2026-05-01',  // ISO date
+  events: [
+    { at: '2026-04-27T10:00:00Z', status: 'submitted', note: 'Order placed by buyer' },
+    { at: '2026-04-27T11:00:00Z', status: 'confirmed', note: 'Confirmed by seller' },
+    { at: '2026-04-28T09:30:00Z', status: 'shipped', note: 'Picked up by Lalamove' },
+    { at: '2026-04-29T14:00:00Z', status: 'received', note: 'Delivered to buyer' }
+  ]
+}
+```
+
+이벤트는 서버가 status 전환 시점에 자동 push (frontend 가 수동으로 events 배열 보낼 필요 없음).
+
+### C-3. 마이그레이션 — 신규 테이블 1개만, 기존 데이터 무영향
+- `node scripts/sprint5-migration.js` — Carrier 테이블 생성 + 5건 seed
+
+## D. UI (Stage 4)
+
+### D-1. Inventory `tab=list` 보강
+
+**StockListSection (`components/Inventory/sections/StockListSection.tsx`):**
+- 컬럼 추가: `Supplier` 영역에 preferred IngredientSellerProduct 의 seller name 자동 표시 + "🟢 Mapped" / "⚠️ No Source" badge
+- 행 머리에 `<Checkbox />` 추가 (다중 선택)
+- 행 우측 `Order` 버튼: 매핑이 있으면 활성, 없으면 disabled + tooltip
+- 페이지 상단 stat strip 옆에 "재고 부족 N개" CTA → suggestions 모달 열어서 일괄 발주
+- 다중 선택 시 sticky bottom 바: `[3 items selected] [Clear] [Order Selected →]`
+
+**OrderModal (`components/Inventory/modals/OrderModal.tsx`):**
+- props 추가: `restaurantId`, `mappedSellers` (preferred + alternative)
+- seller select dropdown (preferred 가 default)
+- "Send Order" → `useOrderModal.handleSend` 가 `/api/purchase-orders` POST + `/submit` 자동 → success 토스트 + 모달 close + 행에 "PO-XXX submitted" badge
+
+**BulkOrderModal (신규 `components/Inventory/modals/BulkOrderModal.tsx`):**
+- 선택된 ingredients → seller 별 자동 그룹 (Supplier/BG/FG/SA 각 그룹)
+- 각 그룹별 fold/unfold 카드 + 수량 조정 + seller 선택
+- "Send All" → `/api/purchase-orders/bulk` POST → seller 별 PO 여러 건 생성
+
+### D-2. Live Sales Order (Seller-side, LiveOrders 패턴 재활용)
+
+**파일 구조 (신규):**
+```
+src/pages/LiveSalesOrders/
+  LiveSalesOrderView.tsx        ← 메인 (LiveOrders 패턴 추출)
+  styles.ts                     ← Card/Tab 스타일
+  helpers.ts                    ← TimeAgoDisplay 재활용
+src/hooks/
+  useSellerLiveSync.ts          ← Socket.IO + sound + state hook
+src/pages/Supplier/SupplierLiveOrdersPage.tsx     ← wrapper
+src/pages/IncomingOrders/BrandIncomingOrdersPage.tsx (수정 — LiveSalesOrderView 사용)
+src/pages/IncomingOrders/FoodcourtIncomingOrdersPage.tsx (수정)
+src/pages/Admin/AdminLiveOrdersPage.tsx (신규 — SA 용)
+```
+
+**LiveSalesOrderView 구조:**
+- 상단 4 KPI stat cards (today_submitted / pending / shipped / month_revenue)
+- 탭: submitted / confirmed / shipped / received / cancelled (count badge)
+- 카드 grid: PO 번호 + Buyer 배지 + 시간 + items 미리보기 (최대 3개) + 총액 + 다음 액션 버튼
+- 카드 클릭 → 상세 drawer 열림 (DeliveryTimeline + items 전체 + 액션)
+- 사운드 toggle 헤더 (`seller_sound_enabled` localStorage)
+- 카드 hover: 약간 lift + shadow
+
+**Sidebar 라벨 통일:**
+- Supplier: `Orders` → `Live Orders`
+- Brand General: `Incoming Orders` → `Live Orders`
+- Foodcourt General: 동일
+
+### D-3. DeliveryTimeline 공유 컴포넌트
+
+`components/Inventory/DeliveryTimeline.tsx`:
+- props: `events: TrackingEvent[]`, `tracking_url?: string`, `compact?: boolean`
+- 5단계 dot (submitted → confirmed → shipped → in_transit → received)
+- 각 dot 아래 시간 + note
+- shipped 인 경우 carrier 로고 + "Track →" link (tracking_url)
+- buyer 측 PurchaseOrderDetailPage + seller 측 LiveSalesOrder drawer 양쪽 사용
+
+### D-4. CarrierAdminPage (System Admin)
+
+`/pos/admin/carriers` 신규:
+- DataTable (이름 / 코드 / 트래킹 URL 템플릿 / 로고 / 활성 / 정렬 / 액션)
+- + Add Carrier 모달 (CRUD)
+- 사이드바 — Admin > "Carriers" 메뉴 추가
+
+### D-5. i18n 4 언어 (en/ko/zh/ms)
+신규 keys (필수):
+- `purchaseOrders.json`: `inventory.order.success`, `inventory.order.bulk.title`, `inventory.order.bulk.send`, `inventory.order.notMapped`
+- `supplier.json` / `brand.json` / `foodcourt.json`: `liveOrders.title`, `liveOrders.subtitle`, `liveOrders.kpi.*`, `liveOrders.tabs.*`, `liveOrders.action.*`, `liveOrders.sound.on/off`
+- `admin.json`: `carriers.title`, `carriers.add`, `carriers.fields.*`
+- `inventory.json` (또는 기존 namespace): `list.checkbox`, `list.bulkBar.selected`, `list.bulkBar.clear`, `list.bulkBar.send`
+
+## E. 코드 단계 (Stage 5) — 7 단위 PR 흐름
+
+| 단위 | 변경 | 파일 (대표) |
+|---|---|---|
+| **U1** Carrier 인프라 | 모델 + 라우트 + seed + server.js mount | models/Carrier.js, routes/carriers.js, scripts/sprint5-migration.js |
+| **U2** Bulk PO + Socket.IO + tracking events | 신규 라우트 + emit + 자동 push | routes/purchase-orders.js (bulk + submit emit), routes/seller-orders.js (confirm/ship/reject emit + events) |
+| **U3** useSellerLiveSync hook | Socket.IO + sound + tab counts + state | src/hooks/useSellerLiveSync.ts |
+| **U4** LiveSalesOrderView | 카드 + 탭 + 액션 모달 + drawer | src/pages/LiveSalesOrders/* |
+| **U5** Inventory list 보강 + OrderModal 동작 + BulkOrderModal | StockListSection / OrderModal / BulkOrderModal / useOrderModal | components/Inventory/* |
+| **U6** DeliveryTimeline + Carrier admin | components/Inventory/DeliveryTimeline + pages/Admin/CarriersPage | (multiple) |
+| **U7** Sidebar 라벨 + 라우트 + i18n + 검증 | MainLayout + App.tsx + 4언어 + test-sprint5.js | (multiple) |
+
+## F. 검증 (Stage 6) — test-sprint5.js (E2E)
+
+### F-1. 시나리오 (15+ 항목)
+
+1. Setup: R#38 + supplier#20 active contract + brand#10 + 2 ingredient with mapping
+2. **Inventory→Order 단일**: R 의 ingredient#46 행 Order 클릭 → POST /purchase-orders → 201 → submit → submitted
+3. **다중 발주**: 5 ingredients 선택 (3 supplier#20 + 2 brand#10) → POST /purchase-orders/bulk → PO 2건 생성
+4. **bulk 응답 형식**: `{ success: true, data: { orders: [...] } }` — 각 PO 의 ID 배열
+5. **GET /api/carriers** → 5 carrier (active 만)
+6. **System Admin POST /api/admin/carriers** → 201 → updated → DELETE → soft delete
+7. Cross-role: Buyer → /api/admin/carriers → 403
+8. **Supplier login → Socket.IO connect /orders → join-seller** → confirmed
+9. **R submit PO** → Socket.IO seller-order-created event 도착 (server log)
+10. **Seller confirm** → seller-order-updated event 양쪽 room 도착
+11. **Seller ship + carrier_code='lalamove' + tracking_number** → tracking_info.tracking_url 자동 생성 (template 치환) + events 배열 4개
+12. **Buyer receive** → events 5개 (submitted/confirmed/shipped/in_transit/received) + Trade Invoice 자동 발행 (Sprint 4)
+13. **Tracking event 자동 push 검증**: 각 status 전환 시 events 배열에 정확한 timestamp + status + note 추가
+14. IDOR 검증: 다른 seller PO confirm → 404
+15. Anon Socket.IO connect → join-seller 실패 (ack 없음)
+16. health-check 회귀 통과
+
+### F-2. UI/UX 통일성 검증
+- LiveSalesOrderView 카드 = LiveOrders OrdersCard 동일 시각 언어 (radius/shadow/spacing)
+- 사운드 toggle = Restaurant LiveOrders 와 동일 (localStorage `seller_sound_enabled`)
+- DeliveryTimeline = buyer/seller 양쪽 동일 컴포넌트
+- 사이드바 4 역할 모두 "Live Orders" 일치
+
+
+---
+
+# 📌 Sprint 6 — Lifecycle Completion (Delivered/Cancel/Returns/Print) (2026-04-27)
+
+## 배경
+Sprint 1~5 완료 후 발주/주문 라이프사이클 정합성 갭 9개 일괄 마무리. Irene 정책: "발주/주문관리 모두 완료할 때까지 배포 안한다 — 완성도 있게."
+
+## A. 정책 확정
+
+| # | 항목 | 결정 |
+|---|------|------|
+| T1-1 | Delivered status | shipped → **delivered** (seller 능동) → received (buyer 수령). DeliveryTimeline 5단계 (`in_transit` → `delivered` 명칭 통일) |
+| T1-2 | Supplier stock 차감 | seller_type='supplier' 시 ship endpoint 에서 SupplierProduct.current_stock -= qty (× conv) + SupplierInventoryTransaction record (`transaction_type='po_shipped'`) |
+| T1-3 | Buyer cancel | `draft` + **`submitted`** (seller confirm 전) 허용. confirmed 이후는 returns 흐름 |
+| T1-4 | Partial Receive | UI: receive modal 에 per-item qty + max=ordered 검증. 백엔드는 이미 partial_received 지원 |
+| T1-5 | Trade Invoice paid → revenue | Dashboard 가 invoices live aggregate (확인 필요). **No-op if true** |
+| T1-6 | Tracking edit | PUT /api/seller-orders/:id/tracking — status='shipped'/'delivered' 시 carrier_code/name/tracking_number 변경 가능 (events 추가 push: 'tracking_updated') |
+| T2-1 | Returns / Credit Notes | 신규 모델 PurchaseOrderReturn. Buyer initiate → 'requested' → Seller approve → 'approved' + Credit Note Invoice 자동. Stock 양쪽 reversal (buyer ingredient -=, supplier += 만약 supplier seller) |
+| T2-2 | PO Print | Frontend `/pos/purchase-orders/:id/print` window.print() route. PDF 라이브러리 X |
+| T2-3 | PO edit submitted | PUT /api/purchase-orders/:id `submitted` 까지 허용 (seller confirm 전 buyer 수정) |
+
+## B. API (Stage 2)
+
+### B-1. 신규 endpoints
+- `POST /api/seller-orders/:id/deliver` — status='shipped' → 'delivered' (Sprint 6)
+- `PUT /api/seller-orders/:id/tracking` — carrier/tracking 정보 사후 수정
+- `POST /api/purchase-orders/:id/returns` — buyer initiate
+- `GET /api/purchase-orders/:id/returns` — buyer/seller 양쪽 list
+- `POST /api/seller-orders/:id/returns/:returnId/approve` — seller approve + Credit Note 자동 발행
+- `POST /api/seller-orders/:id/returns/:returnId/reject` — seller reject
+
+### B-2. 보강 endpoints (기존)
+- `POST /api/purchase-orders/:id/cancel` — `submitted` 까지 허용 (현재는 `draft`만)
+- `PUT /api/purchase-orders/:id` — `submitted` 까지 허용
+- `POST /api/seller-orders/:id/ship` — Sprint 6: SupplierProduct.current_stock 차감 + Inventory Transaction
+- DeliveryTimeline 컴포넌트 — 단계 명명 `in_transit` → `delivered` 통일
+
+## C. DB (Stage 3)
+
+### C-1. 신규 모델 — `PurchaseOrderReturn`
+```js
+{
+  id: INTEGER PK AI,
+  purchase_order_id: INTEGER NOT NULL,
+  purchase_order_item_id: INTEGER NOT NULL,
+  ingredient_id: INTEGER NOT NULL,
+  quantity: DECIMAL(10,2) NOT NULL,
+  reason: TEXT,
+  status: ENUM('requested','approved','rejected') DEFAULT 'requested',
+  requested_by_user_id: INTEGER NOT NULL,
+  approved_by_user_id: INTEGER,
+  rejected_by_user_id: INTEGER,
+  resolved_at: DATE,
+  rejection_reason: TEXT,
+  credit_invoice_id: INTEGER,  // FK to invoices
+  created_at, updated_at
+}
+```
+
+### C-2. PurchaseOrder.status enum 확장
+- 'draft','submitted','confirmed','shipped','**delivered**','partial_received','received','cancelled','closed'
+- ALTER TABLE 실행 필요 — `node scripts/sprint6-migration.js`
+
+## D. 코드 단위
+
+| 단위 | 변경 |
+|------|------|
+| **U1** PO 상태 머신 | status='delivered' 추가, /deliver endpoint, /tracking PUT, cancel/edit 허용 확장, DeliveryTimeline 명명 통일 |
+| **U2** Supplier 정합성 | services/purchaseOrderService 의 ship 후 stock 차감, T1-5 dashboard 검증 |
+| **U3** Returns | PurchaseOrderReturn 모델 + 4 endpoints + Credit Note 자동 + buyer/seller UI |
+| **U4** PO Print | `pages/PurchaseOrders/PurchaseOrderPrintPage.tsx` + window.print() + @media print CSS |
+| **U5** 검증 | E2E 30+ |
+
+## E. 검증 시나리오 (Stage 6)
+
+1. Buyer cancel on submitted PO → cancelled
+2. Seller deliver shipped PO → delivered (events 5단계)
+3. Buyer receive delivered PO → received (Trade Invoice 자동)
+4. Supplier ship → SupplierProduct.current_stock 차감 + transaction record
+5. Tracking 사후 수정 (carrier_code 'lalamove' → 'grab_express') → tracking_url 재계산
+6. Buyer edit submitted PO (qty 변경) → 정상
+7. Buyer edit confirmed PO → 400 (locked)
+8. Buyer initiate return on received PO line → 'requested'
+9. Seller approve return → 'approved' + Credit Note Invoice + stock reversal
+10. Seller reject return → 'rejected' (no stock change)
+11. PO print page renders + window.print() trigger
+12. health-check 회귀 통과
+

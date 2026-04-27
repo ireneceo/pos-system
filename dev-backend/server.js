@@ -517,6 +517,12 @@ const adminSupplierInvitationsRouter = require('./routes/admin-supplier-invitati
 const supplierDirectoryRouter = require('./routes/supplier-directory');
 // Sprint 3 — Supply Chain Design 3 (Purchase orders + ingredient ↔ seller mapping)
 const purchaseOrdersRouter = require('./routes/purchase-orders');
+// Phase 2 (2026-04-27) — Buyer-side seller picker
+const buyerSellersRouter = require('./routes/buyer-sellers');
+// Sprint 5 (2026-04-27) — Carrier catalog (delivery tracking)
+const carriersRouter = require('./routes/carriers');
+// Sprint 6 (2026-04-27) — PO returns / credit notes
+const poReturnsRouter = require('./routes/po-returns');
 // Sprint 4 — Supply Chain Design 4 (Seller-side order management + buyer-side trade invoices)
 const sellerOrdersRouter = require('./routes/seller-orders');
 const purchaseInvoicesRouter = require('./routes/purchase-invoices');
@@ -626,6 +632,12 @@ app.use('/api/seller-orders', sellerOrdersRouter);  // routes are relative insid
 app.use('/api', supplierDirectoryRouter);  // exposes /api/supplier-directory + /api/supplier-contracts
 // Sprint 3 — Supply Chain Design 3
 app.use('/api', purchaseOrdersRouter);  // exposes /api/purchase-orders/*
+// Phase 2 (2026-04-27) — Buyer-side seller picker
+app.use('/api', buyerSellersRouter);  // exposes /api/buyer-sellers
+// Sprint 5 (2026-04-27) — Carriers
+app.use('/api', carriersRouter);  // exposes /api/carriers + /api/admin/carriers/*
+// Sprint 6 (2026-04-27) — PO Returns
+app.use('/api', poReturnsRouter);  // exposes /api/purchase-orders/:id/returns + /api/seller-orders/:id/returns/*
 // Sprint 4 — buyer-side
 app.use('/api', purchaseInvoicesRouter);  // exposes /api/purchase-invoices/*
 app.use('/api', ingredientSellerProductsRouter);  // exposes /api/ingredients/:id/seller-sources, /api/ingredient-seller-products/:id, /api/seller-catalog

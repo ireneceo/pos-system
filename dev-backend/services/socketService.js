@@ -53,10 +53,28 @@ function initSocketServer(server) {
     console.error('[Socket.IO] Connection error:', err.message);
   });
 
-  // Orders namespace for Live Orders page
+  // Orders namespace for Live Orders page (Restaurant LiveOrders + Sprint 5 Live Sales Orders)
   io.of('/orders').on('connection', (socket) => {
     socket.on('join-restaurant', (restaurantId) => {
       socket.join(`restaurant_${restaurantId}`);
+    });
+
+    // Sprint 5: Seller side (Supplier Admin / Brand General / Foodcourt General / System Admin)
+    socket.on('join-seller', (payload) => {
+      if (!payload || typeof payload !== 'object') return;
+      const sellerType = String(payload.seller_type || '').toLowerCase();
+      const sellerId = payload.seller_id != null ? parseInt(payload.seller_id, 10) : 0;
+      if (!['supplier', 'brand', 'foodcourt', 'system_admin'].includes(sellerType)) return;
+      socket.join(`seller_${sellerType}_${sellerId || 0}`);
+    });
+
+    // Sprint 5: Buyer side updates (PO status mirror)
+    socket.on('join-buyer', (payload) => {
+      if (!payload || typeof payload !== 'object') return;
+      const buyerType = String(payload.buyer_type || '').toLowerCase();
+      const buyerId = payload.buyer_id != null ? parseInt(payload.buyer_id, 10) : 0;
+      if (!['restaurant', 'brand', 'foodcourt'].includes(buyerType)) return;
+      socket.join(`buyer_${buyerType}_${buyerId}`);
     });
 
     socket.on('error', (error) => {

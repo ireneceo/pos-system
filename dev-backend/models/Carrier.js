@@ -1,0 +1,28 @@
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
+
+const Carrier = sequelize.define('Carrier', {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  code: { type: DataTypes.STRING(50), allowNull: false, unique: true },
+  name: { type: DataTypes.STRING(100), allowNull: false },
+  tracking_url_template: {
+    type: DataTypes.STRING(500), allowNull: true,
+    comment: 'Use {tracking_number} placeholder, e.g. https://example.com/track/{tracking_number}'
+  },
+  logo_url: { type: DataTypes.TEXT, allowNull: true },
+  country: { type: DataTypes.CHAR(2), allowNull: true, comment: 'ISO 3166-1 alpha-2 (null = global)' },
+  is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
+  sort_order: { type: DataTypes.INTEGER, defaultValue: 0 }
+}, {
+  tableName: 'carriers',
+  timestamps: true,
+  underscored: true,
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
+  indexes: [
+    { fields: ['is_active', 'sort_order'] },
+    { fields: ['country'] }
+  ]
+});
+
+module.exports = Carrier;

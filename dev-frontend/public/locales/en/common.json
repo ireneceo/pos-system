@@ -259,7 +259,9 @@
     "branches": "Branches",
     "franchiseMap": "Franchise Map",
     "tenancyMap": "Tenancy Map",
-    "branchMap": "Branch Map"
+    "branchMap": "Branch Map",
+    "incomingOrders": "Live Orders",
+    "carriers": "Carriers"
   },
   "language": {
     "en": "English",
@@ -578,8 +580,12 @@
         "empty": "No unread notifications"
       }
     },
-    "drawer": { "title": "Notifications" },
-    "page": { "title": "Inbox" },
+    "drawer": {
+      "title": "Notifications"
+    },
+    "page": {
+      "title": "Inbox"
+    },
     "filter": {
       "all": "All",
       "notice": "Notices",
@@ -611,6 +617,20 @@
       "all": "New notifications will appear here.",
       "unread": "No unread items right now.",
       "search": "No items match your search."
+    }
+  },
+  "delivery": {
+    "title": "Delivery Timeline",
+    "track": "Track →",
+    "estimatedArrival": "Estimated arrival:",
+    "cancelled": "Order cancelled",
+    "steps": {
+      "submitted": "Submitted",
+      "confirmed": "Confirmed",
+      "shipped": "Shipped",
+      "inTransit": "In Transit",
+      "received": "Received",
+      "delivered": "Delivered"
     }
   }
 }

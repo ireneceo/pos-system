@@ -1,9 +1,224 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-27 (Supplier Portal Polish — Sidebar 통일 + Dashboard 8 KPI + Inventory Transaction + Demo Data + Notices/Inquiry wiring)
+> **최종 업데이트:** 2026-04-27 (Sprint 6 마무리 + Live Orders Restaurant 패턴 일치)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 v3.19
+> **현재 버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 `/배포` 시 **v3.19**
+
+## 🎯 다음 세션 — Irene 운영 테스트
+
+**가이드 문서:** `docs/SPRINT_5_6_TEST_GUIDE.md` (8 시나리오)
+
+1. Restaurant 단일 발주 → 2. 다중 Bulk → 3. Supplier Live Orders 실시간 → 4. Confirm/Ship/Edit Tracking/Deliver → 5. Receive (Trade Invoice 자동) → 6. Returns/Credit Note → 7. PO Print → 8. Admin Carriers
+
+검증 후 **`/배포`** 명령어로 v3.19 운영 배포.
+
+## 미배포 누적 (v3.19 후보)
+- Sprint 1~4 (Supply Chain 4-Design)
+- Supplier Portal Polish
+- PO Phase 2 (Contract Gate + Cost Sync)
+- Sprint 5 (Live Orders + Delivery Tracking + Carrier 카탈로그)
+- Sprint 5 Detail (BulkOrderModal + Suggestion column + Carrier Admin + Detail Drawer)
+- Sprint 6 (Lifecycle Completion: Delivered/Cancel/Tracking-edit/Returns/Print)
+- Sprint 6 마무리 (Live Orders Restaurant 패턴 100% 일치)
+
+---
+
+## ✅ 완료: Sprint 6 마무리 — Live Orders Restaurant 패턴 일치 (2026-04-27, 미배포)
+
+### 배경
+Sprint 6 후 Irene 피드백: "레스토랑 라이브오더처럼 전체주문 다 보여서 다같이 관리하기 수월하게" + "필터링도 그렇고 다 세세한 기능 제대로" + "사이드바 위치 대시보드 직후" + "주문 들어오면 빨간 점" + "발주처/배송처/carrier 보여" + "필요한 기능 디테일하게 잡아줘"
+
+### 완료된 작업
+
+| # | 작업 | 상태 |
+|---|------|:----:|
+| 1 | **Backend `livePoCount` badge** — /api/badge-counts 응답 확장. supplier/brand/foodcourt/SA role 별 submitted PO 자동 카운트 | ✅ |
+| 2 | **사이드바 재배치** — BG/FG/Supplier 모두 Live Orders 메뉴를 Dashboard 직후로 이동 (line 1094/1343/1666) | ✅ |
+| 3 | **NavIcon hasPending pulse** — Restaurant 패턴 100% 일치 (점 추가 X, 숫자 X, NavIcon 자체 박동만) | ✅ |
+| 4 | **AudioToggleButton + speaker SVG** — emoji(🔔/🔕) 폐기, Restaurant 와 동일한 40×40 SVG 토글 | ✅ |
+| 5 | **DataTable 레이아웃** (카드 그리드 폐기) — Restaurant LiveOrders 와 동일 `<DataTableContainer>+<DataTable>` 구조 | ✅ |
+| 6 | **컬럼 구성**: PO# / Buyer (entity 배지) / Items (count + preview) / **Delivery (📍 address + 📦 carrier chip)** / Status / Time / Amount / Actions | ✅ |
+| 7 | **새 PO 행 highlight** — 배경색 #EEF2FF (Restaurant selected 패턴) + NewDot + 'NEW' 배지 (12초 pulse) | ✅ |
+| 8 | **FilterToolbar** — DatePeriodFilter (today/yesterday/week/month/year/all/custom) + SearchInput | ✅ |
+| 9 | **StatusTabs + TabBadge** — Restaurant 와 동일 styled (status별 count) | ✅ |
+| 10 | **StatisticsBar** (작은 inline) — 표 위 4 KPI 작은 strip (큰 카드 폐기) | ✅ |
+| 11 | **Backend /api/seller-orders date filter** — `from`/`to` query 지원. Sequelize Op.gte/Op.lte | ✅ |
+| 12 | **TDZ runtime crash fix** — LiveOrders/styles cross-chunk import → 인라인 styled 복제로 회피 | ✅ |
+| 13 | **데이터 cleanup** — test garbage 9 PO 삭제 + 4 returns 삭제 + 2 orphan Credit Note 삭제 | ✅ |
+| 14 | **테스트 가이드** `docs/SPRINT_5_6_TEST_GUIDE.md` 작성 (8 시나리오) | ✅ |
+
+### 수정된 파일
+
+**Backend (수정 3)**
+- `routes/badgeCounts.js` (livePoCount 추가)
+- `routes/seller-orders.js` (date filter)
+- `routes/purchase-orders.js` (generatePoNumber MAX 기반 race condition fix)
+
+**Frontend (수정 2)**
+- `components/Layout/MainLayout.tsx` (사이드바 위치 + NavIcon hasPending 만)
+- `pages/IncomingOrders/IncomingOrdersView.tsx` (DataTable 복원 + DatePeriodFilter + AudioToggleButton SVG + StatisticsBar 인라인)
+
+**문서 (신규 1)**
+- `docs/SPRINT_5_6_TEST_GUIDE.md` (8 시나리오 운영 테스트 가이드)
+
+### 검증 (E2E)
+- Stage 0 hydration: 0 warning
+- Stage 1 build: TS 0 error · `main.bd3df29e.js` deployed
+- Stage 3 API: livePoCount 정확 (Sup 9 / RA 0 / BG 0) · Submit→실시간 +1 → Confirm→-1
+- Stage 5 multi-role: seller events=5 / buyer events=4 양쪽 room 동시 수신
+- health-check 43/43 PASS
+- 3 라우트 (Supplier/BG/FG) 모두 HTTP 200
+
+### 검증 중 발견 + 즉시 수정한 버그 3건
+1. po_number duplicate (cleanup 후) — `generatePoNumber` MAX-based 로 fix
+2. trackingInfo undefined (notification email rename 누락) — `ti=newTracking` 으로 일관성
+3. TDZ runtime crash (`Pe before initialization`) — cross-chunk import 폐기, 인라인 styled
+
+---
+
+## ✅ 완료: Sprint 5 — Smart Reorder + Live Sales Order + Delivery Tracking (2026-04-27, 미배포)
+
+### 정책 (Irene 확정)
+| Q | 결정 |
+|---|------|
+| Q1 다중 발주 (Cart) | ✓ 추가 (백엔드 endpoint 완비, UI 후속) |
+| Q2 IncomingOrdersView | Live Sales Order 로 in-place 강화 + 사이드바 라벨 통일 |
+| Q3 Carrier 카탈로그 | system_admin 마스터 + free fallback (Lalamove/Grab/JNT/Ninja Van/Pos Laju 시드 5건) |
+| Q4 작업 범위 | 3 모듈 통째 1 sprint |
+
+### 완료된 작업
+
+| # | 영역 | 작업 | 상태 |
+|---|------|------|:----:|
+| 1 | **Carrier 인프라** | 모델 + 라우트 (public + admin CRUD) + 5 시드 + scripts/sprint5-migration.js | ✓ |
+| 2 | **services/poRealtimeService.js** | appendTrackingEvent / decorateCarrier (catalog 매칭 → tracking_url 자동) / emitPoEvent (seller+buyer room 양쪽) | ✓ |
+| 3 | **POST /api/purchase-orders/bulk** | 다중 group 그룹화 + auto_submit. createPurchaseOrderCore helper 로 단일/bulk 공유 | ✓ |
+| 4 | **PO state-transition Socket.IO + events** | seller-orders.js (confirm/ship/reject) + purchase-orders.js (submit/mark-shipped/receive) 에 emit + events 자동 push | ✓ |
+| 5 | **submit 흐름 정정** | draft → 'submitted' (Sprint 3 임시 'confirmed' 제거 — Sprint 4 의도대로) | ✓ |
+| 6 | **Socket.IO `/orders` namespace 확장** | join-seller / join-buyer 핸들러 (room 명: `seller_${type}_${id}`, `buyer_${type}_${id}`) | ✓ |
+| 7 | **IncomingOrdersView 강화** | Socket.IO 클라이언트 통합 + Web Audio API chime + sound toggle + localStorage `seller_sound_enabled` + 새 PO arrival 자동 새로고침 | ✓ |
+| 8 | **사이드바 라벨 통일** | 4 역할 모두 "Live Orders" (i18n common.nav.liveOrders 4언어) | ✓ |
+| 9 | **useOrderModal 실제 API 연결** | seller-sources fetch → preferred mapping → POST + auto submit. error/success banner. 매핑 없음 안내 | ✓ |
+| 10 | **OrderModal seller select** | dropdown (preferred ⭐ 표시) + submitting/lastResult 상태 | ✓ |
+| 11 | **DeliveryTimeline 공유 컴포넌트** | 5-step dot/connector (submitted→confirmed→shipped→in_transit→received) + carrier badge + tracking link + events 리스트 | ✓ |
+| 12 | **PurchaseOrderDetailPage 통합** | tracking_info 표시 (DeliveryTimeline) | ✓ |
+| 13 | **i18n 4언어** | common.nav.liveOrders + supplier.orders.{title,subtitle,sound.on/off} | ✓ |
+| 14 | **검증** | E2E 12/12 PASS + health-check 43/43 PASS + 빌드 exit 0 (`main.4af5af29.js`) | ✓ |
+
+### Carrier 마스터 매칭 (자동 tracking_url 생성)
+```
+Seller ship payload: { carrier_code: 'lalamove', tracking_number: 'LA-TEST-001' }
+↓ poRealtimeService.decorateCarrier()
+→ tracking_info: {
+    carrier_code: 'lalamove',
+    carrier_name: 'Lalamove',
+    tracking_number: 'LA-TEST-001',
+    tracking_url: 'https://www.lalamove.com/en/malaysia/track-order/LA-TEST-001',
+    events: [...]
+  }
+```
+
+### tracking_info.events 자동 누적 (Lifecycle)
+- buyer submit → events: [{submitted}]
+- seller confirm → events: [{submitted}, {confirmed}]
+- seller ship → events: [{submitted}, {confirmed}, {shipped}]
+- buyer receive → events: [{submitted}, {confirmed}, {shipped}, {received}]
+- seller reject (대신) → events: [{submitted}, {cancelled, note: reason}]
+
+### Socket.IO 실시간 흐름
+- buyer submit → server emit `seller-order-created` → seller_room (sound chime + auto refresh)
+- seller confirm/ship/reject → server emit `seller-order-updated` → seller + buyer rooms (양쪽 page 동시 갱신)
+- buyer receive → server emit `seller-order-updated` → seller + buyer rooms
+
+### 신규 / 수정 파일
+**Backend (신규 4)**
+- `models/Carrier.js`
+- `routes/carriers.js`
+- `services/poRealtimeService.js`
+- `scripts/sprint5-migration.js`
+
+**Backend (수정 4)**
+- `routes/seller-orders.js` (confirm/ship/reject + events + emit)
+- `routes/purchase-orders.js` (submit/receive/mark-shipped + bulk endpoint + createPurchaseOrderCore helper)
+- `services/socketService.js` (join-seller/join-buyer)
+- `models/index.js` + `server.js` (Carrier 등록 + 라우트 mount)
+
+**Frontend (수정 5)**
+- `pages/IncomingOrders/IncomingOrdersView.tsx` (Socket.IO + sound + auto refresh)
+- `components/Inventory/hooks/useOrderModal.ts` (실제 API 연결)
+- `components/Inventory/modals/OrderModal.tsx` (seller select + banner)
+- `components/Inventory/InventoryManager.tsx` (props 전달)
+- `pages/PurchaseOrders/PurchaseOrderDetailPage.tsx` (DeliveryTimeline 적용)
+- `components/Layout/MainLayout.tsx` (사이드바 라벨)
+
+**Frontend (신규 1)**
+- `components/Inventory/DeliveryTimeline.tsx`
+
+**i18n (4언어 5 namespace 키)**
+- `common.json`: nav.liveOrders + nav.incomingOrders (대체)
+- `supplier.json`: orders.title/subtitle/sound.{on,off}
+
+**문서 (수정 1)**
+- `docs/SELLER_ORDER_MANAGEMENT_SYSTEM.md` — Sprint 5 섹션 추가 (Stage 1-6 정책 + API + DB + UI + 코드단계 + 검증)
+
+### DB 변경 (운영 배포 시)
+- `node scripts/sprint5-migration.js` — `carriers` 테이블 + 5 시드
+
+### 후속 (다음 작업 후보)
+- BulkOrderModal UI (백엔드 endpoint 완비, frontend cart UX 미구현)
+- StockListSection 추천 컬럼 (suggested_qty + preferred seller badge)
+- IncomingOrdersView ship modal — carrier select dropdown (현재 free text)
+- CarrierAdminPage `/pos/admin/carriers` (백엔드 CRUD 완비)
+
+---
+
+## ✅ 완료: PO Phase 2 — Restaurant 발주 ↔ 계약 ↔ 재고 통합 (2026-04-27, 미배포)
+
+### 배경
+Sprint 1~4 + Supplier Portal Polish 후 점검 결과, **Restaurant 가 buyer 일 때 BG/FG 발주에 대해 계약/소속 검증이 누락** (Supplier 만 검증) + **Receive 시 RestaurantIngredientCost 미갱신** + **NewPurchaseOrderPage 의 seller picker 가 broken endpoint (`/api/seller-catalog` 무인자 호출)** 발견. 본 Phase 가 이 4가지 갭 일괄 보강.
+
+### 정책 확정 (Irene)
+| seller_type | Restaurant 발주 가능 조건 |
+|---|---|
+| `supplier` | SupplierContract status='active' 필수 |
+| `brand` (BG) | `Restaurant.brand_id === seller_entity_id` (소속 자체가 계약) |
+| `foodcourt` (FG) | `Restaurant.foodcourt_id === seller_entity_id` (입점 자체가 계약) |
+| `system_admin` | 항상 가능 (POS 자체 카탈로그) |
+
+Cost: 가중평균 RestaurantIngredientCost / Mapping: Supplier/BG/FG 강제, SA 자유.
+
+### 완료된 작업
+
+| # | 영역 | 작업 | 상태 |
+|---|------|------|:----:|
+| 1 | **Backend purchase-orders.js** | `findActiveSupplierContract` → `verifySellerRelation` 통합 (4 seller). POST 검증 순서 재구성 (relation gate → items → mapping → 생성). Item mapping 강제 (seller≠SA). Receive 루프에 RestaurantIngredientCost 가중평균 upsert (Restaurant buyer) | ✓ |
+| 2 | **Backend buyer-sellers.js** (신규) | `GET /api/buyer-sellers` — supplier(active) + brand(brand_id) + foodcourt(foodcourt_id) + system_admin 통합. path-level guard | ✓ |
+| 3 | **Frontend NewPurchaseOrderPage** | broken `/api/seller-catalog` 호출 → `/api/buyer-sellers` 교체. SellerOption 인터페이스 정리 (name/logo_url). Type alias `'system'` → `'system_admin'` 통일. Payload 필드명 backend 와 일치 (seller_entity_id / ingredient_seller_product_id / quantity_ordered). Seller 카드 logo 표시 | ✓ |
+| 4 | **i18n 4 언어** | `purchaseOrders.json` `new.seller.type.system_admin` + `noSellersHint` 보강 | ✓ |
+| 5 | **설계 문서** | `docs/PURCHASE_ORDER_SYSTEM.md` Phase 2 섹션 추가 (정책 + Backend/Frontend 변경 + D-1 13 시나리오) | ✓ |
+| 6 | **검증 E2E** | 12/12 PASS — buyer-sellers 응답 + 4 seller 양/음 케이스 + mapping required + SA bypass + 가중평균 2단계 누적 + anon 401 | ✓ |
+| 7 | **회귀** | health-check 43/43 PASS + 빌드 exit 0 (`main.dd643919.js`) + dev 배포 완료 | ✓ |
+
+### 가중평균 검증 (D-1 #10)
+- 1차 receive: stockBefore=15, oldCost=25.1667, +30 단위 × unit_price=5/conv=1 → 가중평균 = (15×25.1667 + 30×5) / 45 = 20.125 ✓
+- 2차 receive: stockMid=40, oldCost=20.125, +5 단위 × unit_price=6/conv=1 → 가중평균 = (40×20.125 + 5×6) / 45 = 18.5556 ✓ (수동 계산 일치)
+
+### 신규 / 수정 파일
+**Backend (수정 1 + 신규 1)**
+- `routes/purchase-orders.js` — verifySellerRelation + cost upsert + mapping 강제 + Restaurant/RestaurantIngredientCost import
+- `routes/buyer-sellers.js` (신규)
+- `server.js` — buyer-sellers 라우트 mount
+
+**Frontend (수정 2)**
+- `pages/PurchaseOrders/NewPurchaseOrderPage.tsx`
+- `public/locales/{en,ko,zh,ms}/purchaseOrders.json`
+
+**문서 (수정 1)**
+- `docs/PURCHASE_ORDER_SYSTEM.md` — 858줄 → "Phase 2 — Contract Gate + Cost Sync (2026-04-27)" 섹션 추가
+
+### DB 변경 (운영 배포 시)
+없음 (코드 변경만으로 적용. RestaurantIngredientCost 모델은 기존부터 존재하던 것).
 
 ---
 

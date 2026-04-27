@@ -39,5 +39,18 @@
   "stockTakePage.regularStockTakesHelpReduceLossAndImproveInventoryAccuracy": "Pengambilan stok tetap membantu mengurangkan kerugian dan meningkatkan ketepatan inventori",
   "stockTakePage.weRecommendDoingAStockTakeAtLeastOnceAWeek": "Kami mengesyorkan melakukan pengambilan stok sekurang-kurangnya sekali seminggu",
   "stockTakePage.readyToStart": "Bersedia untuk Bermula?",
-  "stockTakePage.previousStockTakes": "Sebelumnya Stok Takes"
+  "stockTakePage.previousStockTakes": "Sebelumnya Stok Takes",
+  "bulkOrder": {
+    "title": "Pesanan Pukal — mengikut Penjual",
+    "sendAll": "Hantar Semua",
+    "sending": "Menghantar…",
+    "cancel": "Batal",
+    "close": "Tutup",
+    "successTitle": "Pesanan berjaya dihantar",
+    "successHint": "Penjual akan menerima notifikasi masa nyata.",
+    "empty": "Tiada item dipilih. Pilih bahan stok rendah dengan pemetaan penjual pilihan dahulu.",
+    "grandTotal": "Jumlah Besar",
+    "stockShort": "Semasa",
+    "minShort": "Min"
+  }
 }

@@ -67,12 +67,13 @@
         "system": "系统目录",
         "brand": "品牌目录",
         "foodcourt": "美食广场目录",
-        "supplier": "供应商"
+        "supplier": "供应商",
+        "system_admin": "系统目录"
       },
       "contractActive": "合同生效",
       "contractRequired": "需要合同",
       "noSellers": "没有可用的供应商。",
-      "noSellersHint": "请确保您有有效的供应商合同或可用的系统目录。"
+      "noSellersHint": "请确保您有效的供应商合同、隶属于品牌/美食广场，或使用 POS 目录。"
     },
     "items": {
       "title": "添加项目",
@@ -196,7 +197,8 @@
     "shipped": "已发货",
     "partial_received": "部分收货",
     "received": "已收货",
-    "cancelled": "已取消"
+    "cancelled": "已取消",
+    "delivered": "已送达"
   },
   "common": {
     "save": "保存",

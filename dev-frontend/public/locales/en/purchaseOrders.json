@@ -67,12 +67,13 @@
         "system": "System Catalog",
         "brand": "Brand Catalog",
         "foodcourt": "Foodcourt Catalog",
-        "supplier": "Supplier"
+        "supplier": "Supplier",
+        "system_admin": "System Catalog"
       },
       "contractActive": "Contract Active",
       "contractRequired": "Contract Required",
       "noSellers": "No sellers available.",
-      "noSellersHint": "Make sure you have an active supplier contract or available system catalog."
+      "noSellersHint": "Make sure you have an active supplier contract, belong to a brand/foodcourt, or use the POS catalog."
     },
     "items": {
       "title": "Add items",
@@ -196,7 +197,8 @@
     "shipped": "Shipped",
     "partial_received": "Partial",
     "received": "Received",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "delivered": "Delivered"
   },
   "common": {
     "save": "Save",

@@ -6,6 +6,22 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-27 (Sprint 5+6 — Smart Reorder, Live Sales Order, Delivery Tracking, Lifecycle Completion)
+**📦 발주/주문 라이프사이클 완성 — 운영 배포 가능 상태**
+- **PO Phase 2**: Restaurant 발주 ↔ 계약 검증 통합 (Supplier=SupplierContract / BG=brand_id / FG=foodcourt_id) + RestaurantIngredientCost 가중평균 자동 갱신 + Mapping 강제. 신규 `/api/buyer-sellers` 통합 picker.
+- **Sprint 5 — Smart Reorder + Live Sales Order**: Carrier 카탈로그 (Lalamove/Grab/JNT/Ninja Van/Pos Laju 시드) + 신규 `/api/purchase-orders/bulk` (다중 seller 그룹 일괄) + Socket.IO `/orders` namespace `seller-order-created/updated` 실시간 + tracking_info JSON 표준화 (events 자동 push) + ship 시 carrier_code → tracking_url 자동 생성 + 5단계 DeliveryTimeline 공유 컴포넌트.
+- **Sprint 5 Detail**: BulkOrderModal (multi-select cart) + StockListSection 추천 컬럼 (preferred seller + suggested_qty) + CarrierAdminPage (System Admin CRUD) + IncomingOrders Detail Drawer (DeliveryTimeline + Returns 액션).
+- **Sprint 6 — Lifecycle Completion**: PO status enum +`'delivered'` (shipped→delivered→received) + Buyer cancel 'submitted' 허용 + Buyer edit 'submitted' 허용 + PUT `/seller-orders/:id/tracking` 사후 수정 + Supplier stock 자동 차감 (ship 시) + SupplierInventoryTransaction `po_shipped` 자동 기록 + **Returns / Credit Notes** 신규 (PurchaseOrderReturn 모델 + Approve→Credit Note Invoice 자동 발행 + 양쪽 stock reversal) + **PO Print 페이지** (window.print A4 layout, 라이브러리 X).
+- **Sprint 6 마무리 — Live Orders Restaurant 패턴 100% 일치**: 사이드바 Live Orders 메뉴를 Dashboard 직후로 이동 (BG/FG/Supplier) + NavIcon `hasPending` pulse 만 (NavCount/NavDot 폐기) + AudioToggleButton + speaker SVG + DataTable 레이아웃 (카드 그리드 폐기) + DatePeriodFilter (today/yesterday/week/month/year/all/custom) + StatusTabs/TabBadge + StatisticsBar (작은 inline). 새 PO 행 highlight (배경 + NEW 배지). Backend `/api/seller-orders` date filter (`from`/`to`).
+- **Backend `livePoCount` badge**: `/api/badge-counts` 응답에 supplier/brand/foodcourt/SA role 별 submitted PO 카운트.
+- **신규 모델 2 + 신규 라우트 4**: Carrier, PurchaseOrderReturn / carriers, buyer-sellers, po-returns, + bulk endpoint.
+- **DB 마이그레이션 2**: sprint5-migration (carriers 테이블 + 5 시드), sprint6-migration (PO status +'delivered', Invoice status +'credit', purchase_order_returns 테이블).
+- **i18n 4언어**: nav.liveOrders / inventory.bulkOrder / common.delivery.steps / admin.carriers / status.delivered.
+- **버그 fix**: po_number race condition (cleanup 후 duplicate) → MAX-based 생성, trackingInfo undefined (rename 누락), TDZ runtime crash (cross-chunk styled import → 인라인 복제), invoice.status='credit' enum 누락.
+- 데이터 cleanup: test garbage 9 PO + 4 returns + 2 orphan Credit Note 삭제. 데모 lifecycle 데이터 보존 (draft 1 / submitted 12 / confirmed 4 / shipped 7 / received 16 / Returns 2 / Credit Note 1).
+- **테스트 가이드** `docs/SPRINT_5_6_TEST_GUIDE.md` (8 시나리오 운영 테스트). 다음 세션에서 Irene 직접 운영 → `/배포` 결정.
+- 검증: Sprint 5 38/38 / Sprint 6 29/29 / Phase 2 21/21 / Live Orders 마무리 9/9 / health-check 43/43 / Stage 0 hydration 0 warning.
+
 ### 2026-04-27 (Supplier Portal Polish — UX 통일성 + 데이터 + Inventory Transaction)
 **Supplier 포털 사용성 — Brand/Foodcourt 와 동일 패턴으로 통일**
 - Sidebar 재구성: "Settings" NavTitle 두 번 렌더 fix. Operations / Plans & Payments / Communication 3 섹션. Profile disabled 제거.

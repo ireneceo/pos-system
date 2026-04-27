@@ -146,8 +146,8 @@
     "joinWaitlist": "Kami akan memberitahu anda apabila ia sedia."
   },
   "orders": {
-    "title": "Pesanan Masuk",
-    "subtitle": "Pesanan pembelian yang dihantar oleh pembeli anda.",
+    "title": "Pesanan Langsung",
+    "subtitle": "Pesanan pembelian masuk masa nyata",
     "stats": {
       "pending": "Menunggu Semakan",
       "confirmed": "Disahkan",
@@ -168,13 +168,19 @@
       "total": "Jumlah",
       "status": "Status",
       "createdAt": "Dicipta",
-      "actions": "Tindakan"
+      "actions": "Tindakan",
+      "delivery": "Penghantaran",
+      "time": "Masa",
+      "amount": "Jumlah",
+      "itemsUnit": "item"
     },
     "actions": {
       "view": "Lihat",
       "confirm": "Sahkan",
       "ship": "Tanda Dihantar",
-      "reject": "Tolak"
+      "reject": "Tolak",
+      "deliver": "Tanda Sampai",
+      "editTracking": "Edit jejak"
     },
     "confirm": {
       "title": "Sahkan Pesanan",
@@ -200,7 +206,13 @@
       "submit": "Tolak",
       "cancel": "Batal"
     },
-    "empty": "Tiada pesanan masuk dalam status ini."
+    "empty": "Tiada pesanan masuk dalam status ini.",
+    "sound": {
+      "on": "Bunyi hidup",
+      "off": "Bunyi mati"
+    },
+    "emptyHint": "Pesanan baru akan muncul di sini secara masa nyata.",
+    "loading": "Memuatkan…"
   },
   "tradeInvoicesPage": {
     "title": "Invois Dagangan",
@@ -269,6 +281,7 @@
     "pending_payment": "Menunggu Pembayaran",
     "payment_submitted": "Pembayaran Dihantar",
     "paid": "Dibayar",
-    "overdue": "Tertunggak"
+    "overdue": "Tertunggak",
+    "delivered": "Sampai"
   }
 }

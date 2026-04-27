@@ -170,8 +170,8 @@ const FiltersContainer = styled.div`
 
 const SearchInput = styled.input`
   flex: 1;
-  min-width: 180px;
-  max-width: 300px;
+  min-width: 320px;
+  max-width: 480px;
   padding: 12px 16px;
   border: 1px solid #E6EBF1;
   border-radius: 8px;
@@ -186,6 +186,16 @@ const SearchInput = styled.input`
     outline: none;
     border-color: #635BFF;
     box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+  }
+
+  @media (max-width: 1024px) {
+    min-width: 280px;
+    max-width: 400px;
+  }
+
+  @media (max-width: 768px) {
+    min-width: 240px;
+    max-width: 320px;
   }
 
   @media (max-width: 600px) {

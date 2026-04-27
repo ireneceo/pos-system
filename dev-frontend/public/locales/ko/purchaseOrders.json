@@ -67,12 +67,13 @@
         "system": "시스템 카탈로그",
         "brand": "브랜드 카탈로그",
         "foodcourt": "푸드코트 카탈로그",
-        "supplier": "공급사"
+        "supplier": "공급사",
+        "system_admin": "시스템 카탈로그"
       },
       "contractActive": "계약 활성",
       "contractRequired": "계약 필요",
       "noSellers": "사용 가능한 공급처가 없습니다.",
-      "noSellersHint": "활성 공급사 계약 또는 시스템 카탈로그가 필요합니다."
+      "noSellersHint": "활성 supplier 계약이 있거나, brand/foodcourt 에 소속돼 있거나, POS 카탈로그를 사용해 주세요."
     },
     "items": {
       "title": "품목 추가",
@@ -196,7 +197,8 @@
     "shipped": "배송 중",
     "partial_received": "부분 수령",
     "received": "수령 완료",
-    "cancelled": "취소됨"
+    "cancelled": "취소됨",
+    "delivered": "도착"
   },
   "common": {
     "save": "저장",
