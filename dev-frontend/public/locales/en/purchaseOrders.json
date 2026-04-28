@@ -153,9 +153,21 @@
       "submit": "Submit",
       "cancel": "Cancel",
       "markShipped": "Mark Shipped",
-      "receive": "Receive"
+      "receive": "Receive",
+      "returns": "Request return",
+      "print": "Print"
     },
-    "noNotes": "No notes."
+    "noNotes": "No notes.",
+    "returns": {
+      "title": "Request return",
+      "noItems": "No items eligible for return.",
+      "submit": "Submit return",
+      "cancel": "Cancel",
+      "reason": "Reason",
+      "failed": "Failed to submit return",
+      "networkError": "Network error",
+      "rejectReason": "Rejection reason:"
+    }
   },
   "receive": {
     "modalTitle": "Receive Order",
@@ -207,5 +219,20 @@
     "close": "Close",
     "cancel": "Cancel",
     "confirm": "Confirm"
+  },
+  "print": {
+    "loading": "Loading…",
+    "title": "Purchase Order",
+    "po_number": "PO Number",
+    "date": "Date",
+    "status": "Status",
+    "buyer": "Buyer",
+    "seller": "Seller",
+    "items": "Items",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "total": "Total",
+    "notes": "Notes",
+    "thank_you": "Thank you"
   }
 }

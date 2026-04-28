@@ -9,6 +9,8 @@ import { fetchAPI } from '../../utils/api';
 import { useTranslation } from 'react-i18next';
 
 interface ProductRecipeCategoriesTabProps {
+  /** Active brand id from parent's brand selector. */
+  brandId?: number | null;
   onCountChange?: (count: number) => void;
   onCategoryChange?: () => void;
 }
@@ -194,7 +196,7 @@ const EmojiOption = styled.button<{ selected?: boolean }>`
   }
 `;
 
-const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({ onCountChange, onCategoryChange }) => {
+const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({ brandId, onCountChange, onCategoryChange }) => {
   const { t } = useTranslation('brand');
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -219,9 +221,12 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
   ];
 
   const fetchCategories = useCallback(async () => {
+    if (!brandId) return;
     try {
       setLoading(true);
-      const response = await fetchAPI('/api/product-recipe-categories');
+      // Filter to active brand. Backend's requireBrandScope reads brand_id
+      // from query and restricts to that brand for BG users.
+      const response = await fetchAPI(`/api/product-recipe-categories?brand_id=${brandId}`);
       if (response.success) {
         setCategories(response.data || []);
         onCountChange?.(response.data?.length || 0);
@@ -231,7 +236,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [onCountChange]);
+  }, [brandId, onCountChange]);
 
   useEffect(() => {
     fetchCategories();

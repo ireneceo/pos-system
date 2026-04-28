@@ -76,9 +76,7 @@ function emitPoEvent(req, po, eventName) {
   try {
     const io = req?.app?.get('io');
     if (!io) return;
-    const sellerKey = po.seller_entity_id || 0;
-    const sellerRoom = `seller_${po.seller_type}_${sellerKey}`;
-    const buyerRoom = `buyer_${po.entity_type}_${po.entity_id}`;
+
     const payload = {
       id: po.id,
       po_number: po.po_number,
@@ -92,8 +90,26 @@ function emitPoEvent(req, po, eventName) {
       tracking_info: po.tracking_info || null,
       updated_at: new Date().toISOString()
     };
-    io.of('/orders').to(sellerRoom).emit(eventName, payload);
+
+    // Buyer room: every PO has a concrete buyer entity, so this is always
+    // unambiguous.
+    const buyerRoom = `buyer_${po.entity_type}_${po.entity_id}`;
     io.of('/orders').to(buyerRoom).emit(eventName, payload);
+
+    // Seller room: only emit when we have a concrete seller_entity_id.
+    // 'system_admin' as seller has no entity_id (POS catalog itself is the
+    // seller — no humans to notify on the seller side). Previously this
+    // collapsed all such POs into a single `seller_system_admin_0` room,
+    // mixing tenants. Skip the seller emit for these cases instead.
+    if (po.seller_type !== 'system_admin' && po.seller_entity_id) {
+      const sellerRoom = `seller_${po.seller_type}_${po.seller_entity_id}`;
+      io.of('/orders').to(sellerRoom).emit(eventName, payload);
+    } else if (po.seller_type !== 'system_admin' && !po.seller_entity_id) {
+      // Data anomaly: non-system-admin seller without an entity id should not
+      // happen — the `buyer-sellers.js` resolver requires it. Surface in logs
+      // so we catch any future regression early.
+      console.error(`[poRealtime] PO ${po.po_number} seller_type=${po.seller_type} but seller_entity_id is null — emit skipped`);
+    }
   } catch (e) {
     console.error('[poRealtime] emitPoEvent error:', e.message);
   }

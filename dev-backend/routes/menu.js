@@ -4,15 +4,42 @@ const Product = require('../models/Product');
 const Restaurant = require('../models/Restaurant');
 const Category = require('../models/Category');
 const { Recipe, RecipeIngredient, Ingredient } = require('../models');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
+
+// Local guard: enforce tenant isolation for `/product/:id` routes where
+// `:id` is the **product** id. `checkRestaurantAccess` falls back to
+// `req.params.id` as a restaurantId source — that is correct for routes like
+// `/restaurants/:id` but produces 403 false-positives here. This local guard
+// resolves the target restaurantId from query/body/user only and rejects
+// non-System-Admin overrides. Handler-level WHERE `{ id, restaurant_id }`
+// then enforces row-level ownership.
+function checkProductTenant(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+  if (req.user.role === 'System Admin') return next();
+
+  const requested =
+    req.query?.restaurantId || req.query?.restaurant_id ||
+    req.body?.restaurantId || req.body?.restaurant_id;
+
+  if (requested && parseInt(requested) !== parseInt(req.user.restaurant_id)) {
+    return res.status(403).json({ error: 'Access denied to this restaurant' });
+  }
+  return next();
+}
 const { processImage, deleteOldImages } = require('../utils/imageProcessor');
 const { logActivity } = require('../utils/activityLogger');
 
 // Apply authentication to all routes
 router.use(authenticateToken);
 
+// Per-route tenant isolation: every endpoint that takes a restaurantId — whether
+// from params, query, or body — must run through checkRestaurantAccess. The
+// middleware was extended (middleware/auth.js) to resolve the target id from
+// all three sources, closing the IDOR where an authenticated user could
+// previously pass `restaurantId` in body/query to act on someone else's menu.
+
 // Get all menu items
-router.get('/', async (req, res) => {
+router.get('/', checkRestaurantAccess, async (req, res) => {
   try {
     // Allow restaurantId from query parameter (for System Admin)
     // or from authenticated user (for restaurant users)
@@ -212,7 +239,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get categories only (lightweight endpoint for fast initial load)
-router.get('/categories', async (req, res) => {
+router.get('/categories', checkRestaurantAccess, async (req, res) => {
   try {
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
 
@@ -249,7 +276,7 @@ router.get('/categories', async (req, res) => {
 });
 
 // Get single product
-router.get('/product/:id', async (req, res) => {
+router.get('/product/:id', checkProductTenant, async (req, res) => {
   try {
     // Allow restaurantId from query parameter (for System Admin)
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
@@ -271,7 +298,7 @@ router.get('/product/:id', async (req, res) => {
 });
 
 // Create product
-router.post('/product', async (req, res) => {
+router.post('/product', checkRestaurantAccess, async (req, res) => {
   try {
     // Allow restaurantId from body or authenticated user (support both camelCase and snake_case)
     const restaurantId = req.body.restaurantId || req.body.restaurant_id || req.user.restaurant_id;
@@ -449,7 +476,7 @@ router.post('/product', async (req, res) => {
 });
 
 // Update product
-router.put('/product/:id', async (req, res) => {
+router.put('/product/:id', checkProductTenant, async (req, res) => {
   try {
     // Allow restaurantId from query parameter (for System Admin)
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
@@ -652,7 +679,7 @@ router.put('/product/:id', async (req, res) => {
 });
 
 // Copy/Duplicate product
-router.post('/product/:id/copy', async (req, res) => {
+router.post('/product/:id/copy', checkProductTenant, async (req, res) => {
   try {
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
 
@@ -732,7 +759,7 @@ router.post('/product/:id/copy', async (req, res) => {
 });
 
 // Toggle product active status
-router.put('/product/:id/toggle-active', async (req, res) => {
+router.put('/product/:id/toggle-active', checkProductTenant, async (req, res) => {
   try {
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
 
@@ -764,7 +791,7 @@ router.put('/product/:id/toggle-active', async (req, res) => {
 });
 
 // Delete product
-router.delete('/product/:id', async (req, res) => {
+router.delete('/product/:id', checkProductTenant, async (req, res) => {
   try {
     // Allow restaurantId from query parameter (for System Admin)
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;

@@ -877,6 +877,42 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
           notes: `PO ${po.po_number} receive`,
           created_by: req.user.id
         }, { transaction: t });
+      } else {
+        // Non-restaurant buyer (brand / foodcourt): InventoryTransaction is
+        // restaurant-scoped (NOT NULL restaurant_id) so we can't write to it
+        // for brand/foodcourt receipts. Without an audit row the receipt is
+        // invisible to compliance later — write an ActivityLog entry instead.
+        // Schema-level upgrade (entity_type/entity_id columns on
+        // inventory_transactions) is the long-term fix; this preserves the
+        // audit trail without a migration.
+        try {
+          const ActivityLog = require('../models/ActivityLog');
+          await ActivityLog.create({
+            restaurant_id: null,
+            user_id: req.user.id,
+            username: req.user.email || `user-${req.user.id}`,
+            full_name: req.user.full_name || null,
+            action_type: 'create',
+            entity_type: 'po_receipt',
+            entity_id: String(po.id),
+            entity_name: po.po_number,
+            description: `${po.entity_type} #${po.entity_id} received PO ${po.po_number} — ingredient #${item.ingredient_id} +${stockDelta} ${ingredient.unit} (stock_after=${newStock})`,
+            changes: {
+              po_id: po.id,
+              po_number: po.po_number,
+              buyer_entity_type: po.entity_type,
+              buyer_entity_id: po.entity_id,
+              ingredient_id: item.ingredient_id,
+              quantity_change: stockDelta,
+              unit: ingredient.unit,
+              stock_after: newStock,
+              unit_cost: unitCost
+            }
+          }, { transaction: t });
+        } catch (logErr) {
+          // Non-blocking: surface in console but don't fail the receive.
+          console.error('[po-receive] ActivityLog write failed (non-blocking):', logErr.message);
+        }
       }
 
       // Update ingredient stock

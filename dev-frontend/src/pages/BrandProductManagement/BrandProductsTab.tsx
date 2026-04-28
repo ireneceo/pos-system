@@ -7,6 +7,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import SearchableSelect from '../../components/Common/SearchableSelect';
+import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface Brand {
@@ -344,6 +345,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   categoryRefreshKey,
   optionRefreshKey
 }) => {
+  const { t } = useTranslation('brand');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [optionGroups, setOptionGroups] = useState<OptionGroup[]>([]);
@@ -769,11 +771,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   });
 
   if (loading) {
-  // useTranslation moved to component level
-
-  return (
+    return (
       <div style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-        Loading products...
+        {t('productsTab.loading')}
       </div>
     );
   }
@@ -784,7 +784,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         <FilterBar style={{ marginBottom: 0 }}>
           <SearchInput
             type="text"
-            placeholder="Search products..."
+            placeholder={t('productsTab.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -792,7 +792,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="all">{'All Categories'}</option>
+            <option value="all">{t('productsTab.allCategories')}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id.toString()}>
                 {cat.emoji} {cat.name}
@@ -803,7 +803,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             value={brandFilter}
             onChange={(e) => setBrandFilter(e.target.value)}
           >
-            <option value="all">{'All Brands'}</option>
+            <option value="all">{t('productsTab.allBrands')}</option>
             {brands.map(brand => (
               <option key={brand.id} value={brand.id.toString()}>
                 {brand.name}
@@ -812,22 +812,24 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
           </FilterSelect>
         </FilterBar>
         <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
-          Add Product
+          {t('productsTab.addProduct')}
         </ThemedButton>
       </div>
 
       {filteredProducts.length === 0 ? (
         <EmptyState>
           <EmptyTitle>
-            {searchTerm || categoryFilter !== 'all' || brandFilter !== 'all' ? 'No products found' : 'No products yet'}
+            {searchTerm || categoryFilter !== 'all' || brandFilter !== 'all'
+              ? t('productsTab.noProductsFound')
+              : t('productsTab.noProductsYet')}
           </EmptyTitle>
           <EmptyDescription>
             {searchTerm || categoryFilter !== 'all' || brandFilter !== 'all'
-              ? 'Try adjusting your search or filter criteria.'
-              : 'Start by adding your first product.'}
+              ? t('common:emptyState.adjustFilters', 'Try adjusting your search or filter criteria.')
+              : t('productsTab.startBuilding')}
           </EmptyDescription>
           {!searchTerm && categoryFilter === 'all' && brandFilter === 'all' && (
-            <ThemedButton onClick={() => handleOpenModal()}>{'Add Product'}</ThemedButton>
+            <ThemedButton onClick={() => handleOpenModal()}>{t('productsTab.addProduct')}</ThemedButton>
           )}
         </EmptyState>
       ) : (
@@ -919,7 +921,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
         <Modal
           isOpen={showModal}
           onClose={handleCloseModal}
-          title={editingProduct ? 'Edit Product' : 'Add Product'}
+          title={editingProduct ? t('productsTab.editProduct') : t('productsTab.addProduct')}
           maxWidth="700px"
         >
           <form onSubmit={handleSubmit}>

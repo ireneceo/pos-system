@@ -5,10 +5,9 @@ import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import {
-  Container, Header, Title, Content,
   DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell,
   DataTableHeaderCell, DataTableActions, DataTableEmpty, DataTableStatus,
-  Modal, FormGroup, FormLabel, FormInput, FormSelect, FormTextArea, ModalButton
+  Modal
 } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -16,6 +15,116 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
+
+// Layout / Form / ModalButton primitives are inlined here on purpose.
+// Importing them across chunks from `components/UI` triggered a TDZ runtime
+// crash ("Cannot access 'X' before initialization") when this lazy page loaded
+// before its UI shared chunk had finished evaluating. See memory:
+// reference_live_orders_pattern.md.
+const Container = styled.div`
+  min-height: 100vh;
+  background: #FAFBFC;
+`;
+const Header = styled.div`
+  background: white;
+  padding: 16px 32px;
+  border-bottom: 1px solid #E6EBF1;
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  @media (max-width: 768px) {
+    padding: 16px;
+    height: auto;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+`;
+const Title = styled.h1`
+  font-size: 24px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+  line-height: 1;
+  @media (max-width: 768px) { font-size: 20px; }
+`;
+const Content = styled.div`
+  padding: 32px;
+  @media (max-width: 768px) { padding: 20px 16px; }
+`;
+const FormGroup = styled.div`margin-bottom: 20px;`;
+const FormLabel = styled.label`
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6B7C93;
+  margin-bottom: 8px;
+`;
+const FormInput = styled.input`
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.15s;
+  &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
+  &:disabled { background: #F9FAFB; color: #6B7280; cursor: not-allowed; }
+  &::placeholder { color: #9CA3AF; }
+`;
+const FormSelect = styled.select`
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
+  &:disabled { background: #F9FAFB; color: #6B7280; cursor: not-allowed; }
+`;
+const FormTextArea = styled.textarea`
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  min-height: 100px;
+  resize: vertical;
+  transition: all 0.15s;
+  &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
+  &::placeholder { color: #9CA3AF; }
+`;
+const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: ${p => p.variant === 'primary' || p.variant === 'danger' ? 'none' : '1px solid #E6EBF1'};
+  background: ${p => p.variant === 'primary' ? '#635BFF' : p.variant === 'danger' ? '#DC2626' : 'white'};
+  color: ${p => p.variant === 'primary' || p.variant === 'danger' ? 'white' : '#6B7C93'};
+  &:hover:not(:disabled) {
+    background: ${p => p.variant === 'primary' ? '#5A51E6' : p.variant === 'danger' ? '#B91C1C' : '#F8FAFC'};
+    transform: translateY(-1px);
+  }
+  &:disabled {
+    background: ${p => p.variant === 'primary' ? '#A5A0FF' : p.variant === 'danger' ? '#FCA5A5' : '#F3F4F6'};
+    color: ${p => (p.variant === 'primary' || p.variant === 'danger') ? 'rgba(255,255,255,0.7)' : '#D1D5DB'};
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
 
 /**
  * Shared seller-side Incoming Orders view used by:
@@ -349,6 +458,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
 
   const [detailReturns, setDetailReturns] = useState<any[]>([]);
 
+  // Sprint 6: must be declared BEFORE fetchList — useCallback deps array
+  // reads `dateRange` at definition time. Declaring later → TDZ at component
+  // first render ("Cannot access X before initialization").
+  const [newPoIds, setNewPoIds] = useState<Set<number>>(new Set());
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today', 'Asia/Kuala_Lumpur'));
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('seller_sound_enabled') !== 'false');
+
   const openDetail = async (row: IncomingOrderRow) => {
     setDetailRow(row);
     setDetailFull(null);
@@ -472,16 +590,9 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     fetchList(activeTab);
   }, [activeTab, fetchList]);
 
-  // Sprint 6: track newly-arrived PO ids for visual highlight (5s decay)
-  const [newPoIds, setNewPoIds] = useState<Set<number>>(new Set());
+  // (newPoIds / activePeriod / dateRange / isCustomDateRange / soundEnabled
+  // declarations were moved above fetchList to satisfy TDZ ordering — see comment there.)
 
-  // Sprint 6: date period filter (Restaurant LiveOrders pattern)
-  const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
-  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today', 'Asia/Kuala_Lumpur'));
-  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
-
-  // Sprint 5: realtime + sound
-  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('seller_sound_enabled') !== 'false');
   const soundEnabledRef = useRef(soundEnabled);
   useEffect(() => {
     soundEnabledRef.current = soundEnabled;
@@ -785,13 +896,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 <tr>
                   <td colSpan={8}>
                     <DataTableEmpty>
-                      <div style={{ padding: 24, textAlign: 'center' }}>
-                        <div style={{ fontSize: 32, marginBottom: 8 }}>📭</div>
-                        <div style={{ color: '#0A2540', fontWeight: 600 }}>{tNs('orders.empty', 'No orders in this status.')}</div>
-                        <div style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>
-                          {tNs('orders.emptyHint', 'New orders will appear here in real time.')}
-                        </div>
-                      </div>
+                      {tNs('orders.empty', 'No orders found in this status.')}
                     </DataTableEmpty>
                   </td>
                 </tr>
@@ -834,7 +939,6 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       <DataTableCell data-label={tNs('orders.table.delivery', 'Delivery') as string}>
                         {row.delivery_address && (
                           <InfoLine>
-                            <span className="icon">📍</span>
                             <span className="text" style={{ maxWidth: 160 }}>{row.delivery_address}</span>
                           </InfoLine>
                         )}
@@ -846,12 +950,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              📦 {ti.carrier_name || ti.carrier_code}
+                              {ti.carrier_name || ti.carrier_code}
                               {ti.tracking_number ? ` · ${ti.tracking_number}` : ''}
                             </CarrierChip>
                           ) : (
                             <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>
-                              📦 {ti.carrier_name || ti.carrier_code}
+                              {ti.carrier_name || ti.carrier_code}
                               {ti.tracking_number ? ` · ${ti.tracking_number}` : ''}
                             </span>
                           )

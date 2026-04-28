@@ -14,6 +14,12 @@ import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit } from '.
 import ConfirmModal from '../../components/ConfirmModal';
 
 interface ProductRecipesTabProps {
+  /**
+   * Active brand id resolved by parent page from /api/brands (BG owns 1+ brands).
+   * Required for create flows that need a target brand_id; null only during the
+   * brief loading window before the parent has resolved the brand list.
+   */
+  brandId?: number | null;
   onCountChange?: (count: number) => void;
   categoryRefreshKey?: number;
 }
@@ -776,7 +782,7 @@ const ViewTotalRow = styled.div`
   }
 `;
 
-const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, categoryRefreshKey }) => {
+const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ brandId: brandIdProp, onCountChange, categoryRefreshKey }) => {
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -852,7 +858,11 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
     '📋'
   ];
 
-  const brandId = user?.brand_id;
+  // Prefer the explicit prop from parent (multi-brand selector). Fall back to
+  // user.brand_id only for legacy users on a single-brand account where the
+  // parent might not have resolved /api/brands yet — in practice parent
+  // resolves first, so this fallback is defensive only.
+  const brandId = brandIdProp ?? user?.brand_id ?? null;
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -865,10 +875,14 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
 
     try {
       setLoading(true);
+      // Pass brand_id query so backend's requireBrandScope filters to the
+      // selected brand (BG can own multiple brands; without the filter we'd
+      // mix recipes across brands).
+      const q = `?brand_id=${brandId}`;
       const [recipesRes, ingredientsRes, categoriesRes] = await Promise.all([
-        fetchAPI('/api/product-recipes'),
-        fetchAPI('/api/product-ingredients'),
-        fetchAPI('/api/product-recipe-categories')
+        fetchAPI(`/api/product-recipes${q}`),
+        fetchAPI('/api/product-ingredients'),  // BG owner-scoped, brand-agnostic
+        fetchAPI(`/api/product-recipe-categories${q}`)
       ]);
 
       if (recipesRes.success) {
@@ -882,9 +896,9 @@ const ProductRecipesTab: React.FC<ProductRecipesTabProps> = ({ onCountChange, ca
         setCategories(categoriesRes.data || []);
       }
 
-      // Fetch brand products to show linked products on recipe cards
+      // Fetch brand products to show linked products on recipe cards (filter to active brand)
       try {
-        const bpRes = await fetchAPI('/api/brand-products');
+        const bpRes = await fetchAPI(`/api/brand-products${q}`);
         const bpList = bpRes.data || bpRes || [];
         const map: Record<number, string[]> = {};
         (Array.isArray(bpList) ? bpList : []).forEach((bp: any) => {

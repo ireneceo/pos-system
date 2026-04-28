@@ -977,3 +977,16 @@ new_cost = (old_stock × old_cost + incoming × incoming_cost_per_ingredient_uni
 ## E. 배포 마이그레이션
 없음 (DB 스키마 변경 없음, 시드 변경 없음). 코드 변경만으로 적용.
 
+---
+
+## F. 비-Restaurant Buyer Audit Trail (2026-04-28 추가)
+
+### F-1. 문제
+PO `/receive` 흐름에서 `InventoryTransaction` 모델이 `restaurant_id` NOT NULL이라, **Brand/Foodcourt buyer의 PO 수령은 audit row가 생성되지 않음** — 재고 stock_qty는 갱신되지만 거래 내역 추적 불가.
+
+### F-2. 해결
+`routes/purchase-orders.js` receive loop에서 `entity_type !== 'restaurant'` 분기에 `ActivityLog.create({ entity_type: 'po_receipt', ... })` 추가. ActivityLog는 `restaurant_id` nullable이라 cross-entity audit에 적합. changes JSON에 buyer_entity_type/buyer_entity_id/ingredient_id/quantity_change/unit/stock_after/unit_cost 모두 기록.
+
+### F-3. 향후 (스키마 마이그레이션 후)
+`InventoryTransaction` 에 `entity_type` / `entity_id` 컬럼 추가 + `restaurant_id` nullable 변경 시 ActivityLog fallback 제거하고 모델 통합. 현재는 마이그레이션 비용 회피하고 ActivityLog로 audit trail 회복.
+

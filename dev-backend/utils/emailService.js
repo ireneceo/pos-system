@@ -111,6 +111,16 @@ const isDev = process.env.NODE_ENV !== 'production';
  */
 async function sendEmail(entityType, entityId, mailOptions) {
   try {
+    // 개발서버: 같은 dev-block 정책 적용. entity-level 이메일도 실수로 운영
+    // 고객/레스토랑 메일함에 발송되지 않도록 SMTP 호출 자체를 skip.
+    // DEV_SEND_ENTITY_EMAILS=true 인 경우에만 실제 발송 (이메일 흐름 디버깅용).
+    if (isDev && process.env.DEV_SEND_ENTITY_EMAILS !== 'true') {
+      const subj = mailOptions.subject || '(no subject)';
+      const to = Array.isArray(mailOptions.to) ? mailOptions.to.join(', ') : mailOptions.to;
+      console.log(`[dev-email-blocked] Entity email skipped (${entityType}/${entityId}): subject="${subj}" to="${to}". Set DEV_SEND_ENTITY_EMAILS=true to enable.`);
+      return { success: true, skipped: true, reason: 'dev-environment' };
+    }
+
     if (mailOptions.to && await isEmailBlocked(mailOptions.to)) {
       console.log(`Email blocked (bounce count >= 3): ${mailOptions.to}`);
       return { success: false, blocked: true };
@@ -161,6 +171,16 @@ async function sendEmail(entityType, entityId, mailOptions) {
  */
 async function sendPlatformEmail(mailOptions) {
   try {
+    // 개발서버: 운영 admin에게 실제 발송 차단 (test signup이 production admin 메일함을 폭격하는 것 방지).
+    // 환경변수 DEV_SEND_PLATFORM_EMAILS=true 인 경우에만 실제 발송 (이메일 흐름 디버깅용).
+    // 기본 동작: dev에서는 콘솔에 로그만 남기고 SMTP 호출 자체를 skip.
+    if (isDev && process.env.DEV_SEND_PLATFORM_EMAILS !== 'true') {
+      const subj = mailOptions.subject || '(no subject)';
+      const to = Array.isArray(mailOptions.to) ? mailOptions.to.join(', ') : mailOptions.to;
+      console.log(`[dev-email-blocked] Platform email skipped: subject="${subj}" to="${to}". Set DEV_SEND_PLATFORM_EMAILS=true to enable.`);
+      return { success: true, skipped: true, reason: 'dev-environment' };
+    }
+
     // 바운스 체크: 3회 이상 실패한 이메일은 발송 차단
     if (mailOptions.to && await isEmailBlocked(mailOptions.to)) {
       console.log(`Email blocked (bounce count >= 3): ${mailOptions.to}`);
@@ -280,6 +300,15 @@ async function getIssuerEmailSettings(issuerType, issuerId) {
  */
 async function sendIssuerEmail(issuerType, issuerId, mailOptions) {
   try {
+    // 개발서버: 같은 dev-block 정책. issuer(brand/foodcourt) SMTP 통한
+    // 고객 인보이스/주문 알림 메일이 운영 받는사람 메일함에 가는 것 방지.
+    if (isDev && process.env.DEV_SEND_ENTITY_EMAILS !== 'true') {
+      const subj = mailOptions.subject || '(no subject)';
+      const to = Array.isArray(mailOptions.to) ? mailOptions.to.join(', ') : mailOptions.to;
+      console.log(`[dev-email-blocked] Issuer email skipped (${issuerType}/${issuerId}): subject="${subj}" to="${to}". Set DEV_SEND_ENTITY_EMAILS=true to enable.`);
+      return { success: true, skipped: true, reason: 'dev-environment' };
+    }
+
     if (mailOptions.to && await isEmailBlocked(mailOptions.to)) {
       console.log(`Email blocked (bounce count >= 3): ${mailOptions.to}`);
       return { success: false, blocked: true };

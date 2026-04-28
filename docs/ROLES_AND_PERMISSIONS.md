@@ -588,6 +588,18 @@ Phase A/B 의 저장만 되어있던 `branch_id`/`brand_id` 를 실제 필터로
 - PUT `/api/invoices/:id` 는 **issuer entity** (brand/foodcourt) 또는 **수신 restaurant** 소속 유저, 또는 **System Admin** 만 편집 가능
 - 기존 버그: null-safe 비교 누락 (`Number(null)===Number(null)` true) 로 인해 타 엔티티가 cross-edit 가능했음 → 수정
 
+### IDOR 일괄 수정 (2026-04-28 v3.19 미배포)
+
+3개 도메인의 IDOR 보안 취약점 차단:
+
+**menu.js** — 8 endpoint에 `checkRestaurantAccess` 적용. `/product/:id` 라우트는 `:id`가 product id이므로 `checkProductTenant` 별도 미들웨어 사용 (req.params.id를 restaurant id로 오인하지 않게). middleware/auth.js의 `checkRestaurantAccess` 도 query/body restaurantId까지 해결하도록 확장 — 이전엔 params 외 경로로 들어오는 IDOR 차단 못 했음.
+
+**brand-inventory.js** — 4개 `:brandId` endpoint에 `requireBrandScope()` 적용. 인증된 누구나 임의 brand의 재고를 조회하던 IDOR 차단. SA는 god 패스, BG는 owner_id 검증.
+
+**inventory-routes.js** — line 25에 이미 `router.use('/:restaurantId', checkRestaurantAccess)` 적용 중 (false-positive 검증 완료).
+
+검증: RA@R5 → restaurantId=99 시도 시 403 (menu/inventory) 또는 404 (cross-brand IDOR). E2E 9/9 PASS.
+
 ---
 
 ## 업데이트 이력
@@ -597,3 +609,4 @@ Phase A/B 의 저장만 되어있던 `branch_id`/`brand_id` 를 실제 필터로
 - 2026-02-23: Staff 섹션 대폭 보강 (PIN 캐셔 전환, Menu Visibility 권한 체계, 생성/관리/승격), 권한 매트릭스 Staff 항목 추가
 - 2026-03-06: 권한 매트릭스에 인보이스 결제/결제확인 행 추가, Brand General 인보이스 발행 권한 ✅로 수정
 - 2026-04-19 (v3.15): Manager 지점/브랜드 할당 저장 레이어, Brand 권한 owner_id 기반으로 개편, Invoice IDOR null-safe 수정
+- 2026-04-28 (v3.19 미배포): menu/brand-inventory IDOR 일괄 차단, checkRestaurantAccess 다중 소스 해결 (params/query/body)

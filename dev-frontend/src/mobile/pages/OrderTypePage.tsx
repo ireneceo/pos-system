@@ -339,35 +339,58 @@ const OrderTypePage: React.FC = () => {
       <OptionsContainer>
         {!orderTypes ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#9CA3AF', fontSize: '14px' }}>Loading...</div>
-        ) : <>
-        {orderTypes.dineIn && (
-          <OptionCard onClick={() => handleOrderTypeSelection('dine-in')}>
-            <OptionIcon>🍽️</OptionIcon>
-            <OptionTitle>Dine In</OptionTitle>
-          </OptionCard>
-        )}
-
-        {orderTypes.takeaway && (
-          <OptionCard onClick={() => handleOrderTypeSelection('takeaway')}>
-            <OptionIcon>🥡</OptionIcon>
-            <OptionTitle>Takeaway</OptionTitle>
-          </OptionCard>
-        )}
-
-        {orderTypes.pickup && (
-          <OptionCard onClick={() => handleOrderTypeSelection('pickup')}>
-            <OptionIcon>📦</OptionIcon>
-            <OptionTitle>Pre-order Pickup</OptionTitle>
-          </OptionCard>
-        )}
-
-        {orderTypes.delivery && (
-          <OptionCard onClick={() => handleOrderTypeSelection('delivery')}>
-            <OptionIcon>🚚</OptionIcon>
-            <OptionTitle>Delivery</OptionTitle>
-          </OptionCard>
-        )}
-        </>}
+        ) : (() => {
+          const anyEnabled = orderTypes.dineIn || orderTypes.takeaway || orderTypes.pickup || orderTypes.delivery;
+          if (!anyEnabled) {
+            return (
+              <div style={{
+                textAlign: 'center',
+                padding: '40px 24px',
+                background: '#FFF8E1',
+                border: '1px solid #FFE082',
+                borderRadius: '12px',
+                color: '#6B5B20'
+              }}>
+                <div style={{ fontSize: '40px', marginBottom: '12px' }}>🛎️</div>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '8px' }}>
+                  Mobile ordering is currently unavailable
+                </div>
+                <div style={{ fontSize: '14px', lineHeight: 1.5 }}>
+                  {storeData?.name || 'This restaurant'} is not accepting mobile orders right now.
+                  Please order in person at the counter, or check back later.
+                </div>
+              </div>
+            );
+          }
+          return (
+            <>
+              {orderTypes.dineIn && (
+                <OptionCard onClick={() => handleOrderTypeSelection('dine-in')}>
+                  <OptionIcon>🍽️</OptionIcon>
+                  <OptionTitle>Dine In</OptionTitle>
+                </OptionCard>
+              )}
+              {orderTypes.takeaway && (
+                <OptionCard onClick={() => handleOrderTypeSelection('takeaway')}>
+                  <OptionIcon>🥡</OptionIcon>
+                  <OptionTitle>Takeaway</OptionTitle>
+                </OptionCard>
+              )}
+              {orderTypes.pickup && (
+                <OptionCard onClick={() => handleOrderTypeSelection('pickup')}>
+                  <OptionIcon>📦</OptionIcon>
+                  <OptionTitle>Pre-order Pickup</OptionTitle>
+                </OptionCard>
+              )}
+              {orderTypes.delivery && (
+                <OptionCard onClick={() => handleOrderTypeSelection('delivery')}>
+                  <OptionIcon>🚚</OptionIcon>
+                  <OptionTitle>Delivery</OptionTitle>
+                </OptionCard>
+              )}
+            </>
+          );
+        })()}
       </OptionsContainer>
 
       <Footer>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import styled from 'styled-components';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -653,6 +653,40 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       globalSocketRef.current = null;
     };
   }, [userRestaurantId, isOrderRole, fetchBadgeCounts]);
+
+  // ─── 전역 PO realtime (Seller roles: Brand General, Foodcourt General, Supplier) ───
+  // 라이브 PO가 도착하면 사이드바 NavIcon hasPending pulse가 즉시 켜져야 한다.
+  // 기존에는 IncomingOrdersView에 들어가야만 socket 리스너가 동작했고,
+  // 다른 페이지(Dashboard 등)에 있을 땐 다음 15s polling까지 갱신되지 않아서
+  // 새 PO 알림이 늦게 올라왔다. 이 useEffect로 page-agnostic하게 listen 한다.
+  const sellerScope = useMemo(() => {
+    if (!user) return null;
+    if (user.role === 'Brand General' || user.role === 'Brand Manager') {
+      const id = (user as any).brand_id ?? (user as any).brandId;
+      return id ? { type: 'brand' as const, id: parseInt(String(id), 10) } : null;
+    }
+    if (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') {
+      const id = (user as any).foodcourt_id ?? (user as any).foodcourtId;
+      return id ? { type: 'foodcourt' as const, id: parseInt(String(id), 10) } : null;
+    }
+    if (user.role === 'Supplier Admin' || user.role === 'Supplier Staff') {
+      const id = (user as any).supplier_company_id ?? (user as any).supplierCompanyId;
+      return id ? { type: 'supplier' as const, id: parseInt(String(id), 10) } : null;
+    }
+    return null;
+  }, [user]);
+
+  useEffect(() => {
+    if (!sellerScope) return;
+    const sock = io('/orders', { transports: ['websocket', 'polling'] });
+    sock.on('connect', () => {
+      sock.emit('join-seller', { seller_type: sellerScope.type, seller_id: sellerScope.id });
+    });
+    const refresh = () => fetchBadgeCounts();
+    sock.on('seller-order-created', refresh);
+    sock.on('seller-order-updated', refresh);
+    return () => { sock.disconnect(); };
+  }, [sellerScope, fetchBadgeCounts]);
 
   const handleLogout = () => {
     logout();

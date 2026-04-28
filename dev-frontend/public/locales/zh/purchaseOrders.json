@@ -153,9 +153,21 @@
       "submit": "提交",
       "cancel": "取消",
       "markShipped": "标记已发货",
-      "receive": "收货"
+      "receive": "收货",
+      "returns": "申请退货",
+      "print": "打印"
     },
-    "noNotes": "无备注。"
+    "noNotes": "无备注。",
+    "returns": {
+      "title": "申请退货",
+      "noItems": "没有可退货的项目。",
+      "submit": "提交退货",
+      "cancel": "取消",
+      "reason": "原因",
+      "failed": "提交退货失败",
+      "networkError": "网络错误",
+      "rejectReason": "拒绝原因:"
+    }
   },
   "receive": {
     "modalTitle": "收货登记",
@@ -207,5 +219,20 @@
     "close": "关闭",
     "cancel": "取消",
     "confirm": "确认"
+  },
+  "print": {
+    "loading": "加载中…",
+    "title": "采购订单",
+    "po_number": "采购单号",
+    "date": "日期",
+    "status": "状态",
+    "buyer": "买方",
+    "seller": "卖方",
+    "items": "项目",
+    "subtotal": "小计",
+    "tax": "税额",
+    "total": "总计",
+    "notes": "备注",
+    "thank_you": "谢谢"
   }
 }

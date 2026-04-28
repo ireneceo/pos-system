@@ -52,7 +52,19 @@
       "Bash(sed -n '84,110p' /var/www/dev-frontend/src/pages/LiveOrders/styles.ts)",
       "Bash(sed -n '210,290p' /var/www/dev-frontend/src/pages/LiveOrders/styles.ts)",
       "Bash(sed -n '280,330p' /var/www/dev-frontend/src/pages/LiveOrders/styles.ts)",
-      "Bash(echo \"=== 임시 test 파일 잔재 확인 ===\" ls /var/www/dev-backend/test-*.js echo \"\\(empty=clean\\)\" echo echo \"=== Final state ===\" echo \"Build: $\\(curl -s https://dev.purplehere.com/)"
+      "Bash(echo \"=== 임시 test 파일 잔재 확인 ===\" ls /var/www/dev-backend/test-*.js echo \"\\(empty=clean\\)\" echo echo \"=== Final state ===\" echo \"Build: $\\(curl -s https://dev.purplehere.com/)",
+      "WebSearch",
+      "WebFetch(domain:mysst.customs.gov.my)",
+      "Bash(CI=false GENERATE_SOURCEMAP=false npx react-app-rewired build)",
+      "Bash(CI=false GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=1536' npx react-scripts build)",
+      "Bash(sudo -n -l)",
+      "Bash(sudo rm *)",
+      "Bash(sudo mkdir *)",
+      "Bash(sudo mv *)",
+      "Bash(sudo nginx *)",
+      "Bash(sudo systemctl *)",
+      "Bash(tee /tmp/build-output.log)",
+      "Bash(echo \"exit=$?\")"
     ],
     "deny": [],
     "ask": []

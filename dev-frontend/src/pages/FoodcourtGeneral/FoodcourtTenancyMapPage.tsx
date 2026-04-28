@@ -360,6 +360,7 @@ const PinsLayer: React.FC<{
   popupLabels: PopupLabels;
 }> = ({ branches, tenantsForSelected, selectedBranchId, onBranchClick, onTenantClick, popupLabels }) => {
   const map = useMap();
+  const { i18n } = useTranslation();
   const layerRef = useRef<any>(null);
 
   useEffect(() => {
@@ -421,7 +422,7 @@ const PinsLayer: React.FC<{
     return () => {
       if (layerRef.current) { layerRef.current.clearLayers(); map.removeLayer(layerRef.current); layerRef.current = null; }
     };
-  }, [branches, tenantsForSelected, selectedBranchId, map, onBranchClick, onTenantClick, popupLabels]);
+  }, [branches, tenantsForSelected, selectedBranchId, map, onBranchClick, onTenantClick, popupLabels, i18n.language]);
 
   return null;
 };

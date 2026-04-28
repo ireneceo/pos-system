@@ -29,13 +29,16 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 # Flags
 AUTO_MODE=false
 SKIP_BUILD=false
-SYNC_CONTENT=false
+SYNC_CONTENT=true                  # default ON: 랜딩/블로그 콘텐츠는 코드와 함께 운영에 반영되어야 함
+SYNC_CONTENT_SINCE="90d"           # 최근 90일 발행/수정분 sync (그 이상 과거 글은 사용자가 별도 --group=N 지정)
 
 for arg in "$@"; do
     case $arg in
         --auto) AUTO_MODE=true ;;
         --skip-build) SKIP_BUILD=true ;;
-        --sync-content) SYNC_CONTENT=true ;;
+        --sync-content) SYNC_CONTENT=true ;;       # 명시적 ON (기본값과 동일, 이전 호환)
+        --no-sync-content) SYNC_CONTENT=false ;;   # 콘텐츠 sync 끄기 (긴급 핫픽스용)
+        --sync-content-since=*) SYNC_CONTENT_SINCE="${arg#*=}" ;;  # 예: --sync-content-since=30d
     esac
 done
 
@@ -509,71 +512,21 @@ fi
 
 # ──────────────────────────────────────────
 # Content sync (FAQ, Blog → production DB)
+# 랜딩 페이지 콘텐츠(블로그·FAQ)는 코드와 함께 운영 DB에도 반영되어야 한다.
+# scripts/sync-contents-to-prod.js 가 다국어/persona/funnel/video/social 모든 컬럼을 처리.
 # ──────────────────────────────────────────
 if [ "$SYNC_CONTENT" = true ]; then
-    log "Syncing landing page content (FAQ, Blog) to production DB..."
-
-    # Export from dev DB
+    log "Syncing landing content (Blog + FAQ) to production DB — since=${SYNC_CONTENT_SINCE}..."
     cd $LOCAL_DEV_BACKEND
-    node -e "
-    const { sequelize } = require('./config/database');
-    (async () => {
-      const [cats] = await sequelize.query('SELECT * FROM content_categories');
-      const [contents] = await sequelize.query('SELECT * FROM contents WHERE type IN (\"faq\", \"blog\") AND status = \"published\"');
-      const fs = require('fs');
-      fs.writeFileSync('/tmp/content_sync.json', JSON.stringify({ categories: cats, contents: contents }));
-      console.log('Exported: ' + cats.length + ' categories, ' + contents.length + ' contents');
-      process.exit(0);
-    })();
-    " 2>/dev/null || warn "Failed to export content from dev DB"
-
-    if [ -f /tmp/content_sync.json ]; then
-        # Copy to production server
-        scp /tmp/content_sync.json ${PROD_SERVER}:/tmp/content_sync.json
-
-        # Import to production DB
-        ssh $PROD_SERVER "cd /var/www/production-backend && node -e \"
-        require('dotenv').config();
-        const { sequelize } = require('./config/database');
-        const fs = require('fs');
-        (async () => {
-          const data = JSON.parse(fs.readFileSync('/tmp/content_sync.json', 'utf8'));
-
-          // Sync categories
-          for (const cat of data.categories) {
-            const [existing] = await sequelize.query('SELECT id FROM content_categories WHERE id = ?', { replacements: [cat.id] });
-            if (existing.length > 0) {
-              await sequelize.query('UPDATE content_categories SET name=?, slug=?, type=?, icon=?, is_active=?, sort_order=?, updated_at=NOW() WHERE id=?',
-                { replacements: [cat.name, cat.slug, cat.type, cat.icon, cat.is_active, cat.sort_order, cat.id] });
-            } else {
-              await sequelize.query('INSERT INTO content_categories (id,name,slug,type,icon,is_active,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,NOW(),NOW())',
-                { replacements: [cat.id, cat.name, cat.slug, cat.type, cat.icon, cat.is_active, cat.sort_order] });
-            }
-          }
-          console.log('Categories synced: ' + data.categories.length);
-
-          // Sync contents
-          for (const c of data.contents) {
-            const [existing] = await sequelize.query('SELECT id FROM contents WHERE slug = ? AND type = ?', { replacements: [c.slug, c.type] });
-            if (existing.length > 0) {
-              await sequelize.query('UPDATE contents SET category_id=?, title=?, content=?, excerpt=?, status=?, sort_order=?, updated_at=NOW() WHERE slug=? AND type=?',
-                { replacements: [c.category_id, c.title, c.content, c.excerpt, c.status, c.sort_order, c.slug, c.type] });
-            } else {
-              await sequelize.query('INSERT INTO contents (category_id,type,status,title,content,excerpt,slug,sort_order,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,NOW(),NOW(),NOW())',
-                { replacements: [c.category_id, c.type, c.status, c.title, c.content, c.excerpt, c.slug, c.sort_order] });
-            }
-          }
-          console.log('Contents synced: ' + data.contents.length);
-
-          fs.unlinkSync('/tmp/content_sync.json');
-          process.exit(0);
-        })();
-        \" 2>/dev/null" && success "Content synced to production" || warn "Content sync failed"
-
-        rm -f /tmp/content_sync.json
+    if node scripts/sync-contents-to-prod.js --since=${SYNC_CONTENT_SINCE} 2>&1 | tee /tmp/content_sync_log.txt; then
+        SYNC_LINES=$(grep -cE "(updated|inserted)" /tmp/content_sync_log.txt 2>/dev/null || echo "0")
+        success "Content synced to production (${SYNC_LINES} rows)"
+    else
+        warn "Content sync failed — check /tmp/content_sync_log.txt and rerun: node scripts/sync-contents-to-prod.js --since=${SYNC_CONTENT_SINCE}"
     fi
+    rm -f /tmp/content_sync_log.txt
 else
-    log "Skipping content sync (use --sync-content to sync FAQ/Blog)"
+    log "Skipping content sync (--no-sync-content set)"
 fi
 
 # ──────────────────────────────────────────

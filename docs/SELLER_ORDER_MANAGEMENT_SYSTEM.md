@@ -1223,3 +1223,19 @@ Sprint 1~5 완료 후 발주/주문 라이프사이클 정합성 갭 9개 일괄
 11. PO print page renders + window.print() trigger
 12. health-check 회귀 통과
 
+---
+
+## Sprint 7 보강 (2026-04-28, 미배포)
+
+### Socket.IO seller room 격리
+`services/poRealtimeService.js:75` `emitPoEvent` — system_admin seller는 emit 자체 skip (POS 자체가 seller라 알릴 사람 없음). 이전엔 `seller_entity_id || 0` fallback으로 `seller_system_admin_0` 단일 room에 모든 SA-seller PO 가 모여 격리 깨짐. 비-system-admin인데 seller_entity_id null이면 `console.error`로 surfacing.
+
+### 글로벌 seller socket (MainLayout)
+`components/Layout/MainLayout.tsx` — BG/FG/Supplier 역할에 page-agnostic socket listener 추가. Dashboard 등 다른 페이지에 있어도 새 PO 도착 시 NavIcon hasPending pulse 즉시 반응 (이전 15s polling 의존 제거).
+
+### TDZ ordering fix
+`pages/IncomingOrders/IncomingOrdersView.tsx` — `dateRange` useState 를 `fetchList` useCallback 위로 이동. deps array `[dateRange]` 가 const 선언 전에 evaluate 되면서 발생한 TDZ 차단.
+
+### 이모지 제거
+빈 상태/carrier chip/delivery 주소의 📭/📦/📍 모두 텍스트 전환. Restaurant LiveOrdersPage 패턴(`<DataTableEmpty>` 한 줄)과 통일.
+

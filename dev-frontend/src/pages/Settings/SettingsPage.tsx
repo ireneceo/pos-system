@@ -3578,6 +3578,23 @@ const SettingsPage: React.FC = () => {
                       </ToggleSwitch>
                       </AutoSaveField>
                     </Toggle>
+                  {!(operationSettings.orderTypes?.dineIn ?? true) &&
+                    !(operationSettings.orderTypes?.takeaway ?? true) &&
+                    !(operationSettings.orderTypes?.pickup ?? false) &&
+                    !(operationSettings.orderTypes?.delivery ?? false) && (
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px 14px',
+                      background: '#FFF4E5',
+                      border: '1px solid #FFB74D',
+                      borderRadius: '8px',
+                      color: '#7A4F0E',
+                      fontSize: '13px',
+                      lineHeight: 1.5
+                    }}>
+                      <strong>⚠ Mobile ordering is now disabled.</strong> Customers scanning your QR code will see a "currently unavailable" message instead of the order page. Enable at least one order type to accept mobile orders.
+                    </div>
+                  )}
                 </SettingsCard>
 
                 <SettingsCard>

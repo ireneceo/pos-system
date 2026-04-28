@@ -6,6 +6,33 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-28 (보안 IDOR 일괄 + UX 정리 + dev 이메일 차단 + 검증 10단계)
+**🔒 보안: 운영 배포 직전 IDOR 3건 차단 + 운영 사고 4건 방지**
+- **menu.js IDOR**: 8개 endpoint에 `checkRestaurantAccess` 적용. `/product/:id`는 `:id`가 product id이므로 `checkProductTenant` 별도 미들웨어로 분리. middleware/auth.js의 `checkRestaurantAccess`가 query/body restaurantId까지 해결하도록 확장.
+- **brand-inventory.js IDOR**: 4개 `:brandId` endpoint에 `requireBrandScope` 적용.
+- **PO 비-Restaurant audit**: Brand/Foodcourt buyer 수령 시 `ActivityLog` 기록 (entity_type='po_receipt') — 감사 추적 회복.
+- **Socket.IO seller room 격리**: system_admin seller emit skip (`seller_${type}_${id}` fallback 폐기).
+- **글로벌 seller socket**: MainLayout에 BG/FG/Supplier 페이지 무관 socket listener — Dashboard 등 다른 페이지에 있어도 새 PO 즉시 반응.
+- **BG multi-brand 지원**: BrandProductRecipePage가 `/api/brands` fetch + selector 드롭다운 + brand_id 쿼리 필터.
+
+**🚨 운영 사고 방지**
+- **dev 이메일 SMTP 차단**: emailService 3종(Platform/Entity/Issuer) 모두 dev에서 SMTP skip. Test signup이 운영 admin 메일함 폭격하던 사고 차단.
+- **nginx HTML no-cache**: index.html `cache-control: no-cache, no-store, must-revalidate` — 브라우저 stale main.js → chunk 404 → TDZ 표시 문제 해결.
+- **IncomingOrdersView TDZ**: `dateRange` useState를 `fetchList` useCallback 위로 이동.
+- **FoodcourtTenancyMap i18n ref**: PinsLayer 컴포넌트에 `useTranslation` 추가.
+- **OrderTypePage 빈 상태**: 모든 모바일 주문 유형 비활성 시 안내 카드 + 관리자 Settings 경고.
+
+**🟡 i18n + UX 정리**
+- PO Detail i18n 키 4언어 (`detail.actions.{returns,print}` + `detail.returns.*` + `print.*`).
+- BrandProductsTab i18n 28키 × 4언어 적용.
+- IncomingOrdersView 이모지 제거 (📭/📦/📍 → 텍스트, Restaurant LiveOrdersPage 패턴 통일).
+
+**기타**
+- `deploy-to-production.sh` 콘텐츠 sync 기본 ON + sync-contents-to-prod.js 위임.
+- `/글쓰기` 스킬에 4.5단계 팩트 검증 (.gov.my 1차 출처 우선) 추가.
+- 블로그 발행: e-Invoice RM10K Malaysian Restaurants 2026 (3언어).
+- 검증 10단계 모두 PASS (health-check 43/43 + IDOR 14/14 + SPA 17/17).
+
 ### 2026-04-27 (Sprint 5+6 — Smart Reorder, Live Sales Order, Delivery Tracking, Lifecycle Completion)
 **📦 발주/주문 라이프사이클 완성 — 운영 배포 가능 상태**
 - **PO Phase 2**: Restaurant 발주 ↔ 계약 검증 통합 (Supplier=SupplierContract / BG=brand_id / FG=foodcourt_id) + RestaurantIngredientCost 가중평균 자동 갱신 + Mapping 강제. 신규 `/api/buyer-sellers` 통합 picker.

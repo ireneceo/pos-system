@@ -11,12 +11,17 @@ const {
   Supplier
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
+const { requireBrandScope } = require('../middleware/brandScope');
 
-// All routes require authentication
+// All routes require authentication. Per-route ownership is enforced by
+// requireBrandScope below — the previous implementation only had
+// authenticateToken, which let any logged-in user read inventory of any
+// :brandId (IDOR). System Admin still has god access via requireBrandScope's
+// admin branch.
 router.use(authenticateToken);
 
 // Get brand's restaurants
-router.get('/brands/:brandId/restaurants', async (req, res) => {
+router.get('/brands/:brandId/restaurants', requireBrandScope(), async (req, res) => {
   try {
     const { brandId } = req.params;
 
@@ -37,7 +42,7 @@ router.get('/brands/:brandId/restaurants', async (req, res) => {
 });
 
 // Get brand-wide inventory summary
-router.get('/brands/:brandId/inventory/summary', async (req, res) => {
+router.get('/brands/:brandId/inventory/summary', requireBrandScope(), async (req, res) => {
   try {
     const { brandId } = req.params;
 
@@ -125,7 +130,7 @@ router.get('/brands/:brandId/inventory/summary', async (req, res) => {
 });
 
 // Get all inventory across brand's restaurants
-router.get('/brands/:brandId/inventory', async (req, res) => {
+router.get('/brands/:brandId/inventory', requireBrandScope(), async (req, res) => {
   try {
     const { brandId } = req.params;
 
@@ -195,7 +200,7 @@ router.get('/brands/:brandId/inventory', async (req, res) => {
 });
 
 // Get expiring items across brand's restaurants
-router.get('/brands/:brandId/inventory/expiring', async (req, res) => {
+router.get('/brands/:brandId/inventory/expiring', requireBrandScope(), async (req, res) => {
   try {
     const { brandId } = req.params;
     const { days = 14 } = req.query;

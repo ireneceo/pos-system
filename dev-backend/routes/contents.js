@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const ContentCategory = require('../models/ContentCategory');
 const Content = require('../models/Content');
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken, requireRole, optionalAuthenticateToken } = require('../middleware/auth');
 
 // Helper: Generate slug from title
 const generateSlug = (title) => {
@@ -27,6 +27,25 @@ const DEFAULT_LANG = 'en';
 function normalizeLang(lang) {
   const l = (lang || '').toLowerCase().trim();
   return SUPPORTED_LANGS.includes(l) ? l : DEFAULT_LANG;
+}
+
+// Admin-only marketing assets — never expose to public API responses.
+// Frontend gates rendering behind `isSystemAdmin`, but the JSON payload itself
+// must not carry these fields to anonymous visitors (DevTools / crawlers).
+// When a System Admin is the requester (token present + role check), we keep them
+// so the Distribution Kit can render on the public blog page.
+const ADMIN_ONLY_FIELDS = ['video_prompt', 'social_post', 'thumbnail_copy', 'video_script', 'social_captions'];
+
+function isSystemAdmin(req) {
+  return !!(req.user && req.user.role === 'System Admin');
+}
+
+function stripAdminFields(post, req) {
+  if (!post) return post;
+  const obj = typeof post.toJSON === 'function' ? post.toJSON() : { ...post };
+  if (req && isSystemAdmin(req)) return obj;  // Admin sees everything
+  for (const f of ADMIN_ONLY_FIELDS) delete obj[f];
+  return obj;
 }
 
 // GET /api/contents/public/faq - Get all published FAQ items (multilingual)
@@ -201,7 +220,7 @@ async function listPublishedPosts(req, res, { isNews }) {
     // 3) Combine + manual pagination
     const allItems = [...targetPosts.map(p => p.toJSON()), ...fallbackPosts];
     const count = allItems.length;
-    const posts = allItems.slice(offset, offset + parseInt(limit));
+    const posts = allItems.slice(offset, offset + parseInt(limit)).map(p => stripAdminFields(p, req));
 
     // Aggregate available tags (persona + problem) for filter UI — within current scope
     const tagWhere = { ...where };
@@ -241,13 +260,13 @@ async function listPublishedPosts(req, res, { isNews }) {
 }
 
 // GET /api/contents/public/blog - Blog posts (excluding news categories)
-router.get('/public/blog', (req, res) => listPublishedPosts(req, res, { isNews: false }));
+router.get('/public/blog', optionalAuthenticateToken, (req, res) => listPublishedPosts(req, res, { isNews: false }));
 
 // GET /api/contents/public/news - News posts (product-news + updates only)
-router.get('/public/news', (req, res) => listPublishedPosts(req, res, { isNews: true }));
+router.get('/public/news', optionalAuthenticateToken, (req, res) => listPublishedPosts(req, res, { isNews: true }));
 
 // GET /api/contents/public/blog/:slug - Get single blog post by slug (multilingual)
-router.get('/public/blog/:slug', async (req, res) => {
+router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => {
   try {
     const { slug } = req.params;
     const lang = normalizeLang(req.query.lang);
@@ -343,7 +362,7 @@ router.get('/public/blog/:slug', async (req, res) => {
     });
 
     res.json({
-      post,
+      post: stripAdminFields(post, req),
       relatedPosts,
       requested_language: lang,
       is_fallback: isFallback,

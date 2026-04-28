@@ -1,17 +1,26 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-27 (Sprint 6 마무리 + Live Orders Restaurant 패턴 일치)
+> **최종 업데이트:** 2026-04-28 (보안/IDOR 일괄 + UX 정리 + dev 이메일 차단 + 검증 10단계)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 `/배포` 시 **v3.19**
 
-## 🎯 다음 세션 — Irene 운영 테스트
+## 🎯 다음 세션 — Irene 브라우저 테스트 → /배포 v3.19
+
+**개발은 100% 완료**. 서버 사이드 검증(IDOR/회귀/health-check 43/43)도 모두 통과.
+브라우저 클릭 흐름만 Irene이 직접 확인하면 운영 배포 준비 완료.
 
 **가이드 문서:** `docs/SPRINT_5_6_TEST_GUIDE.md` (8 시나리오)
 
-1. Restaurant 단일 발주 → 2. 다중 Bulk → 3. Supplier Live Orders 실시간 → 4. Confirm/Ship/Edit Tracking/Deliver → 5. Receive (Trade Invoice 자동) → 6. Returns/Credit Note → 7. PO Print → 8. Admin Carriers
+1. Restaurant 단일 발주 (3-step stepper) → 2. 다중 Bulk (BulkOrderModal cart) → 3. Supplier Live Orders 실시간(NavIcon pulse + chime + DatePeriodFilter) → 4. Confirm/Ship/Edit Tracking/Deliver (carrier dropdown) → 5. Receive (Trade Invoice 자동 + 가중평균 cost) → 6. Returns/Credit Note → 7. PO Print A4 → 8. Admin Carriers CRUD
 
-검증 후 **`/배포`** 명령어로 v3.19 운영 배포.
+**추가 확인 (2026-04-28 세션 변경분):**
+- BG `/pos/brand/general/product-recipes` brand selector 드롭다운 (3개 brand 보유)
+- BG/FG/Supplier 라이브오더 빈 상태 텍스트만 (이모지 없음)
+- BG/FG/Supplier 어느 페이지에서도 새 PO 도착 시 사이드바 즉시 반응 (글로벌 socket)
+- 4개 언어 토글 (BrandProductsTab, PO Detail returns/print)
+
+**테스트 OK 시 `/배포`** — DB 마이그레이션(sprint1~6) + 콘텐츠 sync(블로그/FAQ 자동) + 코드/프론트 배포가 한 번에.
 
 ## 미배포 누적 (v3.19 후보)
 - Sprint 1~4 (Supply Chain 4-Design)
@@ -21,6 +30,78 @@
 - Sprint 5 Detail (BulkOrderModal + Suggestion column + Carrier Admin + Detail Drawer)
 - Sprint 6 (Lifecycle Completion: Delivered/Cancel/Tracking-edit/Returns/Print)
 - Sprint 6 마무리 (Live Orders Restaurant 패턴 100% 일치)
+
+---
+
+## ✅ 완료: 보안/IDOR 일괄 + UX 정리 + dev 이메일 차단 (2026-04-28, 미배포)
+
+### 배경
+v3.19 운영 배포 직전 4개 도메인(발주/재고/라이브오더/프로덕트) 전수조사를 통해 IDOR 보안 취약점 3건과 Major issue 4건 발견. 동시에 dev 서버에서 운영 admin 메일함으로 test signup 이메일이 폭격되는 사고 + Brand General 페이지에서 multi-brand 무지원 + 라이브오더 페이지 TDZ runtime crash 등 운영 사고 4건 발견. 일괄 수정 + 10단계 검증 완료.
+
+### 완료된 작업
+
+| # | 영역 | 작업 | 상태 |
+|---|------|------|:----:|
+| 1 | **🔒 Critical: menu.js IDOR** | 8 endpoint에 checkRestaurantAccess + `/product/:id`엔 `checkProductTenant` (req.params.id 충돌 회피). middleware/auth.js 가 query/body restaurantId도 해결 | ✅ |
+| 2 | **🔒 Critical: brand-inventory.js IDOR** | 4 `:brandId` endpoint에 `requireBrandScope` 적용 | ✅ |
+| 3 | **🔒 Critical: inventory-routes.js IDOR** | 검증 결과 line 25에 이미 router-level checkRestaurantAccess 적용 (false-positive) | ✅ |
+| 4 | **🟠 BG multi-brand 지원** | BrandProductRecipePage `/api/brands` fetch + selector 드롭다운, ProductRecipesTab/CategoriesTab brandId prop, `?brand_id=N` 쿼리 필터 | ✅ |
+| 5 | **🟠 PO 비-Restaurant audit** | Brand/Foodcourt buyer 수령 시 ActivityLog (entity_type='po_receipt') — InventoryTransaction restaurant_id NOT NULL 우회 | ✅ |
+| 6 | **🟠 Socket.IO seller room 격리** | system_admin seller emit skip (POS 자체가 seller라 알릴 사람 없음). 비-system-admin인데 entity_id null인 경우 console.error로 surfacing | ✅ |
+| 7 | **🟠 글로벌 seller socket** | MainLayout 에 sellerScope useMemo + `/orders` namespace 글로벌 listener — BG/FG/Supplier 어느 페이지에 있어도 NavIcon hasPending pulse 즉시 반응 | ✅ |
+| 8 | **🟡 PO Detail i18n 키** | 4언어 detail.actions.{returns,print} + detail.returns.* + print.* namespace 추가 | ✅ |
+| 9 | **🟡 BrandProductsTab i18n** | useTranslation 적용 + productsTab.* 28키 × 4언어 | ✅ |
+| 10 | **🟡 IncomingOrdersView 이모지 제거** | 빈 상태/carrier chip/delivery 주소 모두 텍스트만 (Restaurant LiveOrdersPage 패턴 통일) | ✅ |
+| 11 | **🚨 dev 이메일 SMTP 차단** | sendPlatformEmail/sendEmail/sendIssuerEmail 모두 dev에서 SMTP 호출 자체 skip. DEV_SEND_PLATFORM_EMAILS/DEV_SEND_ENTITY_EMAILS opt-in. Test signup 운영 admin 폭격 차단 | ✅ |
+| 12 | **🚨 nginx HTML no-cache** | index.html `cache-control: no-cache, no-store, must-revalidate` — 브라우저가 옛 main.js URL 들고 chunk 404 발생하던 문제 해결 | ✅ |
+| 13 | **🚨 IncomingOrdersView TDZ** | `dateRange` useState를 `fetchList` useCallback 위로 이동 — deps array TDZ ("Cannot access 'er' before initialization") | ✅ |
+| 14 | **🚨 FoodcourtTenancyMap i18n ref** | PinsLayer 에 useTranslation 추가 — 모듈 스코프 i18n.language ReferenceError | ✅ |
+| 15 | **OrderTypePage 빈 상태** | 모든 주문 유형 비활성 시 빈 화면 → 안내 카드 + Settings 페이지 경고 박스 | ✅ |
+| 16 | **블로그 발행** | e-Invoice RM10K 글 EN/MS/ZH 발행 (translation_group_id=5) | ✅ |
+| 17 | **/글쓰기 스킬 강화** | 4.5단계 팩트 검증 (.gov.my 1차 출처 우선) 단계 추가 | ✅ |
+| 18 | **deploy-to-production.sh** | 콘텐츠 sync 기본 ON + sync-contents-to-prod.js 위임 (다국어/persona/video/social 모두 처리) | ✅ |
+
+### 검증 (10단계 모두 PASS)
+0 hydration 0 warning · 1 빌드 exit 0 (`main.cb59d6bd.js`) · 2 pm2 online · 3 API 9/9 (CRUD 4 + IDOR 5) · 4 SPA 8/8 · 5 역할별 14/14 · 6 요구사항 11/11 · 7 회귀 health-check 43/43 · 8 UI/UX i18n 4×28키 · 9 SPA 17/17
+
+### 데모 데이터 (운영 테스트 즉시 가능)
+- R#38 PO 40건 모든 stage 도달: draft 1 / submitted 12 / confirmed 4 / shipped 7 / received 16
+- Returns 2 (approved + rejected) · Credit Notes 1 · Carriers 5
+
+### 수정된 파일
+
+**Backend (6)**
+- `middleware/auth.js`, `routes/menu.js`, `routes/brand-inventory.js`, `routes/purchase-orders.js`, `services/poRealtimeService.js`, `utils/emailService.js`
+
+**Frontend (9)**
+- `components/Layout/MainLayout.tsx`
+- `pages/BrandProductRecipe/BrandProductRecipePage.tsx`, `ProductRecipesTab.tsx`, `ProductRecipeCategoriesTab.tsx`
+- `pages/BrandProductManagement/BrandProductsTab.tsx`
+- `pages/IncomingOrders/IncomingOrdersView.tsx`
+- `pages/FoodcourtGeneral/FoodcourtTenancyMapPage.tsx`
+- `pages/Settings/SettingsPage.tsx`
+- `mobile/pages/OrderTypePage.tsx`
+
+**Infra (1)**
+- `/etc/nginx/sites-enabled/dev.purplehere.com` (HTML no-cache)
+
+**i18n (8 files: 4 langs × 2 namespaces)**
+- `purchaseOrders.json` (PO Detail / Print 키)
+- `brand.json` (productsTab namespace 28키)
+
+**기타**
+- `.claude/commands/글쓰기.md` (4.5단계 팩트 검증)
+- `.claude/session-state.md` (다음 세션 인계)
+- `deploy-to-production.sh` (콘텐츠 sync 기본 ON)
+- 블로그 grp=5 (e-Invoice RM10K 3언어)
+
+### 다음 세션 — Irene 브라우저 테스트 → /배포 v3.19
+
+**서버 사이드 모두 통과**. 브라우저 클릭 흐름만 확인:
+- `docs/SPRINT_5_6_TEST_GUIDE.md` 8 시나리오
+- 추가: BG multi-brand selector / 이모지 없는 빈상태 / 글로벌 socket pulse / 4언어 토글 / PO Detail returns/print
+
+테스트 OK 시 `/배포` — DB 마이그레이션(sprint1~6) + 콘텐츠 sync + 코드/프론트 자동 배포
 
 ---
 

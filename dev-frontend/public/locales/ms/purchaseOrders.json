@@ -153,9 +153,21 @@
       "submit": "Hantar",
       "cancel": "Batal",
       "markShipped": "Tanda Dihantar",
-      "receive": "Terima"
+      "receive": "Terima",
+      "returns": "Permintaan pulangan",
+      "print": "Cetak"
     },
-    "noNotes": "Tiada nota."
+    "noNotes": "Tiada nota.",
+    "returns": {
+      "title": "Permintaan pulangan",
+      "noItems": "Tiada item yang layak untuk dipulangkan.",
+      "submit": "Hantar pulangan",
+      "cancel": "Batal",
+      "reason": "Sebab",
+      "failed": "Gagal menghantar pulangan",
+      "networkError": "Ralat rangkaian",
+      "rejectReason": "Sebab penolakan:"
+    }
   },
   "receive": {
     "modalTitle": "Terima Pesanan",
@@ -207,5 +219,20 @@
     "close": "Tutup",
     "cancel": "Batal",
     "confirm": "Sahkan"
+  },
+  "print": {
+    "loading": "Memuatkan…",
+    "title": "Pesanan Belian",
+    "po_number": "Nombor PO",
+    "date": "Tarikh",
+    "status": "Status",
+    "buyer": "Pembeli",
+    "seller": "Penjual",
+    "items": "Barangan",
+    "subtotal": "Subtotal",
+    "tax": "Cukai",
+    "total": "Jumlah",
+    "notes": "Nota",
+    "thank_you": "Terima kasih"
   }
 }

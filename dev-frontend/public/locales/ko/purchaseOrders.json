@@ -153,9 +153,21 @@
       "submit": "제출",
       "cancel": "취소",
       "markShipped": "배송 처리",
-      "receive": "수령"
+      "receive": "수령",
+      "returns": "반품 요청",
+      "print": "인쇄"
     },
-    "noNotes": "메모 없음."
+    "noNotes": "메모 없음.",
+    "returns": {
+      "title": "반품 요청",
+      "noItems": "반품 가능한 품목이 없습니다.",
+      "submit": "반품 제출",
+      "cancel": "취소",
+      "reason": "사유",
+      "failed": "반품 제출 실패",
+      "networkError": "네트워크 오류",
+      "rejectReason": "거부 사유:"
+    }
   },
   "receive": {
     "modalTitle": "주문 수령",
@@ -207,5 +219,20 @@
     "close": "닫기",
     "cancel": "취소",
     "confirm": "확인"
+  },
+  "print": {
+    "loading": "불러오는 중…",
+    "title": "발주서",
+    "po_number": "발주번호",
+    "date": "날짜",
+    "status": "상태",
+    "buyer": "발주자",
+    "seller": "공급자",
+    "items": "품목",
+    "subtotal": "소계",
+    "tax": "세금",
+    "total": "총액",
+    "notes": "비고",
+    "thank_you": "감사합니다"
   }
 }
