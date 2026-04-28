@@ -307,8 +307,19 @@ async function getPayerCompanyInfo(payerType, payerId, restaurant) {
   return null;
 }
 
+// Resolve timezone for an invoice from its restaurant. Falls back to KL.
+function getInvoiceTimezone(invoice) {
+  try {
+    const ops = invoice?.restaurant?.operation_settings;
+    const parsed = typeof ops === 'string' ? JSON.parse(ops) : ops;
+    return parsed?.timeZone || 'Asia/Kuala_Lumpur';
+  } catch {
+    return 'Asia/Kuala_Lumpur';
+  }
+}
+
 // Helper function to format billing period display
-function formatBillingPeriod(startDate, endDate) {
+function formatBillingPeriod(startDate, endDate, timezone = 'Asia/Kuala_Lumpur') {
   if (!startDate || !endDate) return '-';
 
   const start = new Date(startDate);
@@ -318,7 +329,8 @@ function formatBillingPeriod(startDate, endDate) {
   const formatDate = (date) => date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: timezone
   });
 
   return `${formatDate(start)} - ${formatDate(end)}`;
@@ -432,6 +444,7 @@ module.exports = {
   getIssuerCompanyInfo,
   getPayerCompanyInfo,
   formatBillingPeriod,
+  getInvoiceTimezone,
   getCategoryDisplayName,
   checkPaymentPermission,
   checkConfirmPermission,

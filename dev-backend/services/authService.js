@@ -501,15 +501,19 @@ function notifyAdminNewSignup({ user, role, entityName, planName, billingCycle }
   try {
     const { sendPlatformEmail } = require('../utils/emailService');
     const { emailLayout } = require('../utils/emailTemplates');
+    const { getSiteTimezone } = require('../utils/dateTimeHelper');
     const User = require('../models/User');
 
     // Find System Admin emails
-    User.findAll({ where: { role: 'System Admin' }, attributes: ['email'] }).then(admins => {
+    Promise.all([
+      User.findAll({ where: { role: 'System Admin' }, attributes: ['email'] }),
+      getSiteTimezone()
+    ]).then(([admins, siteTz]) => {
       if (!admins.length) return;
 
       const adminEmails = admins.map(a => a.email).join(', ');
       const row = (label, value) => `<tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;width:35%;">${label}</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${value}</td></tr>`;
-      const trialEnds = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString();
+      const trialEnds = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: siteTz });
 
       const bodyContent = `
     <h2 style="color:#0A2540;font-size:20px;font-weight:600;margin:0 0 16px;">New Signup</h2>

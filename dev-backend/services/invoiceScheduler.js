@@ -5,7 +5,7 @@ const { sequelize } = require('../config/database');
 const systemLogger = require('../utils/systemLogger');
 const { sendIssuerEmail } = require('../utils/emailService');
 const { generateInvoiceNotificationEmail } = require('../utils/invoiceEmailTemplate');
-const { getSiteTimezone, getLocalDate } = require('../utils/dateTimeHelper');
+const { getSiteTimezone, getLocalDate, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { normalizeAdditionalCharges } = require('../utils/paymentSettingsHelper');
 const { sendNotification, getRestaurantOwnerIds } = require('../utils/notificationService');
 const { invoiceCreatedEmail } = require('../utils/notificationTemplates');
@@ -327,7 +327,8 @@ class InvoiceScheduler {
     });
 
     // Create invoice item
-    const periodText = `${billingStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${billingEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    const restaurantTz = getRestaurantTimezone(restaurant);
+    const periodText = `${billingStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: restaurantTz })} - ${billingEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: restaurantTz })}`;
 
     await InvoiceItem.create({
       invoice_id: invoice.id,
@@ -1154,7 +1155,8 @@ class InvoiceScheduler {
     // 2. New: send receiver-based notification to Restaurant Admin + Owner
     try {
       const isTrial = restaurant.status === 'trial';
-      const mail = invoiceCreatedEmail(invoice, restaurant.name, { isTrial });
+      const restaurantTz = getRestaurantTimezone(restaurant);
+      const mail = invoiceCreatedEmail(invoice, restaurant.name, { isTrial, timezone: restaurantTz });
       // Notify restaurant admin
       if (restaurant.admin_id) {
         sendNotification(restaurant.admin_id, 'invoice_created', mail);

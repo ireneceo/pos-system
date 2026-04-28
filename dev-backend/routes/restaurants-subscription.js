@@ -428,7 +428,8 @@ router.post('/subscriptions', authenticateToken, async (req, res) => {
         const totalAmount = billingAmount * 1.06;
         const siteUrl = process.env.SITE_URL || 'https://purplehere.com';
 
-        const formatDate = (d) => new Date(d).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' });
+        const restaurantTz = getRestaurantTimezone(restaurant);
+        const formatDate = (d) => new Date(d).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric', timeZone: restaurantTz });
 
         const emailData = {
           adminName: adminUser.full_name || adminUser.username,

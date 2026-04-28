@@ -6,6 +6,25 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-28
+- 타임존 일괄 적용: 모든 toLocaleDateString/TimeString 호출에 entity 타임존(restaurant/brand/foodcourt operation_settings.timeZone) 반영. Frontend 2 + Backend 11 파일.
+- 모바일 헤더 fix: 480~768px 구간에서 StaffInfo 텍스트 헤더 오버플로우 발생 → 모바일에서 아바타만 표시. HeaderActions gap/ProfileButton padding 컴팩트.
+- 로그인 페이지 LanguageSelector globe variant 통일 (모바일 dropdown 잘림 해결).
+- Restaurants 페이지 계약 뱃지/만료일 표시 (Manager + Owner). list endpoint batch contract fetch (N+1 회피).
+- Supply Chain Sprint 7 — Operational Hardening (4 영역 + 12 빈틈):
+  - inventory_transactions / batches polymorphic (entity_type/entity_id + Sequelize hook + 백필 86 rows)
+  - Returns 양방향 환원 (Brand/Foodcourt seller도 stock 환원) + Currency invariant 검증
+  - 수령 차이 분류 (line별 splits: 정상/short/damaged/wrong_item/pending) + auto-returns 자동 생성
+  - PO.status ENUM 확장 (in_transit / delivery_failed)
+  - Carrier webhook 인프라 (HMAC + 2단계 처리 + idempotency + 모니터/retry/simulate)
+  - Admin Carrier 모달에 webhook 섹션 (regenerate-secret 한 번 노출 + status_map editor)
+  - 신규 페이지: `/pos/admin/carrier-webhooks` (System Admin 전용)
+- path-level middleware fix: brand-inventory.js의 router.use(authenticateToken) 광범위 prefix → `/brands` path-level로 좁힘. carrier-webhooks public endpoint 401 사고 해결.
+
+## [v3.19] — 2026-04-28 배포
+
+**Supply Chain System 운영 도입 — Sprint 1~6 + 보안 일괄**
+
 ### 2026-04-28 (보안 IDOR 일괄 + UX 정리 + dev 이메일 차단 + 검증 10단계)
 **🔒 보안: 운영 배포 직전 IDOR 3건 차단 + 운영 사고 4건 방지**
 - **menu.js IDOR**: 8개 endpoint에 `checkRestaurantAccess` 적용. `/product/:id`는 `:id`가 product id이므로 `checkProductTenant` 별도 미들웨어로 분리. middleware/auth.js의 `checkRestaurantAccess`가 query/body restaurantId까지 해결하도록 확장.

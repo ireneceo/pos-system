@@ -32,6 +32,8 @@ const {
   getFoodcourtManagerIds
 } = require('../utils/notificationService');
 const { monthlySoaEmail } = require('../utils/notificationTemplates');
+const { getRestaurantTimezone } = require('../utils/dateTimeHelper');
+const Restaurant = require('../models/Restaurant');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 
@@ -101,9 +103,8 @@ async function processMonthlySoa(referenceDate = new Date()) {
     // Compute last month's date range
     const lastMonthStart = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1, 0, 0, 0, 0);
     const lastMonthEnd = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 0, 23, 59, 59, 999);
-    const monthLabel = lastMonthStart.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
 
-    console.log(`[soaScheduler] Processing monthly SOA for ${monthLabel} (${lastMonthStart.toISOString()} → ${lastMonthEnd.toISOString()})`);
+    console.log(`[soaScheduler] Processing monthly SOA (${lastMonthStart.toISOString()} → ${lastMonthEnd.toISOString()})`);
 
     // Find all active SupplierContracts with monthly_soa payment cycle
     const contracts = await SupplierContract.findAll({
@@ -150,6 +151,21 @@ async function processMonthlySoa(referenceDate = new Date()) {
         const recipients = await getBuyerRecipientUserIds(contract.entity_type, contract.entity_id);
         if (recipients.length === 0) { skipped++; continue; }
 
+        // Resolve buyer timezone (per-buyer for accurate SOA dates)
+        let buyerTz = 'Asia/Kuala_Lumpur';
+        try {
+          let buyerEntity = null;
+          if (contract.entity_type === 'restaurant') {
+            buyerEntity = await Restaurant.findByPk(contract.entity_id, { attributes: ['operation_settings'] });
+          } else if (contract.entity_type === 'brand') {
+            buyerEntity = await Brand.findByPk(contract.entity_id, { attributes: ['operation_settings'] });
+          } else if (contract.entity_type === 'foodcourt') {
+            buyerEntity = await Foodcourt.findByPk(contract.entity_id, { attributes: ['operation_settings'] });
+          }
+          if (buyerEntity) buyerTz = getRestaurantTimezone(buyerEntity);
+        } catch (e) { /* fallback default */ }
+        const monthLabel = lastMonthStart.toLocaleDateString('en-US', { year: 'numeric', month: 'long', timeZone: buyerTz });
+
         const mail = monthlySoaEmail({
           sellerName: supplierName,
           month: monthLabel,
@@ -157,7 +173,8 @@ async function processMonthlySoa(referenceDate = new Date()) {
           totalDue,
           currency,
           dueDate,
-          link: `${FRONTEND_URL}/pos/purchase-invoices/soa`
+          link: `${FRONTEND_URL}/pos/purchase-invoices/soa`,
+          timezone: buyerTz
         });
 
         await sendNotificationBatch(recipients, 'monthly_soa', mail);

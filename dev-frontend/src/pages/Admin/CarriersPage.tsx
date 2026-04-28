@@ -19,6 +19,12 @@ interface Carrier {
   country: string | null;
   is_active: boolean;
   sort_order: number;
+  // Sprint 7 — Webhook integration
+  webhook_secret_set?: boolean;
+  webhook_event_path?: string | null;
+  webhook_tracking_path?: string | null;
+  webhook_idempotency_path?: string | null;
+  webhook_status_map?: Record<string, string> | null;
 }
 
 const Subtitle = styled.div`
@@ -47,6 +53,20 @@ const CarriersPage: React.FC = () => {
   const [form, setForm] = useState({ code: '', name: '', tracking_url_template: '', logo_url: '', country: 'MY', sort_order: '0', is_active: true });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sprint 7 — Webhook config state
+  const [webhookForm, setWebhookForm] = useState({
+    webhook_event_path: '',
+    webhook_tracking_path: '',
+    webhook_idempotency_path: '',
+    webhook_status_map: ''  // JSON string for editing convenience
+  });
+  const [webhookSubmitting, setWebhookSubmitting] = useState(false);
+  const [webhookError, setWebhookError] = useState<string | null>(null);
+  const [webhookOk, setWebhookOk] = useState<string | null>(null);
+
+  const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
+  const [secretConfirm, setSecretConfirm] = useState(false);
 
   const headers = useMemo(() => ({
     'Content-Type': 'application/json',
@@ -86,11 +106,80 @@ const CarriersPage: React.FC = () => {
       sort_order: String(c.sort_order ?? 0),
       is_active: c.is_active
     });
+    setWebhookForm({
+      webhook_event_path: c.webhook_event_path || '',
+      webhook_tracking_path: c.webhook_tracking_path || '',
+      webhook_idempotency_path: c.webhook_idempotency_path || '',
+      webhook_status_map: c.webhook_status_map ? JSON.stringify(c.webhook_status_map, null, 2) : ''
+    });
     setError(null);
+    setWebhookError(null);
+    setWebhookOk(null);
     setShowModal(true);
   };
 
-  const close = () => { setShowModal(false); setEditing(null); setError(null); };
+  const close = () => {
+    setShowModal(false); setEditing(null);
+    setError(null); setWebhookError(null); setWebhookOk(null);
+    setRevealedSecret(null); setSecretConfirm(false);
+  };
+
+  const saveWebhook = async () => {
+    if (!editing) return;
+    setWebhookSubmitting(true);
+    setWebhookError(null);
+    setWebhookOk(null);
+    try {
+      let statusMap: any = null;
+      const raw = webhookForm.webhook_status_map.trim();
+      if (raw) {
+        try { statusMap = JSON.parse(raw); }
+        catch { setWebhookError('Invalid JSON in status_map'); setWebhookSubmitting(false); return; }
+      }
+      const body = {
+        webhook_event_path: webhookForm.webhook_event_path.trim() || null,
+        webhook_tracking_path: webhookForm.webhook_tracking_path.trim() || null,
+        webhook_idempotency_path: webhookForm.webhook_idempotency_path.trim() || null,
+        webhook_status_map: statusMap
+      };
+      const res = await fetch(`/api/admin/carriers/${editing.id}/webhook`, {
+        method: 'PUT', headers, body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setWebhookError(data?.message || 'Failed to save webhook config');
+        return;
+      }
+      setWebhookOk('Saved');
+      // Update editing reference
+      setEditing(data.data);
+      load();
+    } catch (err: any) {
+      setWebhookError(err.message);
+    } finally {
+      setWebhookSubmitting(false);
+    }
+  };
+
+  const regenerateSecret = async () => {
+    if (!editing) return;
+    setWebhookError(null);
+    try {
+      const res = await fetch(`/api/admin/carriers/${editing.id}/webhook/regenerate-secret`, {
+        method: 'POST', headers
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setWebhookError(data?.message || 'Failed to regenerate');
+        return;
+      }
+      setRevealedSecret(data.data.secret);
+      setSecretConfirm(false);
+      load();
+    } catch (err: any) {
+      setWebhookError(err.message);
+    }
+  };
 
   const submit = async () => {
     if (!form.code.trim() || !form.name.trim()) {
@@ -281,6 +370,108 @@ const CarriersPage: React.FC = () => {
             <span style={{ fontSize: 13, color: '#0A2540' }}>{t('admin:carriers.fields.active', 'Active')}</span>
           </label>
         </FormGroup>
+
+        {/* Sprint 7 — Webhook Integration (편집 시에만) */}
+        {editing && (
+          <details style={{ marginTop: 18, border: '1px solid #E6EBF1', borderRadius: 10, padding: '12px 16px' }} open>
+            <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#0A2540' }}>
+              ⚡ {t('admin:carriers.webhook.title', 'Webhook Integration')}
+              {editing.webhook_secret_set && (
+                <span style={{ marginLeft: 10, fontSize: 11, color: '#15803D', fontWeight: 500 }}>
+                  ✓ {t('admin:carriers.webhook.active', 'Active')}
+                </span>
+              )}
+            </summary>
+
+            <div style={{ marginTop: 14 }}>
+              <div style={{ marginBottom: 14, padding: 10, background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: 8 }}>
+                <div style={{ fontSize: 11, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>
+                  {t('admin:carriers.webhook.endpointUrl', 'Endpoint URL')}
+                </div>
+                <code style={{ display: 'block', marginTop: 4, fontSize: 12, color: '#635BFF', wordBreak: 'break-all' }}>
+                  {window.location.origin}/api/carrier-webhooks/{editing.code}
+                </code>
+              </div>
+
+              <div style={{ marginBottom: 14, padding: 10, background: '#F8FAFC', border: '1px solid #E6EBF1', borderRadius: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: '#6B7280', textTransform: 'uppercase', fontWeight: 600 }}>
+                      {t('admin:carriers.webhook.secret', 'Webhook Secret')}
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: 13, color: '#0A2540' }}>
+                      {editing.webhook_secret_set
+                        ? <span style={{ fontFamily: 'monospace' }}>●●●●●●●●●●●●●●●●●●●●●●●●●●●●</span>
+                        : <span style={{ color: '#9CA3AF' }}>{t('admin:carriers.webhook.notSet', 'Not configured')}</span>}
+                    </div>
+                  </div>
+                  <ThemedButton size="small" variant="outline" onClick={() => setSecretConfirm(true)}>
+                    🔄 {t('admin:carriers.webhook.regenerate', 'Regenerate')}
+                  </ThemedButton>
+                </div>
+                {secretConfirm && (
+                  <div style={{ marginTop: 12, padding: 10, background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#92400E', marginBottom: 8 }}>
+                      ⚠ {t('admin:carriers.webhook.regenerateWarning', '이 작업은 기존 secret을 즉시 무효화합니다. carrier 콘솔에 새 secret을 등록하기 전까지는 webhook 호출이 실패합니다.')}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <ThemedButton size="small" variant="danger" onClick={regenerateSecret}>{t('admin:carriers.webhook.regenerateConfirm', 'Confirm & Regenerate')}</ThemedButton>
+                      <ThemedButton size="small" variant="ghost" onClick={() => setSecretConfirm(false)}>{t('common:cancel', 'Cancel')}</ThemedButton>
+                    </div>
+                  </div>
+                )}
+                {revealedSecret && (
+                  <div style={{ marginTop: 12, padding: 12, background: '#FEE2E2', border: '2px solid #DC2626', borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#991B1B', fontWeight: 700, marginBottom: 8 }}>
+                      ⚠ {t('admin:carriers.webhook.copyOnce', '이 secret은 다시 볼 수 없습니다. 지금 carrier 콘솔에 등록하세요.')}
+                    </div>
+                    <code style={{ display: 'block', padding: 10, background: 'white', border: '1px solid #FCA5A5', borderRadius: 6, fontSize: 12, wordBreak: 'break-all', userSelect: 'all' }}>
+                      {revealedSecret}
+                    </code>
+                    <ThemedButton size="small" variant="outline" style={{ marginTop: 8 }} onClick={() => { navigator.clipboard.writeText(revealedSecret); }}>
+                      📋 {t('common:copy', 'Copy')}
+                    </ThemedButton>
+                    <ThemedButton size="small" variant="ghost" style={{ marginTop: 8, marginLeft: 8 }} onClick={() => setRevealedSecret(null)}>
+                      {t('common:dismiss', 'I have saved this')}
+                    </ThemedButton>
+                  </div>
+                )}
+              </div>
+
+              <FormGroup>
+                <FormLabel>{t('admin:carriers.webhook.eventPath', 'Status JSON Path')}</FormLabel>
+                <FormInput value={webhookForm.webhook_event_path} onChange={(e) => setWebhookForm(f => ({ ...f, webhook_event_path: e.target.value }))} placeholder="event.type" />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel>{t('admin:carriers.webhook.trackingPath', 'Tracking Number JSON Path')}</FormLabel>
+                <FormInput value={webhookForm.webhook_tracking_path} onChange={(e) => setWebhookForm(f => ({ ...f, webhook_tracking_path: e.target.value }))} placeholder="data.tracking_number" />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel>{t('admin:carriers.webhook.idempotencyPath', 'Idempotency JSON Path (optional)')}</FormLabel>
+                <FormInput value={webhookForm.webhook_idempotency_path} onChange={(e) => setWebhookForm(f => ({ ...f, webhook_idempotency_path: e.target.value }))} placeholder="event.id" />
+              </FormGroup>
+              <FormGroup>
+                <FormLabel>{t('admin:carriers.webhook.statusMap', 'Status Mapping (JSON)')}</FormLabel>
+                <textarea
+                  value={webhookForm.webhook_status_map}
+                  onChange={(e) => setWebhookForm(f => ({ ...f, webhook_status_map: e.target.value }))}
+                  placeholder='{"PICKED_UP":"in_transit","DELIVERED":"delivered","FAILED":"delivery_failed"}'
+                  style={{ width: '100%', minHeight: 100, fontFamily: 'Monaco, monospace', fontSize: 12, padding: 10, border: '1px solid #D1D5DB', borderRadius: 8 }}
+                />
+                <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+                  {t('admin:carriers.webhook.statusMapHint', 'Map carrier raw status values to PO status. Allowed targets: in_transit, delivered, delivery_failed, returned, cancelled')}
+                </div>
+              </FormGroup>
+              {webhookError && <div style={{ padding: 8, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 6, fontSize: 12, color: '#991B1B' }}>{webhookError}</div>}
+              {webhookOk && <div style={{ padding: 8, background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 6, fontSize: 12, color: '#065F46' }}>✓ {webhookOk}</div>}
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <ThemedButton size="small" variant="primary" onClick={saveWebhook} disabled={webhookSubmitting}>
+                  {webhookSubmitting ? t('common:saving', 'Saving…') : t('admin:carriers.webhook.save', 'Save Webhook Config')}
+                </ThemedButton>
+              </div>
+            </div>
+          </details>
+        )}
       </Modal>
     </Container>
   );

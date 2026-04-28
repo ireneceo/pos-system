@@ -338,6 +338,10 @@ const HeaderActions = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
+
+  @media (max-width: 480px) {
+    gap: 4px;
+  }
 `;
 
 const ProfileButton = styled.button`
@@ -350,7 +354,12 @@ const ProfileButton = styled.button`
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
-  
+
+  @media (max-width: 480px) {
+    padding: 4px;
+    gap: 0;
+  }
+
   &:hover {
     background: #F1F5F9;
   }
@@ -385,8 +394,8 @@ const StaffInfo = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  
-  @media (max-width: 480px) {
+
+  @media (max-width: 768px) {
     display: none;
   }
 `;
@@ -2084,6 +2093,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/admin/carriers" active={isActive('/pos/admin/carriers')} onClick={closeSidebar}>
                   <NavIcon>📦</NavIcon>
                   {t("nav.carriers", "Carriers")}
+                </NavItem>
+                <NavItem to="/pos/admin/carrier-webhooks" active={isActive('/pos/admin/carrier-webhooks')} onClick={closeSidebar}>
+                  <NavIcon>⚡</NavIcon>
+                  {t("nav.carrierWebhooks", "Carrier Webhooks")}
                 </NavItem>
                 <NavItem to="/pos/admin/notification-settings" active={isActive('/pos/admin/notification-settings')} onClick={closeSidebar}>
                   <NavIcon>✉</NavIcon>

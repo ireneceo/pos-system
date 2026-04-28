@@ -19,6 +19,7 @@ const User = require('../models/User');
 const { sendIssuerEmail } = require('../utils/emailService');
 const { emailLayout, getLogoAttachment, trialExpiringSoonEmail } = require('../utils/emailTemplates');
 const { sendNotification } = require('../utils/notificationService');
+const { getRestaurantTimezone, getSiteTimezone } = require('../utils/dateTimeHelper');
 
 // Configuration
 const TRIAL_PERIOD_DAYS = 7;
@@ -706,7 +707,7 @@ class SubscriptionScheduler {
         include: [{
           model: Restaurant,
           as: 'restaurant',
-          attributes: ['id', 'name', 'email', 'brand_id', 'foodcourt_id'],
+          attributes: ['id', 'name', 'email', 'brand_id', 'foodcourt_id', 'operation_settings'],
           where: { is_demo: { [Op.ne]: true }, is_test: { [Op.ne]: true } },
           required: false
         }]
@@ -739,7 +740,8 @@ class SubscriptionScheduler {
 
           const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
           const formattedAmount = `${invoice.currency || 'MYR'} ${Number(invoice.total_amount).toFixed(2)}`;
-          const formattedDueDate = dueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+          const restaurantTz = getRestaurantTimezone(invoice.restaurant);
+          const formattedDueDate = dueDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: restaurantTz });
 
           const urgencyColor = daysSinceDue >= 14 ? '#DC2626' : daysSinceDue >= 7 ? '#F59E0B' : '#635BFF';
           const urgencyBg = daysSinceDue >= 14 ? '#FEE2E2' : daysSinceDue >= 7 ? '#FEF3C7' : '#EEF2FF';
@@ -893,7 +895,8 @@ class SubscriptionScheduler {
           }
 
           // Issuer emails — entity-branded
-          const issuerEmail = contractExpiryIssuerEmail(contract.get({ plain: true }), daysUntil, 'en');
+          const entityTz = getRestaurantTimezone(entity);
+          const issuerEmail = contractExpiryIssuerEmail(contract.get({ plain: true }), daysUntil, 'en', entityTz);
           for (const member of team) {
             if (!member.email) continue;
             try {
@@ -914,7 +917,7 @@ class SubscriptionScheduler {
           if (contract.applicant_email) {
             try {
               const issuerName = entity.company_name || entity.name || '';
-              const applicantEmail = contractExpiryApplicantEmail(contract.get({ plain: true }), daysUntil, issuerName, 'en');
+              const applicantEmail = contractExpiryApplicantEmail(contract.get({ plain: true }), daysUntil, issuerName, 'en', entityTz);
               await sendIssuerEmail(contract.entity_type, contract.entity_id, {
                 to: contract.applicant_email,
                 subject: applicantEmail.subject,
@@ -1041,8 +1044,8 @@ class SubscriptionScheduler {
       return process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
     }
 
-    function fmtDate(d) {
-      try { return new Date(d).toISOString().split('T')[0]; } catch { return ''; }
+    function fmtDate(d, tz) {
+      try { return new Date(d).toLocaleDateString('en-CA', { timeZone: tz || 'Asia/Kuala_Lumpur' }); } catch { return ''; }
     }
 
     let sent = 0;
@@ -1054,7 +1057,7 @@ class SubscriptionScheduler {
           entityName: displayName,
           recipientName,
           daysLeft: threshold,
-          expiryDate: fmtDate(entity.trial_end_date),
+          expiryDate: fmtDate(entity.trial_end_date, getRestaurantTimezone(entity)),
           payNowUrl,
           supportUrl: `${frontendUrl()}/contact`
         });

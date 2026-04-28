@@ -487,6 +487,7 @@ const BrandGeneralDashboard: React.FC = () => {
   const [currency, setCurrency] = useState('RM');
   const [loading, setLoading] = useState(true);
   const [brandId, setBrandId] = useState<number | null>(null);
+  const [brandTimeZone, setBrandTimeZone] = useState<string>('Asia/Kuala_Lumpur');
   const [chartPeriod, setChartPeriod] = useState('year');
   const { items: setupItems } = useSetupStatus({ role: user?.role || '', brandId: user?.brand_id });
 
@@ -555,6 +556,10 @@ const BrandGeneralDashboard: React.FC = () => {
       const brand = brands[0];
       if (!brand) { setLoading(false); return; }
       setBrandId(brand.id);
+      const brandOps = typeof brand.operation_settings === 'string'
+        ? (() => { try { return JSON.parse(brand.operation_settings); } catch { return {}; } })()
+        : (brand.operation_settings || {});
+      if (brandOps?.timeZone) setBrandTimeZone(brandOps.timeZone);
 
       if (brand.restaurants && brand.restaurants.length > 0 && brand.restaurants[0].currency) {
         setCurrency(brand.restaurants[0].currency);
@@ -916,7 +921,7 @@ const BrandGeneralDashboard: React.FC = () => {
                   const name = c.restaurant?.name
                     ? (c.restaurant.branch_name ? `${c.restaurant.name} (${c.restaurant.branch_name})` : c.restaurant.name)
                     : (c.applicant_company_name || c.applicant_name || '-');
-                  const endDate = c.end_date ? new Date(c.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+                  const endDate = c.end_date ? new Date(c.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: brandTimeZone }) : '-';
                   return (
                     <div
                       key={c.id}

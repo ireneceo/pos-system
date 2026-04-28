@@ -206,9 +206,12 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/foodcourt/payment-settings',
     '/pos/foodcourt/history',
     '/pos/foodcourt/manager',
-    '/pos/suppliers/*',
-    '/pos/purchase-orders/*',
-    '/pos/purchase-invoices/*',
+    // Foodcourt as buyer (Purchase Orders / Suppliers / Purchase Invoices) is
+    // gated until the schema supports foodcourt-owned ingredients (Phase 3).
+    // Currently `ingredients` table has no foodcourt_id column and
+    // `purchase-orders.js:ingredientBelongsToBuyer` rejects foodcourt buyer.
+    // To avoid sidebar links leading to dead-ends, the routes are removed here.
+    // SupplierContract.entity_type still allows 'foodcourt' so existing data is preserved.
     '/pos/manager/*',
     '/pos/restaurant/*',
     '/pos/pos-terminal',
@@ -264,9 +267,7 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
   ],
   'Foodcourt Manager': [
     '/pos/foodcourt/*',
-    '/pos/suppliers/*',
-    '/pos/purchase-orders/*',
-    '/pos/purchase-invoices/*',
+    // Foodcourt as buyer gated — see Foodcourt General comment above.
     '/pos/manager/*',
     '/pos/restaurant/*',
     '/pos/pos-terminal',

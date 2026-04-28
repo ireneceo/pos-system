@@ -15,7 +15,10 @@ import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 
-type POStatus = 'draft' | 'submitted' | 'confirmed' | 'shipped' | 'delivered' | 'partial_received' | 'received' | 'cancelled';
+type POStatus = 'draft' | 'submitted' | 'confirmed' | 'shipped' | 'in_transit' | 'delivered' | 'partial_received' | 'received' | 'cancelled' | 'closed' | 'delivery_failed';
+
+// Sprint 7: discrepancy reasons
+type DiscrepancyReason = null | 'short' | 'damaged' | 'wrong_item' | 'pending';
 
 interface POItem {
   id: number;
@@ -57,6 +60,17 @@ interface PODetail {
   items: POItem[];
 }
 
+// Sprint 7: split — 한 line이 여러 운명으로 나뉠 수 있음
+interface ReceiveSplit {
+  uid: string;                // local-only id for React key
+  quantity: number;
+  reason: DiscrepancyReason;
+  batch_no: string;
+  expiry_date: string;
+  unit_cost: number;
+  discrepancy_note: string;
+}
+
 interface ReceiveLine {
   item_id: number;
   ingredient_name: string;
@@ -64,10 +78,8 @@ interface ReceiveLine {
   alreadyReceived: number;
   remaining: number;
   unit?: string;
-  quantity: number;
-  batch_no: string;
-  expiry_date: string;
-  unit_cost: number;
+  defaultUnitCost: number;
+  splits: ReceiveSplit[];
 }
 
 const Subtitle = styled.div`
@@ -190,6 +202,119 @@ const ReceiveRow = styled.div`
   }
 `;
 
+// Sprint 7: Receive line container with splits
+const ReceiveLineCard = styled.div`
+  border: 1px solid #E6EBF1;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: #FCFCFD;
+
+  .line-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 12px;
+    .name { font-weight: 600; color: #0A2540; font-size: 14px; }
+    .stat { font-size: 12px; color: #6B7280; }
+  }
+
+  .splits-stack { display: flex; flex-direction: column; gap: 8px; }
+
+  .add-split {
+    margin-top: 10px;
+    background: none;
+    border: 1px dashed #635BFF;
+    color: #635BFF;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.15s;
+    &:hover { background: rgba(99,91,255,0.06); }
+  }
+
+  .summary {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #6B7280;
+    .ok { color: #15803D; font-weight: 600; }
+    .warn { color: #DC2626; font-weight: 600; }
+  }
+`;
+
+const SplitRow = styled.div<{ $reason: DiscrepancyReason }>`
+  display: grid;
+  grid-template-columns: 200px 90px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  padding: 10px;
+  border-radius: 10px;
+  background: ${p => {
+    if (p.$reason === 'damaged' || p.$reason === 'wrong_item') return '#FEF3F2';
+    if (p.$reason === 'short' || p.$reason === 'pending') return '#FFFBEB';
+    return '#F0EFFF';
+  }};
+  border: 1px solid ${p => {
+    if (p.$reason === 'damaged' || p.$reason === 'wrong_item') return '#FECACA';
+    if (p.$reason === 'short' || p.$reason === 'pending') return '#FDE68A';
+    return '#E0DEFF';
+  }};
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const Segmented = styled.div`
+  display: inline-flex;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 12px;
+  width: 200px;
+
+  button {
+    padding: 7px 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6B7280;
+    font-weight: 600;
+    flex: 1;
+    transition: all 0.15s;
+    border-right: 1px solid #E5E7EB;
+    &:last-child { border-right: none; }
+    &.active { background: #635BFF; color: white; }
+    &:hover:not(.active) { background: #F3F4F6; }
+  }
+`;
+
+const SmallInput = styled.input`
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 13px;
+  &:focus { outline: none; border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
+`;
+
+const RemoveSplitBtn = styled.button`
+  background: none; border: none; cursor: pointer;
+  color: #9CA3AF; font-size: 18px; padding: 4px 8px;
+  &:hover { color: #DC2626; }
+`;
+
+const AutoReturnHint = styled.div`
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: rgba(220, 38, 38, 0.08);
+  color: #991B1B;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+`;
+
 const TotalsBox = styled.div`
   display: flex;
   flex-direction: column;
@@ -220,6 +345,9 @@ const TotalsBox = styled.div`
 
 const StatusVariantMap: Record<POStatus, 'success' | 'warning' | 'error' | 'info'> = {
   draft: 'info',
+  closed: 'success',
+  delivery_failed: 'error',
+  in_transit: 'warning',
   submitted: 'warning',
   confirmed: 'warning',
   shipped: 'info',
@@ -229,7 +357,7 @@ const StatusVariantMap: Record<POStatus, 'success' | 'warning' | 'error' | 'info
   cancelled: 'error'
 };
 
-const STAGES: POStatus[] = ['draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'received'];
+const STAGES: POStatus[] = ['draft', 'submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'received'];
 
 const PurchaseOrderDetailPage: React.FC = () => {
   const { t } = useTranslation(['purchaseOrders', 'common']);
@@ -431,13 +559,16 @@ const PurchaseOrderDetailPage: React.FC = () => {
     }
   };
 
-  // Receive
+  // Sprint 7: Receive — splits-based UI
+  const newSplitId = () => `split-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
   const openReceive = () => {
     if (!detail) return;
     setReceiveError(null);
     setReceiveLines(detail.items.map(it => {
       const ordered = Number(it.quantity_ordered);
       const already = Number(it.quantity_received);
+      const defaultUnitCost = Number(it.unit_price) || 0;
       return {
         item_id: it.id,
         ingredient_name: it.ingredient_name,
@@ -445,17 +576,54 @@ const PurchaseOrderDetailPage: React.FC = () => {
         alreadyReceived: already,
         remaining: Math.max(0, ordered - already),
         unit: it.ingredient_unit,
-        quantity: 0,
-        batch_no: '',
-        expiry_date: '',
-        unit_cost: Number(it.unit_price) || 0
+        defaultUnitCost,
+        splits: [{
+          uid: newSplitId(),
+          quantity: 0,
+          reason: null,
+          batch_no: '',
+          expiry_date: '',
+          unit_cost: defaultUnitCost,
+          discrepancy_note: ''
+        }]
       };
     }));
     setReceiveOpen(true);
   };
 
-  const updateReceiveLine = (itemId: number, patch: Partial<ReceiveLine>) => {
-    setReceiveLines(prev => prev.map(l => l.item_id === itemId ? { ...l, ...patch } : l));
+  const updateSplit = (itemId: number, splitUid: string, patch: Partial<ReceiveSplit>) => {
+    setReceiveLines(prev => prev.map(l =>
+      l.item_id === itemId
+        ? { ...l, splits: l.splits.map(s => s.uid === splitUid ? { ...s, ...patch } : s) }
+        : l
+    ));
+  };
+
+  const addSplit = (itemId: number, reason: DiscrepancyReason = 'damaged') => {
+    setReceiveLines(prev => prev.map(l =>
+      l.item_id === itemId
+        ? {
+          ...l,
+          splits: [...l.splits, {
+            uid: newSplitId(),
+            quantity: 0,
+            reason,
+            batch_no: '',
+            expiry_date: '',
+            unit_cost: l.defaultUnitCost,
+            discrepancy_note: ''
+          }]
+        }
+        : l
+    ));
+  };
+
+  const removeSplit = (itemId: number, splitUid: string) => {
+    setReceiveLines(prev => prev.map(l =>
+      l.item_id === itemId
+        ? { ...l, splits: l.splits.filter(s => s.uid !== splitUid) }
+        : l
+    ));
   };
 
   const handleReceive = async (e: React.FormEvent) => {
@@ -463,14 +631,24 @@ const PurchaseOrderDetailPage: React.FC = () => {
     if (!detail || receiveSubmitting) return;
     setReceiveError(null);
 
-    // Validate
-    const linesToSend = receiveLines.filter(l => l.quantity > 0);
-    if (linesToSend.length === 0) {
+    // Sprint 7: filter lines that have at least one non-zero split
+    const itemsToSend = receiveLines
+      .map(l => ({
+        item_id: l.item_id,
+        line: l,
+        validSplits: l.splits.filter(s => Number(s.quantity) > 0)
+      }))
+      .filter(x => x.validSplits.length > 0);
+
+    if (itemsToSend.length === 0) {
       setReceiveError(t('receive.noChanges') as string);
       return;
     }
-    for (const l of linesToSend) {
-      if (l.quantity > l.remaining) {
+
+    // Per-line validation: Σ split.quantity ≤ remaining
+    for (const x of itemsToSend) {
+      const total = x.validSplits.reduce((s, sp) => s + Number(sp.quantity), 0);
+      if (total > x.line.remaining + 0.001) {
         setReceiveError(t('receive.exceedsRemaining') as string);
         return;
       }
@@ -486,12 +664,16 @@ const PurchaseOrderDetailPage: React.FC = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          lines: linesToSend.map(l => ({
-            item_id: l.item_id,
-            quantity_received: l.quantity,
-            batch_no: l.batch_no.trim() || null,
-            expiry_date: l.expiry_date || null,
-            unit_cost: l.unit_cost
+          items: itemsToSend.map(x => ({
+            item_id: x.item_id,
+            splits: x.validSplits.map(s => ({
+              quantity: Number(s.quantity),
+              reason: s.reason || null,
+              unit_cost: s.reason === null ? Number(s.unit_cost) : undefined,
+              batch_no: s.reason === null ? (s.batch_no.trim() || null) : undefined,
+              expiry_date: s.reason === null ? (s.expiry_date || null) : undefined,
+              discrepancy_note: s.reason !== null ? (s.discrepancy_note.trim() || null) : undefined
+            }))
           }))
         })
       });
@@ -554,7 +736,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
   const renderTimeline = () => {
     if (!detail) return null;
     const status = detail.status;
-    const stageIndex = STAGES.indexOf(status === 'partial_received' ? 'shipped' : status);
+    const stageIndex = STAGES.indexOf(status === 'partial_received' ? 'in_transit' : status);
     const isCancelled = status === 'cancelled';
 
     const stageMeta: Record<POStatus, string | null | undefined> = {
@@ -832,58 +1014,97 @@ const PurchaseOrderDetailPage: React.FC = () => {
         <form id="po-receive-form" onSubmit={handleReceive}>
           <p style={{ margin: '0 0 16px', color: '#6B7280', fontSize: 13 }}>{t('receive.subtitle')}</p>
 
-          <ReceiveRow className="header">
-            <div>{t('receive.ingredient')}</div>
-            <div>{t('receive.ordered')}</div>
-            <div>{t('receive.alreadyReceived')}</div>
-            <div>{t('receive.receivingNow')}</div>
-            <div>{t('receive.batchNo')}</div>
-            <div>{t('receive.expiryDate')}</div>
-            <div>{t('receive.unitCost')}</div>
-          </ReceiveRow>
+          {receiveLines.map(line => {
+            const totalSplit = line.splits.reduce((s, sp) => s + Number(sp.quantity || 0), 0);
+            const overshoot = totalSplit > line.remaining + 0.001;
+            const okQty = line.splits.filter(s => s.reason === null).reduce((s, sp) => s + Number(sp.quantity || 0), 0);
+            const damagedQty = line.splits.filter(s => s.reason === 'damaged' || s.reason === 'wrong_item').reduce((s, sp) => s + Number(sp.quantity || 0), 0);
+            const issueQty = line.splits.filter(s => s.reason === 'short' || s.reason === 'pending').reduce((s, sp) => s + Number(sp.quantity || 0), 0);
 
-          {receiveLines.map(line => (
-            <ReceiveRow key={line.item_id}>
-              <div>
-                <strong>{line.ingredient_name}</strong>
-                {line.unit && <div style={{ fontSize: 11, color: '#6B7280' }}>{line.unit}</div>}
-              </div>
-              <div>{line.ordered.toFixed(2)}</div>
-              <div>{line.alreadyReceived.toFixed(2)}</div>
-              <div>
-                <FormInput
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max={line.remaining}
-                  value={line.quantity}
-                  onChange={(e) => updateReceiveLine(line.item_id, { quantity: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <FormInput
-                  type="text"
-                  value={line.batch_no}
-                  onChange={(e) => updateReceiveLine(line.item_id, { batch_no: e.target.value })}
-                />
-              </div>
-              <div>
-                <DateField
-                  value={line.expiry_date}
-                  onChange={(v) => updateReceiveLine(line.item_id, { expiry_date: v })}
-                />
-              </div>
-              <div>
-                <FormInput
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={line.unit_cost}
-                  onChange={(e) => updateReceiveLine(line.item_id, { unit_cost: Number(e.target.value) })}
-                />
-              </div>
-            </ReceiveRow>
-          ))}
+            return (
+              <ReceiveLineCard key={line.item_id}>
+                <div className="line-head">
+                  <div className="name">
+                    {line.ingredient_name}
+                    {line.unit && <span style={{ fontWeight: 400, color: '#9CA3AF', marginLeft: 6 }}>· {line.unit}</span>}
+                  </div>
+                  <div className="stat">
+                    {t('receive.ordered')}: {line.ordered} · {t('receive.alreadyReceived')}: {line.alreadyReceived} · {t('receive.remaining', 'remaining')}: <strong style={{ color: overshoot ? '#DC2626' : '#0A2540' }}>{(line.remaining - totalSplit).toFixed(2)}</strong>
+                  </div>
+                </div>
+
+                <div className="splits-stack">
+                  {line.splits.map((sp, idx) => (
+                    <SplitRow key={sp.uid} $reason={sp.reason}>
+                      <div>
+                        <Segmented role="radiogroup">
+                          <button type="button" className={sp.reason === null ? 'active' : ''} onClick={() => updateSplit(line.item_id, sp.uid, { reason: null })}>{t('receive.normal', 'OK')}</button>
+                          <button type="button" className={sp.reason === 'short' ? 'active' : ''} onClick={() => updateSplit(line.item_id, sp.uid, { reason: 'short' })}>{t('receive.short', 'Short')}</button>
+                          <button type="button" className={sp.reason === 'damaged' ? 'active' : ''} onClick={() => updateSplit(line.item_id, sp.uid, { reason: 'damaged' })}>{t('receive.damaged', 'Damaged')}</button>
+                          <button type="button" className={sp.reason === 'wrong_item' ? 'active' : ''} onClick={() => updateSplit(line.item_id, sp.uid, { reason: 'wrong_item' })}>{t('receive.wrongItem', 'Wrong')}</button>
+                          <button type="button" className={sp.reason === 'pending' ? 'active' : ''} onClick={() => updateSplit(line.item_id, sp.uid, { reason: 'pending' })}>{t('receive.pending', 'Pend')}</button>
+                        </Segmented>
+                      </div>
+
+                      <div>
+                        <SmallInput
+                          type="number" step="0.01" min="0" inputMode="decimal"
+                          placeholder="qty"
+                          value={sp.quantity || ''}
+                          onChange={(e) => updateSplit(line.item_id, sp.uid, { quantity: Number(e.target.value) })}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {sp.reason === null && (
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <SmallInput type="text" placeholder={t('receive.batchNo') as string} value={sp.batch_no} onChange={(e) => updateSplit(line.item_id, sp.uid, { batch_no: e.target.value })} style={{ flex: 1, minWidth: 100 }} />
+                            <DateField value={sp.expiry_date} onChange={(v) => updateSplit(line.item_id, sp.uid, { expiry_date: v })} />
+                            <SmallInput type="number" step="0.01" placeholder={t('receive.unitCost') as string} value={sp.unit_cost} onChange={(e) => updateSplit(line.item_id, sp.uid, { unit_cost: Number(e.target.value) })} style={{ width: 90 }} />
+                          </div>
+                        )}
+                        {sp.reason !== null && (
+                          <SmallInput
+                            type="text"
+                            placeholder={t('receive.discrepancyNote', 'Note (optional)') as string}
+                            value={sp.discrepancy_note}
+                            onChange={(e) => updateSplit(line.item_id, sp.uid, { discrepancy_note: e.target.value })}
+                          />
+                        )}
+                        {(sp.reason === 'damaged' || sp.reason === 'wrong_item') && Number(sp.quantity) > 0 && (
+                          <AutoReturnHint>
+                            ✦ {t('receive.autoReturnHint', `Auto-return will be created for ${Number(sp.quantity)} ${line.unit || ''}`)
+                              .replace('{qty}', String(Number(sp.quantity)))
+                              .replace('{unit}', line.unit || '')}
+                          </AutoReturnHint>
+                        )}
+                      </div>
+
+                      <div>
+                        {line.splits.length > 1 && (
+                          <RemoveSplitBtn type="button" onClick={() => removeSplit(line.item_id, sp.uid)} title={t('receive.removeSplit', 'Remove') as string}>×</RemoveSplitBtn>
+                        )}
+                      </div>
+                    </SplitRow>
+                  ))}
+                </div>
+
+                <button type="button" className="add-split" onClick={() => addSplit(line.item_id, 'damaged')}>
+                  ⊕ {t('receive.reportIssue', 'Report issue with this line')}
+                </button>
+
+                <div className="summary">
+                  <span className={overshoot ? 'warn' : 'ok'}>
+                    {okQty > 0 && `${okQty} OK`}
+                    {damagedQty > 0 && ` · ${damagedQty} damaged/wrong`}
+                    {issueQty > 0 && ` · ${issueQty} short/pending`}
+                    {totalSplit === 0 && t('receive.noChanges', 'No quantity entered')}
+                    {overshoot && ` · ⚠ ${t('receive.exceedsRemaining', 'exceeds remaining')}`}
+                  </span>
+                </div>
+              </ReceiveLineCard>
+            );
+          })}
 
           {receiveError && <ErrorBox>{receiveError}</ErrorBox>}
         </form>

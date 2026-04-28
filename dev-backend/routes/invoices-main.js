@@ -51,6 +51,7 @@ const {
   getIssuerCompanyInfo,
   getPayerCompanyInfo,
   formatBillingPeriod,
+  getInvoiceTimezone,
   getCategoryDisplayName,
   checkPaymentPermission,
   checkConfirmPermission,
@@ -187,7 +188,7 @@ router.get('/', authenticateToken, async (req, res) => {
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'admin_id', 'admin_name', 'plan_type', 'phone', 'email', 'subscription_snapshot', 'billing_cycle', 'is_demo'],
+        attributes: ['id', 'name', 'admin_id', 'admin_name', 'plan_type', 'phone', 'email', 'subscription_snapshot', 'billing_cycle', 'is_demo', 'operation_settings'],
         required: false  // LEFT JOIN: restaurant_id가 null인 Brand/FC/Owner 인보이스도 포함
       }, {
         model: InvoiceItem,
@@ -398,7 +399,7 @@ router.get('/', authenticateToken, async (req, res) => {
           unitPrice: parseFloat(invoice.total_amount),
           total: parseFloat(invoice.total_amount)
         }],
-        billingPeriod: formatBillingPeriod(invoice.billing_period_start, invoice.billing_period_end),
+        billingPeriod: formatBillingPeriod(invoice.billing_period_start, invoice.billing_period_end, getInvoiceTimezone(invoice)),
         planType: resolvedPlanType || 'Basic Plan',
         type: invoice.type,
         payerType: invoice.payer_type,
@@ -489,7 +490,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'address', 'city', 'state', 'postal_code', 'country', 'phone', 'email', 'admin_name']
+        attributes: ['id', 'name', 'address', 'city', 'state', 'postal_code', 'country', 'phone', 'email', 'admin_name', 'operation_settings']
       }, {
         model: InvoiceItem,
         as: 'items'
@@ -624,7 +625,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         {
           model: Restaurant,
           as: 'restaurant',
-          attributes: ['id', 'name', 'admin_name', 'plan_type'],
+          attributes: ['id', 'name', 'admin_name', 'plan_type', 'operation_settings'],
           required: false
         },
         {
@@ -699,7 +700,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
                : 0),
         total: parseFloat(invoice.total_amount),
         billingPeriod: invoice.billing_period_start
-          ? `${invoice.billing_period_start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+          ? `${invoice.billing_period_start.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: getInvoiceTimezone(invoice) })}`
           : invoice.billing_period || '',
         planType: invoice.restaurant?.plan_type || 'Custom',
         type: invoice.type || 'manual',
@@ -1049,7 +1050,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'admin_name']
+        attributes: ['id', 'name', 'admin_name', 'operation_settings']
       }, {
         model: InvoiceItem,
         as: 'items'
@@ -1074,7 +1075,8 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       if (invoice.billing_period_start && invoice.billing_period_end) {
         const start = new Date(invoice.billing_period_start);
         const end = new Date(invoice.billing_period_end);
-        billingPeriod = `${start.toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })} - ${end.toLocaleDateString('en-MY', { month: 'short', year: 'numeric' })}`;
+        const invTz = getInvoiceTimezone(invoice);
+        billingPeriod = `${start.toLocaleDateString('en-MY', { month: 'short', year: 'numeric', timeZone: invTz })} - ${end.toLocaleDateString('en-MY', { month: 'short', year: 'numeric', timeZone: invTz })}`;
       }
 
       // Get actual issuer company info
@@ -1193,7 +1195,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         as: 'restaurant',
         attributes: ['id', 'name', 'address', 'city', 'state', 'postal_code', 'country',
                      'phone', 'email', 'tax_id', 'business_registration', 'logo_url',
-                     'admin_id', 'admin_name', 'plan_type', 'billing_cycle']
+                     'admin_id', 'admin_name', 'plan_type', 'billing_cycle', 'operation_settings']
       }]
     });
 
@@ -1266,7 +1268,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
         total: parseFloat(item.fixed_amount || item.calculated_amount || 0)
       })) || [],
       billingPeriod: invoice.billing_period_start && invoice.billing_period_end
-        ? `${new Date(invoice.billing_period_start).toLocaleDateString()} - ${new Date(invoice.billing_period_end).toLocaleDateString()}`
+        ? `${new Date(invoice.billing_period_start).toLocaleDateString('en-US', { timeZone: getInvoiceTimezone(invoice) })} - ${new Date(invoice.billing_period_end).toLocaleDateString('en-US', { timeZone: getInvoiceTimezone(invoice) })}`
         : null,
       planType: invoice.restaurant?.plan_type || 'Basic Plan',
       type: invoice.type,
@@ -2233,7 +2235,7 @@ router.get('/issued-by/:issuerType/:issuerId', authenticateToken, async (req, re
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'admin_name', 'plan_type']
+        attributes: ['id', 'name', 'admin_name', 'plan_type', 'operation_settings']
       }, {
         model: InvoiceItem,
         as: 'items'
@@ -2393,7 +2395,7 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
       include: [{
         model: Restaurant,
         as: 'restaurant',
-        attributes: ['id', 'name', 'admin_id', 'admin_name', 'plan_type', 'email']
+        attributes: ['id', 'name', 'admin_id', 'admin_name', 'plan_type', 'email', 'operation_settings']
       }, {
         model: InvoiceItem,
         as: 'items'
@@ -2408,7 +2410,8 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
     const { invoiceEmail, entityPlanInvoiceEmail } = require('../utils/emailTemplates');
 
     const siteUrl = process.env.SITE_URL || 'https://purplehere.com';
-    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric' }) : '-';
+    const invTz = getInvoiceTimezone(invoice);
+    const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-MY', { year: 'numeric', month: 'long', day: 'numeric', timeZone: invTz }) : '-';
     const issuerType = invoice.issuer_type || 'system_admin';
     const issuerId = invoice.issuer_id;
 

@@ -5,10 +5,11 @@
  */
 
 const { emailLayout } = require('./emailTemplates');
+const { getRestaurantTimezone } = require('./dateTimeHelper');
 
-function formatDate(date) {
+function formatDate(date, timezone = 'Asia/Kuala_Lumpur') {
   return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'short', day: 'numeric'
+    year: 'numeric', month: 'short', day: 'numeric', timeZone: timezone
   });
 }
 
@@ -24,10 +25,11 @@ function formatAmount(amount, currency) {
  * @returns {{ subject: string, html: string, text: string }}
  */
 function generateInvoiceNotificationEmail(invoice, restaurant, baseUrl) {
+  const tz = getRestaurantTimezone(restaurant);
   const amount = formatAmount(invoice.total_amount, invoice.currency);
-  const dueDate = formatDate(invoice.due_date);
-  const periodStart = formatDate(invoice.billing_period_start);
-  const periodEnd = formatDate(invoice.billing_period_end);
+  const dueDate = formatDate(invoice.due_date, tz);
+  const periodStart = formatDate(invoice.billing_period_start, tz);
+  const periodEnd = formatDate(invoice.billing_period_end, tz);
   const paymentUrl = `${baseUrl}/pos/invoices`;
 
   const subject = `Invoice ${invoice.invoice_number} - ${amount} Due ${dueDate}`;

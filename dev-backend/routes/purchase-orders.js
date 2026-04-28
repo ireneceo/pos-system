@@ -21,6 +21,7 @@ const database = require('../config/database');
 const {
   PurchaseOrder,
   PurchaseOrderItem,
+  PurchaseOrderReturn,
   IngredientSellerProduct,
   Ingredient,
   SupplierContract,
@@ -799,16 +800,36 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
     for (const it of po.items) itemMap.set(it.id, it);
 
     const affectedIngredientIds = new Set();
-    const restaurantIdForBatch = po.entity_type === 'restaurant' ? po.entity_id : null;
+    const autoReturns = [];          // Sprint 7: damaged/wrong_item auto-generated
+    const discrepancyLines = [];      // Sprint 7: short/pending 보고만
+
+    // Sprint 7: each item can have splits[] — backward compat with quantity_received-only payload
+    // - Old payload: { item_id, quantity_received, unit_cost?, batch_no?, expiry_date? }
+    // - New payload: { item_id, splits: [{ quantity, reason, unit_cost?, batch_no?, expiry_date?, discrepancy_note? }, ...] }
+    const normalizeItemPayload = (r) => {
+      if (Array.isArray(r.splits)) return r.splits.map(s => ({
+        quantity: parseFloat(s.quantity),
+        reason: s.reason ?? null,
+        unit_cost: s.unit_cost,
+        batch_no: s.batch_no,
+        expiry_date: s.expiry_date,
+        discrepancy_note: s.discrepancy_note
+      }));
+      // Legacy single-split (정상 수령) — backward compat
+      return [{
+        quantity: parseFloat(r.quantity_received),
+        reason: null,
+        unit_cost: r.unit_cost,
+        batch_no: r.batch_no,
+        expiry_date: r.expiry_date
+      }];
+    };
 
     for (const r of receivedItems) {
       const itemId = parseInt(r.item_id, 10);
-      const qtyReceived = parseFloat(r.quantity_received);
-      if (!Number.isFinite(itemId) || !(qtyReceived > 0)) {
+      if (!Number.isFinite(itemId)) {
         await t.rollback();
-        return res.status(400).json({
-          success: false, message: 'Each receive line requires item_id and quantity_received > 0'
-        });
+        return res.status(400).json({ success: false, message: 'item_id is required' });
       }
       const item = itemMap.get(itemId);
       if (!item) {
@@ -816,6 +837,38 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
         return res.status(400).json({
           success: false, message: `item_id ${itemId} does not belong to this PO`
         });
+      }
+
+      const splits = normalizeItemPayload(r);
+      const totalSplitQty = splits.reduce((sum, s) => sum + (Number.isFinite(s.quantity) ? s.quantity : 0), 0);
+      if (!(totalSplitQty > 0)) {
+        await t.rollback();
+        return res.status(400).json({ success: false, message: `item ${itemId}: total split quantity must be > 0` });
+      }
+
+      // Validate Σ split.quantity ≤ remaining
+      const ordered = parseFloat(item.quantity_ordered) || 0;
+      const alreadyReceived = parseFloat(item.quantity_received) || 0;
+      const remaining = ordered - alreadyReceived;
+      if (totalSplitQty > remaining + 0.001) {
+        await t.rollback();
+        return res.status(400).json({
+          success: false,
+          message: `item ${itemId}: total quantity ${totalSplitQty} exceeds remaining ${remaining}`
+        });
+      }
+
+      // Validate reason ENUM
+      const ALLOWED = new Set([null, 'short', 'damaged', 'wrong_item', 'pending']);
+      for (const s of splits) {
+        if (!ALLOWED.has(s.reason)) {
+          await t.rollback();
+          return res.status(400).json({ success: false, message: `Invalid discrepancy_reason: ${s.reason}` });
+        }
+        if (!(s.quantity > 0)) {
+          await t.rollback();
+          return res.status(400).json({ success: false, message: 'Each split requires quantity > 0' });
+        }
       }
 
       // Lock ingredient row to prevent race with FIFO deduction
@@ -831,129 +884,135 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
       }
 
       const conv = parseFloat(item.unit_conversion) || 1;
-      const stockDelta = Math.round(qtyReceived * conv * 100) / 100;
-      const currentStock = parseFloat(ingredient.current_stock) || 0;
-      const newStock = Math.round((currentStock + stockDelta) * 100) / 100;
+      let currentStock = parseFloat(ingredient.current_stock) || 0;
+      let normalQtyTotal = 0;             // sum of split.quantity where reason === null
+      let lastDiscrepancyReason = null;   // 마지막 short/pending split 기록 — UI에서 표시용
 
-      // Update item.quantity_received
-      const newRecv = Math.round(((parseFloat(item.quantity_received) || 0) + qtyReceived) * 100) / 100;
-      await PurchaseOrderItem.update(
-        { quantity_received: newRecv },
-        { where: { id: item.id }, transaction: t }
-      );
-      item.quantity_received = newRecv; // mutate local snapshot for completion check
+      // ─── Sprint 7: process splits ───────────────────────
+      for (const split of splits) {
+        const qty = split.quantity;
+        const reason = split.reason;
 
-      // Determine restaurant_id for InventoryBatch (NOT NULL on the table).
-      // For non-restaurant buyers, batches at the ingredient-level cannot be
-      // recorded with a restaurant_id; we still create transaction + stock update.
-      // For restaurant buyer, write the batch.
-      const unitCost = r.unit_cost != null
-        ? parseFloat(r.unit_cost)
-        : (parseFloat(item.unit_price) || 0);
+        if (reason === null) {
+          // 정상 수령 — 재고 + InventoryBatch + InventoryTransaction
+          normalQtyTotal = Math.round((normalQtyTotal + qty) * 100) / 100;
+          const stockDelta = Math.round(qty * conv * 100) / 100;
+          const newStock = Math.round((currentStock + stockDelta) * 100) / 100;
+          const unitCost = split.unit_cost != null
+            ? parseFloat(split.unit_cost)
+            : (parseFloat(item.unit_price) || 0);
 
-      if (restaurantIdForBatch) {
-        await InventoryBatch.create({
-          restaurant_id: restaurantIdForBatch,
-          ingredient_id: item.ingredient_id,
-          batch_number: r.batch_no || null,
-          initial_quantity: stockDelta,
-          remaining_quantity: stockDelta,
-          unit: ingredient.unit,
-          unit_cost: unitCost,
-          expiry_date: r.expiry_date || null,
-          received_date: new Date(),
-          status: 'active',
-          purchase_order_id: po.id,
-          created_by: req.user.id
-        }, { transaction: t });
-
-        await InventoryTransaction.create({
-          restaurant_id: restaurantIdForBatch,
-          ingredient_id: item.ingredient_id,
-          transaction_type: 'purchase',
-          quantity_change: stockDelta,
-          unit: ingredient.unit,
-          stock_after: newStock,
-          notes: `PO ${po.po_number} receive`,
-          created_by: req.user.id
-        }, { transaction: t });
-      } else {
-        // Non-restaurant buyer (brand / foodcourt): InventoryTransaction is
-        // restaurant-scoped (NOT NULL restaurant_id) so we can't write to it
-        // for brand/foodcourt receipts. Without an audit row the receipt is
-        // invisible to compliance later — write an ActivityLog entry instead.
-        // Schema-level upgrade (entity_type/entity_id columns on
-        // inventory_transactions) is the long-term fix; this preserves the
-        // audit trail without a migration.
-        try {
-          const ActivityLog = require('../models/ActivityLog');
-          await ActivityLog.create({
-            restaurant_id: null,
-            user_id: req.user.id,
-            username: req.user.email || `user-${req.user.id}`,
-            full_name: req.user.full_name || null,
-            action_type: 'create',
-            entity_type: 'po_receipt',
-            entity_id: String(po.id),
-            entity_name: po.po_number,
-            description: `${po.entity_type} #${po.entity_id} received PO ${po.po_number} — ingredient #${item.ingredient_id} +${stockDelta} ${ingredient.unit} (stock_after=${newStock})`,
-            changes: {
-              po_id: po.id,
-              po_number: po.po_number,
-              buyer_entity_type: po.entity_type,
-              buyer_entity_id: po.entity_id,
-              ingredient_id: item.ingredient_id,
-              quantity_change: stockDelta,
-              unit: ingredient.unit,
-              stock_after: newStock,
-              unit_cost: unitCost
-            }
-          }, { transaction: t });
-        } catch (logErr) {
-          // Non-blocking: surface in console but don't fail the receive.
-          console.error('[po-receive] ActivityLog write failed (non-blocking):', logErr.message);
-        }
-      }
-
-      // Update ingredient stock
-      await ingredient.update(
-        { current_stock: newStock, last_stock_take_at: new Date() },
-        { transaction: t }
-      );
-
-      // Phase 2: weighted-average cost upsert for Restaurant buyer.
-      // Brand-shared ingredients keep master cost untouched; restaurant override carries actuals.
-      if (po.entity_type === 'restaurant') {
-        const incomingCostPerIng = (parseFloat(item.unit_price) || 0) / conv;
-        const existingCostRow = await RestaurantIngredientCost.findOne({
-          where: { restaurant_id: po.entity_id, ingredient_id: item.ingredient_id },
-          transaction: t
-        });
-        const oldCost = existingCostRow
-          ? parseFloat(existingCostRow.unit_cost) || 0
-          : (parseFloat(ingredient.unit_cost) || 0);
-        const weighted = currentStock > 0 && newStock > 0
-          ? (currentStock * oldCost + stockDelta * incomingCostPerIng) / newStock
-          : incomingCostPerIng;
-        const newAvg = Math.round(weighted * 10000) / 10000;
-
-        if (existingCostRow) {
-          await existingCostRow.update({
-            unit_cost: newAvg,
-            notes: `PO ${po.po_number} receive`,
-            updated_by: req.user.id
-          }, { transaction: t });
-        } else {
-          await RestaurantIngredientCost.create({
-            restaurant_id: po.entity_id,
+          // InventoryBatch — Sprint 7: entity_type 명시 (모든 buyer)
+          await InventoryBatch.create({
+            entity_type: po.entity_type,
+            entity_id: po.entity_id,
             ingredient_id: item.ingredient_id,
-            unit_cost: newAvg,
-            notes: `PO ${po.po_number} receive`,
-            updated_by: req.user.id
+            batch_number: split.batch_no || null,
+            initial_quantity: stockDelta,
+            remaining_quantity: stockDelta,
+            unit: ingredient.unit,
+            unit_cost: unitCost,
+            expiry_date: split.expiry_date || null,
+            received_date: new Date(),
+            status: 'active',
+            purchase_order_id: po.id,
+            created_by: req.user.id
           }, { transaction: t });
+
+          // InventoryTransaction — Sprint 7: entity_type 명시 + purchase_order_id FK
+          await InventoryTransaction.create({
+            entity_type: po.entity_type,
+            entity_id: po.entity_id,
+            ingredient_id: item.ingredient_id,
+            transaction_type: 'purchase',
+            quantity_change: stockDelta,
+            unit: ingredient.unit,
+            stock_after: newStock,
+            purchase_order_id: po.id,
+            notes: `PO ${po.po_number} receive`,
+            created_by: req.user.id
+          }, { transaction: t });
+
+          // Restaurant buyer 가중평균 cost
+          if (po.entity_type === 'restaurant') {
+            const incomingCostPerIng = (parseFloat(item.unit_price) || 0) / conv;
+            const existingCostRow = await RestaurantIngredientCost.findOne({
+              where: { restaurant_id: po.entity_id, ingredient_id: item.ingredient_id },
+              transaction: t
+            });
+            const oldCost = existingCostRow
+              ? parseFloat(existingCostRow.unit_cost) || 0
+              : (parseFloat(ingredient.unit_cost) || 0);
+            const weighted = currentStock > 0 && newStock > 0
+              ? (currentStock * oldCost + stockDelta * incomingCostPerIng) / newStock
+              : incomingCostPerIng;
+            const newAvg = Math.round(weighted * 10000) / 10000;
+
+            if (existingCostRow) {
+              await existingCostRow.update({
+                unit_cost: newAvg,
+                notes: `PO ${po.po_number} receive`,
+                updated_by: req.user.id
+              }, { transaction: t });
+            } else {
+              await RestaurantIngredientCost.create({
+                restaurant_id: po.entity_id,
+                ingredient_id: item.ingredient_id,
+                unit_cost: newAvg,
+                notes: `PO ${po.po_number} receive`,
+                updated_by: req.user.id
+              }, { transaction: t });
+            }
+          }
+
+          await ingredient.update(
+            { current_stock: newStock, last_stock_take_at: new Date() },
+            { transaction: t }
+          );
+          currentStock = newStock;
+        } else if (reason === 'damaged' || reason === 'wrong_item') {
+          // Auto returns — 재고 변동 없음
+          const sourceEvent = reason === 'damaged' ? 'receive_damage' : 'receive_wrong_item';
+          const ar = await PurchaseOrderReturn.create({
+            purchase_order_id: po.id,
+            purchase_order_item_id: item.id,
+            ingredient_id: item.ingredient_id,
+            quantity: qty,
+            unit: item.unit || ingredient.unit,
+            unit_price: parseFloat(item.unit_price) || 0,
+            reason: split.discrepancy_note || `Auto-generated: ${reason} on receive`,
+            status: 'requested',
+            requested_by_user_id: req.user.id,
+            auto_generated: true,
+            source_event: sourceEvent
+          }, { transaction: t });
+          autoReturns.push({
+            id: ar.id, item_id: item.id, ingredient_id: item.ingredient_id,
+            quantity: qty, reason
+          });
+        } else if (reason === 'short' || reason === 'pending') {
+          // 보고만 — discrepancy 컬럼 update
+          await PurchaseOrderItem.update({
+            discrepancy_reason: reason,
+            discrepancy_note: split.discrepancy_note || null,
+            discrepancy_reported_at: new Date(),
+            discrepancy_reported_by_user_id: req.user.id
+          }, { where: { id: item.id }, transaction: t });
+          lastDiscrepancyReason = reason;
+          discrepancyLines.push({ item_id: item.id, quantity: qty, reason });
         }
       }
 
+      // Update item.quantity_received with normal split sum
+      if (normalQtyTotal > 0) {
+        const newRecv = Math.round((alreadyReceived + normalQtyTotal) * 100) / 100;
+        await PurchaseOrderItem.update(
+          { quantity_received: newRecv },
+          { where: { id: item.id }, transaction: t }
+        );
+        item.quantity_received = newRecv;
+      }
+      // (legacy block removed — splits 처리로 대체됨 below)
       affectedIngredientIds.add(item.ingredient_id);
     }
 
@@ -970,13 +1029,13 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
       : { status: 'partial_received', tracking_info: newTracking };
     await po.update(updates, { transaction: t });
 
-    // Resolve stock alerts (best-effort, restaurant-scoped)
-    if (restaurantIdForBatch && affectedIngredientIds.size > 0) {
+    // Resolve stock alerts (best-effort, restaurant-scoped — Sprint 7: brand/foodcourt 미지원, restaurant only)
+    if (po.entity_type === 'restaurant' && affectedIngredientIds.size > 0) {
       await StockAlert.update(
         { is_resolved: true, resolved_at: new Date() },
         {
           where: {
-            restaurant_id: restaurantIdForBatch,
+            restaurant_id: po.entity_id,
             ingredient_id: { [Op.in]: Array.from(affectedIngredientIds) },
             is_resolved: false
           },
@@ -994,6 +1053,9 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
     // Sprint 5: emit realtime event to seller + buyer rooms
     emitPoEvent(req, updated, 'seller-order-updated');
 
+    // Sprint 7: response includes auto_returns + discrepancy_lines for UI feedback
+    res.locals.sprint7Extra = { auto_returns: autoReturns, discrepancy_lines: discrepancyLines };
+
     // Sprint 4: Auto-issue Trade Invoice when fully received (idempotent, non-blocking)
     if (updated.status === 'received') {
       (async () => {
@@ -1006,11 +1068,92 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
       })();
     }
 
-    res.json({ success: true, data: updated });
+    res.json({
+      success: true,
+      data: updated,
+      auto_returns: autoReturns,
+      discrepancy_lines: discrepancyLines
+    });
   } catch (err) {
     if (!t.finished) await t.rollback();
     console.error('POST /api/purchase-orders/:id/receive error:', err);
     res.status(500).json({ success: false, message: 'Failed to receive purchase order' });
+  }
+});
+
+// ============================================
+// Sprint 7 — PUT /api/purchase-orders/:id/items/:itemId/discrepancy
+// 사후 차이 보고/변경 (예: pending → damaged 발견)
+// ============================================
+router.put('/purchase-orders/:id/items/:itemId/discrepancy', async (req, res) => {
+  const t = await database.sequelize.transaction();
+  try {
+    const id = parseInt(req.params.id, 10);
+    const itemId = parseInt(req.params.itemId, 10);
+    if (!Number.isFinite(id) || !Number.isFinite(itemId)) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Not found' });
+    }
+
+    const po = await PurchaseOrder.findByPk(id, { transaction: t });
+    if (!po || !checkPOOwnership(po, req)) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Not found' });
+    }
+
+    const item = await PurchaseOrderItem.findByPk(itemId, { transaction: t });
+    if (!item || item.purchase_order_id !== po.id) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+
+    const ALLOWED = new Set([null, 'short', 'damaged', 'wrong_item', 'pending']);
+    const reason = req.body?.reason ?? null;
+    if (!ALLOWED.has(reason)) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: `Invalid reason: ${reason}` });
+    }
+    const note = (req.body?.note != null) ? String(req.body.note).slice(0, 500) : null;
+    const qty = req.body?.quantity != null ? parseFloat(req.body.quantity) : null;
+
+    // Update line discrepancy fields
+    await PurchaseOrderItem.update({
+      discrepancy_reason: reason,
+      discrepancy_note: note,
+      discrepancy_reported_at: reason ? new Date() : null,
+      discrepancy_reported_by_user_id: reason ? req.user.id : null
+    }, { where: { id: itemId }, transaction: t });
+
+    // damaged/wrong_item으로 사후 변경 시 auto-return 자동 생성 (qty 필수)
+    let autoReturn = null;
+    if ((reason === 'damaged' || reason === 'wrong_item') && qty > 0) {
+      const sourceEvent = reason === 'damaged' ? 'receive_damage' : 'receive_wrong_item';
+      autoReturn = await PurchaseOrderReturn.create({
+        purchase_order_id: po.id,
+        purchase_order_item_id: itemId,
+        ingredient_id: item.ingredient_id,
+        quantity: qty,
+        unit: item.unit,
+        unit_price: parseFloat(item.unit_price) || 0,
+        reason: note || `Auto-generated (post-receive): ${reason}`,
+        status: 'requested',
+        requested_by_user_id: req.user.id,
+        auto_generated: true,
+        source_event: sourceEvent
+      }, { transaction: t });
+    }
+
+    await t.commit();
+    emitPoEvent(req, po, 'seller-order-updated');
+    res.json({
+      success: true,
+      data: { item_id: itemId, reason, note, quantity: qty },
+      auto_return: autoReturn ? { id: autoReturn.id, quantity: qty, reason } : null
+    });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('PUT discrepancy error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update discrepancy' });
   }
 });
 

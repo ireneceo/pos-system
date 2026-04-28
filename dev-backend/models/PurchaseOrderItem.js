@@ -17,7 +17,17 @@ const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
   unit_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   line_total: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
   unit_conversion: { type: DataTypes.DECIMAL(10, 4), defaultValue: 1 },
-  notes: { type: DataTypes.STRING(255), allowNull: true }
+  notes: { type: DataTypes.STRING(255), allowNull: true },
+
+  // Sprint 7
+  discrepancy_reason: {
+    type: DataTypes.ENUM('short', 'damaged', 'wrong_item', 'pending'),
+    allowNull: true,
+    comment: 'Sprint 7: receive 시 차이 사유'
+  },
+  discrepancy_note: { type: DataTypes.STRING(500), allowNull: true },
+  discrepancy_reported_at: { type: DataTypes.DATE, allowNull: true },
+  discrepancy_reported_by_user_id: { type: DataTypes.INTEGER, allowNull: true }
 }, {
   tableName: 'purchase_order_items',
   timestamps: true,

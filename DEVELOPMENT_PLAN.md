@@ -1,26 +1,125 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-28 (보안/IDOR 일괄 + UX 정리 + dev 이메일 차단 + 검증 10단계)
+> **최종 업데이트:** 2026-04-28 (v3.20 후보 — Sprint 7 + 항목 12 + Timezone + 모바일 헤더 fix 누적, 미배포)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 `/배포` 시 **v3.19**
+> **현재 버전:** **v3.19** (2026-04-28 운영 배포)
 
-## 🎯 다음 세션 — Irene 브라우저 테스트 → /배포 v3.19
+## ✅ 완료: Supply Chain Sprint 7 — Operational Hardening (2026-04-28, 미배포)
 
-**개발은 100% 완료**. 서버 사이드 검증(IDOR/회귀/health-check 43/43)도 모두 통과.
-브라우저 클릭 흐름만 Irene이 직접 확인하면 운영 배포 준비 완료.
+**설계 문서**: `docs/SUPPLY_CHAIN_SPRINT_7.md` (1~4단계 산출물 통합)
 
-**가이드 문서:** `docs/SPRINT_5_6_TEST_GUIDE.md` (8 시나리오)
+### 배경
+Sprint 1~6 흐름의 운영 사고 위험 4 영역을 30년차 컨설턴트 관점에서 진단하여 Sprint 7로 묶어 일괄 보강. 12개 추가 빈틈 + ε.1~4 결정사항도 모두 반영.
 
-1. Restaurant 단일 발주 (3-step stepper) → 2. 다중 Bulk (BulkOrderModal cart) → 3. Supplier Live Orders 실시간(NavIcon pulse + chime + DatePeriodFilter) → 4. Confirm/Ship/Edit Tracking/Deliver (carrier dropdown) → 5. Receive (Trade Invoice 자동 + 가중평균 cost) → 6. Returns/Credit Note → 7. PO Print A4 → 8. Admin Carriers CRUD
+### 완료된 작업 (4 영역 + 12 빈틈)
 
-**추가 확인 (2026-04-28 세션 변경분):**
-- BG `/pos/brand/general/product-recipes` brand selector 드롭다운 (3개 brand 보유)
-- BG/FG/Supplier 라이브오더 빈 상태 텍스트만 (이모지 없음)
-- BG/FG/Supplier 어느 페이지에서도 새 PO 도착 시 사이드바 즉시 반응 (글로벌 socket)
-- 4개 언어 토글 (BrandProductsTab, PO Detail returns/print)
+| # | 영역 | 작업 | 상태 |
+|---|------|------|:----:|
+| 1 | inventory_transactions 정식화 | entity_type/entity_id/purchase_order_id 컬럼 + ENUM 확장(return_in/return_out) + Sequelize beforeCreate hook (legacy↔new 양방향 backward-compat) + 백필 61 rows | ✅ |
+| 2 | inventory_batches 정규화 | entity_type/entity_id 컬럼 + restaurant_id NULL 허용 + hook + 백필 25 rows | ✅ |
+| 3 | Returns 양방향 환원 | po-returns.js approve handler 분기 (supplier 기존 + brand `Ingredient.current_stock` + foodcourt `FoodcourtProduct.current_stock`) + Currency assertion (PO ↔ Credit Note 정합 강제) | ✅ |
+| 4 | 수령 차이 분류 | purchase_order_items.discrepancy_reason ENUM(short/damaged/wrong_item/pending) + receive splits payload 구조 + auto-returns 자동 생성 (damaged/wrong_item) + 사후 PUT discrepancy endpoint | ✅ |
+| 5 | PO.status ENUM 확장 | in_transit + delivery_failed 추가, status progress order 정의 (out-of-order webhook 거부) | ✅ |
+| 6 | Carrier webhook 인프라 | carrier_webhook_events 신규 테이블 + carriers webhook_secret/event_path/tracking_path/idempotency_path/status_map 컬럼 | ✅ |
+| 7 | Carrier webhook endpoint | `POST /api/carrier-webhooks/:carrier_code` Public + HMAC SHA-256 + timestamp tolerance ±5분 + payload_hash UNIQUE idempotency + 2단계 처리 (검증 동기 + 적용 비동기 setImmediate) | ✅ |
+| 8 | Webhook out-of-order 처리 | status progression check (delivery_failed/cancelled/returned은 어디서나 적용, 그 외는 진보된 status만) + multiple_match 시 가장 최근 PO + error 기록 | ✅ |
+| 9 | Webhook 알림 throttle | shipped/delivered/delivery_failed/returned만 메일, picked_up/in_transit은 socket emit only | ✅ |
+| 10 | Admin Carrier webhook config | PUT webhook 설정 (status_map ENUM 검증) + POST regenerate-secret (rate limit + plain 한 번만 노출 + 마스킹) | ✅ |
+| 11 | Admin retry + Simulate | POST retry (실패 event 재처리) + POST simulate (HMAC bypass, 운영 QA용) | ✅ |
+| 12 | BG inventory transactions | GET `/api/brands/:brandId/inventory/transactions` (entity_type='brand' 필터, ingredient/PO join) | ✅ |
+| 13 | Frontend Receive Modal | splits UI (segmented control OK/Short/Damaged/Wrong/Pend) + auto-return 인라인 안내 + 모바일 카드 stack 반응형 | ✅ |
+| 14 | Frontend CarrierWebhookEventsPage | 신규 페이지 (모니터/필터/retry/simulate 모달/event detail drawer) | ✅ |
+| 15 | Frontend Carriers 모달 webhook 섹션 | accordion + Endpoint URL 노출 + Regenerate Secret 흐름 (한 번 노출 + Copy + 경고) + status_map JSON editor | ✅ |
+| 16 | Sidebar + 라우트 + ProtectedRoute | Admin 영역 ⚡ Carrier Webhooks 메뉴 + `/pos/admin/carrier-webhooks` (System Admin 전용) | ✅ |
+| 17 | path-level middleware fix | `routes/brand-inventory.js`의 `router.use(authenticateToken)` (path 없음) → `router.use('/brands', authenticateToken)` 좁힘. carrier-webhooks public endpoint 401 사고 해결 | ✅ |
 
-**테스트 OK 시 `/배포`** — DB 마이그레이션(sprint1~6) + 콘텐츠 sync(블로그/FAQ 자동) + 코드/프론트 배포가 한 번에.
+### 검증 (10단계 모두 PASS)
+- 0 hydration: 0 warnings
+- 1 빌드: exit 0 (`main.6f0b969f.js` 1.71MB)
+- 2 pm2: dev-backend online · /api/health ok
+- 3 API roundtrip: 11/11 (webhook config Write→Read · regenerate (length 128, entropy) · HMAC happy/tamper/replay/expired · discrepancy auth · BG transactions · 역할 격리)
+- 4 SPA HTML: 200
+- 5 역할별: SA/BG/FG/RA × 새 endpoint 12/12
+- 6 요구사항: 4 영역 + 12 빈틈 + ε.1~4 결정 모두 ✅
+- 7 회귀: health-check **43/43 PASS**, receive caller 단독 안전
+- 8 UI/UX: timezone util, 금지 패턴 없음, 768px 반응형
+- 9 SPA: 13/13 200 (신규 carrier-webhooks 포함)
+
+### test-sprint7.js 시나리오 (19/19 PASS)
+- Migration column 9개 + 신규 테이블 + 백필 0 orphans
+- Sequelize hook backward-compat (legacy / new code)
+- Webhook config + secret regenerate + invalid ENUM 거부
+- HMAC 정상/무효/replay/expired
+- Simulate (HMAC bypass)
+- Admin event list
+
+### 데모 데이터 (live)
+- R#38 PO 40건: draft 1 / submitted 12 / confirmed 4 / shipped 7 / received 16
+- Returns 2 + Credit Notes 1
+- Lalamove carrier: webhook secret + status_map 자동 설정 (검증 단계)
+
+### 수정/신규 파일
+
+**Backend (12)**
+- 신규: `models/CarrierWebhookEvent.js`, `routes/carrier-webhooks.js`, `scripts/sprint7-migration.js`
+- 수정: `models/{InventoryTransaction,InventoryBatch,PurchaseOrder,PurchaseOrderItem,PurchaseOrderReturn,Carrier,index}.js`, `routes/{po-returns,purchase-orders,carriers,brand-inventory}.js`, `server.js`
+
+**Frontend (5)**
+- 신규: `pages/Admin/CarrierWebhookEventsPage.tsx`
+- 수정: `pages/PurchaseOrders/PurchaseOrderDetailPage.tsx`, `pages/Admin/CarriersPage.tsx`, `App.tsx`, `components/Layout/MainLayout.tsx`
+
+**Docs (1)**
+- 신규: `docs/SUPPLY_CHAIN_SPRINT_7.md` (1~4단계 산출물 통합)
+
+### 다음 세션 — Irene 브라우저 테스트 → /배포 v3.20
+
+서버 사이드 검증 완료. 브라우저 클릭 흐름만 Irene이 확인 (15분 코스 — `.claude/session-state.md` 참조).
+
+테스트 OK 시 `/배포` v3.20 — 묶음:
+1. Timezone Coverage 일괄
+2. 모바일 헤더 fix
+3. 항목 12 — Restaurants 계약 뱃지
+4. Sprint 7 — Operational Hardening
+5. path-level middleware fix
+
+배포 스크립트: `/var/www/deploy-to-production.sh` (sprint7-migration.js 자동 실행)
+
+### Sprint 7 미완료 (후속)
+- BG Inventory Transactions tab UI (backend ready)
+- i18n 4언어 키 (모든 t() 호출에 영문 fallback 있어 동작 영향 없음)
+- Carrier 운영 매뉴얼 (secret 등록 절차)
+- Sprint 8~10 (15개 빈틈 중 11개 남음)
+
+---
+
+## ✅ 완료: Timezone Coverage 일괄 (2026-04-28, 미배포)
+
+**원칙**: 모든 toLocaleDateString/toLocaleTimeString 호출에 엔티티(Restaurant/Brand/Foodcourt) 의 `operation_settings.timeZone` 적용. 미설정 시 `Asia/Kuala_Lumpur` 폴백.
+
+### 작업 결과
+- Frontend 2 파일: BrandGeneralDashboard, FoodcourtFloorPlanPage(deriveKeyNumber/unitsToFloorTables timezone 인자)
+- Backend 11 파일: notificationTemplates(7함수+fmtDate), invoiceEmailTemplate, invoices-helpers(getInvoiceTimezone helper 신규), invoices-main(4곳+formatDate), notices, invoiceScheduler, subscriptionScheduler(D+3/7/14 reminder + contract expiry + trial), soaScheduler(buyer-side tz), authService, restaurants-subscription, subscriptions
+
+### 검증
+- 빌드 `main.b4cbd869.js` · health-check 43/43 · API 실호출 invoice billing period (KL=Feb 1-28, NY=Jan 31-Feb 27) · SPA 200
+
+DEVELOPMENT_PLAN의 "다음 1.5: 타임존 전체 적용 (긴급)" 항목 완전 종결.
+
+---
+
+## ✅ v3.19 운영 배포 완료 (2026-04-28)
+
+**Supply Chain System Sprint 1~6 + 보안 IDOR 일괄 + UX 정리** 운영 반영 완료.
+
+- 신규 16 DB 모델, 102 endpoints, 30 UI 페이지 (Supplier 사업체 + buyer-seller 거래 흐름)
+- Sprint 5+6 (Smart Reorder + Live Sales Order + Lifecycle Completion) — 발주 완성
+- 보안 IDOR 3건 차단 (menu.js / brand-inventory.js / inventory-routes.js)
+- BG multi-brand 지원, Foodcourt buyer 흐름 차단(Phase 3 deferred)
+- dev 이메일 SMTP 차단 (test signup 운영 메일 폭격 방지)
+- 블로그 e-Invoice RM10K (3언어) 발행
+- DB schema 96 → 116 tables (20 신규)
+- Production smoke test 10/10 PASS, frontend `main.8b60d84c.js`
 
 ## 미배포 누적 (v3.19 후보)
 - Sprint 1~4 (Supply Chain 4-Design)

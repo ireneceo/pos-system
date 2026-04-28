@@ -64,7 +64,9 @@
       "Bash(sudo nginx *)",
       "Bash(sudo systemctl *)",
       "Bash(tee /tmp/build-output.log)",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(xargs -I{} grep -E \"\\(Sprint|sprint[1-6]|Carrier|migration|✓|✗|Schema|Seed|Backup|smoke|delivered|returns\\)\" {})",
+      "Bash(echo \"  Frontend bundle \\(운영\\): $\\(curl -s https://purplehere.com/)"
     ],
     "deny": [],
     "ask": []

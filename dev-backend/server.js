@@ -414,6 +414,10 @@ app.post('/api/webhooks/paypal', express.raw({ type: 'application/json' }), asyn
   }
 });
 
+// Sprint 7: Carrier Webhook - MUST be before express.json() for HMAC raw body verification
+app.use('/api/carrier-webhooks/:carrier_code',
+  express.raw({ type: 'application/json', limit: '256kb' }));
+
 // Express 미들웨어 설정
 // Increase payload size limit to support base64 image uploads
 app.use(express.json({ limit: '10mb' }));
@@ -523,6 +527,8 @@ const buyerSellersRouter = require('./routes/buyer-sellers');
 const carriersRouter = require('./routes/carriers');
 // Sprint 6 (2026-04-27) — PO returns / credit notes
 const poReturnsRouter = require('./routes/po-returns');
+// Sprint 7 (2026-04-28) — Carrier webhooks (HMAC + 2-stage processing)
+const carrierWebhooksRouter = require('./routes/carrier-webhooks');
 // Sprint 4 — Supply Chain Design 4 (Seller-side order management + buyer-side trade invoices)
 const sellerOrdersRouter = require('./routes/seller-orders');
 const purchaseInvoicesRouter = require('./routes/purchase-invoices');
@@ -638,6 +644,7 @@ app.use('/api', buyerSellersRouter);  // exposes /api/buyer-sellers
 app.use('/api', carriersRouter);  // exposes /api/carriers + /api/admin/carriers/*
 // Sprint 6 (2026-04-27) — PO Returns
 app.use('/api', poReturnsRouter);  // exposes /api/purchase-orders/:id/returns + /api/seller-orders/:id/returns/*
+app.use('/api', carrierWebhooksRouter);  // Sprint 7: /api/carrier-webhooks/:carrier_code + /api/admin/carrier-webhook-events/*
 // Sprint 4 — buyer-side
 app.use('/api', purchaseInvoicesRouter);  // exposes /api/purchase-invoices/*
 app.use('/api', ingredientSellerProductsRouter);  // exposes /api/ingredients/:id/seller-sources, /api/ingredient-seller-products/:id, /api/seller-catalog

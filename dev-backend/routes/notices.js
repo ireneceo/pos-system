@@ -13,6 +13,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
 const { sendNotification, sendNotificationBatch } = require('../utils/notificationService');
 const { noticeReceivedEmail } = require('../utils/notificationTemplates');
+const { getSiteTimezone } = require('../utils/dateTimeHelper');
 
 // Helper: Get restaurants linked to a Brand General or Foodcourt General
 async function getLinkedRestaurants(user) {
@@ -489,7 +490,8 @@ router.post('/', authenticateToken, async (req, res) => {
     // Email notification to recipients (non-blocking)
     (async () => {
       try {
-        const mail = noticeReceivedEmail(fullNotice, fullNotice.author?.full_name || user.full_name);
+        const siteTz = await getSiteTimezone();
+        const mail = noticeReceivedEmail(fullNotice, fullNotice.author?.full_name || user.full_name, 'en', siteTz);
         const recipientUserIds = new Set();
 
         for (const r of (fullNotice.recipients || [])) {

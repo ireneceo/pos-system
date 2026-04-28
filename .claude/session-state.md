@@ -1,122 +1,99 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-28 (보안 IDOR 일괄 + UX 정리 + dev 이메일 차단 + 검증 10단계)
-**버전:** **v3.18** (2026-04-25 운영 배포) · 미배포 누적 → 다음 `/배포` 시 v3.19
-**작업 상태:** 완료 — 다음 세션 Irene 브라우저 테스트 → /배포 v3.19
+**마지막 업데이트:** 2026-04-28 (Sprint 7 + Timezone + 모바일 헤더 + 항목 12 마무리, v3.20 배포 후보)
+**버전:** **v3.19** (운영) → 누적 v3.20 배포 후보
+**작업 상태:** 개발 완료 — Irene 브라우저 테스트 → /배포 v3.20
 
 ### 진행 중인 작업
 - 없음
 
 ### 완료된 작업 (이번 세션 — 2026-04-28)
 
-**🔒 Critical 보안 (IDOR 3건 차단)**
-- `routes/menu.js` 8 endpoint에 `checkRestaurantAccess` + `/product/:id`엔 `checkProductTenant` (req.params.id 충돌 회피)
-- `routes/brand-inventory.js` 4 endpoint에 `requireBrandScope`
-- `middleware/auth.js`: checkRestaurantAccess가 query/body restaurantId도 해결 (params 외 IDOR 차단)
-- `routes/inventory-routes.js` write IDOR — 검증 결과 line 25에 이미 router-level checkRestaurantAccess 적용 (false-positive)
+**Timezone Coverage 일괄 (Frontend 2 + Backend 11)**
+- 모든 toLocaleDateString/TimeString 호출에 entity 타임존 적용 (operation_settings.timeZone, KL fallback)
+- 검증: invoice billing period KL `2/1-2/28`, NY `1/31-2/27` 차이 확인 = timezone 실작동 증명
 
-**🟠 Major 4건**
-- `BrandProductRecipePage` 다중 brand 지원 (`/api/brands` fetch + selector 드롭다운)
-- `routes/purchase-orders.js` Brand/Foodcourt buyer 수령 시 `ActivityLog` 기록 (entity_type='po_receipt')
-- `services/poRealtimeService.js` system_admin seller emit skip (seller room 격리)
-- `MainLayout.tsx` 글로벌 seller socket listener (페이지 무관 즉시 NavIcon pulse)
+**모바일 상단 헤더 fix**
+- StaffInfo 480px → 768px 분기 (모바일 전체 아바타만 표시)
+- HeaderActions gap 480px 미만 4px / ProfileButton padding 4px·gap 0
+- LoginPage LanguageSelector globe variant 통일 (dropdown 우측 정렬)
 
-**🟡 Minor (i18n + UX)**
-- PO Detail i18n 4언어 (detail.actions.{returns,print} + detail.returns.* + print.*)
-- BrandProductsTab i18n 28키 × 4언어 적용
-- IncomingOrdersView 이모지 제거 (📭/📦/📍 → 텍스트)
+**항목 12 — Restaurants 계약 뱃지** (Contract Phase 2 잔여 마무리)
+- `routes/restaurants-crud.js` list endpoint batch contract fetch (N+1 회피, stage priority sort)
+- Manager/Owner Restaurants 페이지에 ContractBadge + 만료일 표시
 
-**🚨 운영 사고 방지 (긴급)**
-- emailService 3종 dev SMTP 차단 (DEV_SEND_PLATFORM_EMAILS / DEV_SEND_ENTITY_EMAILS opt-in)
-- nginx index.html `cache-control: no-cache, no-store, must-revalidate`
-- IncomingOrdersView TDZ ordering fix (dateRange before fetchList)
-- FoodcourtTenancyMapPage PinsLayer useTranslation 추가
-- OrderTypePage 모든 주문 유형 비활성 시 빈 상태 안내 + Settings 경고
+**Supply Chain Sprint 7 — Operational Hardening** (4 영역 + 12 빈틈 + ε.1~4 결정)
+- inventory_transactions/batches polymorphic (entity_type/entity_id + hook + 백필 86 rows)
+- Returns 양방향 환원 (brand/foodcourt seller 분기 + Currency invariant)
+- 수령 splits + auto-returns + 사후 discrepancy PUT
+- PO.status ENUM 확장 (in_transit, delivery_failed)
+- Carrier webhook 인프라 (HMAC + 2단계 + idempotency)
+- 신규 admin 페이지 `/pos/admin/carrier-webhooks` + Carriers 모달 webhook 섹션
+- path-level middleware fix (brand-inventory.js router.use)
 
-**기타**
-- `deploy-to-production.sh` 콘텐츠 sync 기본 ON + sync-contents-to-prod.js 위임
-- `/글쓰기` 스킬에 4.5단계 팩트 검증 (.gov.my 1차 출처 우선) 추가
-- 블로그 발행: e-Invoice RM10K (translation_group_id=5, EN/MS/ZH)
+### 검증 결과
+- test-sprint7.js: **19/19 PASS**
+- /검증 10단계: **모두 PASS** (state-hydration 0, 빌드 exit 0, health-check 43/43, SPA 13/13, 역할 격리 12/12, API roundtrip 11/11)
+- 배포 artifact: `main.6f0b969f.js` 1.71MB
 
-**📊 검증 (10단계 모두 PASS)**
-- 0 hydration: 0 warning
-- 1 빌드: exit 0 (`main.cb59d6bd.js`, `8790.31471c8b.chunk.js`)
-- 2 pm2: dev-backend online, /api/health ok
-- 3 API 실호출: 9/9 (CRUD 4 + IDOR 5)
-- 4 SPA HTTP: 8/8 200
-- 5 역할별 흐름: 14/14 (SA + RA + BG)
-- 6 요구사항: 11/11 ✓
-- 7 회귀: health-check 43/43 PASS
-- 8 UI/UX: 4언어 28키 동기화 + aria-label
-- 9 SPA 라우트: 17/17 200
+### 변경 파일
 
-### 변경 파일 (이번 세션)
+**Backend (12)**
+- 신규: `models/CarrierWebhookEvent.js`, `routes/carrier-webhooks.js`, `scripts/sprint7-migration.js`
+- 수정: `models/{InventoryTransaction,InventoryBatch,PurchaseOrder,PurchaseOrderItem,PurchaseOrderReturn,Carrier,index}.js`, `routes/{po-returns,purchase-orders,carriers,brand-inventory,restaurants-crud,notices,invoices-helpers,invoices-main,restaurants-subscription,subscriptions}.js`, `services/{authService,invoiceScheduler,subscriptionScheduler,soaScheduler}.js`, `utils/{notificationTemplates,invoiceEmailTemplate}.js`, `server.js`
 
-**Backend (6)**
-- `middleware/auth.js`, `routes/menu.js`, `routes/brand-inventory.js`, `routes/purchase-orders.js`, `services/poRealtimeService.js`, `utils/emailService.js`
-
-**Frontend (9)**
-- `components/Layout/MainLayout.tsx`
-- `pages/BrandProductRecipe/BrandProductRecipePage.tsx`, `ProductRecipesTab.tsx`, `ProductRecipeCategoriesTab.tsx`
-- `pages/BrandProductManagement/BrandProductsTab.tsx`
-- `pages/IncomingOrders/IncomingOrdersView.tsx`
-- `pages/FoodcourtGeneral/FoodcourtTenancyMapPage.tsx`
-- `pages/Settings/SettingsPage.tsx`, `mobile/pages/OrderTypePage.tsx`
-
-**Infra (1)**
-- `/etc/nginx/sites-enabled/dev.purplehere.com` (HTML no-cache)
-
-**i18n (8 files: 4 langs × 2 namespaces)**
-- `purchaseOrders.json` (PO Detail / Print)
-- `brand.json` (productsTab namespace 28키)
+**Frontend (10)**
+- 신규: `pages/Admin/CarrierWebhookEventsPage.tsx`
+- 수정: `pages/PurchaseOrders/PurchaseOrderDetailPage.tsx`, `pages/Admin/CarriersPage.tsx`, `pages/Manager/RestaurantsPage.tsx`, `pages/Owner/OwnerRestaurantsPage.tsx`, `pages/BrandGeneral/BrandGeneralDashboard.tsx`, `pages/FoodcourtGeneral/FoodcourtFloorPlanPage.tsx`, `pages/Login/LoginPage.tsx`, `App.tsx`, `components/Layout/MainLayout.tsx`
 
 **Docs (3)**
-- `ROLES_AND_PERMISSIONS.md` (IDOR 일괄 수정 섹션 + 업데이트 이력)
-- `PURCHASE_ORDER_SYSTEM.md` (F. 비-Restaurant Audit Trail 섹션)
-- `SELLER_ORDER_MANAGEMENT_SYSTEM.md` (Sprint 7 보강 섹션)
-
-**기타**
-- `.claude/commands/글쓰기.md` (4.5단계 팩트 검증)
-- `deploy-to-production.sh` (콘텐츠 sync 기본 ON)
-- 블로그 grp=5 e-Invoice RM10K (3언어)
+- 신규: `docs/SUPPLY_CHAIN_SPRINT_7.md`
+- 수정: `docs/PURCHASE_ORDER_SYSTEM.md` (Sprint 7 정식 해결 노트 추가)
+- 메모리 신규: `reference_entity_polymorphic.md`, `reference_webhook_hmac.md`
 
 ---
 
-## 🎯 다음 세션 — Irene 브라우저 테스트 → /배포 v3.19
+## 🎯 다음 세션 — Irene 브라우저 테스트 (15분 코스) → /배포 v3.20
 
-서버 사이드 검증은 모두 끝났습니다. 브라우저 클릭 흐름만 Irene이 직접 확인하면 운영 배포 준비 완료.
+서버 사이드 검증은 모두 끝났음. 브라우저 클릭 흐름만 Irene이 직접 확인.
 
-### 테스트 가이드: `docs/SPRINT_5_6_TEST_GUIDE.md` 8 시나리오
+| # | 시간 | 액션 | 확인 포인트 |
+|---|---|---|---|
+| 1 | 2분 | SA 로그인 → `/pos/admin/carrier-webhooks` | 신규 페이지 진입. 사이드바 ⚡ "Carrier Webhooks" 추가됨. 통계 카드 4종 |
+| 2 | 3분 | "🧪 Send Simulate Event" → Lalamove + JSON payload 그대로 → Send | `✓ Event N — status: applied/failed` 결과. SIM 노란 배지 row. View → Drawer (raw payload + signature_valid + applied_at) |
+| 3 | 2분 | `/pos/admin/carriers` → Lalamove Edit → 모달 하단 "⚡ Webhook Integration" | ✓ Active 표시 + Endpoint URL 노출 |
+| 4 | 2분 | 🔄 Regenerate Secret → 노란 경고 → Confirm | 빨강 박스에 secret 한 번 큰 글씨 + 📋 Copy 버튼 |
+| 5 | 2분 | BG 로그인 → `/pos/brand/general/purchase-orders` → shipped 상태 PO | PO Detail 진입 |
+| 6 | 3분 | Receive → ⊕ Report issue → segmented control → Damaged 15 | "✦ Auto-return will be created for 15..." 인라인 안내 |
+| 7 | 1분 | Confirm Receipt → PO 새로고침 | Returns 섹션에 auto-generated 라벨 + Brand seller stock 환원 (BG inventory 페이지) |
 
-| # | 시나리오 | 확인 포인트 |
-|---|---------|-----------|
-| 1 | Restaurant 단일 발주 | NewPurchaseOrderPage 3-step stepper (seller → items → review) → submit |
-| 2 | 다중 Bulk 발주 | BulkOrderModal cart UX (multi-select 재료 → multi-supplier 한 번에) |
-| 3 | Supplier Live Orders 실시간 | 새 PO 도착 → 사이드바 NavIcon hasPending pulse + 사운드 chime + auto refresh + DatePeriodFilter |
-| 4 | Confirm → Ship → Edit Tracking → Mark Delivered | Seller-side 액션. carrier dropdown (Lalamove/Grab/JNT/Ninja Van/Pos Laju) + tracking_url 자동 |
-| 5 | Restaurant Receive | quantity_received 입력 → Trade Invoice 자동 생성 → 가중평균 cost 갱신 |
-| 6 | Returns → Approve | Buyer가 returns 요청 → Seller approve → Credit Note 자동 |
-| 7 | PO Print | A4 window.print 출력 |
-| 8 | System Admin Carriers CRUD | /pos/admin/carriers 목록 + 생성/수정/삭제 |
+### 모바일 반응형 (선택, 추가 5분)
+- `/pos/login` 375px: globe LanguageSelector 잘림 없음
+- MainLayout 헤더 480~768px: 아바타만 표시
+- Receive Modal split row 375px: 가로 grid → 세로 카드 stack
 
-### 테스트 데모 데이터 (live)
-- R#38 PO 40건: draft 1 / submitted 12 / confirmed 4 / shipped 7 / received 16
-- Returns 2 (approved + rejected) · Credit Notes 1 · Carriers 5
+### 테스트 데이터 (live)
+- R#38 PO 40건 (다양한 stage)
+- Lalamove carrier: webhook secret + status_map 자동 설정 (검증 단계에서 생성됨)
 
-### 추가 확인 (이번 세션 변경분)
-- BG 계정으로 `/pos/brand/general/product-recipes` → brand selector 드롭다운 (3개 brand) 동작
-- BG/FG/Supplier 라이브오더 페이지에서 빈 상태 텍스트만 (이모지 없음)
-- BG/FG/Supplier 어느 페이지에 있어도 새 PO 도착 시 사이드바 즉시 반응 (글로벌 socket)
-- 언어 전환 시 BrandProductsTab "Add Product" 등 4개 언어 변경
-- PO Detail 페이지 returns/print 버튼 4개 언어
-- 모바일 주문 모든 유형 비활성 시 빈 화면 대신 안내 카드
+### 테스트 OK 시 → `/배포` v3.20
 
-### 테스트 OK 시 → `/배포` v3.19 운영
-배포 스크립트가 자동으로 처리:
-- DB 마이그레이션 (sprint1~4 + sprint5 + sprint6 순서)
-- 콘텐츠 sync (블로그/FAQ — 90일 윈도우, 기본 ON)
-- 백엔드 코드 + 프론트 빌드 배포
+배포 묶음:
+1. Timezone Coverage 일괄
+2. 모바일 헤더 fix
+3. 항목 12 — Restaurants 계약 뱃지
+4. Sprint 7 — Operational Hardening
+5. path-level middleware fix
+
+배포 스크립트: `/var/www/deploy-to-production.sh` (sprint7-migration.js 자동 실행, 콘텐츠 sync 기본 ON)
+
+### Sprint 7 미완료 (후속, v3.21 또는 별도)
+- BG Inventory Transactions tab UI (backend ready)
+- i18n 4언어 키 (모든 t() 호출에 영문 fallback 있어 동작 영향 없음)
+- Carrier 운영 매뉴얼 (secret 등록 절차)
+- Sprint 8~10 (15개 빈틈 중 11개 남음)
+- 또는 Referral System 신규 시스템 분기
 
 ---
 

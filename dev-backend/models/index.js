@@ -60,6 +60,7 @@ const PurchaseOrderItem = require('./PurchaseOrderItem');
 const InventoryTransaction = require('./InventoryTransaction');
 const SupplierInventoryTransaction = require('./SupplierInventoryTransaction');
 const Carrier = require('./Carrier');
+const CarrierWebhookEvent = require('./CarrierWebhookEvent');
 const PurchaseOrderReturn = require('./PurchaseOrderReturn');
 const StockTake = require('./StockTake');
 const StockTakeItem = require('./StockTakeItem');
@@ -732,6 +733,15 @@ PurchaseOrder.belongsTo(User, { foreignKey: 'created_by_user_id', as: 'createdBy
 PurchaseOrderItem.belongsTo(Ingredient, { foreignKey: 'ingredient_id', as: 'ingredient' });
 PurchaseOrderItem.belongsTo(IngredientSellerProduct, { foreignKey: 'ingredient_seller_product_id', as: 'sellerSource' });
 
+// Sprint 7: Carrier ↔ CarrierWebhookEvent / InventoryTransaction ↔ PurchaseOrder
+Carrier.hasMany(CarrierWebhookEvent, { foreignKey: 'carrier_id', as: 'webhookEvents' });
+CarrierWebhookEvent.belongsTo(Carrier, { foreignKey: 'carrier_id', as: 'carrier' });
+CarrierWebhookEvent.belongsTo(PurchaseOrder, { foreignKey: 'purchase_order_id', as: 'purchaseOrder' });
+PurchaseOrder.hasMany(CarrierWebhookEvent, { foreignKey: 'purchase_order_id', as: 'carrierWebhookEvents' });
+
+InventoryTransaction.belongsTo(PurchaseOrder, { foreignKey: 'purchase_order_id', as: 'purchaseOrder' });
+PurchaseOrder.hasMany(InventoryTransaction, { foreignKey: 'purchase_order_id', as: 'inventoryTransactions' });
+
 // SupplierInvitation
 SupplierInvitation.belongsTo(User, { foreignKey: 'invited_by', as: 'inviter' });
 SupplierInvitation.belongsTo(User, { foreignKey: 'used_by_user_id', as: 'usedBy' });
@@ -801,6 +811,7 @@ module.exports = {
   InventoryTransaction,
   SupplierInventoryTransaction,
   Carrier,
+  CarrierWebhookEvent,
   PurchaseOrderReturn,
   StockTake,
   StockTakeItem,

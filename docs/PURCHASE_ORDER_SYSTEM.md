@@ -990,3 +990,22 @@ PO `/receive` 흐름에서 `InventoryTransaction` 모델이 `restaurant_id` NOT 
 ### F-3. 향후 (스키마 마이그레이션 후)
 `InventoryTransaction` 에 `entity_type` / `entity_id` 컬럼 추가 + `restaurant_id` nullable 변경 시 ActivityLog fallback 제거하고 모델 통합. 현재는 마이그레이션 비용 회피하고 ActivityLog로 audit trail 회복.
 
+### F-4. ✅ Sprint 7 정식 해결 (2026-04-28)
+
+F-3에서 예고한 마이그레이션이 Sprint 7에서 완료됨:
+- `inventory_transactions` / `inventory_batches` 모두 `entity_type` / `entity_id` 컬럼 추가, `restaurant_id` nullable
+- Sequelize `beforeCreate` hook으로 legacy/신규 코드 양방향 backward-compat
+- `transaction_type` ENUM 확장: `return_in`, `return_out`
+- `purchase_order_id` FK 추가
+- 백필 script (`scripts/sprint7-migration.js`): inventory_transactions 61 + batches 25
+- ActivityLog fallback 제거 → receive 흐름 통합
+
+**Sprint 7 추가 작업**:
+- Receive splits: `items[].splits[]` (정상/damaged/wrong_item/short/pending) + auto-returns
+- Returns 양방향 환원: brand/foodcourt seller도 stock 환원 + Currency invariant 검증
+- PO.status ENUM 확장: `in_transit`, `delivery_failed`
+- 사후 discrepancy PUT endpoint
+- Carrier webhook 인프라 (HMAC + 2단계 처리 + idempotency)
+
+**상세 설계**: `docs/SUPPLY_CHAIN_SPRINT_7.md`
+

@@ -14,6 +14,7 @@ const InvoiceItem = require('../models/InvoiceItem');
 const ActivityLog = require('../models/ActivityLog');
 const Product = require('../models/Product');
 const SystemSettings = require('../models/SystemSettings');
+const { getRestaurantTimezone } = require('../utils/dateTimeHelper');
 
 // GET /api/subscriptions - Legacy dashboard
 router.get('/', authenticateToken, async (req, res) => {
@@ -411,6 +412,20 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, message: current.change_blocked_reason });
     }
 
+    // Resolve entity timezone for date display (restaurant/brand/foodcourt)
+    let entityTz = 'Asia/Kuala_Lumpur';
+    try {
+      let entityRecord = null;
+      if (current.entity_type === 'restaurant') {
+        entityRecord = await Restaurant.findByPk(current.entity_id, { attributes: ['operation_settings'] });
+      } else if (current.entity_type === 'brand') {
+        entityRecord = await Brand.findByPk(current.entity_id, { attributes: ['operation_settings'] });
+      } else if (current.entity_type === 'foodcourt') {
+        entityRecord = await Foodcourt.findByPk(current.entity_id, { attributes: ['operation_settings'] });
+      }
+      if (entityRecord) entityTz = getRestaurantTimezone(entityRecord);
+    } catch (e) { /* fallback default */ }
+
     // Auto-fill subscription_start/end if null (legacy data)
     if (!current.subscription_start || !current.subscription_end) {
       const now = new Date();
@@ -573,7 +588,7 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
           }
 
           const endDate = new Date(current.subscription_end);
-          const periodText = `${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+          const periodText = `${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: entityTz })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: entityTz })}`;
 
           const invoice = await Invoice.create({
             restaurant_id: restaurantId,
@@ -695,7 +710,7 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
         before: { plan_type: current.plan_type, plan_amount: current.plan_amount, billing_cycle: current.billing_cycle },
         after: { plan_type: newPlan.display_name, plan_amount: newAmount, billing_cycle: effectiveBillingCycle, effective_date: nextBillingDate }
       },
-      description: `${changeLabel} (effective ${nextBillingDate ? new Date(nextBillingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'next billing date'})`,
+      description: `${changeLabel} (effective ${nextBillingDate ? new Date(nextBillingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: entityTz }) : 'next billing date'})`,
       ip_address: req.ip,
       user_agent: req.get('User-Agent')
     }, { transaction });
@@ -710,8 +725,8 @@ router.post('/change-plan', authenticateToken, async (req, res) => {
       new_amount: newAmount,
       billing_cycle: effectiveBillingCycle,
       message: changeType === 'cycle_change'
-        ? `Billing cycle will change to ${effectiveBillingCycle} on ${nextBillingDate ? new Date(nextBillingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'next billing date'}.`
-        : `Plan will change to ${newPlan.display_name} on ${nextBillingDate ? new Date(nextBillingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'next billing date'}.`
+        ? `Billing cycle will change to ${effectiveBillingCycle} on ${nextBillingDate ? new Date(nextBillingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: entityTz }) : 'next billing date'}.`
+        : `Plan will change to ${newPlan.display_name} on ${nextBillingDate ? new Date(nextBillingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: entityTz }) : 'next billing date'}.`
     });
   } catch (error) {
     await transaction.rollback();

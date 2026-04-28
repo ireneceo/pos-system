@@ -11,7 +11,18 @@ InventoryBatch.init({
   },
   restaurant_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true,
+    comment: 'Sprint 7: nullable (brand/foodcourt buyer는 null). Hook으로 entity_type=restaurant 시 자동 동기화'
+  },
+  entity_type: {
+    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt'),
+    allowNull: true,
+    comment: 'Sprint 7: polymorphic entity. Hook으로 자동 채움'
+  },
+  entity_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Sprint 7: entity_type 별 PK'
   },
   ingredient_id: {
     type: DataTypes.INTEGER,
@@ -93,7 +104,19 @@ InventoryBatch.init({
   timestamps: true,
   underscored: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  hooks: {
+    // Sprint 7: backward-compat for restaurant_id ↔ entity_type/entity_id
+    beforeCreate(row) {
+      if (row.entity_type === 'restaurant' && row.entity_id && !row.restaurant_id) {
+        row.restaurant_id = row.entity_id;
+      }
+      if (!row.entity_type && row.restaurant_id) {
+        row.entity_type = 'restaurant';
+        row.entity_id = row.restaurant_id;
+      }
+    }
+  }
 });
 
 module.exports = InventoryBatch;

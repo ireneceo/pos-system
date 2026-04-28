@@ -207,6 +207,33 @@ const StatusBadge = styled.span<{ status: string }>`
   }};
 `;
 
+const CONTRACT_STAGE_PALETTE: Record<string, { bg: string; text: string; label: string }> = {
+  active:      { bg: '#DCFCE7', text: '#15803D', label: 'Active' },
+  setup:       { bg: '#DBEAFE', text: '#1E40AF', label: 'Setup' },
+  contracting: { bg: '#FFEDD5', text: '#9A3412', label: 'In Talks' },
+  proposal:    { bg: '#EDE9FE', text: '#5B21B6', label: 'Proposal' }
+};
+
+const ContractBadge = styled.span<{ $bg: string; $text: string }>`
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 6px;
+  background: ${p => p.$bg};
+  color: ${p => p.$text};
+`;
+
+const ContractMeta = styled.div`
+  font-size: 11px;
+  color: #6B7280;
+  margin-top: 4px;
+  letter-spacing: 0.2px;
+  span.num { color: #635BFF; font-weight: 600; }
+`;
+
 const PlanBadge = styled.span<{ plan: string }>`
   padding: 3px 8px;
   border-radius: 4px;
@@ -749,7 +776,8 @@ const ManagerRestaurantsPage: React.FC = () => {
             foodcourt_id: restaurant.foodcourt_id || null,
             branch_id: restaurant.branch_id || null,
             branch: restaurant.branch || null,
-            payment_model: restaurant.payment_model || 'restaurant'
+            payment_model: restaurant.payment_model || 'restaurant',
+            contract_summary: restaurant.contract_summary || null
           } as any));
 
           setRestaurants(transformedRestaurants);
@@ -1004,7 +1032,8 @@ const ManagerRestaurantsPage: React.FC = () => {
             foodcourt_id: restaurant.foodcourt_id || null,
             branch_id: restaurant.branch_id || null,
             branch: restaurant.branch || null,
-            payment_model: restaurant.payment_model || 'restaurant'
+            payment_model: restaurant.payment_model || 'restaurant',
+            contract_summary: restaurant.contract_summary || null
           } as any));
           setRestaurants(transformedRestaurants);
         }
@@ -1694,13 +1723,31 @@ const ManagerRestaurantsPage: React.FC = () => {
                     )}
                     <RestaurantMeta>{restaurant.location} • {restaurant.cuisine}</RestaurantMeta>
                   </RestaurantInfo>
-                  <div>
-                    <StatusBadge status={restaurant.status}>
-                      {restaurant.status}
-                    </StatusBadge>
-                    <PlanBadge plan={restaurant.plan}>
-                      {restaurant.plan}
-                    </PlanBadge>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <div>
+                      <StatusBadge status={restaurant.status}>
+                        {restaurant.status}
+                      </StatusBadge>
+                      <PlanBadge plan={restaurant.plan}>
+                        {restaurant.plan}
+                      </PlanBadge>
+                      {(restaurant as any).contract_summary && CONTRACT_STAGE_PALETTE[(restaurant as any).contract_summary.stage] && (
+                        <ContractBadge
+                          $bg={CONTRACT_STAGE_PALETTE[(restaurant as any).contract_summary.stage].bg}
+                          $text={CONTRACT_STAGE_PALETTE[(restaurant as any).contract_summary.stage].text}
+                        >
+                          {CONTRACT_STAGE_PALETTE[(restaurant as any).contract_summary.stage].label}
+                        </ContractBadge>
+                      )}
+                    </div>
+                    {(restaurant as any).contract_summary && (
+                      <ContractMeta>
+                        <span className="num">{(restaurant as any).contract_summary.contract_number || `#${(restaurant as any).contract_summary.id}`}</span>
+                        {(restaurant as any).contract_summary.end_date && (
+                          <> · until {new Date((restaurant as any).contract_summary.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kuala_Lumpur' })}</>
+                        )}
+                      </ContractMeta>
+                    )}
                   </div>
                 </RestaurantHeader>
 

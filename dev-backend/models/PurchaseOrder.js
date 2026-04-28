@@ -16,7 +16,12 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
   contract_id: { type: DataTypes.INTEGER, allowNull: true },
 
   status: {
-    type: DataTypes.ENUM('draft', 'submitted', 'confirmed', 'shipped', 'delivered', 'partial_received', 'received', 'cancelled', 'closed'),
+    type: DataTypes.ENUM(
+      'draft', 'submitted', 'confirmed', 'shipped',
+      'in_transit',
+      'delivered', 'partial_received', 'received',
+      'cancelled', 'closed', 'delivery_failed'
+    ),
     allowNull: false, defaultValue: 'draft'
   },
 

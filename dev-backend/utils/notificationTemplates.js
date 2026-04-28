@@ -7,6 +7,7 @@ const { emailLayout } = require('./emailTemplates');
 
 const BRAND_COLOR = '#635BFF';
 const BASE_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
+const DEFAULT_TZ = 'Asia/Kuala_Lumpur';
 
 function ctaButton(label, url) {
   if (!url) return '';
@@ -51,7 +52,7 @@ function infoTable(rows) {
 /**
  * New notice received
  */
-function noticeReceivedEmail(notice, authorName, lang = 'en') {
+function noticeReceivedEmail(notice, authorName, lang = 'en', timezone = DEFAULT_TZ) {
   const { getEmailText } = require('./i18n');
   const t = (key, params) => getEmailText(lang, key, params);
 
@@ -63,7 +64,7 @@ function noticeReceivedEmail(notice, authorName, lang = 'en') {
     ${infoTable(
       infoRow(t('notice.postedBy'), authorName || 'Unknown') +
       infoRow(t('notice.priority'), notice.priority || 'Normal') +
-      infoRow(t('notice.date'), new Date(notice.created_at || notice.createdAt).toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' }))
+      infoRow(t('notice.date'), new Date(notice.created_at || notice.createdAt).toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: timezone }))
     )}
     <div style="color: #6B7280; font-size: 14px; margin: 0 0 24px; line-height: 1.6;">
       ${(notice.content || '').replace(/<[^>]*>/g, '').replace(/\n/g, '<br>').slice(0, 500)}${(notice.content || '').length > 500 ? '...' : ''}
@@ -192,8 +193,9 @@ function ticketStatusChangedEmail(ticket, newStatus) {
  * Invoice created notification (for restaurant admin/owner)
  */
 function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
+  const tz = options.timezone || DEFAULT_TZ;
   const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
-  const dueDate = new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const dueDate = new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: tz });
   const trialNotice = options.isTrial ? `
     <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 8px; padding: 16px; margin: 0 0 20px;">
       <p style="color: #065F46; font-size: 14px; font-weight: 600; margin: 0 0 6px;">
@@ -228,9 +230,10 @@ function invoiceCreatedEmail(invoice, restaurantName, options = {}) {
 /**
  * Invoice overdue reminder
  */
-function invoiceOverdueEmail(invoice, restaurantName) {
+function invoiceOverdueEmail(invoice, restaurantName, options = {}) {
+  const tz = options.timezone || DEFAULT_TZ;
   const amount = `${invoice.currency} ${parseFloat(invoice.total_amount).toFixed(2)}`;
-  const dueDate = new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const dueDate = new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: tz });
   const title = 'Invoice Overdue';
 
   const body = `
@@ -304,12 +307,12 @@ function emailVerificationEmail(fullName, verificationUrl) {
 /**
  * Contract expiry reminder — 발행자(internal team) 대상
  */
-function contractExpiryIssuerEmail(contract, daysRemaining, lang = 'en') {
+function contractExpiryIssuerEmail(contract, daysRemaining, lang = 'en', timezone = DEFAULT_TZ) {
   const { getEmailText } = require('./i18n');
   const t = (key, params) => getEmailText(lang, key, params);
 
   const isUrgent = daysRemaining <= 7;
-  const endDate = new Date(contract.end_date).toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const endDate = new Date(contract.end_date).toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: timezone });
   const contractUrl = `${BASE_URL}/pos/${contract.entity_type === 'brand' ? 'brand/franchise' : 'foodcourt/tenancy'}?id=${contract.id}`;
   const renewUrl = `${contractUrl}&action=renew`;
 
@@ -354,11 +357,11 @@ function contractExpiryIssuerEmail(contract, daysRemaining, lang = 'en') {
 /**
  * Contract expiry reminder — 신청자(applicant) 대상
  */
-function contractExpiryApplicantEmail(contract, daysRemaining, issuerName, lang = 'en') {
+function contractExpiryApplicantEmail(contract, daysRemaining, issuerName, lang = 'en', timezone = DEFAULT_TZ) {
   const { getEmailText } = require('./i18n');
   const t = (key, params) => getEmailText(lang, key, params);
 
-  const endDate = new Date(contract.end_date).toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  const endDate = new Date(contract.end_date).toLocaleDateString(lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: timezone });
 
   const title = t('contractExpiry.applicantHeading');
   const body = `
@@ -495,11 +498,11 @@ function fmtMoney(amount, currency) {
   return `${cur} ${n.toFixed(2)}`;
 }
 
-function fmtDate(date, lang = 'en') {
+function fmtDate(date, lang = 'en', timezone = DEFAULT_TZ) {
   if (!date) return '—';
   try {
     const locale = lang === 'ko' ? 'ko-KR' : lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-US';
-    return new Date(date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
+    return new Date(date).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric', timeZone: timezone });
   } catch {
     return String(date);
   }
@@ -537,7 +540,8 @@ function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link }
 /**
  * Trade Invoice Created — sent to Buyer (Restaurant/Brand/Foodcourt) when supplier issues a trade invoice.
  */
-function tradeInvoiceCreatedEmail({ sellerName, invoiceNumber, total, currency, dueDate, link }) {
+function tradeInvoiceCreatedEmail({ sellerName, invoiceNumber, total, currency, dueDate, link, timezone }) {
+  const tz = timezone || DEFAULT_TZ;
   const title = 'New Trade Invoice';
   const safeSeller = (sellerName || 'Your supplier').toString().slice(0, 120);
   const safeInv = (invoiceNumber || '—').toString().slice(0, 80);
@@ -549,7 +553,7 @@ function tradeInvoiceCreatedEmail({ sellerName, invoiceNumber, total, currency, 
       infoRow('Invoice No.', safeInv) +
       infoRow('Supplier', safeSeller) +
       infoRow('Amount', `<span style="color:${BRAND_COLOR};font-weight:700;">${fmtMoney(total, currency)}</span>`) +
-      infoRow('Due Date', fmtDate(dueDate)) +
+      infoRow('Due Date', fmtDate(dueDate, 'en', tz)) +
       infoRow('Status', '<span style="color:#F59E0B;font-weight:600;">Pending</span>')
     )}
     ${ctaButton('View Invoice', link || `${BASE_URL}/pos/purchase-invoices`)}`;
@@ -557,7 +561,7 @@ function tradeInvoiceCreatedEmail({ sellerName, invoiceNumber, total, currency, 
   return withRenderMeta({
     subject: `Trade Invoice ${safeInv} - ${fmtMoney(total, currency)}`,
     html: wrapTemplate(title, body, 'en'),
-    text: `Trade invoice ${safeInv} from ${safeSeller}. Amount: ${fmtMoney(total, currency)}. Due: ${fmtDate(dueDate)}.`
+    text: `Trade invoice ${safeInv} from ${safeSeller}. Amount: ${fmtMoney(total, currency)}. Due: ${fmtDate(dueDate, 'en', tz)}.`
   }, title, body, 'en');
 }
 
@@ -590,7 +594,8 @@ function tradeInvoicePaidEmail({ buyerName, invoiceNumber, total, currency, link
 /**
  * Monthly SOA — sent to Buyer for monthly_soa contracts. Aggregates last month's invoices.
  */
-function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency, dueDate, link }) {
+function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency, dueDate, link, timezone }) {
+  const tz = timezone || DEFAULT_TZ;
   const title = 'Monthly Statement of Account';
   const safeSeller = (sellerName || 'Your supplier').toString().slice(0, 120);
   const safeMonth = (month || '—').toString().slice(0, 40);
@@ -598,7 +603,7 @@ function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency,
   const rowsHtml = (invoices || []).slice(0, 50).map(inv => `
     <tr>
       <td style="padding:8px 12px;font-size:13px;color:#111827;border-bottom:1px solid #E5E7EB;">${(inv.invoice_number || '—').toString().slice(0, 60)}</td>
-      <td style="padding:8px 12px;font-size:13px;color:#6B7280;border-bottom:1px solid #E5E7EB;">${fmtDate(inv.created_at || inv.createdAt)}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#6B7280;border-bottom:1px solid #E5E7EB;">${fmtDate(inv.created_at || inv.createdAt, 'en', tz)}</td>
       <td style="padding:8px 12px;font-size:13px;color:#111827;border-bottom:1px solid #E5E7EB;text-align:right;">${fmtMoney(inv.total_amount, inv.currency || currency)}</td>
     </tr>`).join('');
 
@@ -623,7 +628,7 @@ function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency,
       infoRow('Period', safeMonth) +
       infoRow('Invoices', String((invoices || []).length)) +
       infoRow('Total Due', `<span style="color:${BRAND_COLOR};font-weight:700;font-size:16px;">${fmtMoney(totalDue, currency)}</span>`) +
-      infoRow('Due Date', fmtDate(dueDate))
+      infoRow('Due Date', fmtDate(dueDate, 'en', tz))
     )}
     ${invoicesTable}
     ${ctaButton('View SOA & Pay', link || `${BASE_URL}/pos/purchase-invoices/soa`)}`;
@@ -631,7 +636,7 @@ function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency,
   return withRenderMeta({
     subject: `Monthly SOA from ${safeSeller} - ${safeMonth} (${fmtMoney(totalDue, currency)})`,
     html: wrapTemplate(title, body, 'en'),
-    text: `Monthly statement from ${safeSeller} for ${safeMonth}. Invoices: ${(invoices || []).length}. Total due: ${fmtMoney(totalDue, currency)}. Due: ${fmtDate(dueDate)}.`
+    text: `Monthly statement from ${safeSeller} for ${safeMonth}. Invoices: ${(invoices || []).length}. Total due: ${fmtMoney(totalDue, currency)}. Due: ${fmtDate(dueDate, 'en', tz)}.`
   }, title, body, 'en');
 }
 

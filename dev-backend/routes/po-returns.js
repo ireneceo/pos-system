@@ -17,6 +17,7 @@ const database = require('../config/database');
 const {
   PurchaseOrder, PurchaseOrderItem, PurchaseOrderReturn,
   Ingredient, IngredientSellerProduct, SupplierProduct, SupplierInventoryTransaction,
+  InventoryTransaction, FoodcourtProduct,
   Invoice, InvoiceItem
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
@@ -195,16 +196,19 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
       }
     }
 
-    // 2. Increment supplier stock + transaction
+    // 2. Seller-side stock 환원 (양방향 무결성)
+    //    Sprint 7: brand/foodcourt seller도 분기 추가
+    const item = await PurchaseOrderItem.findByPk(ret.purchase_order_item_id, { transaction: t });
+    const delta = parseFloat(ret.quantity) || 0;
+
     if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      const item = await PurchaseOrderItem.findByPk(ret.purchase_order_item_id, { transaction: t });
+      // 기존 — Supplier 환원
       if (item?.ingredient_seller_product_id) {
         const mapping = await IngredientSellerProduct.findByPk(item.ingredient_seller_product_id, { transaction: t });
         if (mapping?.seller_product_id) {
           const sp = await SupplierProduct.findByPk(mapping.seller_product_id, { lock: t.LOCK.UPDATE, transaction: t });
           if (sp) {
             const old = parseFloat(sp.current_stock) || 0;
-            const delta = parseFloat(ret.quantity) || 0;
             const nu = Math.round((old + delta) * 100) / 100;
             await sp.update({ current_stock: nu }, { transaction: t });
             await SupplierInventoryTransaction.create({
@@ -223,10 +227,56 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
           }
         }
       }
+    } else if (po.seller_type === 'brand' && po.seller_entity_id && ret.ingredient_id) {
+      // Sprint 7 — Brand seller 환원
+      const ingredient = await Ingredient.findByPk(ret.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (ingredient) {
+        const old = parseFloat(ingredient.current_stock) || 0;
+        const nu = Math.round((old + delta) * 100) / 100;
+        await ingredient.update({ current_stock: nu }, { transaction: t });
+        await InventoryTransaction.create({
+          entity_type: 'brand',
+          entity_id: po.seller_entity_id,
+          ingredient_id: ret.ingredient_id,
+          transaction_type: 'return_in',
+          quantity_change: delta,
+          unit: ingredient.unit || ret.unit || 'unit',
+          stock_after: nu,
+          purchase_order_id: po.id,
+          notes: `Return #${ret.id} approved (brand seller)`,
+          created_by: req.user?.id || null
+        }, { transaction: t });
+      }
+    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id && item?.ingredient_seller_product_id) {
+      // Sprint 7 — Foodcourt seller 환원
+      // FoodcourtProduct는 IngredientSellerProduct → seller_product_id 가 FoodcourtProduct.id 이라고 가정
+      const mapping = await IngredientSellerProduct.findByPk(item.ingredient_seller_product_id, { transaction: t });
+      if (mapping?.seller_product_id) {
+        const fp = await FoodcourtProduct.findByPk(mapping.seller_product_id, { lock: t.LOCK.UPDATE, transaction: t });
+        if (fp) {
+          const old = parseFloat(fp.current_stock) || 0;
+          const nu = Math.round((old + delta) * 100) / 100;
+          await fp.update({ current_stock: nu }, { transaction: t });
+          await InventoryTransaction.create({
+            entity_type: 'foodcourt',
+            entity_id: po.seller_entity_id,
+            ingredient_id: ret.ingredient_id,
+            transaction_type: 'return_in',
+            quantity_change: delta,
+            unit: fp.unit || ret.unit || 'unit',
+            stock_after: nu,
+            purchase_order_id: po.id,
+            notes: `Return #${ret.id} approved (foodcourt seller)`,
+            created_by: req.user?.id || null
+          }, { transaction: t });
+        }
+      }
     }
 
     // 3. Issue Credit Note Invoice (negative-style: use status='credit')
+    // Sprint 7: currency assertion (PO ↔ Credit Note 정합)
     const lineTotal = Math.round((parseFloat(ret.quantity) * (parseFloat(ret.unit_price) || 0)) * 100) / 100;
+    const poCurrency = po.currency || 'MYR';
     const creditInvoice = await Invoice.create({
       invoice_number: `CN-${po.po_number}-R${ret.id}`,
       type: 'automatic',
@@ -247,10 +297,17 @@ router.post('/seller-orders/:id/returns/:returnId/approve', async (req, res) => 
       tax_amount: 0,
       discount_amount: 0,
       total_amount: lineTotal,
-      currency: po.currency || 'MYR',
+      currency: poCurrency,
       status: 'credit',
       notes: `Credit Note for Return #${ret.id} (PO ${po.po_number})`
     }, { transaction: t });
+
+    // Currency invariant: credit note must match PO currency
+    if (creditInvoice.currency !== poCurrency) {
+      await t.rollback();
+      console.error(`[po-returns:approve] Currency mismatch — PO=${poCurrency} CreditNote=${creditInvoice.currency}`);
+      return res.status(500).json({ success: false, message: 'Currency mismatch between PO and Credit Note' });
+    }
 
     await InvoiceItem.create({
       invoice_id: creditInvoice.id,

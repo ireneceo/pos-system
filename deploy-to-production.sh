@@ -267,6 +267,35 @@ if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$MIGRATE_FILE"; then
 fi
 
 # ──────────────────────────────────────────
+# 9a-2. Run Sprint migrations (idempotent)
+# Sprint 4: PO tracking_info JSON + trade_invoice_id FK + buyer_purchase_invoices module
+# Sprint 5: Carrier table + 5 default seeds (Lalamove, Grab, JNT, Ninja Van, Pos Laju)
+# Sprint 6: PO status enum +'delivered', purchase_order_returns table, Invoice status +'credit'
+#
+# sync-database.js handles model→table column ALTER, but cannot:
+#   - INSERT seed rows (Sprint 5 needs 5 carriers seeded)
+#   - Change ENUM values via ALTER (Sprint 6 needs 'delivered' added)
+# So these scripts must run explicitly. They are all idempotent — safe to re-run.
+# ──────────────────────────────────────────
+for SPRINT_MIG in scripts/sprint4-migration.js scripts/sprint5-migration.js scripts/sprint6-migration.js; do
+    if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
+        log "Running $(basename $SPRINT_MIG)..."
+        SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true
+        if echo "$SPRINT_OUTPUT" | grep -qiE "(complete|✓|done|migrated|seeded)"; then
+            success "$(basename $SPRINT_MIG) completed"
+        else
+            warn "$(basename $SPRINT_MIG) output (review needed):"
+            echo "$SPRINT_OUTPUT" | tail -20
+        fi
+    else
+        warn "$(basename $SPRINT_MIG) not found on prod — copying from dev..."
+        scp -q "$LOCAL_DEV_BACKEND/$SPRINT_MIG" "$PROD_SERVER:$REMOTE_PROD_BACKEND/$SPRINT_MIG" || warn "scp failed for $SPRINT_MIG"
+        SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true
+        echo "$SPRINT_OUTPUT" | tail -10
+    fi
+done
+
+# ──────────────────────────────────────────
 # 9b. Sync seed data (addon_modules, plan_templates 등 시스템 설정 데이터)
 # ──────────────────────────────────────────
 log "Syncing seed data (system config tables)..."

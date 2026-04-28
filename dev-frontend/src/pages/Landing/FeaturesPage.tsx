@@ -604,15 +604,65 @@ const ROLE_TABS: RoleTab[] = [
       { code: 'owner_work_manuals', title: 'Work Manuals', description: 'Access shared work manuals across the portfolio', points: ['Manual feed', 'Category filtering', 'Version tracking', 'Per-restaurant visibility'], category: 'advanced', images: getImages('owner_work_manuals') },
       { code: 'owner_activity_logs', title: 'Change History', description: 'Track all changes across owned restaurants for accountability', points: ['Activity audit trail', 'User-level tracking', 'Date range filtering', 'Multi-restaurant scope'], category: 'advanced', images: getImages('owner_activity_logs') },
     ]
+  },
+  {
+    key: 'supplier',
+    label: 'Supplier',
+    heading: 'Sell to restaurants, brands and food courts — manage every B2B order in one portal',
+    description: 'PurpleHere\'s Supplier Portal is the seller-side companion to the POS. Receive purchase orders from restaurants in real time, confirm and ship with carrier integration, and let trade invoices and statements of account flow automatically. From contracted exclusive deals to walk-in orders, your buyers see live pricing, you see live demand, and the paperwork settles itself. Built for distributors, wholesalers, and central kitchens supplying multiple F&B businesses on a single trusted platform.',
+    features: [
+      // Operations
+      { code: 'supplier_dashboard', title: 'Dashboard', description: 'Eight KPI overview — pending/confirmed/shipped orders, revenue trend, outstanding receivables, active customers, low stock, monthly receipts', points: ['8 KPIs at a glance', '6-month revenue line chart', 'Alerts panel with deep links', 'Recent orders & trade invoices side by side', 'Subscription status'], category: 'basic', images: getImages('supplier_dashboard', 2) },
+      { code: 'supplier_live_orders', title: 'Live Orders', description: 'Real-time incoming purchase orders from buyers with sound alerts and lifecycle actions', points: ['Socket.IO live arrival + chime', 'Confirm / Ship (carrier dropdown) / Reject', 'Carrier catalog with auto tracking URL (Lalamove, Grab, J&T, Ninja Van, Pos Laju)', 'Edit tracking after ship', 'Mark delivered → Buyer receives', 'Returns approve/reject with auto Credit Note'], category: 'basic', images: getImages('supplier_live_orders', 3) },
+      { code: 'supplier_products', title: 'Product Catalog', description: 'Manage the seller catalog of ingredients you sell, with per-buyer pricing and unit conversion', points: ['Ingredient catalog you sell', 'Per-customer pricing', 'Unit conversion (case ↔ unit)', 'Active/inactive toggle'], category: 'basic', images: getImages('supplier_products', 2) },
+      { code: 'supplier_inventory', title: 'Inventory & Transactions', description: 'Stock-level tracking with full transaction history (receive, adjust, ship, return)', points: ['Stock list with low-stock alerts', 'Transaction history tab', 'Auto-decrement on PO ship', 'Return reversal'], category: 'basic', images: getImages('supplier_inventory', 2) },
+      { code: 'supplier_customers', title: 'Customers (Buyers)', description: 'Directory of restaurant, brand, and foodcourt customers with order history and AR balance', points: ['Buyer profiles', 'Per-customer order history', 'Outstanding receivable per customer', 'Activity timeline'], category: 'basic', images: getImages('supplier_customers', 2) },
+      // Invoices & Reports
+      { code: 'supplier_trade_invoices', title: 'Trade Invoices', description: 'B2B invoices auto-generated when buyers receive PO — no manual issuing', points: ['Auto-issue on PO receipt', 'Per-line item with received quantity', 'Tax + currency configurable', 'PDF + email delivery'], category: 'basic', images: getImages('supplier_trade_invoices', 3) },
+      { code: 'supplier_soa', title: 'Statement of Account', description: 'Monthly Statement of Account auto-generated for every active buyer', points: ['Auto-runs on the 1st of each month', 'Open + paid invoices summary', 'Per-customer breakdown', 'Email delivery'], category: 'basic', images: getImages('supplier_soa', 2) },
+      { code: 'supplier_invoices', title: 'Subscription Invoices', description: 'PurpleHere subscription invoices and payment tracking', points: ['Subscription invoice list', 'Payment status', 'Multiple payment methods', 'Billing history'], category: 'basic', images: getImages('supplier_invoices', 2) },
+      // Communication
+      { code: 'supplier_notices', title: 'Notices', description: 'System-wide announcements and notices feed', points: ['Notice feed with read status', 'Comment threads', 'Priority-based sorting', 'Attachments'], category: 'basic', images: getImages('supplier_notices') },
+      { code: 'supplier_system_inquiry', title: 'System Inquiry', description: 'Submit and track system support tickets', points: ['Create support tickets', 'Priority and category tagging', 'Status tracking', 'Communication thread'], category: 'basic', images: getImages('supplier_system_inquiry', 2) },
+      // Advanced
+      { code: 'supplier_contracts', title: 'Supply Contracts', description: 'Per-buyer contracts with exclusivity terms, item lists, and pricing — gates orders to active contracts only', points: ['Contract lifecycle (draft → active → expired)', 'Exclusivity terms (item/category/region)', 'Per-line item pricing', 'Auto-renewal options', 'Active contract gates PO submission'], category: 'advanced', images: getImages('supplier_contracts', 3) },
+      { code: 'supplier_company_info', title: 'Company Info', description: 'Manage supplier company profile, registration, and tax details', points: ['Company profile & logo', 'Business registration number', 'Tax ID / SST', 'Address & contact'], category: 'advanced', images: getImages('supplier_company_info') },
+      { code: 'supplier_payment_settings', title: 'Payment Settings', description: 'Configure bank accounts and payment methods for receivables', points: ['Multiple bank accounts', 'QR pay setup', 'Default payment terms', 'Currency configuration'], category: 'advanced', images: getImages('supplier_payment_settings') },
+      { code: 'supplier_invoice_settings', title: 'Invoice Settings', description: 'Customize invoice templates, numbering, and tax rules', points: ['Custom logo & header', 'Numbering prefix per template', 'Tax rate presets', 'Multi-currency support'], category: 'advanced', images: getImages('supplier_invoice_settings') },
+    ]
   }
 ];
 
 // ─── Main Component ───
+// Tab is mirrored to URL hash (#restaurant / #brand / #foodcourt / #owner / #supplier)
+// so individual tabs can be shared/bookmarked and the Back button works.
+const VALID_TAB_KEYS = ROLE_TABS.map(t => t.key);
+const readTabFromHash = (): string => {
+  if (typeof window === 'undefined') return 'restaurant';
+  const h = (window.location.hash || '').replace(/^#/, '').toLowerCase();
+  return VALID_TAB_KEYS.includes(h) ? h : 'restaurant';
+};
+
 const FeaturesPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('restaurant');
+  const [activeTab, setActiveTab] = useState<string>(readTabFromHash);
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number; title: string } | null>(null);
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+
+  // Sync hash → state on browser back/forward
+  useEffect(() => {
+    const onHashChange = () => setActiveTab(readTabFromHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  // Sync state → hash on tab click. `replaceState` so Back doesn't cycle through every tab toggle.
+  useEffect(() => {
+    const want = `#${activeTab}`;
+    if (window.location.hash !== want) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}${want}`);
+    }
+  }, [activeTab]);
 
   const activeRole = ROLE_TABS.find(t => t.key === activeTab)!;
   const basicFeatures = activeRole.features.filter(f => f.category === 'basic');

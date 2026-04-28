@@ -674,6 +674,48 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     );
   }, [rows, search]);
 
+  // Period statistics — selected period에서 받은 모든 주문(현재 status 탭에 한정 X)을
+  // 대상으로 매출/객단가/최대/활성 거래처/응답속도를 계산. Restaurant LiveOrders
+  // 의 패턴과 같이, "탭 라벨 = 상태별 카운트", "통계 바 = 사업 KPI" 로 역할 분리.
+  const periodStats = useMemo(() => {
+    if (rows.length === 0) {
+      return { totalRevenue: 0, avgOrder: 0, maxOrder: 0, activeBuyers: 0, avgConfirmHrs: null as number | null };
+    }
+    let total = 0;
+    let max = 0;
+    const buyers = new Set<string>();
+    let confirmCount = 0;
+    let confirmHrsSum = 0;
+    rows.forEach(r => {
+      const amt = Number(r.total_amount || 0);
+      if (Number.isFinite(amt) && amt > 0) {
+        total += amt;
+        if (amt > max) max = amt;
+      }
+      const bk = `${r.buyer_entity_type || ''}#${r.buyer_entity_id || ''}`;
+      if (r.buyer_entity_id) buyers.add(bk);
+      // confirm responsiveness — submitted_at → confirmed_at
+      const sub = (r as any).submitted_at;
+      const conf = (r as any).confirmed_at;
+      if (sub && conf) {
+        const ms = new Date(conf).getTime() - new Date(sub).getTime();
+        if (Number.isFinite(ms) && ms >= 0) {
+          confirmHrsSum += ms / (1000 * 3600);
+          confirmCount++;
+        }
+      }
+    });
+    const avgOrder = total / rows.length;
+    const avgConfirmHrs = confirmCount > 0 ? confirmHrsSum / confirmCount : null;
+    return {
+      totalRevenue: total,
+      avgOrder,
+      maxOrder: max,
+      activeBuyers: buyers.size,
+      avgConfirmHrs
+    };
+  }, [rows]);
+
   const formatMoney = (amount: number | string | null | undefined, currency?: string) => {
     if (amount == null) return '-';
     const n = Number(amount);
@@ -868,11 +910,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           ))}
         </RLStatusTabs>
 
+        {/* StatisticsBar: 사업 KPI (탭 카운트와 중복 X). 기간 필터에 따라 자동 갱신. */}
         <StatisticsBar>
-          <StatItem>{tNs('orders.stats.pending', 'Pending')}<strong>{stats.pending ?? 0}</strong></StatItem>
-          <StatItem>{tNs('orders.stats.confirmed', 'Confirmed')}<strong>{stats.confirmed ?? 0}</strong></StatItem>
-          <StatItem>{tNs('orders.stats.shipped', 'Shipped')}<strong>{stats.shipped ?? 0}</strong></StatItem>
-          <StatItem>{tNs('orders.stats.received', 'Received')}<strong>{stats.received_this_month ?? 0}</strong></StatItem>
+          <StatItem>{tNs('orders.stats.totalRevenue', 'Total Revenue')}<strong>{formatMoney(periodStats.totalRevenue)}</strong></StatItem>
+          <StatItem>{tNs('orders.stats.avgOrder', 'Avg Order')}<strong>{formatMoney(periodStats.avgOrder)}</strong></StatItem>
+          <StatItem>{tNs('orders.stats.maxOrder', 'Largest Order')}<strong>{formatMoney(periodStats.maxOrder)}</strong></StatItem>
+          <StatItem>{tNs('orders.stats.activeBuyers', 'Active Buyers')}<strong>{periodStats.activeBuyers}</strong></StatItem>
+          <StatItem>{tNs('orders.stats.avgConfirmTime', 'Avg Confirm Time')}<strong>{periodStats.avgConfirmHrs == null ? '—' : `${periodStats.avgConfirmHrs.toFixed(1)}h`}</strong></StatItem>
         </StatisticsBar>
 
         <DataTableContainer>

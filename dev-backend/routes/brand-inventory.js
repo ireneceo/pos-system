@@ -6,6 +6,8 @@ const {
   Restaurant,
   Ingredient,
   InventoryBatch,
+  InventoryTransaction,
+  PurchaseOrder,
   GeneralStock,
   GeneralStockCategory,
   Supplier
@@ -18,7 +20,11 @@ const { requireBrandScope } = require('../middleware/brandScope');
 // authenticateToken, which let any logged-in user read inventory of any
 // :brandId (IDOR). System Admin still has god access via requireBrandScope's
 // admin branch.
-router.use(authenticateToken);
+//
+// Sprint 7 (2026-04-28): path-level use로 좁힘. 이전 router.use(authenticateToken)이
+// path-less로 모든 fall-through를 차단했음 (carrier-webhooks public endpoint 401 사고).
+// brand-inventory의 모든 endpoint가 /brands prefix이므로 안전하게 좁힐 수 있음.
+router.use('/brands', authenticateToken);
 
 // Get brand's restaurants
 router.get('/brands/:brandId/restaurants', requireBrandScope(), async (req, res) => {
@@ -280,6 +286,39 @@ router.get('/brands/:brandId/inventory/expiring', requireBrandScope(), async (re
   } catch (error) {
     console.error('Error fetching expiring items:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch expiring items' });
+  }
+});
+
+// ─── Sprint 7 — Brand inventory transactions ──────────────
+// GET /api/brands/:brandId/inventory/transactions
+//   query: ingredient_id?, transaction_type?, from?, to?, limit=50, offset=0
+router.get('/brands/:brandId/inventory/transactions', requireBrandScope(), async (req, res) => {
+  try {
+    const brandId = parseInt(req.params.brandId, 10);
+    const where = { entity_type: 'brand', entity_id: brandId };
+
+    if (req.query.ingredient_id) where.ingredient_id = parseInt(req.query.ingredient_id, 10);
+    if (req.query.transaction_type) where.transaction_type = String(req.query.transaction_type);
+    if (req.query.from) where.created_at = { ...(where.created_at || {}), [Op.gte]: new Date(req.query.from) };
+    if (req.query.to) where.created_at = { ...(where.created_at || {}), [Op.lte]: new Date(req.query.to) };
+
+    const limit = Math.min(200, parseInt(req.query.limit, 10) || 50);
+    const offset = parseInt(req.query.offset, 10) || 0;
+
+    const { rows, count } = await InventoryTransaction.findAndCountAll({
+      where,
+      include: [
+        { model: Ingredient, as: 'ingredient', attributes: ['id', 'name', 'unit'] },
+        { model: PurchaseOrder, as: 'purchaseOrder', attributes: ['id', 'po_number'], required: false }
+      ],
+      order: [['created_at', 'DESC']],
+      limit, offset
+    });
+
+    res.json({ success: true, data: { transactions: rows, total: count } });
+  } catch (err) {
+    console.error('[brand-inventory] transactions error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch transactions' });
   }
 });
 

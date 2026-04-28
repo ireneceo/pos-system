@@ -195,6 +195,44 @@ router.get('/', optionalAuth, async (req, res) => {
       }
     }
 
+    // Batch fetch active/in-progress contracts → primary per restaurant for badge display
+    const contractSummaryMap = {};
+    if (restaurantIds.length > 0) {
+      try {
+        const { Contract } = require('../models');
+        const { Op: SeqOp } = require('sequelize');
+        const stagePriority = { active: 0, setup: 1, contracting: 2, proposal: 3 };
+        const linkedContracts = await Contract.findAll({
+          where: { restaurant_id: { [SeqOp.in]: restaurantIds }, stage: { [SeqOp.notIn]: ['terminated', 'expired', 'renewed'] } },
+          attributes: ['id', 'restaurant_id', 'contract_number', 'entity_type', 'entity_id', 'contract_type', 'stage', 'start_date', 'end_date', 'currency', 'updatedAt'],
+          order: [['updatedAt', 'DESC']]
+        });
+        const grouped = {};
+        for (const c of linkedContracts) {
+          const rid = c.restaurant_id;
+          if (!grouped[rid]) grouped[rid] = [];
+          grouped[rid].push(c);
+        }
+        for (const rid of Object.keys(grouped)) {
+          const sorted = grouped[rid].sort((a, b) => (stagePriority[a.stage] ?? 99) - (stagePriority[b.stage] ?? 99));
+          const c = sorted[0];
+          contractSummaryMap[rid] = {
+            id: c.id,
+            contract_number: c.contract_number,
+            entity_type: c.entity_type,
+            entity_id: c.entity_id,
+            contract_type: c.contract_type,
+            stage: c.stage,
+            start_date: c.start_date,
+            end_date: c.end_date,
+            currency: c.currency
+          };
+        }
+      } catch (err) {
+        console.error('Error fetching contract summaries:', err.message);
+      }
+    }
+
     // Transform data to match frontend interface
     const transformedRestaurants = restaurants.map(restaurant => {
       const restaurantData = restaurant.toJSON();
@@ -262,6 +300,7 @@ router.get('/', optionalAuth, async (req, res) => {
         order_limit: restaurantData.order_limit || 1000,
         staff_limit: restaurantData.staff_limit || 5,
         payment_model: restaurantData.payment_model || 'restaurant',
+        contract_summary: contractSummaryMap[restaurantData.id] || null,
         foodcourt_id: restaurantData.foodcourt_id || null,
         branch_id: restaurantData.branch_id || null,
         branch: restaurantData.branch ? {

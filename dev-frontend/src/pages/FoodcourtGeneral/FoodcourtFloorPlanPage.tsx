@@ -299,7 +299,8 @@ function deriveKeyNumber(
   unit: FoodcourtUnit,
   displayStatus: UnitDisplayStatus,
   currency: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  timezone: string = 'Asia/Kuala_Lumpur'
 ): string | null {
   const c = unit.currentContract;
   if (displayStatus === 'active' && c?.financial_terms && !c.financial_redacted) {
@@ -316,7 +317,7 @@ function deriveKeyNumber(
   }
   if (displayStatus === 'preparing' && c?.start_date) {
     const d = new Date(c.start_date + 'T00:00:00');
-    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', timeZone: timezone };
     return `Opens ${d.toLocaleDateString('en-GB', opts)}`;
   }
   if ((displayStatus === 'contracting' || displayStatus === 'proposal') && c) {
@@ -330,7 +331,7 @@ function deriveKeyNumber(
   }
   if (displayStatus === 'expired' && c?.end_date) {
     const end = new Date(c.end_date + 'T00:00:00');
-    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+    const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', timeZone: timezone };
     return `Ended ${end.toLocaleDateString('en-GB', opts)}`;
   }
   return null;
@@ -344,7 +345,7 @@ function sizeLabel(unit: FoodcourtUnit): string | null {
 // Convert foodcourt unit (top-left coords) → FloorTable (center coords).
 // Attaches `unitDisplay` for FoodcourtUnitNode.
 type FoodcourtFloorTable = FloorTable & { unitDisplay: UnitDisplay };
-function unitsToFloorTables(units: FoodcourtUnit[], currency: string = 'RM'): FoodcourtFloorTable[] {
+function unitsToFloorTables(units: FoodcourtUnit[], currency: string = 'RM', timezone: string = 'Asia/Kuala_Lumpur'): FoodcourtFloorTable[] {
   const now = new Date();
   return units
     .filter(u => u.plan_x != null && u.plan_y != null)
@@ -372,7 +373,7 @@ function unitsToFloorTables(units: FoodcourtUnit[], currency: string = 'RM'): Fo
           contractStage: c?.stage || null,
           contractId: c?.id || null,
           logoUrl: c?.restaurant?.logo_url || null,
-          keyNumber: deriveKeyNumber(u, displayStatus, currency, now),
+          keyNumber: deriveKeyNumber(u, displayStatus, currency, now, timezone),
           sizeLabel: sizeLabel(u),
           billingGap: !!u.billing_gap
         }
@@ -499,8 +500,8 @@ const FoodcourtFloorPlanPage: React.FC = () => {
     canvasHeight: currentPlan?.canvas_height ?? 800,
     gridSize: currentPlan?.grid_size ?? 20,
     showGrid: currentPlan?.show_grid ?? true,
-    tables: currentPlan ? unitsToFloorTables(currentPlan.units) : []
-  }), [currentPlan]);
+    tables: currentPlan ? unitsToFloorTables(currentPlan.units, 'RM', fcTimeZone) : []
+  }), [currentPlan, fcTimeZone]);
   const statuses = useMemo(() => currentPlan ? statusMap(currentPlan.units) : {}, [currentPlan]);
 
   // Load contract detail when unit selected

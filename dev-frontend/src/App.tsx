@@ -125,6 +125,7 @@ const ManagerPromotionsPage = React.lazy(() => import('./pages/Manager/ManagerPr
 const ManagerPlansPage = React.lazy(() => import('./pages/Manager/PlansPage'));
 const AdminSettingsPage = React.lazy(() => import('./pages/Admin/AdminSettingsPage'));
 const CarriersPage = React.lazy(() => import('./pages/Admin/CarriersPage'));
+const CarrierWebhookEventsPage = React.lazy(() => import('./pages/Admin/CarrierWebhookEventsPage'));
 const PurchaseOrderPrintPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderPrintPage'));
 const AdminPaymentSettingsPage = React.lazy(() => import('./pages/Admin/PaymentSettingsPage'));
 const SiteSettingsPage = React.lazy(() => import('./pages/Admin/SiteSettingsPage'));
@@ -617,6 +618,11 @@ function App() {
                       <Route path="/pos/admin/carriers" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <CarriersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/admin/carrier-webhooks" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <CarrierWebhookEventsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/admin/history" element={

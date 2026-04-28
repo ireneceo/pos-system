@@ -84,6 +84,11 @@ const LanguageBar = styled.div`
   top: 16px;
   right: 24px;
   z-index: 10;
+
+  @media (max-width: 480px) {
+    top: 12px;
+    right: 12px;
+  }
 `;
 
 const LoginBox = styled.div`
@@ -578,7 +583,7 @@ const LoginPage: React.FC = () => {
   return (
     <Container>
       <LanguageBar>
-        <LanguageSelector />
+        <LanguageSelector variant="globe" />
       </LanguageBar>
       <LoginBox>
         <LeftSection>
