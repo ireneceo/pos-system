@@ -14,6 +14,62 @@ import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
+import { renderIframeToPdf } from '../../utils/invoicePdf';
+import { useAuth } from '../../contexts/AuthContext';
+
+// Icon-only buttons (matches PurchaseOrdersPage pattern)
+const HeaderIconBtn = styled.button`
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #E6EBF1;
+  background: white;
+  color: #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+  &:hover { background: #F8FAFC; border-color: #635BFF; color: #635BFF; }
+  svg { width: 18px; height: 18px; }
+`;
+
+// Embedded mode 컴팩트 타이틀 (panel body 최상단)
+const EmbeddedTitle = styled.div`
+  padding: 18px 140px 14px 24px;  /* right reserves space for floating top-right icons */
+  border-bottom: 1px solid #E6EBF1;
+  background: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  box-sizing: border-box;
+
+  h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #0A2540;
+    white-space: nowrap;
+  }
+`;
+
+// Embedded mode 하단 액션 footer (Modal 패턴 — sticky bottom)
+const EmbeddedFooter = styled.div`
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid #E6EBF1;
+  padding: 16px 24px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  z-index: 1;
+`;
 
 type POStatus = 'draft' | 'submitted' | 'confirmed' | 'shipped' | 'in_transit' | 'delivered' | 'partial_received' | 'received' | 'cancelled' | 'closed' | 'delivery_failed';
 
@@ -359,11 +415,25 @@ const StatusVariantMap: Record<POStatus, 'success' | 'warning' | 'error' | 'info
 
 const STAGES: POStatus[] = ['draft', 'submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'received'];
 
-const PurchaseOrderDetailPage: React.FC = () => {
+interface PurchaseOrderDetailPageProps {
+  embeddedId?: number;        // 패널 내부 렌더용 (없으면 URL 파라미터 사용)
+  embedded?: boolean;         // true 면 Container/Header 스킵 — 패널이 자체 헤더 제공
+  onClose?: () => void;       // 패널 모드에서 닫기/액션 후 콜백
+}
+
+const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embeddedId, embedded, onClose }) => {
   const { t } = useTranslation(['purchaseOrders', 'common']);
   const navigate = useNavigate();
   const { id: routeId } = useParams<{ id: string }>();
-  const id = Number(routeId);
+  const id = embeddedId ?? Number(routeId);
+  const { user } = useAuth();
+  const invoiceListPath = (() => {
+    if (user?.role === 'Restaurant Admin' || user?.role === 'Staff') return user?.restaurant_id ? `/restaurant/${user.restaurant_id}/invoices` : '/pos/owner/invoices';
+    if (user?.role === 'Brand General' || user?.role === 'Brand Manager') return '/pos/brand/invoices';
+    if (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') return '/pos/foodcourt/invoices';
+    if (user?.role === 'Restaurant Owner') return '/pos/owner/invoices';
+    return '/pos/admin/invoices';
+  })();
 
   const [detail, setDetail] = useState<PODetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -779,6 +849,47 @@ const PurchaseOrderDetailPage: React.FC = () => {
     );
   };
 
+  const handlePrintOrder = async () => {
+    if (!detail) return;
+    const token = getAuthToken();
+    const w = window.open('', '_blank');
+    if (!w) return;
+    try {
+      const res = await fetch(`/api/purchase-orders/${detail.id}/pdf`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const html = await res.text();
+      w.document.write(html);
+      w.document.close();
+    } catch { w.close(); }
+  };
+
+  const handleDownloadOrderPdf = async () => {
+    if (!detail) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${detail.id}/pdf`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) { window.alert('Failed to load order'); return; }
+      const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:0;';
+      document.body.appendChild(iframe);
+      try {
+        const doc = iframe.contentDocument!;
+        doc.open(); doc.write(html); doc.close();
+        await new Promise(r => setTimeout(r, 400));
+        await renderIframeToPdf(iframe, `${detail.po_number || 'order'}.pdf`);
+      } finally {
+        iframe.remove();
+      }
+    } catch (e) {
+      console.error('download order pdf failed:', e);
+      window.alert('Failed to download');
+    }
+  };
+
   const renderActions = () => {
     if (!detail) return null;
     const s = detail.status;
@@ -792,12 +903,6 @@ const PurchaseOrderDetailPage: React.FC = () => {
               disabled={submitting}
             >
               {submitting ? t('common.submitting') : t('detail.actions.submit')}
-            </ThemedButton>
-            <ThemedButton
-              variant="outline"
-              onClick={() => navigate(`/pos/purchase-orders/new?edit=${detail.id}`)}
-            >
-              {t('detail.actions.edit')}
             </ThemedButton>
             <ThemedButton variant="danger-outline" onClick={openCancel}>
               {t('detail.actions.cancel')}
@@ -820,17 +925,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
           </ThemedButton>
         )}
         {(s === 'submitted') && (
-          <>
-            <ThemedButton
-              variant="outline"
-              onClick={() => navigate(`/pos/purchase-orders/new?edit=${detail!.id}`)}
-            >
-              {t('detail.actions.edit')}
-            </ThemedButton>
-            <ThemedButton variant="danger-outline" onClick={openCancel}>
-              {t('detail.actions.cancel')}
-            </ThemedButton>
-          </>
+          <ThemedButton variant="danger-outline" onClick={openCancel}>
+            {t('detail.actions.cancel')}
+          </ThemedButton>
         )}
         {(s === 'received' || s === 'partial_received' || s === 'delivered') && (
           <ThemedButton
@@ -838,42 +935,75 @@ const PurchaseOrderDetailPage: React.FC = () => {
             onClick={() => setShowReturnsModal(true)}
             title={t('detail.actions.returns', 'Request Return') as string}
           >
-            ↩ {t('detail.actions.returns', 'Request Return')}
+            {t('detail.actions.returns', 'Request Return')}
           </ThemedButton>
         )}
-        <ThemedButton
-          variant="outline"
-          onClick={() => window.open(`/pos/purchase-orders/${detail!.id}/print`, '_blank')}
-        >
-          🖨 {t('detail.actions.print', 'Print')}
-        </ThemedButton>
+        {!embedded && (
+          <>
+            <HeaderIconBtn
+              type="button"
+              onClick={handlePrintOrder}
+              title={t('detail.actions.print', 'Print') as string}
+              aria-label={t('detail.actions.print', 'Print') as string}
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </HeaderIconBtn>
+            <HeaderIconBtn
+              type="button"
+              onClick={handleDownloadOrderPdf}
+              title={t('detail.actions.download', 'Download PDF') as string}
+              aria-label={t('detail.actions.download', 'Download PDF') as string}
+            >
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </HeaderIconBtn>
+          </>
+        )}
       </HeaderActions>
     );
   };
 
+  const Outer: any = embedded ? React.Fragment : Container;
   return (
-    <Container>
-      <Header>
-        <div>
-          <Title>
-            {detail ? detail.po_number : (loading ? '...' : '')}
-            {detail && (
-              <span style={{ marginLeft: 12 }}>
-                <DataTableStatus variant={StatusVariantMap[detail.status] || 'info'}>
-                  {t(`status.${detail.status}`)}
-                </DataTableStatus>
-              </span>
+    <Outer>
+      {embedded ? (
+        detail && (
+          <EmbeddedTitle>
+            <h1>{detail.po_number}</h1>
+            <DataTableStatus variant={StatusVariantMap[detail.status] || 'info'}>
+              {t(`status.${detail.status}`)}
+            </DataTableStatus>
+            {detail.seller_name && (
+              <span style={{ marginLeft: 8, color: '#6B7280', fontSize: 13 }}>· {detail.seller_name}</span>
             )}
-          </Title>
-          <Subtitle>{detail?.seller_name || ''}</Subtitle>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders')}>
-            {t('detail.back')}
-          </ThemedButton>
-          {renderActions()}
-        </div>
-      </Header>
+          </EmbeddedTitle>
+        )
+      ) : (
+        <Header>
+          <div>
+            <Title>
+              {detail ? detail.po_number : (loading ? '...' : '')}
+              {detail && (
+                <span style={{ marginLeft: 12 }}>
+                  <DataTableStatus variant={StatusVariantMap[detail.status] || 'info'}>
+                    {t(`status.${detail.status}`)}
+                  </DataTableStatus>
+                </span>
+              )}
+            </Title>
+            <Subtitle>{detail?.seller_name || ''}</Subtitle>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/new')}>
+              {t('detail.orderMore', '+ Order More')}
+            </ThemedButton>
+            {renderActions()}
+          </div>
+        </Header>
+      )}
 
       <Content>
         {error && <ErrorBox>{error}</ErrorBox>}
@@ -967,6 +1097,68 @@ const PurchaseOrderDetailPage: React.FC = () => {
               </TotalsBox>
             </Section>
 
+            {(((detail as any).external_invoice_url) || ((detail as any).trade_invoice_id)) && (
+              <Section>
+                <h3>{t('detail.section.invoice', 'Invoice')}</h3>
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '12px 16px', background: '#F8FAFC', border: '1px solid #E6EBF1',
+                  borderRadius: 8
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#635BFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>
+                    </svg>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {(detail as any).external_invoice_url
+                          ? ((detail as any).external_invoice_filename || t('detail.invoice.uploadedFile', 'Uploaded invoice'))
+                          : `${t('detail.invoice.tradeNo', 'Trade Invoice')} #${(detail as any).trade_invoice_id}`}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>
+                        {(detail as any).external_invoice_url
+                          ? t('detail.invoice.externalLabel', 'Uploaded by buyer (external supplier)')
+                          : t('detail.invoice.systemLabel', 'Auto-issued by system')}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                    <ThemedButton
+                      size="small"
+                      variant="outline"
+                      onClick={() => {
+                        const url = (detail as any).external_invoice_url;
+                        if (url) {
+                          window.open(url, '_blank');
+                        } else if ((detail as any).trade_invoice_id) {
+                          navigate(`${invoiceListPath}?id=${(detail as any).trade_invoice_id}`);
+                        }
+                      }}
+                    >
+                      {t('detail.invoice.view', 'View')}
+                    </ThemedButton>
+                    <ThemedButton
+                      size="small"
+                      variant="outline"
+                      onClick={() => {
+                        const url = (detail as any).external_invoice_url;
+                        if (url) {
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = (detail as any).external_invoice_filename || `invoice-${detail.po_number}.pdf`;
+                          document.body.appendChild(a); a.click(); a.remove();
+                        } else if ((detail as any).trade_invoice_id) {
+                          window.open(`/api/invoices/${(detail as any).trade_invoice_id}/pdf`, '_blank');
+                        }
+                      }}
+                    >
+                      {t('detail.invoice.download', 'Download')}
+                    </ThemedButton>
+                  </div>
+                </div>
+              </Section>
+            )}
+
             <Section>
               <h3>{t('detail.section.delivery')}</h3>
               <KvGrid>
@@ -988,6 +1180,15 @@ const PurchaseOrderDetailPage: React.FC = () => {
           </>
         )}
       </Content>
+
+      {embedded && detail && (
+        <EmbeddedFooter>
+          <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/new')}>
+            {t('detail.orderMore', '+ Order More')}
+          </ThemedButton>
+          {renderActions()}
+        </EmbeddedFooter>
+      )}
 
       {/* Receive Modal */}
       <CommonModal
@@ -1275,7 +1476,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
 
         {returnError && <ErrorBox style={{ marginTop: 12 }}>{returnError}</ErrorBox>}
       </CommonModal>
-    </Container>
+    </Outer>
   );
 };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   Container, Header, Title, Content,
   Modal as CommonModal, ModalButton,
@@ -42,6 +43,29 @@ interface ContractRow {
   termination_reason?: string | null;
   payment_terms?: PaymentTerms | null;
 }
+
+const PageTabBar = styled.div`
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #E6EBF1;
+  padding: 0 24px;
+  background: white;
+`;
+
+const PageTab = styled.button<{ $active: boolean }>`
+  background: none;
+  border: none;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: ${p => p.$active ? '#635BFF' : '#6B7280'};
+  border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+  &:hover { color: #635BFF; }
+`;
 
 const Subtitle = styled.div`
   color: #6B7280;
@@ -214,6 +238,7 @@ function formatTermsSummary(t: PaymentTerms | null | undefined): string {
 
 const SupplierContractsPage: React.FC = () => {
   const { t } = useTranslation(['supplierDirectory', 'common']);
+  const navigate = useNavigate();
   const [activeTab, handleTabChange] = useTabParam<TabType>('pending');
 
   const [allRows, setAllRows] = useState<Record<TabType, ContractRow[]>>({
@@ -544,9 +569,18 @@ const SupplierContractsPage: React.FC = () => {
     <Container>
       <Header>
         <div>
-          <Title>{t('supplierContracts.title')}</Title>
+          <Title>{t('supplierMenu.title', 'Suppliers')}</Title>
         </div>
       </Header>
+
+      <PageTabBar>
+        <PageTab $active={true} type="button">
+          {t('supplierMenu.tab.mine', 'My Suppliers')}
+        </PageTab>
+        <PageTab $active={false} type="button" onClick={() => navigate('/pos/suppliers/directory')}>
+          {t('supplierMenu.tab.find', 'Find Suppliers')}
+        </PageTab>
+      </PageTabBar>
 
       <Content>
         <Tabs>

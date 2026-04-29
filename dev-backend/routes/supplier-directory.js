@@ -572,16 +572,28 @@ router.get('/supplier-catalog', async (req, res) => {
       return res.json({ success: true, data: [], filters: { categories: [], suppliers: [] } });
     }
 
-    // 2. 필터 + 검색
+    // 2. 필터 + 검색 (이름/SKU/설명/단위/카테고리/공급사 이름까지 매칭)
     const where = {
       supplier_company_id: { [Op.in]: supplierIds },
       is_active: true
     };
     const search = (req.query.search || '').trim();
     if (search) {
+      const like = `%${search}%`;
+      // 카테고리/공급사명까지 검색하기 위해 join 테이블 컬럼은 Sequelize.where + literal 로 처리
       where[Op.or] = [
-        { name: { [Op.like]: `%${search}%` } },
-        { sku: { [Op.like]: `%${search}%` } }
+        { name: { [Op.like]: like } },
+        { sku: { [Op.like]: like } },
+        { description: { [Op.like]: like } },
+        { unit: { [Op.like]: like } },
+        require('sequelize').where(
+          require('sequelize').col('category.name'),
+          { [Op.like]: like }
+        ),
+        require('sequelize').where(
+          require('sequelize').col('company.name'),
+          { [Op.like]: like }
+        )
       ];
     }
     const supplierFilter = parseInt(req.query.supplier_id, 10);
@@ -595,6 +607,7 @@ router.get('/supplier-catalog', async (req, res) => {
       where,
       include: [
         { model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] },
+        { model: SupplierCompany, as: 'company', attributes: ['id', 'name', 'code'] },
         {
           model: SupplierProductOptionGroup,
           as: 'optionGroups',
@@ -611,7 +624,8 @@ router.get('/supplier-catalog', async (req, res) => {
         }
       ],
       order: [['name', 'ASC']],
-      limit: 200
+      limit: 200,
+      subQuery: false
     });
 
     // 3. 매핑 여부 lookup — 내 ingredient 와 IngredientSellerProduct 매핑된 supplier_product_id 모음

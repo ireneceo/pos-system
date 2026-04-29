@@ -8,11 +8,230 @@ import {
   DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell,
   DataTableHeaderCell, DataTableActions, DataTableEmpty, DataTableStatus
 } from '../../components/UI';
-import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
-import DateRangeField from '../../components/Common/DateRangeField';
+import DatePeriodFilter, { PeriodType, DateRange, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import SearchableSelect from '../../components/Common/SearchableSelect';
+import { useStore } from '../../contexts/StoreContext';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
+import { renderIframeToPdf } from '../../utils/invoicePdf';
+import PurchaseOrderDetailPage from './PurchaseOrderDetailPage';
+
+// LiveOrders 와 동일한 FilterToolbar 패턴
+const FilterToolbar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+
+  & > div:first-child > div { margin-bottom: 0 !important; }
+
+  @media (max-width: 768px) { gap: 8px; }
+`;
+
+const SearchInputContainer = styled.div`
+  position: relative;
+  width: 220px;
+  height: 38px;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    order: 10;
+  }
+`;
+
+const StyledSearchInput = styled.input`
+  width: 100%;
+  height: 38px;
+  padding: 0 32px 0 36px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1F2937;
+  box-sizing: border-box;
+  &:focus { outline: none; border-color: #635BFF; }
+  &::placeholder { color: #9CA3AF; }
+`;
+
+const SearchIcon = styled.span`
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: #9CA3AF;
+  pointer-events: none;
+`;
+
+const ClearSearchButton = styled.button`
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #E5E7EB;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  color: #6B7280;
+  padding: 0;
+  line-height: 1;
+  &:hover { background: #D1D5DB; }
+`;
+
+const StatusFilter = styled.select`
+  height: 38px;
+  padding: 0 30px 0 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1F2937;
+  background: white;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M3 5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  &:focus { outline: none; border-color: #635BFF; }
+`;
+
+const SupplierFilterWrap = styled.div`
+  width: 220px;
+  @media (max-width: 768px) { width: 100%; order: 9; }
+`;
+
+// Icon 전용 round button (Print/Download)
+const IconBtn = styled.button`
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #E6EBF1;
+  background: white;
+  color: #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+  &:hover { background: #F8FAFC; border-color: #635BFF; color: #635BFF; }
+  svg { width: 16px; height: 16px; }
+`;
+
+// ── Right slide-in panel for PO detail ─────────────────────────────
+const PanelOverlay = styled.div<{ $open: boolean }>`
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 37, 64, 0.4);
+  z-index: 1100;
+  opacity: ${p => p.$open ? 1 : 0};
+  pointer-events: ${p => p.$open ? 'auto' : 'none'};
+  transition: opacity 0.2s ease;
+`;
+
+const PanelWrap = styled.aside<{ $open: boolean }>`
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 720px;
+  max-width: 100vw;
+  background: white;
+  box-shadow: -8px 0 24px rgba(10, 37, 64, 0.15);
+  z-index: 1101;
+  transform: translateX(${p => p.$open ? '0' : '100%'});
+  transition: transform 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  @media (max-width: 768px) { width: 100vw; }
+`;
+
+const PanelHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #E6EBF1;
+  flex-shrink: 0;
+  gap: 12px;
+
+  h2 { margin: 0; font-size: 18px; font-weight: 700; color: #0A2540; }
+`;
+
+const PanelBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  background: #FAFBFC;
+`;
+
+const PanelClose = styled.button`
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  color: #6B7280;
+  cursor: pointer;
+  border-radius: 6px;
+  &:hover { background: #F1F5F9; color: #0A2540; }
+`;
+
+const PanelTopBar = styled.div`
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const NakedClose = styled.button`
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  color: #6B7280;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { color: #0A2540; }
+`;
+
+const InfoCard = styled.div`
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+
+  h3 { margin: 0 0 12px; font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; }
+  dl { margin: 0; display: grid; grid-template-columns: 110px 1fr; row-gap: 8px; column-gap: 12px; font-size: 13px; }
+  dt { color: #6B7280; font-weight: 500; }
+  dd { margin: 0; color: #0A2540; font-weight: 500; }
+`;
+
+const ItemTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #F1F5F9; }
+  th { font-weight: 600; color: #475569; background: #F8FAFC; font-size: 12px; }
+  td.num { text-align: right; }
+  th.num { text-align: right; }
+`;
 
 type POStatus = 'draft' | 'submitted' | 'confirmed' | 'shipped' | 'partial_received' | 'received' | 'cancelled';
 
@@ -23,10 +242,15 @@ interface POListRow {
   seller_name?: string | null;
   status: POStatus;
   item_count?: number;
+  total_quantity?: number;
   total_amount?: number | string | null;
   currency?: string;
   expected_delivery_date?: string | null;
   created_at?: string | null;
+  is_external?: boolean;
+  external_invoice_url?: string | null;
+  external_invoice_filename?: string | null;
+  trade_invoice_id?: number | null;
 }
 
 interface SuggestionItem {
@@ -159,14 +383,22 @@ function isPendingStatus(s: POStatus): boolean {
 const PurchaseOrdersPage: React.FC = () => {
   const { t } = useTranslation(['purchaseOrders', 'common']);
   const navigate = useNavigate();
+  const { operationSettings } = useStore();
+  const tz = operationSettings?.timeZone;
 
   const [rows, setRows] = useState<POListRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [supplierFilter, setSupplierFilter] = useState<string | number | null>(null);
   const [search, setSearch] = useState('');
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
+
+  const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
+  const [dateRange, setDateRange] = useState<DateRange>(() => calculatePeriodDateRange('month', tz));
+  const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+
+  // Detail side panel — DetailPage 컴포넌트가 자체 fetch
+  const [selectedPoId, setSelectedPoId] = useState<number | null>(null);
 
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([]);
   const [suggestionsCount, setSuggestionsCount] = useState(0);
@@ -178,8 +410,9 @@ const PurchaseOrdersPage: React.FC = () => {
       const token = getAuthToken();
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.set('status', statusFilter);
-      if (fromDate) params.set('from', fromDate);
-      if (toDate) params.set('to', toDate);
+      if (dateRange?.start) params.set('from', dateRange.start);
+      if (dateRange?.end) params.set('to', dateRange.end);
+      params.set('limit', '100');
 
       const url = `/api/purchase-orders${params.toString() ? `?${params.toString()}` : ''}`;
       const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -195,7 +428,34 @@ const PurchaseOrdersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, fromDate, toDate]);
+  }, [statusFilter, dateRange]);
+
+  const openDetailPanel = useCallback((poId: number) => {
+    setSelectedPoId(poId);
+  }, []);
+
+  const closeDetailPanel = useCallback(() => {
+    setSelectedPoId(null);
+  }, []);
+
+  // ESC closes
+  useEffect(() => {
+    if (!selectedPoId) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeDetailPanel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedPoId, closeDetailPanel]);
+
+  const handlePeriodChange = (period: PeriodType) => {
+    setActivePeriod(period);
+    setIsCustomDateRange(false);
+    setDateRange(calculatePeriodDateRange(period, tz));
+  };
+
+  const handleCalendarRangeSelect = (start: string, end: string) => {
+    setIsCustomDateRange(true);
+    setDateRange({ start, end });
+  };
 
   const fetchSuggestions = useCallback(async () => {
     try {
@@ -250,14 +510,28 @@ const PurchaseOrdersPage: React.FC = () => {
     fetchSuggestions();
   }, [fetchSuggestions]);
 
+  const supplierOptions = useMemo(() => {
+    const map = new Map<string, { value: string; label: string }>();
+    for (const r of rows) {
+      if (r.seller_name) {
+        const key = r.seller_name;
+        if (!map.has(key)) map.set(key, { value: key, label: key });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [rows]);
+
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return rows;
-    return rows.filter(r =>
-      (r.seller_name || '').toLowerCase().includes(term) ||
-      (r.po_number || '').toLowerCase().includes(term)
-    );
-  }, [rows, search]);
+    return rows.filter(r => {
+      if (supplierFilter && r.seller_name !== supplierFilter) return false;
+      if (term && !(
+        (r.seller_name || '').toLowerCase().includes(term) ||
+        (r.po_number || '').toLowerCase().includes(term)
+      )) return false;
+      return true;
+    });
+  }, [rows, search, supplierFilter]);
 
   const stats = useMemo(() => {
     let draft = 0, pending = 0, shipped = 0, received = 0;
@@ -275,6 +549,107 @@ const PurchaseOrdersPage: React.FC = () => {
     const n = Number(amount);
     if (!Number.isFinite(n)) return '-';
     return `${currency || 'MYR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const handleMarkReceived = async (row: POListRow) => {
+    if (!window.confirm(t('list.action.markReceivedConfirm', { po: row.po_number, defaultValue: 'Mark "{{po}}" as received?' }) as string)) return;
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${row.id}/mark-received`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        window.alert(data.message || 'Failed to mark received');
+        return;
+      }
+      fetchList();
+    } catch (e) { console.error(e); }
+  };
+
+  const handlePrintOrder = (row: POListRow) => {
+    const token = getAuthToken();
+    // /pdf endpoint serves HTML w/ window.print; opening with token in URL not ideal, so post-load print via new tab fetch
+    const w = window.open('', '_blank');
+    if (!w) return;
+    fetch(`/api/purchase-orders/${row.id}/pdf`, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.text())
+      .then(html => { w.document.write(html); w.document.close(); })
+      .catch(() => w.close());
+  };
+
+  const handleDownloadOrderPdf = async (row: POListRow) => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/purchase-orders/${row.id}/pdf`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) { window.alert('Failed to load order'); return; }
+      // window.print 자동호출 스크립트 제거 (다운로드 시에는 인쇄 X)
+      const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
+
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:0;';
+      document.body.appendChild(iframe);
+      try {
+        const doc = iframe.contentDocument!;
+        doc.open(); doc.write(html); doc.close();
+        // 렌더 안정화
+        await new Promise(r => setTimeout(r, 400));
+        await renderIframeToPdf(iframe, `${row.po_number || 'order'}.pdf`);
+      } finally {
+        iframe.remove();
+      }
+    } catch (e) {
+      console.error('download order pdf failed:', e);
+      window.alert('Failed to download');
+    }
+  };
+
+  const handleViewInvoice = (row: POListRow) => {
+    if (row.external_invoice_url) {
+      window.open(row.external_invoice_url, '_blank');
+    } else if (row.trade_invoice_id) {
+      window.open(`/invoices/${row.trade_invoice_id}`, '_blank');
+    }
+  };
+
+  const handleDownloadInvoice = (row: POListRow) => {
+    if (row.external_invoice_url) {
+      const a = document.createElement('a');
+      a.href = row.external_invoice_url;
+      a.download = row.external_invoice_filename || `invoice-${row.po_number}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+    } else if (row.trade_invoice_id) {
+      window.location.href = `/api/invoices/${row.trade_invoice_id}/pdf`;
+    }
+  };
+
+  const handleUploadInvoice = async (row: POListRow, file: File) => {
+    try {
+      const token = getAuthToken();
+      const fd = new FormData();
+      fd.append('files', file);
+      const up = await fetch('/api/upload/files', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
+      const upData = await up.json();
+      if (!up.ok || !upData.success || !upData.data?.[0]) {
+        window.alert(upData.message || 'Upload failed');
+        return;
+      }
+      const f = upData.data[0];
+      const res = await fetch(`/api/purchase-orders/${row.id}/upload-invoice`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: f.url, filename: f.originalName })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        window.alert(data.message || 'Failed to attach invoice');
+        return;
+      }
+      fetchList();
+    } catch (e) { console.error(e); window.alert('Network error'); }
   };
 
   const handleCreatePOFromSuggestion = (group: SuggestionGroup) => {
@@ -368,17 +743,40 @@ const PurchaseOrdersPage: React.FC = () => {
           </SuggestionPanel>
         )}
 
-        <FilterBar>
-          <SearchInput
-            type="text"
-            placeholder={t('list.filter.searchSeller') as string}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <FilterSelect
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
+        <FilterToolbar>
+          <div>
+            <DatePeriodFilter
+              activePeriod={activePeriod}
+              dateRange={dateRange}
+              isCustomDateRange={isCustomDateRange}
+              onPeriodChange={handlePeriodChange}
+              onCalendarRangeSelect={handleCalendarRangeSelect}
+              includeToday
+            />
+          </div>
+          <SearchInputContainer>
+            <SearchIcon>🔍</SearchIcon>
+            <StyledSearchInput
+              type="text"
+              placeholder={t('list.filter.searchSeller', 'Search PO or supplier...') as string}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <ClearSearchButton type="button" onClick={() => setSearch('')} title="Clear search">×</ClearSearchButton>
+            )}
+          </SearchInputContainer>
+          <SupplierFilterWrap>
+            <SearchableSelect
+              options={supplierOptions}
+              value={supplierFilter}
+              onChange={(v) => setSupplierFilter(v)}
+              placeholder={t('list.filter.supplier', 'All suppliers') as string}
+              allowClear
+              noOptionsMessage={t('list.filter.noSupplier', 'No matching supplier') as string}
+            />
+          </SupplierFilterWrap>
+          <StatusFilter value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="all">{t('list.filter.allStatuses')}</option>
             <option value="draft">{t('status.draft')}</option>
             <option value="submitted">{t('status.submitted')}</option>
@@ -387,17 +785,8 @@ const PurchaseOrdersPage: React.FC = () => {
             <option value="partial_received">{t('status.partial_received')}</option>
             <option value="received">{t('status.received')}</option>
             <option value="cancelled">{t('status.cancelled')}</option>
-          </FilterSelect>
-          <div style={{ minWidth: 280 }}>
-            <DateRangeField
-              startDate={fromDate}
-              endDate={toDate}
-              onChange={(s, e) => { setFromDate(s); setToDate(e); }}
-              startLabel={t('list.filter.from') as string}
-              endLabel={t('list.filter.to') as string}
-            />
-          </div>
-        </FilterBar>
+          </StatusFilter>
+        </FilterToolbar>
 
         <DataTableContainer>
           <DataTable>
@@ -406,6 +795,7 @@ const PurchaseOrdersPage: React.FC = () => {
                 <DataTableHeaderCell align="left">{t('list.table.poNumber')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="left">{t('list.table.seller')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">{t('list.table.items')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('list.table.totalQty', 'Qty')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="right">{t('list.table.total')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">{t('list.table.status')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="left">{t('list.table.expected')}</DataTableHeaderCell>
@@ -415,10 +805,10 @@ const PurchaseOrdersPage: React.FC = () => {
             </DataTableHead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8}><DataTableEmpty>{t('list.loading')}</DataTableEmpty></td></tr>
+                <tr><td colSpan={9}><DataTableEmpty>{t('list.loading')}</DataTableEmpty></td></tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <DataTableEmpty>
                       <div style={{ marginBottom: 12, fontSize: 16, fontWeight: 600, color: '#374151' }}>
                         {t('list.empty.title')}
@@ -437,16 +827,41 @@ const PurchaseOrdersPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredRows.map(row => (
+                filteredRows.map(row => {
+                  const hasInvoice = !!(row.external_invoice_url || row.trade_invoice_id);
+                  const canMarkReceived = row.status !== 'received' && row.status !== 'cancelled' && row.status !== 'draft';
+                  const canUploadInvoice = row.is_external && !row.external_invoice_url && row.status !== 'draft' && row.status !== 'cancelled';
+                  return (
                   <DataTableRow key={row.id}>
                     <DataTableCell data-label={t('list.table.poNumber') as string}>
-                      <strong>{row.po_number}</strong>
+                      <button
+                        type="button"
+                        onClick={() => openDetailPanel(row.id)}
+                        style={{
+                          background: 'none', border: 'none', padding: 0,
+                          font: 'inherit', color: '#635BFF', fontWeight: 700,
+                          cursor: 'pointer', textAlign: 'left'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+                      >
+                        {row.po_number}
+                      </button>
+                      {row.is_external && (
+                        <span style={{
+                          marginLeft: 8, fontSize: 10, padding: '2px 6px',
+                          background: '#FEF3C7', color: '#92400E', borderRadius: 999, fontWeight: 700
+                        }}>{t('list.externalBadge', 'EXT')}</span>
+                      )}
                     </DataTableCell>
                     <DataTableCell data-label={t('list.table.seller') as string}>
                       {row.seller_name || '-'}
                     </DataTableCell>
                     <DataTableCell data-label={t('list.table.items') as string} align="center">
                       {row.item_count ?? 0}
+                    </DataTableCell>
+                    <DataTableCell data-label={t('list.table.totalQty', 'Qty') as string} align="center">
+                      {row.total_quantity != null ? Number(row.total_quantity).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '-'}
                     </DataTableCell>
                     <DataTableCell data-label={t('list.table.total') as string} align="right">
                       {formatMoney(row.total_amount, row.currency)}
@@ -467,19 +882,135 @@ const PurchaseOrdersPage: React.FC = () => {
                         <ThemedButton
                           size="small"
                           variant="outline"
-                          onClick={() => navigate(`/pos/purchase-orders/${row.id}`)}
+                          onClick={() => openDetailPanel(row.id)}
+                          title={t('list.view') as string}
                         >
                           {t('list.view')}
                         </ThemedButton>
+                        <IconBtn
+                          type="button"
+                          onClick={() => handlePrintOrder(row)}
+                          title={t('list.action.printOrder', 'Print order') as string}
+                          aria-label={t('list.action.printOrder', 'Print order') as string}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </IconBtn>
+                        <IconBtn
+                          type="button"
+                          onClick={() => handleDownloadOrderPdf(row)}
+                          title={t('list.action.downloadOrder', 'Download order PDF') as string}
+                          aria-label={t('list.action.downloadOrder', 'Download order PDF') as string}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </IconBtn>
+                        {canMarkReceived && (
+                          <ThemedButton
+                            size="small"
+                            variant="primary"
+                            onClick={() => handleMarkReceived(row)}
+                            title={t('list.action.markReceived', 'Mark received') as string}
+                          >
+                            {t('list.action.markReceived', 'Receive')}
+                          </ThemedButton>
+                        )}
+                        {canUploadInvoice && (
+                          <label style={{ display: 'inline-block' }}>
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png,.webp"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleUploadInvoice(row, f);
+                                e.target.value = '';
+                              }}
+                            />
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                              border: '1px solid #635BFF', color: '#635BFF',
+                              background: '#EEF2FF', borderRadius: 6, cursor: 'pointer'
+                            }}>
+                              {t('list.action.uploadInvoice', 'Upload Inv.')}
+                            </span>
+                          </label>
+                        )}
+                        {hasInvoice && (
+                          <>
+                            <ThemedButton
+                              size="small"
+                              variant="outline"
+                              onClick={() => handleViewInvoice(row)}
+                              title={t('list.action.viewInvoice', 'View invoice') as string}
+                            >
+                              {t('list.action.viewInvoice', 'Invoice')}
+                            </ThemedButton>
+                            <IconBtn
+                              type="button"
+                              onClick={() => handleDownloadInvoice(row)}
+                              title={t('list.action.downloadInvoice', 'Download invoice') as string}
+                              aria-label={t('list.action.downloadInvoice', 'Download invoice') as string}
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </IconBtn>
+                          </>
+                        )}
                       </DataTableActions>
                     </DataTableCell>
                   </DataTableRow>
-                ))
+                  );
+                })
               )}
             </tbody>
           </DataTable>
         </DataTableContainer>
       </Content>
+
+      <PanelOverlay $open={!!selectedPoId} onClick={closeDetailPanel} />
+      <PanelWrap $open={!!selectedPoId} aria-hidden={!selectedPoId}>
+        <PanelTopBar>
+          {selectedPoId && (
+            <>
+              <IconBtn
+                type="button"
+                onClick={() => handlePrintOrder({ id: selectedPoId, po_number: `order-${selectedPoId}` } as POListRow)}
+                title={t('list.action.printOrder', 'Print order') as string}
+                aria-label="Print"
+              >
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 9V2H18V9M6 18H4C2.89543 18 2 17.1046 2 16V11C2 9.89543 2.89543 9 4 9H20C21.1046 9 22 9.89543 22 11V16C22 17.1046 21.1046 18 20 18H18M6 14H18V22H6V14Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </IconBtn>
+              <IconBtn
+                type="button"
+                onClick={() => handleDownloadOrderPdf({ id: selectedPoId, po_number: `order-${selectedPoId}` } as POListRow)}
+                title={t('list.action.downloadOrder', 'Download order PDF') as string}
+                aria-label="Download"
+              >
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </IconBtn>
+            </>
+          )}
+          <NakedClose type="button" onClick={closeDetailPanel} aria-label="Close" title="Close (Esc)">×</NakedClose>
+        </PanelTopBar>
+        <PanelBody>
+          {selectedPoId && (
+            <PurchaseOrderDetailPage
+              embeddedId={selectedPoId}
+              embedded
+              onClose={closeDetailPanel}
+            />
+          )}
+        </PanelBody>
+      </PanelWrap>
     </Container>
   );
 };

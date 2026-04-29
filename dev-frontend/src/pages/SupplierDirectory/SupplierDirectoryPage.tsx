@@ -42,6 +42,29 @@ interface DirectoryResponse {
   };
 }
 
+const PageTabBar = styled.div`
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #E6EBF1;
+  padding: 0 24px;
+  background: white;
+`;
+
+const PageTab = styled.button<{ $active: boolean }>`
+  background: none;
+  border: none;
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: ${p => p.$active ? '#635BFF' : '#6B7280'};
+  border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+  &:hover { color: #635BFF; }
+`;
+
 const Subtitle = styled.div`
   color: #6B7280;
   font-size: 14px;
@@ -350,11 +373,19 @@ const SupplierDirectoryPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>{t('directory.title')}</Title>
+        <Title>{t('supplierMenu.title', 'Suppliers')}</Title>
         <ThemedButton variant="primary" onClick={() => setShowExternalModal(true)}>
-          + {t('directory.addExternal', 'External Supplier')}
+          {t('directory.addExternal', 'External Supplier')}
         </ThemedButton>
       </Header>
+      <PageTabBar>
+        <PageTab $active={false} type="button" onClick={() => navigate('/pos/suppliers/contracts')}>
+          {t('supplierMenu.tab.mine', 'My Suppliers')}
+        </PageTab>
+        <PageTab $active={true} type="button">
+          {t('supplierMenu.tab.find', 'Find Suppliers')}
+        </PageTab>
+      </PageTabBar>
       <Content>
         <FilterBar>
           <SearchInput

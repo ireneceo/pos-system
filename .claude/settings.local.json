@@ -70,7 +70,22 @@
       "Bash(chmod +x /var/www/dev-backend/scripts/sa-token.js /var/www/dev-backend/scripts/blog-bulk-publish.js)",
       "Bash(awk '/<NavIcon>/' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)",
       "Bash(awk '/System Admin/,/Brand General Settings/' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)",
-      "Bash(pkill -f \"react-app-rewired build\")"
+      "Bash(pkill -f \"react-app-rewired build\")",
+      "Bash(pkill -f \"react-scripts build\")",
+      "Bash(pkill -f \"node.*build\")",
+      "Bash(echo \"started build PID=$!\")",
+      "Bash(disown)",
+      "Bash(awk '{print $5, $6, $7, $8, $9}')",
+      "Bash(echo \"PID=$!\")",
+      "Bash(awk '{print $6, $7, $8, $9}')",
+      "Bash(awk '{print $9, $7, $8}')",
+      "Bash(echo \"BUILD PID=$!\")",
+      "Bash(TSC_COMPILE_ON_ERROR=true npx tsc --noEmit)",
+      "Bash(CI=false TSC_COMPILE_ON_ERROR=true DISABLE_ESLINT_PLUGIN=true npx react-scripts build)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(bash deploy-dev.sh)",
+      "Bash(sudo cp *)",
+      "Bash(sudo chown *)"
     ],
     "deny": [],
     "ask": []

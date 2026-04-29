@@ -236,7 +236,7 @@
     "thank_you": "감사합니다"
   },
   "newPo": {
-    "title": "새 발주",
+    "title": "발주",
     "subtitle": "재료를 검색해 cart에 담으면 공급업체별로 자동 분할되어 발주됩니다.",
     "search": {
       "placeholder": "재료 이름으로 검색...",

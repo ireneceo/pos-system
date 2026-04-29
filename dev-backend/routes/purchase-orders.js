@@ -212,6 +212,13 @@ router.get('/purchase-orders', async (req, res) => {
     if (req.query.seller_type && VALID_SELLER_TYPES.includes(req.query.seller_type)) {
       where.seller_type = req.query.seller_type;
     }
+    // 날짜 범위 필터 (created_at)
+    if (req.query.from || req.query.to) {
+      const dateWhere = {};
+      if (req.query.from) dateWhere[Op.gte] = new Date(req.query.from + 'T00:00:00');
+      if (req.query.to) dateWhere[Op.lte] = new Date(req.query.to + 'T23:59:59');
+      where.created_at = dateWhere;
+    }
 
     const { rows, count } = await PurchaseOrder.findAndCountAll({
       where,
@@ -221,34 +228,56 @@ router.get('/purchase-orders', async (req, res) => {
       distinct: true
     });
 
-    // Staging 페이지 — items + seller 정보 (is_system_registered 포함) 함께 반환
+    // 모든 PO에 item_count / total_quantity / seller_name / is_external 항상 포함
+    // (Staging 페이지: include=items || status=draft 일 때는 items 배열 + seller 객체도 함께)
     const includeItems = req.query.include === 'items' || req.query.status === 'draft';
-    let enriched = rows;
-    if (includeItems) {
-      const SupplierCompany = require('../models/SupplierCompany');
-      const ids = rows.map(p => p.id);
-      const allItems = ids.length ? await PurchaseOrderItem.findAll({ where: { purchase_order_id: { [Op.in]: ids } } }) : [];
-      const itemsByPo = {};
+    const SupplierCompany = require('../models/SupplierCompany');
+    const ids = rows.map(p => p.id);
+
+    // Item 집계 (모든 PO 공통)
+    const itemAggRows = ids.length ? await PurchaseOrderItem.findAll({
+      where: { purchase_order_id: { [Op.in]: ids } },
+      attributes: [
+        'purchase_order_id',
+        [database.sequelize.fn('COUNT', database.sequelize.col('id')), 'item_count'],
+        [database.sequelize.fn('SUM', database.sequelize.col('quantity_ordered')), 'total_quantity']
+      ],
+      group: ['purchase_order_id'],
+      raw: true
+    }) : [];
+    const aggMap = Object.fromEntries(itemAggRows.map(r => [r.purchase_order_id, r]));
+
+    // Supplier 정보 (seller_type='supplier' 인 PO 만)
+    const supplierIds = [...new Set(rows.filter(p => p.seller_type === 'supplier').map(p => p.seller_entity_id).filter(Boolean))];
+    const suppliers = supplierIds.length ? await SupplierCompany.findAll({
+      where: { id: { [Op.in]: supplierIds } },
+      attributes: ['id', 'name', 'phone', 'email', 'is_system_registered', 'min_order_amount']
+    }) : [];
+    const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]));
+
+    // includeItems 일 때만 items 배열 동봉
+    let itemsByPo = {};
+    if (includeItems && ids.length) {
+      const allItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: { [Op.in]: ids } } });
       for (const it of allItems) {
         (itemsByPo[it.purchase_order_id] = itemsByPo[it.purchase_order_id] || []).push(it);
       }
-      const supplierIds = [...new Set(rows.filter(p => p.seller_type === 'supplier').map(p => p.seller_entity_id).filter(Boolean))];
-      const suppliers = supplierIds.length ? await SupplierCompany.findAll({
-        where: { id: { [Op.in]: supplierIds } },
-        attributes: ['id', 'name', 'phone', 'email', 'is_system_registered', 'min_order_amount']
-      }) : [];
-      const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]));
-      enriched = rows.map(p => {
-        const plain = p.toJSON();
-        plain.items = itemsByPo[p.id] || [];
-        if (p.seller_type === 'supplier' && supplierMap[p.seller_entity_id]) {
-          plain.seller = supplierMap[p.seller_entity_id].toJSON();
-        } else {
-          plain.seller = null;
-        }
-        return plain;
-      });
     }
+
+    const enriched = rows.map(p => {
+      const plain = p.toJSON();
+      const agg = aggMap[p.id] || {};
+      plain.item_count = parseInt(agg.item_count || 0, 10);
+      plain.total_quantity = parseFloat(agg.total_quantity || 0);
+      const sup = (p.seller_type === 'supplier' && supplierMap[p.seller_entity_id]) ? supplierMap[p.seller_entity_id] : null;
+      plain.seller_name = sup ? sup.name : null;
+      plain.is_external = sup ? !sup.is_system_registered : false;
+      if (includeItems) {
+        plain.items = itemsByPo[p.id] || [];
+        plain.seller = sup ? sup.toJSON() : null;
+      }
+      return plain;
+    });
 
     res.json({
       success: true,
@@ -418,7 +447,29 @@ router.get('/purchase-orders/:id', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
 
-    res.json({ success: true, data: po });
+    // seller 정보 + is_external 보강
+    const plain = po.toJSON();
+    if (po.seller_type === 'supplier' && po.seller_entity_id) {
+      const SupplierCompany = require('../models/SupplierCompany');
+      const sup = await SupplierCompany.findByPk(po.seller_entity_id, {
+        attributes: ['id', 'name', 'phone', 'email', 'is_system_registered']
+      });
+      if (sup) {
+        plain.seller_name = sup.name;
+        plain.seller = sup.toJSON();
+        plain.is_external = !sup.is_system_registered;
+      }
+    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
+      const Brand = require('../models/Brand');
+      const b = await Brand.findByPk(po.seller_entity_id, { attributes: ['id', 'name'] }).catch(() => null);
+      if (b) plain.seller_name = b.name;
+    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
+      const Foodcourt = require('../models/Foodcourt');
+      const f = await Foodcourt.findByPk(po.seller_entity_id, { attributes: ['id', 'name'] }).catch(() => null);
+      if (f) plain.seller_name = f.name;
+    }
+
+    res.json({ success: true, data: plain });
   } catch (err) {
     console.error('GET /api/purchase-orders/:id error:', err);
     res.status(500).json({ success: false, message: 'Failed to load purchase order' });
@@ -521,6 +572,64 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     });
   }
 
+  // ─────────────────────────────────────────────────────────────────
+  // Currency 검증 — 구매자 통화 기준. 미설정 또는 공급업체와 불일치 시 차단.
+  // ─────────────────────────────────────────────────────────────────
+  let buyerCurrency = null;
+  if (buyerEntity.type === 'restaurant') {
+    const Restaurant = require('../models/Restaurant');
+    const r = await Restaurant.findByPk(buyerEntity.id, { attributes: ['currency'] });
+    buyerCurrency = r?.currency || null;
+  } else if (buyerEntity.type === 'brand') {
+    const Brand = require('../models/Brand');
+    const b = await Brand.findByPk(buyerEntity.id, { attributes: ['currency'] }).catch(() => null);
+    buyerCurrency = b?.currency || null;
+  } else if (buyerEntity.type === 'foodcourt') {
+    const Foodcourt = require('../models/Foodcourt');
+    const f = await Foodcourt.findByPk(buyerEntity.id, { attributes: ['currency'] }).catch(() => null);
+    buyerCurrency = f?.currency || null;
+  }
+  if (!buyerCurrency) {
+    return {
+      ok: false, status: 400,
+      body: {
+        success: false,
+        code: 'NO_BUYER_CURRENCY',
+        message: 'Buyer currency is not set. Please configure currency in payment settings.',
+        settingsUrl: '/pos/settings'
+      }
+    };
+  }
+
+  // Seller currency 비교 (supplier / brand / foodcourt)
+  let sellerCurrency = null;
+  if (seller_type === 'supplier' && seller_entity_id) {
+    const SupplierCompany = require('../models/SupplierCompany');
+    const s = await SupplierCompany.findByPk(parseInt(seller_entity_id, 10), { attributes: ['currency'] });
+    sellerCurrency = s?.currency || null;
+  } else if (seller_type === 'brand' && seller_entity_id) {
+    const Brand = require('../models/Brand');
+    const b = await Brand.findByPk(parseInt(seller_entity_id, 10), { attributes: ['currency'] }).catch(() => null);
+    sellerCurrency = b?.currency || null;
+  } else if (seller_type === 'foodcourt' && seller_entity_id) {
+    const Foodcourt = require('../models/Foodcourt');
+    const f = await Foodcourt.findByPk(parseInt(seller_entity_id, 10), { attributes: ['currency'] }).catch(() => null);
+    sellerCurrency = f?.currency || null;
+  }
+  if (sellerCurrency && sellerCurrency !== buyerCurrency) {
+    return {
+      ok: false, status: 400,
+      body: {
+        success: false,
+        code: 'CURRENCY_MISMATCH',
+        message: `Currency mismatch: buyer uses ${buyerCurrency}, seller uses ${sellerCurrency}. Align currencies in payment settings or supplier contract before ordering.`,
+        buyerCurrency,
+        sellerCurrency,
+        settingsUrl: '/pos/settings'
+      }
+    };
+  }
+
   const totals = computeTotals(validatedItems);
   const poNumber = await generatePoNumber(buyerEntity, poNumberOffset);
 
@@ -535,7 +644,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     subtotal: totals.subtotal,
     tax_amount: totals.tax_amount,
     total_amount: totals.total_amount,
-    currency: 'MYR',
+    currency: buyerCurrency,
     expected_delivery_date: expected_delivery_date || null,
     delivery_address: resolvedDeliveryAddress ? sanitizeString(String(resolvedDeliveryAddress)) : null,
     notes: notes ? sanitizeString(String(notes)) : null,
@@ -860,7 +969,7 @@ router.post('/purchase-orders/:id/mark-sent-external', async (req, res) => {
     if (!po) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (!checkPOOwnership(po, req)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (po.status !== 'draft') { await t.rollback(); return res.status(400).json({ success: false, message: 'Only draft can be marked sent' }); }
-    const newTracking = appendTrackingEvent(po, 'submitted', { source: 'external_manual_send', method: req.body?.method || 'manual' });
+    const newTracking = appendTrackingEvent(po, 'submitted', null, { source: 'external_manual_send', method: req.body?.method || 'manual' });
     await po.update({ status: 'submitted', submitted_at: new Date(), tracking_info: newTracking }, { transaction: t });
     await t.commit();
     res.json({ success: true, data: po });
@@ -868,6 +977,83 @@ router.post('/purchase-orders/:id/mark-sent-external', async (req, res) => {
     if (!t.finished) await t.rollback();
     console.error('mark-sent-external error:', err);
     res.status(500).json({ success: false, message: 'Failed' });
+  }
+});
+
+// ============================================
+// POST /api/purchase-orders/:id/upload-invoice — 외부 공급업체 인보이스 파일 URL 저장
+//   url 은 /api/upload/files 호출로 사전 업로드된 결과 (relativePath, originalName 포함)
+// ============================================
+router.post('/purchase-orders/:id/upload-invoice', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Not found' });
+
+    const { url, filename } = req.body || {};
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invoice URL required' });
+    }
+    if (!url.startsWith('/uploads/')) {
+      return res.status(400).json({ success: false, message: 'Invalid invoice URL' });
+    }
+
+    const po = await PurchaseOrder.findByPk(id);
+    if (!po) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
+
+    // 외부 공급업체만 업로드 허용
+    if (po.seller_type !== 'supplier') {
+      return res.status(400).json({ success: false, message: 'Invoice upload only available for supplier orders' });
+    }
+    const SupplierCompany = require('../models/SupplierCompany');
+    const supplier = await SupplierCompany.findByPk(po.seller_entity_id);
+    if (!supplier || supplier.is_system_registered) {
+      return res.status(400).json({ success: false, message: 'Invoice upload only for external (non-system) suppliers' });
+    }
+
+    await po.update({
+      external_invoice_url: url,
+      external_invoice_filename: filename || url.split('/').pop(),
+      external_invoice_uploaded_at: new Date()
+    });
+
+    res.json({ success: true, data: po });
+  } catch (err) {
+    console.error('upload-invoice error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save invoice' });
+  }
+});
+
+// ============================================
+// POST /api/purchase-orders/:id/mark-received — 수령 완료 (간단 마킹, /receive 의 lite 버전)
+//   /receive 는 품목별 수량 검증 + GeneralStock 업데이트가 있어 무거움. 단순 수령 확인용.
+// ============================================
+router.post('/purchase-orders/:id/mark-received', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Not found' });
+
+    const po = await PurchaseOrder.findByPk(id);
+    if (!po) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
+
+    if (po.status === 'received' || po.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: `Already ${po.status}` });
+    }
+
+    const now = new Date();
+    const newTracking = appendTrackingEvent(po, 'received', null, { source: 'mark_received_action' });
+    await po.update({
+      status: 'received',
+      received_at: now,
+      actual_delivery_date: now,
+      tracking_info: newTracking
+    });
+
+    res.json({ success: true, data: po });
+  } catch (err) {
+    console.error('mark-received error:', err);
+    res.status(500).json({ success: false, message: 'Failed to mark received' });
   }
 });
 

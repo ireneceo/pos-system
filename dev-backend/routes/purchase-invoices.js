@@ -243,6 +243,171 @@ router.get('/purchase-invoices/soa/current', async (req, res) => {
 });
 
 // ============================================
+// POST /api/purchase-invoices/soa/:supplierCompanyId/pay
+// — supplier 의 모든 monthly_soa contract 미결 인보이스 일괄 payment_submitted
+// ============================================
+router.post('/purchase-invoices/soa/:supplierCompanyId/pay', async (req, res) => {
+  try {
+    if (!req.buyerEntity) {
+      return res.status(400).json({ success: false, message: 'Buyer scope required' });
+    }
+    const supplierId = parseInt(req.params.supplierCompanyId, 10);
+    if (!Number.isFinite(supplierId)) {
+      return res.status(400).json({ success: false, message: 'Invalid supplier id' });
+    }
+    const payer = await resolvePayerForBuyer(req.buyerEntity);
+    if (!payer) {
+      return res.status(400).json({ success: false, message: 'Could not resolve payer' });
+    }
+    // monthly_soa contract 확인
+    const contract = await SupplierContract.findOne({
+      where: {
+        supplier_company_id: supplierId,
+        entity_type: req.buyerEntity.type,
+        entity_id: req.buyerEntity.id,
+        status: 'active'
+      }
+    });
+    if (!contract || contract.payment_terms?.invoice_cycle !== 'monthly_soa') {
+      return res.status(400).json({ success: false, message: 'No active monthly_soa contract with this supplier' });
+    }
+
+    const invoices = await Invoice.findAll({
+      where: {
+        invoice_category: 'trade',
+        issuer_type: 'supplier',
+        issuer_id: supplierId,
+        payer_type: payer.payer_type,
+        payer_id: payer.payer_id,
+        status: { [Op.in]: ['pending_payment', 'overdue'] }
+      }
+    });
+    const now = new Date();
+    let count = 0;
+    for (const inv of invoices) {
+      await inv.update({ status: 'payment_submitted', payment_submitted_at: now });
+      count++;
+    }
+    res.json({ success: true, data: { count, total_invoices: invoices.length } });
+  } catch (err) {
+    console.error('POST /api/purchase-invoices/soa/:supplierCompanyId/pay error:', err);
+    res.status(500).json({ success: false, message: 'Failed to submit SOA payment' });
+  }
+});
+
+// ============================================
+// GET /api/purchase-invoices/soa/:supplierCompanyId/pdf
+// — SOA 표지 + 포함 인보이스 한 PDF (HTML 응답, 브라우저 인쇄 → PDF)
+// ============================================
+router.get('/purchase-invoices/soa/:supplierCompanyId/pdf', async (req, res) => {
+  try {
+    if (!req.buyerEntity) {
+      return res.status(400).json({ success: false, message: 'Buyer scope required' });
+    }
+    const supplierId = parseInt(req.params.supplierCompanyId, 10);
+    const payer = await resolvePayerForBuyer(req.buyerEntity);
+    if (!payer) {
+      return res.status(400).json({ success: false, message: 'Could not resolve payer' });
+    }
+    const supplier = await SupplierCompany.findByPk(supplierId, { attributes: ['id', 'name', 'company_name', 'address', 'email', 'phone'] });
+    const invoices = await Invoice.findAll({
+      where: {
+        invoice_category: 'trade',
+        issuer_type: 'supplier',
+        issuer_id: supplierId,
+        payer_type: payer.payer_type,
+        payer_id: payer.payer_id,
+        status: { [Op.in]: ['pending_payment', 'overdue', 'payment_submitted'] }
+      },
+      include: [{ model: InvoiceItem, as: 'items' }],
+      order: [['issued_at', 'ASC']]
+    });
+    if (invoices.length === 0) {
+      return res.status(404).json({ success: false, message: 'No SOA invoices' });
+    }
+
+    const total = invoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const currency = invoices[0]?.currency || 'MYR';
+    const supplierName = supplier?.company_name || supplier?.name || `Supplier #${supplierId}`;
+    const now = new Date();
+    const monthLabel = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+<title>SOA - ${supplierName}</title>
+<style>
+  body { font-family: -apple-system, sans-serif; padding: 32px; color: #0A2540; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: #6B7280; font-size: 13px; margin-bottom: 24px; }
+  .cover { border: 1px solid #E6EBF1; padding: 20px; border-radius: 8px; margin-bottom: 32px; }
+  .cover-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #F1F5F9; }
+  .cover-row:last-child { border-bottom: none; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #F1F5F9; }
+  th { background: #F8FAFC; font-weight: 600; color: #475569; }
+  .num { text-align: right; }
+  .total-row td { font-weight: 700; background: #F1F5F9; border-top: 2px solid #635BFF; }
+  .invoice-block { margin-top: 32px; padding-top: 24px; border-top: 2px dashed #E6EBF1; page-break-before: always; }
+  .invoice-header { display: flex; justify-content: space-between; margin-bottom: 12px; }
+  h2 { font-size: 18px; margin: 0; }
+</style></head><body>
+<h1>Statement of Account</h1>
+<div class="sub">${supplierName} · ${monthLabel}</div>
+
+<div class="cover">
+  <div class="cover-row"><span>Supplier</span><strong>${supplierName}</strong></div>
+  <div class="cover-row"><span>Period</span><strong>${monthLabel}</strong></div>
+  <div class="cover-row"><span>Invoice Count</span><strong>${invoices.length}</strong></div>
+  <div class="cover-row"><span>Total Amount</span><strong>${currency} ${total.toFixed(2)}</strong></div>
+</div>
+
+<h2>Included Invoices</h2>
+<table>
+  <thead><tr><th>Invoice #</th><th>Issued</th><th>Due</th><th class="num">Subtotal</th><th class="num">Total</th><th>Status</th></tr></thead>
+  <tbody>
+    ${invoices.map(i => `<tr>
+      <td>${i.invoice_number || '-'}</td>
+      <td>${i.issued_at ? new Date(i.issued_at).toLocaleDateString() : '-'}</td>
+      <td>${i.due_date ? new Date(i.due_date).toLocaleDateString() : '-'}</td>
+      <td class="num">${Number(i.subtotal || 0).toFixed(2)}</td>
+      <td class="num">${Number(i.total_amount || 0).toFixed(2)}</td>
+      <td>${i.status}</td>
+    </tr>`).join('')}
+    <tr class="total-row"><td colspan="4" class="num">Grand Total (${currency})</td><td class="num">${total.toFixed(2)}</td><td></td></tr>
+  </tbody>
+</table>
+
+${invoices.map(inv => `
+  <div class="invoice-block">
+    <div class="invoice-header">
+      <h2>${inv.invoice_number || '-'}</h2>
+      <span>${inv.issued_at ? new Date(inv.issued_at).toLocaleDateString() : ''}</span>
+    </div>
+    <table>
+      <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit Price</th><th class="num">Amount</th></tr></thead>
+      <tbody>
+        ${(inv.items || []).map(it => `<tr>
+          <td>${it.description || it.item_name || '-'}</td>
+          <td class="num">${it.quantity || 1}</td>
+          <td class="num">${Number(it.unit_price || it.fixed_amount || 0).toFixed(2)}</td>
+          <td class="num">${Number(it.calculated_amount || it.fixed_amount || 0).toFixed(2)}</td>
+        </tr>`).join('')}
+        <tr class="total-row"><td colspan="3" class="num">Total</td><td class="num">${Number(inv.total_amount || 0).toFixed(2)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+`).join('')}
+<script>window.onload = function() { setTimeout(function(){ window.print(); }, 300); };</script>
+</body></html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    console.error('GET /api/purchase-invoices/soa/:supplierCompanyId/pdf error:', err);
+    res.status(500).json({ success: false, message: 'Failed to render SOA PDF' });
+  }
+});
+
+// ============================================
 // 8. GET /api/purchase-invoices/:id
 // ============================================
 router.get('/purchase-invoices/:id', async (req, res) => {

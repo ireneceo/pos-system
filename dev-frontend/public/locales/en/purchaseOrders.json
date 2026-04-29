@@ -236,7 +236,7 @@
     "thank_you": "Thank you"
   },
   "newPo": {
-    "title": "New Purchase Order",
+    "title": "Purchase Order",
     "subtitle": "Search ingredients to add to cart. Orders are auto-split by vendor on submit.",
     "search": {
       "placeholder": "Search ingredients...",

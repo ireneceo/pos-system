@@ -6,6 +6,20 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-04-29
+- PO/Supplier/Invoice 통합 UX 정리:
+  - Cart 페이지: viewport 고정 (cart 푸터 항상 보임), 검색 확장 (이름+카테고리+공급업체+단위+상세 OR-검색), 타이틀 "Purchase Order"
+  - PO history: LiveOrders 동일 필터 (DatePeriodFilter), SearchableSelect 공급업체, Print/Download 아이콘만, 우측 패널 (전체 DetailPage embedded), PO번호 클릭 패널, Invoice 섹션 + View/Download
+  - PO Detail: Edit 버튼 제거 (완료된 주문 수정 불가), "+ Order More" 액션, embedded mode (Modal 패턴 — header/body/footer 분리)
+  - PO 외부 공급업체 인보이스 업로드, 수령 처리(mark-received), 품목수/총수량 컬럼
+- 통화 정책: 구매자 통화 기준 강제, 공급업체 통화 불일치 시 차단 + 결제설정 안내 모달
+- 사이드바: Suppliers 섹션 → Order, Suppliers 메뉴 1개로 통합 (My/Find 페이지 내 탭), Purchase Invoices 메뉴 제거 (통합 Invoices 페이지에서 처리)
+- Suppliers 페이지: "+ External Supplier" 의 "+" 제거
+- Stock Items: Ingredients 페이지 명칭 변경 (4 언어), Operations 섹션 Inventory 위로 이동, plan 모듈 라우트 unblock
+- Invoices 통합: Restaurant Invoices 페이지에 SOA 묶음 inline 표시 (별도 탭 X), child 인보이스 자동 hide + expand 시 표시, Pay All / Download SOA PDF (표지 + 인보이스 합본)
+- 데이터 무결성 fix: tracking_info.events.note 가 Object 로 저장되던 mark-received/mark-sent-external 의 인자 순서 버그 수정 (View 버튼 React crash 해결)
+- 샘플 데이터 생성: PO 4건 → Trade Invoice 4건 → SOA 1건 (S4 Sup Co. MYR 280.60)
+
 ### 2026-04-28
 - 타임존 일괄 적용: 모든 toLocaleDateString/TimeString 호출에 entity 타임존(restaurant/brand/foodcourt operation_settings.timeZone) 반영. Frontend 2 + Backend 11 파일.
 - 모바일 헤더 fix: 480~768px 구간에서 StaffInfo 텍스트 헤더 오버플로우 발생 → 모바일에서 아바타만 표시. HeaderActions gap/ProfileButton padding 컴팩트.

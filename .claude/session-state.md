@@ -1,154 +1,99 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-29 13:45 (임시저장 — clear 후 이어서)
-**버전:** **v3.19** (운영) → 누적 v3.20 배포 후보
-**작업 상태:** 중단 (이어서 재개 예정)
-
----
-
-## ⚡ 빠른 재개
-
-```
-session-state.md 읽고 이어서 개발해.
-```
-
-## 🔖 지금 중단 지점
-
-**마지막 작업:** 신규 페이지 UX 정리 (emoji 제거 + Add 모드 안내 + 도움말 박스 + Scheduler 친화 라벨), FG/BG 403 fix, Supplier Directory shape 평탄화
-
-**바로 다음 작업:** Irene이 Restaurant Admin 으로 로그인해서 발주 end-to-end 흐름 직접 테스트 시작 (Suppliers Directory → Contract 요청 → My Suppliers → PO 생성 → Receive → Returns). 막힘 발생할 때마다 reactive fix.
-
-**맥락 유지할 것:**
-- v3.20 후보가 운영 미배포 (자동 검증만 PASS, 실유저 흐름은 미검증)
-- "이번 주 신규 페이지 반응형 통일" 작업 보류 — 발주 흐름 검증 후 진행
-- Carrier code 정규화 불일치 (`-` → `_`) 별도 fix 후보로 인지 (운영 carrier에는 영향 없음)
-- lua의 SA 자격증명 `~/.purple-pos/creds.json` 패턴 정착 (sa-token.js / blog-bulk-publish.js / setup-creds.js)
-
-**커밋:** `f95772d0` chore: 세션 중간 저장 - Sprint7 UX/emoji 정리 + 403 fix + supplier directory 평탄화
-
-## 📦 이번 세션 작업 요약
-
-- Sprint 7 후속 UX 정리: CarriersPage / CarrierWebhookEventsPage / SchedulerMonitorPage emoji 제거 + 페이지 도움말 박스 + Carriers Add 모드 자동 Edit 전환
-- Staff 삭제 기능 fix (System Admin 가드 → self-delete 가드로 전환, frontend + backend)
-- 사이드바 admin 영역 emoji 아이콘 → 단색 도형 (📦→▦, ⚡→⊕, ⏱→⊙)
-- 5개 블로그 스킬 하이픈 제거 (블로그발행/감사/리서치/초안/캘린더) + lua OS-사용자 무관 패턴 (sa-token.js, blog-bulk-publish.js, setup-creds.js)
-- FG/BG Dashboard 403 fix (manager fetch + stat 카드 제거), Supplier Directory shape 평탄화 + initialsOf null 가드
+**마지막 업데이트:** 2026-04-29 (PO/Supplier/Invoice 통합 UX 정리 완료)
+**버전:** **v3.19** (운영) → 누적 v3.21 후보 (개발 미배포, Sprint 7 + 이번 세션 변경 모두 포함)
+**작업 상태:** 완료
 
 ### 진행 중인 작업
 - 없음
 
-### 2026-04-29 추가 — 블로그/랜딩 admin 작업 OS-사용자 무관 패턴 정착
-- 문제: lua OS 사용자가 `/글쓰기` 발행 단계에서 막힘. 원인은 백엔드 `.env`(irene:irene 600) 권한 — application 권한 차단 아님.
-- 해결: 모든 admin 작업을 HTTP API 호출 패턴으로 통일 (DB 직접 접근 금지)
-- 신규: `scripts/sa-token.js` (SA JWT 발급 헬퍼), `scripts/blog-bulk-publish.js` (login + bulk POST 통합)
-- 자격증명: `~/.purple-pos/creds.json` (chmod 600) 또는 `PURPLE_USER`/`PURPLE_PASS`
-- 6개 스킬에 ★ 사용자 환경/권한 모델 섹션 추가: `/글쓰기`, `/블로그발행`, `/블로그감사`, `/블로그리서치`, `/블로그초안`, `/블로그캘린더`
-- `/블로그발행` 전체 재작성 (모든 단계 API 패턴)
-- `/글쓰기` 6단계 재작성 (`blog-bulk-publish.js` 사용 강제, 우회 명시 금지)
-- 검증: T1 자격증명 부재 fail-fast ✓ / T2 401 fail ✓ / T3 payload 부재 fail-fast ✓ / T4 bulk POST + group_id 응답 ✓ / health-check 43/43 ✓
+### 완료된 작업 (이번 세션)
 
-### 2026-04-29 추가 — Staff 삭제 기능 수정
-- 문제: `/pos/admin/staff` 페이지에서 `staff.role !== 'System Admin'` 가드로 SA 역할 staff는 삭제 버튼 자체가 비표시
-- Frontend `StaffManagementPage.tsx`: 가드를 `currentUser.id !== staff.id`로 변경 (자기 자신만 차단). confirmDelete 에러 메시지를 alert로 노출.
-- Backend `routes/users.js` DELETE: self-delete 차단 가드 추가 (`req.user.id === req.params.id` → 400)
-- Admin123(id=228, han.sj.lua@gmail.com, 어제 잘못 만든 SA) cascade 삭제 — 같은 이메일/유저네임 slot 비음
-- 검증: T1 self-delete 차단(400) ✓ / T2 같은 이메일 재가입(201) ✓ / T3 타 user 삭제(200) ✓ / health-check 43/43 ✓ / 빌드 `main.cf314102.js`
+**Cart 페이지 (`/pos/purchase-orders`):**
+- viewport 고정 (PageWrap, cart 푸터 항상 보임)
+- 타이틀 "Purchase Order" (4 언어)
+- 검색 확장 — name/sku/desc/unit/category.name/company.name OR-검색
 
-### 완료된 작업 (이번 세션 — 2026-04-28)
+**PO history (`/pos/purchase-orders/history`):**
+- LiveOrders 동일 FilterToolbar (DatePeriodFilter + SearchableSelect 공급업체)
+- 우측 슬라이드 패널 (PO번호 클릭 또는 View → 전체 DetailPage embedded)
+- Print/Download 아이콘 (이미지 + 텍스트 제거)
+- 인보이스 섹션 + View/Download (외부/시스템 인보이스 모두)
 
-**Timezone Coverage 일괄 (Frontend 2 + Backend 11)**
-- 모든 toLocaleDateString/TimeString 호출에 entity 타임존 적용 (operation_settings.timeZone, KL fallback)
-- 검증: invoice billing period KL `2/1-2/28`, NY `1/31-2/27` 차이 확인 = timezone 실작동 증명
+**PO Detail:**
+- embedded mode — Modal 패턴 (EmbeddedTitle + Content + EmbeddedFooter sticky)
+- Edit 버튼 제거 (완료된 주문 수정 불가), "+ Order More" 액션
 
-**모바일 상단 헤더 fix**
-- StaffInfo 480px → 768px 분기 (모바일 전체 아바타만 표시)
-- HeaderActions gap 480px 미만 4px / ProfileButton padding 4px·gap 0
-- LoginPage LanguageSelector globe variant 통일 (dropdown 우측 정렬)
+**PO 액션/데이터:**
+- DB 컬럼 — `external_invoice_url/filename/uploaded_at`
+- BE endpoints — upload-invoice (외부 공급업체만), mark-received
+- list/detail 응답 보강 — item_count/total_quantity/seller_name/is_external/external_invoice_url/trade_invoice_id
 
-**항목 12 — Restaurants 계약 뱃지** (Contract Phase 2 잔여 마무리)
-- `routes/restaurants-crud.js` list endpoint batch contract fetch (N+1 회피, stage priority sort)
-- Manager/Owner Restaurants 페이지에 ContractBadge + 만료일 표시
+**통화 정책:**
+- createPurchaseOrderCore 에 `NO_BUYER_CURRENCY`/`CURRENCY_MISMATCH` 차단 + `/pos/settings` 안내
+- FE confirm 모달
 
-**Supply Chain Sprint 7 — Operational Hardening** (4 영역 + 12 빈틈 + ε.1~4 결정)
-- inventory_transactions/batches polymorphic (entity_type/entity_id + hook + 백필 86 rows)
-- Returns 양방향 환원 (brand/foodcourt seller 분기 + Currency invariant)
-- 수령 splits + auto-returns + 사후 discrepancy PUT
-- PO.status ENUM 확장 (in_transit, delivery_failed)
-- Carrier webhook 인프라 (HMAC + 2단계 + idempotency)
-- 신규 admin 페이지 `/pos/admin/carrier-webhooks` + Carriers 모달 webhook 섹션
-- path-level middleware fix (brand-inventory.js router.use)
+**사이드바 (4 역할):**
+- 섹션명 Suppliers → Order
+- 메뉴: Purchase Order / Order History / Suppliers (Purchase Invoices 메뉴 제거)
+- Suppliers 1메뉴 (My/Find 페이지 내 PageTab 통합)
 
-### 검증 결과
-- test-sprint7.js: **19/19 PASS**
-- /검증 10단계: **모두 PASS** (state-hydration 0, 빌드 exit 0, health-check 43/43, SPA 13/13, 역할 격리 12/12, API roundtrip 11/11)
-- 배포 artifact: `main.6f0b969f.js` 1.71MB
+**Suppliers 페이지:**
+- My Suppliers ↔ Find Suppliers 탭바
+- "+ External Supplier" → "External Supplier"
 
-### 변경 파일
+**Stock Items:**
+- Ingredients → Stock Items (4 언어)
+- Products 섹션 → Operations 섹션 (Inventory 위)
+- AddonModule(inventory_management).ui_routes 에 `/restaurant/*/ingredients` 추가
 
-**Backend (12)**
-- 신규: `models/CarrierWebhookEvent.js`, `routes/carrier-webhooks.js`, `scripts/sprint7-migration.js`
-- 수정: `models/{InventoryTransaction,InventoryBatch,PurchaseOrder,PurchaseOrderItem,PurchaseOrderReturn,Carrier,index}.js`, `routes/{po-returns,purchase-orders,carriers,brand-inventory,restaurants-crud,notices,invoices-helpers,invoices-main,restaurants-subscription,subscriptions}.js`, `services/{authService,invoiceScheduler,subscriptionScheduler,soaScheduler}.js`, `utils/{notificationTemplates,invoiceEmailTemplate}.js`, `server.js`
+**Invoice 통합:**
+- Restaurant Invoices 페이지에 SOA 묶음 inline 카드 (별도 탭 X)
+- SoaBundleRow — 보라 SOA 뱃지 + 월 + 공급업체 + count + total + Pay All / Download
+- expand 시 child 인보이스 (참고용, 결제버튼 X)
+- All / To Pay 탭에서 SOA child 자동 hide
+- BE — `/api/purchase-invoices/soa/:supplierId/pay`, `/pdf` (표지 + 합본)
 
-**Frontend (10)**
-- 신규: `pages/Admin/CarrierWebhookEventsPage.tsx`
-- 수정: `pages/PurchaseOrders/PurchaseOrderDetailPage.tsx`, `pages/Admin/CarriersPage.tsx`, `pages/Manager/RestaurantsPage.tsx`, `pages/Owner/OwnerRestaurantsPage.tsx`, `pages/BrandGeneral/BrandGeneralDashboard.tsx`, `pages/FoodcourtGeneral/FoodcourtFloorPlanPage.tsx`, `pages/Login/LoginPage.tsx`, `App.tsx`, `components/Layout/MainLayout.tsx`
+**데이터 fix:**
+- tracking_info.events.note Object 저장 버그 (mark-received/mark-sent-external 인자 순서 오류) 수정
+- 기존 corrupt PO 자동 정상화
 
-**Docs (3)**
-- 신규: `docs/SUPPLY_CHAIN_SPRINT_7.md`
-- 수정: `docs/PURCHASE_ORDER_SYSTEM.md` (Sprint 7 정식 해결 노트 추가)
-- 메모리 신규: `reference_entity_polymorphic.md`, `reference_webhook_hmac.md`
+**샘플 데이터:**
+- PO 4건 (PO-R5-SAMPLE-01~04, status=received) → Trade Invoice 4건 → SOA 1건 (S4 Sup Co. MYR 280.60)
 
----
+### 다음 할 일
 
-## 🎯 다음 세션 — Irene 브라우저 테스트 (15분 코스) → /배포 v3.20
-
-서버 사이드 검증은 모두 끝났음. 브라우저 클릭 흐름만 Irene이 직접 확인.
-
-| # | 시간 | 액션 | 확인 포인트 |
-|---|---|---|---|
-| 1 | 2분 | SA 로그인 → `/pos/admin/carrier-webhooks` | 신규 페이지 진입. 사이드바 ⚡ "Carrier Webhooks" 추가됨. 통계 카드 4종 |
-| 2 | 3분 | "🧪 Send Simulate Event" → Lalamove + JSON payload 그대로 → Send | `✓ Event N — status: applied/failed` 결과. SIM 노란 배지 row. View → Drawer (raw payload + signature_valid + applied_at) |
-| 3 | 2분 | `/pos/admin/carriers` → Lalamove Edit → 모달 하단 "⚡ Webhook Integration" | ✓ Active 표시 + Endpoint URL 노출 |
-| 4 | 2분 | 🔄 Regenerate Secret → 노란 경고 → Confirm | 빨강 박스에 secret 한 번 큰 글씨 + 📋 Copy 버튼 |
-| 5 | 2분 | BG 로그인 → `/pos/brand/general/purchase-orders` → shipped 상태 PO | PO Detail 진입 |
-| 6 | 3분 | Receive → ⊕ Report issue → segmented control → Damaged 15 | "✦ Auto-return will be created for 15..." 인라인 안내 |
-| 7 | 1분 | Confirm Receipt → PO 새로고침 | Returns 섹션에 auto-generated 라벨 + Brand seller stock 환원 (BG inventory 페이지) |
-
-### 모바일 반응형 (선택, 추가 5분)
-- `/pos/login` 375px: globe LanguageSelector 잘림 없음
-- MainLayout 헤더 480~768px: 아바타만 표시
-- Receive Modal split row 375px: 가로 grid → 세로 카드 stack
-
-### 테스트 데이터 (live)
-- R#38 PO 40건 (다양한 stage)
-- Lalamove carrier: webhook secret + status_map 자동 설정 (검증 단계에서 생성됨)
-
-### 테스트 OK 시 → `/배포` v3.20
-
-배포 묶음:
-1. Timezone Coverage 일괄
-2. 모바일 헤더 fix
-3. 항목 12 — Restaurants 계약 뱃지
-4. Sprint 7 — Operational Hardening
-5. path-level middleware fix
-
-배포 스크립트: `/var/www/deploy-to-production.sh` (sprint7-migration.js 자동 실행, 콘텐츠 sync 기본 ON)
-
-### Sprint 7 미완료 (후속, v3.21 또는 별도)
-- BG Inventory Transactions tab UI (backend ready)
-- i18n 4언어 키 (모든 t() 호출에 영문 fallback 있어 동작 영향 없음)
-- Carrier 운영 매뉴얼 (secret 등록 절차)
-- Sprint 8~10 (15개 빈틈 중 11개 남음)
-- 또는 Referral System 신규 시스템 분기
+1. **선택 — Owner/Brand General/Foodcourt General 인보이스 페이지에도 SOA inline 표시 패턴 동일 적용** (현재 Restaurant Admin 만 적용됨)
+2. `deploy-dev.sh` wrapper 의 build 출력 swallow 버그 수정 (현재 우회: `npx react-scripts build` 직접 실행 + 수동 cp)
+3. 운영 배포 (`/배포`) — v3.21 묶음 (Sprint 7 + 이번 세션) — Irene 결정
 
 ---
 
-## 서버 재시작 후 복구 가이드
+## 환경 / 인증 현황
 
-새 Claude 세션 시작 시 아래 내용을 붙여넣으세요:
+- 백엔드: dev-backend (PM2, port 3001), uptime ~30분
+- 프론트: nginx → /var/www/dev-frontend-build, 배포된 번들 `main.4463cd8e.js` (2026-04-29 18:28)
+- DB: purple_dev_db (MySQL)
+- 테스트: kdine_admin (Restaurant Admin, restaurant_id=5)
+
+---
+
+## 주요 문서 위치
+
+- `/var/www/CLAUDE.md` — 프로젝트 워크플로우 + 검증 절차
+- `/var/www/DEVELOPMENT_PLAN.md` — Phase 로드맵 + 작업 히스토리
+- `/var/www/CHANGELOG.md` — 배포 전 변경 내역 (Unreleased)
+- `/var/www/dev-frontend/UI_DESIGN_GUIDE.md` — Modal 패턴, 디자인 토큰
+- `/var/www/docs/INVOICE_SYSTEM.md`
+- `/var/www/docs/SUPPLY_CHAIN_SPRINT_*.md` — Sprint 1~7 설계 문서
+
+---
+
+## 복구 가이드
+
+새 Claude 세션 시작 시:
 
 ```
-이전 세션에서 진행하던 작업을 이어서 하고 싶어.
-/var/www/.claude/session-state.md 파일 읽어줘.
+session-state.md 읽고 이어서 개발해.
 ```

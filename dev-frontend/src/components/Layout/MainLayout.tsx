@@ -1228,23 +1228,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   isRouteAllowed('/pos/purchase-invoices')
                 ) && (
                   <>
-                    <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
-                    {isRouteAllowed('/pos/suppliers/directory') && (
-                      <NavItem to="/pos/suppliers/directory" active={isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
-                        <NavIcon>◉</NavIcon>
-                        {t("nav.findSuppliers", "Find Suppliers")}
-                      </NavItem>
-                    )}
-                    {isRouteAllowed('/pos/suppliers/contracts') && (
-                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts')} onClick={closeSidebar}>
-                        <NavIcon>◇</NavIcon>
-                        {t("nav.mySuppliers", "My Suppliers")}
-                      </NavItem>
-                    )}
+                    <NavTitle>{t("nav.section.order", "Order")}</NavTitle>
                     {isRouteAllowed('/pos/purchase-orders') && (
                       <NavItem to="/pos/purchase-orders" active={location.pathname === '/pos/purchase-orders'} onClick={closeSidebar}>
                         <NavIcon>▤</NavIcon>
-                        {t("nav.newPurchaseOrder", "New Purchase Order")}
+                        {t("nav.newPurchaseOrder", "Purchase Order")}
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/purchase-orders') && (
@@ -1253,10 +1241,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                         {t("nav.purchaseOrderHistory", "Order History")}
                       </NavItem>
                     )}
-                    {isRouteAllowed('/pos/purchase-invoices') && (
-                      <NavItem to="/pos/purchase-invoices" active={isActive('/pos/purchase-invoices')} onClick={closeSidebar}>
-                        <NavIcon>▦</NavIcon>
-                        {t("nav.purchaseInvoices", "Purchase Invoices")}
+                    {(isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) && (
+                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        {t("nav.suppliers", "Suppliers")}
                       </NavItem>
                     )}
                     {/* Live Orders moved to top — under Dashboard (Sprint 6) */}
@@ -1464,23 +1452,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   isRouteAllowed('/pos/purchase-invoices')
                 ) && (
                   <>
-                    <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
-                    {isRouteAllowed('/pos/suppliers/directory') && (
-                      <NavItem to="/pos/suppliers/directory" active={isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
-                        <NavIcon>◉</NavIcon>
-                        {t("nav.findSuppliers", "Find Suppliers")}
-                      </NavItem>
-                    )}
-                    {isRouteAllowed('/pos/suppliers/contracts') && (
-                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts')} onClick={closeSidebar}>
-                        <NavIcon>◇</NavIcon>
-                        {t("nav.mySuppliers", "My Suppliers")}
-                      </NavItem>
-                    )}
+                    <NavTitle>{t("nav.section.order", "Order")}</NavTitle>
                     {isRouteAllowed('/pos/purchase-orders') && (
                       <NavItem to="/pos/purchase-orders" active={location.pathname === '/pos/purchase-orders'} onClick={closeSidebar}>
                         <NavIcon>▤</NavIcon>
-                        {t("nav.newPurchaseOrder", "New Purchase Order")}
+                        {t("nav.newPurchaseOrder", "Purchase Order")}
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/purchase-orders') && (
@@ -1489,10 +1465,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                         {t("nav.purchaseOrderHistory", "Order History")}
                       </NavItem>
                     )}
-                    {isRouteAllowed('/pos/purchase-invoices') && (
-                      <NavItem to="/pos/purchase-invoices" active={isActive('/pos/purchase-invoices')} onClick={closeSidebar}>
-                        <NavIcon>▦</NavIcon>
-                        {t("nav.purchaseInvoices", "Purchase Invoices")}
+                    {(isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) && (
+                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        {t("nav.suppliers", "Suppliers")}
                       </NavItem>
                     )}
                     {/* Live Orders moved to top — under Dashboard (Sprint 6) */}
@@ -1611,23 +1587,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
                 {(isRouteAllowed('/pos/suppliers/directory') || isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/purchase-orders') || isRouteAllowed('/pos/purchase-invoices')) && (
                   <>
-                    <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
-                    {isRouteAllowed('/pos/suppliers/directory') && (
-                      <NavItem to="/pos/suppliers/directory" active={isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
-                        <NavIcon>◉</NavIcon>
-                        {t("nav.findSuppliers", "Find Suppliers")}
-                      </NavItem>
-                    )}
-                    {isRouteAllowed('/pos/suppliers/contracts') && (
-                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts')} onClick={closeSidebar}>
-                        <NavIcon>◇</NavIcon>
-                        {t("nav.mySuppliers", "My Suppliers")}
-                      </NavItem>
-                    )}
+                    <NavTitle>{t("nav.section.order", "Order")}</NavTitle>
                     {isRouteAllowed('/pos/purchase-orders') && (
                       <NavItem to="/pos/purchase-orders" active={location.pathname === '/pos/purchase-orders'} onClick={closeSidebar}>
                         <NavIcon>▤</NavIcon>
-                        {t("nav.newPurchaseOrder", "New Purchase Order")}
+                        {t("nav.newPurchaseOrder", "Purchase Order")}
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/purchase-orders') && (
@@ -1636,10 +1600,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                         {t("nav.purchaseOrderHistory", "Order History")}
                       </NavItem>
                     )}
-                    {isRouteAllowed('/pos/purchase-invoices') && (
-                      <NavItem to="/pos/purchase-invoices" active={isActive('/pos/purchase-invoices')} onClick={closeSidebar}>
-                        <NavIcon>▦</NavIcon>
-                        {t("nav.purchaseInvoices", "Purchase Invoices")}
+                    {(isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) && (
+                      <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                        <NavIcon>◇</NavIcon>
+                        {t("nav.suppliers", "Suppliers")}
                       </NavItem>
                     )}
                   </>
@@ -1921,9 +1885,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   {t("nav.reports")}
                 </NavItem>
               )}
+              {hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${restaurantId}/ingredients`) && (
+                <NavItem to={`/restaurant/${restaurantId}/ingredients`} active={isActive(`/restaurant/${restaurantId}/ingredients`)} onClick={closeSidebar}>
+                  <NavIcon>▤</NavIcon>
+                  {t("nav.stockItems", "Stock Items")}
+                </NavItem>
+              )}
               {hasMenuPermission('inventory') && isRouteAllowed(`/restaurant/${restaurantId}/inventory`) && (
                 <NavItem to={`/restaurant/${restaurantId}/inventory`} active={isActive(`/restaurant/${restaurantId}/inventory`)} onClick={closeSidebar}>
-                  <NavIcon>▤</NavIcon>
+                  <NavIcon>◫</NavIcon>
                   {t("nav.inventory")}
                 </NavItem>
               )}
@@ -1944,23 +1914,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             isRouteAllowed('/pos/purchase-invoices')
           ) && (
             <NavSection>
-              <NavTitle>{t("nav.section.suppliers", "Suppliers")}</NavTitle>
-              {isRouteAllowed('/pos/suppliers/directory') && (
-                <NavItem to="/pos/suppliers/directory" active={isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
-                  <NavIcon>◉</NavIcon>
-                  {t("nav.findSuppliers", "Find Suppliers")}
-                </NavItem>
-              )}
-              {isRouteAllowed('/pos/suppliers/contracts') && (
-                <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts')} onClick={closeSidebar}>
-                  <NavIcon>◇</NavIcon>
-                  {t("nav.mySuppliers", "My Suppliers")}
-                </NavItem>
-              )}
+              <NavTitle>{t("nav.section.order", "Order")}</NavTitle>
               {isRouteAllowed('/pos/purchase-orders') && (
                 <NavItem to="/pos/purchase-orders" active={location.pathname === '/pos/purchase-orders'} onClick={closeSidebar}>
                   <NavIcon>▤</NavIcon>
-                  {t("nav.newPurchaseOrder", "New Purchase Order")}
+                  {t("nav.newPurchaseOrder", "Purchase Order")}
                 </NavItem>
               )}
               {isRouteAllowed('/pos/purchase-orders') && (
@@ -1969,10 +1927,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   {t("nav.purchaseOrderHistory", "Order History")}
                 </NavItem>
               )}
-              {isRouteAllowed('/pos/purchase-invoices') && (
-                <NavItem to="/pos/purchase-invoices" active={isActive('/pos/purchase-invoices')} onClick={closeSidebar}>
-                  <NavIcon>▦</NavIcon>
-                  {t("nav.purchaseInvoices", "Purchase Invoices")}
+              {(isRouteAllowed('/pos/suppliers/contracts') || isRouteAllowed('/pos/suppliers/directory')) && (
+                <NavItem to="/pos/suppliers/contracts" active={isActive('/pos/suppliers/contracts') || isActive('/pos/suppliers/directory')} onClick={closeSidebar}>
+                  <NavIcon>◇</NavIcon>
+                  {t("nav.suppliers", "Suppliers")}
                 </NavItem>
               )}
             </NavSection>
@@ -2046,12 +2004,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to={`/restaurant/${restaurantId}/recipe-management`} active={isActive(`/restaurant/${restaurantId}/recipe-management`)} onClick={closeSidebar}>
                   <NavIcon>◘</NavIcon>
                   {t("nav.recipes")}
-                </NavItem>
-              )}
-              {isRouteAllowed(`/restaurant/${restaurantId}/ingredients`) && (
-                <NavItem to={`/restaurant/${restaurantId}/ingredients`} active={isActive(`/restaurant/${restaurantId}/ingredients`)} onClick={closeSidebar}>
-                  <NavIcon>▤</NavIcon>
-                  {t("nav.ingredients")}
                 </NavItem>
               )}
             </NavSection>

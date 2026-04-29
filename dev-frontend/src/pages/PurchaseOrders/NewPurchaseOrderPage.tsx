@@ -21,7 +21,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Container, Content } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { useAuth } from '../../contexts/AuthContext';
@@ -82,6 +81,18 @@ interface CartRow {
   adjusted_unit_price?: number;  // base + 옵션 price_adjustment 합
 }
 
+const PageWrap = styled.div`
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #FAFBFC;
+
+  @media (max-width: 768px) {
+    height: calc(100vh - 56px);
+  }
+`;
+
 const PageHeader = styled.div`
   background: white;
   padding: 16px 32px;
@@ -91,6 +102,7 @@ const PageHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
     padding: 16px;
@@ -113,14 +125,14 @@ const Layout = styled.div`
   display: grid;
   grid-template-columns: 1fr 380px;
   gap: 0;
-  height: calc(100vh - 56px);
+  flex: 1;
+  min-height: 0;
   background: #FAFBFC;
+  overflow: hidden;
 
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
-    height: auto;
-    min-height: calc(100vh - 56px);
+    grid-template-rows: 1fr 50vh;
   }
 `;
 
@@ -574,8 +586,14 @@ const NewPurchaseOrderPage: React.FC = () => {
     const q = search.trim().toLowerCase();
     return myList.filter(r => {
       if (categoryFilter !== 'all' && String(r.ingredient_category_id || '') !== categoryFilter) return false;
-      if (q && !r.name.toLowerCase().includes(q)) return false;
-      return true;
+      if (!q) return true;
+      const haystack: string[] = [
+        r.name,
+        r.unit || '',
+        r.ingredientCategory?.name || '',
+        ...(r.sellers || []).map(s => s.seller_name || '')
+      ];
+      return haystack.some(s => s.toLowerCase().includes(q));
     });
   }, [myList, search, categoryFilter]);
 
@@ -777,6 +795,13 @@ const NewPurchaseOrderPage: React.FC = () => {
       });
       const j = await res.json();
       if (!res.ok || !j.success) {
+        if (j?.code === 'NO_BUYER_CURRENCY' || j?.code === 'CURRENCY_MISMATCH') {
+          const goSettings = window.confirm(
+            `${j.message}\n\n${t('newPo.error.goToSettings', 'Open payment settings?') as string}`
+          );
+          if (goSettings) navigate(j.settingsUrl || '/pos/settings');
+          return;
+        }
         setError(j?.message || t('newPo.error.failed', 'Failed to create POs') as string);
         return;
       }
@@ -789,9 +814,9 @@ const NewPurchaseOrderPage: React.FC = () => {
   };
 
   return (
-    <Container>
+    <PageWrap>
       <PageHeader>
-        <PageTitle>{t('newPo.title', 'New Purchase Order')}</PageTitle>
+        <PageTitle>{t('newPo.title', 'Purchase Order')}</PageTitle>
       </PageHeader>
 
       <Layout>
@@ -1115,7 +1140,7 @@ const NewPurchaseOrderPage: React.FC = () => {
           }}
         />
       )}
-    </Container>
+    </PageWrap>
   );
 };
 

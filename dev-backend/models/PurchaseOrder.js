@@ -52,7 +52,12 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
   trade_invoice_id: {
     type: DataTypes.INTEGER, allowNull: true,
     comment: 'FK to invoices.id (auto-issued on receive)'
-  }
+  },
+
+  // External supplier invoice upload (manual)
+  external_invoice_url: { type: DataTypes.TEXT, allowNull: true, comment: 'Uploaded invoice file URL (external supplier only)' },
+  external_invoice_filename: { type: DataTypes.STRING(255), allowNull: true },
+  external_invoice_uploaded_at: { type: DataTypes.DATE, allowNull: true }
 }, {
   tableName: 'purchase_orders',
   timestamps: true,

@@ -236,7 +236,7 @@
     "thank_you": "谢谢"
   },
   "newPo": {
-    "title": "新建采购订单",
+    "title": "采购订单",
     "subtitle": "搜索食材加入购物车,提交时按供应商自动拆分订单。",
     "search": {
       "placeholder": "按食材名称搜索...",

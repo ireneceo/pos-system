@@ -1,9 +1,59 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-28 (v3.20 후보 — Sprint 7 + 항목 12 + Timezone + 모바일 헤더 fix 누적, 미배포)
+> **최종 업데이트:** 2026-04-29 (v3.21 후보 — PO/Supplier/Invoice 통합 UX 정리, 미배포)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.19** (2026-04-28 운영 배포)
+
+## ✅ 완료: PO/Supplier/Invoice 통합 UX 재정비 (2026-04-29, 미배포)
+
+### 배경
+Cart-first PO 시스템 후속 작업으로 발주~인보이스 전체 흐름 UX 통일 + 정보 아키텍처 재정렬. 사이드바 섹션 명/메뉴 구조, 통화 정책, 인보이스 통합, Stock Items 명칭 변경까지 일괄 정리.
+
+### 완료된 작업
+
+| 영역 | 변경 | 상태 |
+|------|------|:---:|
+| Cart 페이지 | PageWrap 으로 viewport 고정 (cart 푸터 항상 보임), 타이틀 "Purchase Order" | ✅ 완료 |
+| Cart 검색 | name/sku/desc/unit/category.name/company.name OR-검색 (백엔드+프론트) | ✅ 완료 |
+| PO 모델 | `external_invoice_url`/`external_invoice_filename`/`external_invoice_uploaded_at` 컬럼 추가 | ✅ 완료 |
+| PO list 응답 보강 | item_count/total_quantity/seller_name/is_external/external_invoice_url/trade_invoice_id 항상 포함 | ✅ 완료 |
+| PO 액션 | upload-invoice / mark-received endpoint + 외부공급업체 보안 검증 | ✅ 완료 |
+| PO history | DatePeriodFilter (LiveOrders 동일), SearchableSelect 공급업체, Print/Download 아이콘만, 우측 패널 (DetailPage embedded), PO번호 클릭 패널, 인보이스 섹션 + View/Download | ✅ 완료 |
+| PO Detail | Edit 제거, "+ Order More", embedded mode (panel header/body/footer 분리), tracking_info.note Object → string 버그 수정 | ✅ 완료 |
+| 통화 정책 | createPurchaseOrderCore 에 `NO_BUYER_CURRENCY`/`CURRENCY_MISMATCH` 차단 + settingsUrl 안내, FE confirm 모달 | ✅ 완료 |
+| 사이드바 | 섹션명 Suppliers→Order, 메뉴 순서 정리 (Purchase Order/History/Suppliers), Suppliers 1메뉴 (탭 통합), Purchase Invoices 메뉴 제거 (통합 Invoices 사용) | ✅ 완료 |
+| Suppliers 페이지 | My/Find 탭바 추가, "+ External Supplier"→"External Supplier" | ✅ 완료 |
+| Stock Items | Ingredients→Stock Items 명칭 변경 (4 언어), Operations 섹션 Inventory 위로 이동, AddonModule(inventory_management) 에 `/restaurant/*/ingredients` 추가 | ✅ 완료 |
+| Invoice 통합 | Restaurant Invoices 페이지에 SOA 묶음 inline 표시 (별도 탭 X), child 인보이스 자동 hide + expand 시 표시, Pay All / Download SOA PDF 버튼 | ✅ 완료 |
+| Backend SOA | `/api/purchase-invoices/soa/:supplierId/pay` (일괄 payment_submitted), `/pdf` (표지 + 인보이스 합본 HTML→PDF) | ✅ 완료 |
+| 샘플 데이터 | PO 4건 (`PO-R5-SAMPLE-01~04`) → Trade Invoice 4건 (`TRD-SUP14-20260429-001~004`) → SOA 1건 (S4 Sup Co. MYR 280.60) 생성 | ✅ 완료 |
+
+### 수정된 파일
+
+**백엔드:**
+- `dev-backend/models/PurchaseOrder.js` (external_invoice 컬럼)
+- `dev-backend/routes/purchase-orders.js` (list 보강, detail 보강, 통화 검증, upload-invoice, mark-received, mark-sent-external/mark-received tracking_info note 버그 fix)
+- `dev-backend/routes/purchase-invoices.js` (SOA pay/pdf endpoints)
+- `dev-backend/routes/supplier-directory.js` (검색 OR-clause 확장: description/unit/category.name/company.name)
+- `dev-backend/services/purchaseOrderService.js` (createTradeInvoice — 샘플 데이터 생성에서 사용)
+
+**프론트:**
+- `dev-frontend/src/components/Layout/MainLayout.tsx` (Order 섹션, Stock Items, Suppliers 통합 메뉴)
+- `dev-frontend/src/pages/PurchaseOrders/NewPurchaseOrderPage.tsx` (PageWrap, 검색 확장, 통화 에러 처리)
+- `dev-frontend/src/pages/PurchaseOrders/PurchaseOrdersPage.tsx` (FilterToolbar, IconBtn, SearchableSelect, 우측 패널, 인보이스 액션)
+- `dev-frontend/src/pages/PurchaseOrders/PurchaseOrderDetailPage.tsx` (embeddedId, EmbeddedTitle/Footer, Invoice 섹션, Edit 제거)
+- `dev-frontend/src/pages/Restaurant/InvoicesPage.tsx` (SOA inline 표시, SoaBundleRow 컴포넌트)
+- `dev-frontend/src/pages/Supplier/SupplierContractsPage.tsx` (PageTab 추가)
+- `dev-frontend/src/pages/SupplierDirectory/SupplierDirectoryPage.tsx` (PageTab 추가, "+" 제거)
+- `dev-frontend/public/locales/{en,ko,zh,ms}/purchaseOrders.json` (newPo.title)
+- `dev-frontend/public/locales/{en,ko,zh,ms}/recipes.json` (Stock Items)
+
+### DB/설정 변경
+- `purchase_orders` 테이블에 3개 컬럼 추가 (external_invoice_*)
+- `addon_modules.inventory_management.ui_routes` 에 `/restaurant/*/ingredients` 추가
+
+---
 
 ## ✅ 완료: Supply Chain Sprint 7 — Operational Hardening (2026-04-28, 미배포)
 
