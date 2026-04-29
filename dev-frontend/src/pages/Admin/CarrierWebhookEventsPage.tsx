@@ -254,13 +254,23 @@ const CarrierWebhookEventsPage: React.FC = () => {
       <Header>
         <div>
           <Title>{t('admin:carrierWebhooks.title', 'Carrier Webhook Events')}</Title>
-          <Subtitle>{t('admin:carrierWebhooks.subtitle', 'Monitor inbound carrier delivery events, retry failed ones, and run simulate tests.')}</Subtitle>
+          <Subtitle>{t('admin:carrierWebhooks.subtitle', '배송사(carrier)가 보내는 배송 상태 이벤트를 모니터링합니다.')}</Subtitle>
         </div>
         <ThemedButton variant="primary" onClick={() => { setSimOpen(true); setSimResult(null); }}>
-          {t('admin:carrierWebhooks.simulate', '🧪 Send Simulate Event')}
+          {t('admin:carrierWebhooks.simulate', 'Send Simulate Event')}
         </ThemedButton>
       </Header>
       <Content>
+        <div style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 10, padding: '14px 18px', marginBottom: 20, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 600, color: '#0A2540', marginBottom: 6 }}>
+            {t('admin:carrierWebhooks.helpTitle', '이 페이지는 무엇인가요?')}
+          </div>
+          <div>
+            {t('admin:carrierWebhooks.helpDesc', '외부 배송사(Lalamove, GrabExpress 등)가 PO 배송 상태(픽업 완료, 운송중, 배송 완료, 실패 등)를 알려올 때마다 자동으로 기록되는 이벤트입니다. 실패한 이벤트는 Retry 버튼으로 재처리하고, "Send Simulate Event"로 테스트 이벤트를 발송할 수 있습니다. carrier별 webhook URL과 secret 설정은 ')}
+            <a href="/pos/admin/carriers" style={{ color: '#635BFF', fontWeight: 600 }}>Carriers</a>
+            {t('admin:carrierWebhooks.helpDesc2', ' 페이지에서 관리합니다.')}
+          </div>
+        </div>
         <StatsRow>
           <StatCard><div className="label">{t('admin:carrierWebhooks.stats.received24h', 'Last 24h received')}</div><div className="value">{stats.received}</div></StatCard>
           <StatCard><div className="label">{t('admin:carrierWebhooks.stats.applied', 'Applied')}</div><div className="value" style={{ color: '#15803D' }}>{stats.applied}</div></StatCard>
@@ -338,7 +348,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                       {ev.status === 'failed' && (
                         <ThemedButton size="small" variant="outline" onClick={() => onRetry(ev.id)}>
-                          🔁 {t('common:retry', 'Retry')}
+                          {t('common:retry', 'Retry')}
                         </ThemedButton>
                       )}
                       <ThemedButton size="small" variant="ghost" onClick={() => setSelected(ev)}>
@@ -372,7 +382,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
               <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Carrier event id:</strong> {selected.carrier_event_id || '—'}</div>
               <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Received:</strong> {formatDateTime(selected.received_at)}</div>
               <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Applied:</strong> {selected.applied_at ? formatDateTime(selected.applied_at) : '—'}</div>
-              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Signature:</strong> {selected.signature_valid ? '✓ valid' : '✗ invalid'}</div>
+              <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Signature:</strong> <span style={{ color: selected.signature_valid ? '#15803D' : '#991B1B', fontWeight: 600 }}>{selected.signature_valid ? 'valid' : 'invalid'}</span></div>
               <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Source IP:</strong> <Code>{selected.source_ip || '—'}</Code></div>
               <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Status:</strong> <StatusBadge $status={selected.status}>{selected.status}</StatusBadge></div>
               <div><strong style={{ fontSize: 12, color: '#6B7280' }}>Retry count:</strong> {selected.retry_count}</div>
@@ -423,13 +433,13 @@ const CarrierWebhookEventsPage: React.FC = () => {
         {simResult && (
           <div style={{ marginTop: 12, padding: 12, background: simResult.error ? '#FEF2F2' : '#ECFDF5', border: `1px solid ${simResult.error ? '#FCA5A5' : '#A7F3D0'}`, borderRadius: 8, fontSize: 13 }}>
             {simResult.error ? (
-              <span style={{ color: '#991B1B' }}>✗ {simResult.error}</span>
+              <span style={{ color: '#991B1B', fontWeight: 600 }}>{simResult.error}</span>
             ) : (
               <div style={{ color: '#065F46' }}>
-                ✓ Event {simResult.event_id} — status: <strong>{simResult.status}</strong>
+                <strong>Event {simResult.event_id}</strong> — status: <strong>{simResult.status}</strong>
                 {simResult.mapped_status && <> · mapped: <Code>{simResult.mapped_status}</Code></>}
                 {simResult.purchase_order_id && <> · PO #{simResult.purchase_order_id}</>}
-                {simResult.error && <div style={{ marginTop: 6, color: '#991B1B' }}>⚠ {simResult.error}</div>}
+                {simResult.error && <div style={{ marginTop: 6, color: '#991B1B', fontWeight: 600 }}>{simResult.error}</div>}
               </div>
             )}
           </div>

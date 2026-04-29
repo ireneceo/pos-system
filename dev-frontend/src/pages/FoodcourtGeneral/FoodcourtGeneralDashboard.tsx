@@ -599,7 +599,6 @@ const FoodcourtGeneralDashboard: React.FC = () => {
     pendingInvoices: 0,
     overdueInvoices: 0,
     activePlans: 0,
-    totalManagers: 0,
   });
 
   const [restaurants, setRestaurants] = useState<any[]>([]);
@@ -664,16 +663,15 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const today = now.toISOString().split('T')[0];
 
-      const [revenueRes, plansRes, invoicesRes, managersRes, subsRes] = await Promise.all([
+      const [revenueRes, plansRes, invoicesRes, subsRes] = await Promise.all([
         fetch(`/api/foodcourts/${foodcourt.id}/revenue?start_date=${monthStart}&end_date=${today}`, { headers }),
         fetch(`/api/foodcourts/${foodcourt.id}/plans`, { headers }),
         fetch('/api/invoices', { headers }),
-        fetch('/api/users?role=Foodcourt Manager', { headers }),
         fetch(`/api/foodcourts/${foodcourt.id}/subscriptions`, { headers }),
       ]);
 
-      const [revenueData, plansData, invoicesData, managersData, subsData] = await Promise.all([
-        revenueRes.json(), plansRes.json(), invoicesRes.json(), managersRes.json(), subsRes.json(),
+      const [revenueData, plansData, invoicesData, subsData] = await Promise.all([
+        revenueRes.json(), plansRes.json(), invoicesRes.json(), subsRes.json(),
       ]);
 
       const revenue = revenueData.data || revenueData;
@@ -689,7 +687,6 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       const pendingInvoices = invoices.filter((inv: any) => inv.status === 'pending_payment' || inv.status === 'sent').length;
       const overdueInvoices = invoices.filter((inv: any) => inv.status === 'overdue').length;
 
-      const managers = Array.isArray(managersData) ? managersData : (managersData.data || []);
       const subs = subsData.data || subsData || [];
       setSubscriptions(subs);
 
@@ -701,7 +698,6 @@ const FoodcourtGeneralDashboard: React.FC = () => {
         pendingInvoices,
         overdueInvoices,
         activePlans,
-        totalManagers: managers.length,
       });
 
       const alertList: Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }> = [];
@@ -863,10 +859,6 @@ const FoodcourtGeneralDashboard: React.FC = () => {
           <DashboardStatCard color="#10B981">
             <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.activePlans')}</DashboardStatLabel>
             <DashboardStatValue>{stats.activePlans}</DashboardStatValue>
-          </DashboardStatCard>
-          <DashboardStatCard color="#6366F1">
-            <DashboardStatLabel>{t('foodcourt:foodcourtGeneralDashboard.foodcourtManagers')}</DashboardStatLabel>
-            <DashboardStatValue>{stats.totalManagers}</DashboardStatValue>
           </DashboardStatCard>
         </DashboardStatsGrid>
 

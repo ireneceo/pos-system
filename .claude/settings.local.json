@@ -66,7 +66,10 @@
       "Bash(tee /tmp/build-output.log)",
       "Bash(echo \"exit=$?\")",
       "Bash(xargs -I{} grep -E \"\\(Sprint|sprint[1-6]|Carrier|migration|✓|✗|Schema|Seed|Backup|smoke|delivered|returns\\)\" {})",
-      "Bash(echo \"  Frontend bundle \\(운영\\): $\\(curl -s https://purplehere.com/)"
+      "Bash(echo \"  Frontend bundle \\(운영\\): $\\(curl -s https://purplehere.com/)",
+      "Bash(chmod +x /var/www/dev-backend/scripts/sa-token.js /var/www/dev-backend/scripts/blog-bulk-publish.js)",
+      "Bash(awk '/<NavIcon>/' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)",
+      "Bash(awk '/System Admin/,/Brand General Settings/' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)"
     ],
     "deny": [],
     "ask": []

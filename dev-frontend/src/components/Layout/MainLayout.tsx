@@ -2091,11 +2091,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   {t("nav.siteSettings")}
                 </NavItem>
                 <NavItem to="/pos/admin/carriers" active={isActive('/pos/admin/carriers')} onClick={closeSidebar}>
-                  <NavIcon>📦</NavIcon>
+                  <NavIcon>▦</NavIcon>
                   {t("nav.carriers", "Carriers")}
                 </NavItem>
                 <NavItem to="/pos/admin/carrier-webhooks" active={isActive('/pos/admin/carrier-webhooks')} onClick={closeSidebar}>
-                  <NavIcon>⚡</NavIcon>
+                  <NavIcon>⊕</NavIcon>
                   {t("nav.carrierWebhooks", "Carrier Webhooks")}
                 </NavItem>
                 <NavItem to="/pos/admin/notification-settings" active={isActive('/pos/admin/notification-settings')} onClick={closeSidebar}>
@@ -2107,7 +2107,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   {t("nav.systemConfig")}
                 </NavItem>
                 <NavItem to="/pos/admin/scheduler-monitor" active={isActive('/pos/admin/scheduler-monitor')} onClick={closeSidebar}>
-                  <NavIcon>⏱</NavIcon>
+                  <NavIcon>⊙</NavIcon>
                   {t("nav.schedulerMonitor", "Scheduler Monitor")}
                 </NavItem>
                 <NavItem to="/pos/admin/content" active={isActive('/pos/admin/content')} onClick={closeSidebar}>

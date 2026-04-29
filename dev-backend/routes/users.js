@@ -702,6 +702,11 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
   const EntityPlan = require('../models/EntityPlan');
   const RestaurantIngredientCost = require('../models/RestaurantIngredientCost');
 
+  // Self-delete 차단 (System Admin이라도 자기 계정은 못 지움)
+  if (req.user.id.toString() === req.params.id.toString()) {
+    return res.status(400).json({ success: false, error: 'You cannot delete your own account.' });
+  }
+
   const t = await sequelize.transaction();
 
   try {

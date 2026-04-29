@@ -1099,7 +1099,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                     {damagedQty > 0 && ` · ${damagedQty} damaged/wrong`}
                     {issueQty > 0 && ` · ${issueQty} short/pending`}
                     {totalSplit === 0 && t('receive.noChanges', 'No quantity entered')}
-                    {overshoot && ` · ⚠ ${t('receive.exceedsRemaining', 'exceeds remaining')}`}
+                    {overshoot && ` · ${t('receive.exceedsRemaining', 'exceeds remaining')}`}
                   </span>
                 </div>
               </ReceiveLineCard>

@@ -302,7 +302,8 @@ const EmptyBox = styled.div`
   font-size: 14px;
 `;
 
-function initialsOf(name: string): string {
+function initialsOf(name: string | null | undefined): string {
+  if (!name) return '?';
   return name.split(/\s+/).slice(0, 2).map(w => w.charAt(0).toUpperCase()).join('') || '?';
 }
 
@@ -341,7 +342,23 @@ const SupplierProfilePage: React.FC = () => {
         setProfile(null);
         return;
       }
-      setProfile(data.data || null);
+      // Backend 응답 shape: { data: { supplier, products, categories, my_contract } }
+      // → SupplierProfile interface(평탄)로 변환
+      const d = data.data;
+      if (!d?.supplier) {
+        setLoadError(t('profile.loadFailed') as string);
+        setProfile(null);
+        return;
+      }
+      const cats: ProductCategory[] = Array.isArray(d.categories) ? d.categories : [];
+      const flattened: SupplierProfile = {
+        ...d.supplier,
+        products: Array.isArray(d.products) ? d.products : [],
+        product_categories: cats,
+        category_names: cats.map((c: ProductCategory) => c.name).filter(Boolean),
+        my_contract: d.my_contract || { status: 'none' }
+      };
+      setProfile(flattened);
     } catch (err) {
       console.error('Failed to fetch supplier profile:', err);
       setLoadError(t('profile.loadFailed') as string);

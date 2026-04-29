@@ -201,7 +201,8 @@ function statusVariant(s?: string): 'success' | 'warning' | 'neutral' | 'danger'
   return 'neutral';
 }
 
-function initialsOf(name: string): string {
+function initialsOf(name: string | null | undefined): string {
+  if (!name) return '?';
   return name.split(/\s+/).slice(0, 2).map(w => w.charAt(0).toUpperCase()).join('') || '?';
 }
 

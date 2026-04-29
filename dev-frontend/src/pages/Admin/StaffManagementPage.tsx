@@ -383,8 +383,7 @@ const ErrorMessage = styled.div`
 
 const AdminStaffManagementPage: React.FC = () => {
   const { t, i18n } = useTranslation('admin');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const auth = useAuth();
+  const { user: currentUser } = useAuth();
   const { operationSettings } = useStore();
   const [activeTab, handleTabChange] = useTabParam<'all' | 'System Admin' | 'Restaurant Admin' | 'Staff' | 'Managers'>('all');
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -1124,25 +1123,22 @@ const AdminStaffManagementPage: React.FC = () => {
     if (!deletingStaff) return;
 
     try {
-      console.log(`🔄 [Admin] Deleting staff: ${deletingStaff.name}...`);
-      
       const response = await fetch(`/api/users/${deletingStaff.id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
 
       if (response.ok) {
-        // Remove from local state
         setStaffList(prevStaff => prevStaff.filter(s => s.id !== deletingStaff.id));
+        setShowDeleteConfirm(false);
+        setDeletingStaff(null);
       } else {
-        console.error('Failed to delete staff');
+        const errorData = await response.json().catch(() => ({}));
+        alert(`Failed to delete: ${errorData.error || errorData.message || `HTTP ${response.status}`}`);
       }
-    } catch (error) {
-      console.error('Error deleting staff:', error);
+    } catch (error: any) {
+      alert(`Error deleting staff: ${error.message || error}`);
     }
-    
-    setShowDeleteConfirm(false);
-    setDeletingStaff(null);
   };
 
   const cancelDelete = () => {
@@ -1522,7 +1518,7 @@ const AdminStaffManagementPage: React.FC = () => {
                     >
                       <IconSymbol>⚷</IconSymbol>
                     </IconButton>
-                    {staff.role !== 'System Admin' && (
+                    {currentUser?.id?.toString() !== staff.id?.toString() && (
                       <IconButton
                         onClick={() => deleteStaff(staff)}
                         title="Delete Staff"

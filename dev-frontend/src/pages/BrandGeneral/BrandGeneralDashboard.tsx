@@ -499,7 +499,6 @@ const BrandGeneralDashboard: React.FC = () => {
     pendingInvoices: 0,
     overdueInvoices: 0,
     activePlans: 0,
-    totalManagers: 0,
   });
 
   const [trendData, setTrendData] = useState<any[]>([]);
@@ -569,18 +568,17 @@ const BrandGeneralDashboard: React.FC = () => {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const today = now.toISOString().split('T')[0];
 
-      const [revenueRes, plansRes, invoicesRes, managersRes, subsRes, subStatusRes, contractsRes] = await Promise.all([
+      const [revenueRes, plansRes, invoicesRes, subsRes, subStatusRes, contractsRes] = await Promise.all([
         fetch(`/api/brands/${brand.id}/revenue?start_date=${monthStart}&end_date=${today}`, { headers }),
         fetch(`/api/brands/${brand.id}/plans`, { headers }),
         fetch('/api/invoices', { headers }),
-        fetch('/api/users?role=Brand Manager', { headers }),
         fetch(`/api/brands/${brand.id}/subscriptions`, { headers }),
         fetch('/api/restaurants/subscription-status', { headers }),
         fetch('/api/contracts?stage=active', { headers }),
       ]);
 
-      const [revenueData, plansData, invoicesData, managersData, subsData, subStatusData, contractsData] = await Promise.all([
-        revenueRes.json(), plansRes.json(), invoicesRes.json(), managersRes.json(), subsRes.json(), subStatusRes.json(), contractsRes.json(),
+      const [revenueData, plansData, invoicesData, subsData, subStatusData, contractsData] = await Promise.all([
+        revenueRes.json(), plansRes.json(), invoicesRes.json(), subsRes.json(), subStatusRes.json(), contractsRes.json(),
       ]);
 
       // Active contracts
@@ -613,7 +611,6 @@ const BrandGeneralDashboard: React.FC = () => {
       const pendingInvoices = invoices.filter((inv: any) => inv.status === 'pending_payment' || inv.status === 'sent').length;
       const overdueInvoices = invoices.filter((inv: any) => inv.status === 'overdue').length;
 
-      const managers = Array.isArray(managersData) ? managersData : (managersData.data || []);
       const subs = subsData.data || subsData || [];
       setSubscriptions(subs);
 
@@ -625,7 +622,6 @@ const BrandGeneralDashboard: React.FC = () => {
         pendingInvoices,
         overdueInvoices,
         activePlans,
-        totalManagers: managers.length,
       });
 
       // Generate alerts
@@ -775,10 +771,6 @@ const BrandGeneralDashboard: React.FC = () => {
           <DashboardStatCard color="#10B981">
             <DashboardStatLabel>{t('brand:brandGeneralDashboard.activePlans')}</DashboardStatLabel>
             <DashboardStatValue>{stats.activePlans}</DashboardStatValue>
-          </DashboardStatCard>
-          <DashboardStatCard color="#6366F1">
-            <DashboardStatLabel>{t('brand:brandGeneralDashboard.brandManagers')}</DashboardStatLabel>
-            <DashboardStatValue>{stats.totalManagers}</DashboardStatValue>
           </DashboardStatCard>
         </DashboardStatsGrid>
 

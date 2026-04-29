@@ -2426,7 +2426,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       ) : (
                         <div>
                           <div style={{ fontSize: 13, color: '#92400E', marginBottom: 8 }}>
-                            ⚠ {t('admin:restaurantsPage.noContractLinked', 'No franchise contract linked to this restaurant')}
+                            {t('admin:restaurantsPage.noContractLinked', 'No franchise contract linked to this restaurant')}
                           </div>
                           <ThemedButton variant="outline" onClick={openContractPicker}>
                             {t('admin:restaurantsPage.linkExistingContract', 'Link existing contract')}
@@ -2473,7 +2473,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       ) : (
                         <div>
                           <div style={{ fontSize: 13, color: '#92400E', marginBottom: 8 }}>
-                            ⚠ {t('admin:restaurantsPage.noBrandPlanLinked', 'No brand plan linked to this restaurant')}
+                            {t('admin:restaurantsPage.noBrandPlanLinked', 'No brand plan linked to this restaurant')}
                           </div>
                           <ThemedButton variant="outline" onClick={openBrandPlanPicker}>
                             {t('admin:restaurantsPage.linkExistingPlan', 'Link existing plan')}
@@ -2530,7 +2530,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       ) : (
                         <div>
                           <div style={{ fontSize: 13, color: '#92400E', marginBottom: 8 }}>
-                            ⚠ {t('admin:restaurantsPage.noTenancyContractLinked', 'No tenancy contract linked to this restaurant')}
+                            {t('admin:restaurantsPage.noTenancyContractLinked', 'No tenancy contract linked to this restaurant')}
                           </div>
                           <ThemedButton variant="outline" onClick={openTenancyContractPicker}>
                             {t('admin:restaurantsPage.linkExistingContract', 'Link existing contract')}
@@ -2579,7 +2579,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                       ) : (
                         <div>
                           <div style={{ fontSize: 13, color: '#92400E', marginBottom: 8 }}>
-                            ⚠ {t('admin:restaurantsPage.noFoodcourtPlanLinked', 'No foodcourt plan linked to this restaurant')}
+                            {t('admin:restaurantsPage.noFoodcourtPlanLinked', 'No foodcourt plan linked to this restaurant')}
                           </div>
                           <ThemedButton variant="outline" onClick={openFoodcourtPlanPicker}>
                             {t('admin:restaurantsPage.linkExistingPlan', 'Link existing plan')}

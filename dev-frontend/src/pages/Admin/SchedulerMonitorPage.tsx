@@ -47,6 +47,31 @@ function fmtDuration(ms: number | null): string {
   return `${(ms / 60_000).toFixed(1)}m`;
 }
 
+// Cron job 식별자 → 사용자 친화 라벨/설명
+const JOB_LABELS: Record<string, { label: string; desc: string }> = {
+  'subscription-reminder':       { label: '구독 만료 알림',       desc: '체험/구독 종료 D-3·7·14일 전 자동 알림 발송' },
+  'invoice-reminder':            { label: '인보이스 발송 리마인더', desc: '미발송/연체 인보이스 일일 자동 발송' },
+  'soa-statement':               { label: '월간 SOA 발송',         desc: 'Statement of Account 매월 1일 자동 발송' },
+  'contract-expiry-reminder':    { label: '계약 만료 알림',         desc: '레스토랑 계약 만료 임박 자동 알림' },
+  'invoice-overdue-suspend':     { label: '연체 자동 정지',         desc: '연체 30일 경과 시 계정 자동 suspend' },
+  'po-auto-cancel':              { label: '발주 자동 취소',         desc: '오래된 미수령 PO 자동 취소' },
+  'inventory-low-stock-alert':   { label: '재고 부족 알림',         desc: '안전재고 미만 재료 자동 알림' },
+};
+
+// results 객체 → 사람이 읽을 수 있는 한 줄
+function summarizeResults(results: Record<string, any> | null, error: string | null): string {
+  if (error) return error;
+  if (!results) return '—';
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(results)) {
+    if (v === 0 || v == null) continue;
+    if (typeof v === 'object') continue;  // 중첩 객체는 카드/모달에서만
+    const friendly = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    parts.push(`${friendly}: ${v}`);
+  }
+  return parts.length ? parts.join(' · ') : '결과 없음';
+}
+
 const SchedulerMonitorPage: React.FC = () => {
   const { t } = useTranslation('admin');
   const { operationSettings } = useStore();
@@ -96,6 +121,13 @@ const SchedulerMonitorPage: React.FC = () => {
       </Header>
 
       <Content>
+        <HelpBox>
+          <HelpTitle>{t('schedulerMonitor.helpTitle', '이 페이지는 무엇인가요?')}</HelpTitle>
+          <HelpDesc>
+            {t('schedulerMonitor.helpDesc', '시스템이 매일 또는 주기적으로 자동 실행하는 백그라운드 작업(cron jobs)의 실행 결과를 확인하는 페이지입니다. 구독 알림 발송, 인보이스 자동 발송, 계약 만료 체크 등의 자동화 작업이 정상 작동하는지 모니터링하고, 실패한 작업의 원인을 추적할 수 있습니다.')}
+          </HelpDesc>
+        </HelpBox>
+
         {/* ─── Job summary cards ─── */}
         <SectionTitle>{t('schedulerMonitor.jobs', 'Jobs')}</SectionTitle>
         <JobGrid>
@@ -107,9 +139,12 @@ const SchedulerMonitorPage: React.FC = () => {
           )}
           {jobs.map(j => {
             const sc = STATUS_COLORS[j.latest_status || 'running'] || STATUS_COLORS.running;
+            const meta = JOB_LABELS[j.job_name];
             return (
               <JobCard key={j.job_name}>
-                <JobName>{j.job_name}</JobName>
+                <JobName>{meta?.label || j.job_name}</JobName>
+                {meta?.desc && <JobDesc>{meta.desc}</JobDesc>}
+                {!meta && <JobCode>{j.job_name}</JobCode>}
                 <JobMetaRow>
                   <StatusPill $bg={sc.bg} $fg={sc.fg}>{j.latest_status || '—'}</StatusPill>
                   {j.errors_24h > 0 && <ErrorPill>{j.errors_24h} errors / 24h</ErrorPill>}
@@ -128,12 +163,15 @@ const SchedulerMonitorPage: React.FC = () => {
                 </JobMeta>
                 {j.latest_results && (
                   <Results>
-                    {Object.entries(j.latest_results).slice(0, 6).map(([k, v]) => (
-                      <ResultPair key={k}>
-                        <ResultKey>{k}</ResultKey>
-                        <ResultVal>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</ResultVal>
-                      </ResultPair>
-                    ))}
+                    {Object.entries(j.latest_results)
+                      .filter(([, v]) => typeof v !== 'object' && v !== 0 && v != null)
+                      .slice(0, 6)
+                      .map(([k, v]) => (
+                        <ResultPair key={k}>
+                          <ResultKey>{k.replace(/_/g, ' ')}</ResultKey>
+                          <ResultVal>{String(v)}</ResultVal>
+                        </ResultPair>
+                      ))}
                   </Results>
                 )}
                 {j.latest_error && (
@@ -179,18 +217,15 @@ const SchedulerMonitorPage: React.FC = () => {
             <tbody>
               {filteredRuns.map(r => {
                 const sc = STATUS_COLORS[r.status] || STATUS_COLORS.running;
-                const summary = r.error_message
-                  ? r.error_message
-                  : r.results
-                    ? Object.entries(r.results).filter(([, v]) => v !== 0 && v != null).map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ')
-                    : '—';
+                const summary = summarizeResults(r.results, r.error_message);
+                const jobMeta = JOB_LABELS[r.job_name];
                 return (
                   <tr key={r.id}>
-                    <Td>{r.job_name}</Td>
+                    <Td>{jobMeta?.label || r.job_name}</Td>
                     <Td>{formatTime(r.started_at)}</Td>
                     <Td>{fmtDuration(r.duration_ms)}</Td>
                     <Td><StatusPill $bg={sc.bg} $fg={sc.fg}>{r.status}</StatusPill></Td>
-                    <Td $small title={summary}>{summary || '—'}</Td>
+                    <Td $small title={summary}>{summary}</Td>
                   </tr>
                 );
               })}
@@ -248,6 +283,37 @@ const SectionTitle = styled.h2`
   color: #0A2540;
   margin: 0 0 12px;
 `;
+const HelpBox = styled.div`
+  background: #F1F5F9;
+  border: 1px solid #CBD5E1;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+`;
+const HelpTitle = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #0A2540;
+  margin-bottom: 6px;
+`;
+const HelpDesc = styled.div`
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.6;
+`;
+const JobDesc = styled.div`
+  font-size: 12px;
+  color: #6B7C93;
+  margin-top: 2px;
+  margin-bottom: 10px;
+  line-height: 1.4;
+`;
+const JobCode = styled.div`
+  font-size: 11px;
+  color: #94A3B8;
+  font-family: ui-monospace, monospace;
+  margin-bottom: 10px;
+`;
 const JobGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -260,11 +326,10 @@ const JobCard = styled.div`
   padding: 18px 20px;
 `;
 const JobName = styled.div`
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #0A2540;
-  margin-bottom: 8px;
-  font-family: ui-monospace, monospace;
+  margin-bottom: 4px;
 `;
 const JobMetaRow = styled.div`display: flex; gap: 6px; margin-bottom: 12px;`;
 const StatusPill = styled.span<{ $bg: string; $fg: string }>`

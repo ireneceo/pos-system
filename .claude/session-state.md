@@ -1,12 +1,29 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-28 (Sprint 7 + Timezone + 모바일 헤더 + 항목 12 마무리, v3.20 배포 후보)
+**마지막 업데이트:** 2026-04-29 (Staff 삭제 기능 fix 추가, v3.20 배포 후보 누적)
 **버전:** **v3.19** (운영) → 누적 v3.20 배포 후보
 **작업 상태:** 개발 완료 — Irene 브라우저 테스트 → /배포 v3.20
 
 ### 진행 중인 작업
 - 없음
+
+### 2026-04-29 추가 — 블로그/랜딩 admin 작업 OS-사용자 무관 패턴 정착
+- 문제: lua OS 사용자가 `/글쓰기` 발행 단계에서 막힘. 원인은 백엔드 `.env`(irene:irene 600) 권한 — application 권한 차단 아님.
+- 해결: 모든 admin 작업을 HTTP API 호출 패턴으로 통일 (DB 직접 접근 금지)
+- 신규: `scripts/sa-token.js` (SA JWT 발급 헬퍼), `scripts/blog-bulk-publish.js` (login + bulk POST 통합)
+- 자격증명: `~/.purple-pos/creds.json` (chmod 600) 또는 `PURPLE_USER`/`PURPLE_PASS`
+- 6개 스킬에 ★ 사용자 환경/권한 모델 섹션 추가: `/글쓰기`, `/블로그발행`, `/블로그감사`, `/블로그리서치`, `/블로그초안`, `/블로그캘린더`
+- `/블로그발행` 전체 재작성 (모든 단계 API 패턴)
+- `/글쓰기` 6단계 재작성 (`blog-bulk-publish.js` 사용 강제, 우회 명시 금지)
+- 검증: T1 자격증명 부재 fail-fast ✓ / T2 401 fail ✓ / T3 payload 부재 fail-fast ✓ / T4 bulk POST + group_id 응답 ✓ / health-check 43/43 ✓
+
+### 2026-04-29 추가 — Staff 삭제 기능 수정
+- 문제: `/pos/admin/staff` 페이지에서 `staff.role !== 'System Admin'` 가드로 SA 역할 staff는 삭제 버튼 자체가 비표시
+- Frontend `StaffManagementPage.tsx`: 가드를 `currentUser.id !== staff.id`로 변경 (자기 자신만 차단). confirmDelete 에러 메시지를 alert로 노출.
+- Backend `routes/users.js` DELETE: self-delete 차단 가드 추가 (`req.user.id === req.params.id` → 400)
+- Admin123(id=228, han.sj.lua@gmail.com, 어제 잘못 만든 SA) cascade 삭제 — 같은 이메일/유저네임 slot 비음
+- 검증: T1 self-delete 차단(400) ✓ / T2 같은 이메일 재가입(201) ✓ / T3 타 user 삭제(200) ✓ / health-check 43/43 ✓ / 빌드 `main.cf314102.js`
 
 ### 완료된 작업 (이번 세션 — 2026-04-28)
 

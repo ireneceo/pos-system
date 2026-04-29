@@ -206,8 +206,21 @@ const CarriersPage: React.FC = () => {
         setError(data?.message || 'Failed to save');
         return;
       }
-      close();
+      const wasNew = !editing;
+      const savedCarrier = data.data;
       await load();
+      // Add 모드 → Save 직후 Edit 모드로 자동 전환 (webhook 섹션 노출)
+      if (wasNew && savedCarrier) {
+        setEditing(savedCarrier);
+        setWebhookForm({
+          webhook_event_path: savedCarrier.webhook_event_path || '',
+          webhook_tracking_path: savedCarrier.webhook_tracking_path || '',
+          webhook_idempotency_path: savedCarrier.webhook_idempotency_path || '',
+          webhook_status_map: savedCarrier.webhook_status_map ? JSON.stringify(savedCarrier.webhook_status_map, null, 2) : ''
+        });
+      } else {
+        close();
+      }
     } catch (err) {
       console.error(err);
       setError('Network error');
@@ -371,14 +384,22 @@ const CarriersPage: React.FC = () => {
           </label>
         </FormGroup>
 
-        {/* Sprint 7 — Webhook Integration (편집 시에만) */}
+        {/* Sprint 7 — Webhook Integration */}
+        {!editing && (
+          <div style={{ marginTop: 18, padding: 14, background: '#F8FAFC', border: '1px dashed #CBD5E1', borderRadius: 10, fontSize: 13, color: '#475569' }}>
+            <strong style={{ color: '#0A2540' }}>{t('admin:carriers.webhook.title', 'Webhook Integration')}</strong>
+            <div style={{ marginTop: 6 }}>
+              {t('admin:carriers.webhook.addModeHint', 'Carrier를 먼저 저장한 뒤 다시 열어서 webhook을 설정하세요. (저장 직후 자동으로 편집 모드로 전환됩니다.)')}
+            </div>
+          </div>
+        )}
         {editing && (
           <details style={{ marginTop: 18, border: '1px solid #E6EBF1', borderRadius: 10, padding: '12px 16px' }} open>
             <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#0A2540' }}>
-              ⚡ {t('admin:carriers.webhook.title', 'Webhook Integration')}
+              {t('admin:carriers.webhook.title', 'Webhook Integration')}
               {editing.webhook_secret_set && (
-                <span style={{ marginLeft: 10, fontSize: 11, color: '#15803D', fontWeight: 500 }}>
-                  ✓ {t('admin:carriers.webhook.active', 'Active')}
+                <span style={{ marginLeft: 10, fontSize: 11, color: '#15803D', fontWeight: 600, background: '#ECFDF5', padding: '2px 8px', borderRadius: 4 }}>
+                  {t('admin:carriers.webhook.active', 'Active')}
                 </span>
               )}
             </summary>
@@ -406,13 +427,13 @@ const CarriersPage: React.FC = () => {
                     </div>
                   </div>
                   <ThemedButton size="small" variant="outline" onClick={() => setSecretConfirm(true)}>
-                    🔄 {t('admin:carriers.webhook.regenerate', 'Regenerate')}
+                    {t('admin:carriers.webhook.regenerate', 'Regenerate')}
                   </ThemedButton>
                 </div>
                 {secretConfirm && (
                   <div style={{ marginTop: 12, padding: 10, background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: 8 }}>
-                    <div style={{ fontSize: 12, color: '#92400E', marginBottom: 8 }}>
-                      ⚠ {t('admin:carriers.webhook.regenerateWarning', '이 작업은 기존 secret을 즉시 무효화합니다. carrier 콘솔에 새 secret을 등록하기 전까지는 webhook 호출이 실패합니다.')}
+                    <div style={{ fontSize: 12, color: '#92400E', marginBottom: 8, fontWeight: 600 }}>
+                      {t('admin:carriers.webhook.regenerateWarning', '주의: 이 작업은 기존 secret을 즉시 무효화합니다. carrier 콘솔에 새 secret을 등록하기 전까지는 webhook 호출이 실패합니다.')}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <ThemedButton size="small" variant="danger" onClick={regenerateSecret}>{t('admin:carriers.webhook.regenerateConfirm', 'Confirm & Regenerate')}</ThemedButton>
@@ -423,13 +444,13 @@ const CarriersPage: React.FC = () => {
                 {revealedSecret && (
                   <div style={{ marginTop: 12, padding: 12, background: '#FEE2E2', border: '2px solid #DC2626', borderRadius: 8 }}>
                     <div style={{ fontSize: 12, color: '#991B1B', fontWeight: 700, marginBottom: 8 }}>
-                      ⚠ {t('admin:carriers.webhook.copyOnce', '이 secret은 다시 볼 수 없습니다. 지금 carrier 콘솔에 등록하세요.')}
+                      {t('admin:carriers.webhook.copyOnce', '주의: 이 secret은 다시 볼 수 없습니다. 지금 carrier 콘솔에 등록하세요.')}
                     </div>
                     <code style={{ display: 'block', padding: 10, background: 'white', border: '1px solid #FCA5A5', borderRadius: 6, fontSize: 12, wordBreak: 'break-all', userSelect: 'all' }}>
                       {revealedSecret}
                     </code>
                     <ThemedButton size="small" variant="outline" style={{ marginTop: 8 }} onClick={() => { navigator.clipboard.writeText(revealedSecret); }}>
-                      📋 {t('common:copy', 'Copy')}
+                      {t('common:copy', 'Copy')}
                     </ThemedButton>
                     <ThemedButton size="small" variant="ghost" style={{ marginTop: 8, marginLeft: 8 }} onClick={() => setRevealedSecret(null)}>
                       {t('common:dismiss', 'I have saved this')}
@@ -463,7 +484,7 @@ const CarriersPage: React.FC = () => {
                 </div>
               </FormGroup>
               {webhookError && <div style={{ padding: 8, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 6, fontSize: 12, color: '#991B1B' }}>{webhookError}</div>}
-              {webhookOk && <div style={{ padding: 8, background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 6, fontSize: 12, color: '#065F46' }}>✓ {webhookOk}</div>}
+              {webhookOk && <div style={{ padding: 8, background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 6, fontSize: 12, color: '#065F46' }}>{webhookOk}</div>}
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                 <ThemedButton size="small" variant="primary" onClick={saveWebhook} disabled={webhookSubmitting}>
                   {webhookSubmitting ? t('common:saving', 'Saving…') : t('admin:carriers.webhook.save', 'Save Webhook Config')}
