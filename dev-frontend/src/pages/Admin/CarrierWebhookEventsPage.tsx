@@ -252,10 +252,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <div>
-          <Title>{t('admin:carrierWebhooks.title', 'Carrier Webhook Events')}</Title>
-          <Subtitle>{t('admin:carrierWebhooks.subtitle', '배송사(carrier)가 보내는 배송 상태 이벤트를 모니터링합니다.')}</Subtitle>
-        </div>
+        <Title>{t('admin:carrierWebhooks.title', 'Carrier Webhook Events')}</Title>
         <ThemedButton variant="primary" onClick={() => { setSimOpen(true); setSimResult(null); }}>
           {t('admin:carrierWebhooks.simulate', 'Send Simulate Event')}
         </ThemedButton>

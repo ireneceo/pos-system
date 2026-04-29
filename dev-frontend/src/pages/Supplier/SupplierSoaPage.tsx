@@ -137,7 +137,6 @@ const SupplierSoaPage: React.FC = () => {
       <Header>
         <div>
           <Title>{t('supplier:soaPage.title', 'Statement of Account (Monthly SOA)')}</Title>
-          <Subtitle>{t('supplier:soaPage.subtitle', '')}</Subtitle>
         </div>
       </Header>
 

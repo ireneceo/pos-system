@@ -9,12 +9,12 @@ Ingredient.init({
     primaryKey: true,
     autoIncrement: true
   },
-  // Owner type (brand or restaurant)
+  // Owner type (brand / restaurant / foodcourt)
   owner_type: {
-    type: DataTypes.ENUM('brand', 'restaurant'),
+    type: DataTypes.ENUM('brand', 'restaurant', 'foodcourt'),
     allowNull: false,
     defaultValue: 'restaurant',
-    comment: 'Owner type: brand (shared) or restaurant (location-specific)'
+    comment: 'Owner type: brand / restaurant / foodcourt (각자 발주 가능)'
   },
   // Owner
   brand_id: {
@@ -22,6 +22,10 @@ Ingredient.init({
     allowNull: true
   },
   restaurant_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  foodcourt_id: {
     type: DataTypes.INTEGER,
     allowNull: true
   },

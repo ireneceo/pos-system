@@ -1299,6 +1299,10 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       updateData.address = req.body.location || req.body.address;
     }
     if (req.body.address_line_2 !== undefined) updateData.address_line_2 = req.body.address_line_2;
+    if (req.body.delivery_address !== undefined) {
+      const v = req.body.delivery_address;
+      updateData.delivery_address = (v == null || (typeof v === 'string' && v.trim() === '')) ? null : String(v);
+    }
     if (req.body.city !== undefined) updateData.city = req.body.city;
     if (req.body.state !== undefined) updateData.state = req.body.state;
     if (req.body.postal_code !== undefined) updateData.postal_code = req.body.postal_code;

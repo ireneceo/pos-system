@@ -79,9 +79,8 @@ async function ingredientBelongsToBuyer(ingredientId, buyerEntity) {
   } else if (buyerEntity.type === 'brand') {
     if (parseInt(ing.brand_id, 10) === buyerEntity.id) return ing;
   } else if (buyerEntity.type === 'foodcourt') {
-    // Ingredient model has no foodcourt_id column; foodcourt buyers cannot
-    // own ingredients directly in current schema. Reject.
-    return null;
+    // Phase 2 (2026-04-29): foodcourt 도 ingredient 소유 (owner_type='foodcourt')
+    if (parseInt(ing.foodcourt_id, 10) === buyerEntity.id) return ing;
   }
   return null;
 }
@@ -222,9 +221,38 @@ router.get('/purchase-orders', async (req, res) => {
       distinct: true
     });
 
+    // Staging 페이지 — items + seller 정보 (is_system_registered 포함) 함께 반환
+    const includeItems = req.query.include === 'items' || req.query.status === 'draft';
+    let enriched = rows;
+    if (includeItems) {
+      const SupplierCompany = require('../models/SupplierCompany');
+      const ids = rows.map(p => p.id);
+      const allItems = ids.length ? await PurchaseOrderItem.findAll({ where: { purchase_order_id: { [Op.in]: ids } } }) : [];
+      const itemsByPo = {};
+      for (const it of allItems) {
+        (itemsByPo[it.purchase_order_id] = itemsByPo[it.purchase_order_id] || []).push(it);
+      }
+      const supplierIds = [...new Set(rows.filter(p => p.seller_type === 'supplier').map(p => p.seller_entity_id).filter(Boolean))];
+      const suppliers = supplierIds.length ? await SupplierCompany.findAll({
+        where: { id: { [Op.in]: supplierIds } },
+        attributes: ['id', 'name', 'phone', 'email', 'is_system_registered', 'min_order_amount']
+      }) : [];
+      const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]));
+      enriched = rows.map(p => {
+        const plain = p.toJSON();
+        plain.items = itemsByPo[p.id] || [];
+        if (p.seller_type === 'supplier' && supplierMap[p.seller_entity_id]) {
+          plain.seller = supplierMap[p.seller_entity_id].toJSON();
+        } else {
+          plain.seller = null;
+        }
+        return plain;
+      });
+    }
+
     res.json({
       success: true,
-      data: rows,
+      data: enriched,
       pagination: { total: count, page, limit, totalPages: Math.ceil(count / limit) }
     });
   } catch (err) {
@@ -404,6 +432,24 @@ router.get('/purchase-orders/:id', async (req, res) => {
 async function createPurchaseOrderCore({ buyerEntity, userId, payload, transaction, poNumberOffset = 0 }) {
   const { seller_type, seller_entity_id, items, expected_delivery_date, delivery_address, notes } = payload || {};
 
+  // Buyer 엔티티 default 배송지 결정 — payload 미지정 시
+  let resolvedDeliveryAddress = delivery_address;
+  if (!resolvedDeliveryAddress && buyerEntity) {
+    if (buyerEntity.type === 'restaurant') {
+      const Restaurant = require('../models/Restaurant');
+      const r = await Restaurant.findByPk(buyerEntity.id, { attributes: ['address', 'delivery_address'] });
+      if (r) resolvedDeliveryAddress = r.delivery_address || r.address || null;
+    } else if (buyerEntity.type === 'brand') {
+      const Brand = require('../models/Brand');
+      const b = await Brand.findByPk(buyerEntity.id, { attributes: ['address'] }).catch(() => null);
+      if (b) resolvedDeliveryAddress = b.address || null;
+    } else if (buyerEntity.type === 'foodcourt') {
+      const Foodcourt = require('../models/Foodcourt');
+      const f = await Foodcourt.findByPk(buyerEntity.id, { attributes: ['address'] }).catch(() => null);
+      if (f) resolvedDeliveryAddress = f.address || null;
+    }
+  }
+
   if (!VALID_SELLER_TYPES.includes(seller_type)) {
     return { ok: false, status: 400, body: { success: false, message: 'Invalid seller_type' } };
   }
@@ -491,7 +537,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     total_amount: totals.total_amount,
     currency: 'MYR',
     expected_delivery_date: expected_delivery_date || null,
-    delivery_address: delivery_address ? sanitizeString(String(delivery_address)) : null,
+    delivery_address: resolvedDeliveryAddress ? sanitizeString(String(resolvedDeliveryAddress)) : null,
     notes: notes ? sanitizeString(String(notes)) : null,
     created_by_user_id: userId
   }, { transaction });
@@ -690,6 +736,141 @@ router.put('/purchase-orders/:id', async (req, res) => {
 // ============================================
 // 5. POST /api/purchase-orders/:id/submit
 // ============================================
+// ============================================
+// GET /api/purchase-orders/:id/pdf — 외부 supplier 발주서 PDF 생성 (HTML 응답, 브라우저에서 인쇄 → PDF)
+// ============================================
+router.get('/purchase-orders/:id/pdf', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Not found' });
+    const po = await PurchaseOrder.findByPk(id, { include: [{ model: PurchaseOrderItem, as: 'items' }] });
+    if (!po) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!checkPOOwnership(po, req)) return res.status(404).json({ success: false, message: 'Not found' });
+
+    // Seller 정보 (외부 supplier 면 SupplierCompany 모델에서 가져옴)
+    const SupplierCompany = require('../models/SupplierCompany');
+    let seller = null;
+    if (po.seller_type === 'supplier' && po.seller_entity_id) {
+      seller = await SupplierCompany.findByPk(po.seller_entity_id);
+    }
+
+    // Buyer 정보
+    let buyerName = '';
+    let buyerAddress = '';
+    if (po.buyer_entity_type === 'restaurant') {
+      const Restaurant = require('../models/Restaurant');
+      const r = await Restaurant.findByPk(po.buyer_entity_id);
+      if (r) { buyerName = r.name; buyerAddress = r.address || ''; }
+    }
+
+    // Ingredient 이름 lookup
+    const ingIds = (po.items || []).map(i => i.ingredient_id).filter(Boolean);
+    const ings = ingIds.length ? await Ingredient.findAll({ where: { id: { [Op.in]: ingIds } }, attributes: ['id', 'name', 'unit'] }) : [];
+    const ingMap = Object.fromEntries(ings.map(i => [i.id, i]));
+
+    const items = (po.items || []).map(it => {
+      const ing = ingMap[it.ingredient_id];
+      const qty = parseFloat(it.quantity_ordered) || 0;
+      const unitPrice = parseFloat(it.unit_price) || 0;
+      return {
+        name: ing?.name || `Ingredient #${it.ingredient_id}`,
+        unit: ing?.unit || '',
+        qty,
+        unit_price: unitPrice,
+        line_total: qty * unitPrice
+      };
+    });
+    const subtotal = items.reduce((s, i) => s + i.line_total, 0);
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PO ${po.po_number || po.id}</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0A2540; padding: 32px; max-width: 800px; margin: 0 auto; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+.meta { color: #6B7280; font-size: 13px; margin-bottom: 28px; }
+.parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+.party { padding: 14px; border: 1px solid #E6EBF1; border-radius: 8px; }
+.party h3 { margin: 0 0 8px; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px; }
+.party .name { font-weight: 600; font-size: 15px; }
+.party .line { font-size: 13px; color: #374151; margin-top: 4px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+th { background: #F8FAFC; text-align: left; padding: 10px 12px; font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #E6EBF1; }
+th.num, td.num { text-align: right; }
+td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
+.total-row td { font-weight: 700; font-size: 15px; border-bottom: none; padding-top: 16px; }
+.notes { padding: 14px; background: #F8FAFC; border-radius: 8px; font-size: 13px; color: #374151; line-height: 1.5; margin-bottom: 20px; }
+.notes h3 { margin: 0 0 6px; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.4px; }
+.footer { font-size: 11px; color: #9CA3AF; margin-top: 28px; padding-top: 16px; border-top: 1px solid #F1F5F9; }
+@media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<h1>Purchase Order</h1>
+<div class="meta">
+  <strong>${po.po_number || `#${po.id}`}</strong> · ${new Date(po.created_at).toLocaleDateString('en-MY')}
+  ${po.expected_delivery_date ? ` · Expected: ${po.expected_delivery_date}` : ''}
+</div>
+<div class="parties">
+  <div class="party">
+    <h3>From (Buyer)</h3>
+    <div class="name">${buyerName || '—'}</div>
+    ${buyerAddress ? `<div class="line">${buyerAddress}</div>` : ''}
+    ${po.delivery_address ? `<div class="line"><strong>Deliver to:</strong> ${po.delivery_address}</div>` : ''}
+  </div>
+  <div class="party">
+    <h3>To (Supplier)</h3>
+    <div class="name">${seller?.name || '—'}</div>
+    ${seller?.phone ? `<div class="line">Phone: ${seller.phone}</div>` : ''}
+    ${seller?.email ? `<div class="line">Email: ${seller.email}</div>` : ''}
+    ${seller?.address ? `<div class="line">${seller.address}</div>` : ''}
+  </div>
+</div>
+<table>
+  <thead><tr><th>Item</th><th class="num">Qty</th><th>Unit</th><th class="num">Unit Price</th><th class="num">Total</th></tr></thead>
+  <tbody>
+    ${items.map(i => `<tr><td>${i.name}</td><td class="num">${i.qty}</td><td>${i.unit}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
+    <tr class="total-row"><td colspan="4" class="num">Total (${po.currency || 'MYR'})</td><td class="num">${subtotal.toFixed(2)}</td></tr>
+  </tbody>
+</table>
+${po.notes ? `<div class="notes"><h3>Notes</h3>${po.notes.replace(/\n/g, '<br>')}</div>` : ''}
+<div class="footer">Generated via PurpleHere · ${new Date().toLocaleString('en-MY')}</div>
+<script>window.onload = function() { setTimeout(() => window.print(), 300); };</script>
+</body></html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    console.error('GET /purchase-orders/:id/pdf error:', err);
+    res.status(500).json({ success: false, message: 'Failed to render PDF' });
+  }
+});
+
+// ============================================
+// POST /api/purchase-orders/:id/mark-sent-external — 외부 PO 수동 발송 완료 마킹 (status='submitted')
+// ============================================
+router.post('/purchase-orders/:id/mark-sent-external', async (req, res) => {
+  const t = await database.sequelize.transaction();
+  try {
+    const id = parseInt(req.params.id, 10);
+    const po = await PurchaseOrder.findByPk(id, { transaction: t });
+    if (!po) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
+    if (!checkPOOwnership(po, req)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
+    if (po.status !== 'draft') { await t.rollback(); return res.status(400).json({ success: false, message: 'Only draft can be marked sent' }); }
+    const newTracking = appendTrackingEvent(po, 'submitted', { source: 'external_manual_send', method: req.body?.method || 'manual' });
+    await po.update({ status: 'submitted', submitted_at: new Date(), tracking_info: newTracking }, { transaction: t });
+    await t.commit();
+    res.json({ success: true, data: po });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('mark-sent-external error:', err);
+    res.status(500).json({ success: false, message: 'Failed' });
+  }
+});
+
 router.post('/purchase-orders/:id/submit', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);

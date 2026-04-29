@@ -7,8 +7,32 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
   code: { type: DataTypes.STRING(50), allowNull: true, unique: true },
   description: { type: DataTypes.TEXT, allowNull: true },
   logo_url: { type: DataTypes.TEXT, allowNull: true },
-  owner_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'Supplier Admin user id' },
+  owner_id: { type: DataTypes.INTEGER, allowNull: true, comment: 'Supplier Admin user id (null for external)' },
   status: { type: DataTypes.ENUM('active', 'inactive', 'suspended'), defaultValue: 'active' },
+
+  // 시스템 가입 여부 — false 면 buyer 가 직접 등록한 외부 공급업체.
+  // 외부면 자동 발주 알림 안 보냄 (PDF/WhatsApp 직접 발송).
+  is_system_registered: {
+    type: DataTypes.BOOLEAN, defaultValue: true, allowNull: false,
+    comment: 'true=시스템 가입 supplier, false=buyer 가 등록한 외부 supplier'
+  },
+  // 외부 supplier 인 경우 어느 buyer 가 만들었는지 (entity_type, entity_id)
+  registered_by_entity_type: {
+    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt'),
+    allowNull: true, comment: '외부 supplier 등록한 buyer 타입'
+  },
+  registered_by_entity_id: {
+    type: DataTypes.INTEGER, allowNull: true,
+    comment: '외부 supplier 등록한 buyer id'
+  },
+  min_order_amount: {
+    type: DataTypes.DECIMAL(10, 2), allowNull: true,
+    comment: '최소 주문 금액 (RM 등 currency 단위)'
+  },
+  delivery_policy: {
+    type: DataTypes.TEXT, allowNull: true,
+    comment: '배송 정책 (배송일, 배송료, 지역 등 자유 텍스트)'
+  },
 
   // Company info
   company_name: { type: DataTypes.STRING(255), allowNull: true },

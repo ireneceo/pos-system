@@ -69,7 +69,8 @@
       "Bash(echo \"  Frontend bundle \\(운영\\): $\\(curl -s https://purplehere.com/)",
       "Bash(chmod +x /var/www/dev-backend/scripts/sa-token.js /var/www/dev-backend/scripts/blog-bulk-publish.js)",
       "Bash(awk '/<NavIcon>/' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)",
-      "Bash(awk '/System Admin/,/Brand General Settings/' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)"
+      "Bash(awk '/System Admin/,/Brand General Settings/' /var/www/dev-frontend/src/components/Layout/MainLayout.tsx)",
+      "Bash(pkill -f \"react-app-rewired build\")"
     ],
     "deny": [],
     "ask": []

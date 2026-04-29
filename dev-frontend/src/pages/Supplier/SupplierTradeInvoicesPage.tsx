@@ -164,7 +164,6 @@ const SupplierTradeInvoicesPage: React.FC = () => {
       <Header>
         <div>
           <Title>{t('supplier:tradeInvoicesPage.title', 'Trade Invoices')}</Title>
-          <Subtitle>{t('supplier:tradeInvoicesPage.subtitle', '')}</Subtitle>
         </div>
       </Header>
 

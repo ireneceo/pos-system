@@ -1242,9 +1242,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/purchase-orders') && (
-                      <NavItem to="/pos/purchase-orders" active={isActive('/pos/purchase-orders')} onClick={closeSidebar}>
+                      <NavItem to="/pos/purchase-orders" active={location.pathname === '/pos/purchase-orders'} onClick={closeSidebar}>
                         <NavIcon>▤</NavIcon>
-                        {t("nav.purchaseOrders", "Purchase Orders")}
+                        {t("nav.newPurchaseOrder", "New Purchase Order")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/purchase-orders') && (
+                      <NavItem to="/pos/purchase-orders/history" active={isActive('/pos/purchase-orders/history')} onClick={closeSidebar}>
+                        <NavIcon>☰</NavIcon>
+                        {t("nav.purchaseOrderHistory", "Order History")}
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/purchase-invoices') && (
@@ -1472,9 +1478,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/purchase-orders') && (
-                      <NavItem to="/pos/purchase-orders" active={isActive('/pos/purchase-orders')} onClick={closeSidebar}>
+                      <NavItem to="/pos/purchase-orders" active={location.pathname === '/pos/purchase-orders'} onClick={closeSidebar}>
                         <NavIcon>▤</NavIcon>
-                        {t("nav.purchaseOrders", "Purchase Orders")}
+                        {t("nav.newPurchaseOrder", "New Purchase Order")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/purchase-orders') && (
+                      <NavItem to="/pos/purchase-orders/history" active={isActive('/pos/purchase-orders/history')} onClick={closeSidebar}>
+                        <NavIcon>☰</NavIcon>
+                        {t("nav.purchaseOrderHistory", "Order History")}
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/purchase-invoices') && (
@@ -1613,9 +1625,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/purchase-orders') && (
-                      <NavItem to="/pos/purchase-orders" active={isActive('/pos/purchase-orders')} onClick={closeSidebar}>
+                      <NavItem to="/pos/purchase-orders" active={location.pathname === '/pos/purchase-orders'} onClick={closeSidebar}>
                         <NavIcon>▤</NavIcon>
-                        {t("nav.purchaseOrders", "Purchase Orders")}
+                        {t("nav.newPurchaseOrder", "New Purchase Order")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/purchase-orders') && (
+                      <NavItem to="/pos/purchase-orders/history" active={isActive('/pos/purchase-orders/history')} onClick={closeSidebar}>
+                        <NavIcon>☰</NavIcon>
+                        {t("nav.purchaseOrderHistory", "Order History")}
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/purchase-invoices') && (
@@ -1940,9 +1958,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 </NavItem>
               )}
               {isRouteAllowed('/pos/purchase-orders') && (
-                <NavItem to="/pos/purchase-orders" active={isActive('/pos/purchase-orders')} onClick={closeSidebar}>
+                <NavItem to="/pos/purchase-orders" active={location.pathname === '/pos/purchase-orders'} onClick={closeSidebar}>
                   <NavIcon>▤</NavIcon>
-                  {t("nav.purchaseOrders", "Purchase Orders")}
+                  {t("nav.newPurchaseOrder", "New Purchase Order")}
+                </NavItem>
+              )}
+              {isRouteAllowed('/pos/purchase-orders') && (
+                <NavItem to="/pos/purchase-orders/history" active={isActive('/pos/purchase-orders/history')} onClick={closeSidebar}>
+                  <NavIcon>☰</NavIcon>
+                  {t("nav.purchaseOrderHistory", "Order History")}
                 </NavItem>
               )}
               {isRouteAllowed('/pos/purchase-invoices') && (

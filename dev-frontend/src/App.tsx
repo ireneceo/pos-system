@@ -247,6 +247,7 @@ const MySuppliersPage = React.lazy(() => import('./pages/SupplierDirectory/MySup
 // Sprint 3 — Purchase Orders (buyer-side ordering)
 const PurchaseOrdersPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrdersPage'));
 const NewPurchaseOrderPage = React.lazy(() => import('./pages/PurchaseOrders/NewPurchaseOrderPage'));
+const PurchaseOrderStagingPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderStagingPage'));
 const PurchaseOrderDetailPage = React.lazy(() => import('./pages/PurchaseOrders/PurchaseOrderDetailPage'));
 
 // Shown when a restaurant-scoped user logs in without an assigned restaurant.
@@ -1319,8 +1320,18 @@ function App() {
 
                       {/* Sprint 3 — Purchase Orders */}
                       <Route path="/pos/purchase-orders" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <NewPurchaseOrderPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/purchase-orders/history" element={
                         <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Staff','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
                           <PurchaseOrdersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/purchase-orders/staging" element={
+                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
+                          <PurchaseOrderStagingPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/purchase-orders/new" element={

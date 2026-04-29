@@ -52,7 +52,7 @@ const PUBLIC_SUPPLIER_ATTRS = [
 
 // Buyer-only middleware applied per-path so unrelated /api/* requests
 // (e.g. /api/supplier/notices) are not blocked by router-level guards.
-router.use(['/supplier-directory', '/supplier-contracts'], authenticateToken, requireBuyerRole);
+router.use(['/supplier-directory', '/supplier-contracts', '/supplier-catalog', '/external-suppliers'], authenticateToken, requireBuyerRole);
 
 // ============================================
 // Helpers
@@ -545,6 +545,239 @@ router.post('/supplier-contracts/:contractId/terminate', async (req, res) => {
   } catch (err) {
     console.error('POST /api/supplier-contracts/:id/terminate error:', err);
     res.status(500).json({ success: false, message: 'Failed to terminate contract' });
+  }
+});
+
+// ============================================
+// GET /api/supplier-catalog
+// — Cart drawer "카탈로그" tab 용. 내 active contract supplier 들의 모든 상품 통합.
+//   각 상품에 already_mapped + mapped_ingredient_id 표시 (내 ingredient 와 연결 여부).
+// ============================================
+router.get('/supplier-catalog', async (req, res) => {
+  try {
+    if (!req.buyerEntity) {
+      return res.json({ success: true, data: [], filters: { categories: [], suppliers: [] } });
+    }
+
+    const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+    const Ingredient = require('../models/Ingredient');
+
+    // 1. 내 active contract supplier_id 목록
+    const contracts = await SupplierContract.findAll({
+      where: { entity_type: req.buyerEntity.type, entity_id: req.buyerEntity.id, status: 'active' },
+      attributes: ['supplier_company_id']
+    });
+    const supplierIds = [...new Set(contracts.map(c => c.supplier_company_id))];
+    if (supplierIds.length === 0) {
+      return res.json({ success: true, data: [], filters: { categories: [], suppliers: [] } });
+    }
+
+    // 2. 필터 + 검색
+    const where = {
+      supplier_company_id: { [Op.in]: supplierIds },
+      is_active: true
+    };
+    const search = (req.query.search || '').trim();
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { sku: { [Op.like]: `%${search}%` } }
+      ];
+    }
+    const supplierFilter = parseInt(req.query.supplier_id, 10);
+    if (Number.isFinite(supplierFilter)) where.supplier_company_id = supplierFilter;
+    const catFilter = parseInt(req.query.category_id, 10);
+    if (Number.isFinite(catFilter)) where.category_id = catFilter;
+
+    const SupplierProductOptionGroup = require('../models/SupplierProductOptionGroup');
+    const SupplierProductOption = require('../models/SupplierProductOption');
+    const products = await SupplierProduct.findAll({
+      where,
+      include: [
+        { model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] },
+        {
+          model: SupplierProductOptionGroup,
+          as: 'optionGroups',
+          attributes: ['id', 'name', 'is_required', 'min_selections', 'max_selections', 'sort_order'],
+          through: { attributes: [] },
+          include: [{
+            model: SupplierProductOption,
+            as: 'options',
+            attributes: ['id', 'name', 'price_adjustment', 'sort_order'],
+            where: { is_active: true },
+            required: false
+          }],
+          required: false
+        }
+      ],
+      order: [['name', 'ASC']],
+      limit: 200
+    });
+
+    // 3. 매핑 여부 lookup — 내 ingredient 와 IngredientSellerProduct 매핑된 supplier_product_id 모음
+    const myIngs = (req.buyerEntity.type === 'restaurant')
+      ? await Ingredient.findAll({ where: { restaurant_id: req.buyerEntity.id }, attributes: ['id'] })
+      : [];
+    const myIngIds = myIngs.map(i => i.id);
+    const mapRows = myIngIds.length === 0 ? [] : await IngredientSellerProduct.findAll({
+      where: {
+        ingredient_id: { [Op.in]: myIngIds },
+        seller_type: 'supplier',
+        seller_product_id: { [Op.in]: products.map(p => p.id) }
+      },
+      attributes: ['ingredient_id', 'seller_product_id']
+    });
+    const mappedMap = Object.fromEntries(mapRows.map(m => [m.seller_product_id, m.ingredient_id]));
+
+    // 4. supplier 회사명 lookup
+    const suppliers = await SupplierCompany.findAll({
+      where: { id: { [Op.in]: supplierIds } },
+      attributes: ['id', 'name', 'code', 'logo_url']
+    });
+    const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s]));
+
+    // 5. 카테고리 통합 (필터 후보)
+    const categories = await SupplierProductCategory.findAll({
+      where: { supplier_company_id: { [Op.in]: supplierIds }, is_active: true },
+      attributes: ['id', 'name', 'emoji', 'supplier_company_id'],
+      order: [['name', 'ASC']]
+    });
+
+    const data = products.map(p => {
+      const sp = supplierMap[p.supplier_company_id];
+      const groups = (p.optionGroups || [])
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+        .map(g => ({
+          id: g.id,
+          name: g.name,
+          is_required: !!g.is_required,
+          min_selections: g.min_selections || 0,
+          max_selections: g.max_selections || 1,
+          options: (g.options || [])
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+            .map(o => ({
+              id: o.id,
+              name: o.name,
+              price_adjustment: parseFloat(o.price_adjustment) || 0
+            }))
+        }));
+      return {
+        id: p.id,
+        name: p.name,
+        sku: p.sku,
+        unit: p.unit,
+        unit_price: parseFloat(p.unit_price) || 0,
+        image_url: p.image_url,
+        category_id: p.category_id,
+        category_name: p.category?.name || null,
+        supplier: sp ? { id: sp.id, name: sp.name, code: sp.code, logo_url: sp.logo_url } : null,
+        already_mapped: !!mappedMap[p.id],
+        mapped_ingredient_id: mappedMap[p.id] || null,
+        option_groups: groups,
+        has_options: groups.length > 0
+      };
+    });
+
+    res.json({
+      success: true,
+      data,
+      filters: {
+        categories: categories.map(c => ({ id: c.id, name: c.name, emoji: c.emoji })),
+        suppliers: suppliers.map(s => ({ id: s.id, name: s.name }))
+      }
+    });
+  } catch (err) {
+    console.error('GET /api/supplier-catalog error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load catalog' });
+  }
+});
+
+// ============================================
+// POST /api/external-suppliers — buyer 가 외부 (시스템 미가입) 공급업체 직접 등록
+// 등록 시 SupplierCompany(is_system_registered=false) + 자동 active SupplierContract 생성.
+// 이후 발주 흐름에 시스템 supplier 와 동일하게 노출되되 PO 자동 발송은 안 됨 (수동 PDF/WhatsApp).
+// ============================================
+router.post('/external-suppliers', async (req, res) => {
+  if (!req.buyerEntity) {
+    return res.status(400).json({ success: false, message: 'Buyer context required' });
+  }
+  const t = await SupplierCompany.sequelize.transaction();
+  try {
+    const {
+      name, phone, email, address, address_line_2, city, state, postal_code, country,
+      website, contact_person,
+      min_order_amount, delivery_policy, notes
+    } = req.body || {};
+    if (!name || !String(name).trim()) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'Supplier name is required' });
+    }
+
+    const company = await SupplierCompany.create({
+      name: sanitizeString(String(name).trim()).slice(0, 255),
+      status: 'active',
+      is_system_registered: false,
+      registered_by_entity_type: req.buyerEntity.type,
+      registered_by_entity_id: req.buyerEntity.id,
+      phone: phone ? sanitizeString(String(phone)).slice(0, 20) : null,
+      email: email ? sanitizeString(String(email)).slice(0, 100) : null,
+      address: address ? sanitizeString(String(address)) : null,
+      address_line_2: address_line_2 ? sanitizeString(String(address_line_2)).slice(0, 255) : null,
+      city: city ? sanitizeString(String(city)).slice(0, 100) : null,
+      state: state ? sanitizeString(String(state)).slice(0, 100) : null,
+      postal_code: postal_code ? sanitizeString(String(postal_code)).slice(0, 20) : null,
+      country: country ? String(country).toUpperCase().slice(0, 2) : 'MY',
+      website: website ? sanitizeString(String(website)).slice(0, 255) : null,
+      min_order_amount: min_order_amount ? parseFloat(min_order_amount) : null,
+      delivery_policy: delivery_policy ? sanitizeString(String(delivery_policy)) : null,
+      description: notes ? sanitizeString(String(notes)) : null
+    }, { transaction: t });
+
+    // 자동 active contract — buyer 가 자기가 만든 supplier 면 즉시 발주 가능
+    await SupplierContract.create({
+      entity_type: req.buyerEntity.type,
+      entity_id: req.buyerEntity.id,
+      supplier_company_id: company.id,
+      status: 'active',
+      requested_by_user_id: req.user.id
+    }, { transaction: t });
+
+    await t.commit();
+    res.status(201).json({ success: true, data: { supplier: company } });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('POST /api/external-suppliers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to register external supplier' });
+  }
+});
+
+// PUT external supplier (buyer 가 자기가 등록한 것만 수정 가능)
+router.put('/external-suppliers/:id', async (req, res) => {
+  if (!req.buyerEntity) {
+    return res.status(400).json({ success: false, message: 'Buyer context required' });
+  }
+  try {
+    const id = parseInt(req.params.id, 10);
+    const sc = await SupplierCompany.findByPk(id);
+    if (!sc) return res.status(404).json({ success: false, message: 'Supplier not found' });
+    if (sc.is_system_registered) {
+      return res.status(403).json({ success: false, message: 'Only external suppliers can be edited here' });
+    }
+    if (sc.registered_by_entity_type !== req.buyerEntity.type || sc.registered_by_entity_id !== req.buyerEntity.id) {
+      return res.status(403).json({ success: false, message: 'Not your supplier' });
+    }
+    const updates = {};
+    const fields = ['name','phone','email','address','address_line_2','city','state','postal_code','website','contact_person','delivery_policy','description'];
+    for (const f of fields) {
+      if (req.body[f] !== undefined) updates[f] = req.body[f] ? sanitizeString(String(req.body[f])) : null;
+    }
+    if (req.body.country !== undefined) updates.country = req.body.country ? String(req.body.country).toUpperCase().slice(0, 2) : null;
+    if (req.body.min_order_amount !== undefined) updates.min_order_amount = req.body.min_order_amount ? parseFloat(req.body.min_order_amount) : null;
+    await sc.update(updates);
+    res.json({ success: true, data: sc });
+  } catch (err) {
+    console.error('PUT /api/external-suppliers/:id error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update external supplier' });
   }
 });
 

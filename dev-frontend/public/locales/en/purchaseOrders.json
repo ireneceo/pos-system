@@ -234,5 +234,75 @@
     "total": "Total",
     "notes": "Notes",
     "thank_you": "Thank you"
+  },
+  "newPo": {
+    "title": "New Purchase Order",
+    "subtitle": "Search ingredients to add to cart. Orders are auto-split by vendor on submit.",
+    "search": {
+      "placeholder": "Search ingredients...",
+      "empty": "No results.",
+      "unmappedHint": "Only ingredients mapped to a supplier can be ordered. Map them in the Supplier Directory first.",
+      "vendors": "vendors",
+      "add": "+ Add",
+      "inCart": "Already in cart"
+    },
+    "cart": {
+      "title": "Cart",
+      "col": {
+        "ingredient": "Ingredient",
+        "qty": "Qty",
+        "vendor": "Vendor",
+        "unitPrice": "Unit Price",
+        "total": "Subtotal"
+      },
+      "empty": {
+        "title": "Cart is empty",
+        "desc": "Search and add ingredients from the field above."
+      },
+      "minOrder": "min order: {{count}}"
+    },
+    "preview": {
+      "title": "{{count}} POs will be created"
+    },
+    "delivery": {
+      "title": "Delivery",
+      "date": "Expected date",
+      "address": "Delivery address",
+      "addressPlaceholder": "Restaurant default",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional notes"
+    },
+    "submit": {
+      "button": "Create POs",
+      "submitting": "Creating...",
+      "poCount": "{{count}} POs",
+      "itemCount": "{{count}} items"
+    },
+    "error": {
+      "empty": "Cart is empty.",
+      "failed": "Failed to create POs"
+    },
+    "tabMine": "My Ingredients",
+    "tabCatalog": "Supplier Catalog",
+    "searchPlaceholder": "Search products...",
+    "allSuppliers": "All suppliers",
+    "allCategories": "All",
+    "vendors": "vendors",
+    "linked": "Linked",
+    "cartEmpty": "Click a card to add to cart.",
+    "empty": {
+      "mine": {
+        "title": "No linked ingredients",
+        "desc": "Click any product in the Supplier Catalog tab to add to your inventory."
+      },
+      "catalog": {
+        "title": "No supplier products",
+        "desc": "You need an active contract with a supplier to view their catalog."
+      }
+    },
+    "toast": {
+      "added": "\"{{name}}\" added to cart",
+      "linked": "\"{{name}}\" added to your inventory"
+    }
   }
 }

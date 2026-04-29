@@ -325,7 +325,6 @@ const PurchaseInvoicesPage: React.FC = () => {
       <Header>
         <div>
           <Title>{t('purchaseInvoices:list.title')}</Title>
-          <Subtitle>{t('purchaseInvoices:list.subtitle')}</Subtitle>
         </div>
       </Header>
 

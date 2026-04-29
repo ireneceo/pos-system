@@ -234,5 +234,75 @@
     "total": "총액",
     "notes": "비고",
     "thank_you": "감사합니다"
+  },
+  "newPo": {
+    "title": "새 발주",
+    "subtitle": "재료를 검색해 cart에 담으면 공급업체별로 자동 분할되어 발주됩니다.",
+    "search": {
+      "placeholder": "재료 이름으로 검색...",
+      "empty": "검색 결과가 없습니다.",
+      "unmappedHint": "발주 가능한 재료는 공급업체와 매핑된 재료뿐입니다. 공급업체 카탈로그에서 매핑 후 다시 시도하세요.",
+      "vendors": "공급업체",
+      "add": "+ 추가",
+      "inCart": "이미 cart에 있음"
+    },
+    "cart": {
+      "title": "장바구니",
+      "col": {
+        "ingredient": "재료",
+        "qty": "수량",
+        "vendor": "공급업체",
+        "unitPrice": "단가",
+        "total": "소계"
+      },
+      "empty": {
+        "title": "Cart가 비어 있습니다",
+        "desc": "위 검색창에서 재료를 찾아 추가하세요."
+      },
+      "minOrder": "최소 주문량: {{count}}"
+    },
+    "preview": {
+      "title": "{{count}}개 PO가 자동 생성됩니다"
+    },
+    "delivery": {
+      "title": "배송 정보",
+      "date": "희망 배송일",
+      "address": "배송 주소",
+      "addressPlaceholder": "레스토랑 기본 주소",
+      "notes": "메모",
+      "notesPlaceholder": "추가 요청사항 (선택)"
+    },
+    "submit": {
+      "button": "발주 생성",
+      "submitting": "발주 생성 중...",
+      "poCount": "{{count}}개 PO",
+      "itemCount": "{{count}}개 항목"
+    },
+    "error": {
+      "empty": "Cart가 비어 있습니다.",
+      "failed": "PO 생성 실패"
+    },
+    "tabMine": "내 재료",
+    "tabCatalog": "공급업체 상품",
+    "searchPlaceholder": "상품 검색...",
+    "allSuppliers": "모든 공급업체",
+    "allCategories": "전체",
+    "vendors": "공급처",
+    "linked": "연결됨",
+    "cartEmpty": "카드를 클릭해 cart에 추가하세요.",
+    "empty": {
+      "mine": {
+        "title": "연결된 재료가 없습니다",
+        "desc": "\"공급업체 상품\" 탭에서 상품을 클릭하면 자동으로 내 재고에 추가됩니다."
+      },
+      "catalog": {
+        "title": "공급업체 상품이 없습니다",
+        "desc": "공급업체와 활성 계약이 있어야 카탈로그를 볼 수 있습니다."
+      }
+    },
+    "toast": {
+      "added": "\"{{name}}\" cart에 추가됨",
+      "linked": "\"{{name}}\"이(가) 내 재고에 추가됨"
+    }
   }
 }

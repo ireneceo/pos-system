@@ -50,6 +50,12 @@ Restaurant.init({
     type: DataTypes.STRING(255),
     allowNull: true
   },
+  // 별도 배송지 (NULL = 매장 주소 사용)
+  delivery_address: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '배송지가 매장 주소와 다를 때만 채움. NULL이면 매장 address 사용.'
+  },
   city: {
     type: DataTypes.STRING(100),
     allowNull: true

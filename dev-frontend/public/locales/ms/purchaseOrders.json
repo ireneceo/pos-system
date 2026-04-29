@@ -234,5 +234,75 @@
     "total": "Jumlah",
     "notes": "Nota",
     "thank_you": "Terima kasih"
+  },
+  "newPo": {
+    "title": "PO Baharu",
+    "subtitle": "Cari bahan untuk ditambah ke troli. Pesanan dibahagi secara automatik mengikut pembekal.",
+    "search": {
+      "placeholder": "Cari bahan...",
+      "empty": "Tiada hasil.",
+      "unmappedHint": "Hanya bahan yang dipetakan kepada pembekal boleh dipesan. Petakan dahulu di Direktori Pembekal.",
+      "vendors": "pembekal",
+      "add": "+ Tambah",
+      "inCart": "Sudah dalam troli"
+    },
+    "cart": {
+      "title": "Troli",
+      "col": {
+        "ingredient": "Bahan",
+        "qty": "Kuantiti",
+        "vendor": "Pembekal",
+        "unitPrice": "Harga",
+        "total": "Subtotal"
+      },
+      "empty": {
+        "title": "Troli kosong",
+        "desc": "Cari dan tambah bahan dari medan di atas."
+      },
+      "minOrder": "min: {{count}}"
+    },
+    "preview": {
+      "title": "{{count}} PO akan dicipta"
+    },
+    "delivery": {
+      "title": "Penghantaran",
+      "date": "Tarikh dijangka",
+      "address": "Alamat",
+      "addressPlaceholder": "Restoran lalai",
+      "notes": "Nota",
+      "notesPlaceholder": "Nota pilihan"
+    },
+    "submit": {
+      "button": "Cipta PO",
+      "submitting": "Mencipta...",
+      "poCount": "{{count}} PO",
+      "itemCount": "{{count}} item"
+    },
+    "error": {
+      "empty": "Troli kosong.",
+      "failed": "Gagal mencipta"
+    },
+    "tabMine": "Bahan Saya",
+    "tabCatalog": "Katalog Pembekal",
+    "searchPlaceholder": "Cari produk...",
+    "allSuppliers": "Semua pembekal",
+    "allCategories": "Semua",
+    "vendors": "pembekal",
+    "linked": "Dipautkan",
+    "cartEmpty": "Klik kad untuk masuk troli.",
+    "empty": {
+      "mine": {
+        "title": "Tiada bahan dipautkan",
+        "desc": "Klik produk dalam Katalog Pembekal untuk masuk inventori."
+      },
+      "catalog": {
+        "title": "Tiada produk pembekal",
+        "desc": "Perlu kontrak aktif dengan pembekal."
+      }
+    },
+    "toast": {
+      "added": "\"{{name}}\" ditambah ke troli",
+      "linked": "\"{{name}}\" ditambah ke inventori"
+    }
   }
 }

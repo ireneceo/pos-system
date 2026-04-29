@@ -350,7 +350,6 @@ const MySuppliersPage: React.FC = () => {
       <Header>
         <div>
           <Title>{t('myContracts.title')}</Title>
-          <Subtitle>{t('myContracts.subtitle')}</Subtitle>
         </div>
         <HeaderActions>
           <ThemedButton

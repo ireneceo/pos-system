@@ -9,12 +9,11 @@ const IngredientCategory = sequelize.define('IngredientCategory', {
   },
   // 소유권 타입 (brand 또는 restaurant)
   owner_type: {
-    type: DataTypes.ENUM('brand', 'restaurant'),
+    type: DataTypes.ENUM('brand', 'restaurant', 'foodcourt'),
     allowNull: false,
     defaultValue: 'restaurant',
-    comment: '소유권 타입: brand(브랜드 공통) 또는 restaurant(지점 전용)'
+    comment: '소유권 타입: brand / restaurant / foodcourt'
   },
-  // 브랜드 또는 레스토랑 소유
   brand_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
@@ -24,6 +23,11 @@ const IngredientCategory = sequelize.define('IngredientCategory', {
     type: DataTypes.INTEGER,
     allowNull: true,
     comment: '독립 레스토랑 소유 카테고리'
+  },
+  foodcourt_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '푸드코트 소유 카테고리'
   },
   name: {
     type: DataTypes.STRING(100),

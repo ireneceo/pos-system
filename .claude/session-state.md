@@ -1,9 +1,39 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-29 (Staff 삭제 기능 fix 추가, v3.20 배포 후보 누적)
+**마지막 업데이트:** 2026-04-29 13:45 (임시저장 — clear 후 이어서)
 **버전:** **v3.19** (운영) → 누적 v3.20 배포 후보
-**작업 상태:** 개발 완료 — Irene 브라우저 테스트 → /배포 v3.20
+**작업 상태:** 중단 (이어서 재개 예정)
+
+---
+
+## ⚡ 빠른 재개
+
+```
+session-state.md 읽고 이어서 개발해.
+```
+
+## 🔖 지금 중단 지점
+
+**마지막 작업:** 신규 페이지 UX 정리 (emoji 제거 + Add 모드 안내 + 도움말 박스 + Scheduler 친화 라벨), FG/BG 403 fix, Supplier Directory shape 평탄화
+
+**바로 다음 작업:** Irene이 Restaurant Admin 으로 로그인해서 발주 end-to-end 흐름 직접 테스트 시작 (Suppliers Directory → Contract 요청 → My Suppliers → PO 생성 → Receive → Returns). 막힘 발생할 때마다 reactive fix.
+
+**맥락 유지할 것:**
+- v3.20 후보가 운영 미배포 (자동 검증만 PASS, 실유저 흐름은 미검증)
+- "이번 주 신규 페이지 반응형 통일" 작업 보류 — 발주 흐름 검증 후 진행
+- Carrier code 정규화 불일치 (`-` → `_`) 별도 fix 후보로 인지 (운영 carrier에는 영향 없음)
+- lua의 SA 자격증명 `~/.purple-pos/creds.json` 패턴 정착 (sa-token.js / blog-bulk-publish.js / setup-creds.js)
+
+**커밋:** `f95772d0` chore: 세션 중간 저장 - Sprint7 UX/emoji 정리 + 403 fix + supplier directory 평탄화
+
+## 📦 이번 세션 작업 요약
+
+- Sprint 7 후속 UX 정리: CarriersPage / CarrierWebhookEventsPage / SchedulerMonitorPage emoji 제거 + 페이지 도움말 박스 + Carriers Add 모드 자동 Edit 전환
+- Staff 삭제 기능 fix (System Admin 가드 → self-delete 가드로 전환, frontend + backend)
+- 사이드바 admin 영역 emoji 아이콘 → 단색 도형 (📦→▦, ⚡→⊕, ⏱→⊙)
+- 5개 블로그 스킬 하이픈 제거 (블로그발행/감사/리서치/초안/캘린더) + lua OS-사용자 무관 패턴 (sa-token.js, blog-bulk-publish.js, setup-creds.js)
+- FG/BG Dashboard 403 fix (manager fetch + stat 카드 제거), Supplier Directory shape 평탄화 + initialsOf null 가드
 
 ### 진행 중인 작업
 - 없음

@@ -6,6 +6,7 @@ import { Container, Header, Title, Content } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
+import Modal, { ModalButton, FormRow, FormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
 
 interface DirectoryCategory {
   id: number;
@@ -306,13 +307,53 @@ const SupplierDirectoryPage: React.FC = () => {
     );
   };
 
+  const [showExternalModal, setShowExternalModal] = useState(false);
+  const [externalForm, setExternalForm] = useState({
+    name: '', phone: '', email: '', address: '', city: '', state: '', country: 'MY',
+    min_order_amount: '', delivery_policy: ''
+  });
+  const [externalSubmitting, setExternalSubmitting] = useState(false);
+  const [externalError, setExternalError] = useState<string | null>(null);
+
+  const submitExternal = async () => {
+    if (!externalForm.name.trim()) {
+      setExternalError(t('externalSupplier.nameRequired', '공급업체 이름은 필수입니다.') as string);
+      return;
+    }
+    setExternalSubmitting(true);
+    setExternalError(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch('/api/external-suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          ...externalForm,
+          min_order_amount: externalForm.min_order_amount ? parseFloat(externalForm.min_order_amount) : null
+        })
+      });
+      const j = await res.json();
+      if (!res.ok || !j.success) {
+        setExternalError(j?.message || 'Failed');
+        return;
+      }
+      setShowExternalModal(false);
+      setExternalForm({ name: '', phone: '', email: '', address: '', city: '', state: '', country: 'MY', min_order_amount: '', delivery_policy: '' });
+      fetchDirectory();
+    } catch (e: any) {
+      setExternalError(e?.message || 'Network error');
+    } finally {
+      setExternalSubmitting(false);
+    }
+  };
+
   return (
     <Container>
       <Header>
-        <div>
-          <Title>{t('directory.title')}</Title>
-          <Subtitle>{t('directory.subtitle')}</Subtitle>
-        </div>
+        <Title>{t('directory.title')}</Title>
+        <ThemedButton variant="primary" onClick={() => setShowExternalModal(true)}>
+          + {t('directory.addExternal', 'External Supplier')}
+        </ThemedButton>
       </Header>
       <Content>
         <FilterBar>
@@ -394,6 +435,109 @@ const SupplierDirectoryPage: React.FC = () => {
           </>
         )}
       </Content>
+
+      <Modal
+        isOpen={showExternalModal}
+        onClose={() => setShowExternalModal(false)}
+        title={t('externalSupplier.title', '외부 공급업체 등록') as string}
+        size="medium"
+        footer={
+          <>
+            <ModalButton variant="secondary" onClick={() => setShowExternalModal(false)} disabled={externalSubmitting}>
+              {t('common:cancel', 'Cancel')}
+            </ModalButton>
+            <ModalButton variant="primary" onClick={submitExternal} disabled={externalSubmitting}>
+              {externalSubmitting ? t('common:saving', 'Saving…') : t('externalSupplier.submit', 'Register')}
+            </ModalButton>
+          </>
+        }
+      >
+        <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14, lineHeight: 1.5 }}>
+          {t('externalSupplier.hint', '시스템에 가입 안 된 공급업체를 직접 등록합니다. 이 공급업체로의 발주는 자동 발송되지 않으며, PDF 다운로드 또는 WhatsApp 으로 직접 보내야 합니다.')}
+        </div>
+        <FormRow>
+          <FormGroup>
+            <FormLabel>{t('externalSupplier.name', '공급업체 이름')} *</FormLabel>
+            <FormInput
+              value={externalForm.name}
+              onChange={(e) => setExternalForm(p => ({ ...p, name: e.target.value }))}
+              placeholder="ABC Trading Co."
+              autoFocus
+            />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>{t('externalSupplier.phone', '연락처 (전화)')}</FormLabel>
+            <FormInput
+              value={externalForm.phone}
+              onChange={(e) => setExternalForm(p => ({ ...p, phone: e.target.value }))}
+              placeholder="+60 12-345 6789"
+            />
+          </FormGroup>
+        </FormRow>
+        <FormRow>
+          <FormGroup>
+            <FormLabel>{t('externalSupplier.email', '이메일')}</FormLabel>
+            <FormInput
+              type="email"
+              value={externalForm.email}
+              onChange={(e) => setExternalForm(p => ({ ...p, email: e.target.value }))}
+              placeholder="contact@example.com"
+            />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>{t('externalSupplier.minOrder', '최소 주문 금액')}</FormLabel>
+            <FormInput
+              type="number"
+              min="0"
+              step="0.01"
+              value={externalForm.min_order_amount}
+              onChange={(e) => setExternalForm(p => ({ ...p, min_order_amount: e.target.value }))}
+              placeholder="100"
+            />
+          </FormGroup>
+        </FormRow>
+        <FormGroup>
+          <FormLabel>{t('externalSupplier.address', '주소')}</FormLabel>
+          <FormInput
+            value={externalForm.address}
+            onChange={(e) => setExternalForm(p => ({ ...p, address: e.target.value }))}
+            placeholder="123 Trading Street"
+          />
+        </FormGroup>
+        <FormRow>
+          <FormGroup>
+            <FormLabel>{t('externalSupplier.city', '시/구')}</FormLabel>
+            <FormInput
+              value={externalForm.city}
+              onChange={(e) => setExternalForm(p => ({ ...p, city: e.target.value }))}
+              placeholder="Kuala Lumpur"
+            />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>{t('externalSupplier.country', '국가 (ISO 2자)')}</FormLabel>
+            <FormInput
+              value={externalForm.country}
+              onChange={(e) => setExternalForm(p => ({ ...p, country: e.target.value.toUpperCase().slice(0, 2) }))}
+              maxLength={2}
+              placeholder="MY"
+            />
+          </FormGroup>
+        </FormRow>
+        <FormGroup>
+          <FormLabel>{t('externalSupplier.deliveryPolicy', '배송 정책 (자유 텍스트)')}</FormLabel>
+          <FormTextArea
+            rows={3}
+            value={externalForm.delivery_policy}
+            onChange={(e) => setExternalForm(p => ({ ...p, delivery_policy: e.target.value }))}
+            placeholder={t('externalSupplier.deliveryPolicyPlaceholder', '예: 월/수/금 배송. 100RM 이상 무료 배송. 24시간 전 주문 필요.') as string}
+          />
+        </FormGroup>
+        {externalError && (
+          <div style={{ padding: 8, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 6, fontSize: 12, color: '#991B1B' }}>
+            {externalError}
+          </div>
+        )}
+      </Modal>
     </Container>
   );
 };

@@ -1,988 +1,1120 @@
+/**
+ * NewPurchaseOrderPage — 발주 풀스크린 페이지 (POS Terminal 패턴, 2026-04-29 재설계).
+ *
+ * Layout:
+ *   ┌─────────────────────────────────────────────────────────┐
+ *   │ Header — 새 주문 [Submit]                                │
+ *   ├──────────────────────────────────────┬──────────────────┤
+ *   │ Tab: 내 재료 / 공급업체 상품          │  Cart            │
+ *   │ Filter: search + supplier + 카테고리  │                  │
+ *   ├──────────────────────────────────────┤   row × N        │
+ *   │   상품 카드 그리드                     │                  │
+ *   │   (POS terminal 패턴 — 클릭=cart 추가) │   total + submit │
+ *   └──────────────────────────────────────┴──────────────────┘
+ *
+ *   Tab 1: 내 재료 (매핑 ingredient — 카테고리 chip)
+ *   Tab 2: 공급업체 상품 (active contract supplier 카탈로그 — 카테고리 + supplier 필터)
+ *   카드 클릭 = cart 추가. 카탈로그 클릭 시 ingredient 자동 생성 + 매핑.
+ *   Submit → POST /purchase-orders/bulk → vendor 별 PO 자동 생성.
+ */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  Container, Header, Title, Content,
-  FormGroup, FormLabel, FormInput, FormSelect, FormTextArea
-} from '../../components/UI';
+import { useNavigate } from 'react-router-dom';
+import { Container, Content } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
+import { useAuth } from '../../contexts/AuthContext';
 import { getAuthToken } from '../../utils/auth';
+import SupplierOptionModal, { SupplierOptionGroup, SelectedOption } from './SupplierOptionModal';
 
 type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
 
-interface SellerOption {
-  seller_id: number | null;
+interface SellerOpt {
+  id: number;
+  seller_product_id: number;
   seller_type: SellerType;
-  name: string;
-  logo_url?: string | null;
-  contract_id?: number | null;
+  seller_entity_id: number | null;
+  seller_name: string;
+  unit_price: number;
+  unit_conversion: number;
+  min_order_quantity: number;
+  lead_time_days: number;
+  is_preferred: boolean;
+  option_groups?: SupplierOptionGroup[];
+  has_options?: boolean;
 }
 
-interface SellerProductOption {
-  id: number;                    // seller product id
-  ingredient_id: number;
-  product_name: string;
-  unit?: string;
-  unit_price: number | string;
-  pack_size?: number | string | null;
-  moq?: number | string | null;
-}
-
-interface IngredientOption {
+interface MyIngredientRow {
   id: number;
   name: string;
-  unit?: string;
-  par_level?: number | string | null;
-  current_stock?: number | string | null;
-  suggested_quantity?: number | string | null;
+  unit?: string | null;
+  ingredient_category_id?: number | null;
+  ingredientCategory?: { id: number; name: string; emoji?: string | null } | null;
+  sellers: SellerOpt[];
 }
 
-interface OrderRow {
-  rowKey: string;
+interface CatalogRow {
+  id: number;
+  name: string;
+  sku?: string | null;
+  unit?: string | null;
+  unit_price: number;
+  image_url?: string | null;
+  category_id?: number | null;
+  category_name?: string | null;
+  supplier?: { id: number; name: string } | null;
+  already_mapped: boolean;
+  mapped_ingredient_id?: number | null;
+  has_options?: boolean;
+  option_groups?: SupplierOptionGroup[];
+}
+
+interface CartRow {
+  cart_key: string;  // ingredient_id + 옵션 조합 hash (같은 재료 다른 옵션 = 별도 row)
   ingredient_id: number;
   ingredient_name: string;
-  ingredient_unit?: string;
-  seller_product_id: number | null;
-  seller_product_options: SellerProductOption[];
+  ingredient_unit: string;
+  selected_seller_id: number;
   quantity: number;
-  unit_price: number;
-  par_suggested?: number | null;
+  available_sellers: SellerOpt[];
+  selected_options?: SelectedOption[];
+  adjusted_unit_price?: number;  // base + 옵션 price_adjustment 합
 }
 
-const Subtitle = styled.div`
-  color: #6B7280;
+const PageHeader = styled.div`
+  background: white;
+  padding: 16px 32px;
+  border-bottom: 1px solid #E6EBF1;
+  height: 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    height: auto;
+  }
+`;
+
+const PageTitle = styled.h1`
+  font-size: 24px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0;
+
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
+`;
+
+const Layout = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  height: calc(100vh - 56px);
+  background: #FAFBFC;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+    height: auto;
+    min-height: calc(100vh - 56px);
+  }
+`;
+
+const MainPane = styled.div`
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid #E6EBF1;
+  background: white;
+
+  @media (max-width: 1024px) {
+    border-right: none;
+    border-bottom: 1px solid #E6EBF1;
+  }
+`;
+
+const TabBar = styled.div`
+  display: flex;
+  border-bottom: 1px solid #E6EBF1;
+  background: white;
+  flex-shrink: 0;
+`;
+
+const TabBtn = styled.button<{ $active: boolean }>`
+  flex: 1;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid ${p => p.$active ? '#635BFF' : 'transparent'};
+  color: ${p => p.$active ? '#635BFF' : '#6B7280'};
   font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { color: #635BFF; }
+`;
+
+const FilterRow = styled.div`
+  display: flex;
+  gap: 10px;
+  padding: 14px 24px;
+  border-bottom: 1px solid #F1F5F9;
+  flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
+`;
+
+const SearchBox = styled.input`
+  flex: 1;
+  min-width: 220px;
+  padding: 9px 14px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
+`;
+
+const FilterSel = styled.select`
+  padding: 9px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 13px;
+  background: white;
+  cursor: pointer;
+  outline: none;
+  &:focus { border-color: #635BFF; }
+`;
+
+const CategoryRow = styled.div`
+  display: flex;
+  gap: 6px;
+  padding: 10px 24px 14px;
+  overflow-x: auto;
+  border-bottom: 1px solid #F1F5F9;
+  flex-shrink: 0;
+  &::-webkit-scrollbar { height: 4px; }
+  &::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 2px; }
+`;
+
+const CategoryChip = styled.button<{ $active: boolean }>`
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid ${p => p.$active ? '#635BFF' : '#E6EBF1'};
+  background: ${p => p.$active ? '#EEF2FF' : 'white'};
+  color: ${p => p.$active ? '#635BFF' : '#374151'};
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  &:hover { border-color: #635BFF; }
+`;
+
+const ScrollArea = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 24px;
+`;
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+`;
+
+const Card = styled.button<{ $disabled?: boolean }>`
+  background: white;
+  border: 1px solid #E6EBF1;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+  cursor: ${p => p.$disabled ? 'default' : 'pointer'};
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: inherit;
+  transition: all 0.15s;
+  position: relative;
+  opacity: ${p => p.$disabled ? 0.85 : 1};
+  user-select: none;
+
+  &:hover {
+    ${p => p.$disabled ? '' : `
+      border-color: #635BFF;
+      box-shadow: 0 4px 14px rgba(99, 91, 255, 0.12);
+      transform: translateY(-1px);
+    `}
+  }
+`;
+
+const ProductImage = styled.div`
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #F8FAFC;
+  border: 1px solid #F1F5F9;
+  margin-bottom: 4px;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+`;
+
+const CardName = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  line-height: 1.3;
+`;
+
+const CardMeta = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+`;
+
+const CardPrice = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  color: #635BFF;
   margin-top: 4px;
 `;
 
-const Stepper = styled.div`
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 24px;
-  padding: 16px 20px;
-  background: white;
-  border: 1px solid #E6EBF1;
-  border-radius: 12px;
-  flex-wrap: wrap;
-`;
-
-const StepDot = styled.div<{ active?: boolean; done?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: ${(p) => p.active ? '#0A2540' : p.done ? '#10B981' : '#9CA3AF'};
-  font-weight: ${(p) => p.active ? 600 : 500};
-
-  &::before {
-    content: '';
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: ${(p) => p.active ? '#635BFF' : p.done ? '#10B981' : '#E6EBF1'};
-    color: white;
-    text-align: center;
-    line-height: 24px;
-    font-weight: 700;
-    font-size: 12px;
-  }
-`;
-
-const StepConnector = styled.div`
-  flex: 1;
-  min-width: 24px;
-  height: 2px;
-  background: #E6EBF1;
-`;
-
-const Card = styled.div`
-  background: white;
-  border: 1px solid #E6EBF1;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 16px;
-
-  h2 {
-    margin: 0 0 4px;
-    font-size: 18px;
-    color: #0A2540;
-  }
-  p.hint {
-    margin: 0 0 20px;
-    font-size: 13px;
-    color: #6B7280;
-  }
-`;
-
-const SellerGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
-`;
-
-const SellerCard = styled.button<{ selected?: boolean }>`
-  text-align: left;
-  background: white;
-  border: 2px solid ${(p) => p.selected ? '#635BFF' : '#E6EBF1'};
-  border-radius: 10px;
-  padding: 16px;
-  cursor: pointer;
-  font-family: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transition: all 0.15s;
-
-  &:hover {
-    border-color: ${(p) => p.selected ? '#635BFF' : '#9CA3AF'};
-  }
-`;
-
-const TypeBadge = styled.span<{ variant?: SellerType }>`
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 600;
+const Badge = styled.span<{ $variant?: 'success' | 'cart' | 'warning' | 'options' }>`
+  position: absolute;
+  top: 8px;
+  right: 8px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: ${(p) => {
-    switch (p.variant) {
-      case 'system_admin': return '#EEF2FF';
-      case 'brand': return '#ECFEFF';
-      case 'foodcourt': return '#FEF3C7';
-      case 'supplier': return '#DCFCE7';
-      default: return '#F3F4F6';
+  font-size: 10px;
+  font-weight: 700;
+  background: ${p => {
+    switch (p.$variant) {
+      case 'success': return '#DCFCE7';
+      case 'warning': return '#FEF3C7';
+      case 'options': return '#7C3AED';
+      default: return '#EEF2FF';
     }
   }};
-  color: ${(p) => {
-    switch (p.variant) {
-      case 'system_admin': return '#3730A3';
-      case 'brand': return '#0E7490';
-      case 'foodcourt': return '#92400E';
-      case 'supplier': return '#166534';
-      default: return '#374151';
+  color: ${p => {
+    switch (p.$variant) {
+      case 'success': return '#166534';
+      case 'warning': return '#92400E';
+      case 'options': return 'white';
+      default: return '#635BFF';
     }
   }};
+  z-index: 1;
 `;
 
-const ItemTable = styled.div`
-  border: 1px solid #E6EBF1;
-  border-radius: 10px;
+const Empty = styled.div`
+  text-align: center;
+  padding: 60px 20px;
+  color: #6B7280;
+  font-size: 13px;
+  line-height: 1.6;
+`;
+
+// ── Cart sidebar ──
+const CartPane = styled.div`
+  background: white;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 `;
 
-const ItemRow = styled.div`
-  display: grid;
-  grid-template-columns: 1.6fr 1.4fr 90px 110px 110px 60px;
-  gap: 8px;
-  padding: 10px 12px;
-  align-items: center;
-  border-bottom: 1px solid #F3F4F6;
-
-  &:last-child { border-bottom: none; }
-  &.header {
-    background: #F8FAFC;
-    font-size: 12px;
-    font-weight: 600;
-    color: #6B7280;
-    text-transform: uppercase;
-  }
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 6px;
-    padding: 12px;
-  }
-`;
-
-const SmallInput = styled.input`
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 13px;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 2px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const SmallSelect = styled.select`
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #E6EBF1;
-  border-radius: 6px;
-  font-size: 13px;
-  background: white;
-`;
-
-const SearchBox = styled.div`
-  position: relative;
-  margin-bottom: 12px;
-`;
-
-const SearchResults = styled.div`
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #E6EBF1;
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  max-height: 240px;
-  overflow-y: auto;
-  z-index: 10;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.06);
-`;
-
-const SearchItem = styled.button`
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  text-align: left;
-  border: none;
-  background: white;
-  padding: 10px 12px;
-  cursor: pointer;
+const CartHeader = styled.div`
+  padding: 14px 20px;
+  border-bottom: 1px solid #E6EBF1;
   font-size: 14px;
-  font-family: inherit;
-
-  &:hover { background: #F8FAFC; }
-
-  small { color: #6B7280; }
-`;
-
-const Subtotal = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  font-size: 15px;
   font-weight: 600;
   color: #0A2540;
-  border-top: 1px solid #E6EBF1;
-  background: #F8FAFC;
+  flex-shrink: 0;
 `;
 
-const FooterBar = styled.div`
+const CartScroll = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+`;
+
+const CartLine = styled.div`
+  border-bottom: 1px solid #F3F4F6;
+  padding: 8px 0;
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
+  &:last-child { border-bottom: none; }
+`;
+
+const CartLineHead = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 70px 70px 22px;
+  align-items: center;
+  gap: 6px;
+`;
+
+const QtyInput = styled.input`
+  width: 100%;
+  padding: 5px 6px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 12px;
+  text-align: center;
+  outline: none;
+  &:focus { border-color: #635BFF; }
+`;
+
+const VendorMini = styled.select`
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #E6EBF1;
+  border-radius: 6px;
+  font-size: 12px;
+  background: white;
+  outline: none;
+  &:focus { border-color: #635BFF; }
+`;
+
+const RemoveX = styled.button`
+  background: transparent;
+  border: 1px solid transparent;
+  color: #9CA3AF;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  &:hover { background: #FEF2F2; color: #DC2626; }
+`;
+
+const CartFooter = styled.div`
+  border-top: 1px solid #E6EBF1;
+  padding: 16px 20px;
+  background: #FAFBFC;
+  flex-shrink: 0;
+`;
+
+const FieldLabel = styled.label`
+  font-size: 11px;
+  color: #6B7280;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+`;
+
+const InputBase = styled.input`
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #E6EBF1;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  &:focus { border-color: #635BFF; box-shadow: 0 0 0 3px rgba(99,91,255,0.1); }
+`;
+
+const TotalAmount = styled.div`
+  font-size: 22px;
+  font-weight: 700;
+  color: #0A2540;
+`;
+
+const SubmitMeta = styled.div`
+  font-size: 12px;
+  color: #6B7280;
+  margin-bottom: 4px;
 `;
 
 const ErrorBox = styled.div`
-  padding: 10px 14px;
   background: #FEF2F2;
   border: 1px solid #FCA5A5;
+  color: #991B1B;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+`;
+
+const Toast = styled.div`
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111827;
+  color: white;
+  padding: 10px 18px;
   border-radius: 8px;
-  color: #DC2626;
   font-size: 13px;
-  margin-bottom: 12px;
+  z-index: 250;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
 `;
 
-const ReviewKv = styled.div`
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  gap: 8px 16px;
-  font-size: 14px;
-  margin-bottom: 16px;
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const KvKey = styled.div`
-  color: #6B7280;
-  font-size: 13px;
-`;
-
-const KvValue = styled.div`
-  color: #0A2540;
-`;
-
-const TotalsBox = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 16px;
-  background: #F8FAFC;
-  border: 1px solid #E6EBF1;
-  border-radius: 8px;
-  font-size: 14px;
-  max-width: 320px;
-  margin-left: auto;
-
-  > div {
-    display: flex;
-    justify-content: space-between;
-    color: #374151;
-  }
-  > div.total {
-    border-top: 1px solid #E6EBF1;
-    padding-top: 8px;
-    margin-top: 4px;
-    font-weight: 700;
-    color: #0A2540;
-    font-size: 16px;
-  }
-`;
+const sellerKey = (s: { seller_type: string; seller_entity_id: number | null }) =>
+  `${s.seller_type}:${s.seller_entity_id ?? 'null'}`;
 
 const NewPurchaseOrderPage: React.FC = () => {
   const { t } = useTranslation(['purchaseOrders', 'common']);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
 
-  const prefSellerId = searchParams.get('sellerId');
-  const prefSellerType = searchParams.get('sellerType');
-  const prefItemsRaw = searchParams.get('items');
+  // Buyer entity 결정 — Restaurant Admin / Brand General / Foodcourt General 모두 발주 가능
+  const buyerEntity = useMemo(() => {
+    const role = user?.role;
+    if (!user) return null;
+    if (['Restaurant Admin', 'Restaurant Owner', 'Staff'].includes(role || '') && user.restaurantId) {
+      return { type: 'restaurants' as const, id: user.restaurantId };
+    }
+    if (['Brand General', 'Brand Manager'].includes(role || '') && (user as any).brandId) {
+      return { type: 'brands' as const, id: (user as any).brandId };
+    }
+    if (['Foodcourt General', 'Foodcourt Manager'].includes(role || '') && (user as any).foodcourtId) {
+      return { type: 'foodcourts' as const, id: (user as any).foodcourtId };
+    }
+    return null;
+  }, [user]);
+  // 기존 코드 호환: restaurantId 변수 (string | number | null)
+  const restaurantId = buyerEntity?.id;
+  const buyerApiBase = buyerEntity ? `/api/${buyerEntity.type}/${buyerEntity.id}` : null;
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [tab, setTab] = useState<'mine' | 'catalog'>('mine');
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [supplierFilter, setSupplierFilter] = useState<string>('all');
 
-  const [sellers, setSellers] = useState<SellerOption[]>([]);
-  const [sellerLoading, setSellerLoading] = useState(true);
-  const [sellerSearch, setSellerSearch] = useState('');
-  const [selectedSeller, setSelectedSeller] = useState<SellerOption | null>(null);
+  const [myList, setMyList] = useState<MyIngredientRow[]>([]);
+  const [loadingMine, setLoadingMine] = useState(false);
 
-  const [ingredientSearch, setIngredientSearch] = useState('');
-  const [ingredientResults, setIngredientResults] = useState<IngredientOption[]>([]);
-  const [ingredientFocused, setIngredientFocused] = useState(false);
-  const [orderRows, setOrderRows] = useState<OrderRow[]>([]);
+  const [catalogList, setCatalogList] = useState<CatalogRow[]>([]);
+  const [catalogSuppliers, setCatalogSuppliers] = useState<Array<{ id: number; name: string }>>([]);
+  const [catalogCategories, setCatalogCategories] = useState<Array<{ id: number; name: string; emoji?: string | null }>>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
 
+  const [cart, setCart] = useState<CartRow[]>([]);
   const [expectedDate, setExpectedDate] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [optionModal, setOptionModal] = useState<{ row: CatalogRow; product: any } | null>(null);
 
-  // Step 1: load buyer-facing seller picker (Phase 2 — 2026-04-27)
-  const fetchBuyerSellers = useCallback(async () => {
-    setSellerLoading(true);
+  const buildCartKey = (ingredientId: number, optionIds: number[] = []) =>
+    `ing-${ingredientId}` + (optionIds.length ? '-opt-' + [...optionIds].sort((a, b) => a - b).join('-') : '');
+
+  useEffect(() => {
+    if (!toast) return;
+    const tm = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(tm);
+  }, [toast]);
+
+  const fetchMine = useCallback(async () => {
+    if (!buyerApiBase) return;
+    setLoadingMine(true);
     try {
       const token = getAuthToken();
-      const res = await fetch('/api/buyer-sellers', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setSellers([]);
-        return;
-      }
-      const list: SellerOption[] = Array.isArray(data.data) ? data.data : [];
-      setSellers(list);
+      const res = await fetch(
+        `${buyerApiBase}/ingredients?include=sellers`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const j = await res.json();
+      setMyList(res.ok && j.success && Array.isArray(j.data) ? j.data : []);
+    } catch { setMyList([]); }
+    finally { setLoadingMine(false); }
+  }, [buyerApiBase]);
 
-      // Pre-select if URL provided sellerId
-      if (prefSellerId && prefSellerType) {
-        const match = list.find(s =>
-          String(s.seller_id) === prefSellerId && s.seller_type === prefSellerType
-        );
-        if (match) {
-          setSelectedSeller(match);
-          setStep(2);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch buyer sellers:', err);
-      setSellers([]);
-    } finally {
-      setSellerLoading(false);
-    }
-  }, [prefSellerId, prefSellerType]);
-
-  useEffect(() => { fetchBuyerSellers(); }, [fetchBuyerSellers]);
-
-  // Step 2: ingredient search (debounced via simple effect)
-  useEffect(() => {
-    if (!ingredientFocused) return;
-    const term = ingredientSearch.trim();
-    const handle = setTimeout(async () => {
-      try {
-        const token = getAuthToken();
-        const params = new URLSearchParams();
-        if (term) params.set('search', term);
-        params.set('limit', '20');
-        const res = await fetch(`/api/ingredients?${params.toString()}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          const list = Array.isArray(data.data) ? data.data : (Array.isArray(data.ingredients) ? data.ingredients : []);
-          setIngredientResults(list);
-        }
-      } catch (err) {
-        console.error('Failed to search ingredients:', err);
-      }
-    }, 250);
-    return () => clearTimeout(handle);
-  }, [ingredientSearch, ingredientFocused]);
-
-  // Fetch seller products for an ingredient when adding a row
-  const fetchSellerProductsForIngredient = useCallback(async (ingredientId: number): Promise<SellerProductOption[]> => {
-    if (!selectedSeller) return [];
+  const fetchCatalog = useCallback(async () => {
+    setLoadingCatalog(true);
     try {
       const token = getAuthToken();
       const params = new URLSearchParams();
-      params.set('ingredient_id', String(ingredientId));
-      if (selectedSeller.seller_id != null) {
-        params.set('seller_id', String(selectedSeller.seller_id));
-      }
-      params.set('seller_type', selectedSeller.seller_type);
-      const res = await fetch(`/api/seller-catalog/products?${params.toString()}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      if (search.trim()) params.set('search', search.trim());
+      if (categoryFilter !== 'all') params.set('category_id', categoryFilter);
+      if (supplierFilter !== 'all') params.set('supplier_id', supplierFilter);
+      const res = await fetch(`/api/supplier-catalog?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        return Array.isArray(data.data) ? data.data : [];
+      const j = await res.json();
+      if (res.ok && j.success) {
+        setCatalogList(Array.isArray(j.data) ? j.data : []);
+        setCatalogSuppliers(j.filters?.suppliers || []);
+        setCatalogCategories(j.filters?.categories || []);
+      } else {
+        setCatalogList([]);
       }
-    } catch (err) {
-      console.error('Failed to fetch seller products:', err);
-    }
-    return [];
-  }, [selectedSeller]);
+    } catch { setCatalogList([]); }
+    finally { setLoadingCatalog(false); }
+  }, [search, categoryFilter, supplierFilter]);
 
-  const addRow = useCallback(async (ing: IngredientOption) => {
-    const products = await fetchSellerProductsForIngredient(ing.id);
-    const firstProduct = products[0];
-    const par = ing.suggested_quantity != null ? Number(ing.suggested_quantity) : null;
-    setOrderRows(prev => [
-      ...prev,
-      {
-        rowKey: `r-${Date.now()}-${ing.id}`,
-        ingredient_id: ing.id,
-        ingredient_name: ing.name,
-        ingredient_unit: ing.unit,
-        seller_product_id: firstProduct ? firstProduct.id : null,
-        seller_product_options: products,
-        quantity: par && par > 0 ? par : 1,
-        unit_price: firstProduct ? Number(firstProduct.unit_price) : 0,
-        par_suggested: par
-      }
-    ]);
-    setIngredientSearch('');
-    setIngredientResults([]);
-    setIngredientFocused(false);
-  }, [fetchSellerProductsForIngredient]);
-
-  // Apply prefilled items from URL once seller + ingredient catalog ready
-  const [prefApplied, setPrefApplied] = useState(false);
   useEffect(() => {
-    if (prefApplied || !selectedSeller || !prefItemsRaw) return;
-    try {
-      const decoded = decodeURIComponent(prefItemsRaw);
-      const parsed: Array<{ ingredient_id: number; quantity: number }> = JSON.parse(decoded);
-      if (!Array.isArray(parsed)) { setPrefApplied(true); return; }
-      (async () => {
-        for (const it of parsed) {
-          const products = await fetchSellerProductsForIngredient(it.ingredient_id);
-          const firstProduct = products[0];
-          // Need ingredient name — fetch by id
-          const token = getAuthToken();
-          let name = `Ingredient #${it.ingredient_id}`;
-          let unit = '';
-          try {
-            const res = await fetch(`/api/ingredients/${it.ingredient_id}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (res.ok && data.success && data.data) {
-              name = data.data.name || name;
-              unit = data.data.unit || '';
-            }
-          } catch { /* noop */ }
-          setOrderRows(prev => [
-            ...prev,
-            {
-              rowKey: `r-${Date.now()}-${it.ingredient_id}-${Math.random()}`,
-              ingredient_id: it.ingredient_id,
-              ingredient_name: name,
-              ingredient_unit: unit,
-              seller_product_id: firstProduct ? firstProduct.id : null,
-              seller_product_options: products,
-              quantity: Number(it.quantity) || 1,
-              unit_price: firstProduct ? Number(firstProduct.unit_price) : 0,
-              par_suggested: Number(it.quantity) || null
-            }
-          ]);
-        }
-      })();
-      setPrefApplied(true);
-    } catch (err) {
-      console.error('Failed to parse prefilled items:', err);
-      setPrefApplied(true);
+    if (tab === 'mine') fetchMine();
+    else fetchCatalog();
+  }, [tab, fetchMine, fetchCatalog]);
+
+  const myCategories = useMemo(() => {
+    const map = new Map<number, { id: number; name: string; emoji?: string | null }>();
+    for (const r of myList) {
+      if (r.ingredientCategory) map.set(r.ingredientCategory.id, r.ingredientCategory);
     }
-  }, [selectedSeller, prefItemsRaw, prefApplied, fetchSellerProductsForIngredient]);
+    return Array.from(map.values());
+  }, [myList]);
 
-  const updateRow = (rowKey: string, patch: Partial<OrderRow>) => {
-    setOrderRows(prev => prev.map(r => r.rowKey === rowKey ? { ...r, ...patch } : r));
-  };
+  const filteredMy = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return myList.filter(r => {
+      if (categoryFilter !== 'all' && String(r.ingredient_category_id || '') !== categoryFilter) return false;
+      if (q && !r.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [myList, search, categoryFilter]);
 
-  const removeRow = (rowKey: string) => {
-    setOrderRows(prev => prev.filter(r => r.rowKey !== rowKey));
-  };
+  // isInCart / cartQtyOf — 옵션 없는 row 만 빠른 lookup (옵션 있으면 항상 새 row)
+  const isInCart = (ingredientId: number) =>
+    cart.some(r => r.ingredient_id === ingredientId && (!r.selected_options || r.selected_options.length === 0));
+  const cartQtyOf = (ingredientId: number) =>
+    cart.filter(r => r.ingredient_id === ingredientId).reduce((s, r) => s + r.quantity, 0);
 
-  const onSelectProduct = (rowKey: string, productId: number) => {
-    const row = orderRows.find(r => r.rowKey === rowKey);
-    if (!row) return;
-    const product = row.seller_product_options.find(p => p.id === productId);
-    if (!product) {
-      updateRow(rowKey, { seller_product_id: productId });
+  const addMineToCart = (row: MyIngredientRow) => {
+    const preferred = row.sellers.find(s => s.is_preferred) || row.sellers[0];
+    if (!preferred) {
+      setToast(t('newPo.toast.needLink', { name: row.name, defaultValue: '"{{name}}" needs to be linked to a supplier first' }) as string);
       return;
     }
-    updateRow(rowKey, {
-      seller_product_id: productId,
-      unit_price: Number(product.unit_price)
+    const key = buildCartKey(row.id);
+    if (cart.some(r => r.cart_key === key)) {
+      setCart(prev => prev.map(r => r.cart_key === key ? { ...r, quantity: r.quantity + 1 } : r));
+      return;
+    }
+    setCart(prev => [...prev, {
+      cart_key: key,
+      ingredient_id: row.id,
+      ingredient_name: row.name,
+      ingredient_unit: row.unit || '',
+      selected_seller_id: preferred.id,
+      quantity: Math.max(1, preferred.min_order_quantity || 1),
+      available_sellers: row.sellers
+    }]);
+    setToast(t('newPo.toast.added', { name: row.name, defaultValue: '"{{name}}" added to cart' }) as string);
+  };
+
+  const incCartQty = (ingredientId: number, delta: number = 1) => {
+    // 옵션 없는 row 우선
+    setCart(prev => {
+      const idx = prev.findIndex(r => r.ingredient_id === ingredientId && (!r.selected_options || r.selected_options.length === 0));
+      if (idx < 0) return prev;
+      return prev.map((r, i) => i === idx ? { ...r, quantity: Math.max(0, r.quantity + delta) } : r);
     });
   };
 
-  const subtotal = useMemo(() =>
-    orderRows.reduce((sum, r) => sum + (r.quantity * r.unit_price), 0),
-    [orderRows]
-  );
-  const tax = 0; // Tax handled at PO level on backend if applicable; UI shows 0 for now
-  const total = subtotal + tax;
+  // Catalog 카드 본체 클릭 — 옵션 있어도 즉시 cart 추가 (기본값). 옵션 모달은 별도 옵션 버튼.
+  const addCatalogToCart = async (row: CatalogRow) => {
+    if (!restaurantId) return;
+    await ensureIngredientAndAddToCart(row, [], row.unit_price);
+  };
 
-  const filteredSellers = useMemo(() => {
-    const term = sellerSearch.trim().toLowerCase();
-    if (!term) return sellers;
-    return sellers.filter(s => (s.name || '').toLowerCase().includes(term));
-  }, [sellers, sellerSearch]);
-
-  const goNext = () => {
-    setError(null);
-    if (step === 1) {
-      if (!selectedSeller) {
-        setError(t('new.errors.selectSeller') as string);
-        return;
-      }
-      setStep(2);
-    } else if (step === 2) {
-      if (orderRows.length === 0) {
-        setError(t('new.errors.noItems') as string);
-        return;
-      }
-      for (const r of orderRows) {
-        if (!r.seller_product_id) {
-          setError(t('new.errors.missingProduct') as string);
-          return;
-        }
-        if (!(r.quantity > 0)) {
-          setError(t('new.errors.invalidQty') as string);
-          return;
-        }
-      }
-      setStep(3);
+  const openCatalogOptionModal = (row: CatalogRow) => {
+    if (row.option_groups && row.option_groups.length > 0) {
+      setOptionModal({ row, product: row });
     }
   };
 
-  const goPrev = () => {
-    setError(null);
-    if (step > 1) setStep((step - 1) as 1 | 2 | 3);
+  const openMineOptionModal = (row: MyIngredientRow) => {
+    const preferred = row.sellers.find(s => s.is_preferred) || row.sellers[0];
+    if (!preferred?.option_groups || preferred.option_groups.length === 0) return;
+    const catalogShape: CatalogRow = {
+      id: preferred.seller_product_id,
+      name: row.name,
+      unit: row.unit,
+      unit_price: preferred.unit_price,
+      already_mapped: true,
+      mapped_ingredient_id: row.id,
+      option_groups: preferred.option_groups,
+      has_options: true,
+      supplier: { id: preferred.seller_entity_id || 0, name: preferred.seller_name }
+    };
+    setOptionModal({ row: catalogShape, product: catalogShape });
   };
 
-  const buildPayload = () => ({
-    seller_type: selectedSeller!.seller_type,
-    seller_entity_id: selectedSeller!.seller_id,
-    expected_delivery_date: expectedDate || null,
-    delivery_address: deliveryAddress.trim() || null,
-    notes: notes.trim() || null,
-    items: orderRows.map(r => ({
-      ingredient_id: r.ingredient_id,
-      ingredient_seller_product_id: r.seller_product_id,
-      quantity_ordered: Number(r.quantity),
-      unit_price: Number(r.unit_price)
-    }))
-  });
-
-  const submitPO = async (mode: 'draft' | 'submit') => {
-    if (submitting) return;
-    setError(null);
-    setSubmitting(true);
+  const ensureIngredientAndAddToCart = async (row: CatalogRow, selectedOptions: SelectedOption[], adjustedUnitPrice: number, qty?: number) => {
+    if (!buyerApiBase) return;
     try {
       const token = getAuthToken();
-      const res = await fetch('/api/purchase-orders', {
+      const res = await fetch(`${buyerApiBase}/ingredients/from-catalog`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(buildPayload())
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ supplier_product_id: row.id })
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setError(data?.message || (t('new.errors.createFailed') as string));
-        setSubmitting(false);
+      const j = await res.json();
+      if (!res.ok || !j.success) {
+        setError(j?.message || 'Failed to add');
         return;
       }
-      const newId = data.data?.id;
-      if (mode === 'submit' && newId) {
-        const sres = await fetch(`/api/purchase-orders/${newId}/submit`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const sdata = await sres.json();
-        if (!sres.ok || !sdata.success) {
-          setError(sdata?.message || (t('new.errors.submitFailed') as string));
-          setSubmitting(false);
-          return;
-        }
+      const ing = j.data.ingredient;
+      const map = j.data.mapping;
+      const seller: SellerOpt = {
+        id: map.id,
+        seller_product_id: map.seller_product_id,
+        seller_type: map.seller_type,
+        seller_entity_id: map.seller_entity_id,
+        seller_name: row.supplier?.name || 'Supplier',
+        unit_price: parseFloat(map.unit_price) || 0,
+        unit_conversion: parseFloat(map.unit_conversion) || 1,
+        min_order_quantity: map.min_order_quantity || 1,
+        lead_time_days: map.lead_time_days || 0,
+        is_preferred: !!map.is_preferred
+      };
+      const optionIds = selectedOptions.map(o => o.option_id);
+      const cart_key = buildCartKey(ing.id, optionIds);
+      const baseQty = qty ?? Math.max(1, seller.min_order_quantity);
+
+      const existing = cart.find(r => r.cart_key === cart_key);
+      if (existing) {
+        setCart(prev => prev.map(r => r.cart_key === cart_key ? { ...r, quantity: r.quantity + baseQty } : r));
+      } else {
+        setCart(prev => [...prev, {
+          cart_key,
+          ingredient_id: ing.id,
+          ingredient_name: ing.name,
+          ingredient_unit: ing.unit || '',
+          selected_seller_id: seller.id,
+          quantity: baseQty,
+          available_sellers: [seller],
+          selected_options: selectedOptions.length ? selectedOptions : undefined,
+          adjusted_unit_price: selectedOptions.length ? adjustedUnitPrice : undefined
+        }]);
       }
-      navigate(newId ? `/pos/purchase-orders/${newId}` : '/pos/purchase-orders');
-    } catch (err) {
-      console.error('Failed to create PO:', err);
-      setError(t('new.errors.createFailed') as string);
+      if (j.data.created) {
+        setToast(t('newPo.toast.linked', { name: ing.name, defaultValue: '"{{name}}" added to your inventory' }) as string);
+        if (tab === 'mine') fetchMine();
+      } else {
+        setToast(t('newPo.toast.added', { name: ing.name, defaultValue: '"{{name}}" added to cart' }) as string);
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Network error');
+    }
+  };
+
+  const updateRow = (cartKey: string, patch: Partial<CartRow>) => {
+    setCart(prev => prev.map(r => r.cart_key === cartKey ? { ...r, ...patch } : r));
+  };
+  const removeRow = (cartKey: string) => {
+    setCart(prev => prev.filter(r => r.cart_key !== cartKey));
+  };
+
+  const groups = useMemo(() => {
+    const map = new Map<string, {
+      key: string;
+      seller_type: SellerType;
+      seller_entity_id: number | null;
+      seller_name: string;
+      items: Array<{ row: CartRow; seller: SellerOpt }>;
+      subtotal: number;
+    }>();
+    for (const row of cart) {
+      const seller = row.available_sellers.find(s => s.id === row.selected_seller_id);
+      if (!seller) continue;
+      const k = sellerKey(seller);
+      const effectiveUnitPrice = row.adjusted_unit_price ?? seller.unit_price;
+      const lineTotal = effectiveUnitPrice * row.quantity;
+      const ex = map.get(k);
+      if (ex) { ex.items.push({ row, seller }); ex.subtotal += lineTotal; }
+      else map.set(k, {
+        key: k, seller_type: seller.seller_type, seller_entity_id: seller.seller_entity_id,
+        seller_name: seller.seller_name, items: [{ row, seller }], subtotal: lineTotal
+      });
+    }
+    return Array.from(map.values());
+  }, [cart]);
+
+  const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.subtotal, 0), [groups]);
+
+  const submit = async () => {
+    if (cart.length === 0) {
+      setError(t('newPo.error.empty', 'Cart is empty.') as string);
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const token = getAuthToken();
+      // 옵션 선택 정보는 group notes 에 직렬화 (PurchaseOrder.notes — Phase D 에서 backend item-level 처리 예정)
+      const groupsBody = groups.map(g => {
+        const optionLines = g.items
+          .filter(({ row }) => row.selected_options && row.selected_options.length > 0)
+          .map(({ row }) => `${row.ingredient_name}: ${row.selected_options!.map(o => `${o.group_name}=${o.option_name}`).join(', ')}`);
+        const baseNotes = optionLines.length > 0
+          ? `[Options]\n${optionLines.join('\n')}`
+          : null;
+        return {
+          seller_type: g.seller_type,
+          seller_entity_id: g.seller_entity_id,
+          items: g.items.map(({ row, seller }) => ({
+            ingredient_id: row.ingredient_id,
+            ingredient_seller_product_id: seller.id,
+            quantity_ordered: row.quantity
+          })),
+          expected_delivery_date: expectedDate || null,
+          delivery_address: deliveryAddress.trim() || null,
+          notes: baseNotes
+        };
+      });
+      // Cart submit (1차) → status='draft' staging. 사용자가 staging 페이지에서 외부 PO 처리 후 일괄 Submit
+      const res = await fetch('/api/purchase-orders/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ groups: groupsBody, auto_submit: false })
+      });
+      const j = await res.json();
+      if (!res.ok || !j.success) {
+        setError(j?.message || t('newPo.error.failed', 'Failed to create POs') as string);
+        return;
+      }
+      navigate('/pos/purchase-orders/staging');
+    } catch (e: any) {
+      setError(e?.message || 'Network error');
+    } finally {
       setSubmitting(false);
     }
   };
 
-  const renderStepHeader = () => (
-    <Stepper>
-      <StepDot active={step === 1} done={step > 1}>{t('new.step.seller')}</StepDot>
-      <StepConnector />
-      <StepDot active={step === 2} done={step > 2}>{t('new.step.items')}</StepDot>
-      <StepConnector />
-      <StepDot active={step === 3}>{t('new.step.review')}</StepDot>
-    </Stepper>
-  );
-
-  const renderStep1 = () => (
-    <Card>
-      <h2>{t('new.seller.title')}</h2>
-      <p className="hint">{t('new.seller.subtitle')}</p>
-
-      <FormGroup>
-        <FormInput
-          type="text"
-          placeholder={t('new.seller.search') as string}
-          value={sellerSearch}
-          onChange={(e) => setSellerSearch(e.target.value)}
-        />
-      </FormGroup>
-
-      {sellerLoading ? (
-        <div style={{ padding: 24, textAlign: 'center', color: '#6B7280' }}>
-          {t('list.loading')}
-        </div>
-      ) : filteredSellers.length === 0 ? (
-        <div style={{
-          padding: 32,
-          textAlign: 'center',
-          background: '#F8FAFC',
-          border: '1px solid #E6EBF1',
-          borderRadius: 10
-        }}>
-          <div style={{ fontWeight: 600, color: '#374151', marginBottom: 6 }}>
-            {t('new.seller.noSellers')}
-          </div>
-          <div style={{ fontSize: 13, color: '#6B7280' }}>
-            {t('new.seller.noSellersHint')}
-          </div>
-        </div>
-      ) : (
-        <SellerGrid>
-          {filteredSellers.map(s => {
-            const selected = selectedSeller?.seller_id === s.seller_id && selectedSeller?.seller_type === s.seller_type;
-            return (
-              <SellerCard
-                key={`${s.seller_type}-${s.seller_id}`}
-                type="button"
-                selected={selected}
-                onClick={() => setSelectedSeller(s)}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    {s.logo_url && (
-                      <img
-                        src={s.logo_url}
-                        alt=""
-                        style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
-                      />
-                    )}
-                    <strong style={{ color: '#0A2540', fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.name}
-                    </strong>
-                  </div>
-                  <TypeBadge variant={s.seller_type}>{t(`new.seller.type.${s.seller_type}`)}</TypeBadge>
-                </div>
-              </SellerCard>
-            );
-          })}
-        </SellerGrid>
-      )}
-    </Card>
-  );
-
-  const renderStep2 = () => (
-    <Card>
-      <h2>{t('new.items.title')}</h2>
-      <p className="hint">{t('new.items.subtitle')}</p>
-
-      <SearchBox>
-        <FormInput
-          type="text"
-          placeholder={t('new.items.search') as string}
-          value={ingredientSearch}
-          onChange={(e) => setIngredientSearch(e.target.value)}
-          onFocus={() => setIngredientFocused(true)}
-          onBlur={() => setTimeout(() => setIngredientFocused(false), 200)}
-        />
-        {ingredientFocused && ingredientResults.length > 0 && (
-          <SearchResults>
-            {ingredientResults.map(ing => (
-              <SearchItem
-                key={ing.id}
-                type="button"
-                onMouseDown={(e) => { e.preventDefault(); addRow(ing); }}
-              >
-                <span>{ing.name}</span>
-                <small>
-                  {ing.unit && `${ing.unit}`}
-                  {ing.suggested_quantity != null && Number(ing.suggested_quantity) > 0 &&
-                    ` · ${t('new.items.parSuggested', { n: Number(ing.suggested_quantity).toFixed(2) })}`}
-                </small>
-              </SearchItem>
-            ))}
-          </SearchResults>
-        )}
-      </SearchBox>
-
-      <ItemTable>
-        <ItemRow className="header">
-          <div>{t('new.items.ingredient')}</div>
-          <div>{t('new.items.sellerProduct')}</div>
-          <div>{t('new.items.quantity')}</div>
-          <div>{t('new.items.unitPrice')}</div>
-          <div>{t('new.items.lineTotal')}</div>
-          <div></div>
-        </ItemRow>
-        {orderRows.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
-            {t('new.items.noItemsHint')}
-          </div>
-        ) : (
-          orderRows.map(row => (
-            <ItemRow key={row.rowKey}>
-              <div>
-                <strong style={{ fontSize: 13 }}>{row.ingredient_name}</strong>
-                {row.ingredient_unit && (
-                  <div style={{ fontSize: 11, color: '#6B7280' }}>{row.ingredient_unit}</div>
-                )}
-              </div>
-              <div>
-                {row.seller_product_options.length === 0 ? (
-                  <span style={{ fontSize: 12, color: '#DC2626' }}>{t('new.items.noProductMatch')}</span>
-                ) : (
-                  <SmallSelect
-                    value={row.seller_product_id ?? ''}
-                    onChange={(e) => onSelectProduct(row.rowKey, Number(e.target.value))}
-                  >
-                    <option value="" disabled>{t('new.items.selectProduct')}</option>
-                    {row.seller_product_options.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.product_name}
-                        {p.pack_size ? ` (${p.pack_size}${p.unit || ''})` : ''}
-                      </option>
-                    ))}
-                  </SmallSelect>
-                )}
-              </div>
-              <div>
-                <SmallInput
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={row.quantity}
-                  onChange={(e) => updateRow(row.rowKey, { quantity: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <SmallInput
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={row.unit_price}
-                  onChange={(e) => updateRow(row.rowKey, { unit_price: Number(e.target.value) })}
-                />
-              </div>
-              <div style={{ textAlign: 'right', fontWeight: 600, color: '#0A2540' }}>
-                {(row.quantity * row.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div>
-                <ThemedButton
-                  size="small"
-                  variant="danger-outline"
-                  onClick={() => removeRow(row.rowKey)}
-                >
-                  ×
-                </ThemedButton>
-              </div>
-            </ItemRow>
-          ))
-        )}
-        <Subtotal>
-          <span>{t('new.items.subtotal')}:</span>
-          <span>{selectedSeller?.currency || 'MYR'} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </Subtotal>
-      </ItemTable>
-    </Card>
-  );
-
-  const renderStep3 = () => (
-    <Card>
-      <h2>{t('new.review.title')}</h2>
-      <p className="hint">{t('new.review.subtitle')}</p>
-
-      <ReviewKv>
-        <KvKey>{t('new.review.sellerInfo')}</KvKey>
-        <KvValue>
-          <strong>{selectedSeller?.name}</strong>
-          {selectedSeller && (
-            <span style={{ marginLeft: 8 }}>
-              <TypeBadge variant={selectedSeller.seller_type}>
-                {t(`new.seller.type.${selectedSeller.seller_type}`)}
-              </TypeBadge>
-            </span>
-          )}
-        </KvValue>
-      </ReviewKv>
-
-      <ItemTable>
-        <ItemRow className="header">
-          <div>{t('new.items.ingredient')}</div>
-          <div>{t('new.items.sellerProduct')}</div>
-          <div>{t('new.items.quantity')}</div>
-          <div>{t('new.items.unitPrice')}</div>
-          <div>{t('new.items.lineTotal')}</div>
-          <div></div>
-        </ItemRow>
-        {orderRows.map(row => {
-          const product = row.seller_product_options.find(p => p.id === row.seller_product_id);
-          return (
-            <ItemRow key={row.rowKey}>
-              <div>{row.ingredient_name}</div>
-              <div>{product?.product_name || '-'}</div>
-              <div>{row.quantity}</div>
-              <div>{Number(row.unit_price).toFixed(2)}</div>
-              <div style={{ textAlign: 'right', fontWeight: 600 }}>
-                {(row.quantity * row.unit_price).toFixed(2)}
-              </div>
-              <div></div>
-            </ItemRow>
-          );
-        })}
-      </ItemTable>
-
-      <div style={{ height: 20 }} />
-
-      <FormGroup>
-        <FormLabel>{t('new.review.expectedDelivery')}</FormLabel>
-        <DateField value={expectedDate} onChange={setExpectedDate} />
-      </FormGroup>
-
-      <FormGroup>
-        <FormLabel>{t('new.review.deliveryAddress')}</FormLabel>
-        <FormTextArea
-          rows={2}
-          value={deliveryAddress}
-          onChange={(e) => setDeliveryAddress(e.target.value)}
-          placeholder={t('new.review.deliveryAddressPlaceholder') as string}
-        />
-      </FormGroup>
-
-      <FormGroup>
-        <FormLabel>{t('new.review.notes')}</FormLabel>
-        <FormTextArea
-          rows={3}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder={t('new.review.notesPlaceholder') as string}
-        />
-      </FormGroup>
-
-      <TotalsBox>
-        <div>
-          <span>{t('new.review.subtotal')}</span>
-          <span>{selectedSeller?.currency || 'MYR'} {subtotal.toFixed(2)}</span>
-        </div>
-        <div>
-          <span>{t('new.review.tax')}</span>
-          <span>{selectedSeller?.currency || 'MYR'} {tax.toFixed(2)}</span>
-        </div>
-        <div className="total">
-          <span>{t('new.review.total')}</span>
-          <span>{selectedSeller?.currency || 'MYR'} {total.toFixed(2)}</span>
-        </div>
-      </TotalsBox>
-    </Card>
-  );
-
   return (
     <Container>
-      <Header>
-        <div>
-          <Title>{t('new.title')}</Title>
-          <Subtitle>{t('new.stepLabel', { current: step, total: 3 })}</Subtitle>
-        </div>
-        <ThemedButton
-          variant="outline"
-          onClick={() => navigate('/pos/purchase-orders')}
-        >
-          {t('new.back')}
-        </ThemedButton>
-      </Header>
+      <PageHeader>
+        <PageTitle>{t('newPo.title', 'New Purchase Order')}</PageTitle>
+      </PageHeader>
 
-      <Content>
-        {renderStepHeader()}
+      <Layout>
+        <MainPane>
+          <TabBar>
+            <TabBtn $active={tab === 'mine'} onClick={() => { setTab('mine'); setCategoryFilter('all'); setSearch(''); }}>
+              {t('newPo.tabMine', 'My Ingredients')}
+            </TabBtn>
+            <TabBtn $active={tab === 'catalog'} onClick={() => { setTab('catalog'); setCategoryFilter('all'); setSupplierFilter('all'); setSearch(''); }}>
+              {t('newPo.tabCatalog', 'Supplier Catalog')}
+            </TabBtn>
+          </TabBar>
 
-        {error && <ErrorBox>{error}</ErrorBox>}
-
-        {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
-        {step === 3 && renderStep3()}
-
-        <FooterBar>
-          <div>
-            {step > 1 && (
-              <ThemedButton variant="outline" onClick={goPrev} disabled={submitting}>
-                {t('new.previous')}
-              </ThemedButton>
+          <FilterRow>
+            <SearchBox
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('newPo.searchPlaceholder', 'Search products...') as string}
+            />
+            {tab === 'catalog' && catalogSuppliers.length > 0 && (
+              <FilterSel value={supplierFilter} onChange={(e) => setSupplierFilter(e.target.value)}>
+                <option value="all">{t('newPo.allSuppliers', 'All suppliers')}</option>
+                {catalogSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </FilterSel>
             )}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {step < 3 && (
-              <ThemedButton variant="primary" onClick={goNext}>
-                {t('new.next')}
-              </ThemedButton>
+          </FilterRow>
+
+          <CategoryRow>
+            <CategoryChip $active={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')}>
+              {t('newPo.allCategories', 'All')}
+            </CategoryChip>
+            {tab === 'mine' && myCategories.map(c => (
+              <CategoryChip
+                key={c.id}
+                $active={categoryFilter === String(c.id)}
+                onClick={() => setCategoryFilter(String(c.id))}
+              >
+                {c.emoji ? `${c.emoji} ` : ''}{c.name}
+              </CategoryChip>
+            ))}
+            {tab === 'catalog' && catalogCategories.map(c => (
+              <CategoryChip
+                key={c.id}
+                $active={categoryFilter === String(c.id)}
+                onClick={() => setCategoryFilter(String(c.id))}
+              >
+                {c.emoji ? `${c.emoji} ` : ''}{c.name}
+              </CategoryChip>
+            ))}
+          </CategoryRow>
+
+          <ScrollArea>
+            {tab === 'mine' ? (
+              loadingMine ? (
+                <Empty>{t('common:loading', 'Loading…')}</Empty>
+              ) : filteredMy.length === 0 ? (
+                <Empty>
+                  <strong>{t('newPo.empty.mine.title', 'No ingredients found')}</strong>
+                  <div style={{ marginTop: 8, fontSize: 12 }}>
+                    {t('newPo.empty.mine.desc', 'Click any product in the Supplier Catalog tab to add to your inventory.')}
+                  </div>
+                </Empty>
+              ) : (
+                <Grid>
+                  {filteredMy.map(row => {
+                    const inCart = isInCart(row.id);
+                    const qInCart = cartQtyOf(row.id);
+                    const hasSeller = row.sellers && row.sellers.length > 0;
+                    const minPrice = hasSeller ? Math.min(...row.sellers.map(s => s.unit_price)) : 0;
+                    const cat = row.ingredientCategory;
+                    return (
+                      <Card
+                        key={row.id}
+                        type="button"
+                        onClick={() => addMineToCart(row)}
+                        onDoubleClick={() => hasSeller && incCartQty(row.id, 1)}
+                        $disabled={!hasSeller}
+                      >
+                        {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
+                        {!inCart && !hasSeller && <Badge $variant="warning">{t('newPo.unlinked', 'Unlinked')}</Badge>}
+                        <CardName>{row.name}</CardName>
+                        <CardMeta>
+                          {cat ? `${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}` : t('newPo.uncategorized', 'Uncategorized')}
+                          {row.unit ? ` · ${row.unit}` : ''}
+                        </CardMeta>
+                        {hasSeller ? (
+                          <>
+                            <CardPrice>
+                              {row.sellers.length === 1 ? minPrice.toFixed(2) : `from ${minPrice.toFixed(2)}`}
+                            </CardPrice>
+                            <CardMeta>
+                              {row.sellers.length === 1 ? row.sellers[0].seller_name : `${row.sellers.length} ${t('newPo.vendors', 'vendors')}`}
+                            </CardMeta>
+                            {(row.sellers.find(s => s.is_preferred) || row.sellers[0])?.has_options && (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); openMineOptionModal(row); }}
+                                style={{
+                                  marginTop: 8,
+                                  padding: '6px 12px',
+                                  border: '1px solid #635BFF',
+                                  borderRadius: 8,
+                                  background: '#EEF2FF',
+                                  color: '#635BFF',
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  cursor: 'pointer',
+                                  alignSelf: 'flex-start',
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                {t('newPo.optionsButton', 'Options')}
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <CardMeta style={{ color: '#92400E' }}>
+                            {t('newPo.needLink', 'Link a supplier to order')}
+                          </CardMeta>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </Grid>
+              )
+            ) : (
+              loadingCatalog ? (
+                <Empty>{t('common:loading', 'Loading…')}</Empty>
+              ) : catalogList.length === 0 ? (
+                <Empty>
+                  <strong>{t('newPo.empty.catalog.title', 'No supplier products')}</strong>
+                  <div style={{ marginTop: 8, fontSize: 12 }}>
+                    {t('newPo.empty.catalog.desc', 'You need an active contract with a supplier.')}
+                  </div>
+                </Empty>
+              ) : (
+                <Grid>
+                  {catalogList.map(p => {
+                    const inCart = p.mapped_ingredient_id != null && cart.some(r => r.ingredient_id === p.mapped_ingredient_id);
+                    const qInCart = p.mapped_ingredient_id ? cartQtyOf(p.mapped_ingredient_id) : 0;
+                    return (
+                      <Card
+                        key={p.id}
+                        type="button"
+                        onClick={() => addCatalogToCart(p)}
+                        onDoubleClick={() => !p.has_options && p.mapped_ingredient_id && incCartQty(p.mapped_ingredient_id, 1)}
+                      >
+                        {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
+                        {!inCart && p.already_mapped && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
+                        {!inCart && !p.already_mapped && <Badge $variant="warning">{t('newPo.notLinked', 'Not linked')}</Badge>}
+                        {p.image_url && (
+                          <ProductImage>
+                            <img src={p.image_url} alt={p.name} loading="lazy" />
+                          </ProductImage>
+                        )}
+                        <CardName>{p.name}</CardName>
+                        <CardMeta>
+                          {p.category_name ? `${p.category_name} · ` : ''}{p.unit || ''}
+                        </CardMeta>
+                        <CardPrice>{p.unit_price.toFixed(2)}</CardPrice>
+                        <CardMeta>{p.supplier?.name || ''}{p.sku ? ` · ${p.sku}` : ''}</CardMeta>
+                        {p.has_options && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openCatalogOptionModal(p); }}
+                            style={{
+                              marginTop: 8,
+                              padding: '6px 12px',
+                              border: '1px solid #635BFF',
+                              borderRadius: 8,
+                              background: '#EEF2FF',
+                              color: '#635BFF',
+                              fontWeight: 700,
+                              fontSize: 12,
+                              cursor: 'pointer',
+                              alignSelf: 'flex-start',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            {t('newPo.optionsButton', 'Options')}
+                          </button>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </Grid>
+              )
             )}
-            {step === 3 && (
+          </ScrollArea>
+        </MainPane>
+
+        <CartPane>
+          <CartHeader>
+            {t('newPo.cart.title', 'Cart')} {cart.length > 0 && `(${cart.length})`}
+          </CartHeader>
+          <CartScroll>
+            {cart.length === 0 ? (
+              <Empty>
+                {t('newPo.cartEmpty', 'Click a card to add to cart.')}
+              </Empty>
+            ) : (
+              // Supplier 별 group 으로 cart 표시
+              groups.map(g => (
+                <div key={g.key} style={{ marginBottom: 14 }}>
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '6px 8px', background: '#F8FAFC', borderRadius: 6,
+                    marginBottom: 6, fontSize: 11, fontWeight: 700, color: '#475569',
+                    textTransform: 'uppercase', letterSpacing: 0.4
+                  }}>
+                    <span>{g.seller_name}</span>
+                    <span style={{ color: '#635BFF' }}>{g.subtotal.toFixed(2)}</span>
+                  </div>
+                  {g.items.map(({ row, seller }) => {
+                    const effectivePrice = row.adjusted_unit_price ?? seller.unit_price;
+                    return (
+                  <CartLine key={row.cart_key}>
+                    <CartLineHead>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 13, fontWeight: 600, color: '#0A2540',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                        }}>{row.ingredient_name}</div>
+                      </div>
+                      <QtyInput
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={row.quantity}
+                        onChange={(e) => updateRow(row.cart_key, {
+                          quantity: Math.max(0, parseFloat(e.target.value) || 0)
+                        })}
+                      />
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#635BFF', textAlign: 'right' }}>
+                        {(effectivePrice * row.quantity).toFixed(2)}
+                      </div>
+                      <RemoveX type="button" onClick={() => removeRow(row.cart_key)} aria-label="remove">×</RemoveX>
+                    </CartLineHead>
+                    {row.selected_options && row.selected_options.length > 0 && (
+                      <div style={{ fontSize: 11, color: '#635BFF', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {row.selected_options.map(o => (
+                          <span key={o.option_id} style={{ background: '#EEF2FF', padding: '1px 6px', borderRadius: 999 }}>
+                            {o.option_name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#9CA3AF' }}>
+                      {row.ingredient_unit && <span>{row.ingredient_unit}</span>}
+                      {row.available_sellers.length > 1 ? (
+                        <VendorMini
+                          style={{ flex: 1, fontSize: 11, padding: '3px 6px' }}
+                          value={row.selected_seller_id}
+                          onChange={(e) => updateRow(row.cart_key, {
+                            selected_seller_id: parseInt(e.target.value, 10)
+                          })}
+                        >
+                          {row.available_sellers
+                            .slice()
+                            .sort((a, b) => a.unit_price - b.unit_price)
+                            .map(s => (
+                              <option key={s.id} value={s.id}>
+                                {s.seller_name} {s.unit_price.toFixed(2)}
+                              </option>
+                            ))}
+                        </VendorMini>
+                      ) : (
+                        <span style={{ flex: 1 }}>{seller.seller_name}</span>
+                      )}
+                    </div>
+                  </CartLine>
+                    );
+                  })}
+                </div>
+              ))
+            )}
+          </CartScroll>
+          <CartFooter>
+            {error && <ErrorBox>{error}</ErrorBox>}
+            {cart.length > 0 && (
               <>
-                <ThemedButton
-                  variant="outline"
-                  onClick={() => submitPO('draft')}
-                  disabled={submitting}
-                >
-                  {submitting ? t('common.saving') : t('new.saveDraft')}
-                </ThemedButton>
-                <ThemedButton
-                  variant="primary"
-                  onClick={() => submitPO('submit')}
-                  disabled={submitting}
-                >
-                  {submitting ? t('common.submitting') : t('new.submit')}
-                </ThemedButton>
+                <SubmitMeta>
+                  {t('newPo.submit.poCount', { count: groups.length, defaultValue: '{{count}} POs' })}
+                  {' · '}
+                  {t('newPo.submit.itemCount', { count: cart.length, defaultValue: '{{count}} items' })}
+                </SubmitMeta>
+                <TotalAmount>{grandTotal.toFixed(2)}</TotalAmount>
+                <div style={{ marginTop: 12 }}>
+                  <ThemedButton
+                    variant="primary"
+                    onClick={submit}
+                    disabled={submitting || cart.length === 0}
+                    style={{ width: '100%' }}
+                  >
+                    {submitting
+                      ? t('newPo.submit.submitting', 'Creating...')
+                      : t('newPo.submit.button', 'Create POs')}
+                  </ThemedButton>
+                </div>
               </>
             )}
-          </div>
-        </FooterBar>
-      </Content>
+          </CartFooter>
+        </CartPane>
+      </Layout>
+
+      {toast && <Toast>{toast}</Toast>}
+
+      {optionModal && optionModal.row.option_groups && (
+        <SupplierOptionModal
+          open={true}
+          onClose={() => setOptionModal(null)}
+          productName={optionModal.row.name}
+          basePrice={optionModal.row.unit_price}
+          unit={optionModal.row.unit}
+          optionGroups={optionModal.row.option_groups}
+          onConfirm={async (selectedOptions, adjustedUnitPrice, qty) => {
+            const row = optionModal.row;
+            setOptionModal(null);
+            await ensureIngredientAndAddToCart(row, selectedOptions, adjustedUnitPrice, qty);
+          }}
+        />
+      )}
     </Container>
   );
 };

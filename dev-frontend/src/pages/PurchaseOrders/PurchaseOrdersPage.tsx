@@ -10,7 +10,7 @@ import {
 } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
-import DateField from '../../components/Common/DateField';
+import DateRangeField from '../../components/Common/DateRangeField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 
@@ -292,26 +292,15 @@ const PurchaseOrdersPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <div>
-          <Title>{t('list.title')}</Title>
-          <Subtitle>{t('list.subtitle')}</Subtitle>
-        </div>
-        <HeaderActions>
-          {suggestionsCount > 0 && (
-            <SuggestionBadge
-              type="button"
-              onClick={() => setSuggestionsOpen(o => !o)}
-            >
-              ▲ {t('list.suggestions.badge', { n: suggestionsCount })}
-            </SuggestionBadge>
-          )}
-          <ThemedButton
-            variant="primary"
-            onClick={() => navigate('/pos/purchase-orders/new')}
+        <Title>{t('list.title')}</Title>
+        {suggestionsCount > 0 && (
+          <SuggestionBadge
+            type="button"
+            onClick={() => setSuggestionsOpen(o => !o)}
           >
-            {t('list.newOrder')}
-          </ThemedButton>
-        </HeaderActions>
+            ▲ {t('list.suggestions.badge', { n: suggestionsCount })}
+          </SuggestionBadge>
+        )}
       </Header>
 
       <Content>
@@ -399,11 +388,14 @@ const PurchaseOrdersPage: React.FC = () => {
             <option value="received">{t('status.received')}</option>
             <option value="cancelled">{t('status.cancelled')}</option>
           </FilterSelect>
-          <div style={{ minWidth: 150 }}>
-            <DateField value={fromDate} onChange={setFromDate} placeholder={t('list.filter.from') as string} />
-          </div>
-          <div style={{ minWidth: 150 }}>
-            <DateField value={toDate} onChange={setToDate} placeholder={t('list.filter.to') as string} />
+          <div style={{ minWidth: 280 }}>
+            <DateRangeField
+              startDate={fromDate}
+              endDate={toDate}
+              onChange={(s, e) => { setFromDate(s); setToDate(e); }}
+              startLabel={t('list.filter.from') as string}
+              endLabel={t('list.filter.to') as string}
+            />
           </div>
         </FilterBar>
 

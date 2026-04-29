@@ -385,6 +385,7 @@ interface StoreSettings {
   country: string;
   gstRegNo: string;
   logo: string;
+  delivery_address: string;  // empty = use store address
 }
 
 // 국가 목록 (ISO 코드 기준)
@@ -711,7 +712,8 @@ const SettingsPage: React.FC = () => {
         postalCode: '50000',
         country: 'MY',
         gstRegNo: '000123456789',
-        logo: ''
+        logo: '',
+        delivery_address: ''
       },
       operations: {
         openingTime: '09:00',
@@ -994,7 +996,8 @@ const SettingsPage: React.FC = () => {
               postalCode: restaurant.postal_code || '',
               country: (restaurant.country || 'MY').toString().toUpperCase(),
               gstRegNo: restaurant.tax_id || '',
-              logo: restaurant.logo_url || ''
+              logo: restaurant.logo_url || '',
+              delivery_address: restaurant.delivery_address || ''
             });
 
             // Update brand info
@@ -1861,6 +1864,7 @@ const SettingsPage: React.FC = () => {
           email: storeSettings.email,
           address: storeSettings.address,
           address_line_2: storeSettings.address_line_2,
+          delivery_address: storeSettings.delivery_address.trim() || null,
           city: storeSettings.city,
           state: storeSettings.state,
           postal_code: storeSettings.postalCode,
@@ -2783,6 +2787,54 @@ const SettingsPage: React.FC = () => {
                   }}
                   defaultCountry={storeSettings.country || 'MY'}
                 />
+
+                {/* 발주 배송지 — 매장 주소와 같으면 NULL, 다르면 별도 textarea */}
+                <div style={{ marginTop: 18, paddingTop: 18, borderTop: '1px solid #F1F5F9' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#0A2540' }}>
+                    <input
+                      type="checkbox"
+                      checked={!storeSettings.delivery_address || !storeSettings.delivery_address.trim()}
+                      onChange={(e) => {
+                        const useStore = e.target.checked;
+                        setStoreSettings(prev => ({ ...prev, delivery_address: useStore ? '' : (prev.delivery_address || prev.address || '') }));
+                        setHasChanges(true);
+                        if (addressSaveTimerRef.current) clearTimeout(addressSaveTimerRef.current);
+                        addressSaveTimerRef.current = setTimeout(() => { handleSave(); }, 600);
+                      }}
+                      style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+                    />
+                    {t('settings:settingsPage.deliveryUseStore', 'Use store address as delivery address')}
+                  </label>
+
+                  {storeSettings.delivery_address && storeSettings.delivery_address.trim() && (
+                    <div style={{ marginTop: 10 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7C93', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                        {t('settings:settingsPage.deliveryAddress', 'Delivery address')}
+                      </div>
+                      <textarea
+                        value={storeSettings.delivery_address}
+                        onChange={(e) => {
+                          setStoreSettings(prev => ({ ...prev, delivery_address: e.target.value }));
+                          setHasChanges(true);
+                          if (addressSaveTimerRef.current) clearTimeout(addressSaveTimerRef.current);
+                          addressSaveTimerRef.current = setTimeout(() => { handleSave(); }, 600);
+                        }}
+                        placeholder={t('settings:settingsPage.deliveryAddressPlaceholder', 'Warehouse / branch address (only if different from store)') as string}
+                        rows={3}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          border: '1px solid #E6EBF1',
+                          borderRadius: 8,
+                          fontSize: 13,
+                          fontFamily: 'inherit',
+                          resize: 'vertical',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </SettingsCard>
               </SettingsGrid>
 

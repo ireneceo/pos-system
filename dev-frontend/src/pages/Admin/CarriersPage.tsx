@@ -242,10 +242,7 @@ const CarriersPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <div>
-          <Title>{t('admin:carriers.title', 'Carriers')}</Title>
-          <Subtitle>{t('admin:carriers.subtitle', 'Delivery carriers used by sellers when shipping purchase orders')}</Subtitle>
-        </div>
+        <Title>{t('admin:carriers.title', 'Carriers')}</Title>
         <ThemedButton variant="primary" onClick={openAdd}>
           + {t('admin:carriers.add', 'Add Carrier')}
         </ThemedButton>

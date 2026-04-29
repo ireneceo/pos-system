@@ -212,7 +212,6 @@ const SupplierCustomersPage: React.FC = () => {
       <Header>
         <div>
           <Title>{t('customers.title')}</Title>
-          <Subtitle>{t('customers.subtitle')}</Subtitle>
         </div>
       </Header>
 

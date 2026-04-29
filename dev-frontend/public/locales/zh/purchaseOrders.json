@@ -234,5 +234,75 @@
     "total": "总计",
     "notes": "备注",
     "thank_you": "谢谢"
+  },
+  "newPo": {
+    "title": "新建采购订单",
+    "subtitle": "搜索食材加入购物车,提交时按供应商自动拆分订单。",
+    "search": {
+      "placeholder": "按食材名称搜索...",
+      "empty": "没有结果。",
+      "unmappedHint": "只有已映射到供应商的食材才能下订单。请先在供应商目录中映射。",
+      "vendors": "供应商",
+      "add": "+ 添加",
+      "inCart": "已在购物车"
+    },
+    "cart": {
+      "title": "购物车",
+      "col": {
+        "ingredient": "食材",
+        "qty": "数量",
+        "vendor": "供应商",
+        "unitPrice": "单价",
+        "total": "小计"
+      },
+      "empty": {
+        "title": "购物车为空",
+        "desc": "从上方搜索并添加食材。"
+      },
+      "minOrder": "最低: {{count}}"
+    },
+    "preview": {
+      "title": "将创建{{count}}个PO"
+    },
+    "delivery": {
+      "title": "交付信息",
+      "date": "预期日期",
+      "address": "交付地址",
+      "addressPlaceholder": "餐厅默认",
+      "notes": "备注",
+      "notesPlaceholder": "可选备注"
+    },
+    "submit": {
+      "button": "创建PO",
+      "submitting": "创建中...",
+      "poCount": "{{count}}个PO",
+      "itemCount": "{{count}}项"
+    },
+    "error": {
+      "empty": "购物车为空。",
+      "failed": "创建失败"
+    },
+    "tabMine": "我的食材",
+    "tabCatalog": "供应商目录",
+    "searchPlaceholder": "搜索产品...",
+    "allSuppliers": "所有供应商",
+    "allCategories": "全部",
+    "vendors": "供应商",
+    "linked": "已链接",
+    "cartEmpty": "点击卡片加入购物车。",
+    "empty": {
+      "mine": {
+        "title": "没有已链接的食材",
+        "desc": "在供应商目录中点击产品自动加入库存。"
+      },
+      "catalog": {
+        "title": "没有供应商产品",
+        "desc": "需要与供应商签订有效合同才能查看目录。"
+      }
+    },
+    "toast": {
+      "added": "\"{{name}}\"已加入购物车",
+      "linked": "\"{{name}}\"已加入库存"
+    }
   }
 }

@@ -17,6 +17,9 @@ const { deleteOldImages } = require('../utils/imageProcessor');
  */
 router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, async (req, res) => {
   try {
+    const includeSellers = req.query.include === 'sellers';
+    const hasSellersFilter = req.query.has_sellers === '1' || req.query.has_sellers === 'true';
+
     // Get all brands owned by this user (shared ingredients across brands)
     const Brand = require('../models/Brand');
     const userBrands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
@@ -39,10 +42,215 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
       ]
     });
 
+    // ?include=sellers — Cart-first PO UI 용 (NewPurchaseOrderPage)
+    if (includeSellers) {
+      const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+      const SupplierCompany = require('../models/SupplierCompany');
+      const SupplierProduct = require('../models/SupplierProduct');
+      const SupplierProductOptionGroup = require('../models/SupplierProductOptionGroup');
+      const SupplierProductOption = require('../models/SupplierProductOption');
+      const Foodcourt = require('../models/Foodcourt');
+
+      const ingIds = ingredients.map(i => i.id);
+      const mappings = ingIds.length === 0 ? [] : await IngredientSellerProduct.findAll({
+        where: { ingredient_id: { [Op.in]: ingIds }, is_active: true },
+        order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
+      });
+
+      const supplierIds = [...new Set(mappings.filter(m => m.seller_type === 'supplier').map(m => m.seller_entity_id).filter(Boolean))];
+      const otherBrandIds = [...new Set(mappings.filter(m => m.seller_type === 'brand').map(m => m.seller_entity_id).filter(Boolean))];
+      const fcIds = [...new Set(mappings.filter(m => m.seller_type === 'foodcourt').map(m => m.seller_entity_id).filter(Boolean))];
+      const [suppliers, otherBrands, foodcourts] = await Promise.all([
+        supplierIds.length ? SupplierCompany.findAll({ where: { id: { [Op.in]: supplierIds } }, attributes: ['id', 'name'] }) : [],
+        otherBrandIds.length ? Brand.findAll({ where: { id: { [Op.in]: otherBrandIds } }, attributes: ['id', 'name'] }) : [],
+        fcIds.length ? Foodcourt.findAll({ where: { id: { [Op.in]: fcIds } }, attributes: ['id', 'name'] }) : []
+      ]);
+      const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.name]));
+      const brandMap = Object.fromEntries(otherBrands.map(b => [b.id, b.name]));
+      const foodcourtMap = Object.fromEntries(foodcourts.map(f => [f.id, f.name]));
+
+      // Supplier product options lookup
+      const supplierProductIds = [...new Set(mappings.filter(m => m.seller_type === 'supplier').map(m => m.seller_product_id))];
+      const supProds = supplierProductIds.length === 0 ? [] : await SupplierProduct.findAll({
+        where: { id: { [Op.in]: supplierProductIds } },
+        include: [{
+          model: SupplierProductOptionGroup,
+          as: 'optionGroups',
+          attributes: ['id', 'name', 'is_required', 'min_selections', 'max_selections', 'sort_order'],
+          through: { attributes: [] },
+          include: [{
+            model: SupplierProductOption,
+            as: 'options',
+            attributes: ['id', 'name', 'price_adjustment', 'sort_order'],
+            where: { is_active: true },
+            required: false
+          }],
+          required: false
+        }]
+      });
+      const optsBySpId = {};
+      for (const sp of supProds) {
+        optsBySpId[sp.id] = (sp.optionGroups || [])
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map(g => ({
+            id: g.id, name: g.name, is_required: !!g.is_required,
+            min_selections: g.min_selections || 0, max_selections: g.max_selections || 1,
+            options: (g.options || [])
+              .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+              .map(o => ({ id: o.id, name: o.name, price_adjustment: parseFloat(o.price_adjustment) || 0 }))
+          }));
+      }
+
+      const sellersByIngredient = {};
+      for (const m of mappings) {
+        const arr = sellersByIngredient[m.ingredient_id] || (sellersByIngredient[m.ingredient_id] = []);
+        let sellerName = 'Unknown';
+        if (m.seller_type === 'supplier') sellerName = supplierMap[m.seller_entity_id] || 'Supplier';
+        else if (m.seller_type === 'brand') sellerName = brandMap[m.seller_entity_id] || 'Brand';
+        else if (m.seller_type === 'foodcourt') sellerName = foodcourtMap[m.seller_entity_id] || 'Foodcourt';
+        else if (m.seller_type === 'system_admin') sellerName = 'PurpleHere';
+        const groups = (m.seller_type === 'supplier' ? (optsBySpId[m.seller_product_id] || []) : []);
+        arr.push({
+          id: m.id,
+          seller_product_id: m.seller_product_id,
+          seller_type: m.seller_type,
+          seller_entity_id: m.seller_entity_id,
+          seller_name: sellerName,
+          unit_price: parseFloat(m.unit_price),
+          unit_conversion: parseFloat(m.unit_conversion),
+          min_order_quantity: m.min_order_quantity,
+          lead_time_days: m.lead_time_days,
+          is_preferred: m.is_preferred,
+          option_groups: groups,
+          has_options: groups.length > 0
+        });
+      }
+
+      let enriched = ingredients.map(ing => {
+        const plain = ing.toJSON();
+        plain.sellers = sellersByIngredient[plain.id] || [];
+        return plain;
+      });
+      if (hasSellersFilter) enriched = enriched.filter(ing => ing.sellers.length > 0);
+      return res.json({ success: true, data: enriched });
+    }
+
     res.json({ success: true, data: ingredients });
   } catch (error) {
     console.error('Get brand ingredients error:', error);
     res.status(500).json({ error: '재료 목록 조회 실패' });
+  }
+});
+
+// ============================================
+// POST /api/brands/:brandId/ingredients/from-catalog
+// — Cart drawer "Supplier Catalog" 탭에서 supplier_product 클릭 시 호출 (BG 용).
+//   ingredient(owner_type='brand') + IngredientSellerProduct 매핑 자동 생성. idempotent.
+// ============================================
+router.post('/brands/:brandId/ingredients/from-catalog', authenticateToken, isBrandManager, async (req, res) => {
+  const t = await Ingredient.sequelize.transaction();
+  try {
+    const { brandId } = req.params;
+    const supplierProductId = parseInt(req.body?.supplier_product_id, 10);
+    if (!Number.isFinite(supplierProductId)) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'supplier_product_id is required' });
+    }
+
+    const SupplierProduct = require('../models/SupplierProduct');
+    const SupplierContract = require('../models/SupplierContract');
+    const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+
+    const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
+    if (!sp) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Supplier product not found' });
+    }
+
+    // Active contract 검증 (entity_type='brand')
+    const contract = await SupplierContract.findOne({
+      where: {
+        entity_type: 'brand', entity_id: brandId,
+        supplier_company_id: sp.supplier_company_id,
+        status: 'active'
+      },
+      transaction: t
+    });
+    if (!contract) {
+      await t.rollback();
+      return res.status(403).json({ success: false, message: 'No active contract with this supplier' });
+    }
+
+    // Idempotent — 이미 매핑된 ingredient 가 이 brand 의 것이면 그대로 반환
+    const existing = await IngredientSellerProduct.findOne({
+      where: { seller_type: 'supplier', seller_entity_id: sp.supplier_company_id, seller_product_id: sp.id },
+      transaction: t
+    });
+    if (existing) {
+      const ing = await Ingredient.findByPk(existing.ingredient_id, { transaction: t });
+      if (ing && ing.owner_type === 'brand' && ing.brand_id === parseInt(brandId, 10)) {
+        await t.commit();
+        return res.json({ success: true, data: { ingredient: ing, mapping: existing, created: false } });
+      }
+    }
+
+    // Unit ENUM 매핑 (restaurants/from-catalog 와 동일)
+    const UNIT_ENUM = ['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'];
+    const UNIT_MAP = {
+      kg: 'kg', kgs: 'kg', kilogram: 'kg', kilograms: 'kg',
+      g: 'g', gram: 'g', grams: 'g', gr: 'g',
+      l: 'L', liter: 'L', liters: 'L', litre: 'L', litres: 'L',
+      ml: 'ml',
+      piece: 'piece', pcs: 'piece', pc: 'piece', ea: 'piece', each: 'piece', unit: 'piece',
+      pack: 'pack', pkt: 'pack', packet: 'pack', bag: 'pack', sack: 'pack',
+      box: 'pack', case: 'pack', carton: 'pack', ctn: 'pack',
+      can: 'can', tin: 'can',
+      bottle: 'bottle', btl: 'bottle'
+    };
+    const normalizeUnit = (u) => {
+      if (!u) return 'piece';
+      if (UNIT_ENUM.includes(u)) return u;
+      const mapped = UNIT_MAP[String(u).toLowerCase().trim()];
+      return mapped || 'piece';
+    };
+    const finalUnit = req.body?.unit && UNIT_ENUM.includes(req.body.unit) ? req.body.unit : normalizeUnit(sp.unit);
+
+    const ingredient = await Ingredient.create({
+      owner_type: 'brand',
+      brand_id: brandId,
+      restaurant_id: null,
+      name: req.body?.name || sp.name,
+      unit: finalUnit,
+      base_quantity: 1,
+      unit_cost: parseFloat(sp.unit_price) || 0,
+      supplier_name: null,
+      supplier_id: null,
+      min_stock: 0,
+      current_stock: 0,
+      track_stock: true,
+      is_active: true,
+      code: ''
+    }, { transaction: t });
+
+    const mapping = await IngredientSellerProduct.create({
+      ingredient_id: ingredient.id,
+      seller_type: 'supplier',
+      seller_entity_id: sp.supplier_company_id,
+      seller_product_id: sp.id,
+      unit_price: parseFloat(sp.unit_price) || 0,
+      unit_conversion: 1,
+      min_order_quantity: parseInt(sp.min_order_quantity, 10) || 1,
+      lead_time_days: 0,
+      is_preferred: true,
+      is_active: true
+    }, { transaction: t });
+
+    await t.commit();
+    res.status(201).json({ success: true, data: { ingredient, mapping, created: true } });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('POST /brands/:brandId/ingredients/from-catalog error:', err);
+    res.status(500).json({ success: false, message: 'Failed to create ingredient from catalog' });
   }
 });
 
@@ -178,6 +386,8 @@ router.delete('/brands/:brandId/ingredients/:ingredientId', authenticateToken, i
 router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
+    const includeSellers = req.query.include === 'sellers';
+    const hasSellersFilter = req.query.has_sellers === '1' || req.query.has_sellers === 'true';
 
     const ingredients = await Ingredient.findAll({
       where: {
@@ -198,6 +408,69 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
         }
       ]
     });
+
+    // ?include=sellers — cart-first PO UI 용. IngredientSellerProduct + seller 회사명 join.
+    if (includeSellers) {
+      const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+      const SupplierCompany = require('../models/SupplierCompany');
+      const Brand = require('../models/Brand');
+      const Foodcourt = require('../models/Foodcourt');
+
+      const ingIds = ingredients.map(i => i.id);
+      const mappings = ingIds.length === 0 ? [] : await IngredientSellerProduct.findAll({
+        where: { ingredient_id: { [Op.in]: ingIds }, is_active: true },
+        order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
+      });
+
+      // Seller name 조회 (4종 entity 별 batch)
+      const supplierIds = [...new Set(mappings.filter(m => m.seller_type === 'supplier').map(m => m.seller_entity_id).filter(Boolean))];
+      const brandIds = [...new Set(mappings.filter(m => m.seller_type === 'brand').map(m => m.seller_entity_id).filter(Boolean))];
+      const foodcourtIds = [...new Set(mappings.filter(m => m.seller_type === 'foodcourt').map(m => m.seller_entity_id).filter(Boolean))];
+
+      const [suppliers, brands, foodcourts] = await Promise.all([
+        supplierIds.length ? SupplierCompany.findAll({ where: { id: { [Op.in]: supplierIds } }, attributes: ['id', 'name'] }) : [],
+        brandIds.length ? Brand.findAll({ where: { id: { [Op.in]: brandIds } }, attributes: ['id', 'name'] }) : [],
+        foodcourtIds.length ? Foodcourt.findAll({ where: { id: { [Op.in]: foodcourtIds } }, attributes: ['id', 'name'] }) : []
+      ]);
+      const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.name]));
+      const brandMap = Object.fromEntries(brands.map(b => [b.id, b.name]));
+      const foodcourtMap = Object.fromEntries(foodcourts.map(f => [f.id, f.name]));
+
+      const sellersByIngredient = {};
+      for (const m of mappings) {
+        const arr = sellersByIngredient[m.ingredient_id] || (sellersByIngredient[m.ingredient_id] = []);
+        let sellerName = 'Unknown';
+        if (m.seller_type === 'supplier') sellerName = supplierMap[m.seller_entity_id] || 'Supplier';
+        else if (m.seller_type === 'brand') sellerName = brandMap[m.seller_entity_id] || 'Brand';
+        else if (m.seller_type === 'foodcourt') sellerName = foodcourtMap[m.seller_entity_id] || 'Foodcourt';
+        else if (m.seller_type === 'system_admin') sellerName = 'PurpleHere';
+        arr.push({
+          id: m.id,
+          seller_product_id: m.seller_product_id,
+          seller_type: m.seller_type,
+          seller_entity_id: m.seller_entity_id,
+          seller_name: sellerName,
+          unit_price: parseFloat(m.unit_price),
+          unit_conversion: parseFloat(m.unit_conversion),
+          min_order_quantity: m.min_order_quantity,
+          lead_time_days: m.lead_time_days,
+          is_preferred: m.is_preferred
+        });
+      }
+
+      let enriched = ingredients.map(ing => {
+        const plain = ing.toJSON();
+        plain.sellers = sellersByIngredient[plain.id] || [];
+        return plain;
+      });
+
+      // ?has_sellers=1 — 매핑된 재료만 (cart 검색용)
+      if (hasSellersFilter) {
+        enriched = enriched.filter(ing => ing.sellers.length > 0);
+      }
+
+      return res.json({ success: true, data: enriched });
+    }
 
     res.json({ success: true, data: ingredients });
   } catch (error) {
@@ -528,6 +801,217 @@ router.delete('/restaurants/:restaurantId/ingredient-costs/:ingredientId', authe
   } catch (error) {
     console.error('Delete restaurant ingredient cost error:', error);
     res.status(500).json({ success: false, message: 'Failed to delete ingredient cost' });
+  }
+});
+
+// ============================================
+// FOODCOURT — Phase 2: 공급업체 발주 (Restaurant/Brand 와 동일 패턴)
+// ============================================
+
+// Inline middleware — Foodcourt scope check
+async function isFoodcourtScope(req, res, next) {
+  const role = req.user?.role;
+  if (role === 'System Admin') return next();
+  if (role !== 'Foodcourt General' && role !== 'Foodcourt Manager') {
+    return res.status(403).json({ success: false, message: 'Foodcourt role required' });
+  }
+  const fcId = parseInt(req.params.foodcourtId, 10);
+  // user.foodcourt_id 확인 (FG 의 default), 또는 Foodcourt.owner_id 검증
+  if (req.user.foodcourt_id === fcId) return next();
+  const Foodcourt = require('../models/Foodcourt');
+  const fc = await Foodcourt.findByPk(fcId, { attributes: ['id', 'owner_id'] });
+  if (fc && fc.owner_id === req.user.id) return next();
+  return res.status(403).json({ success: false, message: 'Not your foodcourt' });
+}
+
+// GET /api/foodcourts/:foodcourtId/ingredients ?include=sellers
+router.get('/foodcourts/:foodcourtId/ingredients', authenticateToken, isFoodcourtScope, async (req, res) => {
+  try {
+    const { foodcourtId } = req.params;
+    const includeSellers = req.query.include === 'sellers';
+    const hasSellersFilter = req.query.has_sellers === '1' || req.query.has_sellers === 'true';
+
+    const ingredients = await Ingredient.findAll({
+      where: { foodcourt_id: foodcourtId, owner_type: 'foodcourt' },
+      order: [['name', 'ASC']],
+      include: [{ model: IngredientCategory, as: 'ingredientCategory', attributes: ['id', 'name', 'emoji'] }]
+    });
+
+    if (includeSellers) {
+      const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+      const SupplierCompany = require('../models/SupplierCompany');
+      const SupplierProduct = require('../models/SupplierProduct');
+      const SupplierProductOptionGroup = require('../models/SupplierProductOptionGroup');
+      const SupplierProductOption = require('../models/SupplierProductOption');
+
+      const ingIds = ingredients.map(i => i.id);
+      const mappings = ingIds.length === 0 ? [] : await IngredientSellerProduct.findAll({
+        where: { ingredient_id: { [Op.in]: ingIds }, is_active: true },
+        order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
+      });
+
+      const supplierIds = [...new Set(mappings.filter(m => m.seller_type === 'supplier').map(m => m.seller_entity_id).filter(Boolean))];
+      const suppliers = supplierIds.length ? await SupplierCompany.findAll({ where: { id: { [Op.in]: supplierIds } }, attributes: ['id', 'name'] }) : [];
+      const supplierMap = Object.fromEntries(suppliers.map(s => [s.id, s.name]));
+
+      const supplierProductIds = [...new Set(mappings.filter(m => m.seller_type === 'supplier').map(m => m.seller_product_id))];
+      const supProds = supplierProductIds.length === 0 ? [] : await SupplierProduct.findAll({
+        where: { id: { [Op.in]: supplierProductIds } },
+        include: [{
+          model: SupplierProductOptionGroup,
+          as: 'optionGroups',
+          attributes: ['id', 'name', 'is_required', 'min_selections', 'max_selections', 'sort_order'],
+          through: { attributes: [] },
+          include: [{
+            model: SupplierProductOption,
+            as: 'options',
+            attributes: ['id', 'name', 'price_adjustment', 'sort_order'],
+            where: { is_active: true },
+            required: false
+          }],
+          required: false
+        }]
+      });
+      const optsBySpId = {};
+      for (const sp of supProds) {
+        optsBySpId[sp.id] = (sp.optionGroups || [])
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+          .map(g => ({
+            id: g.id, name: g.name, is_required: !!g.is_required,
+            min_selections: g.min_selections || 0, max_selections: g.max_selections || 1,
+            options: (g.options || [])
+              .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+              .map(o => ({ id: o.id, name: o.name, price_adjustment: parseFloat(o.price_adjustment) || 0 }))
+          }));
+      }
+
+      const sellersByIng = {};
+      for (const m of mappings) {
+        const arr = sellersByIng[m.ingredient_id] || (sellersByIng[m.ingredient_id] = []);
+        let sellerName = m.seller_type === 'supplier' ? (supplierMap[m.seller_entity_id] || 'Supplier')
+          : m.seller_type === 'system_admin' ? 'PurpleHere' : 'Unknown';
+        const groups = m.seller_type === 'supplier' ? (optsBySpId[m.seller_product_id] || []) : [];
+        arr.push({
+          id: m.id, seller_product_id: m.seller_product_id,
+          seller_type: m.seller_type, seller_entity_id: m.seller_entity_id, seller_name: sellerName,
+          unit_price: parseFloat(m.unit_price), unit_conversion: parseFloat(m.unit_conversion),
+          min_order_quantity: m.min_order_quantity, lead_time_days: m.lead_time_days,
+          is_preferred: m.is_preferred, option_groups: groups, has_options: groups.length > 0
+        });
+      }
+      let enriched = ingredients.map(ing => {
+        const plain = ing.toJSON();
+        plain.sellers = sellersByIng[plain.id] || [];
+        return plain;
+      });
+      if (hasSellersFilter) enriched = enriched.filter(ing => ing.sellers.length > 0);
+      return res.json({ success: true, data: enriched });
+    }
+
+    res.json({ success: true, data: ingredients });
+  } catch (err) {
+    console.error('GET /foodcourts/:id/ingredients error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load ingredients' });
+  }
+});
+
+// POST /api/foodcourts/:foodcourtId/ingredients/from-catalog
+router.post('/foodcourts/:foodcourtId/ingredients/from-catalog', authenticateToken, isFoodcourtScope, async (req, res) => {
+  const t = await Ingredient.sequelize.transaction();
+  try {
+    const { foodcourtId } = req.params;
+    const supplierProductId = parseInt(req.body?.supplier_product_id, 10);
+    if (!Number.isFinite(supplierProductId)) {
+      await t.rollback();
+      return res.status(400).json({ success: false, message: 'supplier_product_id is required' });
+    }
+
+    const SupplierProduct = require('../models/SupplierProduct');
+    const SupplierContract = require('../models/SupplierContract');
+    const IngredientSellerProduct = require('../models/IngredientSellerProduct');
+
+    const sp = await SupplierProduct.findByPk(supplierProductId, { transaction: t });
+    if (!sp) {
+      await t.rollback();
+      return res.status(404).json({ success: false, message: 'Supplier product not found' });
+    }
+
+    const contract = await SupplierContract.findOne({
+      where: { entity_type: 'foodcourt', entity_id: foodcourtId, supplier_company_id: sp.supplier_company_id, status: 'active' },
+      transaction: t
+    });
+    if (!contract) {
+      await t.rollback();
+      return res.status(403).json({ success: false, message: 'No active contract with this supplier' });
+    }
+
+    const existing = await IngredientSellerProduct.findOne({
+      where: { seller_type: 'supplier', seller_entity_id: sp.supplier_company_id, seller_product_id: sp.id },
+      transaction: t
+    });
+    if (existing) {
+      const ing = await Ingredient.findByPk(existing.ingredient_id, { transaction: t });
+      if (ing && ing.owner_type === 'foodcourt' && ing.foodcourt_id === parseInt(foodcourtId, 10)) {
+        await t.commit();
+        return res.json({ success: true, data: { ingredient: ing, mapping: existing, created: false } });
+      }
+    }
+
+    const UNIT_ENUM = ['kg', 'g', 'L', 'ml', 'piece', 'pack', 'can', 'bottle'];
+    const UNIT_MAP = {
+      kg: 'kg', kgs: 'kg', kilogram: 'kg', kilograms: 'kg',
+      g: 'g', gram: 'g', grams: 'g', gr: 'g',
+      l: 'L', liter: 'L', liters: 'L', litre: 'L', litres: 'L',
+      ml: 'ml',
+      piece: 'piece', pcs: 'piece', pc: 'piece', ea: 'piece', each: 'piece', unit: 'piece',
+      pack: 'pack', pkt: 'pack', packet: 'pack', bag: 'pack', sack: 'pack',
+      box: 'pack', case: 'pack', carton: 'pack', ctn: 'pack',
+      can: 'can', tin: 'can',
+      bottle: 'bottle', btl: 'bottle'
+    };
+    const normalizeUnit = (u) => {
+      if (!u) return 'piece';
+      if (UNIT_ENUM.includes(u)) return u;
+      const mapped = UNIT_MAP[String(u).toLowerCase().trim()];
+      return mapped || 'piece';
+    };
+    const finalUnit = req.body?.unit && UNIT_ENUM.includes(req.body.unit) ? req.body.unit : normalizeUnit(sp.unit);
+
+    const ingredient = await Ingredient.create({
+      owner_type: 'foodcourt',
+      foodcourt_id: foodcourtId,
+      brand_id: null,
+      restaurant_id: null,
+      name: req.body?.name || sp.name,
+      unit: finalUnit,
+      base_quantity: 1,
+      unit_cost: parseFloat(sp.unit_price) || 0,
+      min_stock: 0,
+      current_stock: 0,
+      track_stock: true,
+      is_active: true,
+      code: ''
+    }, { transaction: t });
+
+    const mapping = await IngredientSellerProduct.create({
+      ingredient_id: ingredient.id,
+      seller_type: 'supplier',
+      seller_entity_id: sp.supplier_company_id,
+      seller_product_id: sp.id,
+      unit_price: parseFloat(sp.unit_price) || 0,
+      unit_conversion: 1,
+      min_order_quantity: parseInt(sp.min_order_quantity, 10) || 1,
+      lead_time_days: 0,
+      is_preferred: true,
+      is_active: true
+    }, { transaction: t });
+
+    await t.commit();
+    res.status(201).json({ success: true, data: { ingredient, mapping, created: true } });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('POST /foodcourts/:id/ingredients/from-catalog error:', err);
+    res.status(500).json({ success: false, message: 'Failed to create ingredient from catalog' });
   }
 });
 
