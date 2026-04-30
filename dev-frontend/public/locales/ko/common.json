@@ -177,6 +177,7 @@
     "inventory": "재고",
     "recipes": "레시피",
     "ingredients": "식자재",
+    "stockItems": "재고 항목",
     "productRecipes": "상품 레시피",
     "brandRecipes": "브랜드 레시피",
     "staff": "직원",

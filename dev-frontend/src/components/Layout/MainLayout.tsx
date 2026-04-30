@@ -552,12 +552,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
 
   // Get allowed routes based on subscription plan (all roles)
-  const { isRouteAllowed, hasActiveSubscription, loading: routesLoading } = useAllowedRoutes(
+  const { isRouteAllowed, hasActiveSubscription, hasModule, loading: routesLoading } = useAllowedRoutes(
     user?.role ? {
       role: user.role,
       restaurantId: (user.role === 'Restaurant Admin' || user.role === 'Staff') ? Number(restaurantId) : null,
       brandId: (user.role === 'Brand General' || user.role === 'Brand Manager') ? Number(user.brand_id) : null,
       foodcourtId: (user.role === 'Foodcourt General' || user.role === 'Foodcourt Manager') ? Number(user.foodcourt_id) : null,
+      supplierCompanyId: (user.role === 'Supplier Admin' || user.role === 'Supplier Staff') ? Number((user as any).supplier_company_id) : null,
     } : null
   );
 
@@ -1696,6 +1697,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>◯</NavIcon>
                   {t("nav.customers", "Customers")}
                 </NavItem>
+                {hasModule('supplier_admin_staff') && (
+                  <NavItem to="/pos/supplier/staff" active={isActive('/pos/supplier/staff')} onClick={closeSidebar}>
+                    <NavIcon>◉</NavIcon>
+                    {t("nav.staff", "Staff")}
+                  </NavItem>
+                )}
                 <NavItem to="/pos/supplier/contracts" active={isActive('/pos/supplier/contracts')} onClick={closeSidebar}>
                   <NavIcon>◇</NavIcon>
                   {t("nav.contracts", "Contracts")}
@@ -1705,10 +1712,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                 <NavItem to="/pos/supplier/trade-invoices" active={isActive('/pos/supplier/trade-invoices')} onClick={closeSidebar}>
                   <NavIcon>▦</NavIcon>
                   {t("nav.tradeInvoices", "Trade Invoices")}
-                </NavItem>
-                <NavItem to="/pos/supplier/soa" active={isActive('/pos/supplier/soa')} onClick={closeSidebar}>
-                  <NavIcon>≡</NavIcon>
-                  {t("nav.soa", "Statement of Account")}
                 </NavItem>
                 <NavItem to="/pos/supplier/invoices" active={isActive('/pos/supplier/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
                   <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>

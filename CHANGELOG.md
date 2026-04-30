@@ -6,34 +6,113 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-04-29
-- PO/Supplier/Invoice 통합 UX 정리:
-  - Cart 페이지: viewport 고정 (cart 푸터 항상 보임), 검색 확장 (이름+카테고리+공급업체+단위+상세 OR-검색), 타이틀 "Purchase Order"
-  - PO history: LiveOrders 동일 필터 (DatePeriodFilter), SearchableSelect 공급업체, Print/Download 아이콘만, 우측 패널 (전체 DetailPage embedded), PO번호 클릭 패널, Invoice 섹션 + View/Download
-  - PO Detail: Edit 버튼 제거 (완료된 주문 수정 불가), "+ Order More" 액션, embedded mode (Modal 패턴 — header/body/footer 분리)
-  - PO 외부 공급업체 인보이스 업로드, 수령 처리(mark-received), 품목수/총수량 컬럼
-- 통화 정책: 구매자 통화 기준 강제, 공급업체 통화 불일치 시 차단 + 결제설정 안내 모달
-- 사이드바: Suppliers 섹션 → Order, Suppliers 메뉴 1개로 통합 (My/Find 페이지 내 탭), Purchase Invoices 메뉴 제거 (통합 Invoices 페이지에서 처리)
-- Suppliers 페이지: "+ External Supplier" 의 "+" 제거
-- Stock Items: Ingredients 페이지 명칭 변경 (4 언어), Operations 섹션 Inventory 위로 이동, plan 모듈 라우트 unblock
-- Invoices 통합: Restaurant Invoices 페이지에 SOA 묶음 inline 표시 (별도 탭 X), child 인보이스 자동 hide + expand 시 표시, Pay All / Download SOA PDF (표지 + 인보이스 합본)
-- 데이터 무결성 fix: tracking_info.events.note 가 Object 로 저장되던 mark-received/mark-sent-external 의 인자 순서 버그 수정 (View 버튼 React crash 해결)
-- 샘플 데이터 생성: PO 4건 → Trade Invoice 4건 → SOA 1건 (S4 Sup Co. MYR 280.60)
+### 2026-04-30 (v3.20 배포 후 추가 fix + cleanup)
+- **Restaurant Ingredient image POST drop fix**: `routes/restaurants-ingredients.js:185` POST 핸들러가 `image_url, ingredient_category_id, supplier_id, base_quantity, track_stock` 5개 필드 drop. 누락 필드 추가. RA/SA × POST/PUT × image set/null 4/4 라이브 검증.
+- **Ingredient modal UX 정돈**:
+  - 푸터 sticky: 버튼을 `<form>` 안 ButtonGroup → Modal `footer` prop (`form="ingredient-form"` 속성으로 외부 submit). 폼 길어 스크롤 해도 Cancel/Update 버튼 항상 하단 고정
+  - Save 버튼 disabled 조건: 필수 미입력 / Edit 모드 변경 없음 (`isDirty=false`) / 제출 중 (`isSubmitting=true`)
+  - 제출 중 텍스트 "Saving..." + 더블클릭 차단
+- **Supplier Staff 모듈 게이팅 fix**: `ProtectedRoute MODULE_GATED_ROUTES`에 `/pos/supplier/staff` → `supplier_admin_staff` 추가. URL 직접 입력 우회 차단 (sidebar `hasModule` ↔ Route 게이팅 동기화).
+- **Orphan 페이지 9개 + 빈 디렉토리 4개 정리**:
+  - 삭제: `PurchaseInvoicesPage.tsx` (per-role page로 대체됨, 깨진 `/api/purchase-invoices/soa/pay-all` 호출 포함) + 라우트/lazy import 제거
+  - 삭제: `Admin/AddonModulesPage`, `Admin/AnalyticsPage` (broken `/api/sample-data/create`), `BillPrint/BillPrintPage`, `CompanyProfile/CompanyProfilePage`, `FloorPlan/OrderOverlay`, `Manager/CompanySettingsPage`, `RecipeManagement/SuppliersTab`, `TableManagement/TableManagementPage`
+  - 빈 디렉토리 정리: PurchaseInvoices/BillPrint/CompanyProfile/TableManagement
+- **운영 직전 전수조사 검증**:
+  - Sidebar URL → App.tsx Route 매핑 102/103 PASS (`#` placeholder 제외)
+  - Lazy import 153/153 파일 존재
+  - Sidebar URL HTTP 200 91/91 PASS
+  - FE fetch ↔ BE route 258/262 매칭 (4건 점검 → 2건 fix, 2건 false positive)
+  - Backend 라우터 mount 85개 모두 정상
 
-### 2026-04-28
-- 타임존 일괄 적용: 모든 toLocaleDateString/TimeString 호출에 entity 타임존(restaurant/brand/foodcourt operation_settings.timeZone) 반영. Frontend 2 + Backend 11 파일.
-- 모바일 헤더 fix: 480~768px 구간에서 StaffInfo 텍스트 헤더 오버플로우 발생 → 모바일에서 아바타만 표시. HeaderActions gap/ProfileButton padding 컴팩트.
-- 로그인 페이지 LanguageSelector globe variant 통일 (모바일 dropdown 잘림 해결).
-- Restaurants 페이지 계약 뱃지/만료일 표시 (Manager + Owner). list endpoint batch contract fetch (N+1 회피).
-- Supply Chain Sprint 7 — Operational Hardening (4 영역 + 12 빈틈):
-  - inventory_transactions / batches polymorphic (entity_type/entity_id + Sequelize hook + 백필 86 rows)
-  - Returns 양방향 환원 (Brand/Foodcourt seller도 stock 환원) + Currency invariant 검증
-  - 수령 차이 분류 (line별 splits: 정상/short/damaged/wrong_item/pending) + auto-returns 자동 생성
-  - PO.status ENUM 확장 (in_transit / delivery_failed)
-  - Carrier webhook 인프라 (HMAC + 2단계 처리 + idempotency + 모니터/retry/simulate)
-  - Admin Carrier 모달에 webhook 섹션 (regenerate-secret 한 번 노출 + status_map editor)
-  - 신규 페이지: `/pos/admin/carrier-webhooks` (System Admin 전용)
-- path-level middleware fix: brand-inventory.js의 router.use(authenticateToken) 광범위 prefix → `/brands` path-level로 좁힘. carrier-webhooks public endpoint 401 사고 해결.
+## [v3.20] — 2026-04-30 배포
+
+**Supply Chain Sprint 7 + Supplier Staff + SOA Invoice 재설계 + 운영 쿠폰 버그 fix**
+
+### 2026-04-30 (이번 배포 — 30년차 시니어 감사 → Phase A + B 일괄)
+
+**🔥 운영 사고 fix (즉시 운영 정정 포함)**
+- **POS 100% 쿠폰 할인 → total_amount=0 보존 fix**: `routes/orders-crud.js:414, 487` falsy 체크(`!total_amount`)가 0을 "값 없음"으로 오인 → items 합계로 덮어쓰던 버그. `== null` 로 변경. **운영 DB 8건 정정** (Restaurant 8 IPC 쿠폰: 6건 cancelled + 2건 completed). 회귀 테스트 PASS (subtotal=7, coupon=7, total=0 보존).
+- **Restaurant ingredient POST `image_url` 무시 fix**: `routes/restaurants-ingredients.js:185` POST 핸들러가 `image_url, ingredient_category_id, supplier_id, base_quantity, track_stock` 5개 필드 drop. 누락 필드 추가. RA/SA × POST/PUT × image set/null 4/4 PASS.
+
+**📦 Supply Chain Sprint 7 — Operational Hardening (운영 사고 위험 4영역 + 12빈틈)**
+- inventory_transactions / batches polymorphic (entity_type/entity_id + Sequelize hook + 백필 86 rows)
+- Returns 양방향 환원 (Brand/Foodcourt seller도 stock 환원) + Currency invariant 검증
+- 수령 차이 분류 (line별 splits: 정상/short/damaged/wrong_item/pending) + auto-returns 자동 생성
+- PO.status ENUM 확장 (in_transit / delivery_failed)
+- Carrier webhook 인프라 (HMAC SHA-256 + 2단계 처리 + idempotency + payload_hash UNIQUE)
+- Admin Carrier 모달에 webhook 섹션 (regenerate-secret 한 번 노출 + status_map editor)
+- 신규 페이지: `/pos/admin/carrier-webhooks` (System Admin 전용)
+- path-level middleware fix: brand-inventory.js carrier-webhooks public endpoint 401 사고 해결.
+
+**🛡️ Supplier 시니어 감사 → Phase A (운영 위험 5건)**
+- **A1 신규 PO 알림**: `purchase-orders.js submit` + bulk autoSubmit → Supplier에게 이메일+socket 알림. `getSupplierAdminIds` 헬퍼 신규 (`utils/notificationService.js`). 24시간 SLA 가능하게.
+- **A2 Buyer mark-shipped 외부 supplier 한정**: `purchase-orders.js:1100`. 시스템 supplier 차단 (403) — supplier stock 차감 우회 사고 방지.
+- **A3 seller-orders 트랜잭션·락**: confirm/ship/reject/deliver 4 endpoint sequelize.transaction() 래핑 + supplier stock 차감을 같은 트랜잭션 내. ship 실패 시 롤백 → 데이터 불일치 차단.
+- **A5 PO 상태전이 row-level lock**: submit/cancel/confirm/ship/reject/deliver 모두 `LOCK.UPDATE`. confirm + cancel 동시 클릭 race condition 방지. 라이브 검증 PASS.
+
+**📑 Phase B — UX 통일 + 신규 기능**
+- **B1 SOA 재설계 — Invoice record로 발행 (Irene 명세 반영)**:
+  - `invoices.parent_soa_invoice_id` 컬럼 신규
+  - `soaScheduler` 가 월말 SOA Invoice (`invoice_category='soa'`) 발행 + child trade invoices 묶음
+  - 결제 cascade: SOA paid → child들 자동 paid (3 endpoint: submit-payment / record-payment / confirm-payment)
+  - Frontend: SOA invoice 인라인 표시 (보라 SOA 배지) + Pay 버튼 조건부 (parent_soa 있으면 'Pay via SOA' 표시)
+  - 모든 역할 동일 패턴 (Restaurant Admin, Supplier 등)
+  - 설계 문서: `docs/INVOICE_SYSTEM.md` 11절 추가
+- **B2 Supplier Staff (Advanced 모듈 `supplier_admin_staff`)**:
+  - `users.supplier_company_id` 컬럼 + `Supplier Staff` 역할 ENUM 확장
+  - `supplierScope` 미들웨어가 Supplier Staff 인식 (supplier_company_id 기반)
+  - `routes/supplier.js` staff CRUD 4 endpoint + module 게이팅 + PIN 중복 방지
+  - 신규 페이지 `SupplierStaffPage` + 사이드바 module 게이팅 (Basic plan 미노출, Advanced unlock 시 노출)
+  - `authService` + `/auth/me` 에 `supplier_company_id` 포함
+  - 신규 endpoint `/api/supplier-companies/:id/allowed-routes` (Supplier 본인+Staff+SA 권한)
+- **B3 SupplierDashboard 리팩토링**: 인라인 styled 제거 → `Container/Header/Title/Content` 공통 컴포넌트 (UI_DESIGN_GUIDE 2.1 준수). StatusBadge 자체 색매핑 → `CommonStatusBadge` variant 매핑. Skeleton 4 → 8 cards.
+- **B4 Empty state + CTA 통일**: `SupplierContractsPage` 탭별 hint, `SupplierCustomersPage` "View Pending Contracts" CTA.
+
+**📱 모바일 + UX 통일**
+- 모달 padding 모바일 통일: `UI/Modal.tsx` (76 페이지 사용) + 4 인라인 모달에 `@media (max-width: 640px)` — 가로 gutter 8px / inner padding 16px / overlay 12px.
+- Restaurant 관리자 구매자 흐름 정돈: `alert()` / `window.confirm()` 12건 → `AlertDialog`/`ConfirmDialog`. 13개 항목 (PO history 6 / PO Detail 2 / PO Staging 2 / Cart 1 / Invoices 2). `🔍` SVG 대체. `📦` 텍스트 대체. AddressFields 적용. i18n 4언어 stockItems. Restaurant InvoicesPage 모바일 반응형 (768/480px).
+
+**🔒 보안 + 데이터 무결성 (검증 중 발견)**
+- `checkPaymentPermission` Restaurant Admin payer_type 새 모델 인식 fix (`invoices-helpers.js:379`) — 기존 invoice.restaurant_id 만 체크 → SOA/trade invoice의 payer_type='restaurant'/payer_id 도 인식.
+- `/api/supplier-companies/:id/allowed-routes` SA-only 라우터 위로 이동 + owner/staff/SA 권한 분기.
+- `users.role` ENUM 'Supplier Staff' 추가 (마이그레이션).
+- `users.last_login_at` 미존재 컬럼 SELECT 제거 (supplier staff 500 에러 fix).
+- 자동 테스트 패턴 이메일 가드: `s4*-{ts}@purplehere.com` / `test-*@`, `verify-*@`, `flow-*@`, `final-*@`, `dup_*@`, `smoke-*@`, `qa-*@` / `*@test.local` 패턴 → admin 알림 + verification email 차단. dev block 외 한 겹 더.
+
+**🗂️ 기존 미배포 분 (이번 배포에 포함)**
+
+### 2026-04-29 (PO/Supplier/Invoice 통합 UX)
+- Cart 페이지 viewport 고정 + 검색 확장 (이름/카테고리/공급업체/단위/상세 OR-검색) + 타이틀 "Purchase Order"
+- PO history: LiveOrders 동일 필터, SearchableSelect 공급업체, 우측 패널 (DetailPage embedded)
+- PO Detail: Edit 제거, "+ Order More", embedded mode
+- 통화 정책: 구매자 통화 기준 강제, 공급업체 통화 불일치 차단
+- 사이드바 Order 섹션 + Suppliers 1메뉴 통합 + Stock Items 명칭 변경
+- 데이터 무결성 fix: `tracking_info.events.note` 인자 순서 버그 (React crash 해결)
+
+### 2026-04-28 (Sprint 7 + 타임존 일괄)
+- 타임존 일괄 적용: Frontend 2 + Backend 11 파일
+- 모바일 헤더 fix (480~768px StaffInfo overflow)
+- 로그인 LanguageSelector globe variant
+- Restaurants 페이지 계약 뱃지/만료일
+
+**🗄️ DB 마이그레이션 (자동 실행)**
+- `scripts/sprint7-migration.js` (Sprint 7 ENUM 확장 + 신규 컬럼)
+- `scripts/migrate-supplier-staff.js` (users.supplier_company_id + role ENUM 확장)
+- `scripts/migrate-soa-invoice.js` (invoices.parent_soa_invoice_id)
+
+**📊 검증 (실 데이터 라운드트립)**
+- POS 쿠폰 100% 할인 + 부분 할인 — total/coupon/subtotal DB 보존 검증
+- PO 라이프사이클 — submit → confirm/cancel race lock → mark-shipped 차단 (6/6)
+- Supplier Staff CRUD — POST/GET/PUT/DELETE + PIN 중복 거부 (7/7)
+- SOA cascade — submit-payment/confirm-payment 양쪽 child 자동 (8/8)
+- Restaurant Ingredient image — 5개 필드 round-trip (6/6)
+- health-check 43/43 / state hydration 0 warning
+
+**📂 신규 파일 (대표)**
+- Backend: `models/CarrierWebhookEvent.js`, `routes/carrier-webhooks.js`, `routes/upload.js` 보강
+- Frontend: `pages/Admin/CarrierWebhookEventsPage.tsx`, `pages/Supplier/SupplierStaffPage.tsx`
+- Migrations: `scripts/sprint7-migration.js`, `scripts/migrate-supplier-staff.js`, `scripts/migrate-soa-invoice.js`
+- Docs: `docs/SUPPLY_CHAIN_SPRINT_7.md`, `docs/INVOICE_SYSTEM.md` 11절
 
 ## [v3.19] — 2026-04-28 배포
 

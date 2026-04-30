@@ -23,6 +23,10 @@ function isSupplierAdmin(user) {
   return user?.role === 'Supplier Admin';
 }
 
+function isSupplierStaff(user) {
+  return user?.role === 'Supplier Staff';
+}
+
 async function requireSupplierScope(req, res, next) {
   const user = req.user;
   if (!user) {
@@ -39,27 +43,44 @@ async function requireSupplierScope(req, res, next) {
       }
       req.supplierCompany = company;
       req.supplierIsAdmin = true;
+      req.supplierIsStaff = false;
       return next();
     }
     // SA without override: req.supplierCompany null (handler must filter or skip)
     req.supplierCompany = null;
     req.supplierIsAdmin = true;
+    req.supplierIsStaff = false;
     return next();
   }
 
-  if (!isSupplierAdmin(user)) {
-    return res.status(403).json({ success: false, message: 'Supplier Admin access only' });
+  // Supplier Admin (owner): resolve company via owner_id
+  if (isSupplierAdmin(user)) {
+    const company = await SupplierCompany.findOne({ where: { owner_id: user.id } });
+    if (!company) {
+      return res.status(404).json({ success: false, message: 'No supplier company found for this user' });
+    }
+    req.supplierCompany = company;
+    req.supplierIsAdmin = false;
+    req.supplierIsStaff = false;
+    return next();
   }
 
-  const company = await SupplierCompany.findOne({
-    where: { owner_id: user.id }
-  });
-  if (!company) {
-    return res.status(404).json({ success: false, message: 'No supplier company found for this user' });
+  // Supplier Staff: scoped via users.supplier_company_id (B2 — Advanced module supplier_admin_staff)
+  if (isSupplierStaff(user)) {
+    if (!user.supplier_company_id) {
+      return res.status(403).json({ success: false, message: 'Supplier Staff has no company assignment' });
+    }
+    const company = await SupplierCompany.findByPk(user.supplier_company_id);
+    if (!company) {
+      return res.status(404).json({ success: false, message: 'Supplier company not found' });
+    }
+    req.supplierCompany = company;
+    req.supplierIsAdmin = false;
+    req.supplierIsStaff = true;
+    return next();
   }
-  req.supplierCompany = company;
-  req.supplierIsAdmin = false;
-  next();
+
+  return res.status(403).json({ success: false, message: 'Supplier access only' });
 }
 
 /**
@@ -75,5 +96,6 @@ function applySupplierFilter(where, req) {
 module.exports = {
   requireSupplierScope,
   applySupplierFilter,
-  isSupplierAdmin
+  isSupplierAdmin,
+  isSupplierStaff
 };

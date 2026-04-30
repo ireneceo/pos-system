@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { Container, Content } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
+import AlertDialog from '../../components/Common/AlertDialog';
 
 interface POItem { id: number; ingredient_id: number; quantity_ordered: string; unit_price: string; }
 interface POSeller { id: number; name: string; phone?: string | null; email?: string | null; is_system_registered: boolean; }
@@ -113,6 +114,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
 
   const fetchDrafts = useCallback(async () => {
     setLoading(true);
@@ -150,7 +152,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
 
   const shareViaWhatsApp = (po: POStaging) => {
     if (!po.seller?.phone) {
-      alert(t('staging.noPhone', '공급업체 전화번호가 등록되지 않았습니다.'));
+      setAlertDlg({ title: t('staging.noPhoneTitle', 'No Phone Number') as string, message: t('staging.noPhone', '공급업체 전화번호가 등록되지 않았습니다.') as string });
       return;
     }
     const phone = po.seller.phone.replace(/\D/g, '');
@@ -166,7 +168,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
 
   const shareViaEmail = (po: POStaging) => {
     if (!po.seller?.email) {
-      alert(t('staging.noEmail', '공급업체 이메일이 등록되지 않았습니다.'));
+      setAlertDlg({ title: t('staging.noEmailTitle', 'No Email') as string, message: t('staging.noEmail', '공급업체 이메일이 등록되지 않았습니다.') as string });
       return;
     }
     const subject = encodeURIComponent(`Purchase Order ${po.po_number || '#' + po.id}`);
@@ -325,6 +327,12 @@ const PurchaseOrderStagingPage: React.FC = () => {
           </div>
         </SubmitBar>
       )}
+      <AlertDialog
+        isOpen={!!alertDlg}
+        onClose={() => setAlertDlg(null)}
+        title={alertDlg?.title || ''}
+        message={alertDlg?.message || ''}
+      />
     </Container>
   );
 };

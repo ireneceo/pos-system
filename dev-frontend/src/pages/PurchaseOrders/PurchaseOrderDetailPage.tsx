@@ -16,6 +16,7 @@ import { formatDate } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import { useAuth } from '../../contexts/AuthContext';
+import AlertDialog from '../../components/Common/AlertDialog';
 
 // Icon-only buttons (matches PurchaseOrdersPage pattern)
 const HeaderIconBtn = styled.button`
@@ -451,6 +452,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
   const [shippedOpen, setShippedOpen] = useState(false);
   const [trackingNo, setTrackingNo] = useState('');
+  const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
   const [shippedError, setShippedError] = useState<string | null>(null);
   const [shippedSubmitting, setShippedSubmitting] = useState(false);
 
@@ -871,7 +873,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       const res = await fetch(`/api/purchase-orders/${detail.id}/pdf`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) { window.alert('Failed to load order'); return; }
+      if (!res.ok) { setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Failed to load order' }); return; }
       const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:0;';
@@ -886,7 +888,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       }
     } catch (e) {
       console.error('download order pdf failed:', e);
-      window.alert('Failed to download');
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Failed to download' });
     }
   };
 
@@ -1476,6 +1478,12 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
 
         {returnError && <ErrorBox style={{ marginTop: 12 }}>{returnError}</ErrorBox>}
       </CommonModal>
+      <AlertDialog
+        isOpen={!!alertDlg}
+        onClose={() => setAlertDlg(null)}
+        title={alertDlg?.title || ''}
+        message={alertDlg?.message || ''}
+      />
     </Outer>
   );
 };

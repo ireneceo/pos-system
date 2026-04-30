@@ -261,22 +261,25 @@ router.get('/:id', async (req, res) => {
 // 3. POST /api/seller-orders/:id/confirm
 // ============================================
 router.post('/:id/confirm', async (req, res) => {
+  let po;
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
-    const po = await PurchaseOrder.findByPk(id);
-    if (!po) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (!checkSellerOwnership(po, req)) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-    if (po.status !== 'submitted') {
-      return res.status(400).json({ success: false, message: `Cannot confirm order in status '${po.status}'` });
-    }
-
-    const newTracking = appendTrackingEvent(po, 'confirmed');
-    await po.update({ status: 'confirmed', confirmed_at: new Date(), tracking_info: newTracking });
+    po = await sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (locked.status !== 'submitted') {
+        const e = new Error(`Cannot confirm order in status '${locked.status}'`);
+        e.code = 'BAD_STATUS';
+        throw e;
+      }
+      const newTracking = appendTrackingEvent(locked, 'confirmed');
+      await locked.update({ status: 'confirmed', confirmed_at: new Date(), tracking_info: newTracking }, { transaction: t });
+      return locked;
+    });
     emitPoEvent(req, po, 'seller-order-updated');
 
     // Fire notification (non-blocking)
@@ -304,6 +307,8 @@ router.post('/:id/confirm', async (req, res) => {
 
     res.json({ success: true, data: po, message: 'Order confirmed' });
   } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/seller-orders/:id/confirm error:', err);
     res.status(500).json({ success: false, message: 'Failed to confirm order' });
   }
@@ -313,21 +318,13 @@ router.post('/:id/confirm', async (req, res) => {
 // 4. POST /api/seller-orders/:id/ship
 // ============================================
 router.post('/:id/ship', async (req, res) => {
+  let po, newTracking;
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
-    const po = await PurchaseOrder.findByPk(id);
-    if (!po) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (!checkSellerOwnership(po, req)) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-    if (po.status !== 'confirmed') {
-      return res.status(400).json({ success: false, message: `Cannot ship order in status '${po.status}'` });
-    }
-
-    // Sanitize tracking_info object (string fields)
+    // Sanitize tracking_info before transaction (no DB I/O)
     const raw = req.body?.tracking_info;
     let trackingPatch = {};
     if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
@@ -337,58 +334,66 @@ router.post('/:id/ship', async (req, res) => {
         else if (typeof v === 'number' || typeof v === 'boolean') trackingPatch[k] = v;
       }
     }
-    // Resolve carrier name + tracking_url from catalog (Sprint 5)
-    trackingPatch = await decorateCarrier({ ...(po.tracking_info || {}), ...trackingPatch });
-    // Append shipped event with carrier note
-    const carrierNote = trackingPatch.carrier_name
-      ? `Shipped via ${trackingPatch.carrier_name}${trackingPatch.tracking_number ? ' (' + trackingPatch.tracking_number + ')' : ''}`
-      : 'Order shipped';
-    const newTracking = appendTrackingEvent({ tracking_info: trackingPatch }, 'shipped', carrierNote);
 
-    await po.update({
-      status: 'shipped',
-      shipped_at: new Date(),
-      tracking_info: newTracking
-    });
-    emitPoEvent(req, po, 'seller-order-updated');
+    const result = await sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (locked.status !== 'confirmed') {
+        const e = new Error(`Cannot ship order in status '${locked.status}'`);
+        e.code = 'BAD_STATUS';
+        throw e;
+      }
 
-    // Sprint 6 (T1-2): Decrement supplier stock + record inventory transaction.
-    // Only for seller_type='supplier' (BG/FG products are managed via brand/foodcourt inventory tables, not Supplier).
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      try {
-        const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id } });
+      // Resolve carrier name + tracking_url from catalog (Sprint 5)
+      const merged = await decorateCarrier({ ...(locked.tracking_info || {}), ...trackingPatch });
+      const carrierNote = merged.carrier_name
+        ? `Shipped via ${merged.carrier_name}${merged.tracking_number ? ' (' + merged.tracking_number + ')' : ''}`
+        : 'Order shipped';
+      const tracking = appendTrackingEvent({ tracking_info: merged }, 'shipped', carrierNote);
+
+      await locked.update({
+        status: 'shipped',
+        shipped_at: new Date(),
+        tracking_info: tracking
+      }, { transaction: t });
+
+      // Sprint 6: Decrement supplier stock + record inventory transaction — IN SAME TRANSACTION.
+      // Only for seller_type='supplier'. Failure here rolls back the ship.
+      if (locked.seller_type === 'supplier' && locked.seller_entity_id) {
+        const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, transaction: t });
         for (const it of items) {
-          // Find supplier product via mapping
           let mapping = null;
           if (it.ingredient_seller_product_id) {
-            mapping = await IngredientSellerProduct.findByPk(it.ingredient_seller_product_id);
+            mapping = await IngredientSellerProduct.findByPk(it.ingredient_seller_product_id, { transaction: t });
           }
           if (!mapping || !mapping.seller_product_id) continue;
-          const sp = await SupplierProduct.findByPk(mapping.seller_product_id);
+          const sp = await SupplierProduct.findByPk(mapping.seller_product_id, { lock: t.LOCK.UPDATE, transaction: t });
           if (!sp) continue;
           const oldStock = parseFloat(sp.current_stock) || 0;
-          // Decrement by ordered quantity (in seller's product unit — already the correct unit)
           const delta = -1 * (parseFloat(it.quantity_ordered) || 0);
           const newStockS = Math.round((oldStock + delta) * 100) / 100;
-          await sp.update({ current_stock: newStockS });
+          await sp.update({ current_stock: newStockS }, { transaction: t });
           await SupplierInventoryTransaction.create({
-            supplier_company_id: po.seller_entity_id,
+            supplier_company_id: locked.seller_entity_id,
             supplier_product_id: sp.id,
             transaction_type: 'po_shipped',
             quantity_change: delta,
             unit: sp.unit || null,
             stock_after: newStockS,
             reference_type: 'purchase_order',
-            reference_id: po.id,
+            reference_id: locked.id,
             unit_cost: parseFloat(it.unit_price) || null,
-            notes: `Shipped on PO ${po.po_number}`,
+            notes: `Shipped on PO ${locked.po_number}`,
             created_by: req.user?.id || null
-          });
+          }, { transaction: t });
         }
-      } catch (e) {
-        console.error('[Sprint 6] Supplier stock decrement error (non-blocking):', e.message);
       }
-    }
+      return { po: locked, newTracking: tracking };
+    });
+    po = result.po;
+    newTracking = result.newTracking;
+    emitPoEvent(req, po, 'seller-order-updated');
 
     setImmediate(async () => {
       try {
@@ -418,6 +423,8 @@ router.post('/:id/ship', async (req, res) => {
 
     res.json({ success: true, data: po, message: 'Order shipped' });
   } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/seller-orders/:id/ship error:', err);
     res.status(500).json({ success: false, message: 'Failed to ship order' });
   }
@@ -427,6 +434,7 @@ router.post('/:id/ship', async (req, res) => {
 // 5. POST /api/seller-orders/:id/reject
 // ============================================
 router.post('/:id/reject', async (req, res) => {
+  let po;
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) {
@@ -436,21 +444,23 @@ router.post('/:id/reject', async (req, res) => {
     if (!reason) {
       return res.status(400).json({ success: false, message: 'Reason is required' });
     }
-    const po = await PurchaseOrder.findByPk(id);
-    if (!po) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (!checkSellerOwnership(po, req)) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-    if (po.status !== 'submitted') {
-      return res.status(400).json({ success: false, message: `Cannot reject order in status '${po.status}'` });
-    }
-
-    const newTracking = appendTrackingEvent(po, 'cancelled', `Rejected by seller: ${reason.slice(0, 200)}`);
-    await po.update({
-      status: 'cancelled',
-      cancelled_at: new Date(),
-      cancelled_reason: reason.slice(0, 1000),
-      tracking_info: newTracking
+    po = await sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (locked.status !== 'submitted') {
+        const e = new Error(`Cannot reject order in status '${locked.status}'`);
+        e.code = 'BAD_STATUS';
+        throw e;
+      }
+      const tracking = appendTrackingEvent(locked, 'cancelled', `Rejected by seller: ${reason.slice(0, 200)}`);
+      await locked.update({
+        status: 'cancelled',
+        cancelled_at: new Date(),
+        cancelled_reason: reason.slice(0, 1000),
+        tracking_info: tracking
+      }, { transaction: t });
+      return locked;
     });
     emitPoEvent(req, po, 'seller-order-updated');
 
@@ -480,6 +490,8 @@ router.post('/:id/reject', async (req, res) => {
 
     res.json({ success: true, data: po, message: 'Order rejected' });
   } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/seller-orders/:id/reject error:', err);
     res.status(500).json({ success: false, message: 'Failed to reject order' });
   }
@@ -490,19 +502,24 @@ router.post('/:id/reject', async (req, res) => {
 // shipped → delivered (seller 능동 알림)
 // ============================================
 router.post('/:id/deliver', async (req, res) => {
+  let po;
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
-    const po = await PurchaseOrder.findByPk(id);
-    if (!po) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (!checkSellerOwnership(po, req)) return res.status(404).json({ success: false, message: 'Order not found' });
-    if (po.status !== 'shipped') {
-      return res.status(400).json({ success: false, message: `Cannot mark delivered in status '${po.status}'` });
-    }
-
     const note = sanitizeString(String(req.body?.note || '').trim()).slice(0, 500) || 'Order delivered to buyer';
-    const newTracking = appendTrackingEvent(po, 'delivered', note);
-    await po.update({ status: 'delivered', tracking_info: newTracking });
+    po = await sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (locked.status !== 'shipped') {
+        const e = new Error(`Cannot mark delivered in status '${locked.status}'`);
+        e.code = 'BAD_STATUS';
+        throw e;
+      }
+      const tracking = appendTrackingEvent(locked, 'delivered', note);
+      await locked.update({ status: 'delivered', tracking_info: tracking }, { transaction: t });
+      return locked;
+    });
     emitPoEvent(req, po, 'seller-order-updated');
 
     setImmediate(async () => {
@@ -525,6 +542,8 @@ router.post('/:id/deliver', async (req, res) => {
 
     res.json({ success: true, data: po, message: 'Order marked delivered' });
   } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/seller-orders/:id/deliver error:', err);
     res.status(500).json({ success: false, message: 'Failed to mark delivered' });
   }

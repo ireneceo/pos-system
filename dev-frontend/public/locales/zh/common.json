@@ -177,6 +177,7 @@
     "inventory": "库存",
     "recipes": "食谱",
     "ingredients": "食材",
+    "stockItems": "库存项目",
     "productRecipes": "产品食谱",
     "brandRecipes": "品牌食谱",
     "staff": "员工",

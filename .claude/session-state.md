@@ -1,8 +1,8 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-04-29 (PO/Supplier/Invoice 통합 UX 정리 완료)
-**버전:** **v3.19** (운영) → 누적 v3.21 후보 (개발 미배포, Sprint 7 + 이번 세션 변경 모두 포함)
+**마지막 업데이트:** 2026-04-30 (v3.20 운영 배포 + 후속 fix/cleanup, 미배포 v3.21 후보)
+**버전:** **v3.20** (운영) → 누적 v3.21 후보 (미배포)
 **작업 상태:** 완료
 
 ### 진행 중인 작업
@@ -10,70 +10,38 @@
 
 ### 완료된 작업 (이번 세션)
 
-**Cart 페이지 (`/pos/purchase-orders`):**
-- viewport 고정 (PageWrap, cart 푸터 항상 보임)
-- 타이틀 "Purchase Order" (4 언어)
-- 검색 확장 — name/sku/desc/unit/category.name/company.name OR-검색
+**🔥 v3.20 운영 배포 (2026-04-30)**
+- 운영 쿠폰 100% 할인 → total=0 보존 fix (운영 8건 정정 — Restaurant 8 IPC)
+- Supply Chain Sprint 7 — Operational Hardening (4 영역 + 12 빈틈)
+- Phase A — 운영 위험 5건 (PO 알림, mark-shipped 차단, 트랜잭션·락)
+- B1 SOA 재설계 — Invoice record 발행 + parent_soa_invoice_id + cascade payment + 인라인 표시
+- B2 Supplier Staff Advanced 모듈 — supplier_company_id + role ENUM + supplierScope + 4 CRUD endpoint + SupplierStaffPage
+- B3 SupplierDashboard 리팩토링 (공통 컴포넌트, StatusBadge variant, Skeleton 8)
+- B4 Empty state + CTA 통일 (Contracts hint, Customers CTA)
+- 모바일 모달 padding 통일 (Modal.tsx + 4 인라인)
+- Restaurant 구매자 흐름 정돈 (alert/confirm 12건 → AlertDialog/ConfirmDialog, 이모지 SVG, AddressFields)
+- DB 마이그레이션 자동 실행: sprint7 + supplier-staff + soa-invoice
+- 릴리즈 노트 + 랜딩 블로그 + System Admin 공지 자동 등록
 
-**PO history (`/pos/purchase-orders/history`):**
-- LiveOrders 동일 FilterToolbar (DatePeriodFilter + SearchableSelect 공급업체)
-- 우측 슬라이드 패널 (PO번호 클릭 또는 View → 전체 DetailPage embedded)
-- Print/Download 아이콘 (이미지 + 텍스트 제거)
-- 인보이스 섹션 + View/Download (외부/시스템 인보이스 모두)
-
-**PO Detail:**
-- embedded mode — Modal 패턴 (EmbeddedTitle + Content + EmbeddedFooter sticky)
-- Edit 버튼 제거 (완료된 주문 수정 불가), "+ Order More" 액션
-
-**PO 액션/데이터:**
-- DB 컬럼 — `external_invoice_url/filename/uploaded_at`
-- BE endpoints — upload-invoice (외부 공급업체만), mark-received
-- list/detail 응답 보강 — item_count/total_quantity/seller_name/is_external/external_invoice_url/trade_invoice_id
-
-**통화 정책:**
-- createPurchaseOrderCore 에 `NO_BUYER_CURRENCY`/`CURRENCY_MISMATCH` 차단 + `/pos/settings` 안내
-- FE confirm 모달
-
-**사이드바 (4 역할):**
-- 섹션명 Suppliers → Order
-- 메뉴: Purchase Order / Order History / Suppliers (Purchase Invoices 메뉴 제거)
-- Suppliers 1메뉴 (My/Find 페이지 내 PageTab 통합)
-
-**Suppliers 페이지:**
-- My Suppliers ↔ Find Suppliers 탭바
-- "+ External Supplier" → "External Supplier"
-
-**Stock Items:**
-- Ingredients → Stock Items (4 언어)
-- Products 섹션 → Operations 섹션 (Inventory 위)
-- AddonModule(inventory_management).ui_routes 에 `/restaurant/*/ingredients` 추가
-
-**Invoice 통합:**
-- Restaurant Invoices 페이지에 SOA 묶음 inline 카드 (별도 탭 X)
-- SoaBundleRow — 보라 SOA 뱃지 + 월 + 공급업체 + count + total + Pay All / Download
-- expand 시 child 인보이스 (참고용, 결제버튼 X)
-- All / To Pay 탭에서 SOA child 자동 hide
-- BE — `/api/purchase-invoices/soa/:supplierId/pay`, `/pdf` (표지 + 합본)
-
-**데이터 fix:**
-- tracking_info.events.note Object 저장 버그 (mark-received/mark-sent-external 인자 순서 오류) 수정
-- 기존 corrupt PO 자동 정상화
-
-**샘플 데이터:**
-- PO 4건 (PO-R5-SAMPLE-01~04, status=received) → Trade Invoice 4건 → SOA 1건 (S4 Sup Co. MYR 280.60)
+**🛠️ v3.20 배포 후 dev 적용 (다음 /배포 시 v3.21로 묶임)**
+- Restaurant Ingredient POST image_url 드롭 버그 fix + 5개 필드 누락 보강
+- Ingredient modal UX 정돈 (푸터 sticky / disabled 조건 / Saving 표시)
+- Supplier Staff 모듈 게이팅 fix (`/pos/supplier/staff` → `supplier_admin_staff`)
+- Orphan 페이지 9개 + 빈 디렉토리 4개 정리 (PurchaseInvoicesPage 등)
+- 운영 직전 전수조사 검증 (Sidebar/Route/Lazy import/FE↔BE 매핑 모두 PASS)
+- 자동 테스트 패턴 이메일 가드 (admin spam 방지)
 
 ### 다음 할 일
-
-1. **선택 — Owner/Brand General/Foodcourt General 인보이스 페이지에도 SOA inline 표시 패턴 동일 적용** (현재 Restaurant Admin 만 적용됨)
-2. `deploy-dev.sh` wrapper 의 build 출력 swallow 버그 수정 (현재 우회: `npx react-scripts build` 직접 실행 + 수동 cp)
-3. 운영 배포 (`/배포`) — v3.21 묶음 (Sprint 7 + 이번 세션) — Irene 결정
+1. **다음 4 — 리퍼럴 시스템 (Refer & Earn)** — 신규 시스템 (대규모). 설계 문서 `docs/REFERRAL_SYSTEM.md` 존재. Phase 1 (16 항목) / Phase 2 (4 항목) / Phase 3 (5 항목) 모두 미시작
+2. **다음 2 Phase 2-3 잔여** — 계약 관리 후속 (Plan 연결 UI / 갱신 알림 / Checklist 템플릿 / Foodcourt Unit UI)
+3. **다음 /배포** — v3.21 묶음 (이번 후속 fix + cleanup)
 
 ---
 
 ## 환경 / 인증 현황
 
-- 백엔드: dev-backend (PM2, port 3001), uptime ~30분
-- 프론트: nginx → /var/www/dev-frontend-build, 배포된 번들 `main.4463cd8e.js` (2026-04-29 18:28)
+- 백엔드: dev-backend (PM2, port 3001)
+- 프론트: nginx → /var/www/dev-frontend-build, 배포된 번들 `main.83a6f63c.js` (2026-04-30 18:56)
 - DB: purple_dev_db (MySQL)
 - 테스트: kdine_admin (Restaurant Admin, restaurant_id=5)
 
@@ -85,8 +53,9 @@
 - `/var/www/DEVELOPMENT_PLAN.md` — Phase 로드맵 + 작업 히스토리
 - `/var/www/CHANGELOG.md` — 배포 전 변경 내역 (Unreleased)
 - `/var/www/dev-frontend/UI_DESIGN_GUIDE.md` — Modal 패턴, 디자인 토큰
-- `/var/www/docs/INVOICE_SYSTEM.md`
+- `/var/www/docs/INVOICE_SYSTEM.md` — 11절 SOA 재설계 (B1)
 - `/var/www/docs/SUPPLY_CHAIN_SPRINT_*.md` — Sprint 1~7 설계 문서
+- `/var/www/docs/REFERRAL_SYSTEM.md` — 다음 세션 우선순위 (미시작)
 
 ---
 

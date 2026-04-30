@@ -251,7 +251,6 @@ const ProductImage = styled.div`
   align-items: center;
   justify-content: center;
   color: #9CA3AF;
-  font-size: 24px;
   overflow: hidden;
   margin-bottom: 4px;
   img { width: 100%; height: 100%; object-fit: cover; }
@@ -613,7 +612,7 @@ const SupplierProfilePage: React.FC = () => {
               {filteredProducts.map(p => (
                 <ProductCard key={p.id}>
                   <ProductImage>
-                    {p.image_url ? <img src={p.image_url} alt={p.name} /> : '📦'}
+                    {p.image_url ? <img src={p.image_url} alt={p.name} /> : <span style={{ fontSize: 11, color: '#9CA3AF', letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('profile.noImage', 'No image')}</span>}
                   </ProductImage>
                   <ProductName>{p.name}</ProductName>
                   {p.sku && <ProductMeta>SKU: {p.sku}</ProductMeta>}

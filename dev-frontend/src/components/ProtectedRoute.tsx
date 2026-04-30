@@ -26,8 +26,9 @@ const MODULE_GATED_ROUTES: Array<{ prefix: string; module: string }> = [
   { prefix: '/pos/purchase-orders', module: 'buyer_purchase_orders' },
   { prefix: '/pos/supplier/orders', module: 'supplier_orders' },
   { prefix: '/pos/supplier/trade-invoices', module: 'supplier_trade_invoices' },
-  { prefix: '/pos/supplier/soa', module: 'supplier_soa' },
-  { prefix: '/pos/purchase-invoices', module: 'buyer_purchase_invoices' }
+  // Note: /pos/supplier/soa redirects to trade-invoices (B1 — SOA invoice 통합)
+  { prefix: '/pos/supplier/staff', module: 'supplier_admin_staff' }
+  // /pos/purchase-invoices route removed (v3.20 cleanup) — per-role invoice pages used instead
 ];
 
 interface ProtectedRouteProps {

@@ -13,6 +13,8 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
+import { useStore } from '../../contexts/StoreContext';
+import AlertDialog from '../../components/Common/AlertDialog';
 
 interface TradeInvoiceRow {
   id: number;
@@ -36,7 +38,12 @@ interface TradeInvoiceRow {
   subtotal?: number | string | null;
   discount_amount?: number | string | null;
   tax_amount?: number | string | null;
+  invoice_category?: string;
+  parent_soa_invoice_id?: number | null;
 }
+
+// SoaGroup / SoaBundleRow removed in B1 재설계 (2026-04-30) —
+// SOA is a real Invoice record (invoice_category='soa') in the main list with a purple badge.
 
 const Subtitle = styled.div`
   color: #6B7280;
@@ -83,6 +90,7 @@ const StatusVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info'>
 
 const SupplierTradeInvoicesPage: React.FC = () => {
   const { t } = useTranslation(['supplier', 'common']);
+  useStore(); // currency context (timezone usage removed with SoaBundleRow)
 
   const [rows, setRows] = useState<TradeInvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,6 +99,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [detailRow, setDetailRow] = useState<TradeInvoiceRow | null>(null);
+  const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -121,17 +130,23 @@ const SupplierTradeInvoicesPage: React.FC = () => {
     }
   }, [statusFilter, fromDate, toDate]);
 
+  // SOA derived view (`/api/supplier/soa/current`) removed in B1 재설계 — SOA invoices appear
+  // inline in the regular list with `invoice_category='soa'` (purple badge) and follow standard
+  // payment/cascade flow. Reminder action moved to per-SOA-row context menu (Detail modal).
+
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return rows;
-    return rows.filter(r =>
-      (r.buyer_name || '').toLowerCase().includes(term) ||
-      (r.invoice_number || '').toLowerCase().includes(term)
-    );
+    return rows.filter(r => {
+      if (!term) return true;
+      return (
+        (r.buyer_name || '').toLowerCase().includes(term) ||
+        (r.invoice_number || '').toLowerCase().includes(term)
+      );
+    });
   }, [rows, search]);
 
   const stats = useMemo(() => {
@@ -187,6 +202,8 @@ const SupplierTradeInvoicesPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
+        {/* SOA invoices appear in the regular DataTable below with a purple SOA badge (B1 재설계). */}
+
         <FilterBar>
           <SearchInput
             type="text"
@@ -241,7 +258,22 @@ const SupplierTradeInvoicesPage: React.FC = () => {
                     onClick={() => setDetailRow(row)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <DataTableCell><strong>{row.invoice_number}</strong></DataTableCell>
+                    <DataTableCell>
+                      {row.invoice_category === 'soa' && (
+                        <span style={{
+                          background: '#EEF2FF', color: '#635BFF',
+                          fontSize: 10, fontWeight: 700, padding: '2px 6px',
+                          borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.4,
+                          marginRight: 6
+                        }}>SOA</span>
+                      )}
+                      <strong>{row.invoice_number}</strong>
+                      {row.parent_soa_invoice_id && (
+                        <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                          {t('supplier:tradeInvoicesPage.bundledInSoa', 'Bundled in SOA')}
+                        </div>
+                      )}
+                    </DataTableCell>
                     <DataTableCell>{row.buyer_name || '-'}</DataTableCell>
                     <DataTableCell align="right">{formatMoney(row.total_amount, row.currency)}</DataTableCell>
                     <DataTableCell align="center">
@@ -359,6 +391,12 @@ const SupplierTradeInvoicesPage: React.FC = () => {
           </>
         )}
       </Modal>
+      <AlertDialog
+        isOpen={!!alertDlg}
+        onClose={() => setAlertDlg(null)}
+        title={alertDlg?.title || ''}
+        message={alertDlg?.message || ''}
+      />
     </Container>
   );
 };

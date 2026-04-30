@@ -147,6 +147,19 @@ const Empty = styled.div`
   border: 1px solid #E6EBF1;
   border-radius: 12px;
   color: #6B7280;
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    color: #374151;
+  }
+  p {
+    margin: 0 auto 20px;
+    font-size: 13px;
+    line-height: 1.5;
+    max-width: 360px;
+    color: #6B7C93;
+  }
 `;
 
 const ErrorBox = styled.div`
@@ -606,9 +619,13 @@ const SupplierContractsPage: React.FC = () => {
           <Empty>{t('directory.loading')}</Empty>
         ) : currentRows.length === 0 ? (
           <Empty>
-            <h3 style={{ margin: '0 0 8px', fontSize: 16, color: '#374151' }}>
-              {t(`supplierContracts.empty.${activeTab}`)}
-            </h3>
+            <h3>{t(`supplierContracts.empty.${activeTab}`)}</h3>
+            {activeTab === 'pending' && (
+              <p>{t('supplierContracts.emptyHint.pending', 'When buyers send contract requests, they appear here for your approval.')}</p>
+            )}
+            {activeTab === 'active' && (
+              <p>{t('supplierContracts.emptyHint.active', 'Active contracts are buyers you currently supply to. Approve pending requests to start.')}</p>
+            )}
           </Empty>
         ) : (
           <CardList>

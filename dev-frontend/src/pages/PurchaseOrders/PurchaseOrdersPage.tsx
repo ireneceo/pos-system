@@ -16,6 +16,8 @@ import { getAuthToken } from '../../utils/auth';
 import { formatDate } from '../../utils/timezone';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import PurchaseOrderDetailPage from './PurchaseOrderDetailPage';
+import AlertDialog from '../../components/Common/AlertDialog';
+import ConfirmDialog from '../../components/Common/ConfirmDialog';
 
 // LiveOrders 와 동일한 FilterToolbar 패턴
 const FilterToolbar = styled.div`
@@ -59,9 +61,9 @@ const SearchIcon = styled.span`
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 14px;
   color: #9CA3AF;
   pointer-events: none;
+  display: inline-flex;
 `;
 
 const ClearSearchButton = styled.button`
@@ -403,6 +405,8 @@ const PurchaseOrdersPage: React.FC = () => {
   const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([]);
   const [suggestionsCount, setSuggestionsCount] = useState(0);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
+  const [confirmDlg, setConfirmDlg] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -551,21 +555,26 @@ const PurchaseOrdersPage: React.FC = () => {
     return `${currency || 'MYR'} ${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const handleMarkReceived = async (row: POListRow) => {
-    if (!window.confirm(t('list.action.markReceivedConfirm', { po: row.po_number, defaultValue: 'Mark "{{po}}" as received?' }) as string)) return;
-    try {
-      const token = getAuthToken();
-      const res = await fetch(`/api/purchase-orders/${row.id}/mark-received`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        window.alert(data.message || 'Failed to mark received');
-        return;
+  const handleMarkReceived = (row: POListRow) => {
+    setConfirmDlg({
+      title: t('list.action.markReceivedTitle', 'Mark as Received') as string,
+      message: t('list.action.markReceivedConfirm', { po: row.po_number, defaultValue: 'Mark "{{po}}" as received?' }) as string,
+      onConfirm: async () => {
+        try {
+          const token = getAuthToken();
+          const res = await fetch(`/api/purchase-orders/${row.id}/mark-received`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) {
+            setAlertDlg({ title: t('common:error', 'Error') as string, message: data.message || 'Failed to mark received' });
+            return;
+          }
+          fetchList();
+        } catch (e) { console.error(e); }
       }
-      fetchList();
-    } catch (e) { console.error(e); }
+    });
   };
 
   const handlePrintOrder = (row: POListRow) => {
@@ -585,7 +594,7 @@ const PurchaseOrdersPage: React.FC = () => {
       const res = await fetch(`/api/purchase-orders/${row.id}/pdf`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) { window.alert('Failed to load order'); return; }
+      if (!res.ok) { setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Failed to load order' }); return; }
       // window.print 자동호출 스크립트 제거 (다운로드 시에는 인쇄 X)
       const html = (await res.text()).replace(/<script[\s\S]*?window\.print[\s\S]*?<\/script>/gi, '');
 
@@ -603,7 +612,7 @@ const PurchaseOrdersPage: React.FC = () => {
       }
     } catch (e) {
       console.error('download order pdf failed:', e);
-      window.alert('Failed to download');
+      setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Failed to download' });
     }
   };
 
@@ -634,7 +643,7 @@ const PurchaseOrdersPage: React.FC = () => {
       const up = await fetch('/api/upload/files', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
       const upData = await up.json();
       if (!up.ok || !upData.success || !upData.data?.[0]) {
-        window.alert(upData.message || 'Upload failed');
+        setAlertDlg({ title: t('common:error', 'Error') as string, message: upData.message || 'Upload failed' });
         return;
       }
       const f = upData.data[0];
@@ -645,11 +654,11 @@ const PurchaseOrdersPage: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        window.alert(data.message || 'Failed to attach invoice');
+        setAlertDlg({ title: t('common:error', 'Error') as string, message: data.message || 'Failed to attach invoice' });
         return;
       }
       fetchList();
-    } catch (e) { console.error(e); window.alert('Network error'); }
+    } catch (e) { console.error(e); setAlertDlg({ title: t('common:error', 'Error') as string, message: 'Network error' }); }
   };
 
   const handleCreatePOFromSuggestion = (group: SuggestionGroup) => {
@@ -755,7 +764,12 @@ const PurchaseOrdersPage: React.FC = () => {
             />
           </div>
           <SearchInputContainer>
-            <SearchIcon>🔍</SearchIcon>
+            <SearchIcon>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
+                <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </SearchIcon>
             <StyledSearchInput
               type="text"
               placeholder={t('list.filter.searchSeller', 'Search PO or supplier...') as string}
@@ -1011,6 +1025,19 @@ const PurchaseOrdersPage: React.FC = () => {
           )}
         </PanelBody>
       </PanelWrap>
+      <AlertDialog
+        isOpen={!!alertDlg}
+        onClose={() => setAlertDlg(null)}
+        title={alertDlg?.title || ''}
+        message={alertDlg?.message || ''}
+      />
+      <ConfirmDialog
+        isOpen={!!confirmDlg}
+        onClose={() => setConfirmDlg(null)}
+        onConfirm={() => { const c = confirmDlg; setConfirmDlg(null); c?.onConfirm(); }}
+        title={confirmDlg?.title || ''}
+        message={confirmDlg?.message || ''}
+      />
     </Container>
   );
 };

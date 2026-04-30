@@ -53,7 +53,7 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invoice is already paid' });
     }
 
-    // Update invoice with payment information
+    // Update invoice with payment information + SOA cascade (B1 재설계)
     const updateData = {
       status: 'paid',
       paid_amount: invoice.total_amount,
@@ -63,8 +63,20 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
       payment_notes: notes,
       receipt_url
     };
-
-    await invoice.update(updateData);
+    const { sequelize: _seqA } = require('../config/database');
+    await _seqA.transaction(async (t) => {
+      await invoice.update(updateData, { transaction: t });
+      if (invoice.invoice_category === 'soa') {
+        const [updatedCount] = await Invoice.update(
+          { status: 'paid', paid_at: payment_date || new Date() },
+          {
+            where: { parent_soa_invoice_id: invoice.id, status: { [require('sequelize').Op.ne]: 'paid' } },
+            transaction: t
+          }
+        );
+        console.log(`✓ SOA cascade (mark paid): ${updatedCount} child invoices`);
+      }
+    });
 
     // If subscription invoice is paid, restore subscription to Active
     if (invoice.invoice_category === 'subscription' && invoice.restaurant_id) {
@@ -357,17 +369,34 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
       }
     }
 
-    // Update invoice with payment submission
-    await invoice.update({
-      status: 'payment_submitted',
-      payment_method: payment_method || 'bank_transfer',
-      transaction_id: transaction_id || null,
-      payment_provider: payment_provider || null,
-      payment_intent_id: payment_intent_id || null,
-      receipt_url: receipt_url || null,
-      payment_notes: notes || null,
-      payment_submitted_at: new Date(),
-      rejection_reason: null // Clear any previous rejection
+    // Update invoice with payment submission + SOA cascade (B1 재설계)
+    const { sequelize: _seqB } = require('../config/database');
+    await _seqB.transaction(async (t) => {
+      await invoice.update({
+        status: 'payment_submitted',
+        payment_method: payment_method || 'bank_transfer',
+        transaction_id: transaction_id || null,
+        payment_provider: payment_provider || null,
+        payment_intent_id: payment_intent_id || null,
+        receipt_url: receipt_url || null,
+        payment_notes: notes || null,
+        payment_submitted_at: new Date(),
+        rejection_reason: null
+      }, { transaction: t });
+
+      if (invoice.invoice_category === 'soa') {
+        const [updatedCount] = await Invoice.update(
+          { status: 'payment_submitted', payment_submitted_at: new Date() },
+          {
+            where: {
+              parent_soa_invoice_id: invoice.id,
+              status: { [require('sequelize').Op.in]: ['pending_payment', 'overdue', 'pending'] }
+            },
+            transaction: t
+          }
+        );
+        console.log(`✓ SOA cascade (submit-payment): ${updatedCount} child invoices marked payment_submitted`);
+      }
     });
 
     console.log(`✓ Payment submitted for invoice ${invoice.invoice_number}`);
@@ -409,14 +438,34 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'You do not have permission to confirm this invoice' });
     }
 
-    // Update invoice as paid
-    await invoice.update({
-      status: 'paid',
-      paid_at: new Date(),
-      paid_amount: invoice.total_amount,
-      confirmed_by: req.user.id,
-      confirmed_at: new Date(),
-      payment_notes: notes ? `${invoice.payment_notes || ''}\n[Confirmation note]: ${notes}` : invoice.payment_notes
+    // Update invoice as paid + cascade to SOA children if this is a SOA invoice (B1 재설계)
+    const { sequelize: _seq } = require('../config/database');
+    await _seq.transaction(async (t) => {
+      await invoice.update({
+        status: 'paid',
+        paid_at: new Date(),
+        paid_amount: invoice.total_amount,
+        confirmed_by: req.user.id,
+        confirmed_at: new Date(),
+        payment_notes: notes ? `${invoice.payment_notes || ''}\n[Confirmation note]: ${notes}` : invoice.payment_notes
+      }, { transaction: t });
+
+      // SOA cascading: paying SOA marks all child trade invoices paid
+      if (invoice.invoice_category === 'soa') {
+        const [updatedCount] = await Invoice.update(
+          {
+            status: 'paid',
+            paid_at: new Date(),
+            confirmed_by: req.user.id,
+            confirmed_at: new Date()
+          },
+          {
+            where: { parent_soa_invoice_id: invoice.id, status: { [require('sequelize').Op.ne]: 'paid' } },
+            transaction: t
+          }
+        );
+        console.log(`✓ SOA cascade: ${updatedCount} child trade invoices marked paid`);
+      }
     });
 
     console.log(`✓ Payment confirmed for invoice ${invoice.invoice_number} by user ${req.user.id}`);

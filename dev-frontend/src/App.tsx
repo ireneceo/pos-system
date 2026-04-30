@@ -230,10 +230,11 @@ const SupplierCustomersPage = React.lazy(() => import('./pages/Supplier/Supplier
 const SupplierContractsPage = React.lazy(() => import('./pages/Supplier/SupplierContractsPage'));
 const SupplierOrdersPage = React.lazy(() => import('./pages/Supplier/SupplierOrdersPage'));
 const SupplierTradeInvoicesPage = React.lazy(() => import('./pages/Supplier/SupplierTradeInvoicesPage'));
-const SupplierSoaPage = React.lazy(() => import('./pages/Supplier/SupplierSoaPage'));
+const SupplierStaffPage = React.lazy(() => import('./pages/Supplier/SupplierStaffPage'));
+// SupplierSoaPage merged into SupplierTradeInvoicesPage (memory: Invoice + SOA unified).
 const BrandIncomingOrdersPage = React.lazy(() => import('./pages/IncomingOrders/BrandIncomingOrdersPage'));
 const FoodcourtIncomingOrdersPage = React.lazy(() => import('./pages/IncomingOrders/FoodcourtIncomingOrdersPage'));
-const PurchaseInvoicesPage = React.lazy(() => import('./pages/PurchaseInvoices/PurchaseInvoicesPage'));
+// PurchaseInvoicesPage removed — superseded by per-role invoice pages (B1 SOA 재설계, v3.20)
 const FoodcourtProductsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtProductsPage'));
 const FoodcourtInventoryPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtInventoryPage'));
 const SupplierCompaniesPage = React.lazy(() => import('./pages/Admin/SupplierCompaniesPage'));
@@ -1351,9 +1352,12 @@ function App() {
                       } />
 
                       {/* Sprint 4 — Seller-side Incoming Orders + Buyer-side Purchase Invoices */}
-                      <Route path="/pos/supplier/soa" element={
+                      {/* SOA merged into Trade Invoices (memory: Invoice + SOA unified). Legacy URL redirects. */}
+                      <Route path="/pos/supplier/soa" element={<Navigate to="/pos/supplier/trade-invoices" replace />} />
+                      {/* B2 — Supplier Staff (Advanced module supplier_admin_staff) */}
+                      <Route path="/pos/supplier/staff" element={
                         <ProtectedRoute requiredRole={['Supplier Admin','System Admin']}>
-                          <SupplierSoaPage />
+                          <SupplierStaffPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/general/incoming-orders" element={
@@ -1366,11 +1370,7 @@ function App() {
                           <FoodcourtIncomingOrdersPage />
                         </ProtectedRoute>
                       } />
-                      <Route path="/pos/purchase-invoices" element={
-                        <ProtectedRoute requiredRole={['Restaurant Admin','Restaurant Owner','Brand General','Brand Manager','Foodcourt General','Foodcourt Manager','System Admin']}>
-                          <PurchaseInvoicesPage />
-                        </ProtectedRoute>
-                      } />
+                      {/* /pos/purchase-invoices removed — superseded by per-role invoice pages (memory: Invoice + SOA unified) */}
 
                       </Route>{/* End PosLayout */}
                     </Routes>

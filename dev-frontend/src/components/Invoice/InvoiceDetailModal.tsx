@@ -19,6 +19,10 @@ const ModalOverlay = styled.div`
   overflow-y: auto;
   padding: 40px 0;
   z-index: 1000;
+
+  @media (max-width: 640px) {
+    padding: 12px 0;
+  }
 `;
 
 const ModalContent = styled.div`
@@ -30,6 +34,12 @@ const ModalContent = styled.div`
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   margin: auto 0;
+
+  @media (max-width: 640px) {
+    width: calc(100% - 16px);
+    max-height: calc(100vh - 24px);
+    border-radius: 10px;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -42,6 +52,10 @@ const ModalHeader = styled.div`
   top: 0;
   background: white;
   z-index: 10;
+
+  @media (max-width: 640px) {
+    padding: 14px 16px;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -68,6 +82,10 @@ const CloseButton = styled.button`
 const InvoiceContainer = styled.div`
   padding: 32px;
   background: white;
+
+  @media (max-width: 640px) {
+    padding: 16px;
+  }
 `;
 
 const InvoiceHeader = styled.div`

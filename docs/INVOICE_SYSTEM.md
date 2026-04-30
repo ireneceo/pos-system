@@ -852,3 +852,83 @@ Brand/Foodcourt 플랜 인보이스는 항상 해당 레스토랑이 결제한�
 ### 편집 권한 (v3.15 보안 수정)
 - PUT `/api/invoices/:id` 는 **System Admin / issuer entity (brand/foodcourt) / 수신 restaurant** 만 편집 가능
 - null-safe 비교로 cross-entity 편집 차단
+
+---
+
+## 11. SOA 재설계 (2026-04-30) — SOA as Invoice Record
+
+### 11.1 변경 배경
+
+기존 SOA는 derived view (이메일 + 페이지에서 동적 그룹핑)로 구현되어 있었으나, 다음 문제가 있었다:
+- 회계상 "한 장의 청구서"가 실재하지 않음 → 외부 회계 시스템 export 시 어색함
+- 결제 흐름 모호 (개별 인보이스 vs SOA 묶음 결제 충돌)
+- 인보이스 페이지에서 SOA child invoices 를 hide 해야 했음 → 사용자가 "전체 청구서"를 못 봄
+
+신규 설계: **SOA = 별도 Invoice record (`invoice_category='soa'`)**. 월말 자동 발행. 개별 trade invoices 는 그대로 발행되고, SOA 가 그 위에 묶음 청구서로 추가됨.
+
+### 11.2 데이터 모델
+
+```sql
+-- invoices 테이블 신규 컬럼
+ALTER TABLE invoices ADD COLUMN parent_soa_invoice_id INT NULL;
+-- FK → invoices(id) ON DELETE SET NULL (인덱스는 64-key 제한으로 생략)
+```
+
+**invoice_category 값**:
+- `service` — 일반 서비스 인보이스
+- `trade` — PO 거래 인보이스 (PO 1건당 1개 자동 발행)
+- `soa` — Statement of Account (월말 자동 발행, child trade invoices 묶음)
+- 기타 (subscription 등)
+
+**관계**:
+- 1 SOA invoice : N child trade invoices (parent_soa_invoice_id 로 연결)
+- SOA invoice 자체는 InvoiceItem 없음 (또는 한 줄로 "{count} invoices for {month}")
+- SOA invoice total = SUM(child invoices total) (생성 시점 lock)
+
+### 11.3 SOA 발행 규칙
+
+**언제**: 매월 1일 00:30 (`soaScheduler.js`)
+**대상**: `payment_terms.invoice_cycle === 'monthly_soa'` 인 활성 contract
+**기간**: 직전 달 1일 ~ 말일에 발행된 trade invoices (issuer_type='supplier', 해당 buyer)
+
+**프로세스**:
+1. 직전 달 trade invoices 조회 (해당 supplier × buyer)
+2. parent_soa_invoice_id 가 이미 있는 invoices 는 skip (idempotent — 두 번 발행 방지)
+3. 해당 invoices 의 합계 계산 → SOA Invoice 생성 (`invoice_category='soa'`, status='pending_payment')
+4. child invoices update: `parent_soa_invoice_id = SOA.id`, `status='pending'` (결제 잠금)
+5. 이메일 알림 (변경 없음)
+
+### 11.4 결제 흐름
+
+| Contract `invoice_cycle` | 개별 trade invoice 결제 버튼 | SOA invoice 결제 버튼 |
+|---|---|---|
+| `immediate` | ✓ 표시 (각 invoice 결제 가능) | (SOA 자체가 발행 안 됨) |
+| `monthly_soa` | ✗ hide (parent_soa_invoice_id 있는 경우) | ✓ 표시 |
+
+**SOA 결제 시**:
+1. SOA invoice status → `paid`
+2. 모든 child invoices status → `paid` (cascading update)
+3. payment_record 1건 (SOA 인보이스 기준), child 별도 record X
+4. 회계상 reconciliation: SOA paid_amount = SUM(children.total)
+
+### 11.5 SOA 페이지/뷰/다운로드
+
+**모든 역할 동일 (Restaurant Admin / Supplier / Brand General / Foodcourt General)**
+
+- 인보이스 list 페이지: 모든 invoices 표시 (개별 + SOA 모두). SOA 는 보라 배지 + 별도 색상으로 구분.
+- 결제 버튼 조건부 표시: 위 11.4 표대로
+- SOA 클릭/View → SOA 상세 모달 (표지 + 묶인 child invoices 인보이스 목록 + 합계)
+- SOA Download → PDF 합본 (표지 1장 + child invoices N장 = 1 PDF)
+- SOA Print → 합본 인쇄 가능
+
+### 11.6 마이그레이션 영향
+
+- 기존 SOA derived view (`/api/purchase-invoices/soa/current`) 는 새 모델로 교체 → SOA invoices 만 조회
+- 기존 code 가 invoice 결제 시 status 만 보고 결제 가능 여부 판단했다면, 이제 `parent_soa_invoice_id` 도 체크 필요
+- soaScheduler 테스트 필요 (idempotency, 동시성)
+
+### 11.7 회계 연속성
+
+- 기존 trade invoices 는 그대로 유지 (역사적 레코드)
+- 새로 발행되는 SOA 부터 새 모델 적용
+- 백필 스크립트는 만들지 않음 (회계상 과거 SOA 를 거꾸로 발행하면 audit 문제 발생 가능)

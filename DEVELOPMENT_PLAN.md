@@ -1,9 +1,63 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-29 (v3.21 후보 — PO/Supplier/Invoice 통합 UX 정리, 미배포)
+> **최종 업데이트:** 2026-04-30 (v3.20 운영 배포 + 후속 fix/cleanup, 미배포 v3.21 후보)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.19** (2026-04-28 운영 배포)
+> **현재 버전:** **v3.20** (2026-04-30 운영 배포)
+
+## ✅ 완료: v3.20 배포 후 후속 fix + Cleanup (2026-04-30, 미배포)
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Restaurant Ingredient image POST 드롭 fix | `routes/restaurants-ingredients.js:185` POST가 `image_url, ingredient_category_id, supplier_id, base_quantity, track_stock` 5필드 drop. 누락 필드 추가. RA/SA × POST/PUT × image set/null 4/4 라이브 검증 | ✅ |
+| Ingredient modal UX 정돈 | 푸터 sticky (form 안 → Modal `footer` prop, `form="ingredient-form"` 외부 submit) + Save disabled 조건(필수 미입력/Edit isDirty=false/제출 중) + "Saving..." 텍스트 + 더블클릭 차단 | ✅ |
+| Supplier Staff 모듈 게이팅 fix | `ProtectedRoute MODULE_GATED_ROUTES` 에 `/pos/supplier/staff` → `supplier_admin_staff` 추가. URL 직접 입력 우회 차단 (sidebar `hasModule` ↔ Route 게이팅 동기화) | ✅ |
+| Orphan 페이지 9개 + 빈 디렉토리 4개 정리 | `PurchaseInvoicesPage` (per-role page로 대체) + `Admin/AddonModulesPage`, `Admin/AnalyticsPage`, `BillPrint/BillPrintPage`, `CompanyProfile/CompanyProfilePage`, `FloorPlan/OrderOverlay`, `Manager/CompanySettingsPage`, `RecipeManagement/SuppliersTab`, `TableManagement/TableManagementPage` 삭제 + 빈 디렉토리 정리 | ✅ |
+| 운영 직전 전수조사 검증 | Sidebar URL→Route 매핑 102/103 PASS, Lazy import 153/153, HTTP 200 91/91, FE↔BE 258/262 매칭, BE 라우터 mount 85개 정상 | ✅ |
+
+### 수정된 파일
+- `dev-frontend/src/components/ProtectedRoute.tsx` (Supplier Staff 게이팅 추가, /pos/purchase-invoices 게이팅 제거)
+- `dev-frontend/src/App.tsx` (PurchaseInvoicesPage import + 라우트 제거)
+- `dev-frontend/src/pages/RecipeManagement/IngredientsTab.tsx` (modal sticky + disabled + isSubmitting)
+- `dev-backend/routes/restaurants-ingredients.js` (POST 5개 필드 누락 fix)
+- (삭제) `dev-frontend/src/pages/PurchaseInvoices/PurchaseInvoicesPage.tsx` 외 8개 orphan + 4 빈 디렉토리
+
+---
+
+## ✅ 완료: v3.20 운영 배포 (2026-04-30)
+
+**Supply Chain Sprint 7 + Supplier Staff + SOA Invoice 재설계 + 운영 쿠폰 버그 fix**
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 운영 쿠폰 100% 할인 fix | `orders-crud.js:414, 487` falsy 체크 → `== null`. 운영 8건 정정 (Restaurant 8 IPC) | ✅ |
+| Supply Chain Sprint 7 | inventory polymorphic + Returns 양방향 + 수령 splits + Carrier webhook HMAC + path-level middleware fix | ✅ |
+| Phase A — 운영 위험 5건 | A1 PO 알림 / A2 mark-shipped 차단 / A3 트랜잭션·락 / A5 row-level lock / A4 false positive 확인 | ✅ |
+| B1 SOA 재설계 | invoices.parent_soa_invoice_id + soaScheduler가 SOA Invoice 발행 + cascade payment (3 endpoint) + Frontend 인라인 + 결제버튼 조건부 | ✅ |
+| B2 Supplier Staff Advanced 모듈 | users.supplier_company_id + role ENUM 확장 + supplierScope Staff 인식 + 4 CRUD endpoint + SupplierStaffPage + 사이드바 게이팅 | ✅ |
+| B3 SupplierDashboard 리팩토링 | 인라인 styled → 공통 컴포넌트, StatusBadge variant 매핑, Skeleton 4→8 | ✅ |
+| B4 Empty state + CTA | Contracts tab별 hint, Customers "View Pending Contracts" CTA | ✅ |
+| 모바일 모달 padding 통일 | UI/Modal.tsx (76 페이지) + 4 인라인 모달 @media (max-width: 640px) | ✅ |
+| Restaurant 구매자 흐름 정돈 | alert/confirm 12건 → AlertDialog/ConfirmDialog, 이모지 SVG 대체, AddressFields 적용, i18n 4언어 | ✅ |
+
+### DB 마이그레이션 (자동 실행)
+- `scripts/sprint7-migration.js`
+- `scripts/migrate-supplier-staff.js`
+- `scripts/migrate-soa-invoice.js`
+
+### 검증 (실 데이터)
+- POS 쿠폰 fix 라이브 검증 (subtotal=7, coupon=7, total=0 보존)
+- PO 라이프사이클 6/6 (submit → race lock → mark-shipped 차단)
+- Supplier Staff CRUD 7/7 (POST/GET/PUT/DELETE + PIN 중복 거부)
+- SOA cascade 8/8 (submit-payment + confirm-payment 양쪽 child 자동)
+- Restaurant Ingredient image 6/6 (5필드 round-trip)
+- health-check 43/43 / state hydration 0 warning
+
+---
 
 ## ✅ 완료: PO/Supplier/Invoice 통합 UX 재정비 (2026-04-29, 미배포)
 
@@ -2269,34 +2323,27 @@ Case 4: Brand + Foodcourt    → 인보이스: System Admin + Brand GM + Foodcou
 
 ---
 
-## 🚀 다음 3: Brand Franchise Map & Foodcourt Floor Plan
+## ✅ 완료: Brand Franchise Map & Foodcourt Floor Plan
 
 > **설계 문서:** `docs/ENTITY_FLOOR_PLAN_SYSTEM.md`
-> **규모:** 중대 (신규 페이지, 모델 필드 추가)
-> **의존성:** Contract Management System 완료 후 구현
-
-### 개요
-- Foodcourt General: Floor Plan — 캔버스 배치도 (유닛 위치 시각화)
-- Brand General: Franchise Map — Area 그룹 카드 뷰 (가맹점 현황)
-- 클릭 시 레스토랑 실적 + 계약 정보 Detail Panel
-- 기존 FloorPlan(Restaurant) 수정 없음, 신규 컴포넌트
+> 신규 페이지 6개 + 라우트 + 사이드바 + 백엔드 API 완료. 운영 반영됨.
 
 ### Phase 1: Core
 | # | 작업 | 상태 |
 |---|------|:----:|
-| 1 | Brand.franchise_map + Foodcourt.floor_plan 필드 추가 | |
-| 2 | 전용 API (brand-franchise-map.js, foodcourt-floor-plan.js) | |
-| 3 | FoodcourtFloorPlanPage (캔버스 + 유닛 노드 + Editor) | |
-| 4 | FranchiseMapPage (Area 카드 그리드 + Area CRUD) | |
-| 5 | RestaurantDetailPanel + ContractStatsBar 공통 컴포넌트 | |
-| 6 | 사이드바 메뉴 + 라우트 + ProtectedRoute + AuthContext | |
+| 1 | Brand.franchise_map + Foodcourt.floor_plan 필드 추가 | ✅ |
+| 2 | 전용 API (brand-franchise-map.js, foodcourt-floor-plan.js) | ✅ |
+| 3 | FoodcourtFloorPlanPage (캔버스 + 유닛 노드 + Editor) | ✅ |
+| 4 | FranchiseMapPage (Area 카드 그리드 + Area CRUD) | ✅ |
+| 5 | RestaurantDetailPanel + ContractStatsBar 공통 컴포넌트 | ✅ |
+| 6 | 사이드바 메뉴 + 라우트 + ProtectedRoute + AuthContext | ✅ |
 
 ### Phase 2: Stats & Polish
 | # | 작업 | 상태 |
 |---|------|:----:|
-| 7 | Vacant "Create Proposal" CTA + 이전 입점자 이력 | |
-| 8 | Expiring Soon 하이라이트 | |
-| 9 | 모바일 폴백 (Foodcourt 리스트뷰) + Editor 데스크톱 전용 | |
+| 7 | Vacant "Create Proposal" CTA + 이전 입점자 이력 | ✅ |
+| 8 | Expiring Soon 하이라이트 | ✅ |
+| 9 | 모바일 폴백 (Foodcourt 리스트뷰) + Editor 데스크톱 전용 | ✅ |
 
 ---
 

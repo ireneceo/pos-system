@@ -185,18 +185,32 @@ router.get('/:restaurantId/ingredients/:ingredientId/usage', authenticateToken, 
 router.post('/:restaurantId/ingredients', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    const { code, name, category, unit, unit_cost, supplier_name, min_stock } = req.body;
+    const {
+      code, name, image_url, category, ingredient_category_id, unit,
+      base_quantity, unit_cost, supplier_name, supplier_id, min_stock, track_stock
+    } = req.body;
     const ingredient = await Ingredient.create({
+      owner_type: 'restaurant',
       brand_id: null,
       restaurant_id: restaurantId,
-      code, name, category, unit, unit_cost, supplier_name,
+      code: code || null,
+      name,
+      image_url: image_url || null,
+      category,
+      ingredient_category_id: ingredient_category_id || null,
+      unit,
+      base_quantity: base_quantity || 1,
+      unit_cost,
+      supplier_name,
+      supplier_id: supplier_id || null,
       min_stock: min_stock || 0,
-      current_stock: 0
+      current_stock: 0,
+      track_stock: track_stock || false
     });
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Create restaurant ingredient error:', error);
-    res.status(500).json({ error: '재료 생성 실패' });
+    res.status(500).json({ error: error.message || '재료 생성 실패' });
   }
 });
 

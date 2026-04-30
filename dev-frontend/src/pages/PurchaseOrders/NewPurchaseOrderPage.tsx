@@ -26,6 +26,7 @@ import DateField from '../../components/Common/DateField';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAuthToken } from '../../utils/auth';
 import SupplierOptionModal, { SupplierOptionGroup, SelectedOption } from './SupplierOptionModal';
+import ConfirmDialog from '../../components/Common/ConfirmDialog';
 
 type SellerType = 'system_admin' | 'brand' | 'foodcourt' | 'supplier';
 
@@ -515,6 +516,7 @@ const NewPurchaseOrderPage: React.FC = () => {
   const [loadingCatalog, setLoadingCatalog] = useState(false);
 
   const [cart, setCart] = useState<CartRow[]>([]);
+  const [currencyConfirm, setCurrencyConfirm] = useState<{ message: string; settingsUrl: string } | null>(null);
   const [expectedDate, setExpectedDate] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -796,10 +798,7 @@ const NewPurchaseOrderPage: React.FC = () => {
       const j = await res.json();
       if (!res.ok || !j.success) {
         if (j?.code === 'NO_BUYER_CURRENCY' || j?.code === 'CURRENCY_MISMATCH') {
-          const goSettings = window.confirm(
-            `${j.message}\n\n${t('newPo.error.goToSettings', 'Open payment settings?') as string}`
-          );
-          if (goSettings) navigate(j.settingsUrl || '/pos/settings');
+          setCurrencyConfirm({ message: j.message, settingsUrl: j.settingsUrl || '/pos/settings' });
           return;
         }
         setError(j?.message || t('newPo.error.failed', 'Failed to create POs') as string);
@@ -1140,6 +1139,20 @@ const NewPurchaseOrderPage: React.FC = () => {
           }}
         />
       )}
+      <ConfirmDialog
+        isOpen={!!currencyConfirm}
+        onClose={() => setCurrencyConfirm(null)}
+        onConfirm={() => {
+          const url = currencyConfirm?.settingsUrl;
+          setCurrencyConfirm(null);
+          if (url) navigate(url);
+        }}
+        title={t('newPo.error.currencyTitle', 'Currency Setup Required') as string}
+        message={`${currencyConfirm?.message || ''}\n\n${t('newPo.error.goToSettings', 'Open payment settings?')}`}
+        confirmText={t('newPo.error.openSettings', 'Open Settings') as string}
+        cancelText={t('common:cancel', 'Cancel') as string}
+        variant="warning"
+      />
     </PageWrap>
   );
 };

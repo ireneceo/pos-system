@@ -7,6 +7,8 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
 import Modal, { ModalButton, FormRow, FormGroup, FormLabel, FormInput, FormTextArea } from '../../components/UI/Modal';
+import AddressFields from '../../components/Form/AddressFields';
+import { Address } from '../../utils/formatAddress';
 
 interface DirectoryCategory {
   id: number;
@@ -527,33 +529,22 @@ const SupplierDirectoryPage: React.FC = () => {
             />
           </FormGroup>
         </FormRow>
-        <FormGroup>
-          <FormLabel>{t('externalSupplier.address', '주소')}</FormLabel>
-          <FormInput
-            value={externalForm.address}
-            onChange={(e) => setExternalForm(p => ({ ...p, address: e.target.value }))}
-            placeholder="123 Trading Street"
-          />
-        </FormGroup>
-        <FormRow>
-          <FormGroup>
-            <FormLabel>{t('externalSupplier.city', '시/구')}</FormLabel>
-            <FormInput
-              value={externalForm.city}
-              onChange={(e) => setExternalForm(p => ({ ...p, city: e.target.value }))}
-              placeholder="Kuala Lumpur"
-            />
-          </FormGroup>
-          <FormGroup>
-            <FormLabel>{t('externalSupplier.country', '국가 (ISO 2자)')}</FormLabel>
-            <FormInput
-              value={externalForm.country}
-              onChange={(e) => setExternalForm(p => ({ ...p, country: e.target.value.toUpperCase().slice(0, 2) }))}
-              maxLength={2}
-              placeholder="MY"
-            />
-          </FormGroup>
-        </FormRow>
+        <AddressFields
+          value={{
+            address: externalForm.address,
+            city: externalForm.city,
+            state: externalForm.state,
+            country: externalForm.country
+          } as Address}
+          onChange={(addr) => setExternalForm(p => ({
+            ...p,
+            address: addr.address || '',
+            city: addr.city || '',
+            state: addr.state || '',
+            country: (addr.country || 'MY').toUpperCase()
+          }))}
+          defaultCountry="MY"
+        />
         <FormGroup>
           <FormLabel>{t('externalSupplier.deliveryPolicy', '배송 정책 (자유 텍스트)')}</FormLabel>
           <FormTextArea

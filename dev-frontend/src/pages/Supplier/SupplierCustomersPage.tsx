@@ -252,10 +252,13 @@ const SupplierCustomersPage: React.FC = () => {
                 <tr>
                   <td colSpan={5}>
                     <DataTableEmpty>
-                      <div style={{ marginBottom: 8 }}>{t('customers.noCustomers')}</div>
-                      <div style={{ fontSize: 13, color: '#6B7280' }}>
-                        {t('customers.noCustomersHint')}
+                      <div style={{ marginBottom: 8, fontSize: 16, fontWeight: 600, color: '#374151' }}>{t('customers.noCustomers', 'No customers yet')}</div>
+                      <div style={{ fontSize: 13, color: '#6B7280', maxWidth: 360, margin: '0 auto 16px', lineHeight: 1.5 }}>
+                        {t('customers.noCustomersHint', 'Once you approve buyer contract requests, your customers will appear here.')}
                       </div>
+                      <ThemedButton variant="outline" size="small" onClick={() => navigate('/pos/supplier/contracts?tab=pending')}>
+                        {t('customers.viewPendingContracts', 'View Pending Contracts')}
+                      </ThemedButton>
                     </DataTableEmpty>
                   </td>
                 </tr>

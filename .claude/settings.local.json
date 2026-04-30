@@ -85,7 +85,21 @@
       "Bash(echo \"EXIT=$?\")",
       "Bash(bash deploy-dev.sh)",
       "Bash(sudo cp *)",
-      "Bash(sudo chown *)"
+      "Bash(sudo chown *)",
+      "Bash(mysql *)",
+      "Bash(npx react-scripts *)",
+      "Bash(sudo ls *)",
+      "Bash(sudo rsync *)",
+      "Bash(node test-real-data.js)",
+      "Bash(echo \"exit: $?\")",
+      "Read(//tmp/**)",
+      "Bash(sudo find *)",
+      "Bash(sudo zcat *)",
+      "Bash(sudo grep *)",
+      "Bash(sudo cat *)",
+      "Bash(awk '{print $4, $7}')",
+      "Bash(sudo zgrep *)",
+      "Bash(read page *)"
     ],
     "deny": [],
     "ask": []

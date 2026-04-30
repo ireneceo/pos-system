@@ -376,9 +376,13 @@ async function checkPaymentPermission(user, invoice) {
   }
 
   // Restaurant Admin can pay invoices for their restaurant
+  // Match on legacy invoice.restaurant_id OR new payer_type/payer_id model (B1 — trade/SOA invoices)
   if (user.role === 'Restaurant Admin') {
     const userRestaurantId = user.restaurantId || user.restaurant_id;
-    return userRestaurantId && invoice.restaurant_id === userRestaurantId;
+    if (!userRestaurantId) return false;
+    if (invoice.restaurant_id === userRestaurantId) return true;
+    if (invoice.payer_type === 'restaurant' && Number(invoice.payer_id) === Number(userRestaurantId)) return true;
+    return false;
   }
 
   // Restaurant Owner can pay invoices for any of their owned restaurants

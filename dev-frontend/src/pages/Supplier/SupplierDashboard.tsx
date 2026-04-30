@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import {
+  DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue,
+  Container, Header, Title, Content
+} from '../../components/UI';
+import { StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
 import { formatCurrency } from '../../utils/currency';
 import { formatDate } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
@@ -64,27 +68,7 @@ interface DashboardData {
   subscription: SubscriptionInfo;
 }
 
-const Container = styled.div`min-height: 100vh;`;
-
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #E6EBF1;
-  height: 56px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  @media (max-width: 768px) { padding: 16px; height: auto; min-height: 56px; flex-direction: column; align-items: flex-start; gap: 12px; }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-  @media (max-width: 768px) { font-size: 20px; }
-`;
+// Container/Header/Title now imported from components/UI (B3 refactor — UI_DESIGN_GUIDE 2.1).
 
 const Subtitle = styled.div`
   display: flex;
@@ -112,12 +96,7 @@ const SubscriptionBadge = styled.span<{ variant: 'trial' | 'active' | 'expiring'
   }}
 `;
 
-const Content = styled.div`
-  padding: 32px;
-  background: #FAFBFC;
-  min-height: calc(100vh - 56px);
-  @media (max-width: 768px) { padding: 20px; }
-`;
+// Content imported from components/UI
 
 const MainGrid = styled.div`
   display: grid;
@@ -204,22 +183,14 @@ const Th = styled.th`text-align: left; padding: 10px 16px; background: #F9FAFB; 
 const Td = styled.td`padding: 12px 16px; font-size: 14px; color: #0A2540; border-top: 1px solid #F3F4F6;`;
 const Tr = styled.tr`cursor: pointer; &:hover { background: #FAFBFC; }`;
 
-const StatusBadge = styled.span<{ status: string }>`
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: capitalize;
-  ${({ status }) => {
-    if (['submitted', 'pending_payment'].includes(status)) return 'background: #FEF3C7; color: #92400E;';
-    if (['confirmed'].includes(status)) return 'background: #DBEAFE; color: #1E40AF;';
-    if (['shipped'].includes(status)) return 'background: #E0E7FF; color: #3730A3;';
-    if (['received', 'paid'].includes(status)) return 'background: #D1FAE5; color: #065F46;';
-    if (['cancelled', 'overdue'].includes(status)) return 'background: #FEE2E2; color: #991B1B;';
-    return 'background: #F3F4F6; color: #374151;';
-  }}
-`;
+// StatusBadge — map supplier domain status → CommonStatusBadge variant
+function mapSupplierStatusVariant(s: string): 'success' | 'warning' | 'error' | 'info' | '' {
+  if (['received', 'paid'].includes(s)) return 'success';
+  if (['submitted', 'pending_payment'].includes(s)) return 'warning';
+  if (['cancelled', 'overdue'].includes(s)) return 'error';
+  if (['confirmed', 'shipped'].includes(s)) return 'info';
+  return '';
+}
 
 const EmptyTable = styled.div`padding: 32px; text-align: center; color: #6B7C93; font-size: 13px;`;
 
@@ -244,6 +215,7 @@ const LoadingSkeleton = styled.div`
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
+  @media (max-width: 1024px) { grid-template-columns: repeat(3, 1fr); }
   @media (max-width: 768px) { grid-template-columns: repeat(2, 1fr); }
 `;
 
@@ -344,6 +316,7 @@ const SupplierDashboard: React.FC = () => {
         {loading ? (
           <LoadingSkeleton>
             <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
+            <SkeletonCard /><SkeletonCard /><SkeletonCard /><SkeletonCard />
           </LoadingSkeleton>
         ) : data ? (
           <>
@@ -437,7 +410,7 @@ const SupplierDashboard: React.FC = () => {
                         <Tr key={po.id} onClick={() => navigate(`/pos/supplier/orders/${po.id}`)}>
                           <Td><strong>{po.po_number}</strong></Td>
                           <Td>{po.customer}</Td>
-                          <Td><StatusBadge status={po.status}>{po.status}</StatusBadge></Td>
+                          <Td><CommonStatusBadge status={mapSupplierStatusVariant(po.status)} size="small">{po.status}</CommonStatusBadge></Td>
                           <Td style={{ textAlign: 'right' }}>{formatCurrency(po.total_amount, po.currency || ccy)}</Td>
                         </Tr>
                       ))}
@@ -468,7 +441,7 @@ const SupplierDashboard: React.FC = () => {
                         <Tr key={inv.id} onClick={() => navigate('/pos/supplier/trade-invoices')}>
                           <Td><strong>{inv.invoice_number}</strong></Td>
                           <Td>{inv.customer}</Td>
-                          <Td><StatusBadge status={inv.status}>{inv.status.replace('_', ' ')}</StatusBadge></Td>
+                          <Td><CommonStatusBadge status={mapSupplierStatusVariant(inv.status)} size="small">{inv.status.replace('_', ' ')}</CommonStatusBadge></Td>
                           <Td style={{ textAlign: 'right' }}>{formatCurrency(inv.total_amount, ccy)}</Td>
                         </Tr>
                       ))}

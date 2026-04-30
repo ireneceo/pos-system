@@ -241,6 +241,25 @@ async function getRestaurantOwnerIds(restaurantId) {
   return owners.map(o => o.id);
 }
 
+/**
+ * Find Supplier Admin + Staff user IDs for a supplier company.
+ * Includes:
+ *   - SupplierCompany.owner_id (Supplier Admin)
+ *   - users.supplier_company_id matches AND role IN (Supplier Admin, Supplier Staff)
+ *     (Advanced module supplier_admin_staff)
+ */
+async function getSupplierAdminIds(supplierCompanyId) {
+  const users = await sequelize.query(
+    `SELECT DISTINCT u.id FROM users u
+     LEFT JOIN supplier_companies sc ON sc.id = :scId
+     WHERE u.email IS NOT NULL
+       AND u.role IN ('Supplier Admin', 'Supplier Staff')
+       AND (u.id = sc.owner_id OR u.supplier_company_id = :scId)`,
+    { replacements: { scId: supplierCompanyId }, type: QueryTypes.SELECT }
+  );
+  return users.map(u => u.id);
+}
+
 module.exports = {
   sendNotification,
   sendNotificationBatch,
@@ -249,5 +268,6 @@ module.exports = {
   getSystemAdminIds,
   getBrandManagerIds,
   getFoodcourtManagerIds,
-  getRestaurantOwnerIds
+  getRestaurantOwnerIds,
+  getSupplierAdminIds
 };

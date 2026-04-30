@@ -517,6 +517,10 @@ const ModalOverlay = styled.div`
   align-items: center;
   justify-content: center;
   z-index: 1000;
+
+  @media (max-width: 640px) {
+    padding: 12px;
+  }
 `;
 
 const ModalBox = styled.div`
@@ -526,6 +530,12 @@ const ModalBox = styled.div`
   max-width: 440px;
   width: 90%;
   box-shadow: 0 20px 25px rgba(0,0,0,0.1);
+
+  @media (max-width: 640px) {
+    width: 100%;
+    padding: 18px;
+    border-radius: 10px;
+  }
 `;
 
 const STAGE_COLORS: Record<string, { bg: string; color: string }> = {

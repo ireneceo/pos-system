@@ -482,7 +482,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   const [linkedItems, setLinkedItems] = useState<{recipes: any[]; products: any[]}>({ recipes: [], products: [] });
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
+  const EMPTY_FORM = {
     code: '',
     name: '',
     image_url: '',
@@ -493,7 +493,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
     supplier_id: '' as string | number,
     min_stock: '0',
     track_stock: true
-  });
+  };
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [initialFormData, setInitialFormData] = useState(EMPTY_FORM);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; ingredientId: number | null; ingredientName: string }>({
     isOpen: false,
@@ -789,9 +792,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   };
 
   const handleOpenModal = (ingredient: Ingredient | null) => {
+    let next;
     if (ingredient) {
       setSelectedIngredient(ingredient);
-      setFormData({
+      next = {
         code: ingredient.code || '',
         name: ingredient.name,
         image_url: ingredient.image_url || '',
@@ -802,41 +806,32 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         supplier_id: ingredient.supplier_id || '',
         min_stock: ingredient.min_stock?.toString() || '0',
         track_stock: ingredient.track_stock || false
-      });
+      };
     } else {
       setSelectedIngredient(null);
-      setFormData({
-        code: '',
-        name: '',
-        image_url: '',
-        ingredient_category_id: '',
-        unit: '',
-        base_quantity: '1',
-        unit_cost: '',
-        supplier_id: '',
-        min_stock: '0',
-        track_stock: true
-      });
+      next = EMPTY_FORM;
     }
+    setFormData(next);
+    setInitialFormData(next);
+    setIsSubmitting(false);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedIngredient(null);
-    setFormData({
-      code: '',
-      name: '',
-      image_url: '',
-      ingredient_category_id: '',
-      unit: '',
-      base_quantity: '1',
-      unit_cost: '',
-      supplier_id: '',
-      min_stock: '0',
-      track_stock: true
-    });
+    setFormData(EMPTY_FORM);
+    setInitialFormData(EMPTY_FORM);
+    setIsSubmitting(false);
   };
+
+  // dirty check — for edit mode disable Save when nothing changed
+  const isDirty = React.useMemo(() => {
+    return Object.keys(formData).some(k => (formData as any)[k] !== (initialFormData as any)[k]);
+  }, [formData, initialFormData]);
+
+  const isFormValid = !!(formData.name && formData.ingredient_category_id && formData.unit && formData.unit_cost);
+  const canSubmit = isFormValid && !isSubmitting && (!selectedIngredient || isDirty);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -851,28 +846,31 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!formData.name || !formData.ingredient_category_id || !formData.unit || !formData.unit_cost) {
       alert('Please fill in all required fields');
       return;
     }
 
+    setIsSubmitting(true);
     try {
       let url = '';
       const method = selectedIngredient ? 'PUT' : 'POST';
 
-      if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
-        if (selectedIngredient) {
-          url = `/api/brands/${brandId}/ingredients/${selectedIngredient.id}`;
-        } else {
-          url = `/api/brands/${brandId}/ingredients`;
-        }
-      } else if (user?.role === 'Restaurant Admin') {
-        if (selectedIngredient) {
-          url = `/api/restaurants/${effectiveRestaurantId}/ingredients/${selectedIngredient.id}`;
-        } else {
-          url = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
-        }
+      // Brand context: BG/Brand Manager use brand path
+      if ((user?.role === 'Brand General' || user?.role === 'Brand Manager') && brandId) {
+        url = selectedIngredient
+          ? `/api/brands/${brandId}/ingredients/${selectedIngredient.id}`
+          : `/api/brands/${brandId}/ingredients`;
+      // Restaurant context: Restaurant Admin OR System Admin browsing /restaurant/:id/ingredients
+      } else if (effectiveRestaurantId) {
+        url = selectedIngredient
+          ? `/api/restaurants/${effectiveRestaurantId}/ingredients/${selectedIngredient.id}`
+          : `/api/restaurants/${effectiveRestaurantId}/ingredients`;
+      } else {
+        alert('Cannot determine save context (missing restaurant or brand id). Please reload the page.');
+        return;
       }
 
       const token = getAuthToken();
@@ -899,16 +897,24 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         })
       });
 
-      const data = await response.json();
+      // Read body as text first so we get useful error info even when server returns HTML / non-JSON
+      const text = await response.text();
+      let data: any = null;
+      try { data = text ? JSON.parse(text) : null; } catch { /* non-JSON */ }
 
-      if (data.success) {
+      if (response.ok && data?.success) {
         handleCloseModal();
         fetchIngredients();
       } else {
-        alert(data.error || '재료 저장 실패');
+        const msg = data?.error || data?.message || `Save failed (HTTP ${response.status})`;
+        console.error('Ingredient save failed:', response.status, text.slice(0, 300));
+        alert(msg);
+        setIsSubmitting(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save ingredient:', error);
+      alert('Network error: ' + (error?.message || 'unable to reach server'));
+      setIsSubmitting(false);
     }
   };
 
@@ -1226,8 +1232,23 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         onClose={handleCloseModal}
         title={selectedIngredient ? 'Edit Ingredient' : 'New Ingredient'}
         size="medium"
+        footer={(
+          <>
+            <ModalButton type="button" variant="secondary" onClick={handleCloseModal} disabled={isSubmitting}>
+              Cancel
+            </ModalButton>
+            <ModalButton
+              type="submit"
+              form="ingredient-form"
+              variant="primary"
+              disabled={!canSubmit}
+            >
+              {isSubmitting ? 'Saving...' : (selectedIngredient ? 'Update Ingredient' : 'Create Ingredient')}
+            </ModalButton>
+          </>
+        )}
       >
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <form id="ingredient-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <UIFormGroup>
             <FormLabel>{'Image'}</FormLabel>
             <input
@@ -1358,14 +1379,6 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             </UIFormGroup>
           </UIFormRow>
 
-          <ButtonGroup>
-            <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
-              Cancel
-            </ModalButton>
-            <ModalButton type="submit" variant="primary">
-              {selectedIngredient ? 'Update Ingredient' : 'Create Ingredient'}
-            </ModalButton>
-          </ButtonGroup>
         </form>
       </Modal>
 

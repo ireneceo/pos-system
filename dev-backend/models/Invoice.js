@@ -126,7 +126,12 @@ Invoice.init({
   invoice_category: {
     type: DataTypes.STRING(50),
     defaultValue: 'service',
-    comment: 'Invoice category code from invoice_categories table'
+    comment: 'Invoice category code from invoice_categories table (service|trade|soa|...)'
+  },
+  parent_soa_invoice_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'SOA invoice ID — set on child trade invoices when bundled into a monthly SOA. SOA itself has this NULL.'
   },
   category_display_name: {
     type: DataTypes.STRING(255),

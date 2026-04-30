@@ -410,14 +410,15 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
     }
 
     // Calculate total amount if not provided
+    // NOTE: total_amount === 0 is valid (e.g. 100% coupon discount). Use `== null` to catch only undefined/null.
     const itemsArray = orderData.order_items || orderData.items || [];
-    if (!orderData.total_amount && itemsArray.length > 0) {
+    if (orderData.total_amount == null && itemsArray.length > 0) {
       orderData.total_amount = itemsArray.reduce((sum, item) => {
         return sum + (parseFloat(item.price) * parseInt(item.quantity));
       }, 0);
     }
     // Ensure total_amount has a default value
-    if (!orderData.total_amount) {
+    if (orderData.total_amount == null) {
       orderData.total_amount = 0;
     }
 
@@ -483,8 +484,9 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
           }));
 
           // Calculate total if not set
+          // NOTE: total_amount === 0 is valid (e.g. 100% coupon discount). Use `== null` to catch only undefined/null.
           let calculatedTotal = orderData.total_amount;
-          if (!calculatedTotal && itemsArray.length > 0) {
+          if (calculatedTotal == null && itemsArray.length > 0) {
             calculatedTotal = itemsArray.reduce((sum, item) => {
               return sum + (parseFloat(item.price) * parseInt(item.quantity));
             }, 0);
@@ -500,7 +502,7 @@ router.post('/', optionalAuthenticateToken, async (req, res) => {
             ...orderData,
             order_number: generatedOrderNumber,
             order_items: itemsArray.length > 0 ? itemsArray : null,  // Pass array, not JSON string
-            total_amount: calculatedTotal || 0,
+            total_amount: calculatedTotal ?? 0,
             payment_proof: normalizedProof || orderData.payment_proof
           }, {
             transaction: t,

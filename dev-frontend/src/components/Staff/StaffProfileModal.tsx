@@ -19,10 +19,14 @@ const ModalOverlay = styled.div<{ isOpen: boolean }>`
   padding: 40px 0;
   z-index: 10000;
   animation: fadeIn 0.2s ease-out;
-  
+
   @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
+  }
+
+  @media (max-width: 640px) {
+    padding: 12px 0;
   }
 `;
 
@@ -35,7 +39,7 @@ const ModalContent = styled.div`
   overflow: auto;
   animation: slideUp 0.3s ease-out;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  
+
   @keyframes slideUp {
     from {
       transform: translateY(30px);
@@ -47,6 +51,12 @@ const ModalContent = styled.div`
     }
   }
   margin: auto 0;
+
+  @media (max-width: 640px) {
+    width: calc(100% - 16px);
+    max-height: calc(100vh - 24px);
+    border-radius: 12px;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -56,6 +66,10 @@ const ModalHeader = styled.div`
   align-items: center;
   border-bottom: 1px solid #F1F5F9;
   margin-bottom: 0;
+
+  @media (max-width: 640px) {
+    padding: 16px 16px 0 16px;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -83,6 +97,10 @@ const CloseButton = styled.button`
 
 const ModalBody = styled.div`
   padding: 24px;
+
+  @media (max-width: 640px) {
+    padding: 16px;
+  }
 `;
 
 const ProfileSection = styled.div`

@@ -57,7 +57,75 @@ function applySanitize(payload) {
   return out;
 }
 
-// All endpoints SA-only
+// Allowed-routes endpoint — accessible by supplier owner/staff + SA (B2 requires this for plan gating).
+// MUST be registered BEFORE the SA-only gate below.
+router.get('/:id/allowed-routes', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const supplierId = parseInt(id, 10);
+    const AddonModule = require('../models/AddonModule');
+    const company = await SupplierCompany.findByPk(supplierId);
+    if (!company) {
+      return res.status(404).json({ success: false, message: 'Supplier company not found' });
+    }
+    // Auth: owner of this company, staff of this company, or System Admin
+    const u = req.user;
+    const isOwner = u.role === 'Supplier Admin' && company.owner_id === u.id;
+    const isStaff = u.role === 'Supplier Staff' && u.supplier_company_id === supplierId;
+    const isSA = u.role === 'System Admin';
+    if (!isOwner && !isStaff && !isSA) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    const owner = company.owner_id ? await User.findByPk(company.owner_id) : null;
+    const isDemo = !!(owner?.is_demo);
+    const planType = isDemo ? 'Supplier Enterprise' : (company.plan_type || null);
+    const subStatus = isDemo ? 'active' : (company.subscription_status || null);
+
+    const empty = {
+      entity_id: company.id,
+      entity_type: 'supplier',
+      plan_type: planType,
+      subscription_status: subStatus,
+      included_modules: [],
+      allowed_routes: [],
+      modules: []
+    };
+    if (!planType) return res.json(empty);
+
+    const plan = await PlanTemplate.findOne({
+      where: {
+        [Op.or]: [{ display_name: planType }, { name: planType }],
+        plan_target: 'supplier'
+      }
+    });
+    if (!plan) return res.json({ ...empty, plan_type: planType });
+
+    const includedModuleCodes = plan.included_modules || [];
+    if (includedModuleCodes.length === 0) return res.json({ ...empty, plan_type: planType });
+
+    const modules = await AddonModule.findAll({
+      where: { module_code: includedModuleCodes, is_active: true }
+    });
+    const allowedRoutes = [...new Set(
+      modules.reduce((routes, m) => [...routes, ...(m.ui_routes || [])], [])
+    )];
+    res.json({
+      entity_id: company.id,
+      entity_type: 'supplier',
+      plan_type: planType,
+      subscription_status: subStatus,
+      included_modules: includedModuleCodes,
+      allowed_routes: allowedRoutes,
+      modules: modules.map(m => ({ code: m.module_code, name: m.name, category: m.category }))
+    });
+  } catch (err) {
+    console.error('GET /api/supplier-companies/:id/allowed-routes:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch allowed routes' });
+  }
+});
+
+// All other endpoints SA-only
 router.use(authenticateToken, requireRole('System Admin'));
 
 /**

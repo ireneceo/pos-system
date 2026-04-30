@@ -121,6 +121,7 @@ async function processMonthlySoa(referenceDate = new Date()) {
         if (!payer) { skipped++; continue; }
 
         // Find trade invoices issued by this supplier to this buyer in last month
+        // Skip invoices already bundled in a SOA (idempotency — rerun safe)
         const invoices = await Invoice.findAll({
           where: {
             invoice_category: 'trade',
@@ -128,6 +129,7 @@ async function processMonthlySoa(referenceDate = new Date()) {
             issuer_id: contract.supplier_company_id,
             payer_type: payer.payer_type,
             payer_id: payer.payer_id,
+            parent_soa_invoice_id: null,
             createdAt: { [Op.between]: [lastMonthStart, lastMonthEnd] }
           },
           include: [{ model: InvoiceItem, as: 'items' }],
@@ -150,6 +152,39 @@ async function processMonthlySoa(referenceDate = new Date()) {
 
         const recipients = await getBuyerRecipientUserIds(contract.entity_type, contract.entity_id);
         if (recipients.length === 0) { skipped++; continue; }
+
+        // === SOA Invoice 발행 (B1 재설계) — invoice_category='soa' ===
+        // 트랜잭션으로 SOA 생성 + 모든 child invoices 에 parent_soa_invoice_id 설정.
+        const soaInvoiceNumber = `SOA-${contract.supplier_company_id}-${lastMonthStart.toISOString().slice(0, 7)}-${contract.id}`;
+        const soaInvoice = await sequelize.transaction(async (t) => {
+          const newSoa = await Invoice.create({
+            invoice_number: soaInvoiceNumber,
+            invoice_category: 'soa',
+            issuer_type: 'supplier',
+            issuer_id: contract.supplier_company_id,
+            payer_type: payer.payer_type,
+            payer_id: payer.payer_id,
+            currency,
+            subtotal: totalDue,
+            total_amount: totalDue,
+            tax_amount: 0,
+            paid_amount: 0,
+            status: 'pending_payment',
+            issued_at: referenceDate,
+            due_date: dueDate,
+            service_description: `Monthly Statement of Account — ${invoices.length} invoices`,
+            notes: `Bundled SOA for ${invoices.length} trade invoices in ${lastMonthStart.toISOString().slice(0, 7)}`
+          }, { transaction: t });
+
+          // 각 child invoice 에 parent_soa_invoice_id 설정 + status 잠금 (pending → SOA 결제로 일괄)
+          await Invoice.update(
+            { parent_soa_invoice_id: newSoa.id },
+            { where: { id: invoices.map(i => i.id) }, transaction: t }
+          );
+
+          return newSoa;
+        });
+        console.log(`[soaScheduler] SOA invoice #${soaInvoice.id} (${soaInvoiceNumber}) created with ${invoices.length} children, total ${currency} ${totalDue}`);
 
         // Resolve buyer timezone (per-buyer for accurate SOA dates)
         let buyerTz = 'Asia/Kuala_Lumpur';

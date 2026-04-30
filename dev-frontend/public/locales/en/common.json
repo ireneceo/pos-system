@@ -177,6 +177,7 @@
     "inventory": "Inventory",
     "recipes": "Recipes",
     "ingredients": "Ingredients",
+    "stockItems": "Stock Items",
     "productRecipes": "Product Recipes",
     "brandRecipes": "Brand Recipes",
     "staff": "Staff",

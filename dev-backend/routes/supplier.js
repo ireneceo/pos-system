@@ -36,6 +36,7 @@ const {
   supplierContractTerminatedEmail
 } = require('../utils/notificationTemplates');
 const { sendNotificationBatch } = require('../utils/notificationService');
+const bcrypt = require('bcrypt');
 
 router.use(authenticateToken);
 router.use(requireSupplierScope);
@@ -557,6 +558,366 @@ router.get('/subscription', async (req, res) => {
   } catch (err) {
     console.error('[supplier] subscription error:', err);
     res.status(500).json({ success: false, message: 'Failed to load subscription' });
+  }
+});
+
+// ============================================================================
+// Supplier Staff (B2 — Advanced module: supplier_admin_staff)
+//   Only Supplier Admin (the company owner) can manage staff.
+//   All endpoints require requireSupplierModule('supplier_admin_staff').
+// ============================================================================
+
+function requireSupplierAdminOnly(req, res) {
+  if (req.user?.role === 'System Admin') return true;
+  if (req.user?.role !== 'Supplier Admin') {
+    res.status(403).json({ success: false, message: 'Only Supplier Admin can manage staff' });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * GET /api/supplier/staff
+ * List staff (Supplier Admin owner + Supplier Staff scoped to this company)
+ */
+router.get('/staff', requireSupplierModule('supplier_admin_staff'), async (req, res) => {
+  try {
+    if (!requireResolvedCompany(req, res)) return;
+    const company = req.supplierCompany;
+    const staff = await User.findAll({
+      where: {
+        [Op.or]: [
+          { id: company.owner_id || 0 },
+          { supplier_company_id: company.id }
+        ]
+      },
+      attributes: ['id', 'username', 'email', 'full_name', 'role', 'phone', 'pin_code', 'createdAt'],
+      order: [['createdAt', 'ASC']]
+    });
+    res.json({ success: true, data: staff });
+  } catch (err) {
+    console.error('[supplier] GET /staff error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load staff' });
+  }
+});
+
+/**
+ * POST /api/supplier/staff
+ * Create new Supplier Staff user (assigned to this supplier company)
+ */
+router.post('/staff', requireSupplierModule('supplier_admin_staff'), async (req, res) => {
+  try {
+    if (!requireSupplierAdminOnly(req, res)) return;
+    if (!requireResolvedCompany(req, res)) return;
+    const company = req.supplierCompany;
+
+    const { username, email, password, full_name, phone, pin_code } = req.body;
+    if (!username || !email || !password || !full_name) {
+      return res.status(400).json({ success: false, message: 'username, email, password, full_name are required' });
+    }
+    const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({ success: false, message: 'Username must be 3-30 chars, alphanumeric/underscore only' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+    if (pin_code && !/^\d{4}$/.test(pin_code)) {
+      return res.status(400).json({ success: false, message: 'PIN must be 4 digits' });
+    }
+
+    // Uniqueness checks
+    const existing = await User.findOne({
+      where: { [Op.or]: [{ email: email.toLowerCase() }, { username }] }
+    });
+    if (existing) {
+      const which = existing.email === email.toLowerCase() ? 'Email' : 'Username';
+      return res.status(400).json({ success: false, message: `${which} is already in use` });
+    }
+    if (pin_code) {
+      const pinDup = await User.findOne({ where: { supplier_company_id: company.id, pin_code } });
+      if (pinDup) return res.status(400).json({ success: false, message: 'PIN already in use within this company' });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      username,
+      email: email.toLowerCase(),
+      password: hashed,
+      role: 'Supplier Staff',
+      full_name: sanitizeString(String(full_name).trim()),
+      phone: phone ? sanitizeString(String(phone).trim()) : null,
+      pin_code: pin_code || null,
+      supplier_company_id: company.id,
+      email_verified: true  // created by Supplier Admin → trusted
+    });
+
+    res.status(201).json({
+      success: true,
+      data: { id: user.id, username, email: user.email, full_name: user.full_name, role: user.role }
+    });
+  } catch (err) {
+    console.error('[supplier] POST /staff error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Failed to create staff' });
+  }
+});
+
+/**
+ * PUT /api/supplier/staff/:id
+ * Update Supplier Staff (must belong to this company; cannot edit owner via this endpoint)
+ */
+router.put('/staff/:id', requireSupplierModule('supplier_admin_staff'), async (req, res) => {
+  try {
+    if (!requireSupplierAdminOnly(req, res)) return;
+    if (!requireResolvedCompany(req, res)) return;
+    const company = req.supplierCompany;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Staff not found' });
+
+    const target = await User.findByPk(id);
+    if (!target || target.role !== 'Supplier Staff' || target.supplier_company_id !== company.id) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    const { full_name, phone, pin_code, password } = req.body;
+    const updates = {};
+    if (full_name != null) updates.full_name = sanitizeString(String(full_name).trim());
+    if (phone != null) updates.phone = sanitizeString(String(phone).trim());
+    if (pin_code != null) {
+      if (pin_code === '') {
+        updates.pin_code = null;
+      } else {
+        if (!/^\d{4}$/.test(pin_code)) return res.status(400).json({ success: false, message: 'PIN must be 4 digits' });
+        const pinDup = await User.findOne({
+          where: { supplier_company_id: company.id, pin_code, id: { [Op.ne]: id } }
+        });
+        if (pinDup) return res.status(400).json({ success: false, message: 'PIN already in use within this company' });
+        updates.pin_code = pin_code;
+      }
+    }
+    if (password) {
+      if (password.length < 8) return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+      updates.password = await bcrypt.hash(password, 10);
+    }
+
+    await target.update(updates);
+    res.json({
+      success: true,
+      data: { id: target.id, username: target.username, email: target.email, full_name: target.full_name, role: target.role }
+    });
+  } catch (err) {
+    console.error('[supplier] PUT /staff/:id error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Failed to update staff' });
+  }
+});
+
+/**
+ * DELETE /api/supplier/staff/:id
+ * Remove Supplier Staff from this company. Hard delete (their orphaned data is rare —
+ * they don't own POs/invoices, only created_by references which can be null).
+ */
+router.delete('/staff/:id', requireSupplierModule('supplier_admin_staff'), async (req, res) => {
+  try {
+    if (!requireSupplierAdminOnly(req, res)) return;
+    if (!requireResolvedCompany(req, res)) return;
+    const company = req.supplierCompany;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Staff not found' });
+
+    const target = await User.findByPk(id);
+    if (!target || target.role !== 'Supplier Staff' || target.supplier_company_id !== company.id) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+    if (target.id === req.user.id) {
+      return res.status(400).json({ success: false, message: 'Cannot delete your own account' });
+    }
+
+    await target.destroy();
+    res.json({ success: true, message: 'Staff removed' });
+  } catch (err) {
+    console.error('[supplier] DELETE /staff/:id error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Failed to delete staff' });
+  }
+});
+
+/**
+ * GET /api/supplier/soa/current
+ * Aggregate unpaid trade invoices issued by this supplier, grouped by buyer (payer).
+ * Filter: only include buyers whose contract has invoice_cycle='monthly_soa'.
+ * Returns one bundle per buyer with totals + invoice list.
+ *
+ * Mirror of /api/purchase-invoices/soa/current (buyer-side) — but groups by payer
+ * instead of issuer. Used by SupplierTradeInvoicesPage SoaBundleRow inline view.
+ */
+router.get('/soa/current', async (req, res) => {
+  try {
+    if (!requireResolvedCompany(req, res)) return;
+    const company = req.supplierCompany;
+    const supplierId = company.id;
+
+    // Fetch all this supplier's unpaid trade invoices
+    const invoices = await Invoice.findAll({
+      where: {
+        invoice_category: 'trade',
+        issuer_type: 'supplier',
+        issuer_id: supplierId,
+        status: { [Op.in]: ['pending_payment', 'overdue', 'pending'] }
+      },
+      include: [{ model: InvoiceItem, as: 'items' }],
+      order: [['payer_type', 'ASC'], ['payer_id', 'ASC'], ['createdAt', 'DESC']]
+    });
+
+    // Resolve buyer entity (restaurant_id / brand.id / foodcourt.id) per invoice
+    // and check the contract has monthly_soa cycle
+    const grouped = new Map();
+    for (const inv of invoices) {
+      let entityType = null, entityId = null, buyerName = null;
+      if (inv.payer_type === 'restaurant') {
+        entityType = 'restaurant'; entityId = inv.payer_id;
+        const r = await Restaurant.findByPk(entityId, { attributes: ['id', 'name'] });
+        buyerName = r?.name || null;
+      } else if (inv.payer_type === 'brand_manager') {
+        const b = await Brand.findOne({ where: { owner_id: inv.payer_id }, attributes: ['id', 'name'] });
+        if (b) { entityType = 'brand'; entityId = b.id; buyerName = b.name; }
+      } else if (inv.payer_type === 'foodcourt_manager') {
+        const f = await Foodcourt.findOne({ where: { owner_id: inv.payer_id }, attributes: ['id', 'name'] });
+        if (f) { entityType = 'foodcourt'; entityId = f.id; buyerName = f.name; }
+      }
+      if (!entityType) continue;
+
+      const contract = await SupplierContract.findOne({
+        where: {
+          supplier_company_id: supplierId,
+          entity_type: entityType,
+          entity_id: entityId,
+          status: 'active'
+        }
+      });
+      if (!contract) continue;
+      if (contract.payment_terms?.invoice_cycle !== 'monthly_soa') continue;
+
+      // Group key = buyer (payer_type + payer_id)
+      const key = `${inv.payer_type}:${inv.payer_id}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          payer_type: inv.payer_type,
+          payer_id: inv.payer_id,
+          buyer: { entity_type: entityType, entity_id: entityId, name: buyerName },
+          contract_id: contract.id,
+          payment_terms: contract.payment_terms || null,
+          invoices: [],
+          subtotal: 0,
+          total: 0,
+          count: 0,
+          currency: inv.currency || 'MYR'
+        });
+      }
+      const g = grouped.get(key);
+      g.invoices.push(inv.toJSON());
+      g.subtotal += Number(inv.subtotal || 0);
+      g.total += Number(inv.total_amount || 0);
+      g.count += 1;
+    }
+    for (const g of grouped.values()) {
+      g.subtotal = Math.round(g.subtotal * 100) / 100;
+      g.total = Math.round(g.total * 100) / 100;
+    }
+
+    res.json({ success: true, data: { groups: Array.from(grouped.values()) } });
+  } catch (err) {
+    console.error('[supplier] /soa/current error:', err);
+    res.status(500).json({ success: false, message: 'Failed to load SOA' });
+  }
+});
+
+/**
+ * POST /api/supplier/soa/:contractId/remind
+ * Send SOA reminder email to the buyer's recipients (Restaurant Admin / BG / FG).
+ */
+router.post('/soa/:contractId/remind', async (req, res) => {
+  try {
+    if (!requireResolvedCompany(req, res)) return;
+    const company = req.supplierCompany;
+    const contractId = parseInt(req.params.contractId, 10);
+    if (!Number.isFinite(contractId)) {
+      return res.status(404).json({ success: false, message: 'Contract not found' });
+    }
+    const contract = await SupplierContract.findByPk(contractId);
+    if (!contract || contract.supplier_company_id !== company.id) {
+      return res.status(404).json({ success: false, message: 'Contract not found' });
+    }
+
+    // Get unpaid trade invoices for this contract's buyer
+    let payerWhere;
+    if (contract.entity_type === 'restaurant') {
+      payerWhere = { payer_type: 'restaurant', payer_id: contract.entity_id };
+    } else if (contract.entity_type === 'brand') {
+      const b = await Brand.findByPk(contract.entity_id, { attributes: ['owner_id'] });
+      if (!b?.owner_id) return res.status(400).json({ success: false, message: 'Buyer payer not resolved' });
+      payerWhere = { payer_type: 'brand_manager', payer_id: b.owner_id };
+    } else if (contract.entity_type === 'foodcourt') {
+      const f = await Foodcourt.findByPk(contract.entity_id, { attributes: ['owner_id'] });
+      if (!f?.owner_id) return res.status(400).json({ success: false, message: 'Buyer payer not resolved' });
+      payerWhere = { payer_type: 'foodcourt_manager', payer_id: f.owner_id };
+    } else {
+      return res.status(400).json({ success: false, message: 'Unsupported buyer entity' });
+    }
+
+    const invoices = await Invoice.findAll({
+      where: {
+        ...payerWhere,
+        invoice_category: 'trade',
+        issuer_type: 'supplier',
+        issuer_id: company.id,
+        status: { [Op.in]: ['pending_payment', 'overdue', 'pending'] }
+      }
+    });
+    if (invoices.length === 0) {
+      return res.status(400).json({ success: false, message: 'No unpaid invoices to remind' });
+    }
+
+    const totalDue = invoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+    const currency = invoices[0]?.currency || company.currency || 'MYR';
+
+    // Resolve recipient user ids based on buyer entity
+    let recipients = [];
+    const { getRestaurantOwnerIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
+    if (contract.entity_type === 'restaurant') {
+      const { sequelize } = require('../config/database');
+      const { QueryTypes } = require('sequelize');
+      const admins = await sequelize.query(
+        `SELECT id FROM users WHERE restaurant_id = :rid AND role = 'Restaurant Admin' AND email IS NOT NULL`,
+        { replacements: { rid: contract.entity_id }, type: QueryTypes.SELECT }
+      );
+      recipients = admins.map(a => a.id);
+      const owners = await getRestaurantOwnerIds(contract.entity_id);
+      owners.forEach(id => { if (!recipients.includes(id)) recipients.push(id); });
+    } else if (contract.entity_type === 'brand') {
+      recipients = await getBrandManagerIds(contract.entity_id);
+    } else if (contract.entity_type === 'foodcourt') {
+      recipients = await getFoodcourtManagerIds(contract.entity_id);
+    }
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ success: false, message: 'No recipients found' });
+    }
+
+    const supplierName = company.company_name || company.name || 'Supplier';
+    const link = `${FRONTEND_BASE_URL}/pos/restaurant/invoices`;
+    const html = `
+      <p>This is a friendly reminder that you have <strong>${invoices.length} unpaid invoice${invoices.length > 1 ? 's' : ''}</strong> from ${supplierName}.</p>
+      <p><strong>Total due:</strong> ${currency} ${totalDue.toFixed(2)}</p>
+      <p><a href="${link}">View invoices in Purple POS</a></p>
+    `;
+    await sendNotificationBatch(recipients, 'monthly_soa', {
+      subject: `[Reminder] Unpaid invoices from ${supplierName}`,
+      html
+    });
+
+    res.json({ success: true, data: { recipientCount: recipients.length, invoiceCount: invoices.length } });
+  } catch (err) {
+    console.error('[supplier] /soa/remind error:', err);
+    res.status(500).json({ success: false, message: 'Failed to send reminder' });
   }
 });
 

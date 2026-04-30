@@ -92,6 +92,14 @@ async function login(emailOrUsername, password) {
     }
   }
 
+  // Resolve supplier_company_id for supplier roles (Admin via owner_id reverse FK; Staff via direct column)
+  let supplierCompanyId = user.supplier_company_id || null;
+  if (!supplierCompanyId && user.role === 'Supplier Admin') {
+    const SupplierCompany = require('../models/SupplierCompany');
+    const sc = await SupplierCompany.findOne({ where: { owner_id: user.id }, attributes: ['id'] });
+    if (sc) supplierCompanyId = sc.id;
+  }
+
   return {
     token,
     user: {
@@ -104,6 +112,7 @@ async function login(emailOrUsername, password) {
       brand_id: user.brand_id,
       foodcourt_id: user.foodcourt_id,
       branch_id: user.branch_id,
+      supplier_company_id: supplierCompanyId,
       preferred_language: user.preferred_language || 'en',
       permissions,
       is_demo: user.is_demo || false
@@ -495,10 +504,33 @@ function sendSignupWelcomeEmail({ user, role, entityName, planName, billingCycle
 }
 
 /**
+ * Returns true if the user looks like an automated test signup
+ * (pattern: prefix-{timestamp}@purplehere.com / *@test.local / is_test flag).
+ * These should never trigger admin emails.
+ */
+function isAutomatedTestSignup(user) {
+  if (!user || !user.email) return false;
+  if (user.is_test) return true;
+  const e = user.email.toLowerCase();
+  if (e.endsWith('@test.local')) return true;
+  if (e.endsWith('@purplehere.com')) {
+    // Pattern: prefix-{digits}@purplehere.com (auto test signups: s4r2-XXX, test-supplier-XXX, etc.)
+    if (/^[a-z0-9]+-\d{10,}@purplehere\.com$/.test(e)) return true;
+    // Common manual test prefixes
+    if (/^(test-|verify-|flow-|final-|dup_|smoke-|qa-)/i.test(e.split('@')[0])) return true;
+  }
+  return false;
+}
+
+/**
  * Notify System Admin about new signup (non-blocking)
  */
 function notifyAdminNewSignup({ user, role, entityName, planName, billingCycle }) {
   try {
+    if (isAutomatedTestSignup(user)) {
+      console.log(`[Signup] Skipping admin notification for test pattern: ${user.email}`);
+      return;
+    }
     const { sendPlatformEmail } = require('../utils/emailService');
     const { emailLayout } = require('../utils/emailTemplates');
     const { getSiteTimezone } = require('../utils/dateTimeHelper');
@@ -550,6 +582,12 @@ function notifyAdminNewSignup({ user, role, entityName, planName, billingCycle }
  */
 async function sendVerificationEmail(user) {
   try {
+    // Auto-test signup pattern → skip both verification AND any downstream platform email.
+    // (Test fake @purplehere.com addresses bounce + spam admin inbox via catchall.)
+    if (isAutomatedTestSignup(user)) {
+      console.log(`[Signup] Skipping verification email for test pattern: ${user.email}`);
+      return;
+    }
     const { generateVerificationToken, getVerificationUrl } = require('../utils/emailValidator');
     const { emailVerificationEmail } = require('../utils/notificationTemplates');
     const { sendPlatformEmail } = require('../utils/emailService');
@@ -563,13 +601,17 @@ async function sendVerificationEmail(user) {
     const verificationUrl = getVerificationUrl(rawToken, user.email);
     const emailContent = emailVerificationEmail(user.full_name || user.username, verificationUrl);
 
-    await sendPlatformEmail({
+    const result = await sendPlatformEmail({
       to: user.email,
       subject: emailContent.subject,
       html: emailContent.html,
       text: emailContent.text
     });
-    console.log(`[Signup] Verification email sent to ${user.email}`);
+    if (result?.skipped) {
+      console.log(`[Signup] Verification email blocked (${result.reason || 'env'}): ${user.email}`);
+    } else {
+      console.log(`[Signup] Verification email sent to ${user.email}`);
+    }
   } catch (err) {
     console.error('[Signup] Verification email failed:', err.message);
   }

@@ -6,6 +6,7 @@ import { formatAddressHtml, formatAddressLines, AppLocale } from '../../utils/fo
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
+import { ThemedButton } from '../../components/Theme/ThemedButton';
 import {
   Container,
   Header,
@@ -35,6 +36,8 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import AlertDialog from '../../components/Common/AlertDialog';
+// ConfirmDialog removed (only used by old SoaBundleRow Pay All)
 interface AdditionalCharge {
   name: string;
   rate: number;
@@ -62,7 +65,8 @@ interface Invoice {
   type?: 'automatic' | 'manual';
   payerType?: 'restaurant' | 'foodcourt_manager' | 'brand_manager';
   payerId?: string;
-  invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'others';
+  invoiceCategory?: 'subscription' | 'service' | 'consulting' | 'trade' | 'soa' | 'others';
+  parentSoaInvoiceId?: number | null;
   customDescription?: string;
   serviceDescription?: string;
   categoryDisplayName?: string;
@@ -279,84 +283,9 @@ const FormInput = styled.input`
 
 type TabType = 'all' | 'to_pay';
 
-interface SoaGroup {
-  supplier_company_id: number;
-  supplier?: { id: number; name: string } | null;
-  payment_terms?: any;
-  contract_id?: number;
-  invoices: any[];
-  subtotal: number;
-  total: number;
-  count: number;
-  currency?: string;
-}
-
-interface SoaBundleRowProps {
-  group: SoaGroup;
-  formatCurrency: (amount: number | string, currency?: string) => string;
-  onPayAll: () => void;
-  onDownload: () => void;
-}
-
-const SoaBundleRow: React.FC<SoaBundleRowProps> = ({ group, formatCurrency, onPayAll, onDownload }) => {
-  const [expanded, setExpanded] = useState(false);
-  const issuedAt = group.invoices?.[0]?.issued_at;
-  const monthLabel = issuedAt ? new Date(issuedAt).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : '';
-
-  return (
-    <div style={{
-      background: 'white', border: '1px solid #635BFF', borderRadius: 10,
-      overflow: 'hidden'
-    }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '12px 16px', cursor: 'pointer'
-      }} onClick={() => setExpanded(e => !e)}>
-        <span style={{
-          background: '#EEF2FF', color: '#635BFF',
-          fontSize: 11, fontWeight: 700, padding: '3px 8px',
-          borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.4
-        }}>SOA</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#0A2540' }}>
-            {monthLabel} · {group.supplier?.name || `Supplier #${group.supplier_company_id}`}
-          </div>
-          <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-            {group.count} invoices · {formatCurrency(group.total, group.currency || 'MYR')}
-          </div>
-        </div>
-        <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: 8 }}>
-          <ThemedButton size="small" variant="outline" onClick={onDownload}>Download</ThemedButton>
-          <ThemedButton size="small" variant="primary" onClick={onPayAll}>Pay All</ThemedButton>
-        </div>
-        <span style={{
-          color: '#6B7280', fontSize: 12,
-          transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
-          transition: 'transform 0.15s'
-        }}>▶</span>
-      </div>
-      {expanded && (
-        <div style={{ borderTop: '1px solid #F1F5F9', background: '#FAFBFC' }}>
-          {(group.invoices || []).map((inv: any) => (
-            <div key={inv.id} style={{
-              display: 'grid', gridTemplateColumns: '1fr auto auto',
-              gap: 12, padding: '8px 16px', fontSize: 13, color: '#475569',
-              borderBottom: '1px solid #F1F5F9'
-            }}>
-              <span>{inv.invoice_number}</span>
-              <span style={{ color: '#9CA3AF' }}>
-                {inv.issued_at ? new Date(inv.issued_at).toLocaleDateString() : '-'}
-              </span>
-              <span style={{ fontWeight: 600 }}>
-                {formatCurrency(Number(inv.total_amount || 0), inv.currency || 'MYR')}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+// SoaGroup interface + SoaBundleRow component removed in B1 재설계 (2026-04-30) —
+// SOA is now a real Invoice record (invoice_category='soa') rendered inline in the main DataTable
+// with a purple SOA badge. See docs/INVOICE_SYSTEM.md "11. SOA 재설계".
 
 const RestaurantInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('settings');
@@ -383,6 +312,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<string | null>(null);
+  const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
   const [paymentData, setPaymentData] = useState({
     paymentMethod: '',
     transactionId: '',
@@ -413,37 +343,8 @@ const RestaurantInvoicesPage: React.FC = () => {
     setDateRange({ start, end });
   };
 
-  // SOA bundles (monthly_soa contract suppliers)
-  const [soaGroups, setSoaGroups] = useState<SoaGroup[]>([]);
-  const [soaLoading, setSoaLoading] = useState(false);
-
-  const fetchSoa = async () => {
-    setSoaLoading(true);
-    try {
-      const token = getAuthToken();
-      const res = await fetch('/api/purchase-invoices/soa/current', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok && data.success) setSoaGroups(Array.isArray(data.data?.groups) ? data.data.groups : []);
-      else setSoaGroups([]);
-    } catch (e) { console.error(e); setSoaGroups([]); }
-    finally { setSoaLoading(false); }
-  };
-
-  useEffect(() => {
-    fetchSoa();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // SOA child invoice IDs — exclude from regular All/To Pay lists (지불버튼 X)
-  const soaChildIds = useMemo(() => {
-    const s = new Set<number>();
-    for (const g of soaGroups) {
-      for (const inv of (g.invoices || [])) s.add(inv.id);
-    }
-    return s;
-  }, [soaGroups]);
+  // SOA derived view (/soa/current) removed in B1 재설계 — SOA is now a real Invoice record
+  // and appears in the regular invoices list. Pay button visibility is driven by `parentSoaInvoiceId`.
 
   // Fetch all invoices for this restaurant
   const fetchAllInvoices = async () => {
@@ -493,6 +394,7 @@ const RestaurantInvoicesPage: React.FC = () => {
           payerType: inv.payer_type || 'restaurant',
           payerId: inv.payer_id?.toString() || '',
           invoiceCategory: inv.invoice_category || '',
+          parentSoaInvoiceId: inv.parent_soa_invoice_id || null,
           categoryDisplayName: inv.category_display_name || '',
           issuerType: inv.issuer_type || inv.issuerType || 'system_admin',
           issuerId: inv.issuer_id || inv.issuerId || null,
@@ -1146,10 +1048,22 @@ const RestaurantInvoicesPage: React.FC = () => {
                 <DataTableCell data-label="Invoice" align="left">
                   <InvoiceInfo>
                     <InvoiceNumber>
+                      {invoice.invoiceCategory === 'soa' && (
+                        <span style={{
+                          background: '#EEF2FF', color: '#635BFF',
+                          fontSize: 10, fontWeight: 700, padding: '2px 6px',
+                          borderRadius: 999, textTransform: 'uppercase', letterSpacing: 0.4,
+                          marginRight: 6
+                        }}>SOA</span>
+                      )}
                       {invoice.invoiceNumber}
                       {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('settings:invoicesPage.auto')}</AutoBadge>}
                     </InvoiceNumber>
-                    <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
+                    <CompanyName>
+                      {invoice.invoiceCategory === 'soa'
+                        ? t('settings:invoicesPage.soaSummary', 'Monthly Statement of Account')
+                        : (invoice.categoryDisplayName || invoice.planType || 'Service')}
+                    </CompanyName>
                   </InvoiceInfo>
                 </DataTableCell>
                 <DataTableCell data-label="Issuer" align="left">
@@ -1185,15 +1099,22 @@ const RestaurantInvoicesPage: React.FC = () => {
                       View
                     </LocalActionButton>
 
-                    {/* Pay button for pending/overdue invoices (not for free invoices) */}
-                    {showPayButton && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
+                    {/* Pay button — hidden if invoice is bundled into a SOA (parent_soa_invoice_id) → pay via SOA only */}
+                    {showPayButton && !invoice.parentSoaInvoiceId && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                       <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
-                        Pay
+                        {invoice.invoiceCategory === 'soa' ? 'Pay All' : 'Pay'}
                       </LocalActionButton>
                     )}
 
+                    {/* SOA child indicator — replaces Pay button for bundled invoices */}
+                    {showPayButton && invoice.parentSoaInvoiceId && (
+                      <span style={{ fontSize: 11, color: '#9CA3AF', alignSelf: 'center' }}>
+                        Pay via SOA
+                      </span>
+                    )}
+
                     {/* Confirm button for free invoices */}
-                    {showPayButton && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
+                    {showPayButton && !invoice.parentSoaInvoiceId && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) === 0 && (
                       <LocalActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)} disabled={confirmingInvoiceId === invoice.id}>
                         {confirmingInvoiceId === invoice.id ? 'Confirming...' : 'Confirm'}
                       </LocalActionButton>
@@ -1286,44 +1207,13 @@ const RestaurantInvoicesPage: React.FC = () => {
             />
           </DatePeriodFilter>
 
-          {/* SOA bundles — 일반 리스트에 inline 으로 1줄씩 + child 인보이스는 expand 시 표시 */}
-          {soaGroups.length > 0 && (activeTab === 'all' || activeTab === 'to_pay') && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-              {soaGroups.map(g => (
-                <SoaBundleRow
-                  key={g.supplier_company_id}
-                  group={g}
-                  formatCurrency={formatCurrency}
-                  onPayAll={async () => {
-                    if (!window.confirm(t('settings:invoicesPage.soaPayConfirm', { count: g.count, total: formatCurrency(g.total, g.currency || 'MYR'), defaultValue: 'Pay all {{count}} invoices ({{total}})?' }) as string)) return;
-                    const token = getAuthToken();
-                    const res = await fetch(`/api/purchase-invoices/soa/${g.supplier_company_id}/pay`, {
-                      method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const data = await res.json();
-                    if (!res.ok || !data.success) { window.alert(data.message || 'Failed to pay'); return; }
-                    await fetchSoa();
-                    await fetchAllInvoices();
-                  }}
-                  onDownload={async () => {
-                    const token = getAuthToken();
-                    const w = window.open('', '_blank');
-                    if (!w) return;
-                    const res = await fetch(`/api/purchase-invoices/soa/${g.supplier_company_id}/pdf`, {
-                      headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (!res.ok) { w.close(); window.alert('Failed to load'); return; }
-                    const html = await res.text();
-                    w.document.write(html); w.document.close();
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          {/* SOA invoices appear inline in the regular list (B1 재설계) — purple badge in invoice number column.
+              결제 흐름: 월결제(monthly_soa) 계약이면 SOA 인보이스에 Pay All 버튼이 뜨고, child trade invoices 는 'Pay via SOA' 표시. */}
 
           {/* Invoice Table — SOA child 는 자동 hide */}
-          {activeTab === 'all' && renderInvoiceTable(filteredAllInvoices.filter(i => !soaChildIds.has(Number(i.id))), true)}
-          {activeTab === 'to_pay' && renderInvoiceTable(filteredInvoicesToPay.filter(i => !soaChildIds.has(Number(i.id))), true)}
+          {/* SOA child invoices NOT hidden — all invoices shown. Pay button hidden on children when parent_soa_invoice_id exists (B1 재설계). */}
+          {activeTab === 'all' && renderInvoiceTable(filteredAllInvoices, true)}
+          {activeTab === 'to_pay' && renderInvoiceTable(filteredInvoicesToPay, true)}
         </Content>
 
         {/* View Invoice Modal - BrandGeneral Style */}
@@ -1700,6 +1590,12 @@ const RestaurantInvoicesPage: React.FC = () => {
           </CommonModal>
         )}
       </Container>
+      <AlertDialog
+        isOpen={!!alertDlg}
+        onClose={() => setAlertDlg(null)}
+        title={alertDlg?.title || ''}
+        message={alertDlg?.message || ''}
+      />
     </>
   );
 };

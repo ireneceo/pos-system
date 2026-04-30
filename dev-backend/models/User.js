@@ -87,6 +87,11 @@ User.init({
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  supplier_company_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Supplier Staff only — supplier company assignment (Advanced module supplier_admin_staff)'
+  },
   branch_id: {
     type: DataTypes.INTEGER,
     allowNull: true,

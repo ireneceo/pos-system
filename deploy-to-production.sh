@@ -277,7 +277,7 @@ fi
 #   - Change ENUM values via ALTER (Sprint 6 needs 'delivered' added)
 # So these scripts must run explicitly. They are all idempotent — safe to re-run.
 # ──────────────────────────────────────────
-for SPRINT_MIG in scripts/sprint4-migration.js scripts/sprint5-migration.js scripts/sprint6-migration.js; do
+for SPRINT_MIG in scripts/sprint4-migration.js scripts/sprint5-migration.js scripts/sprint6-migration.js scripts/sprint7-migration.js scripts/migrate-supplier-staff.js scripts/migrate-soa-invoice.js; do
     if ssh $PROD_SERVER "test -f $REMOTE_PROD_BACKEND/$SPRINT_MIG"; then
         log "Running $(basename $SPRINT_MIG)..."
         SPRINT_OUTPUT=$(ssh $PROD_SERVER "cd $REMOTE_PROD_BACKEND && node $SPRINT_MIG 2>&1") || true

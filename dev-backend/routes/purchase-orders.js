@@ -36,6 +36,39 @@ const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
+const { sendNotificationBatch, getSupplierAdminIds, getBrandManagerIds, getFoodcourtManagerIds } = require('../utils/notificationService');
+
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
+
+/**
+ * Notify seller (Supplier Admin / Brand General / Foodcourt General) when a new PO is submitted.
+ * Sends email via sendNotificationBatch with category 'seller_order_received'.
+ * Recipients honor their notification preferences. Errors do not block PO submit.
+ */
+async function fireSellerSubmittedNotification(po) {
+  try {
+    let userIds = [];
+    if (po.seller_type === 'supplier' && po.seller_entity_id) {
+      userIds = await getSupplierAdminIds(po.seller_entity_id);
+    } else if (po.seller_type === 'brand' && po.seller_entity_id) {
+      userIds = await getBrandManagerIds(po.seller_entity_id);
+    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
+      userIds = await getFoodcourtManagerIds(po.seller_entity_id);
+    }
+    if (userIds.length === 0) return;
+    const subject = `[Purple POS] New Purchase Order ${po.po_number}`;
+    const link = `${FRONTEND_URL}/pos/seller-orders`;
+    const html = `
+      <p>You have received a new purchase order.</p>
+      <p><strong>PO #:</strong> ${po.po_number}</p>
+      <p><strong>Total:</strong> ${po.currency || 'MYR'} ${parseFloat(po.total_amount || 0).toFixed(2)}</p>
+      <p><a href="${link}">Open in Purple POS</a></p>
+    `;
+    await sendNotificationBatch(userIds, 'seller_order_received', { subject, html });
+  } catch (e) {
+    console.error('[purchase-orders] fireSellerSubmittedNotification error:', e.message);
+  }
+}
 
 // Path-level guards so unrelated /api/* fall-throughs aren't blocked by buyer-role.
 router.use('/purchase-orders', authenticateToken, requireBuyerRole);
@@ -731,6 +764,7 @@ router.post('/purchase-orders/bulk', async (req, res) => {
             const now = new Date();
             await fresh.update({ status: 'submitted', submitted_at: now, tracking_info: newTracking });
             emitPoEvent(req, fresh, 'seller-order-created');
+            setImmediate(() => fireSellerSubmittedNotification(fresh));
           }
         } catch (e) {
           console.error('[bulk] auto-submit error po=' + po.id, e.message);
@@ -1058,37 +1092,49 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
 });
 
 router.post('/purchase-orders/:id/submit', async (req, res) => {
+  let po;
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) {
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
-    const po = await PurchaseOrder.findByPk(id, {
-      include: [{ model: PurchaseOrderItem, as: 'items' }]
-    });
-    if (!po) return res.status(404).json({ success: false, message: 'Purchase order not found' });
-    if (!checkPOOwnership(po, req)) {
-      return res.status(404).json({ success: false, message: 'Purchase order not found' });
-    }
-    if (po.status !== 'draft') {
-      return res.status(400).json({ success: false, message: 'Only draft orders can be submitted' });
-    }
-    if (!po.items || po.items.length === 0) {
-      return res.status(400).json({ success: false, message: 'Purchase order has no items' });
-    }
-
-    // Sprint 5: submit transitions draft → submitted (seller confirms separately)
-    const now = new Date();
-    const newTracking = appendTrackingEvent(po, 'submitted');
-    await po.update({
-      status: 'submitted',
-      submitted_at: now,
-      tracking_info: newTracking
+    po = await database.sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, {
+        lock: t.LOCK.UPDATE,
+        include: [{ model: PurchaseOrderItem, as: 'items' }],
+        transaction: t
+      });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkPOOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (locked.status !== 'draft') {
+        const e = new Error('Only draft orders can be submitted');
+        e.code = 'BAD_STATUS';
+        throw e;
+      }
+      if (!locked.items || locked.items.length === 0) {
+        const e = new Error('Purchase order has no items');
+        e.code = 'EMPTY_ITEMS';
+        throw e;
+      }
+      const now = new Date();
+      const tracking = appendTrackingEvent(locked, 'submitted');
+      await locked.update({
+        status: 'submitted',
+        submitted_at: now,
+        tracking_info: tracking
+      }, { transaction: t });
+      return locked;
     });
     emitPoEvent(req, po, 'seller-order-created');
 
+    // Notify seller asynchronously — don't block response
+    setImmediate(() => fireSellerSubmittedNotification(po));
+
     res.json({ success: true, data: po });
   } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
+    if (err.code === 'EMPTY_ITEMS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/purchase-orders/:id/submit error:', err);
     res.status(500).json({ success: false, message: 'Failed to submit purchase order' });
   }
@@ -1107,6 +1153,17 @@ router.post('/purchase-orders/:id/mark-shipped', async (req, res) => {
     if (!po) return res.status(404).json({ success: false, message: 'Purchase order not found' });
     if (!checkPOOwnership(po, req)) {
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    }
+    // External suppliers only — system supplier shipping must go through seller flow
+    // (so SupplierProduct stock decrement + InventoryTransaction는 seller-orders.js 에서 처리)
+    if (po.seller_type === 'supplier' && po.seller_entity_id) {
+      const supplier = await SupplierCompany.findByPk(po.seller_entity_id, { attributes: ['is_system_registered'] });
+      if (supplier && supplier.is_system_registered) {
+        return res.status(403).json({
+          success: false,
+          message: 'System supplier orders must be shipped by the seller. Buyer mark-shipped is only allowed for external suppliers.'
+        });
+      }
     }
     if (po.status !== 'confirmed') {
       return res.status(400).json({
@@ -1528,38 +1585,37 @@ router.put('/purchase-orders/:id/items/:itemId/discrepancy', async (req, res) =>
 // 8. POST /api/purchase-orders/:id/cancel
 // ============================================
 router.post('/purchase-orders/:id/cancel', async (req, res) => {
+  let po;
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) {
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
-    const po = await PurchaseOrder.findByPk(id);
-    if (!po) return res.status(404).json({ success: false, message: 'Purchase order not found' });
-    if (!checkPOOwnership(po, req)) {
-      return res.status(404).json({ success: false, message: 'Purchase order not found' });
-    }
-    // Sprint 6: allow buyer cancel on draft (no seller awareness) AND submitted (before seller confirms).
-    // Beyond that, returns flow handles cancellation/refund.
-    if (!['draft', 'submitted'].includes(po.status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot cancel order in status '${po.status}'. Use returns flow after delivery.`
-      });
-    }
-
     const reason = req.body.reason ? sanitizeString(String(req.body.reason)) : null;
-    const newTracking = appendTrackingEvent(po, 'cancelled', reason ? `Cancelled by buyer: ${reason.slice(0, 200)}` : 'Cancelled by buyer');
-
-    await po.update({
-      status: 'cancelled',
-      cancelled_at: new Date(),
-      cancelled_reason: reason,
-      tracking_info: newTracking
+    po = await database.sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkPOOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!['draft', 'submitted'].includes(locked.status)) {
+        const e = new Error(`Cannot cancel order in status '${locked.status}'. Use returns flow after delivery.`);
+        e.code = 'BAD_STATUS';
+        throw e;
+      }
+      const tracking = appendTrackingEvent(locked, 'cancelled', reason ? `Cancelled by buyer: ${reason.slice(0, 200)}` : 'Cancelled by buyer');
+      await locked.update({
+        status: 'cancelled',
+        cancelled_at: new Date(),
+        cancelled_reason: reason,
+        tracking_info: tracking
+      }, { transaction: t });
+      return locked;
     });
     emitPoEvent(req, po, 'seller-order-updated');
 
     res.json({ success: true, data: po });
   } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
+    if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/purchase-orders/:id/cancel error:', err);
     res.status(500).json({ success: false, message: 'Failed to cancel purchase order' });
   }

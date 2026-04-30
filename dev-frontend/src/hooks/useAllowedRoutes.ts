@@ -21,6 +21,7 @@ interface UseAllowedRoutesParams {
   restaurantId?: number | null;
   brandId?: number | null;
   foodcourtId?: number | null;
+  supplierCompanyId?: number | null;
 }
 
 /**
@@ -45,6 +46,7 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
   const restaurantId = normalized?.restaurantId || null;
   const brandId = normalized?.brandId || null;
   const foodcourtId = normalized?.foodcourtId || null;
+  const supplierCompanyId = normalized?.supplierCompanyId || null;
 
   useEffect(() => {
     const fetchAllowedRoutes = async () => {
@@ -62,6 +64,8 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
         apiUrl = `/api/foodcourts/${foodcourtId}/allowed-routes`;
       } else if (role === 'Restaurant Owner') {
         apiUrl = `/api/owner/allowed-routes`;
+      } else if ((role === 'Supplier Admin' || role === 'Supplier Staff') && supplierCompanyId) {
+        apiUrl = `/api/supplier-companies/${supplierCompanyId}/allowed-routes`;
       }
 
       if (!apiUrl) {

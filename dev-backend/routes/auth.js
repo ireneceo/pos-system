@@ -176,6 +176,14 @@ router.get('/me', async (req, res, next) => {
       }
     }
 
+    // Resolve supplier_company_id for supplier roles (Admin via owner_id reverse FK)
+    let supplierCompanyId = user.supplier_company_id || null;
+    if (!supplierCompanyId && user.role === 'Supplier Admin') {
+      const SupplierCompany = require('../models/SupplierCompany');
+      const sc = await SupplierCompany.findOne({ where: { owner_id: user.id }, attributes: ['id'] });
+      if (sc) supplierCompanyId = sc.id;
+    }
+
     const userData = {
       id: user.id,
       email: user.email,
@@ -185,6 +193,7 @@ router.get('/me', async (req, res, next) => {
       manager_id: user.manager_id,
       brand_id: user.brand_id,
       foodcourt_id: user.foodcourt_id,
+      supplier_company_id: supplierCompanyId,
       preferred_language: user.preferred_language || 'en',
       permissions
     };

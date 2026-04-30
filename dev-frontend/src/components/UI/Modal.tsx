@@ -16,6 +16,10 @@ export const ModalOverlay = styled.div`
   z-index: 1000;
   overflow-y: auto;
   padding: 40px 0;
+
+  @media (max-width: 640px) {
+    padding: 12px 0;
+  }
 `;
 
 // 모달 컨텐츠
@@ -31,6 +35,12 @@ export const ModalContent = styled.div`
   flex-direction: column;
   max-height: calc(100vh - 80px);
   overflow: hidden;
+
+  @media (max-width: 640px) {
+    width: calc(100% - 16px);
+    max-height: calc(100vh - 24px);
+    border-radius: 10px;
+  }
 `;
 
 // 모달 헤더
@@ -41,6 +51,10 @@ export const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+
+  @media (max-width: 640px) {
+    padding: 16px;
+  }
 `;
 
 // 모달 타이틀
@@ -77,6 +91,10 @@ export const ModalBody = styled.div`
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+
+  @media (max-width: 640px) {
+    padding: 16px;
+  }
 `;
 
 // 모달 푸터
@@ -88,6 +106,10 @@ export const ModalFooter = styled.div`
   gap: 12px;
   flex-shrink: 0;
   flex-wrap: wrap;
+
+  @media (max-width: 640px) {
+    padding: 12px 16px;
+  }
 `;
 
 // 폼 행 (2열 레이아웃)
