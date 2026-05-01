@@ -19,6 +19,7 @@ const RestaurantManager = require('../models/RestaurantManager');
 const { Op } = require('sequelize');
 const invoiceScheduler = require('../services/invoiceScheduler');
 const subscriptionScheduler = require('../services/subscriptionScheduler');
+const { handleInvoicePaid } = require('../services/invoiceLifecycle');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
 const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
@@ -78,18 +79,11 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
       }
     });
 
-    // If subscription invoice is paid, restore subscription to Active
-    if (invoice.invoice_category === 'subscription' && invoice.restaurant_id) {
-      try {
-        const result = await subscriptionScheduler.restoreSubscription(invoice.restaurant_id);
-        if (result.success) {
-          console.log(`✓ Subscription restored for restaurant ${invoice.restaurant_id} after payment`);
-        }
-      } catch (subError) {
-        console.error('Error restoring subscription:', subError);
-        // Don't fail the payment recording if subscription restore fails
-      }
-    }
+    // Centralised post-paid side-effects (subscription restore + referral commission).
+    // Fire-and-forget — never block or fail the payment record on a side-effect error.
+    handleInvoicePaid(invoice.id).catch(e =>
+      console.error('[invoices-payment /payment] handleInvoicePaid:', e.message)
+    );
 
     logActivity(req, {
       action_type: 'update',
@@ -287,6 +281,11 @@ router.post('/:id/capture-paypal-order', authenticateToken, async (req, res) => 
         orderId, captureId, amount: invoice.total_amount
       });
 
+      // Centralised post-paid side-effects (this path was missing restoreSubscription pre-1B)
+      handleInvoicePaid(invoice.id).catch(e =>
+        console.error('[invoices-payment /capture-paypal-order] handleInvoicePaid:', e.message)
+      );
+
       res.json({ success: true, status: 'COMPLETED', captureId });
     } else {
       await systemLogger.warn('payment', 'paypal', `PayPal capture not completed: ${capture.result.status}`, {
@@ -469,6 +468,12 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
     });
 
     console.log(`✓ Payment confirmed for invoice ${invoice.invoice_number} by user ${req.user.id}`);
+
+    // Centralised post-paid side-effects (this path was missing restoreSubscription pre-1B).
+    // Runs after the SOA cascade transaction has committed.
+    handleInvoicePaid(invoice.id).catch(e =>
+      console.error('[invoices-payment /confirm-payment] handleInvoicePaid:', e.message)
+    );
 
     logActivity(req, {
       action_type: 'update',

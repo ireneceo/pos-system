@@ -10,6 +10,53 @@ const PlanTemplate = require('../models/PlanTemplate');
 const PlanPrice = require('../models/PlanPrice');
 // EntityPlanRestaurant is used by Brand/Foodcourt plan assignment, not self-signup
 const { sequelize } = require('../db');
+const ReferralClick = require('../models/ReferralClick');
+
+/**
+ * If the new user signed up via a referral_code, link them to the referrer
+ * (users.referred_by = referrer.id) and mark the matching unconverted clicks
+ * as converted. Idempotent and best-effort — silently skips on invalid codes
+ * so signup never fails purely because of a typo'd referral code.
+ *
+ * Self-referral guard: refuses to link if the code belongs to the same email
+ * (paranoid check — referrer cannot be the new user since the new user didn't
+ * exist before this transaction, but emails could match if a user attempts to
+ * re-signup with their own code).
+ */
+async function applyReferralCodeToNewUser(user, referralCode, transaction) {
+  if (!referralCode) return;
+  const trimmed = String(referralCode).trim().toUpperCase();
+  if (!trimmed) return;
+  const referrer = await User.findOne({ where: { referral_code: trimmed }, transaction });
+  if (!referrer) return;
+  if (referrer.id === user.id) return;
+  if (referrer.email && user.email && referrer.email.toLowerCase() === user.email.toLowerCase()) return;
+  await user.update({ referred_by: referrer.id }, { transaction });
+  try {
+    await ReferralClick.update(
+      { converted: true, converted_at: new Date() },
+      { where: { referral_code: trimmed, converted: false }, transaction }
+    );
+  } catch (e) {
+    console.error('[applyReferralCodeToNewUser] click conversion update failed:', e.message);
+  }
+  // Notify referrer that someone signed up using their code (fire-and-forget,
+  // best-effort — never block signup on email failure).
+  (async () => {
+    try {
+      const { sendNotification } = require('../utils/notificationService');
+      const { referredSignupEmail } = require('../utils/notificationTemplates');
+      const mail = referredSignupEmail({
+        referrerName: referrer.full_name || referrer.email,
+        referredBusiness: user.full_name || user.email,
+        referredRole: user.role
+      });
+      await sendNotification(referrer.id, 'referral_commission', mail);
+    } catch (e) {
+      console.error('[applyReferralCodeToNewUser] referrer email error:', e.message);
+    }
+  })();
+}
 
 async function login(emailOrUsername, password) {
   // Try to find user by email or username (case-insensitive)
@@ -35,25 +82,10 @@ async function login(emailOrUsername, password) {
     throw new Error('Invalid email/username or password');
   }
 
-  // Block login for suspended accounts (all roles except System Admin, demo and test accounts)
-  if (user.role !== 'System Admin' && !user.is_demo && !user.is_test) {
-    // Brand General, Foodcourt General, Restaurant Owner: check users.subscription_status
-    if (['Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(user.role) && user.subscription_status === 'suspended') {
-      const err = new Error('Your account has been suspended due to unpaid invoices. Please contact your administrator.');
-      err.code = 'ACCOUNT_SUSPENDED';
-      throw err;
-    }
-    // Restaurant Admin, Staff: check restaurant.status
-    if (['Restaurant Admin', 'Staff'].includes(user.role) && user.restaurant_id) {
-      const Restaurant = require('../models/Restaurant');
-      const restaurant = await Restaurant.findByPk(user.restaurant_id);
-      if (restaurant && restaurant.status === 'suspended' && !restaurant.is_demo && !user.is_test) {
-        const err = new Error('Your restaurant account has been suspended due to unpaid invoices. Please contact your administrator.');
-        err.code = 'ACCOUNT_SUSPENDED';
-        throw err;
-      }
-    }
-  }
+  // Suspended accounts are NOT blocked from logging in — they need access to
+  // the invoice payment page to settle the overdue balance and restore service.
+  // The frontend (ProtectedRoute) detects subscription_status / restaurantStatus
+  // === 'suspended' and redirects every route except the invoice page.
 
   // Email verification check (demo/test 계정 bypass)
   if (!user.is_demo && !user.is_test && user.email_verified === false) {
@@ -100,6 +132,25 @@ async function login(emailOrUsername, password) {
     if (sc) supplierCompanyId = sc.id;
   }
 
+  // Resolve restaurant context for RA/Staff so the frontend can decide whether to
+  // pin the user to the invoice page (suspended account UX). Demo / test
+  // restaurants are excluded from that pin so QA tooling stays usable.
+  let restaurantStatus = null;
+  let restaurantName = null;
+  let restaurantIsDemo = false;
+  let restaurantIsTest = false;
+  if (user.restaurant_id) {
+    const r = await Restaurant.findByPk(user.restaurant_id, {
+      attributes: ['status', 'name', 'is_demo', 'is_test']
+    });
+    if (r) {
+      restaurantStatus = r.status;
+      restaurantName = r.name;
+      restaurantIsDemo = !!r.is_demo;
+      restaurantIsTest = !!r.is_test;
+    }
+  }
+
   return {
     token,
     user: {
@@ -113,9 +164,15 @@ async function login(emailOrUsername, password) {
       foodcourt_id: user.foodcourt_id,
       branch_id: user.branch_id,
       supplier_company_id: supplierCompanyId,
+      subscription_status: user.subscription_status || null,
+      restaurantStatus,
+      restaurantName,
+      restaurantIsDemo,
+      restaurantIsTest,
+      is_demo: !!user.is_demo,
+      is_test: !!user.is_test,
       preferred_language: user.preferred_language || 'en',
-      permissions,
-      is_demo: user.is_demo || false
+      permissions
     }
   };
 }
@@ -226,6 +283,9 @@ async function signup(data) {
       // Link user to restaurant
       await user.update({ restaurant_id: restaurant.id }, { transaction });
 
+      // Referral linkage — set referred_by + mark click converted
+      await applyReferralCodeToNewUser(user, data.referral_code, transaction);
+
       await transaction.commit();
 
       // Start trial (after commit)
@@ -269,6 +329,9 @@ async function signup(data) {
       const user = await User.create(userFields, { transaction });
 
       await brand.update({ owner_id: user.id }, { transaction });
+
+      // Referral linkage
+      await applyReferralCodeToNewUser(user, data.referral_code, transaction);
 
       await transaction.commit();
 
@@ -314,6 +377,9 @@ async function signup(data) {
 
       await foodcourt.update({ owner_id: user.id }, { transaction });
 
+      // Referral linkage
+      await applyReferralCodeToNewUser(user, data.referral_code, transaction);
+
       await transaction.commit();
 
       // Generate first invoice (non-blocking, after commit)
@@ -346,6 +412,9 @@ async function signup(data) {
       userFields.subscription_start = new Date();
       userFields.trial_end_date = trialEndDate;
       const user = await User.create(userFields, { transaction });
+
+      // Referral linkage — Owner role: payerUser is `user` itself
+      await applyReferralCodeToNewUser(user, data.referral_code, transaction);
 
       await transaction.commit();
 
@@ -390,6 +459,9 @@ async function signup(data) {
       const user = await User.create(userFields, { transaction });
 
       await supplierCompany.update({ owner_id: user.id }, { transaction });
+
+      // Referral linkage
+      await applyReferralCodeToNewUser(user, data.referral_code, transaction);
 
       // If signup via invitation, mark used
       if (data.invitation_token) {
@@ -617,4 +689,86 @@ async function sendVerificationEmail(user) {
   }
 }
 
-module.exports = { login, register, signup };
+/**
+ * Self-signup for Referral Partners — no plan, no entity, no trial.
+ * Returns email_verification_required so the existing verify flow handles activation.
+ *
+ * Diverges from `signup()` in two ways:
+ *  - Plan / entity creation skipped entirely (RP only owns themselves).
+ *  - Their own referral_code is pre-generated at signup so the welcome email
+ *    can include the share link. (POS-role users still get lazy generation
+ *    on first /referral access, since they may never visit it.)
+ */
+async function signupReferralPartner(data) {
+  const { Op } = require('sequelize');
+  const transaction = await sequelize.transaction();
+
+  try {
+    const existingEmail = await User.findOne({ where: { email: data.email }, transaction });
+    if (existingEmail) {
+      throw new Error('This email is already registered. Please log in instead.');
+    }
+    const existingUsername = await User.findOne({
+      where: { username: { [Op.eq]: data.username } },
+      transaction
+    });
+    if (existingUsername) {
+      throw new Error('This username is already taken');
+    }
+
+    const { verifyMxRecord } = require('../utils/emailValidator');
+    const mxResult = await verifyMxRecord(data.email);
+    if (!mxResult.valid) {
+      throw new Error(mxResult.message);
+    }
+
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const user = await User.create({
+      username: data.username,
+      email: data.email,
+      password: hashedPassword,
+      full_name: data.full_name,
+      phone: data.phone || null,
+      role: 'Referral Partner',
+      email_verified: false
+    }, { transaction });
+
+    // RP can also be referred (e.g. someone shares the program with a friend who joins as RP)
+    await applyReferralCodeToNewUser(user, data.referral_code, transaction);
+
+    // Pre-generate own referral_code inside the same transaction
+    const referralService = require('./referralService');
+    const code = await referralService.getOrCreateReferralCode(user.id, { transaction });
+
+    await transaction.commit();
+
+    sendVerificationEmail(user);
+    // Dedicated Referral Partner welcome — includes referral code + share link.
+    // The generic sendSignupWelcomeEmail is skipped for RP since the referral
+    // welcome email is more useful (links to /referral/dashboard, shows code).
+    (async () => {
+      try {
+        if (isAutomatedTestSignup(user)) return; // suppress for auto test patterns
+        const { sendPlatformEmail } = require('../utils/emailService');
+        const { referralPartnerWelcomeEmail } = require('../utils/notificationTemplates');
+        const mail = referralPartnerWelcomeEmail({
+          fullName: user.full_name || user.username,
+          referralCode: code
+        });
+        await sendPlatformEmail({ to: user.email, subject: mail.subject, html: mail.html });
+      } catch (e) {
+        console.error('[signupReferralPartner] welcome email error:', e.message);
+      }
+    })();
+    notifyAdminNewSignup({
+      user, role: 'Referral Partner', entityName: null, planName: '-', billingCycle: '-'
+    });
+
+    return { email_verification_required: true, email: user.email, referral_code: code };
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+}
+
+module.exports = { login, register, signup, signupReferralPartner };

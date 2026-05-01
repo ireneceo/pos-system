@@ -21,7 +21,7 @@ i18n
       'reports', 'brand', 'foodcourt', 'owner', 'admin', 'landing',
       'plans', 'notifications', 'floorplan', 'recipes', 'suppliers',
       'validation', 'contract', 'supplier', 'supplierDirectory',
-      'purchaseOrders', 'purchaseInvoices'
+      'purchaseOrders', 'purchaseInvoices', 'referrals'
     ],
     defaultNS: 'common',
 

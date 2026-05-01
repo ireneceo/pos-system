@@ -3,13 +3,13 @@ const router = express.Router();
 const ActivityLog = require('../models/ActivityLog');
 const { sequelize } = require('../config/database');
 const { Op } = require('sequelize');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 
 // All routes require authentication
 router.use(authenticateToken);
 
 // Get activity logs for a restaurant
-router.get('/restaurant/:restaurantId', async (req, res) => {
+router.get('/restaurant/:restaurantId', checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const {
@@ -121,7 +121,7 @@ router.get('/user/:userId', async (req, res) => {
 });
 
 // Get activity log statistics
-router.get('/restaurant/:restaurantId/stats', async (req, res) => {
+router.get('/restaurant/:restaurantId/stats', checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { days = 30 } = req.query;

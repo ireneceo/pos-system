@@ -8,9 +8,26 @@ const { authenticateToken, requireRole, demoProtection } = require('../middlewar
 const { logActivity } = require('../utils/activityLogger');
 
 // Get all users (System Admin only)
-router.get('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   console.log('🔄 GET /api/users - Request received');
   console.log('📝 Query params:', req.query);
+
+  // Restaurant-scoped management: Restaurant Admin can list users in their own
+  // restaurant. Anything beyond Restaurant Admin / System Admin is rejected.
+  if (!['System Admin', 'Restaurant Admin'].includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      error: `This action requires System Admin or Restaurant Admin. Your role is ${req.user.role}.`,
+      code: 'INSUFFICIENT_ROLE'
+    });
+  }
+  if (req.user.role === 'Restaurant Admin' && !req.user.restaurant_id) {
+    return res.status(403).json({
+      success: false,
+      error: 'Your account is not assigned to a restaurant. Contact your administrator.',
+      code: 'RESTAURANT_NOT_ASSIGNED'
+    });
+  }
 
   try {
     const { sequelize } = require('../config/database');
@@ -18,6 +35,12 @@ router.get('/', authenticateToken, requireRole('System Admin'), async (req, res)
     // Build WHERE clauses for role filter + search
     const conditions = [];
     const replacements = [];
+
+    // Tenant isolation — Restaurant Admin sees only their own restaurant.
+    if (req.user.role === 'Restaurant Admin') {
+      conditions.push('u.restaurant_id = ?');
+      replacements.push(req.user.restaurant_id);
+    }
 
     if (req.query.role) {
       if (req.query.role === 'Manager') {
@@ -208,15 +231,47 @@ router.get('/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Create user (System Admin only)
-router.post('/', authenticateToken, requireRole('System Admin'), async (req, res) => {
+// Create user — System Admin (any role) or Restaurant Admin (own restaurant, Staff only)
+router.post('/', authenticateToken, async (req, res) => {
   console.log('🔄 POST /api/users - Request received');
   console.log('📝 Request body:', req.body);
+
+  // Tenant guard: only System Admin and Restaurant Admin can create users.
+  if (!['System Admin', 'Restaurant Admin'].includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      error: `This action requires System Admin or Restaurant Admin. Your role is ${req.user.role}.`,
+      code: 'INSUFFICIENT_ROLE'
+    });
+  }
 
   try {
     const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, monthly_salary, pin_code, skip_verification: skipVerification } = req.body;
     // Support both camelCase (new) and snake_case (legacy) for restaurant ID
-    const finalRestaurantId = restaurantId || restaurant_id;
+    let finalRestaurantId = restaurantId || restaurant_id;
+
+    // Restaurant Admin extra guards:
+    //   - cannot create users in another restaurant — restaurant_id is FORCED
+    //     to their own, ignoring whatever the client sent
+    //   - can only create role='Staff' (cannot escalate to Restaurant Admin or
+    //     anything more privileged)
+    if (req.user.role === 'Restaurant Admin') {
+      if (!req.user.restaurant_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'Your account is not assigned to a restaurant.',
+          code: 'RESTAURANT_NOT_ASSIGNED'
+        });
+      }
+      finalRestaurantId = req.user.restaurant_id; // ignore client value, prevent cross-tenant creation
+      if (role && role !== 'Staff') {
+        return res.status(403).json({
+          success: false,
+          error: 'Restaurant Admin can only create staff members (role=Staff). To add another admin, contact System Admin.',
+          code: 'ROLE_NOT_ALLOWED'
+        });
+      }
+    }
 
     // Validate required fields
     if (!email) {
@@ -503,9 +558,48 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
 
 // Update user (본인 또는 System Admin만)
 router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
-  // 본인 정보 수정 또는 System Admin만 허용
-  if (req.user.id.toString() !== req.params.id && req.user.role !== 'System Admin') {
-    return res.status(403).json({ success: false, message: 'Access denied' });
+  // Permission gate: self / System Admin / Restaurant Admin (same restaurant, staff only)
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isSelf = req.user.id.toString() === req.params.id;
+    const isSysAdmin = req.user.role === 'System Admin';
+    const isRestaurantAdminMatch =
+      req.user.role === 'Restaurant Admin' &&
+      req.user.restaurant_id &&
+      user.restaurant_id === req.user.restaurant_id &&
+      user.role === 'Staff';
+
+    if (!isSelf && !isSysAdmin && !isRestaurantAdminMatch) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only edit your own account or staff in your restaurant.',
+        code: 'NOT_PERMITTED'
+      });
+    }
+
+    // Restaurant Admin cannot promote a Staff into a higher role
+    if (isRestaurantAdminMatch && req.body.role && req.body.role !== 'Staff') {
+      return res.status(403).json({
+        success: false,
+        message: 'Restaurant Admin cannot change a staff member\'s role.',
+        code: 'ROLE_CHANGE_NOT_ALLOWED'
+      });
+    }
+    // Same guard for restaurant_id changes — Restaurant Admin must not move
+    // staff to another restaurant.
+    if (isRestaurantAdminMatch && req.body.restaurant_id !== undefined && req.body.restaurant_id !== user.restaurant_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Restaurant Admin cannot reassign staff to another restaurant.',
+        code: 'TENANT_CHANGE_NOT_ALLOWED'
+      });
+    }
+  } catch (e) {
+    return res.status(500).json({ success: false, message: 'Permission check failed' });
   }
 
   try {
@@ -689,7 +783,42 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
 });
 
 // Delete user (with cascade cleanup)
-router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
+  // Permission gate: System Admin (any) or Restaurant Admin (own staff only).
+  // Self-delete blocked further below for both roles.
+  if (!['System Admin', 'Restaurant Admin'].includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      error: `This action requires System Admin or Restaurant Admin. Your role is ${req.user.role}.`,
+      code: 'INSUFFICIENT_ROLE'
+    });
+  }
+  if (req.user.role === 'Restaurant Admin') {
+    try {
+      const target = await User.findByPk(req.params.id, { attributes: ['id', 'restaurant_id', 'role'] });
+      if (!target) return res.status(404).json({ success: false, error: 'User not found' });
+      if (!req.user.restaurant_id || target.restaurant_id !== req.user.restaurant_id) {
+        return res.status(403).json({
+          success: false,
+          error: 'You can only remove staff in your own restaurant.',
+          code: 'TENANT_MISMATCH'
+        });
+      }
+      if (target.role !== 'Staff') {
+        return res.status(403).json({
+          success: false,
+          error: 'Restaurant Admin can only remove members with role=Staff.',
+          code: 'ROLE_NOT_ALLOWED'
+        });
+      }
+    } catch (e) {
+      return res.status(500).json({ success: false, error: 'Permission check failed' });
+    }
+  }
+  return deleteUserHandler(req, res);
+});
+
+async function deleteUserHandler(req, res) {
   const { sequelize } = require('../config/database');
   const RestaurantManager = require('../models/RestaurantManager');
   const Restaurant = require('../models/Restaurant');
@@ -717,6 +846,42 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
     }
 
     const uid = user.id;
+
+    // 0. Referral safety net — never delete a partner with unsettled balance or
+    //    pending payout. Locking the wallet rows prevents a concurrent commission
+    //    credit from sneaking in between this check and the user.destroy below.
+    const ReferralWallet = require('../models/ReferralWallet');
+    const ReferralPayout = require('../models/ReferralPayout');
+    const wallets = await ReferralWallet.findAll({
+      where: { user_id: uid },
+      transaction: t,
+      lock: t.LOCK.UPDATE
+    });
+    const nonZeroWallets = wallets.filter(w => parseFloat(w.balance) > 0);
+    const inflightPayout = await ReferralPayout.findOne({
+      where: { user_id: uid, status: { [require('sequelize').Op.in]: ['requested', 'approved'] } },
+      transaction: t,
+      lock: t.LOCK.UPDATE
+    });
+    if (nonZeroWallets.length > 0 || inflightPayout) {
+      await t.rollback();
+      const balanceSummary = nonZeroWallets
+        .map(w => `${w.currency} ${parseFloat(w.balance).toFixed(2)}`)
+        .join(', ');
+      const reasons = [];
+      if (nonZeroWallets.length > 0) reasons.push(`unsettled wallet balance (${balanceSummary})`);
+      if (inflightPayout) reasons.push(`pending payout #${inflightPayout.id} (${inflightPayout.status})`);
+      return res.status(409).json({
+        success: false,
+        error: `Cannot delete user — ${reasons.join(' and ')}. Settle the payout(s) first, then retry.`,
+        code: 'REFERRAL_BALANCE_NOT_SETTLED',
+        details: {
+          unsettled_balances: nonZeroWallets.map(w => ({ currency: w.currency, balance: parseFloat(w.balance) })),
+          pending_payout_id: inflightPayout?.id || null,
+          pending_payout_status: inflightPayout?.status || null
+        }
+      });
+    }
 
     // 1. Remove junction table records
     await RestaurantManager.destroy({ where: { manager_id: uid }, transaction: t });
@@ -781,7 +946,7 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
     console.error('[Users] Error deleting user:', error.message);
     res.status(500).json({ success: false, error: error.message });
   }
-});
+}
 
 // Update user password
 router.patch('/:id/password', authenticateToken, demoProtection, async (req, res) => {
@@ -826,7 +991,10 @@ router.patch('/:id/password', authenticateToken, demoProtection, async (req, res
 // What and Why: 패스워드 리셋 - System Admin 또는 Restaurant Admin(자기 스태프만)
 // - 강력한 임시 비밀번호 생성 (12자, 대소문자+숫자+특수문자)
 // - 응답에 임시 비밀번호 포함하여 관리자가 사용자에게 전달
-router.post('/:id/reset-password', authenticateToken, requireRole('System Admin'), async (req, res) => {
+// Permission handled inline (System Admin OR Restaurant Admin for own staff).
+// Removed router-level requireRole guard which previously contradicted the
+// inline Restaurant Admin branch and made it unreachable.
+router.post('/:id/reset-password', authenticateToken, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
 

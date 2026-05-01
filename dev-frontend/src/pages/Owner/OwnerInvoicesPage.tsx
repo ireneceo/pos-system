@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import SuspendedBanner from '../../components/Common/SuspendedBanner';
+import { useAuth } from '../../contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../../utils/currency';
 import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
@@ -276,6 +278,7 @@ type TabType = 'all' | 'to_pay';
 
 const OwnerInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('owner');
+  const { refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // States
@@ -423,6 +426,8 @@ const OwnerInvoicesPage: React.FC = () => {
         const data = await response.json();
         if (data.success) {
           setInvoicesToPay((data.data || []).map(transformInvoice));
+          // Reflect server-side restoreSubscription right away (suspended → active).
+          refreshUser();
         }
       } else {
         setInvoicesToPay([]);
@@ -1040,6 +1045,7 @@ const OwnerInvoicesPage: React.FC = () => {
         </Header>
 
         <Content>
+          <SuspendedBanner />
           {/* Stats */}
           <StatsGrid>
             <StatCard>

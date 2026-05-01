@@ -6,23 +6,89 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
-### 2026-04-30 (v3.20 배포 후 추가 fix + cleanup)
-- **Restaurant Ingredient image POST drop fix**: `routes/restaurants-ingredients.js:185` POST 핸들러가 `image_url, ingredient_category_id, supplier_id, base_quantity, track_stock` 5개 필드 drop. 누락 필드 추가. RA/SA × POST/PUT × image set/null 4/4 라이브 검증.
-- **Ingredient modal UX 정돈**:
-  - 푸터 sticky: 버튼을 `<form>` 안 ButtonGroup → Modal `footer` prop (`form="ingredient-form"` 속성으로 외부 submit). 폼 길어 스크롤 해도 Cancel/Update 버튼 항상 하단 고정
-  - Save 버튼 disabled 조건: 필수 미입력 / Edit 모드 변경 없음 (`isDirty=false`) / 제출 중 (`isSubmitting=true`)
-  - 제출 중 텍스트 "Saving..." + 더블클릭 차단
-- **Supplier Staff 모듈 게이팅 fix**: `ProtectedRoute MODULE_GATED_ROUTES`에 `/pos/supplier/staff` → `supplier_admin_staff` 추가. URL 직접 입력 우회 차단 (sidebar `hasModule` ↔ Route 게이팅 동기화).
-- **Orphan 페이지 9개 + 빈 디렉토리 4개 정리**:
-  - 삭제: `PurchaseInvoicesPage.tsx` (per-role page로 대체됨, 깨진 `/api/purchase-invoices/soa/pay-all` 호출 포함) + 라우트/lazy import 제거
-  - 삭제: `Admin/AddonModulesPage`, `Admin/AnalyticsPage` (broken `/api/sample-data/create`), `BillPrint/BillPrintPage`, `CompanyProfile/CompanyProfilePage`, `FloorPlan/OrderOverlay`, `Manager/CompanySettingsPage`, `RecipeManagement/SuppliersTab`, `TableManagement/TableManagementPage`
-  - 빈 디렉토리 정리: PurchaseInvoices/BillPrint/CompanyProfile/TableManagement
-- **운영 직전 전수조사 검증**:
-  - Sidebar URL → App.tsx Route 매핑 102/103 PASS (`#` placeholder 제외)
-  - Lazy import 153/153 파일 존재
-  - Sidebar URL HTTP 200 91/91 PASS
-  - FE fetch ↔ BE route 258/262 매칭 (4건 점검 → 2건 fix, 2건 false positive)
-  - Backend 라우터 mount 85개 모두 정상
+## [v3.21] — 2026-05-01 배포
+
+**Refer & Earn (리퍼럴 시스템) Phase 1+2+3 + IDOR 7 endpoint fix + Suspended account UX 재설계 + DB 인덱스 정리**
+
+### 리퍼럴 시스템 (신규)
+- **Phase 1 — Refer & Earn 핵심**: DB 모델 6 (`ReferralWallet`, `ReferralCommission`, `ReferralWalletTransaction`, `ReferralPayout`, `ReferralClick`, `ReferralSettings`) + User에 `referral_code/referred_by/bank_*/pos_account` 6 컬럼. `referralService` (code 발급 — 4자 retry, wallet upsert FOR UPDATE, processCommission 멱등 + SOA child guard, applyCredit, requestPayout/rejectPayout). 공개 2 + 본인 11 endpoint. `auth.js` referral-signup endpoint + signup의 5 role에 referral_code 처리 + 자기추천 차단. `invoiceLifecycle.js` `handleInvoicePaid` 공통 hook (paid 4경로 통합 + commission 적립). 첫 달 20% 할인 자동 적용 (음수 InvoiceItem + finalizeInvoice). 프론트 7개: ReferralLayout/AuthLayout + Login/Signup/Dashboard/Wallet/Profile + AutoSaveField (스위치 위 오버레이). SignupPage `?ref=PURPLE-XXXX` 자동입력 + 500ms validate-code debounce + 상단 그라데이션 배너 + Step 2 Referral Code 필드. `/referral` 라우트 + PosRootRedirect RP 분기 + ProtectedRoute switch + AuthContext UserRole/ROLE_PERMISSIONS/ROLE_ROUTES에 RP+Supplier Staff 추가. **38/38 PASS**.
+- **Phase 2 — 관리 + 크레딧**: `POST /api/referrals/wallet/apply-credit` (invoice ownership 체크 + 전액 시 handleInvoicePaid 자동 호출). admin endpoints — overview / partners(검색) / partners/:id (referred users + wallets + commissions + payouts 5섹션) / payouts(filter) / payouts/:id PUT(approve|mark_paid|reject) / settings GET-PUT. `ApplyCreditModal` 공통 컴포넌트 — 통화 매칭, 잔액 자동 픽업, 실시간 preview, KRW/JPY/VND zero-decimal. Restaurant `InvoicesPage` "Apply Referral Credit" 버튼 통합. `ReferralManagementPage` SA 4 탭 (Overview/Partners/Payouts/Settings) — 검색/필터/액션 모달/AutoSave 토글. **23/23 PASS**.
+- **Phase 3 — 마케팅 + 알림**: 이메일 알림 7종 (`referralPartnerWelcomeEmail`, `referredSignupEmail`, `commissionCreditedEmail`, `payoutRequestedAdminEmail`, `payoutApprovedEmail`, `payoutPaidEmail`, `payoutRejectedEmail`) + `NOTIFICATION_CATEGORIES`에 `referral_commission`/`referral_payout` 추가. `ReferralLandingPage` `/referral-program` 공개 — Hero(그라데이션) + 4-step + 4 Why Join + Earnings Calculator. `LandingHeader` GNB + Mobile menu Referral 메뉴. `MainLayout` 모든 역할 SidebarFooter ↗ Refer & Earn 그라데이션 링크 (60s polling 잔액 표시).
+- **5 치명결함 fix (v3.21 안정화)**:
+  1. `cancelCommissionsForInvoice` helper + `handleInvoiceCancelled` lifecycle hook + invoice PATCH `paid → other` / DELETE 시 자동 호출 (멱등 + transaction 내부)
+  2. Admin Overview 차트 + 전환 퍼널 (시계열 monthly_signups/commissions + recharts LineChart 2 + 그라데이션 progress bar 3-step funnel)
+  3. 사이드바 잔액 표시 — MainLayout 60s polling, 통화 표시 (RM/$/₩/S$/¥/₫). 잔액 0이면 "Start earning!"
+  4. 추천인 계정 삭제 가드 — `routes/users.js` DELETE에 wallet.balance > 0 OR pending payout 체크. SELECT FOR UPDATE 잠금. **409 + `REFERRAL_BALANCE_NOT_SETTLED` code**
+  5. Per-route rate limit — validate-code 30/min/IP, track-click 10/min/IP
+- **i18n 4언어 분리**: `referrals.json` 288 키 × en/ko/zh/ms. 한국어 "수수료" → "커미션" 26 키 + 조사 보정 10건 (받침 통일).
+
+### Suspended account UX 재설계
+- **로그인 차단 제거**: `authService.js`에서 `subscription_status='suspended'` / `restaurant.status='suspended'` 분기 완전 제거 (이전엔 "contact your administrator" 데드엔드).
+- **로그인 응답 + `/me`에 status 필드 포함**: `restaurantStatus`, `restaurantName`, `restaurantIsDemo`, `restaurantIsTest`, `is_demo`, `is_test`, `subscription_status`. login 직후 별도 fetch 없이도 frontend가 즉시 인식.
+- **ProtectedRoute pinning**: suspended 감지 시 역할별 invoice 페이지로 강제 redirect (RA/Staff `/restaurant/{rid}/invoices`, BG `/pos/brand/invoices`, FG `/pos/foodcourt/invoices`, Owner `/pos/owner/invoices`). System Admin / demo / test 예외.
+- **`SuspendedBanner` 공통 컴포넌트** + 4 invoice 페이지 마운트 (주황색 그라데이션, "Account on hold — overdue invoice. Pay any overdue invoice below to restore full access. The account reactivates automatically once payment is confirmed.").
+- **`AuthContext.refreshUser()` hook 노출** + 4 invoice 페이지 `fetchInvoicesToPay()` 끝에 호출 → 결제 후 즉시 배너/redirect 풀림 (새로고침 불필요).
+- 결제 후 자동 복구: 백엔드 `handleInvoicePaid` → `restoreSubscription` (기존 hook 활용).
+
+### IDOR 보안 fix (cross-tenant 7 endpoint)
+v3.21 검증 중 발견한 사전 부채. `authenticateToken`만 있고 `checkRestaurantAccess` 누락 — 다른 RA가 타 매장 데이터 조회 가능.
+- `orders-views.js:19/172/416` — orders list / counts / next-order-number
+- `activityLogs.js:12/124` — activity logs / stats
+- `invoices-main.js` — `settings/:rid GET+PUT`, `update-payer/:rid`, `generate-missing/:rid` (4곳)
+- `membership.js` — `settings/:rid PUT`, `tier/update/:rid/:cid` (2곳)
+- 모두 `checkRestaurantAccess` 추가. RA cross-tenant 11 endpoint 모두 → 403 라이브 검증.
+
+### Invoice 카운트 정합성 fix (legacy ENUM)
+- `dashboard.js:457`, `restaurants-subscription.js:209`에서 `inv.status === 'sent'` 사용 — Invoice ENUM에 `'sent'` 없음 (legacy schema 흔적). `pending_payment` 인보이스 모두 누락되고 `overdue` 만 카운트되는 결함. 9개 vs 1개 불일치 fix.
+- `BrandManagerDashboard.tsx:442`, `FoodcourtGeneralDashboard.tsx:687` — frontend 카운터도 동일 패턴. fix.
+- 정상 ENUM (`pending_payment` / `payment_submitted` / `overdue`)으로 통일.
+
+### SignupPage 가입 흐름 정돈
+- 로그인된 상태에서 `/signup` 진입 시 가입 폼 대신 안내 카드 ("You're already signed in" + Go to my dashboard / Sign out and create new account 두 액션). 기존엔 가입 완료 시 새 토큰이 기존 세션을 silent override하던 결함.
+- `?ref=PURPLE-XXXX` 진입 시 referral 입력 필드 숨김 — 상단 보라 배너만 표시 ("You've been referred! Get 20% off your first month of Purple POS. Referred by X.").
+
+### SA Partners detail Modal
+- `/pos/admin/referrals` Partners 탭에서 행 클릭 → Detail Modal (5 섹션):
+  - Partner 기본 정보 (이름/코드/email/phone/role/가입일/은행)
+  - **Referred users** 테이블 (이름/role/가입일/구독상태) — 누가 누구를 추천했는지
+  - Wallets (통화별 잔액/누적 적립/누적 출금)
+  - Recent commissions 최대 20건
+  - Recent payouts 최대 20건
+- i18n 4언어 17 신규 키.
+
+### Wallet UX 단순화
+- `/referral/wallet` 필터 5개 → 3개 (`All` / `Commissions` / `Payouts`) — RP에 무의미한 `Credit used` / `Adjustments` 제거.
+- Stats 3개 → 2개 (`Total earned` / `Total withdrawn`) — Credit used 제거.
+- POS 사용 안내문구 (`applyHint`) 제거 (RP는 POS 안 씀).
+- i18n 4언어 4 키 제거 (288 → 284 통일).
+
+### 운영 Staff fix (Restaurant Admin staff 관리)
+- `routes/users.js` GET/POST/PUT/DELETE/reset-password 5개 endpoint 권한 확장 — Restaurant Admin이 자기 매장 staff 관리 가능. tenant isolation (cross-tenant 차단), role escalation 차단 (RA는 'Staff'만 만들 수 있음). `middleware/auth.js` `requireRole` 에러 메시지 개선 (required_roles + current_role + code 추가). `StaffPage.tsx` fetchStaff silent catch 제거 → 빨간 에러 박스 표시.
+
+### DB 마이그레이션 (자동 실행)
+- **`scripts/cleanup-users-duplicate-indexes.js`** — `email_N`/`username_N` 60개 중복 unique 인덱스 정리.
+- **`scripts/cleanup-restaurants-duplicate-indexes.js`** — `slug_N` 59개.
+- **`scripts/cleanup-sequelize-duplicate-indexes.js`** — 통합 sweep 17개 테이블 769 중복 정리 (canonical UNIQUE만 keep). MySQL 64-key 한계 도달 → 신규 ALTER TABLE 차단되던 상태 해소.
+- `scripts/migrate-referral.js` — referral 6 테이블 + User 6 컬럼.
+
+### health-check 안전망 강화
+- security 카테고리 16 → 21 (cross-tenant IDOR 5건 영구 추가). `defineSecurityTests`에 `restId` 인자 추가하여 다른 RA가 타 매장 access 시 403 검증.
+- 6번째 카테고리 'referral' 추가 — 24개 테스트 (public 3 + 401 차단 9 + auth 200 4 + cross-token 격리 1 + admin endpoint 5 + RA 403 RBAC 2).
+- **총 67/67 → 72/72 PASS**.
+
+### 검증
+- 리퍼럴 비즈니스 로직 E2E: commission 적립 (8/8) + 멱등성 + cancel 환원 (5/5) + Skip 규칙 (4/4) + applyCredit + currency mismatch (4/4) + Payout 라이프사이클 (5/5) + CRIT-3 delete guard (5/5) + CRIT-4 rate limit + Self-referral 방어 = 49 PASS / 0 FAIL.
+- IDOR 라이브 16 endpoint sample: cross-tenant 11/11 protected, own-tenant 6/6 OK.
+- Invoice 카운트 정합성: DB=9, /to-pay=9, /dashboard.billing.unpaidInvoices=9 (이전 1).
+- 주문 라이프사이클 5/5 (POST → PATCH preparing/ready/completed → 최종 status 검증).
+
+### Sysops — 양방향 DB cross-backup 정돈
+- POS는 dev → 운영 cross-backup 단방향만 적용되어 운영 손실 시 dev에 복구 소스 부재 (PlanQ는 양방향 적용 완료). 디렉토리/스크립트 일관 정리.
+- POS 운영 `backup-database.sh` cross-backup 디렉토리 `production` → `production-pos` (PlanQ가 사용 중인 `dev-planq/` `prod-planq/`와 충돌 회피).
+- POS dev `backup-database.sh` cleanup 라인도 `production-pos`로 통일.
+- dev 측 빈 디렉토리 정리 (`production/` legacy 1건 → `production-pos/`로 이동 후 production 디렉토리 제거).
+- 1회 수동 실행 검증: 5/1 운영 백업 (1.9 MB)이 dev `production-pos/`로 도착 확인.
+- 후속 권고 (별도 작업): 운영 cron이 root user로 실행되는데 root SSH key가 dev 미등록 상태라 cron 자동 scp는 4-23 이후 실패 중. 운영 cron을 `irene` user로 이전하거나 root 공개키 dev 등록 필요.
 
 ## [v3.20] — 2026-04-30 배포
 

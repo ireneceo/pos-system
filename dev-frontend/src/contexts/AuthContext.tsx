@@ -5,7 +5,7 @@ import i18n from '../i18n';
 
 import { getAuthToken, setAuthToken, clearAuthToken } from '../utils/auth';
 import { setOn401Handler } from '../utils/httpClient';
-export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Owner' | 'Restaurant Admin' | 'Staff' | 'Supplier Admin';
+export type UserRole = 'System Admin' | 'Foodcourt General' | 'Brand General' | 'Foodcourt Manager' | 'Brand Manager' | 'Restaurant Owner' | 'Restaurant Admin' | 'Staff' | 'Supplier Admin' | 'Supplier Staff' | 'Referral Partner';
 
 export interface User {
   id?: string;
@@ -19,8 +19,18 @@ export interface User {
   foodcourt_id?: number | null;
   managerId?: string | null;
   permissions?: string[];
-  restaurantStatus?: 'active' | 'inactive' | 'pending' | null;
+  restaurantStatus?: 'active' | 'inactive' | 'pending' | 'suspended' | null;
   restaurantName?: string | null;
+  // POS subscription status — Brand General / Foodcourt General / Restaurant Owner.
+  // 'suspended' means the user has overdue invoices; ProtectedRoute pins them to
+  // the invoice page until payment clears.
+  subscriptionStatus?: 'active' | 'trial' | 'suspended' | 'cancelled' | null;
+  // Demo / test fixtures are exempt from the suspended-account invoice pin so
+  // QA tooling and demo flows stay usable even with overdue invoices.
+  isDemo?: boolean;
+  isTest?: boolean;
+  restaurantIsDemo?: boolean;
+  restaurantIsTest?: boolean;
   company_name?: string;
   restaurant_name?: string;
   department?: string;
@@ -38,6 +48,10 @@ interface AuthContextType {
   updateLanguage: (language: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
   canAccessRoute: (route: string) => boolean;
+  // Refetch /me and update user in place. Use after server-side state changes
+  // that affect ProtectedRoute / SuspendedBanner — e.g., paying an overdue
+  // invoice flips restaurantStatus from 'suspended' to 'active'.
+  refreshUser: () => Promise<void>;
 }
 
 // PIN 전환 시 서버에서 받는 user 데이터 형태
@@ -187,6 +201,19 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'view_supplier_payment_settings',
     'edit_supplier_payment_settings',
     'view_supplier_reports'
+  ],
+  'Supplier Staff': [
+    // Supplier Staff is a delegated Supplier Admin — actual scoped permissions
+    // are gated server-side via supplierScope + the advanced supplier_admin_staff
+    // module. Listed here so the UserRole record is complete.
+    'view_supplier_dashboard',
+    'view_supplier_products',
+    'view_supplier_inventory',
+    'view_supplier_invoices'
+  ],
+  'Referral Partner': [
+    // Referral Partners only see the /referral/* app — no POS permissions.
+    'view_referral_dashboard'
   ]
 };
 
@@ -384,6 +411,16 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
     '/pos/profile',
     '/pos/notices',
     '/pos/system-inquiry'
+  ],
+  'Supplier Staff': [
+    '/pos/supplier/*',
+    '/pos/profile',
+    '/pos/notices',
+    '/pos/system-inquiry'
+  ],
+  'Referral Partner': [
+    // No POS routes — partner uses /referral/* via its own ReferralLayout.
+    '/pos/profile'
   ]
 };
 
@@ -430,6 +467,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               permissions: userPermissions,
               restaurantStatus: apiUser.restaurantStatus,
               restaurantName: apiUser.restaurantName,
+              subscriptionStatus: apiUser.subscription_status || null,
+              isDemo: !!apiUser.is_demo,
+              isTest: !!apiUser.is_test,
+              restaurantIsDemo: !!apiUser.restaurantIsDemo,
+              restaurantIsTest: !!apiUser.restaurantIsTest,
               preferred_language: apiUser.preferred_language || 'en'
             };
             setUser(userData);
@@ -482,24 +524,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (result.success && result.data) {
           const apiUser = result.data.user;
 
-          let restaurantStatus = null;
-          let restaurantName = null;
-
-          // Fetch restaurant info if user has restaurant_id
-          if (apiUser.restaurant_id) {
-            try {
-              const restaurantResponse = await fetch(`/api/restaurants/${apiUser.restaurant_id}`);
-              if (restaurantResponse.ok) {
-                const restaurantData = await restaurantResponse.json();
-                restaurantStatus = restaurantData.status;
-                restaurantName = restaurantData.name;
-
-              }
-            } catch (error) {
-
-            }
-          }
-
           // Staff는 DB에서 받은 메뉴 permissions 사용
           const loginPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
             ? apiUser.permissions
@@ -515,8 +539,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             brand_id: apiUser.brand_id || null,
             foodcourt_id: apiUser.foodcourt_id || null,
             permissions: loginPermissions,
-            restaurantStatus: restaurantStatus,
-            restaurantName: restaurantName,
+            restaurantStatus: apiUser.restaurantStatus || null,
+            restaurantName: apiUser.restaurantName || null,
+            isDemo: !!apiUser.is_demo,
+            isTest: !!apiUser.is_test,
+            restaurantIsDemo: !!apiUser.restaurantIsDemo,
+            restaurantIsTest: !!apiUser.restaurantIsTest,
+            subscriptionStatus: apiUser.subscription_status || null,
             preferred_language: apiUser.preferred_language || 'en'
           };
 
@@ -542,9 +571,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Handle specific error codes
       const errorResult = await response.json().catch(() => null);
-      if (errorResult?.error?.code === 'ACCOUNT_SUSPENDED') {
-        throw new Error(errorResult.error.message || 'Your account has been suspended. Please contact your administrator.');
-      }
+      // ACCOUNT_SUSPENDED is no longer thrown by the backend — suspended users
+      // log in normally and ProtectedRoute pins them to the invoice page so
+      // they can pay. Keeping the branch removed avoids a dead-end UX where
+      // the user sees an error and can't reach the payment screen.
       if (errorResult?.error?.code === 'EMAIL_NOT_VERIFIED') {
         const err: any = new Error(errorResult.error.message || 'Please verify your email address.');
         err.code = 'EMAIL_NOT_VERIFIED';
@@ -647,6 +677,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // localStorage 제거 - 메모리 상태만 업데이트
   };
 
+  // Refetch /me and merge server-side fields (restaurantStatus, subscriptionStatus,
+  // is_demo/is_test, restaurantName, etc.) into the in-memory user. Called from
+  // pages that flip those fields server-side (invoice payment, account changes)
+  // so ProtectedRoute / SuspendedBanner react without a full page reload.
+  const refreshUser = async (): Promise<void> => {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const response = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) return;
+      const result = await response.json();
+      if (!result?.success || !result?.data) return;
+      const apiUser = result.data;
+      setUser((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          restaurantStatus: apiUser.restaurantStatus ?? prev.restaurantStatus,
+          restaurantName: apiUser.restaurantName ?? prev.restaurantName,
+          subscriptionStatus: apiUser.subscription_status ?? prev.subscriptionStatus,
+          isDemo: apiUser.is_demo ?? prev.isDemo,
+          isTest: apiUser.is_test ?? prev.isTest,
+          restaurantIsDemo: apiUser.restaurantIsDemo ?? prev.restaurantIsDemo,
+          restaurantIsTest: apiUser.restaurantIsTest ?? prev.restaurantIsTest
+        };
+      });
+    } catch { /* best-effort, stay on current state on network error */ }
+  };
+
   const updateLanguage = async (language: string) => {
     await i18n.changeLanguage(language);
     localStorage.setItem('i18nextLng', language);
@@ -698,7 +759,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateUser,
     updateLanguage,
     hasPermission,
-    canAccessRoute
+    canAccessRoute,
+    refreshUser
   };
 
   return (

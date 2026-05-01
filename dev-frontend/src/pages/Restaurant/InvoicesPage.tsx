@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatAddressHtml, formatAddressLines, AppLocale } from '../../utils/formatAddress';
+import SuspendedBanner from '../../components/Common/SuspendedBanner';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { BaseButton, StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
@@ -31,6 +32,7 @@ import {
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
+import ApplyCreditModal from '../../components/Referral/ApplyCreditModal';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
@@ -290,7 +292,7 @@ type TabType = 'all' | 'to_pay';
 const RestaurantInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('settings');
   const { operationSettings } = useStore();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -308,6 +310,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [showApplyCreditModal, setShowApplyCreditModal] = useState(false);
   const [showPaymentSubmitModal, setShowPaymentSubmitModal] = useState(false);
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethod[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
@@ -434,6 +437,10 @@ const RestaurantInvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setInvoicesToPay(data);
+        // Pull fresh user state so SuspendedBanner / ProtectedRoute react
+        // immediately after an overdue invoice is paid (restoreSubscription
+        // flips restaurant.status server-side).
+        refreshUser();
       } else {
         setInvoicesToPay([]);
       }
@@ -1161,6 +1168,7 @@ const RestaurantInvoicesPage: React.FC = () => {
         </Header>
 
         <Content>
+          <SuspendedBanner />
           {/* Stats */}
           <StatsGrid>
             <StatCard>
@@ -1242,12 +1250,17 @@ const RestaurantInvoicesPage: React.FC = () => {
             footer={
               <>
                 {(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && (
-                  <Button variant="success" onClick={() => {
-                    setShowViewModal(false);
-                    handlePayInvoice(selectedInvoice);
-                  }}>
-                    Pay Now
-                  </Button>
+                  <>
+                    <Button variant="secondary" onClick={() => setShowApplyCreditModal(true)}>
+                      Apply Referral Credit
+                    </Button>
+                    <Button variant="success" onClick={() => {
+                      setShowViewModal(false);
+                      handlePayInvoice(selectedInvoice);
+                    }}>
+                      Pay Now
+                    </Button>
+                  </>
                 )}
                 {(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && (
                   <Button variant="success" onClick={() => handleConfirmFreeInvoice(selectedInvoice)} disabled={!!confirmingInvoiceId}>
@@ -1596,6 +1609,24 @@ const RestaurantInvoicesPage: React.FC = () => {
         title={alertDlg?.title || ''}
         message={alertDlg?.message || ''}
       />
+      {showApplyCreditModal && selectedInvoice && (
+        <ApplyCreditModal
+          invoice={{
+            id: selectedInvoice.id,
+            invoice_number: selectedInvoice.invoice_number,
+            total_amount: selectedInvoice.total,
+            paid_amount: selectedInvoice.paid_amount,
+            currency: selectedInvoice.currency,
+            status: selectedInvoice.status
+          }}
+          onClose={() => setShowApplyCreditModal(false)}
+          onApplied={() => {
+            setShowApplyCreditModal(false);
+            setShowViewModal(false);
+            fetchInvoicesToPay();
+          }}
+        />
+      )}
     </>
   );
 };

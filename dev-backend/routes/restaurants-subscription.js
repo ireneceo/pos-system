@@ -204,9 +204,15 @@ router.get('/subscriptions/manager/:managerId', authenticateToken, async (req, r
         .filter(inv => inv.status === 'paid' && inv.paid_at)
         .sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at))[0];
         
-      // Get next unpaid invoice for next payment
+      // Get next unpaid invoice for next payment.
+      // Invoice.status ENUM has no 'sent' — use the canonical pending set so
+      // pending_payment / payment_submitted / overdue invoices are picked up.
       const nextInvoice = invoices
-        .filter(inv => inv.status === 'sent' || inv.status === 'overdue')
+        .filter(inv =>
+          inv.status === 'pending_payment' ||
+          inv.status === 'payment_submitted' ||
+          inv.status === 'overdue'
+        )
         .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))[0];
 
       // Calculate current month orders

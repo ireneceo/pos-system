@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { MembershipSettings, PointTransaction, RestaurantCustomer, Customer } = require('../models');
 const { sequelize } = require('../config/database');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { authenticateCustomer } = require('../middleware/customerAuth');
 
 // ========================================
@@ -86,7 +86,7 @@ router.get('/settings/:restaurantId', async (req, res) => {
  * PUT /api/membership/settings/:restaurantId
  * 레스토랑의 멤버십 설정 수정
  */
-router.put('/settings/:restaurantId', authenticateToken, async (req, res) => {
+router.put('/settings/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const updateData = req.body;
@@ -718,7 +718,7 @@ router.get('/points/history/:restaurantId/:customerId', customerSelfOrAdmin, asy
  * POST /api/membership/tier/update/:restaurantId/:customerId
  * 고객 등급 재계산 및 업데이트
  */
-router.post('/tier/update/:restaurantId/:customerId', authenticateToken, async (req, res) => {
+router.post('/tier/update/:restaurantId/:customerId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId, customerId } = req.params;
 

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Helmet } from 'react-helmet-async';
 import { LandingLayout } from '../../components/Landing';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 import { setAuthToken } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface Plan {
@@ -59,6 +60,8 @@ interface FormData {
   supplier_website: string;
   plan_id: number | null;
   billing_cycle: 'monthly' | 'annual';
+  // Referral
+  referral_code: string;
 }
 
 interface InvitationPrefill {
@@ -186,7 +189,8 @@ const INITIAL_FORM: FormData = {
   supplier_phone: '',
   supplier_website: '',
   plan_id: null,
-  billing_cycle: 'monthly'
+  billing_cycle: 'monthly',
+  referral_code: ''
 };
 
 // ─── Session Storage helpers ─────────────────────────────────────
@@ -221,6 +225,22 @@ const SignupPage: React.FC = () => {
   const { t } = useTranslation('landing');
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const { user, logout } = useAuth();
+
+  const goToMyDashboard = useCallback(() => {
+    if (!user) return;
+    const role = user.role;
+    if (role === 'Restaurant Admin' && user.restaurantId) {
+      navigate(`/restaurant/${user.restaurantId}/dashboard`);
+    } else if (role === 'Brand General') navigate('/pos/brand/general/dashboard');
+    else if (role === 'Foodcourt General') navigate('/pos/foodcourt/general/dashboard');
+    else if (role === 'Restaurant Owner') navigate('/pos/owner/dashboard');
+    else if (role === 'Supplier Admin' || role === 'Supplier Staff') navigate('/pos/supplier/dashboard');
+    else if (role === 'Referral Partner') navigate('/referral/dashboard');
+    else if (role === 'System Admin') navigate('/pos/admin/dashboard');
+    else navigate('/pos');
+  }, [user, navigate]);
   // Restore draft on mount
   const draft = loadDraft();
   const [step, setStep] = useState(draft?.step || 1);
@@ -234,6 +254,11 @@ const SignupPage: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // ─── Referral state ─────────────────────────────────────────
+  const [refCodeStatus, setRefCodeStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const [referrerInitial, setReferrerInitial] = useState<string>('');
+  const [refFromUrl, setRefFromUrl] = useState<string>('');
 
   // ─── Supplier invitation state ──────────────────────────────
   const [invitationToken, setInvitationToken] = useState<string | null>(null);
@@ -296,6 +321,58 @@ const SignupPage: React.FC = () => {
       } catch { return 'USD'; }
     }
   };
+
+  // ─── Referral code handling ─────────────────────────────────
+  // 1. Pick up ?ref=PURPLE-XXXX on first mount, prefill the form, and remember it
+  //    for the persistent banner. We only set this once so user edits to the field
+  //    don't get clobbered by the URL param on every render.
+  useEffect(() => {
+    const ref = (searchParams.get('ref') || '').trim().toUpperCase();
+    if (ref && /^PURPLE-[A-Z2-9]{4}$/.test(ref)) {
+      setRefFromUrl(ref);
+      setForm(prev => (prev.referral_code ? prev : { ...prev, referral_code: ref }));
+      // best-effort click tracking — backend de-dupes by (code, ip, 24h)
+      fetch('/api/referrals/track-click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ referral_code: ref, source: 'signup' })
+      }).catch(() => { /* swallow — tracking is optional */ });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 2. Validate the code on every change with 500ms debounce. Empty value resets
+  //    to idle. Invalid format short-circuits without hitting the API.
+  useEffect(() => {
+    const code = (form.referral_code || '').trim().toUpperCase();
+    if (!code) {
+      setRefCodeStatus('idle');
+      setReferrerInitial('');
+      return;
+    }
+    if (!/^PURPLE-[A-Z2-9]{4}$/.test(code)) {
+      setRefCodeStatus('invalid');
+      setReferrerInitial('');
+      return;
+    }
+    setRefCodeStatus('checking');
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/referrals/validate-code?code=${encodeURIComponent(code)}`);
+        const body = await res.json().catch(() => ({}));
+        if (body?.data?.valid) {
+          setRefCodeStatus('valid');
+          setReferrerInitial(body.data.referrer_initial || '');
+        } else {
+          setRefCodeStatus('invalid');
+          setReferrerInitial('');
+        }
+      } catch {
+        setRefCodeStatus('invalid');
+      }
+    }, 500);
+    return () => clearTimeout(handle);
+  }, [form.referral_code]);
 
   // Pre-fill from PricingPage navigation state
   useEffect(() => {
@@ -502,7 +579,8 @@ const SignupPage: React.FC = () => {
           plan_id: form.plan_id,
           billing_cycle: form.billing_cycle,
           currency: selectedCurrency,
-          invitation_token: invitationToken || undefined
+          invitation_token: invitationToken || undefined,
+          referral_code: form.referral_code?.trim() || undefined
         })
       });
 
@@ -673,6 +751,30 @@ const SignupPage: React.FC = () => {
           />
           {fieldErrors.confirm_password && <FieldError>{fieldErrors.confirm_password}</FieldError>}
         </FormGroup>
+
+        {!refFromUrl && (
+          <FormGroup fullWidth>
+            <FormLabel>
+              Referral Code (optional)
+              <RefStatusHint $state={refCodeStatus}>
+                {refCodeStatus === 'checking' && '…'}
+                {refCodeStatus === 'valid' && `✓ Valid${referrerInitial ? ` — ${referrerInitial}` : ''}`}
+                {refCodeStatus === 'invalid' && '✗ Invalid'}
+              </RefStatusHint>
+            </FormLabel>
+            <FormInput
+              type="text"
+              value={form.referral_code}
+              onChange={e => updateField('referral_code', e.target.value.toUpperCase())}
+              placeholder="PURPLE-XXXX"
+              hasError={refCodeStatus === 'invalid'}
+              autoComplete="off"
+            />
+            {refCodeStatus === 'valid' && (
+              <RefDiscountNote>20% off your first month!</RefDiscountNote>
+            )}
+          </FormGroup>
+        )}
       </FormGrid>
     </StepContent>
   );
@@ -1043,6 +1145,47 @@ const SignupPage: React.FC = () => {
     );
   }
 
+  // Block already-authenticated users from creating a duplicate account that would
+  // silently override their session. Offer dashboard or explicit sign-out instead.
+  if (user) {
+    return (
+      <LandingLayout>
+        <Helmet>
+          <title>{t('landing:signupPage.signUpPurplehere')}</title>
+        </Helmet>
+        <ContentSection>
+          <SignupCard style={{ textAlign: 'center', maxWidth: 520 }}>
+            <h2 style={{ fontSize: 22, color: '#0A2540', margin: '8px 0 12px' }}>
+              You're already signed in
+            </h2>
+            <p style={{ color: '#525F7F', fontSize: 15, lineHeight: 1.6, marginBottom: 8 }}>
+              Logged in as <strong>{user.name}</strong> ({user.role}).
+            </p>
+            <p style={{ color: '#6B7C93', fontSize: 14, marginBottom: 24 }}>
+              To create a new account, sign out first.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <NextButton type="button" onClick={goToMyDashboard}>
+                Go to my dashboard
+              </NextButton>
+              <button
+                type="button"
+                onClick={() => { logout(); }}
+                style={{
+                  padding: '12px 32px', border: '1px solid #E6EBF1', borderRadius: 8,
+                  background: '#FFF', color: '#0A2540', fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Sign out and create new account
+              </button>
+            </div>
+          </SignupCard>
+        </ContentSection>
+      </LandingLayout>
+    );
+  }
+
   return (
     <LandingLayout>
       <Helmet>
@@ -1054,6 +1197,18 @@ const SignupPage: React.FC = () => {
         <HeroTitle>{t('landing:signupPage.createYourAccount')}</HeroTitle>
         <HeroSubtitle>{t('landing:signupPage.startYour7dayFreeTrialToday')}</HeroSubtitle>
       </HeroSection>
+
+      {refFromUrl && refCodeStatus !== 'invalid' && (
+        <ReferralBanner>
+          <span>
+            <strong>You've been referred!</strong> Get 20% off your first month of Purple POS.
+            {referrerInitial && <> Referred by <strong>{referrerInitial}</strong>.</>}
+          </span>
+          <span style={{ fontFamily: 'SFMono-Regular, Menlo, monospace', fontWeight: 700, letterSpacing: 0.5 }}>
+            {refFromUrl}
+          </span>
+        </ReferralBanner>
+      )}
 
       <ContentSection>
         <SignupCard>
@@ -1169,6 +1324,56 @@ const ContentSection = styled.div`
   max-width: 720px;
   margin: 0 auto;
   padding: 40px 20px 60px;
+`;
+
+const ReferralBanner = styled.div`
+  max-width: 720px;
+  margin: 0 auto 16px;
+  background: #635BFF;
+  color: white;
+  padding: 14px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(99, 91, 255, 0.25);
+  font-size: 14px;
+  line-height: 1.5;
+
+  strong {
+    font-weight: 700;
+  }
+
+  @media (max-width: 600px) {
+    margin: 0 16px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+`;
+
+const RefStatusHint = styled.span<{ $state: 'idle' | 'checking' | 'valid' | 'invalid' }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+  color: ${p => ({
+    idle: 'transparent',
+    checking: '#6B7C93',
+    valid: '#059669',
+    invalid: '#DC2626'
+  })[p.$state]};
+`;
+
+const RefDiscountNote = styled.div`
+  font-size: 12px;
+  color: #635BFF;
+  font-weight: 500;
+  margin-top: 4px;
 `;
 
 const SignupCard = styled.div`

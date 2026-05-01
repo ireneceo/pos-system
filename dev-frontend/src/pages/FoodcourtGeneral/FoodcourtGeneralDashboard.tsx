@@ -684,7 +684,9 @@ const FoodcourtGeneralDashboard: React.FC = () => {
       const activePlans = plans.filter((p: any) => p.is_active !== false).length;
 
       const invoices = invoicesData.data || invoicesData || [];
-      const pendingInvoices = invoices.filter((inv: any) => inv.status === 'pending_payment' || inv.status === 'sent').length;
+      const pendingInvoices = invoices.filter((inv: any) =>
+        inv.status === 'pending_payment' || inv.status === 'payment_submitted'
+      ).length;
       const overdueInvoices = invoices.filter((inv: any) => inv.status === 'overdue').length;
 
       const subs = subsData.data || subsData || [];

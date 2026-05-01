@@ -99,7 +99,20 @@
       "Bash(sudo cat *)",
       "Bash(awk '{print $4, $7}')",
       "Bash(sudo zgrep *)",
-      "Bash(read page *)"
+      "Bash(read page *)",
+      "Bash(awk '{print $3}')",
+      "Bash(awk 'NR>1{print $3, \"->\", $5}')",
+      "Bash(pkill -9 -f \"react-scripts\")",
+      "Bash(pkill -9 -f \"tsc \")",
+      "Bash(awk '/^async function deleteUserHandler/,/^}\\);|^}$/' /var/www/dev-backend/routes/users.js)",
+      "Bash(awk 'NR>=820 && NR<=950 {print NR\":\"$0}' /var/www/dev-backend/routes/users.js)",
+      "Bash(./node_modules/.bin/tsc --noEmit --skipLibCheck)",
+      "Bash(echo \"---exit $?---\")",
+      "Bash(pm2 flush *)",
+      "Bash(crontab -l)",
+      "Bash(mv /home/irene/backups/cross-backup/production/*.sql.gz /home/irene/backups/cross-backup/production-pos/)",
+      "Bash(rmdir /home/irene/backups/cross-backup/production)",
+      "Bash(scp irene@87.106.78.146:/var/backups/orderhere/daily/db_2026-05-01.sql.gz /home/irene/backups/cross-backup/production-pos/)"
     ],
     "deny": [],
     "ask": []

@@ -1638,6 +1638,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
+    const previousStatus = invoice.status;
     const updateData = { status };
     if (status === 'paid') {
       updateData.paid_amount = paid_amount || invoice.total_amount;
@@ -1649,17 +1650,18 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 
     await invoice.update(updateData);
 
-    // If subscription invoice is marked as paid, restore subscription to Active
-    if (status === 'paid' && invoice.invoice_category === 'subscription' && invoice.restaurant_id) {
-      try {
-        const result = await subscriptionScheduler.restoreSubscription(invoice.restaurant_id);
-        if (result.success) {
-          console.log(`✓ Subscription restored for restaurant ${invoice.restaurant_id} after payment`);
-        }
-      } catch (subError) {
-        console.error('Error restoring subscription:', subError);
-        // Don't fail the invoice update if subscription restore fails
-      }
+    // Centralised side-effects: subscription restore + referral commission on
+    // entry to 'paid'; commission reversal on exit from 'paid'.
+    if (status === 'paid' && previousStatus !== 'paid') {
+      const { handleInvoicePaid } = require('../services/invoiceLifecycle');
+      handleInvoicePaid(invoice.id).catch(e =>
+        console.error('[invoices-main /:id/status] handleInvoicePaid:', e.message)
+      );
+    } else if (previousStatus === 'paid' && status !== 'paid') {
+      const { handleInvoiceCancelled } = require('../services/invoiceLifecycle');
+      handleInvoiceCancelled(invoice.id, `Invoice status changed from paid to ${status}`).catch(e =>
+        console.error('[invoices-main /:id/status] handleInvoiceCancelled:', e.message)
+      );
     }
 
     logActivity(req, {
@@ -1692,6 +1694,20 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     if (mgrScope.scoped && mgrScope.branch_id) {
       const inBranch = await invoiceInBranch(invoice, mgrScope.branch_id);
       if (!inBranch) return res.status(403).json({ success: false, message: 'No access to this invoice' });
+    }
+
+    // If the invoice was paid, reverse any referral commission BEFORE destroying
+    // so the referrer's wallet stays in sync with actually-collected revenue.
+    // cancelCommissionsForInvoice only needs the id, so the order is for
+    // observability (we'd rather see the wallet adjustment alongside the delete).
+    const wasPaid = invoice.status === 'paid';
+    if (wasPaid) {
+      const { handleInvoiceCancelled } = require('../services/invoiceLifecycle');
+      try {
+        await handleInvoiceCancelled(invoice.id, `Invoice ${invoice.invoice_number} deleted`);
+      } catch (e) {
+        console.error('[DELETE Invoice] handleInvoiceCancelled failed:', e.message);
+      }
     }
 
     // Delete invoice items first
@@ -1733,7 +1749,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 // Get invoice settings for a restaurant
-router.get('/settings/:restaurantId', authenticateToken, async (req, res) => {
+router.get('/settings/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const settings = await InvoiceSettings.findOne({
       where: { restaurant_id: req.params.restaurantId }
@@ -1758,7 +1774,7 @@ router.get('/settings/:restaurantId', authenticateToken, async (req, res) => {
 });
 
 // Update invoice settings
-router.put('/settings/:restaurantId', authenticateToken, async (req, res) => {
+router.put('/settings/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     
@@ -2269,7 +2285,7 @@ router.get('/issued-by/:issuerType/:issuerId', authenticateToken, async (req, re
 });
 
 
-router.put('/update-payer/:restaurantId', authenticateToken, async (req, res) => {
+router.put('/update-payer/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { payment_model } = req.body;
@@ -2532,7 +2548,7 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
 });
 
 // Generate missing subscription invoices for a restaurant (backfill)
-router.post('/generate-missing/:restaurantId', authenticateToken, async (req, res) => {
+router.post('/generate-missing/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const { fromDate } = req.body;

@@ -67,6 +67,15 @@ const NotificationPreferencesRedirect: React.FC = () => {
 
 // Lazy load all other pages
 const VerifyEmailPage = React.lazy(() => import('./pages/Login/VerifyEmailPage'));
+// Referral System (Refer & Earn)
+const ReferralLayout = React.lazy(() => import('./components/Referral/ReferralLayout'));
+const ReferralLoginPage = React.lazy(() => import('./pages/Referral/ReferralLoginPage'));
+const ReferralSignupPage = React.lazy(() => import('./pages/Referral/ReferralSignupPage'));
+const ReferralDashboardPage = React.lazy(() => import('./pages/Referral/ReferralDashboardPage'));
+const ReferralWalletPage = React.lazy(() => import('./pages/Referral/ReferralWalletPage'));
+const ReferralProfilePage = React.lazy(() => import('./pages/Referral/ReferralProfilePage'));
+const ReferralManagementPage = React.lazy(() => import('./pages/Admin/ReferralManagementPage'));
+const ReferralLandingPage = React.lazy(() => import('./pages/Landing/ReferralLandingPage'));
 const LiveOrdersPage = React.lazy(() => import('./pages/LiveOrders/LiveOrdersPage'));
 const POSTerminalPage = React.lazy(() => import('./pages/POSTerminal/POSTerminalPage'));
 const KitchenDisplayPage = React.lazy(() => import('./pages/KitchenDisplay/KitchenDisplayPage'));
@@ -324,6 +333,9 @@ const PosRootRedirect: React.FC = () => {
       return <Navigate to="/pos/brand/general/dashboard" replace />;
     case 'Restaurant Owner':
       return <Navigate to="/pos/owner/dashboard" replace />;
+    case 'Referral Partner':
+      // Referral-only users have no POS dashboard — bounce to their app instead
+      return <Navigate to="/referral/dashboard" replace />;
     case 'Restaurant Admin':
     case 'Staff': {
       if (!user?.restaurantId) {
@@ -459,6 +471,7 @@ function App() {
                       <Route path="/privacy" element={<PrivacyPolicyPage />} />
                       <Route path="/terms" element={<TermsOfServicePage />} />
                       <Route path="/faq" element={<FAQPage />} />
+                      <Route path="/referral-program" element={<ReferralLandingPage />} />
                       <Route path="/blog" element={<BlogPage />} />
                       <Route path="/blog/:slug" element={<BlogPostPage />} />
                       <Route path="/news" element={<NewsPage />} />
@@ -467,6 +480,15 @@ function App() {
                       {/* Login & Email Verification */}
                       <Route path="/pos" element={<LoginPage />} />
                       <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+                      {/* Referral System (Refer & Earn) — auth handled at the page/Layout level (Phase 1D will wire ProtectedRoute) */}
+                      <Route path="/referral" element={<Navigate to="/referral/dashboard" replace />} />
+                      <Route path="/referral/login" element={<ReferralLoginPage />} />
+                      <Route path="/referral/signup" element={<ReferralSignupPage />} />
+                      <Route path="/referral/dashboard" element={<ReferralLayout><ReferralDashboardPage /></ReferralLayout>} />
+                      <Route path="/referral/wallet" element={<ReferralLayout><ReferralWalletPage /></ReferralLayout>} />
+                      <Route path="/referral/profile" element={<ReferralLayout><ReferralProfilePage /></ReferralLayout>} />
+
                       <Route path="/notification-preferences" element={
                         <NotificationPreferencesRedirect />
                       } />
@@ -671,6 +693,13 @@ function App() {
                       <Route path="/pos/admin/scheduler-monitor" element={
                         <ProtectedRoute requiredRole={['System Admin']}>
                           <SchedulerMonitorPage />
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Referral System management — System Admin only (Phase 2) */}
+                      <Route path="/pos/admin/referrals" element={
+                        <ProtectedRoute requiredRole={['System Admin']}>
+                          <ReferralManagementPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/restaurant/:id/inbox" element={

@@ -589,6 +589,7 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/contents', contentsRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/referrals', require('./routes/referrals'));  // Referral System — mount EARLY (before /api fall-through routers) so public validate-code/track-click are not gated by another router's middleware
 app.use('/api/menu', menuRouter);
 app.use('/api/mobile', mobileRouter);
 app.use('/api/invoices', invoicesRouter);

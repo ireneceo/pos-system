@@ -1,9 +1,96 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-04-30 (v3.20 운영 배포 + 후속 fix/cleanup, 미배포 v3.21 후보)
+> **최종 업데이트:** 2026-05-01 (v3.21 운영 배포 + 양방향 cross-backup 정돈)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.20** (2026-04-30 운영 배포)
+> **현재 버전:** **v3.21** (2026-05-01 운영 배포)
+
+## ✅ 완료: v3.21 운영 배포 (2026-05-01)
+
+**Refer & Earn (리퍼럴 시스템) Phase 1+2+3 + IDOR 7 endpoint fix + Suspended account UX 재설계 + DB 인덱스 769개 정리**
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 리퍼럴 시스템 Phase 1+2+3 | DB 6 모델 + User 6 컬럼 + referralService 11 함수 + 27 endpoint + 7 페이지 + 7 이메일 템플릿 + i18n 4언어 (288 키 × 4 = 1152). 5 치명결함 fix (cancel hook / overview funnel / 사이드바 잔액 / delete guard / per-route rate limit). 비즈니스 로직 E2E 49 PASS / 0 FAIL. | ✅ |
+| Suspended account UX 재설계 | 로그인 차단 분기 제거 (`authService.js`) → `ProtectedRoute`가 invoice 페이지로 강제 redirect. `SuspendedBanner` 공통 컴포넌트 + `AuthContext.refreshUser()` hook. 결제 후 `restoreSubscription` → 새로고침 없이 즉시 정상 화면 전환. demo/test 계정 예외 처리. | ✅ |
+| IDOR 보안 fix 7 endpoint | orders-views (3) + activityLogs (2) + invoices-main (4) + membership (2) — `checkRestaurantAccess` 누락된 endpoint에 미들웨어 추가. cross-tenant 11/11 protected, own-tenant 6/6 OK 라이브 검증. | ✅ |
+| Invoice 카운트 정합성 fix | `dashboard.js:457`, `restaurants-subscription.js:209`, `BrandManagerDashboard:442`, `FoodcourtGeneralDashboard:687` — 4곳에서 `inv.status === 'sent'` legacy ENUM 사용 (Invoice ENUM에 'sent' 없음). 정상 ENUM (`pending_payment`/`payment_submitted`/`overdue`)으로 통일. 미납 인보이스 9건이 9건으로 정확히 표시 (이전 1건). | ✅ |
+| SignupPage 가입 흐름 정돈 | 로그인된 상태에서 `/signup` 진입 시 안내 카드 (Go to dashboard / Sign out and create new account 두 액션). `?ref=PURPLE-XXXX` 진입 시 referral 입력 필드 숨김 + 보라 배너만 표시. | ✅ |
+| SA Partners detail Modal | `/pos/admin/referrals` Partners 행 클릭 → 5섹션 Modal (Partner 정보 / Referred users / Wallets / Recent commissions / Recent payouts). i18n 4언어 17 신규 키. | ✅ |
+| Wallet UX 단순화 | 필터 5개 → 3개 (`All` / `Commissions` / `Payouts`), Stats 3개 → 2개 (Credit used 제거), `applyHint` 제거 (RP는 POS 안 씀). i18n 4 키 제거. | ✅ |
+| 한국어 i18n "수수료" → "커미션" | referrals namespace 26 키 + 조사 보정 10건 (`커미션를 → 커미션을` 등). | ✅ |
+| 운영 Staff fix | `routes/users.js` 5 endpoint 권한 확장 — Restaurant Admin이 자기 매장 staff 관리 가능. tenant isolation + role escalation 차단 ('Staff'만 만들 수 있음). | ✅ |
+| DB 마이그레이션 통합 cleanup | `cleanup-sequelize-duplicate-indexes.js` 신규 — 17개 테이블 769개 sequelize-style `<col>_<N>` 중복 unique 인덱스 정리 (canonical UNIQUE만 keep). MySQL 64-key 한계 해소 → ER_TOO_MANY_KEYS startup 에러 사라짐. | ✅ |
+| migrate-referral.js | referral 6 테이블 + User 6 컬럼 운영 마이그레이션 자동 실행. | ✅ |
+| health-check 안전망 강화 | security 카테고리 16 → 21 (cross-tenant IDOR 5건 영구 추가). 6번째 카테고리 'referral' 24 테스트. **총 67/67 → 72/72 PASS**. | ✅ |
+| 양방향 cross-backup 정돈 | POS 운영 `backup-database.sh` cross-backup 디렉토리 `production` → `production-pos` (PlanQ와 충돌 회피). dev cleanup 동일 통일. legacy `production/` → `production-pos/` 이동. 1회 수동 실행 → dev 도착 검증 (1.9 MB). | ✅ |
+
+### 자동 마이그레이션 (운영 배포 시)
+- `cleanup-users-duplicate-indexes.js`
+- `cleanup-restaurants-duplicate-indexes.js`
+- `cleanup-sequelize-duplicate-indexes.js` (17 테이블 769 중복)
+- `sprint4/5/6/7-migration.js` (idempotent skip)
+- `migrate-supplier-staff.js` (idempotent skip)
+- `migrate-soa-invoice.js` (idempotent skip)
+- `migrate-referral.js` (referral 6 테이블 + User 6 컬럼 신규 생성)
+
+### 운영 검증 (배포 후)
+- frontend HTTP 200 (`/`, `/restaurant/8/dashboard`, `/referral-program`, `/referral/login`)
+- backend `/api/health` ok, environment: production
+- referral 6 테이블 운영 DB 생성 확인
+- 운영 DB 중복 인덱스 cleanup 성공 (none ✓)
+- PM2 production-backend online
+
+### 후속 권고 (별도 작업)
+- 운영 cron(root) → irene user 이전 (또는 root 공개키 dev 등록) — root SSH key가 dev 미등록이라 cron 자동 cross-backup 실패 중. 1회 수동 실행은 성공. 사용자가 sudo 비번 직접 입력해야 하는 sensitive 작업이라 별도 세션으로 분리.
+
+### 수정/신규 파일 (60+)
+
+**Backend (신규 파일)**
+- `models/{ReferralWallet, ReferralCommission, ReferralWalletTransaction, ReferralPayout, ReferralClick, ReferralSettings}.js`
+- `routes/referrals.js`
+- `services/{referralService, invoiceLifecycle}.js`
+- `scripts/{cleanup-restaurants-duplicate-indexes, cleanup-sequelize-duplicate-indexes, cleanup-users-duplicate-indexes, migrate-referral}.js`
+
+**Backend (수정)**
+- `routes/{auth, dashboard, activityLogs, orders-views, invoices-main, invoices-payment, membership, notification-settings, users, restaurants-subscription}.js`
+- `services/{authService, invoiceScheduler}.js`
+- `middleware/auth.js`
+- `models/{User, index}.js`
+- `utils/notificationTemplates.js`
+- `scripts/health-check.js`
+
+**Frontend (신규 파일)**
+- `components/Common/SuspendedBanner.tsx`
+- `components/Referral/{ApplyCreditModal, ReferralAuthLayout, ReferralLayout}.tsx`
+- `pages/Admin/ReferralManagementPage.tsx`
+- `pages/Landing/ReferralLandingPage.tsx`
+- `pages/Referral/{ReferralDashboardPage, ReferralLoginPage, ReferralProfilePage, ReferralSignupPage, ReferralWalletPage}.tsx`
+
+**Frontend (수정)**
+- `App.tsx`, `i18n.ts`
+- `components/{ProtectedRoute, Landing/LandingHeader, Layout/MainLayout}.tsx`
+- `contexts/AuthContext.tsx`
+- `pages/Landing/SignupPage.tsx`
+- `pages/Restaurant/InvoicesPage.tsx`
+- `pages/BrandGeneral/BrandInvoicesPage.tsx`
+- `pages/FoodcourtGeneral/FoodcourtInvoicesPage.tsx`
+- `pages/Owner/OwnerInvoicesPage.tsx`
+- `pages/Brand/BrandManagerDashboard.tsx`
+- `pages/FoodcourtGeneral/FoodcourtGeneralDashboard.tsx`
+- `pages/Staff/StaffPage.tsx`
+
+**i18n (4 언어)**
+- `public/locales/{en,ko,zh,ms}/referrals.json` (288 → 301 키)
+
+**Sysops**
+- `deploy-to-production.sh` (4 신규 마이그레이션 추가)
+- 운영서버 `/var/www/scripts/backup-database.sh` (cross-backup 디렉토리 production-pos)
+- `/var/www/scripts/backup-database.sh` (dev cleanup production-pos)
+
+---
 
 ## ✅ 완료: v3.20 배포 후 후속 fix + Cleanup (2026-04-30, 미배포)
 

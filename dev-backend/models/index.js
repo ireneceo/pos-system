@@ -106,6 +106,13 @@ const ContractPlan = require('./ContractPlan');
 const FoodcourtUnit = require('./FoodcourtUnit');
 const WorkManual = require('./WorkManual');
 const WorkManualCategory = require('./WorkManualCategory');
+// Referral System (Refer & Earn)
+const ReferralWallet = require('./ReferralWallet');
+const ReferralCommission = require('./ReferralCommission');
+const ReferralWalletTransaction = require('./ReferralWalletTransaction');
+const ReferralPayout = require('./ReferralPayout');
+const ReferralClick = require('./ReferralClick');
+const ReferralSettings = require('./ReferralSettings');
 
 // Define associations
 // Brand - Restaurant associations
@@ -753,6 +760,34 @@ Ingredient.belongsTo(FoodcourtProduct, { foreignKey: 'foodcourt_product_id', as:
 SupplierProduct.hasMany(Ingredient, { foreignKey: 'supplier_product_id', as: 'ingredients' });
 FoodcourtProduct.hasMany(Ingredient, { foreignKey: 'foodcourt_product_id', as: 'ingredients' });
 
+// =====================================================================
+// Referral System associations
+// =====================================================================
+// Self-referencing — referrer User -> referred Users via users.referred_by
+User.belongsTo(User, { foreignKey: 'referred_by', as: 'referrer' });
+User.hasMany(User, { foreignKey: 'referred_by', as: 'referredUsers' });
+
+// Wallet — one user has many wallets (one per currency)
+ReferralWallet.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(ReferralWallet, { foreignKey: 'user_id', as: 'referralWallets' });
+
+// Commission — referrer + referred + invoice
+ReferralCommission.belongsTo(User, { foreignKey: 'referrer_id', as: 'referrer' });
+ReferralCommission.belongsTo(User, { foreignKey: 'referred_id', as: 'referred' });
+ReferralCommission.belongsTo(Invoice, { foreignKey: 'invoice_id', as: 'invoice' });
+User.hasMany(ReferralCommission, { foreignKey: 'referrer_id', as: 'commissionsEarned' });
+User.hasMany(ReferralCommission, { foreignKey: 'referred_id', as: 'commissionsTriggered' });
+Invoice.hasMany(ReferralCommission, { foreignKey: 'invoice_id', as: 'referralCommissions' });
+
+// Wallet Transaction — wallet ledger
+ReferralWalletTransaction.belongsTo(ReferralWallet, { foreignKey: 'wallet_id', as: 'wallet' });
+ReferralWallet.hasMany(ReferralWalletTransaction, { foreignKey: 'wallet_id', as: 'transactions' });
+
+// Payout — user + reviewer (System Admin)
+ReferralPayout.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+ReferralPayout.belongsTo(User, { foreignKey: 'reviewed_by', as: 'reviewer' });
+User.hasMany(ReferralPayout, { foreignKey: 'user_id', as: 'payouts' });
+
 Brand.addHook('afterUpdate', async (brand) => {
   const relevant = ['company_name', 'name', 'registration_no', 'website',
                     'bank_name', 'bank_account', 'bank_account_name'];
@@ -877,5 +912,12 @@ module.exports = {
   // Sprint 3 (Supply Chain Design 3)
   IngredientSellerProduct,
   PurchaseOrder,
-  PurchaseOrderItem
+  PurchaseOrderItem,
+  // Referral System
+  ReferralWallet,
+  ReferralCommission,
+  ReferralWalletTransaction,
+  ReferralPayout,
+  ReferralClick,
+  ReferralSettings
 };

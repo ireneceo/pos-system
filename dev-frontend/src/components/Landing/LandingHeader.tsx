@@ -331,6 +331,9 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           <NavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
             {t('nav.faq')}
           </NavLink>
+          <NavLink active={isActive('/referral-program')} onClick={() => handleNavigate('/referral-program')}>
+            {t('nav.referral', 'Referral')}
+          </NavLink>
           <NavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
             {t('nav.blog')}
           </NavLink>
@@ -374,6 +377,9 @@ const LandingHeader: React.FC<LandingHeaderProps> = ({ logo }) => {
           </MobileNavLink>
           <MobileNavLink active={isActive('/faq')} onClick={() => handleNavigate('/faq')}>
             {t('nav.faq')}
+          </MobileNavLink>
+          <MobileNavLink active={isActive('/referral-program')} onClick={() => handleNavigate('/referral-program')}>
+            {t('nav.referral', 'Referral')}
           </MobileNavLink>
           <MobileNavLink active={isActive('/blog')} onClick={() => handleNavigate('/blog')}>
             {t('nav.blog')}

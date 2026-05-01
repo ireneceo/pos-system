@@ -587,6 +587,34 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     } catch (e) { /* silent */ }
   }, []);
 
+  // Referral wallet summary for the sidebar "Refer & Earn" link.
+  // We pick the wallet with the largest balance to surface a single number;
+  // multi-currency partners can drill into /referral/wallet for the full view.
+  // null = not loaded yet, [] = loaded but empty (→ "Start earning!").
+  const [referralBalance, setReferralBalance] = useState<{ currency: string; balance: number } | null | 'empty'>(null);
+  const fetchReferralBalance = useCallback(async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+      const res = await fetch('/api/referrals/wallet', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (!json?.success || !Array.isArray(json.data) || json.data.length === 0) {
+        setReferralBalance('empty');
+        return;
+      }
+      const top = [...json.data].sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0))[0];
+      const bal = Number(top?.balance || 0);
+      if (!(bal > 0)) {
+        setReferralBalance('empty');
+        return;
+      }
+      setReferralBalance({ currency: String(top.currency || 'MYR'), balance: bal });
+    } catch (e) { /* silent — sidebar must never crash */ }
+  }, []);
+
   // 15초 polling (통합)
   useEffect(() => {
     if (user) {
@@ -595,6 +623,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       return () => clearInterval(interval);
     }
   }, [user, fetchBadgeCounts]);
+
+  // Referral balance — slower cadence (60s) since wallet only changes on
+  // commission credit / payout / credit-applied events, all infrequent.
+  useEffect(() => {
+    if (!user) return;
+    fetchReferralBalance();
+    const interval = setInterval(fetchReferralBalance, 60000);
+    return () => clearInterval(interval);
+  }, [user, fetchReferralBalance]);
 
   // CustomEvent 리스너: 상태 변경 시 즉시 뱃지 갱신
   useEffect(() => {
@@ -2089,6 +2126,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   <NavIcon>⊙</NavIcon>
                   {t("nav.schedulerMonitor", "Scheduler Monitor")}
                 </NavItem>
+                <NavItem to="/pos/admin/referrals" active={isActive('/pos/admin/referrals')} onClick={closeSidebar}>
+                  <NavIcon>↗</NavIcon>
+                  {t("nav.referrals", "Referrals")}
+                </NavItem>
                 <NavItem to="/pos/admin/content" active={isActive('/pos/admin/content')} onClick={closeSidebar}>
                   <NavIcon>☰</NavIcon>
                   {t("nav.content")}
@@ -2221,6 +2262,47 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </SidebarNav>
 
         <SidebarFooter>
+          {/* Referral program link — visible to every role (Phase 3).
+              Opens in a new tab so the user's POS context is preserved. */}
+          <a
+            href="/referral/dashboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 14px',
+              margin: '0 8px 12px',
+              borderRadius: 8,
+              background: 'linear-gradient(120deg, #635BFF, #8775FF)',
+              color: 'white',
+              textDecoration: 'none',
+              fontSize: 13,
+              fontWeight: 500,
+              boxShadow: '0 2px 8px rgba(99,91,255,0.25)'
+            }}
+            title={t('nav.referralProgram', 'Refer & earn — open referral dashboard') || ''}
+            onClick={() => closeSidebar?.()}
+          >
+            <span style={{ fontSize: 16, lineHeight: 1 }}>↗</span>
+            <span style={{ flex: 1 }}>{t('nav.referralProgram', 'Refer & Earn')}</span>
+            <span style={{ fontSize: 11, opacity: 0.85 }}>
+              {(() => {
+                if (referralBalance === null) return '';
+                if (referralBalance === 'empty') return t('nav.referralStartEarning', 'Start earning!');
+                const sym = referralBalance.currency === 'MYR' ? 'RM'
+                          : referralBalance.currency === 'USD' ? '$'
+                          : referralBalance.currency === 'KRW' ? '₩'
+                          : referralBalance.currency === 'SGD' ? 'S$'
+                          : referralBalance.currency === 'JPY' ? '¥'
+                          : referralBalance.currency === 'VND' ? '₫'
+                          : referralBalance.currency + ' ';
+                const decimals = ['KRW', 'JPY', 'VND'].includes(referralBalance.currency) ? 0 : 2;
+                return `${sym}${referralBalance.balance.toFixed(decimals)}`;
+              })()}
+            </span>
+          </a>
           <LanguageSelectorWrapper>
             <LanguageSelector variant="sidebar" />
           </LanguageSelectorWrapper>

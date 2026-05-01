@@ -51,7 +51,7 @@ fi
 # 14일 이상 된 백업 삭제
 find $BACKUP_DIR/daily/ -name "dev_db_*.sql.gz" -mtime +14 -delete
 # 크로스 백업도 14일 이상 삭제
-find /home/irene/backups/cross-backup/production/ -name "db_*.sql.gz" -mtime +14 -delete 2>/dev/null
+find /home/irene/backups/cross-backup/production-pos/ -name "db_*.sql.gz" -mtime +14 -delete 2>/dev/null
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Cleaned up backups older than 14 days" >> $LOG_FILE
 
 # 백업 디렉토리 총 용량

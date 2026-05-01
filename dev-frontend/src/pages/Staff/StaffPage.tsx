@@ -380,6 +380,7 @@ const StaffPage: React.FC = () => {
   const { t } = useTranslation('staff');
   const { user } = useAuth();
   const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [listError, setListError] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
 
@@ -427,6 +428,7 @@ const StaffPage: React.FC = () => {
   const [formError, setFormError] = useState('');
 
   const fetchStaff = useCallback(async () => {
+    setListError('');
     try {
       const restaurantId = user?.restaurantId;
       const token = getAuthToken();
@@ -434,42 +436,57 @@ const StaffPage: React.FC = () => {
 
       const usersResponse = await fetch('/api/users', { headers });
 
-      if (usersResponse.ok) {
-        const usersData = await usersResponse.json();
-        const usersArray = usersData.data || usersData;
-
-        const restaurantStaff = usersArray.filter((u: any) => {
-          return u.restaurant_id === restaurantId || u.restaurant_id?.toString() === restaurantId?.toString();
-        });
-
-        const transformedStaff: Staff[] = restaurantStaff.map((u: any) => ({
-          id: u.id.toString(),
-          username: u.username || '',
-          name: u.full_name || u.username || 'Unknown',
-          email: u.email,
-          phone: u.phone || '',
-          role: u.role,
-          department: u.department || '',
-          pin_code: u.pin_code || null,
-          company_name: u.company_name || '',
-          restaurantId: u.restaurant_id?.toString(),
-          status: 'active' as const,
-          joinDate: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
-          permissions: (() => {
-            let p = u.permissions;
-            if (!p) return [];
-            // Unwrap nested JSON strings (e.g. double/triple stringified)
-            for (let i = 0; i < 5 && typeof p === 'string'; i++) {
-              try { p = JSON.parse(p); } catch { return []; }
-            }
-            if (Array.isArray(p)) return p.filter((x: any) => typeof x === 'string' && x.length > 1);
-            return [];
-          })()
-        }));
-
-        setStaffList(transformedStaff);
+      if (!usersResponse.ok) {
+        // Surface a useful message instead of silently showing an empty list.
+        // Common causes: 403 (role guard), restaurant_id missing on user.
+        let detail = `Failed to load staff (${usersResponse.status})`;
+        try {
+          const body = await usersResponse.json();
+          if (body?.error) detail = body.error;
+          else if (body?.message) detail = body.message;
+        } catch { /* keep default */ }
+        setListError(detail);
+        setStaffList([]);
+        return;
       }
-    } catch (_) { /* silently fail */ }
+
+      const usersData = await usersResponse.json();
+      const usersArray = usersData.data || usersData;
+
+      const restaurantStaff = usersArray.filter((u: any) => {
+        return u.restaurant_id === restaurantId || u.restaurant_id?.toString() === restaurantId?.toString();
+      });
+
+      const transformedStaff: Staff[] = restaurantStaff.map((u: any) => ({
+        id: u.id.toString(),
+        username: u.username || '',
+        name: u.full_name || u.username || 'Unknown',
+        email: u.email,
+        phone: u.phone || '',
+        role: u.role,
+        department: u.department || '',
+        pin_code: u.pin_code || null,
+        company_name: u.company_name || '',
+        restaurantId: u.restaurant_id?.toString(),
+        status: 'active' as const,
+        joinDate: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
+        permissions: (() => {
+          let p = u.permissions;
+          if (!p) return [];
+          // Unwrap nested JSON strings (e.g. double/triple stringified)
+          for (let i = 0; i < 5 && typeof p === 'string'; i++) {
+            try { p = JSON.parse(p); } catch { return []; }
+          }
+          if (Array.isArray(p)) return p.filter((x: any) => typeof x === 'string' && x.length > 1);
+          return [];
+        })()
+      }));
+
+      setStaffList(transformedStaff);
+    } catch (e) {
+      setListError(e instanceof Error ? e.message : 'Failed to load staff');
+      setStaffList([]);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -758,6 +775,20 @@ const StaffPage: React.FC = () => {
         </Header>
 
         <Content>
+          {listError && (
+            <div style={{
+              background: '#FEF2F2',
+              border: '1px solid #FECACA',
+              color: '#B91C1C',
+              padding: '12px 16px',
+              borderRadius: 8,
+              marginBottom: 16,
+              fontSize: 14,
+              lineHeight: 1.5
+            }}>
+              <strong>Couldn't load staff:</strong> {listError}
+            </div>
+          )}
           <StatsGrid>
             <StatCard color="#059669">
               <StatValue>{stats.total}</StatValue>

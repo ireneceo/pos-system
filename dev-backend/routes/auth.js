@@ -47,7 +47,8 @@ router.post('/signup', async (req, res, next) => {
             foodcourt_name, foodcourt_address,
             company_name,
             supplier_name, invitation_token,
-            plan_id, billing_cycle, currency } = req.body;
+            plan_id, billing_cycle, currency,
+            referral_code } = req.body;
 
     // Validate required fields
     if (!role || !full_name || !email || !username || !password || !plan_id) {
@@ -93,7 +94,8 @@ router.post('/signup', async (req, res, next) => {
       foodcourt_name, foodcourt_address,
       company_name,
       supplier_name, invitation_token,
-      plan_id, billing_cycle, currency
+      plan_id, billing_cycle, currency,
+      referral_code
     });
 
     successResponse(res, result, 'Account created successfully', 201);
@@ -103,6 +105,38 @@ router.post('/signup', async (req, res, next) => {
     }
     if (error.message.includes('not available') || error.message.includes('Invalid account type')) {
       return errorResponse(res, error.message, 400, 'VALIDATION_ERROR');
+    }
+    next(error);
+  }
+});
+
+// Self-signup for Referral Partner (no plan, no entity, no trial)
+router.post('/referral-signup', async (req, res, next) => {
+  try {
+    const { full_name, email, username, password, phone, referral_code } = req.body;
+
+    if (!full_name || !email || !username || !password) {
+      return errorResponse(res, 'Full name, email, username and password are required', 400, 'VALIDATION_ERROR');
+    }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return errorResponse(res, 'Password must be at least 8 characters with uppercase, lowercase, and number', 400, 'VALIDATION_ERROR');
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+    if (!usernameRegex.test(username)) {
+      return errorResponse(res, 'Username must be 3-30 characters (letters, numbers, underscore only)', 400, 'VALIDATION_ERROR');
+    }
+
+    const result = await authService.signupReferralPartner({
+      full_name, email, username, password, phone, referral_code
+    });
+
+    successResponse(res, result, 'Referral Partner account created successfully', 201);
+  } catch (error) {
+    if (error.message.includes('already registered') || error.message.includes('already taken')) {
+      return errorResponse(res, error.message, 409, 'DUPLICATE_ERROR');
     }
     next(error);
   }
@@ -184,6 +218,27 @@ router.get('/me', async (req, res, next) => {
       if (sc) supplierCompanyId = sc.id;
     }
 
+    // Resolve restaurant.status for RA/Staff so the frontend can pin suspended
+    // accounts to the invoice page (rather than blocking login outright).
+    // Demo / test restaurants are reported but flagged so the frontend can
+    // exclude them from the invoice-page pin.
+    let restaurantStatus = null;
+    let restaurantName = null;
+    let restaurantIsDemo = false;
+    let restaurantIsTest = false;
+    if (user.restaurant_id) {
+      const Restaurant = require('../models/Restaurant');
+      const r = await Restaurant.findByPk(user.restaurant_id, {
+        attributes: ['status', 'name', 'is_demo', 'is_test']
+      });
+      if (r) {
+        restaurantStatus = r.status;
+        restaurantName = r.name;
+        restaurantIsDemo = !!r.is_demo;
+        restaurantIsTest = !!r.is_test;
+      }
+    }
+
     const userData = {
       id: user.id,
       email: user.email,
@@ -194,6 +249,13 @@ router.get('/me', async (req, res, next) => {
       brand_id: user.brand_id,
       foodcourt_id: user.foodcourt_id,
       supplier_company_id: supplierCompanyId,
+      subscription_status: user.subscription_status || null,
+      restaurantStatus,
+      restaurantName,
+      restaurantIsDemo,
+      restaurantIsTest,
+      is_demo: !!user.is_demo,
+      is_test: !!user.is_test,
       preferred_language: user.preferred_language || 'en',
       permissions
     };

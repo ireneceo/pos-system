@@ -640,6 +640,136 @@ function monthlySoaEmail({ sellerName, month, invoices = [], totalDue, currency,
   }, title, body, 'en');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Phase 3 — Referral Program emails (7 events)
+// ═══════════════════════════════════════════════════════════════
+
+function fmtRefMoney(amount, currency) {
+  const a = parseFloat(amount) || 0;
+  if (currency === 'KRW' || currency === 'JPY' || currency === 'VND') {
+    return `${currency} ${Math.round(a).toLocaleString()}`;
+  }
+  return `${currency} ${a.toFixed(2)}`;
+}
+
+// 1. RP welcome — sent on referral-signup
+function referralPartnerWelcomeEmail({ fullName, referralCode }) {
+  const dashboardUrl = `${BASE_URL}/referral/dashboard`;
+  const shareUrl = `${BASE_URL}/signup?ref=${referralCode}`;
+  const title = 'Welcome to the Purple Referral Program';
+  const body = `
+    <p style="margin:0 0 12px;">Hi <strong>${fullName || 'there'}</strong>,</p>
+    <p style="margin:0 0 16px;">You're now a Purple Referral Partner. Earn <strong>15% recurring commission</strong> on every Purple POS subscription you bring in — and your referral gets <strong>20% off their first month</strong>.</p>
+    <div style="background:#F1F0FF;border-radius:8px;padding:18px;margin:0 0 20px;">
+      <div style="font-size:11px;font-weight:600;color:#6B7C93;letter-spacing:0.4px;text-transform:uppercase;">Your code</div>
+      <div style="font-family:'SFMono-Regular',Menlo,monospace;font-size:22px;font-weight:700;color:${BRAND_COLOR};margin:6px 0;">${referralCode}</div>
+      <div style="font-size:13px;color:#0A2540;word-break:break-all;">${shareUrl}</div>
+    </div>
+    ${ctaButton('Open dashboard', dashboardUrl)}`;
+  return withRenderMeta(
+    { subject: title, html: wrapTemplate(title, body) },
+    title, body, 'en'
+  );
+}
+
+// 2. Referrer notified that someone signed up using their code
+function referredSignupEmail({ referrerName, referredBusiness, referredRole }) {
+  const dashboardUrl = `${BASE_URL}/referral/dashboard`;
+  const title = `New referral: ${referredBusiness}`;
+  const body = `
+    <p style="margin:0 0 12px;">Hi <strong>${referrerName || 'there'}</strong>,</p>
+    <p style="margin:0 0 16px;">Good news — <strong>${referredBusiness}</strong> just signed up using your referral code as a ${referredRole || 'Purple POS user'}.</p>
+    <p style="margin:0 0 16px;color:#6B7C93;font-size:14px;">You'll start earning a 15% commission as soon as their first paid invoice clears.</p>
+    ${ctaButton('See your referrals', dashboardUrl)}`;
+  return withRenderMeta(
+    { subject: title, html: wrapTemplate(title, body) },
+    title, body, 'en'
+  );
+}
+
+// 3. Commission credited — sent when referrer's wallet receives credit
+function commissionCreditedEmail({ referrerName, referredBusiness, amount, currency, invoiceNumber }) {
+  const walletUrl = `${BASE_URL}/referral/wallet`;
+  const title = `+ ${fmtRefMoney(amount, currency)} commission credited`;
+  const body = `
+    <p style="margin:0 0 12px;">Hi <strong>${referrerName || 'there'}</strong>,</p>
+    <p style="margin:0 0 16px;">${referredBusiness || 'Your referral'} paid an invoice — your commission has been credited.</p>
+    ${infoTable(
+      infoRow('Amount', `<span style="color:#10B981;font-weight:700;">+ ${fmtRefMoney(amount, currency)}</span>`) +
+      (invoiceNumber ? infoRow('Invoice', invoiceNumber) : '') +
+      (referredBusiness ? infoRow('From', referredBusiness) : '')
+    )}
+    <p style="margin:18px 0 0;color:#6B7C93;font-size:13px;">Apply your balance at checkout when paying any Purple POS invoice, or request a payout once you reach the minimum.</p>
+    <div style="margin-top:16px;">${ctaButton('Open wallet', walletUrl)}</div>`;
+  return withRenderMeta(
+    { subject: title, html: wrapTemplate(title, body) },
+    title, body, 'en'
+  );
+}
+
+// 4. Admin notified — partner submitted a payout request
+function payoutRequestedAdminEmail({ partnerName, amount, currency, bank }) {
+  const adminUrl = `${BASE_URL}/pos/admin/referrals?tab=payouts`;
+  const title = `Payout request: ${partnerName} — ${fmtRefMoney(amount, currency)}`;
+  const body = `
+    <p style="margin:0 0 16px;"><strong>${partnerName}</strong> has requested a payout.</p>
+    ${infoTable(
+      infoRow('Amount', `<strong>${fmtRefMoney(amount, currency)}</strong>`) +
+      (bank?.bank_name ? infoRow('Bank', bank.bank_name) : '') +
+      (bank?.bank_account_number ? infoRow('Account #', bank.bank_account_number) : '') +
+      (bank?.bank_account_holder ? infoRow('Holder', bank.bank_account_holder) : '')
+    )}
+    <div style="margin-top:18px;">${ctaButton('Review in admin', adminUrl)}</div>`;
+  return withRenderMeta(
+    { subject: title, html: wrapTemplate(title, body) },
+    title, body, 'en'
+  );
+}
+
+// 5. Partner notified — payout approved
+function payoutApprovedEmail({ partnerName, amount, currency }) {
+  const url = `${BASE_URL}/referral/wallet`;
+  const title = `Payout approved: ${fmtRefMoney(amount, currency)}`;
+  const body = `
+    <p style="margin:0 0 12px;">Hi <strong>${partnerName || 'there'}</strong>,</p>
+    <p style="margin:0 0 16px;">Your payout request of <strong>${fmtRefMoney(amount, currency)}</strong> has been approved. Funds will be transferred to your bank account shortly.</p>
+    ${ctaButton('Track in wallet', url)}`;
+  return withRenderMeta(
+    { subject: title, html: wrapTemplate(title, body) },
+    title, body, 'en'
+  );
+}
+
+// 6. Partner notified — payout marked paid
+function payoutPaidEmail({ partnerName, amount, currency, transactionReference }) {
+  const url = `${BASE_URL}/referral/wallet`;
+  const title = `Payout sent: ${fmtRefMoney(amount, currency)}`;
+  const body = `
+    <p style="margin:0 0 12px;">Hi <strong>${partnerName || 'there'}</strong>,</p>
+    <p style="margin:0 0 16px;">Your payout of <strong>${fmtRefMoney(amount, currency)}</strong> has been transferred. It should appear in your account within 1–3 business days.</p>
+    ${transactionReference ? infoTable(infoRow('Transaction reference', transactionReference)) : ''}
+    <div style="margin-top:18px;">${ctaButton('See payout history', url)}</div>`;
+  return withRenderMeta(
+    { subject: title, html: wrapTemplate(title, body) },
+    title, body, 'en'
+  );
+}
+
+// 7. Partner notified — payout rejected (wallet refunded)
+function payoutRejectedEmail({ partnerName, amount, currency, reason }) {
+  const url = `${BASE_URL}/referral/wallet`;
+  const title = `Payout request not approved`;
+  const body = `
+    <p style="margin:0 0 12px;">Hi <strong>${partnerName || 'there'}</strong>,</p>
+    <p style="margin:0 0 16px;">Your payout request of <strong>${fmtRefMoney(amount, currency)}</strong> was not approved. The amount has been returned to your wallet — you can request again with corrected details.</p>
+    ${reason ? `<div style="background:#FEF2F2;border-left:4px solid #DC2626;padding:14px 16px;border-radius:0 8px 8px 0;margin:16px 0;font-size:14px;color:#0A2540;"><strong>Reason</strong><br>${reason}</div>` : ''}
+    ${ctaButton('Open wallet', url)}`;
+  return withRenderMeta(
+    { subject: title, html: wrapTemplate(title, body) },
+    title, body, 'en'
+  );
+}
+
 module.exports = {
   wrapTemplate,
   noticeReceivedEmail,
@@ -661,5 +791,13 @@ module.exports = {
   sellerOrderReceivedEmail,
   tradeInvoiceCreatedEmail,
   tradeInvoicePaidEmail,
-  monthlySoaEmail
+  monthlySoaEmail,
+  // Phase 3 — Referral Program
+  referralPartnerWelcomeEmail,
+  referredSignupEmail,
+  commissionCreditedEmail,
+  payoutRequestedAdminEmail,
+  payoutApprovedEmail,
+  payoutPaidEmail,
+  payoutRejectedEmail
 };

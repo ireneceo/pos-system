@@ -11,12 +11,12 @@ const { sequelize } = require('../config/database');
 const { executeQuery, executeTransaction } = require('../utils/queryWrapper');
 const { deductInventoryForOrder } = require('../services/inventoryDeductionService');
 const { earnPointsForOrder, refundPointsForOrder, usePointsForOrder } = require('../services/pointService');
-const { authenticateToken, optionalAuthenticateToken } = require('../middleware/auth');
+const { authenticateToken, optionalAuthenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const ActivityLog = require('../models/ActivityLog');
 const { logActivity } = require('../utils/activityLogger');
 const { getTodayBounds, getOrderDatePrefix, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 
-router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
+router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const {
       status,
@@ -169,7 +169,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
 });
 
 // Get order counts by status (optimized for tab counts)
-router.get('/restaurant/:restaurantId/counts', authenticateToken, async (req, res) => {
+router.get('/restaurant/:restaurantId/counts', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const restaurantId = req.params.restaurantId;
@@ -413,7 +413,7 @@ router.get('/analytics/sales', authenticateToken, async (req, res) => {
 });
 
 // Generate next order number (prevents duplicates)
-router.get('/restaurant/:restaurantId/next-order-number', authenticateToken, async (req, res) => {
+router.get('/restaurant/:restaurantId/next-order-number', authenticateToken, checkRestaurantAccess, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const restaurant = restaurantId ? await Restaurant.findByPk(restaurantId) : null;

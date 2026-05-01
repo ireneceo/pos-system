@@ -454,7 +454,16 @@ router.get('/restaurant/:restaurantId/stats', authenticateToken, checkRestaurant
       where: { restaurant_id: restaurantId }
     });
     
-    const unpaidInvoices = invoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue');
+    // Match the canonical Invoice.status ENUM ('draft'|'pending_payment'|
+    // 'payment_submitted'|'paid'|'overdue'|'cancelled'). The legacy 'sent'
+    // value never existed in this schema, which silently zero-counted every
+    // pending invoice on the restaurant dashboard. /invoices/to-pay already
+    // uses the same set; keeping them aligned.
+    const unpaidInvoices = invoices.filter(inv =>
+      inv.status === 'pending_payment' ||
+      inv.status === 'payment_submitted' ||
+      inv.status === 'overdue'
+    );
     const totalUnpaidAmount = unpaidInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount), 0);
     
     // Format recent orders with items

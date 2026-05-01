@@ -66,7 +66,17 @@ const requireRole = (...allowedRoles) => {
     }
 
     if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
+      // Surface which role(s) are required so the UI can give the user a useful
+      // hint instead of the opaque "Insufficient permissions". The legacy phrase
+      // is kept in the message so existing health-check / regex consumers still
+      // match. UI prefers `error` for display.
+      return res.status(403).json({
+        success: false,
+        error: `Insufficient permissions — this action requires one of: ${allowedRoles.join(', ')}. Your role is ${req.user.role}.`,
+        required_roles: allowedRoles,
+        current_role: req.user.role,
+        code: 'INSUFFICIENT_ROLE'
+      });
     }
 
     next();

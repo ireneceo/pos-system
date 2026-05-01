@@ -23,7 +23,10 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'seller_order_received', label: 'New Purchase Order Received', description: 'When a buyer submits a purchase order to your company', section: 'Supply Chain', roles: ['Supplier Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
   { key: 'trade_invoice_created', label: 'Trade Invoice Issued', description: 'When a supplier issues a trade invoice for your purchase order', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
   { key: 'trade_invoice_paid', label: 'Trade Invoice Paid', description: 'When a buyer pays a trade invoice you issued', section: 'Supply Chain', roles: ['Supplier Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
-  { key: 'monthly_soa', label: 'Monthly Statement of Account', description: 'Monthly summary of trade invoices for monthly_soa contracts', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] }
+  { key: 'monthly_soa', label: 'Monthly Statement of Account', description: 'Monthly summary of trade invoices for monthly_soa contracts', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
+  // Phase 3 — Referral Program
+  { key: 'referral_commission', label: 'Referral Commission', description: 'When a commission is credited to your wallet (referrer) or a referral signs up', section: 'Referrals', roles: ['all'] },
+  { key: 'referral_payout', label: 'Referral Payout Updates', description: 'Payout request status updates (approved / paid / rejected)', section: 'Referrals', roles: ['all'] }
 ];
 
 // GET - User notification preferences

@@ -136,6 +136,33 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/pos" state={{ from: location }} replace />;
   }
 
+  // Suspended account guard — overdue invoices.
+  // Pin every route except the invoice page so the user can settle the bill.
+  // Backend restores status automatically on payment (handleInvoicePaid → restoreSubscription),
+  // so a subsequent /me refresh clears this gate without manual intervention.
+  // Demo / test fixtures are exempt so QA tooling stays usable.
+  if (user) {
+    const isExempt =
+      user.role === 'System Admin' ||
+      user.isDemo || user.isTest ||
+      user.restaurantIsDemo || user.restaurantIsTest;
+    const isSuspended =
+      user.subscriptionStatus === 'suspended' ||
+      user.restaurantStatus === 'suspended';
+    if (isSuspended && !isExempt) {
+      const invoiceUrl =
+        user.role === 'Restaurant Admin' || user.role === 'Staff'
+          ? user.restaurantId ? `/restaurant/${user.restaurantId}/invoices` : '/pos'
+          : user.role === 'Brand General' ? '/pos/brand/invoices'
+          : user.role === 'Foodcourt General' ? '/pos/foodcourt/invoices'
+          : user.role === 'Restaurant Owner' ? '/pos/owner/invoices'
+          : null;
+      if (invoiceUrl && !location.pathname.startsWith(invoiceUrl)) {
+        return <Navigate to={invoiceUrl} replace />;
+      }
+    }
+  }
+
   // Restaurant ID 매칭 확인 (Restaurant Admin 및 Staff만)
   if (requireRestaurantMatch && params.restaurantId && user) {
     const urlRestaurantId = parseInt(params.restaurantId, 10);
@@ -187,6 +214,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return user.restaurantId
           ? <Navigate to={`/restaurant/${user.restaurantId}/dashboard`} replace />
           : <Navigate to="/pos" replace />;
+      case 'Referral Partner':
+        return <Navigate to="/referral/dashboard" replace />;
       default:
         return <Navigate to="/pos" replace />;
     }
@@ -295,6 +324,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           return user.restaurantId
             ? <Navigate to={`/restaurant/${user.restaurantId}/dashboard`} replace />
             : <Navigate to="/pos" replace />;
+        case 'Referral Partner':
+          return <Navigate to="/referral/dashboard" replace />;
         default:
           return <Navigate to="/pos" replace />;
       }

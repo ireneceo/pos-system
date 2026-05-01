@@ -24,7 +24,13 @@ User.init({
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('System Admin', 'Foodcourt General', 'Brand General', 'Foodcourt Manager', 'Brand Manager', 'Restaurant Owner', 'Restaurant Admin', 'Staff'),
+    type: DataTypes.ENUM(
+      'System Admin', 'Foodcourt General', 'Brand General',
+      'Foodcourt Manager', 'Brand Manager', 'Restaurant Owner',
+      'Restaurant Admin', 'Staff',
+      'Supplier Admin', 'Supplier Staff',
+      'Referral Partner'
+    ),
     defaultValue: 'Staff'
   },
   full_name: {
@@ -265,6 +271,36 @@ User.init({
       isIn: [['en', 'ko', 'zh', 'ms']]
     },
     comment: 'UI language preference (en, ko, zh, ms)'
+  },
+  referral_code: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    unique: true,
+    comment: 'PURPLE-XXXX format, lazy-generated on first /referral access'
+  },
+  referred_by: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'User.id of the referrer who brought this user in via referral_code'
+  },
+  referral_discount_applied: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: 'True after first POS subscription invoice has consumed the referral first-month discount'
+  },
+  bank_name: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: 'Payout bank — used for referral payouts'
+  },
+  bank_account_number: {
+    type: DataTypes.STRING(50),
+    allowNull: true
+  },
+  bank_account_holder: {
+    type: DataTypes.STRING(100),
+    allowNull: true
   }
 }, {
   sequelize: database.sequelize,
@@ -281,6 +317,15 @@ User.init({
       unique: true,
       fields: ['email'],
       name: 'email'
+    },
+    {
+      unique: true,
+      fields: ['referral_code'],
+      name: 'idx_users_referral_code'
+    },
+    {
+      fields: ['referred_by'],
+      name: 'idx_users_referred_by'
     }
   ]
 });

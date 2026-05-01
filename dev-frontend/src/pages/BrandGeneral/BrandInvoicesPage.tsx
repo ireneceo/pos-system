@@ -7,6 +7,7 @@ import InvoiceHistoryModal from '../../components/Invoice/InvoiceHistoryModal';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
 import { useAuth } from '../../contexts/AuthContext';
+import SuspendedBanner from '../../components/Common/SuspendedBanner';
 import { StatusMessage } from '../../components/UI/CommonStyles';
 import {
   Container,
@@ -76,7 +77,7 @@ import BrandInvoiceCategoryManager from './invoices/BrandInvoiceCategoryManager'
 const BrandInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('brand');
   const { operationSettings } = useStore();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -258,6 +259,8 @@ const BrandInvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setInvoicesToPay(data);
+        // Reflect server-side restoreSubscription right away (suspended → active).
+        refreshUser();
       } else {
         setInvoicesToPay([]);
       }
@@ -1352,6 +1355,7 @@ const BrandInvoicesPage: React.FC = () => {
           <ActionSection></ActionSection>
         </Header>
         <Content>
+          <SuspendedBanner />
 
         <StatsGrid>
           <StatCard color="#059669"><StatValue>{totalIssuedCount}</StatValue><StatLabel>{t('brand:brandInvoicesPage.issued')}</StatLabel><StatDescription>{t('brand:brandInvoicesPage.invoicesYouSent')}</StatDescription></StatCard>

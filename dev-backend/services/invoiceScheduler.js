@@ -342,6 +342,25 @@ class InvoiceScheduler {
       total_amount: discountedAmount
     });
 
+    // Referral first-month discount (negative item) — applied BEFORE finalizeInvoice
+    // so the canonical recomputation folds it into subtotal/total. Idempotent at
+    // user level via referral_discount_applied flag.
+    if (restaurant.admin_id) {
+      try {
+        const referralService = require('./referralService');
+        const User = require('../models/User');
+        const adminUser = await User.findByPk(restaurant.admin_id);
+        if (adminUser) {
+          const applied = await referralService.applyFirstMonthDiscount(invoice, adminUser, planAmount);
+          if (applied > 0) {
+            console.log(`✓ Referral 1st-month discount applied: ${currency} ${applied.toFixed(2)} on ${invoiceNumber}`);
+          }
+        }
+      } catch (e) {
+        console.error('[createSubscriptionInvoice] referral discount hook failed:', e.message);
+      }
+    }
+
     // Single source of truth — header recomputed from items + additional_charges + discount.
     const { finalizeInvoice } = require('../utils/invoiceCalculation');
     await finalizeInvoice(invoice.id);
@@ -1278,6 +1297,29 @@ class InvoiceScheduler {
       amount: planAmount,
       item_type: 'subscription'
     });
+
+    // Referral first-month discount — applied BEFORE finalizeInvoice (same pattern as
+    // createSubscriptionInvoice). entity → payer user mapping mirrors the payer_type
+    // resolution above so referred Brand/Foodcourt/Owner/Supplier get the discount too.
+    try {
+      const referralService = require('./referralService');
+      const User = require('../models/User');
+      let payerUser = null;
+      if (entityType === 'brand' || entityType === 'foodcourt' || entityType === 'supplier') {
+        if (entity.owner_id) payerUser = await User.findByPk(entity.owner_id);
+      } else if (entityType === 'owner') {
+        // For Owner self-signup, `entity` IS the user record
+        payerUser = entity.id ? await User.findByPk(entity.id) : null;
+      }
+      if (payerUser) {
+        const applied = await referralService.applyFirstMonthDiscount(invoice, payerUser, planAmount);
+        if (applied > 0) {
+          console.log(`✓ Referral 1st-month discount applied: ${currency} ${applied.toFixed(2)} on ${invoiceNumber}`);
+        }
+      }
+    } catch (e) {
+      console.error('[createEntitySubscriptionInvoice] referral discount hook failed:', e.message);
+    }
 
     const { finalizeInvoice } = require('../utils/invoiceCalculation');
     await finalizeInvoice(invoice.id);

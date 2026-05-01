@@ -8,6 +8,7 @@ import { formatDateTime } from '../../utils/timezone';
 import { formatAddressHtml, AppLocale } from '../../utils/formatAddress';
 import InvoiceHistoryModal from '../../components/Invoice/InvoiceHistoryModal';
 import { useAuth } from '../../contexts/AuthContext';
+import SuspendedBanner from '../../components/Common/SuspendedBanner';
 import { StatusMessage } from '../../components/UI/CommonStyles';
 import ConfirmModal from '../../components/ConfirmModal';
 import {
@@ -54,7 +55,7 @@ import { FoodcourtInvoiceCreateModal } from './invoices';
 const FoodcourtInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('foodcourt');
   const { operationSettings } = useStore();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -229,6 +230,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setInvoicesToPay(data);
+        // Reflect server-side restoreSubscription right away (suspended → active).
+        refreshUser();
       } else { setInvoicesToPay([]); }
     } catch (error) {
       console.error('Error fetching invoices to pay:', error);
@@ -1246,6 +1249,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
           </ActionSection>
         </Header>
         <Content>
+          <SuspendedBanner />
 
         <Tabs>
           <Tab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>

@@ -48,7 +48,7 @@ for (const arg of args) {
     console.log(`Usage: node scripts/health-check.js [options]
 
 Options:
-  --category=NAME   특정 카테고리만 실행 (auth, security, pos, mobile, payment)
+  --category=NAME   특정 카테고리만 실행 (auth, security, pos, mobile, payment, referral)
   --verbose         응답 본문까지 출력
   --quiet           통과는 숨기고 실패만
   --host=URL        대상 호스트 (기본: http://localhost:3001)
@@ -148,7 +148,19 @@ async function setup() {
     process.exit(1);
   }
 
-  return { adminUser, adminToken, member, customerToken, restId };
+  // Optional: a Restaurant Admin user, used by referral tests to verify RBAC
+  // (admin endpoints must reject non-System-Admin roles).
+  let restaurantAdminUser = null;
+  let restaurantAdminToken = null;
+  try {
+    const { User } = require('../models');
+    restaurantAdminUser = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (restaurantAdminUser) {
+      restaurantAdminToken = jwt.sign({ userId: restaurantAdminUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    }
+  } catch { /* optional — tests that need it will gracefully skip */ }
+
+  return { adminUser, adminToken, member, customerToken, restId, restaurantAdminUser, restaurantAdminToken };
 }
 
 // ============================================
@@ -183,7 +195,7 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
 // ============================================
 // 카테고리 2: 보안 가드 (회귀 방지)
 // ============================================
-function defineSecurityTests({ customerToken, member }) {
+function defineSecurityTests({ customerToken, member, restId }) {
   // 익명 차단
   test('security', '익명 customers/:rid → 401', async () => (await request('GET', '/customers/1')).status === 401);
   test('security', '익명 customers/stats/:cid → 401', async () => (await request('GET', '/customers/stats/1')).status === 401);
@@ -252,6 +264,56 @@ function defineSecurityTests({ customerToken, member }) {
     const tk = jwt.sign({ userId: st.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
     const r = await request('POST', '/restaurants', { name: 'x' }, { Authorization: `Bearer ${tk}` });
     return r.status === 403 && /Insufficient permissions/i.test(JSON.stringify(r.body));
+  });
+
+  // Cross-tenant IDOR — RA must not access another restaurant's scoped endpoints.
+  // Closes the gap discovered during v3.21 verification on /orders, /activity-logs,
+  // /invoices/settings, /membership/settings (checkRestaurantAccess was missing).
+  // Uses any RA whose restaurant_id differs from `restId` (= member's restaurant).
+  test('security', '다른 RA가 cross-tenant /orders/restaurant/:rid → 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/orders/restaurant/${otherRid}?limit=3`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '다른 RA가 cross-tenant /orders/restaurant/:rid/counts → 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/orders/restaurant/${otherRid}/counts`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '다른 RA가 cross-tenant /activity-logs/restaurant/:rid → 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/activity-logs/restaurant/${otherRid}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '다른 RA가 cross-tenant /invoices/settings/:rid → 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('GET', `/invoices/settings/${otherRid}`, null, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
+  test('security', '다른 RA가 cross-tenant PUT /membership/settings/:rid → 403', async () => {
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra || !ra.restaurant_id) return true;
+    const otherRid = ra.restaurant_id === restId ? restId + 1 : restId;
+    const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('PUT', `/membership/settings/${otherRid}`, { is_active: true }, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
   });
 }
 
@@ -331,6 +393,89 @@ function definePaymentTests() {
   test('payment', '없는 주문 capture-paypal-order → 404', async () => {
     return (await request('POST', '/orders/99999999/capture-paypal-order', { orderId: 'xxx' })).status === 404;
   });
+}
+
+// ============================================
+// 카테고리 6: 리퍼럴 시스템
+// ============================================
+function defineReferralTests({ adminToken, customerToken, restaurantAdminToken }) {
+  // ── Public surface ────────────────────────────────────────
+  test('referral', '익명 validate-code 잘못된 형식 → 200 valid:false', async () => {
+    const r = await request('GET', '/referrals/validate-code?code=NOT-A-CODE');
+    return r.status === 200 && r.body?.success === true && r.body?.data?.valid === false;
+  });
+
+  test('referral', '익명 validate-code 미존재 코드 → 200 valid:false', async () => {
+    const r = await request('GET', '/referrals/validate-code?code=PURPLE-ZZZZ');
+    return r.status === 200 && r.body?.success === true && r.body?.data?.valid === false;
+  });
+
+  test('referral', '익명 track-click 잘못된 코드 → 200 tracked:false', async () => {
+    const r = await request('POST', '/referrals/track-click', { referral_code: 'BAD' });
+    return r.status === 200 && r.body?.success === true && r.body?.data?.tracked === false;
+  });
+
+  // ── Auth-required partner self-service ────────────────────
+  test('referral', '익명 my-code → 401', async () => (await request('GET', '/referrals/my-code')).status === 401);
+  test('referral', '익명 dashboard → 401', async () => (await request('GET', '/referrals/dashboard')).status === 401);
+  test('referral', '익명 wallet → 401', async () => (await request('GET', '/referrals/wallet')).status === 401);
+  test('referral', '익명 wallet/transactions → 401', async () => (await request('GET', '/referrals/wallet/transactions')).status === 401);
+  test('referral', '익명 wallet/apply-credit → 401', async () => (await request('POST', '/referrals/wallet/apply-credit', {})).status === 401);
+  test('referral', '익명 payouts(GET) → 401', async () => (await request('GET', '/referrals/payouts')).status === 401);
+  test('referral', '익명 payouts(POST) → 401', async () => (await request('POST', '/referrals/payouts', {})).status === 401);
+  test('referral', '익명 profile(GET) → 401', async () => (await request('GET', '/referrals/profile')).status === 401);
+  test('referral', '익명 profile(PATCH) → 401', async () => (await request('PATCH', '/referrals/profile', {})).status === 401);
+
+  test('referral', 'admin token으로 my-code → 200 (lazy generation)', async () => {
+    const r = await request('GET', '/referrals/my-code', null, { Authorization: `Bearer ${adminToken}` });
+    return r.status === 200 && r.body?.success === true && /^PURPLE-[A-Z2-9]{4}$/.test(r.body?.data?.referral_code || '');
+  });
+
+  test('referral', 'admin token으로 dashboard → 200', async () => {
+    const r = await request('GET', '/referrals/dashboard', null, { Authorization: `Bearer ${adminToken}` });
+    return r.status === 200 && r.body?.success === true;
+  });
+
+  test('referral', 'admin token으로 wallet → 200 + array', async () => {
+    const r = await request('GET', '/referrals/wallet', null, { Authorization: `Bearer ${adminToken}` });
+    return r.status === 200 && Array.isArray(r.body?.data);
+  });
+
+  // ── Customer (mobile) JWT must NOT pass POS-side authenticateToken ─
+  test('referral', 'customer token으로 dashboard → 401 (격리)', async () => {
+    const r = await request('GET', '/referrals/dashboard', null, { Authorization: `Bearer ${customerToken}` });
+    return r.status === 401;
+  });
+
+  // ── Admin endpoints — System Admin only ───────────────────
+  test('referral', '익명 admin/overview → 401', async () => (await request('GET', '/referrals/admin/overview')).status === 401);
+  test('referral', '익명 admin/partners → 401', async () => (await request('GET', '/referrals/admin/partners')).status === 401);
+  test('referral', '익명 admin/payouts → 401', async () => (await request('GET', '/referrals/admin/payouts')).status === 401);
+  test('referral', '익명 admin/settings → 401', async () => (await request('GET', '/referrals/admin/settings')).status === 401);
+
+  test('referral', 'admin/overview → 200 + funnel + 시계열', async () => {
+    const r = await request('GET', '/referrals/admin/overview', null, { Authorization: `Bearer ${adminToken}` });
+    if (r.status !== 200 || !r.body?.success) return false;
+    const d = r.body.data;
+    return d.conversion_funnel && Array.isArray(d.monthly_signups) && Array.isArray(d.monthly_commissions)
+      && d.monthly_signups.length === 12 && Array.isArray(d.commission_currencies);
+  });
+
+  test('referral', 'admin/settings → 200', async () => {
+    const r = await request('GET', '/referrals/admin/settings', null, { Authorization: `Bearer ${adminToken}` });
+    return r.status === 200 && r.body?.success === true && typeof r.body.data?.commission_rate !== 'undefined';
+  });
+
+  if (restaurantAdminToken) {
+    test('referral', 'Restaurant Admin이 admin/overview → 403 (RBAC)', async () => {
+      const r = await request('GET', '/referrals/admin/overview', null, { Authorization: `Bearer ${restaurantAdminToken}` });
+      return r.status === 403;
+    });
+    test('referral', 'Restaurant Admin이 admin/settings → 403 (RBAC)', async () => {
+      const r = await request('GET', '/referrals/admin/settings', null, { Authorization: `Bearer ${restaurantAdminToken}` });
+      return r.status === 403;
+    });
+  }
 }
 
 // ============================================
@@ -414,6 +559,7 @@ async function runTests(allTests, category) {
   definePosTests(ctx);
   defineMobileTests(ctx);
   definePaymentTests();
+  defineReferralTests(ctx);
 
   const allPass = await runTests(tests, opts.category);
   process.exit(allPass ? 0 : 1);
