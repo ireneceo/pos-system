@@ -6,6 +6,10 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+## [v3.24] — 2026-05-03 배포
+
+**결제 시스템 표준화 (Stripe/PayPal Subscriptions + Hosted Checkout + Customer Portal) + External QR ↔ Coupon 자동 매핑 (협력업체 할인) + PayPal 가이드 보완 + 리퍼럴 로고 v2**
+
 ### External QR ↔ Coupon 자동 매핑 (협력업체 할인)
 External QR (Settings → Operations) 에 발행된 쿠폰을 연결하면 QR 스캔 진입 시 자동 적용. 협력업체 (호텔/사무실 등) 직원이 매번 코드 입력 없이 자동 할인.
 

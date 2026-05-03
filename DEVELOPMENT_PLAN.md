@@ -1,9 +1,22 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-03 (v3.23 운영 배포 — B9+B10 + Overdue cron + 친절도 보강 + 에러 응답 표준화)
+> **최종 업데이트:** 2026-05-03 (v3.24 운영 배포 — 결제 시스템 표준화 + External QR ↔ Coupon 매핑)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.23** (2026-05-03 운영 배포)
+> **현재 버전:** **v3.24** (2026-05-03 운영 배포)
+
+## ✅ 완료: v3.24 운영 배포 (2026-05-03)
+
+**Stripe/PayPal 결제 표준화 (Subscriptions API + Hosted Checkout + Customer Portal + Webhook 8종) + External QR ↔ Coupon 자동 매핑 (협력업체 할인) + PayPal 가이드 보완 + 리퍼럴 로고 v2 / Cookie /referral 제외**
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Stripe Subscriptions API + Checkout + Customer Portal | 4 issuer 자격증명 + Card Updater/Smart Retries 위임 + 사용자 셀프서비스 | ✓ |
+| PayPal Subscriptions + Orders v2 | 동일 표준 흐름 (직접 fetch v1/billing + v2/checkout) | ✓ |
+| Webhook 8종 + signature + dedupe | WebhookEvent UNIQUE event_id, server.js inline 제거 | ✓ |
+| autoCharge 토글 4 PaymentSettings 제거 | 구독 가입 = 곧 auto-charge (게이트웨이 위임) | ✓ |
+| External QR ↔ Coupon 매핑 | 협력업체 자동 할인 (모바일 진입 시 자동 적용) | ✓ |
+| PayPal 가이드 보완 | Subscriptions/Vault 활성화 + webhook events 8종 | ✓ |
 
 ## ✅ 완료: v3.23 운영 배포 (2026-05-03)
 
