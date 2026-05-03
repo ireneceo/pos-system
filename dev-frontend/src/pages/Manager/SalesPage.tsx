@@ -6,6 +6,7 @@ import { formatCurrency } from '../../utils/currency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
+import { getAuthHeaders } from '../../utils/auth';
 // Chart libraries temporarily removed - will be added when needed
 
 interface RestaurantSales {
@@ -329,8 +330,7 @@ const ManagerSalesPage: React.FC = () => {
   useEffect(() => {
     const fetchSalesData = async () => {
       try {
-        // Fetch restaurants data first
-        const restaurantsResponse = await fetch('/api/restaurants');
+        const restaurantsResponse = await fetch('/api/restaurants', { headers: getAuthHeaders() });
         if (!restaurantsResponse.ok) {
           console.error('Failed to fetch restaurants');
           return;

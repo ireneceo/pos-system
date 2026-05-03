@@ -299,5 +299,11 @@
   "admin.partners.detail.payoutsEmpty": "暂无提现。",
   "admin.partners.detail.completedAt": "完成时间",
   "admin.partners.detail.close": "关闭",
-  "admin.partners.col.status": "状态"
+  "admin.partners.col.status": "状态",
+  "dashboard.rules.commission.value": "15% 长期佣金",
+  "dashboard.rules.commission.text": "您从被推荐人支付的每张发票中赚取 15%。",
+  "dashboard.rules.discount.value": "首月 20% 折扣",
+  "dashboard.rules.discount.text": "他们的 Purple POS 首月可享 20% 折扣。",
+  "dashboard.rules.duration.value": "永久有效",
+  "dashboard.rules.duration.text": "只要他们继续订阅,佣金每月持续到账。"
 }

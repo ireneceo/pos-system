@@ -937,6 +937,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     <span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span>
                     <span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span>
                 </div>
+                ${invoice.discountReason ? `<div style="font-size: 11px; color: #6B7280; padding: 0 12px 6px; text-align: right;">${invoice.discountReason}</div>` : ''}
                 ` : ''}
                 ${(invoice.additionalCharges || []).map(charge => `
                 <div class="summary-row tax">
@@ -1393,10 +1394,17 @@ const RestaurantInvoicesPage: React.FC = () => {
                       <span>{formatCurrency(selectedInvoice.subtotalBeforeDiscount || selectedInvoice.amount, selectedInvoice.currency || 'MYR')}</span>
                     </div>
                     {selectedInvoice.discountType && selectedInvoice.discountType !== 'none' && selectedInvoice.discountAmount > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#15803D' }}>
-                        <span>Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:</span>
-                        <span>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
-                      </div>
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#15803D' }}>
+                          <span>Discount{selectedInvoice.discountType === 'percentage' ? ` (${selectedInvoice.discountValue}%)` : ''}:</span>
+                          <span>-{formatCurrency(selectedInvoice.discountAmount, selectedInvoice.currency || 'MYR')}</span>
+                        </div>
+                        {selectedInvoice.discountReason && (
+                          <div style={{ padding: '0 12px 6px', fontSize: '11px', color: '#6B7280', textAlign: 'right' }}>
+                            {selectedInvoice.discountReason}
+                          </div>
+                        )}
+                      </>
                     )}
                     {(selectedInvoice.additionalCharges || []).map((charge: any, idx: number) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#6B7280' }}>

@@ -32,12 +32,15 @@ const LeftBlock = styled.div`
   gap: 32px;
 `;
 
-const Logo = styled.div`
-  font-weight: 700;
-  font-size: 18px;
-  color: #635BFF;
-  letter-spacing: -0.3px;
+const Logo = styled.img`
+  height: 28px;
+  width: auto;
+  display: block;
   cursor: pointer;
+
+  @media (max-width: 640px) {
+    height: 24px;
+  }
 `;
 
 const Nav = styled.nav`
@@ -162,7 +165,11 @@ const ReferralLayout: React.FC<Props> = ({ children }) => {
     <Shell>
       <TopBar>
         <LeftBlock>
-          <Logo onClick={() => navigate('/referral/dashboard')}>{t('layout.brand', 'Purple Referral')}</Logo>
+          <Logo
+            src="/images/purple-referral-logo.svg"
+            alt={t('layout.brand', 'Purple Referral')}
+            onClick={() => navigate('/referral/dashboard')}
+          />
           <Nav>
             <NavItem to="/referral/dashboard">{t('layout.nav.dashboard', 'Dashboard')}</NavItem>
             <NavItem to="/referral/wallet">{t('layout.nav.wallet', 'Wallet')}</NavItem>

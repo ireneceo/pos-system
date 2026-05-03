@@ -399,6 +399,8 @@
   "signupPage.goToLogin": "Pergi ke Log Masuk",
   "signupPage.didntReceiveTheEmailCheckYourSpamFolder": "Tidak menerima e-mel? Semak folder spam anda.",
   "signupPage.alreadyHaveAnAccount": "Sudah mempunyai akaun?",
+  "signupPage.referralCodeHint": "Ada kod rujukan? Dapatkan 20% diskaun untuk bulan pertama.",
+  "signupPage.referralCodeValidNote": "20% diskaun bulan pertama!",
   "termsOfServicePage.pleaseReadTheseTermsCarefullyBeforeUsing": "Please read these terms carefully before using our services",
   "termsOfServicePage.lastUpdatedFebruary2026": "Kemas Kini Terakhir: Februari 2026",
   "termsOfServicePage.newUsersMayBeEligibleForA7dayFreeTrialPe": "New users may be eligible for a 7-day free trial period. During the trial:",

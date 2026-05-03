@@ -113,7 +113,8 @@ export const DashboardStatsGrid = styled.div`
 
   @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+    gap: 10px;
+    margin-bottom: 20px;
   }
 `;
 
@@ -129,6 +130,11 @@ export const DashboardStatCard = styled.div<{ color?: string }>`
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     transform: translateY(-2px);
   }
+
+  @media (max-width: 768px) {
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
 `;
 
 export const DashboardStatLabel = styled.div`
@@ -138,6 +144,12 @@ export const DashboardStatLabel = styled.div`
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 8px;
+
+  @media (max-width: 768px) {
+    font-size: 10px;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
 `;
 
 export const DashboardStatValue = styled.div`
@@ -145,11 +157,21 @@ export const DashboardStatValue = styled.div`
   font-weight: 700;
   color: #0A2540;
   margin-bottom: 8px;
+
+  @media (max-width: 768px) {
+    font-size: 18px;
+    margin-bottom: 0;
+    line-height: 1.2;
+  }
 `;
 
 export const DashboardStatDescription = styled.div`
   font-size: 13px;
   color: #6B7280;
+
+  @media (max-width: 768px) {
+    font-size: 11px;
+  }
 `;
 
 // React 컴포넌트로도 사용 가능한 통계 카드

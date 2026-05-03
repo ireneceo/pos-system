@@ -1,65 +1,66 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-01 (v3.21 운영 배포 + sysops cross-backup 정돈)
-**버전:** **v3.21** (운영, 2026-05-01 배포)
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-05-03 (리퍼럴 UX 보강 + 보안 fix + 운영 cron 이전)
+**버전:** **v3.21** (운영, 2026-05-01 배포) — 다음 배포 대기 중인 변경 누적
+**작업 상태:** 검증 완료, 커밋 진행 중
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션)
+### 완료된 작업 (이번 세션 — 2026-05-03)
 
-**🎯 v3.21 운영 배포 (2026-05-01)**
-- 리퍼럴 시스템 Phase 1+2+3 완성 (DB 6 모델 + 27 endpoint + 7 페이지 + 7 이메일 + i18n 4언어 1152 키)
-- 5 치명결함 fix (cancel hook / overview funnel + 시계열 / 사이드바 잔액 / delete guard 409 / per-route rate limit)
-- Suspended account UX 재설계 (로그인 차단 → invoice 페이지 redirect + SuspendedBanner + refreshUser hook)
-- IDOR fix 7 endpoint (orders × 3, activity-logs × 2, invoices × 4, membership × 2)
-- Invoice 카운트 정합성 fix ('sent' legacy → 정상 ENUM, 9 vs 1 → 9 vs 9)
-- SignupPage 인증 차단 + ?ref= 입력 필드 숨김
-- 한국어 "수수료" → "커미션" 26 키 + 조사 보정 10건
-- SA Partners detail Modal (5섹션)
-- Wallet UX 단순화 (필터 5→3, Stats 3→2)
-- 운영 Staff fix (RA 자기 매장 staff 관리)
-- DB 마이그레이션 통합 cleanup-sequelize-duplicate-indexes (17 테이블 769 중복 정리)
-- migrate-referral 자동 실행 (운영 6 테이블 + User 6 컬럼 생성)
-- health-check 67 → 72 (security IDOR 5건 영구 추가)
-- 운영 배포 + 라이브 헬스 정상 (frontend 4/4 200, backend ok, PM2 online)
+**🔐 보안 fix — `/api/restaurants` 익명 노출 차단**
+- `routes/restaurants-crud.js`: `optionalAuth` 미들웨어 제거 → `authenticateToken` 강제 (admin email/businessReg/taxId/subscription 미인증 GET 차단)
+- 미사용 jwt import 정리
+- `pages/Manager/SalesPage.tsx`: 헤더 누락된 fetch에 `getAuthHeaders()` 적용
+- `scripts/health-check.js`: 익명 `/restaurants` → 401 영구 케이스 추가 (security 21 → **22 PASS**)
+- 라이브 검증: 익명 401 ✓, RA 인증 200 ✓
 
-**🛡️ 양방향 cross-backup 정돈 (sysops)**
-- POS 운영 backup-database.sh cross-backup 디렉토리 production → production-pos
-- dev cleanup 동일 통일
-- 1회 수동 실행 → dev 도착 검증 (1.9 MB)
+**🎨 리퍼럴 UX 보강**
+- `pages/Referral/ReferralDashboardPage.tsx`: 헤더 아래 "How it works" 보라 카드 (15% recurring / 20% off first month / Forever) — 3컬럼 desktop, 1컬럼 mobile
+- `pages/Landing/SignupPage.tsx`: Referral Code 필드 옆 항상 보이는 hint *"Have a referral code? Get 20% off your first month."* (코드 입력 전에도 노출 → 신규 가입자 유도)
+- `pages/Referral/ReferralLoginPage.tsx`, `ReferralSignupPage.tsx`: Input/Submit 에 `box-sizing: border-box` 추가 (Input padding 28px 가 카드 밖으로 튀어나오던 레이아웃 깨짐 fix)
+- 리퍼럴 모바일 반응형 (StatCard DashboardStats, ReferralLayout, ReferralAuthLayout, ReferralDashboardPage) + 신규 `purple-referral-logo.svg`
 
-**📚 문서 + 콘텐츠**
-- CHANGELOG v3.21 섹션 추가 + sysops 항목
-- DEVELOPMENT_PLAN v3.21 완료 섹션
-- 메모리 reference_suspended_pin + reference_idor_sweep 신규
-- 랜딩 블로그 + System Admin 공지 자동 등록 (dev + 운영 양쪽 sync)
+**💰 인보이스 discount_reason 노출 (5곳)**
+- `Restaurant/InvoicesPage.tsx` 우측 패널 + print HTML
+- `Owner/OwnerInvoicesPage.tsx` 우측 패널 + print HTML
+- `Admin/InvoicesPage.tsx` print HTML
+- 효과: 리퍼럴 할인이 자동 세팅한 `discount_reason: 'Referral: 20% off first month (PURPLE-XXXX)'` 가 사용자에게 표시됨 (이전엔 `Discount (20%)` 만 보여서 출처 불명)
+
+**🌐 i18n 4언어 추가**
+- `locales/{en,ko,zh,ms}/referrals.json`: dashboard.rules.* 6키 × 4 = 24
+- `locales/{en,ko,zh,ms}/landing.json`: signupPage.referralCodeHint + referralCodeValidNote × 4 = 8
+- 라이브 4언어 fetch 검증 ✓
+
+**🛡️ 운영 cron user 이전 완료** (Irene 직접 실행)
+- root crontab 에서 backup-database 라인 제거
+- irene crontab 으로 이전 (`0 3 * * * /var/www/scripts/backup-database.sh`)
+- `/var/backups/orderhere/` chown irene:irene
+- 수동 실행 검증: dev `~/backups/cross-backup/production-pos/db_2026-05-03.sql.gz` 1.95M 도착 (08:07)
+- 다음 03:00 자동 도착 확인만 남음
 
 ### 다음 할 일
 
-1. **운영 cron user 이전** (사용자 sudo 비번 직접 입력 필요 — 별도 세션):
-   - 운영서버에서 `/var/backups/orderhere/` chown irene
-   - root crontab에서 backup 라인 제거 → irene crontab으로 이전
-   - 1회 수동 실행 + 다음날 03:00 자동 도착 확인
-   - 안 하면 dev 측 cross-backup이 자동으로 안 도착 (수동만 가능)
-
-2. **브라우저 E2E 검증** (Irene 수동, 25분):
+1. **이번 세션 변경 커밋** (진행 중)
+2. **내일 03:00 자동 백업 도착 확인** — `/home/irene/backups/cross-backup/production-pos/db_2026-05-04.sql.gz`
+3. **운영 배포 결정** — 누적 변경 (보안 fix + 리퍼럴 UX + 인보이스 사유) 운영 배포 시점
+4. **브라우저 E2E 검증** (Irene 수동, 25분):
    - RP 가입 → POS 가입 with code → 첫 인보이스 20% 할인 → 결제 → 커미션 → wallet → payout 요청 → Admin 승인 → 7종 이메일 수신
-   - 11단계 체크리스트는 이전 session-state 참조
-
-3. **운영 SMTP 7종 메일 수신 확인**:
-   - 배포 직후 commissionCreditedEmail / payoutRequestedAdminEmail 등 실제 이메일 도달 검증
+5. **운영 SMTP 7종 메일 수신 확인** (배포 직후)
 
 ---
 
 ## 환경 / 인증 현황
 
 - 백엔드: dev-backend (PM2, port 3001), production-backend (PM2, port 3002)
-- 프론트: nginx → /var/www/dev-frontend-build (dev 19:12 main.68bc67df.js); 운영 production-frontend
+- 프론트: nginx → /var/www/dev-frontend-build (현재 `main.6348577f.js` 2026-05-03 07:48); 운영 production-frontend
 - DB: purple_dev_db / purple_production_db (MySQL)
-- 테스트 계정: kdine_admin (Restaurant Admin, restaurant_id=5, restaurant.status='suspended')
+- 테스트 계정 (리퍼럴 검증용):
+  - RP: `irene-rp@purplehere.com` / Test1234! → /referral/login
+  - 피추천인: `irene-ref1` (4개월 활성), `irene-ref2` (1개월 첫달20%), `irene-ref3` (이번 달 미결제) — 모두 Test1234!
+  - kdine_admin (Restaurant Admin, restaurant_id=5, status='suspended')
 
 ---
 
@@ -69,7 +70,7 @@
 - `/var/www/DEVELOPMENT_PLAN.md` — Phase 로드맵 + 작업 히스토리
 - `/var/www/CHANGELOG.md` — v3.21 배포 내역
 - `/var/www/dev-frontend/UI_DESIGN_GUIDE.md` — Modal 패턴, 디자인 토큰
-- `/var/www/docs/REFERRAL_SYSTEM.md` — Phase 1~3 설계 (구현 완료)
+- `/var/www/docs/REFERRAL_SYSTEM.md` — Phase 1~3 설계 (1-2절 핵심 규칙)
 - `/var/www/docs/INVOICE_SYSTEM.md` — 11절 SOA 재설계 (B1)
 - `/var/www/docs/SUPPLY_CHAIN_SPRINT_*.md` — Sprint 1~7 설계 문서
 

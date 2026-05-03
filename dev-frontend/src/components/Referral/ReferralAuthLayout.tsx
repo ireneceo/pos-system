@@ -24,11 +24,19 @@ const TopBar = styled.header`
 `;
 
 const Logo = styled(Link)`
-  font-weight: 700;
-  font-size: 18px;
-  color: #635BFF;
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
-  letter-spacing: -0.3px;
+
+  img {
+    height: 28px;
+    width: auto;
+    display: block;
+
+    @media (max-width: 640px) {
+      height: 24px;
+    }
+  }
 `;
 
 const TopRight = styled.div`
@@ -65,7 +73,9 @@ const ReferralAuthLayout: React.FC<Props> = ({ children, topRight }) => {
   return (
     <Shell>
       <TopBar>
-        <Logo to="/referral/login">{t('layout.brand', 'Purple Referral')}</Logo>
+        <Logo to="/referral/login">
+          <img src="/images/purple-referral-logo.svg" alt={t('layout.brand', 'Purple Referral')} />
+        </Logo>
         <TopRight>{topRight}</TopRight>
       </TopBar>
       <Body>{children}</Body>

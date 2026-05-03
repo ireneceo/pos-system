@@ -299,5 +299,11 @@
   "admin.partners.detail.payoutsEmpty": "아직 출금 내역이 없습니다.",
   "admin.partners.detail.completedAt": "완료일",
   "admin.partners.detail.close": "닫기",
-  "admin.partners.col.status": "상태"
+  "admin.partners.col.status": "상태",
+  "dashboard.rules.commission.value": "15% 영구 커미션",
+  "dashboard.rules.commission.text": "추천한 분이 결제하는 모든 인보이스의 15%를 받습니다.",
+  "dashboard.rules.discount.value": "첫 달 20% 할인",
+  "dashboard.rules.discount.text": "추천받은 분은 Purple POS 첫 달 20% 할인을 받습니다.",
+  "dashboard.rules.duration.value": "영구 적용",
+  "dashboard.rules.duration.text": "구독을 유지하는 한 매월 커미션이 계속 들어옵니다."
 }

@@ -299,5 +299,11 @@
   "admin.partners.detail.payoutsEmpty": "No payouts yet.",
   "admin.partners.detail.completedAt": "Completed",
   "admin.partners.detail.close": "Close",
-  "admin.partners.col.status": "Status"
+  "admin.partners.col.status": "Status",
+  "dashboard.rules.commission.value": "15% recurring",
+  "dashboard.rules.commission.text": "You earn 15% of every paid invoice from your referrals.",
+  "dashboard.rules.discount.value": "20% off first month",
+  "dashboard.rules.discount.text": "They get 20% off their first month of Purple POS.",
+  "dashboard.rules.duration.value": "Forever",
+  "dashboard.rules.duration.text": "Commission keeps coming every month they stay subscribed."
 }

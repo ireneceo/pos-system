@@ -19,41 +19,11 @@ const CompanySettings = require('../models/CompanySettings');
 const { Op } = require('sequelize');
 const { authenticateToken, checkRestaurantAccess, requireRole } = require('../middleware/auth');
 const { validateRestaurantCreation } = require('../middleware/validation');
-const jwt = require('jsonwebtoken');
 const { getTodayBounds, getRestaurantTimezone } = require('../utils/dateTimeHelper');
 const { deleteOldImages } = require('../utils/imageProcessor');
 
 
-// Optional authentication middleware
-const optionalAuth = async (req, res, next) => {
-  try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (token && process.env.JWT_SECRET) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findByPk(decoded.userId);
-      if (user) {
-        req.user = {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          restaurant_id: user.restaurant_id,
-          brand_id: user.brand_id,
-          foodcourt_id: user.foodcourt_id,
-          branch_id: user.branch_id,
-          manager_id: user.manager_id
-        };
-      }
-    }
-    next();
-  } catch (error) {
-    // If token is invalid, just continue without user
-    next();
-  }
-};
-
-router.get('/', optionalAuth, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { brand_id, search, limit, status } = req.query;
     const { Op } = require('sequelize');

@@ -826,7 +826,7 @@ const InvoicesPage: React.FC = () => {
         <div class="summary-section">
             <div class="summary-box">
                 <div class="summary-row subtotal"><span>Subtotal:</span><span>${formatCurrency(invoice.amount, invoice.currency || 'MYR')}</span></div>
-                ${invoice.discountType && invoice.discountType !== 'none' && invoice.discountAmount && invoice.discountAmount > 0 ? `<div class="summary-row tax" style="color: #15803D;"><span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span><span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span></div>` : ''}
+                ${invoice.discountType && invoice.discountType !== 'none' && invoice.discountAmount && invoice.discountAmount > 0 ? `<div class="summary-row tax" style="color: #15803D;"><span>Discount${invoice.discountType === 'percentage' ? ` (${invoice.discountValue}%)` : ''}:</span><span>-${formatCurrency(invoice.discountAmount, invoice.currency || 'MYR')}</span></div>${invoice.discountReason ? `<div style="font-size: 11px; color: #6B7280; padding: 0 12px 6px; text-align: right;">${invoice.discountReason}</div>` : ''}` : ''}
                 ${(invoice.additionalCharges || []).map(charge => `<div class="summary-row tax"><span>${charge.name} (${charge.rate}%):</span><span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span></div>`).join('')}
                 <div class="summary-row total"><span>Total:</span><span>${formatCurrency(invoice.total, invoice.currency || 'MYR')}</span></div>
             </div>

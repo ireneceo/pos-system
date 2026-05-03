@@ -299,5 +299,11 @@
   "admin.partners.detail.payoutsEmpty": "Belum ada pengeluaran.",
   "admin.partners.detail.completedAt": "Selesai",
   "admin.partners.detail.close": "Tutup",
-  "admin.partners.col.status": "Status"
+  "admin.partners.col.status": "Status",
+  "dashboard.rules.commission.value": "15% berulang",
+  "dashboard.rules.commission.text": "Anda dapat 15% daripada setiap invois yang dibayar oleh rujukan anda.",
+  "dashboard.rules.discount.value": "20% diskaun bulan pertama",
+  "dashboard.rules.discount.text": "Mereka dapat 20% diskaun untuk bulan pertama Purple POS.",
+  "dashboard.rules.duration.value": "Selamanya",
+  "dashboard.rules.duration.text": "Komisen terus masuk setiap bulan selama mereka kekal melanggan."
 }

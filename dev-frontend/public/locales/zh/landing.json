@@ -399,6 +399,8 @@
   "signupPage.goToLogin": "前往登录",
   "signupPage.didntReceiveTheEmailCheckYourSpamFolder": "没有收到邮件？请检查垃圾邮件文件夹。",
   "signupPage.alreadyHaveAnAccount": "已有账户？",
+  "signupPage.referralCodeHint": "有推荐码吗？首月可享 20% 折扣。",
+  "signupPage.referralCodeValidNote": "首月 20% 折扣！",
   "termsOfServicePage.pleaseReadTheseTermsCarefullyBeforeUsing": "Please read these terms carefully before using our services",
   "termsOfServicePage.lastUpdatedFebruary2026": "最后更新：2026年2月",
   "termsOfServicePage.newUsersMayBeEligibleForA7dayFreeTrialPe": "New users may be eligible for a 7-day free trial period. During the trial:",

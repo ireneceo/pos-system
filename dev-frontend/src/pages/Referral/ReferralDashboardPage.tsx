@@ -131,6 +131,11 @@ const StatCard = styled.div`
   border: 1px solid #E6EBF1;
   border-radius: 12px;
   padding: 18px;
+
+  @media (max-width: 760px) {
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
 `;
 
 const StatLabel = styled.div`
@@ -139,6 +144,11 @@ const StatLabel = styled.div`
   font-weight: 600;
   letter-spacing: 0.3px;
   text-transform: uppercase;
+
+  @media (max-width: 760px) {
+    font-size: 10px;
+    letter-spacing: 0.2px;
+  }
 `;
 
 const StatValue = styled.div`
@@ -147,12 +157,22 @@ const StatValue = styled.div`
   color: #0A2540;
   margin-top: 6px;
   letter-spacing: -0.3px;
+
+  @media (max-width: 760px) {
+    font-size: 18px;
+    margin-top: 4px;
+  }
 `;
 
 const StatDelta = styled.div`
   font-size: 12px;
   color: #059669;
   margin-top: 4px;
+
+  @media (max-width: 760px) {
+    font-size: 11px;
+    margin-top: 2px;
+  }
 `;
 
 const Block = styled.section`
@@ -254,6 +274,42 @@ const Empty = styled.div`
   background: #FAFBFC;
   border: 1px dashed #E6EBF1;
   border-radius: 8px;
+`;
+
+const RulesCard = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  background: linear-gradient(180deg, #F1F0FF 0%, #FAFBFC 100%);
+  border: 1px solid #E0DDFF;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+`;
+
+const RulesItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+`;
+
+const RulesValue = styled.div`
+  font-size: 15px;
+  font-weight: 700;
+  color: #635BFF;
+`;
+
+const RulesText = styled.div`
+  font-size: 12px;
+  color: #4B5563;
+  line-height: 1.4;
 `;
 
 const Skeleton = styled.div`
@@ -380,6 +436,21 @@ const ReferralDashboardPage: React.FC = () => {
         <PageTitle>{t('dashboard.title', 'Dashboard')}</PageTitle>
         <Subtle>{t('dashboard.welcomeBack', 'Welcome back!')}</Subtle>
       </Header>
+
+      <RulesCard>
+        <RulesItem>
+          <RulesValue>{t('dashboard.rules.commission.value', '15% recurring')}</RulesValue>
+          <RulesText>{t('dashboard.rules.commission.text', 'You earn 15% of every paid invoice from your referrals.')}</RulesText>
+        </RulesItem>
+        <RulesItem>
+          <RulesValue>{t('dashboard.rules.discount.value', '20% off first month')}</RulesValue>
+          <RulesText>{t('dashboard.rules.discount.text', 'They get 20% off their first month of Purple POS.')}</RulesText>
+        </RulesItem>
+        <RulesItem>
+          <RulesValue>{t('dashboard.rules.duration.value', 'Forever')}</RulesValue>
+          <RulesText>{t('dashboard.rules.duration.text', 'Commission keeps coming every month they stay subscribed.')}</RulesText>
+        </RulesItem>
+      </RulesCard>
 
       <TopGrid>
         <BalanceCard>

@@ -63,6 +63,7 @@ const Label = styled.label`
 
 const Input = styled.input`
   width: 100%;
+  box-sizing: border-box;
   height: 44px;
   padding: 0 14px;
   font-size: 14px;
@@ -81,6 +82,7 @@ const Input = styled.input`
 
 const Submit = styled.button`
   width: 100%;
+  box-sizing: border-box;
   height: 46px;
   background: #635BFF;
   color: white;

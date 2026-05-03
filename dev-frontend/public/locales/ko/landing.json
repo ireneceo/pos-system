@@ -399,6 +399,8 @@
   "signupPage.goToLogin": "로그인으로 이동",
   "signupPage.didntReceiveTheEmailCheckYourSpamFolder": "이메일을 받지 못하셨나요? 스팸 폴더를 확인하세요.",
   "signupPage.alreadyHaveAnAccount": "이미 계정이 있으신가요?",
+  "signupPage.referralCodeHint": "리퍼럴 코드가 있으신가요? 첫 달 20% 할인을 받으세요.",
+  "signupPage.referralCodeValidNote": "첫 달 20% 할인!",
   "termsOfServicePage.pleaseReadTheseTermsCarefullyBeforeUsing": "Please read these terms carefully before using our services",
   "termsOfServicePage.lastUpdatedFebruary2026": "최종 업데이트: 2026년 2월",
   "termsOfServicePage.newUsersMayBeEligibleForA7dayFreeTrialPe": "New users may be eligible for a 7-day free trial period. During the trial:",

@@ -770,8 +770,10 @@ const SignupPage: React.FC = () => {
               hasError={refCodeStatus === 'invalid'}
               autoComplete="off"
             />
-            {refCodeStatus === 'valid' && (
-              <RefDiscountNote>20% off your first month!</RefDiscountNote>
+            {refCodeStatus === 'valid' ? (
+              <RefDiscountNote>{t('landing:signupPage.referralCodeValidNote', '20% off your first month!')}</RefDiscountNote>
+            ) : (
+              <RefHelpText>{t('landing:signupPage.referralCodeHint', 'Have a referral code? Get 20% off your first month.')}</RefHelpText>
             )}
           </FormGroup>
         )}
@@ -1373,6 +1375,12 @@ const RefDiscountNote = styled.div`
   font-size: 12px;
   color: #635BFF;
   font-weight: 500;
+  margin-top: 4px;
+`;
+
+const RefHelpText = styled.div`
+  font-size: 12px;
+  color: #6B7280;
   margin-top: 4px;
 `;
 

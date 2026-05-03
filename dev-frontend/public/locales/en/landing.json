@@ -399,6 +399,8 @@
   "signupPage.goToLogin": "Go to Login",
   "signupPage.didntReceiveTheEmailCheckYourSpamFolder": "Didn't receive the email? Check your spam folder.",
   "signupPage.alreadyHaveAnAccount": "Already have an account?",
+  "signupPage.referralCodeHint": "Have a referral code? Get 20% off your first month.",
+  "signupPage.referralCodeValidNote": "20% off your first month!",
   "termsOfServicePage.pleaseReadTheseTermsCarefullyBeforeUsing": "Please read these terms carefully before using our services",
   "termsOfServicePage.lastUpdatedFebruary2026": "Last Updated: February 2026",
   "termsOfServicePage.newUsersMayBeEligibleForA7dayFreeTrialPe": "New users may be eligible for a 7-day free trial period. During the trial:",
