@@ -10,10 +10,23 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
     name: Backend — Jest contract tests
-    # Note: tests assume a running backend at localhost:3001 with the dev seed.
-    # In CI we'd need a Docker MySQL + dev-backend boot step. For now this is a
-    # placeholder that documents the intended pipeline; enable when test DB is wired.
-    if: ${{ false }}  # disabled until CI-side dev-backend bootstrap is added
+    timeout-minutes: 15
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpwd
+          MYSQL_DATABASE: purple_dev_db
+          MYSQL_USER: dev_admin
+          MYSQL_PASSWORD: devpwd
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -u root -prootpwd"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout
@@ -30,9 +43,69 @@ jobs:
         working-directory: dev-backend
         run: npm ci
 
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -u dev_admin -pdevpwd --silent; then
+              echo "MySQL ready"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Setup .env for tests
+        working-directory: dev-backend
+        run: |
+          cat > .env <<EOF
+          NODE_ENV=test
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_NAME=purple_dev_db
+          DB_USER=dev_admin
+          DB_PASSWORD=devpwd
+          JWT_SECRET=ci-test-secret-not-for-production
+          PORT=3001
+          FRONTEND_URL=http://localhost:3000
+          EOF
+
+      - name: Sync database schema
+        working-directory: dev-backend
+        run: node sync-database.js || echo "sync-database may warn — continuing"
+
+      - name: Seed test data
+        working-directory: dev-backend
+        # NOTE: 실제 시드 스크립트는 별도 라운드에서 추가 (가입 + 식당 + 인보이스 + RP).
+        # 임시: skip seed step until tests/fixtures/seed.js is added.
+        run: echo "Seed step placeholder — see B10 v3 follow-up"
+        if: ${{ false }}
+
+      - name: Start dev-backend
+        working-directory: dev-backend
+        run: |
+          node server.js &
+          echo $! > server.pid
+          # wait for health
+          for i in {1..30}; do
+            if curl -fs http://localhost:3001/api/health > /dev/null; then
+              echo "backend ready"
+              break
+            fi
+            sleep 2
+          done
+        if: ${{ false }}  # disabled until seed step is added
+
       - name: Run Jest
         working-directory: dev-backend
         run: npm test
+        if: ${{ false }}  # disabled until backend boot + seed are wired
+
+      - name: Stop backend
+        working-directory: dev-backend
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+          fi
+        if: always()
 
   i18n-verify:
     runs-on: ubuntu-latest

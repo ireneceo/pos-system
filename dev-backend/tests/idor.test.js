@@ -1,70 +1,45 @@
 // IDOR (cross-tenant) contract tests — confirms RA cannot read other restaurants.
 // Why: prevents the v3.21 IDOR sweep regressions.
 
-const request = require('supertest');
-
-const BASE = 'http://localhost:3001';
+const { http, login } = require('./_helpers');
 
 let raToken;
-let raRestaurantId;
+let rpToken;
 
 beforeAll(async () => {
-  const login = await request(BASE)
-    .post('/api/auth/login')
-    .send({ email: 'irene-ref1@purplehere.com', password: 'Test1234!' });
-  raToken = login.body?.data?.token;
-  raRestaurantId = login.body?.data?.user?.restaurant_id;
+  const ra = await login('irene-ref1@purplehere.com', 'Test1234!');
+  raToken = ra.body?.data?.token;
+  const rp = await login('irene-rp@purplehere.com', 'Test1234!');
+  rpToken = rp.body?.data?.token;
 });
 
 describe('IDOR — Restaurant Admin cross-tenant', () => {
   test('RA cannot read invoices of another restaurant', async () => {
-    const otherRestaurantId = 9999;
-    const r = await request(BASE)
-      .get(`/api/invoices/restaurant/${otherRestaurantId}`)
-      .set('Authorization', `Bearer ${raToken}`);
+    const r = await http('get', '/api/invoices/restaurant/9999').set('Authorization', `Bearer ${raToken}`);
     expect([401, 403, 404]).toContain(r.status);
   });
 
   test('RA cannot access settings of another restaurant', async () => {
-    const otherRestaurantId = 9999;
-    const r = await request(BASE)
-      .get(`/api/invoices/settings/${otherRestaurantId}`)
-      .set('Authorization', `Bearer ${raToken}`);
+    const r = await http('get', '/api/invoices/settings/9999').set('Authorization', `Bearer ${raToken}`);
     expect([401, 403, 404]).toContain(r.status);
   });
 
   test('RA cannot mutate update-payer of another restaurant', async () => {
-    const r = await request(BASE)
-      .put('/api/invoices/update-payer/9999')
+    const r = await http('put', '/api/invoices/update-payer/9999')
       .set('Authorization', `Bearer ${raToken}`)
       .send({ payment_model: 'foodcourt' });
     expect([401, 403, 404]).toContain(r.status);
   });
 });
 
-describe('IDOR — Referral Partner cannot access POS data', () => {
-  let rpToken;
-
-  beforeAll(async () => {
-    const login = await request(BASE)
-      .post('/api/auth/login')
-      .send({ email: 'irene-rp@purplehere.com', password: 'Test1234!' });
-    rpToken = login.body?.data?.token;
-  });
-
-  test('RP cannot read /api/restaurants', async () => {
-    const r = await request(BASE)
-      .get('/api/restaurants')
-      .set('Authorization', `Bearer ${rpToken}`);
-    // RP is authenticated so 401 is wrong here; either 200 (RP gets nothing useful)
-    // or 403 (role gate) is acceptable. Confirms it doesn't crash.
+describe('IDOR — Referral Partner cannot crash on POS endpoints', () => {
+  test('RP /api/restaurants → 200/403 (no crash)', async () => {
+    const r = await http('get', '/api/restaurants').set('Authorization', `Bearer ${rpToken}`);
     expect([200, 403]).toContain(r.status);
   });
 
   test('RP /api/referrals/dashboard → 200 (own scope)', async () => {
-    const r = await request(BASE)
-      .get('/api/referrals/dashboard')
-      .set('Authorization', `Bearer ${rpToken}`);
+    const r = await http('get', '/api/referrals/dashboard').set('Authorization', `Bearer ${rpToken}`);
     expect(r.status).toBe(200);
   });
 });

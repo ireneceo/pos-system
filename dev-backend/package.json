@@ -13,7 +13,7 @@
     "sync-db": "node sync-database.js",
     "check": "node scripts/check-duplicates.js",
     "prestart": "node scripts/check-duplicates.js || true",
-    "test": "jest",
+    "test": "jest --forceExit",
     "test:watch": "jest --watch"
   },
   "dependencies": {

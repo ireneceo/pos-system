@@ -621,99 +621,118 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
       endDate = getUTCBoundsForDate(todayStr, timeZone, true);
     }
 
-    // Use order_date instead of createdAt for consistency with stats
-    const orders = await Order.findAll({
+    // B9 v2 (2026-05-03): pre-aggregated daily stats + today live fallback.
+    // Replaces the prior raw Order.findAll + in-memory grouping which scaled
+    // O(orders × restaurants). Now O(days × restaurants) for completed orders.
+
+    // Date range as YYYY-MM-DD strings (in restaurant timezone)
+    const rangeStartStr = getDateInTimezone(startDate, timeZone);
+    const rangeEndStr = getDateInTimezone(endDate, timeZone);
+
+    // Yesterday in restaurant timezone (cron has aggregated up to here)
+    const yesterdayObj = new Date(todayStr);
+    yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+    const yesterdayStr = yesterdayObj.toISOString().split('T')[0];
+
+    // Pre-aggregated rows: from rangeStart through min(yesterday, rangeEnd)
+    const aggUntil = rangeEndStr <= yesterdayStr ? rangeEndStr : yesterdayStr;
+    const aggregated = aggUntil >= rangeStartStr ? await RestaurantDailyStats.findAll({
       where: {
         restaurant_id: restaurantId,
-        order_date: {
-          [Op.gte]: startDate,
-          [Op.lte]: endDate
-        },
-        status: 'completed'
+        date: { [Op.between]: [rangeStartStr, aggUntil] }
       },
-      attributes: ['order_date', 'total_amount']
+      attributes: ['date', 'revenue', 'order_count'],
+      order: [['date', 'ASC']]
+    }) : [];
+
+    const dailyMap = {};
+    aggregated.forEach(a => {
+      // a.date is DATEONLY → string "YYYY-MM-DD" in node-sequelize
+      const ds = typeof a.date === 'string' ? a.date : new Date(a.date).toISOString().split('T')[0];
+      dailyMap[ds] = { revenue: parseFloat(a.revenue || 0), orders: a.order_count };
     });
 
-    // Group orders by the appropriate time unit (using restaurant timezone)
+    // Today: compute live (cron hasn't aggregated today yet). Only if today is in range.
+    if (rangeStartStr <= todayStr && todayStr <= rangeEndStr) {
+      const todayStart = getUTCBoundsForDate(todayStr, timeZone, false);
+      const todayEnd = getUTCBoundsForDate(todayStr, timeZone, true);
+      const todayOrders = await Order.findAll({
+        where: {
+          restaurant_id: restaurantId,
+          order_date: { [Op.gte]: todayStart, [Op.lte]: todayEnd },
+          status: 'completed'
+        },
+        attributes: ['total_amount']
+      });
+      const todayRevenue = todayOrders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0);
+      dailyMap[todayStr] = { revenue: Math.round(todayRevenue * 100) / 100, orders: todayOrders.length };
+    }
+
+    // Group daily data into the requested period bucket (week → daily, month → weekly, year → monthly)
     const salesData = [];
 
     if (period === 'week') {
-      // Group by day
-      const ordersByDate = {};
-      orders.forEach(order => {
-        const dateKey = getDateInTimezone(new Date(order.order_date), timeZone);
-        if (!ordersByDate[dateKey]) {
-          ordersByDate[dateKey] = { revenue: 0, orders: 0 };
-        }
-        ordersByDate[dateKey].revenue += parseFloat(order.total_amount);
-        ordersByDate[dateKey].orders += 1;
-      });
-
-      // Generate last 7 days in timezone
+      // Daily bucket: last 7 days
       for (let i = 6; i >= 0; i--) {
         const dateObj = new Date(todayStr);
         dateObj.setDate(dateObj.getDate() - i);
         const dateKey = dateObj.toISOString().split('T')[0];
+        const row = dailyMap[dateKey];
         salesData.push({
           date: dateKey,
-          revenue: ordersByDate[dateKey]?.revenue || 0,
-          orders: ordersByDate[dateKey]?.orders || 0
+          revenue: row?.revenue || 0,
+          orders: row?.orders || 0
         });
       }
     } else if (period === 'month') {
-      // Group by week
+      // Weekly bucket: last 28 days into 4 buckets of 7 days each
       const weekData = [{revenue: 0, orders: 0}, {revenue: 0, orders: 0}, {revenue: 0, orders: 0}, {revenue: 0, orders: 0}];
       const todayDate = new Date(todayStr);
-
-      orders.forEach(order => {
-        const orderDateStr = getDateInTimezone(new Date(order.order_date), timeZone);
-        const orderDate = new Date(orderDateStr);
+      Object.entries(dailyMap).forEach(([dateKey, row]) => {
+        const orderDate = new Date(dateKey);
         const daysAgo = Math.floor((todayDate - orderDate) / (1000 * 60 * 60 * 24));
         const weekIndex = 3 - Math.floor(daysAgo / 7);
         if (weekIndex >= 0 && weekIndex < 4) {
-          weekData[weekIndex].revenue += parseFloat(order.total_amount);
-          weekData[weekIndex].orders += 1;
+          weekData[weekIndex].revenue += row.revenue;
+          weekData[weekIndex].orders += row.orders;
         }
       });
-
       for (let i = 0; i < 4; i++) {
         const weekStart = new Date(todayStr);
         weekStart.setDate(weekStart.getDate() - ((3 - i) * 7 + 6));
         salesData.push({
           date: weekStart.toISOString().split('T')[0],
-          revenue: weekData[i].revenue,
+          revenue: Math.round(weekData[i].revenue * 100) / 100,
           orders: weekData[i].orders
         });
       }
     } else if (period === 'year') {
-      // Group by month
+      // Monthly bucket: last 12 months
       const ordersByMonth = {};
-      orders.forEach(order => {
-        const dateStr = getDateInTimezone(new Date(order.order_date), timeZone);
-        const monthKey = dateStr.slice(0, 7); // YYYY-MM
-        if (!ordersByMonth[monthKey]) {
-          ordersByMonth[monthKey] = { revenue: 0, orders: 0 };
-        }
-        ordersByMonth[monthKey].revenue += parseFloat(order.total_amount);
-        ordersByMonth[monthKey].orders += 1;
+      Object.entries(dailyMap).forEach(([dateKey, row]) => {
+        const monthKey = dateKey.slice(0, 7);
+        if (!ordersByMonth[monthKey]) ordersByMonth[monthKey] = { revenue: 0, orders: 0 };
+        ordersByMonth[monthKey].revenue += row.revenue;
+        ordersByMonth[monthKey].orders += row.orders;
       });
-
       for (let i = 11; i >= 0; i--) {
         const monthStart = new Date(todayStr);
         monthStart.setMonth(monthStart.getMonth() - i);
         monthStart.setDate(1);
         const monthKey = monthStart.toISOString().slice(0, 7);
+        const row = ordersByMonth[monthKey];
         salesData.push({
           date: monthStart.toISOString().split('T')[0],
-          revenue: ordersByMonth[monthKey]?.revenue || 0,
-          orders: ordersByMonth[monthKey]?.orders || 0
+          revenue: row ? Math.round(row.revenue * 100) / 100 : 0,
+          orders: row?.orders || 0
         });
       }
     }
 
     res.json({
       success: true,
-      data: salesData
+      data: salesData,
+      source: 'pre_aggregated_with_today_live'
     });
   } catch (error) {
     console.error('Error fetching restaurant sales chart:', error);
