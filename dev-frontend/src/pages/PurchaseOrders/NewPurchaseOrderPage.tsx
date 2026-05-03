@@ -947,10 +947,22 @@ const NewPurchaseOrderPage: React.FC = () => {
                 <Empty>{t('common:loading', 'Loading…')}</Empty>
               ) : catalogList.length === 0 ? (
                 <Empty>
-                  <strong>{t('newPo.empty.catalog.title', 'No supplier products')}</strong>
-                  <div style={{ marginTop: 8, fontSize: 12 }}>
-                    {t('newPo.empty.catalog.desc', 'You need an active contract with a supplier.')}
+                  <strong>{t('newPo.empty.catalog.title', 'No supplier products yet')}</strong>
+                  <div style={{ marginTop: 8, fontSize: 13, color: '#6B7C93', lineHeight: 1.7, maxWidth: 460 }}>
+                    {t('newPo.empty.catalog.desc', "Before you can place a purchase order, you need an active supplier contract. Once a supplier accepts your contract, their product catalog will appear here.")}
                   </div>
+                  <div style={{ marginTop: 14, padding: '10px 14px', background: 'white', border: '1px solid #E6EBF1', borderRadius: 8, fontSize: 12.5, color: '#4B5563', textAlign: 'left', maxWidth: 440 }}>
+                    <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>1.</strong> {t('newPo.empty.catalog.step1', 'Find a supplier in the Suppliers directory')}</div>
+                    <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>2.</strong> {t('newPo.empty.catalog.step2', 'Request a contract — supplier accepts')}</div>
+                    <div><strong style={{ color: '#635BFF' }}>3.</strong> {t('newPo.empty.catalog.step3', 'Their products will be listed here for ordering')}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => window.location.href = '/pos/supplier-directory'}
+                    style={{ marginTop: 14, background: '#635BFF', color: 'white', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {t('newPo.empty.catalog.cta', 'Browse suppliers')}
+                  </button>
                 </Empty>
               ) : (
                 <Grid>

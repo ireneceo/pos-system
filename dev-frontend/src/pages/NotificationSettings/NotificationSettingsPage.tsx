@@ -7,6 +7,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import ImportDataTab from '../../components/Settings/ImportDataTab';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
+import SmtpGuide from '../../components/Common/SmtpGuide';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -653,6 +654,8 @@ const NotificationSettingsPage: React.FC = () => {
               <DescriptionText>
                 By default, notifications are sent from the platform. Set up custom SMTP to send emails from your own domain.
               </DescriptionText>
+
+              <SmtpGuide />
 
               <CheckboxLabel>
                 <AutoSaveField ref={emailEnabledRef} onSave={handleSmtpSave} type="toggle">

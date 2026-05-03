@@ -604,12 +604,17 @@ const CustomersPage: React.FC = () => {
               <EmptyState>
                 <EmptyStateText>
                   {searchQuery || tierFilter !== 'all' || statusFilter !== 'all'
-                    ? 'No customers found with the current filters'
-                    : 'No customers registered yet'
-                  }
+                    ? 'No customers match the current filters'
+                    : 'No customers registered yet'}
                 </EmptyStateText>
+                {!(searchQuery || tierFilter !== 'all' || statusFilter !== 'all') && (
+                  <div style={{ fontSize: 13, color: '#6B7C93', marginBottom: 16, textAlign: 'center', lineHeight: 1.6, maxWidth: 420 }}>
+                    Customers are added automatically when they place an online order via the QR menu.<br />
+                    You can also add them manually for in-store visitors.
+                  </div>
+                )}
                 <Button variant="primary" onClick={handleAddCustomer}>
-                  Add First Customer
+                  Add a customer manually
                 </Button>
               </EmptyState>
             ) : (

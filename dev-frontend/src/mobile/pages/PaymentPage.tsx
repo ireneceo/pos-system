@@ -2518,23 +2518,37 @@ const PaymentPage: React.FC = () => {
             </div>
           )}
           <PaymentMethods>
-            {availableMethods.map(method => (
-              <PaymentMethod key={method.key} selected={paymentMethod === method.key}>
-                <RadioInput
-                  type="radio"
-                  name="payment"
-                  checked={paymentMethod === method.key}
-                  onChange={() => {
-                    console.log('🔵 Payment method changed to:', method.key);
-                    setPaymentMethod(method.key);
-                    setError(''); // Clear error when method is selected
-                  }}
-                />
-                <MethodInfo>
-                  <MethodName>{method.label}</MethodName>
-                </MethodInfo>
-              </PaymentMethod>
-            ))}
+            {availableMethods.map(method => {
+              const hint =
+                method.key === 'card' || method.key === 'stripe'
+                  ? 'Pay instantly with credit or debit card.'
+                  : method.key === 'paypal'
+                    ? 'Pay via PayPal account or card. You will be redirected to PayPal.'
+                    : method.key === 'bankTransfer' || method.key === 'bank_transfer'
+                      ? 'Transfer to the merchant\'s account. Confirmation may take up to a few hours.'
+                      : method.key === 'qr' || method.key === 'qrPayment' || method.key === 'qr_payment'
+                        ? 'Scan the QR code with your bank or e-wallet app.'
+                        : method.key === 'counter' || method.key === 'cash'
+                          ? 'Pay in cash at the counter when collecting your order.'
+                          : '';
+              return (
+                <PaymentMethod key={method.key} selected={paymentMethod === method.key}>
+                  <RadioInput
+                    type="radio"
+                    name="payment"
+                    checked={paymentMethod === method.key}
+                    onChange={() => {
+                      setPaymentMethod(method.key);
+                      setError('');
+                    }}
+                  />
+                  <MethodInfo>
+                    <MethodName>{method.label}</MethodName>
+                    {hint && <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 2, lineHeight: 1.5 }}>{hint}</div>}
+                  </MethodInfo>
+                </PaymentMethod>
+              );
+            })}
           </PaymentMethods>
           
           {paymentMethod === 'card' && (
