@@ -99,24 +99,27 @@ const PaymentGatewayGuide: React.FC<Props> = ({ gateway, webhookUrl }) => {
             <Step>
               <StepLabel>2. Copy API keys</StepLabel>
               <StepBody>
-                Stripe Dashboard → <ExtLink href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">Developers → API keys</ExtLink>.<br />
-                Copy <Code>Publishable key</Code> (starts with <Code>pk_live_</Code>) and <Code>Secret key</Code> (starts with <Code>sk_live_</Code>) into the fields below.<br />
-                <em>Tip: use test keys (<Code>pk_test_</Code> / <Code>sk_test_</Code>) first to verify the flow.</em>
+                Stripe Dashboard left sidebar → <Code>Developers</Code> (bottom-left) → <ExtLink href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer">API keys</ExtLink>.<br />
+                <strong>Publishable key</strong> (<Code>pk_live_…</Code>) is shown directly — copy it.<br />
+                <strong>Secret key</strong>: under "Standard keys" → click <Code>Create secret key</Code> → choose <Code>Powering an integration you built</Code> → name it <Code>PurpleHere POS</Code> → Stripe shows the full key <em>once</em> — copy it now (sk_live_… ~107 chars).<br />
+                <em>Test mode: toggle "Test mode" on (top-right) to get pk_test_… / sk_test_… keys for sandbox testing without real charges.</em>
               </StepBody>
             </Step>
             <Step>
               <StepLabel>3. Register webhook (auto-confirm payments)</StepLabel>
               <StepBody>
-                Stripe Dashboard → <ExtLink href="https://dashboard.stripe.com/webhooks" target="_blank" rel="noopener noreferrer">Developers → Webhooks → Add endpoint</ExtLink>.<br />
-                Endpoint URL: <Code>{webhookUrl || 'https://purplehere.com/api/webhooks/stripe'}</Code><br />
-                Events to listen: <Code>payment_intent.succeeded</Code>, <Code>payment_intent.payment_failed</Code>.<br />
-                Copy <Code>Signing secret</Code> (starts with <Code>whsec_</Code>) into the Webhook Secret field below.
+                Stripe Dashboard → <Code>Developers → Webhooks</Code> (now called <strong>"Event destinations"</strong> in the new UI) → <ExtLink href="https://dashboard.stripe.com/webhooks" target="_blank" rel="noopener noreferrer"><Code>Add destination</Code></ExtLink>.<br />
+                Step A — <strong>Select events</strong>: search <Code>payment_intent</Code> → check <Code>payment_intent.succeeded</Code> + <Code>payment_intent.payment_failed</Code>. (Events from = "Your account", API version default).<br />
+                Step B — <strong>Destination type</strong>: choose <Code>Webhook endpoint</Code>.<br />
+                Step C — <strong>Configure</strong>: Destination name <Code>PurpleHere POS</Code>, Endpoint URL <Code>{webhookUrl || 'https://purplehere.com/api/webhooks/stripe'}</Code> → <Code>Create destination</Code>.<br />
+                Step D — On the destination detail page, find <strong>Signing secret</strong> → click <Code>Reveal</Code> → copy <Code>whsec_…</Code> into the Webhook Secret field below.
               </StepBody>
             </Step>
             <Step>
               <StepLabel>4. Test the connection</StepLabel>
               <StepBody>
-                Save the keys, issue a test invoice, and pay with Stripe's test card <Code>4242 4242 4242 4242</Code> (any future expiry, any CVC).
+                After saving the 3 keys: in test mode, issue a test invoice and pay with Stripe's test card <Code>4242 4242 4242 4242</Code> (any future expiry, any CVC, any ZIP).<br />
+                The webhook should fire automatically and the invoice should turn <strong>paid</strong> within seconds. Check Stripe → <Code>Event destinations → PurpleHere POS → Activity</Code> for delivery status.
               </StepBody>
             </Step>
           </GuideBody>
