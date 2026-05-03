@@ -545,11 +545,6 @@ Restaurant.init({
     allowNull: false,
     comment: 'Demo restaurant flag - excluded from real revenue statistics'
   },
-  // Stripe auto-charge — see docs/SUBSCRIPTION_AUTO_CHARGE.md
-  stripe_customer_id: { type: DataTypes.STRING(60), allowNull: true, comment: 'Stripe Customer ID (cus_...)' },
-  stripe_default_payment_method: { type: DataTypes.STRING(60), allowNull: true, comment: 'Default Stripe PaymentMethod ID (pm_...)' },
-  auto_charge_enabled: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
-  auto_charge_consent_at: { type: DataTypes.DATE, allowNull: true, comment: 'Timestamp of explicit user consent' },
   is_test: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,

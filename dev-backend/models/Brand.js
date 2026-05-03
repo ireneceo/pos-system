@@ -222,11 +222,6 @@ Brand.init({
       this.setDataValue('supported_currencies', value ? JSON.stringify(value) : null);
     }
   },
-  // Stripe auto-charge — see docs/SUBSCRIPTION_AUTO_CHARGE.md
-  stripe_customer_id: { type: DataTypes.STRING(60), allowNull: true },
-  stripe_default_payment_method: { type: DataTypes.STRING(60), allowNull: true },
-  auto_charge_enabled: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false },
-  auto_charge_consent_at: { type: DataTypes.DATE, allowNull: true },
   // Default Currency (이미 currency 필드가 있으므로 이것을 default로 사용)
   // Subscription Info (System Admin이 발행한 Invoice 결제용)
   subscription_status: {

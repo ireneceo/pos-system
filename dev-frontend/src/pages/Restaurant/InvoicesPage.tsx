@@ -33,7 +33,6 @@ import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
 import ApplyCreditModal from '../../components/Referral/ApplyCreditModal';
-import SavedCardsSection from '../../components/Payment/SavedCardsSection';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
@@ -1171,9 +1170,6 @@ const RestaurantInvoicesPage: React.FC = () => {
 
         <Content>
           <SuspendedBanner />
-          {restaurantId && (
-            <SavedCardsSection entityType="restaurant" entityId={restaurantId} />
-          )}
           {/* Stats */}
           <StatsGrid>
             <StatCard>
