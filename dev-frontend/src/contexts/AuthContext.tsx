@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as Sentry from '@sentry/react';
 import i18n from '../i18n';
 
 import { getAuthToken, setAuthToken, clearAuthToken } from '../utils/auth';
@@ -478,14 +477,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (apiUser.preferred_language && apiUser.preferred_language !== i18n.language) {
               i18n.changeLanguage(apiUser.preferred_language);
             }
-            // Sentry user context 복구
-            Sentry.setUser({
-              id: userData.id,
-              email: userData.email,
-              username: userData.name,
-              role: userData.role,
-              restaurant_id: userData.restaurantId || undefined,
-            });
             // StoreContext에 인증 완료 알림
             window.dispatchEvent(new Event('auth-ready'));
           }
@@ -556,15 +547,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (apiUser.preferred_language) {
             i18n.changeLanguage(apiUser.preferred_language);
           }
-          // Sentry user context 설정 (이 사용자에서 발생하는 에러에 정보 자동 첨부)
-          Sentry.setUser({
-            id: userData.id,
-            email: userData.email,
-            username: userData.name,
-            role: userData.role,
-            restaurant_id: userData.restaurantId || undefined,
-          });
-
           return true;
         }
       }
@@ -611,8 +593,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // JWT 토큰 제거
     clearAuthToken();
     localStorage.removeItem('user');
-    // Sentry user context 정리
-    Sentry.setUser(null);
 
     // Redirect to demo page for demo accounts, login page for others
     if (isDemoAccount) {
@@ -653,14 +633,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     setAuthToken(token);
     setUser(newUser);
-    // Sentry user context 갱신
-    Sentry.setUser({
-      id: newUser.id,
-      email: newUser.email,
-      username: newUser.name,
-      role: newUser.role,
-      restaurant_id: newUser.restaurantId || undefined,
-    });
     // StoreContext에 인증 완료 알림
     window.dispatchEvent(new Event('auth-ready'));
   };

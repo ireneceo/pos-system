@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const Sentry = require('@sentry/node');
 const User = require('../models/User');
 const Restaurant = require('../models/Restaurant');
 const RestaurantManager = require('../models/RestaurantManager');
@@ -40,16 +39,6 @@ const authenticateToken = async (req, res, next) => {
       manager_id: user.manager_id,
       is_demo: user.is_demo || false
     };
-
-    // Sentry user context 설정 (이 요청에서 발생하는 에러에 자동 첨부)
-    Sentry.setUser({
-      id: user.id,
-      email: user.email,
-      username: user.full_name || user.username,
-      role: user.role,
-      restaurant_id: user.restaurant_id,
-      account_type: 'admin'
-    });
 
     next();
   } catch (error) {

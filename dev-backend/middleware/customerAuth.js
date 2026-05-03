@@ -1,4 +1,3 @@
-const Sentry = require('@sentry/node');
 const { Customer } = require('../models');
 const { verifyCustomerToken } = require('../utils/customerJwt');
 
@@ -46,14 +45,6 @@ async function authenticateCustomer(req, res, next) {
       name: customer.name,
       type: customer.type
     };
-
-    // Sentry user context (모바일 고객)
-    Sentry.setUser({
-      id: customer.id,
-      email: customer.email || undefined,
-      username: customer.name || customer.phone,
-      account_type: 'customer'
-    });
 
     next();
   } catch (error) {

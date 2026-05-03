@@ -1,89 +1,34 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
-import * as Sentry from '@sentry/react';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { installFetchInterceptor } from './utils/httpClient';
 
-// ============================================
-// Sentry 초기화 (가장 먼저 실행 — 다른 코드의 에러를 캐치하기 위해)
-// ============================================
-const SENTRY_DSN = 'https://ed2a54d6e74db63ffb9e3da5dad5d888@o4511194201391104.ingest.us.sentry.io/4511194295042048';
+// Sentry 미사용 결정 (2026-05-03) — ErrorBoundary 는 React 표준 class로 inline 정의.
 
-// 환경 자동 감지: hostname 기준
-const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-const sentryEnvironment =
-  hostname === 'purplehere.com' || hostname === 'www.purplehere.com'
-    ? 'production'
-    : hostname === 'dev.purplehere.com'
-      ? 'development'
-      : 'local';
-
-// localhost는 Sentry 전송 안 함 (로컬 개발 시 노이즈 방지)
-if (sentryEnvironment !== 'local') {
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    environment: sentryEnvironment,
-
-    // 프론트엔드/백엔드 구분 태그 (같은 Sentry 프로젝트 공유)
-    initialScope: {
-      tags: { component: 'frontend' }
-    },
-
-    // PII 자동 수집 (IP, user-agent 등). 민감 데이터는 별도 필터링.
-    sendDefaultPii: true,
-
-    // 통합 (자동 에러/성능/세션 추적)
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration({
-        maskAllText: false,
-        blockAllMedia: false,
-      }),
-    ],
-
-    // 성능 추적: 운영 10%, 개발 100%
-    tracesSampleRate: sentryEnvironment === 'production' ? 0.1 : 1.0,
-
-    // Session Replay: 운영은 에러 발생 세션의 100%만, 개발은 모든 세션의 10%
-    replaysSessionSampleRate: sentryEnvironment === 'production' ? 0 : 0.1,
-    replaysOnErrorSampleRate: 1.0,
-
-    // 에러 필터링 (민감 정보 제거 + 무시 패턴)
-    beforeSend(event, hint) {
-      // 비밀번호 / 토큰 / 카드정보 마스킹
-      if (event.request?.data) {
-        const data = event.request.data as Record<string, unknown>;
-        ['password', 'currentPassword', 'newPassword', 'token', 'auth_token', 'mobile_token', 'cardNumber', 'cvv'].forEach(key => {
-          if (data[key]) data[key] = '[REDACTED]';
-        });
-      }
-      // 헤더에서 Authorization 마스킹
-      if (event.request?.headers && (event.request.headers as Record<string, string>)['Authorization']) {
-        (event.request.headers as Record<string, string>)['Authorization'] = '[REDACTED]';
-      }
-      return event;
-    },
-
-    // 무시할 에러 (브라우저 확장프로그램, 네트워크 끊김 등)
-    ignoreErrors: [
-      'ResizeObserver loop limit exceeded',
-      'ResizeObserver loop completed with undelivered notifications',
-      'Non-Error promise rejection captured',
-      'NetworkError when attempting to fetch resource',
-      'Failed to fetch',
-      'Load failed',
-      'AbortError',
-      // 브라우저 확장
-      'top.GLOBALS',
-      'chrome-extension',
-      'moz-extension',
-    ],
-  });
-
-  console.log(`[Sentry] Initialized — environment: ${sentryEnvironment}`);
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: (props: { error: Error | null; resetError: () => void }) => React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode; fallback: (props: { error: Error | null; resetError: () => void }) => React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ErrorBoundary]', error, info);
+  }
+  resetError = () => this.setState({ hasError: false, error: null });
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback({ error: this.state.error, resetError: this.resetError });
+    }
+    return this.props.children;
+  }
 }
 
 // 단일 fetch 인터셉터 설치 (API_BASE_URL 프리픽스 + POS 토큰 주입 + 401 자동 로그아웃)
@@ -95,8 +40,8 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <HelmetProvider>
-      <Sentry.ErrorBoundary
-        fallback={({ error, resetError }) => (
+      <ErrorBoundary
+        fallback={({ resetError }) => (
           <div style={{
             padding: '40px 20px',
             maxWidth: '600px',
@@ -108,7 +53,7 @@ root.render(
               Something went wrong
             </h1>
             <p style={{ color: '#6B7280', marginBottom: '24px', fontSize: '14px' }}>
-              The error has been reported. Please try again or contact support if the problem persists.
+              Please try again or contact support if the problem persists.
             </p>
             <button
               onClick={resetError}
@@ -127,10 +72,9 @@ root.render(
             </button>
           </div>
         )}
-        showDialog={false}
       >
         <App />
-      </Sentry.ErrorBoundary>
+      </ErrorBoundary>
     </HelmetProvider>
   </React.StrictMode>
 );
