@@ -144,26 +144,45 @@ const PaymentGatewayGuide: React.FC<Props> = ({ gateway, webhookUrl }) => {
               </StepBody>
             </Step>
             <Step>
-              <StepLabel>2. Create a REST API app</StepLabel>
+              <StepLabel>2. Create a REST API app & copy credentials</StepLabel>
               <StepBody>
                 Open <ExtLink href="https://developer.paypal.com/dashboard/applications/live" target="_blank" rel="noopener noreferrer">developer.paypal.com → Apps & Credentials → Live → Create App</ExtLink>.<br />
-                Copy <Code>Client ID</Code> and <Code>Secret</Code> into the fields below.<br />
+                Set <Code>Display App Name</Code> = <Code>PurpleHere</Code>.<br />
+                On the app detail page, copy <Code>Client ID</Code> and <Code>Secret key 1</Code> into the fields below.<br />
                 <em>Tip: use the Sandbox tab first to test without real money.</em>
               </StepBody>
             </Step>
             <Step>
-              <StepLabel>3. Register webhook</StepLabel>
+              <StepLabel>3. Enable required Features (CRITICAL)</StepLabel>
               <StepBody>
-                In the same app detail page → scroll to <Code>Webhooks</Code> → <Code>Add Webhook</Code>.<br />
-                URL: <Code>{webhookUrl || 'https://purplehere.com/api/webhooks/paypal'}</Code><br />
-                Events: <Code>PAYMENT.CAPTURE.COMPLETED</Code>, <Code>PAYMENT.CAPTURE.DENIED</Code>.<br />
-                Copy the <Code>Webhook ID</Code> into the Webhook ID field below.
+                On the same app page, scroll to <Code>Features</Code> and enable:<br />
+                <strong>•</strong> <Code>Subscriptions</Code> — required for recurring subscription billing.<br />
+                <strong>•</strong> <Code>Save payment methods</Code> (Vault API) — required for saved-card off-session charges.<br />
+                Click <Code>Save Changes</Code>. Without these, the new app cannot create subscriptions or charge stored cards.
               </StepBody>
             </Step>
             <Step>
-              <StepLabel>4. Test the connection</StepLabel>
+              <StepLabel>4. Register webhook with the FULL event set</StepLabel>
               <StepBody>
-                Save the credentials, issue a test invoice, and pay using a PayPal Sandbox buyer account.
+                Go to <Code>Live Webhooks → Add Webhook</Code>.<br />
+                <strong>URL:</strong> <Code>{webhookUrl || 'https://purplehere.com/api/webhooks/paypal'}</Code><br />
+                <strong>Events to subscribe</strong> (check all eight — partial sets break subscription state mirror):<br />
+                &nbsp;&nbsp;<Code>BILLING.SUBSCRIPTION.ACTIVATED</Code><br />
+                &nbsp;&nbsp;<Code>BILLING.SUBSCRIPTION.UPDATED</Code><br />
+                &nbsp;&nbsp;<Code>BILLING.SUBSCRIPTION.CANCELLED</Code><br />
+                &nbsp;&nbsp;<Code>BILLING.SUBSCRIPTION.EXPIRED</Code><br />
+                &nbsp;&nbsp;<Code>BILLING.SUBSCRIPTION.PAYMENT.FAILED</Code><br />
+                &nbsp;&nbsp;<Code>PAYMENT.SALE.COMPLETED</Code> &nbsp;<em>(subscription monthly cycle)</em><br />
+                &nbsp;&nbsp;<Code>PAYMENT.CAPTURE.COMPLETED</Code> &nbsp;<em>(one-time invoice)</em><br />
+                &nbsp;&nbsp;<Code>PAYMENT.CAPTURE.DENIED</Code> &nbsp;<em>(failure)</em><br />
+                Save the webhook, then copy the <Code>Webhook ID</Code> (e.g. <Code>8MU24345NX395951Y</Code>) into the Webhook ID field below — required for signature verification.
+              </StepBody>
+            </Step>
+            <Step>
+              <StepLabel>5. Test the connection</StepLabel>
+              <StepBody>
+                Save the credentials, issue a test invoice, and pay using a PayPal Sandbox buyer account.<br />
+                You can verify webhook delivery at <Code>Live Webhooks → your webhook → Recent activity</Code>.
               </StepBody>
             </Step>
           </GuideBody>
