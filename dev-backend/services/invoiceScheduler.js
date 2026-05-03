@@ -367,8 +367,43 @@ class InvoiceScheduler {
 
     console.log(`✓ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}`);
 
-    // Send email notification (non-blocking)
-    this.sendInvoiceEmail(invoice, restaurant, 'system_admin', null, invoiceNumber);
+    // Auto-charge attempt — if restaurant saved a card and consented to auto-charge.
+    // Reload the invoice (to capture finalizeInvoice changes) and try off_session payment.
+    let autoChargeOutcome = null;
+    if (restaurant.auto_charge_enabled && restaurant.stripe_default_payment_method) {
+      try {
+        const fresh = await Invoice.findByPk(invoice.id);
+        const stripeCustomerService = require('./stripeCustomerService');
+        autoChargeOutcome = await stripeCustomerService.chargeInvoiceAutomatic(fresh, 'restaurant');
+        if (autoChargeOutcome?.status === 'paid') {
+          await fresh.update({
+            status: 'paid',
+            paid_amount: fresh.total_amount,
+            paid_at: new Date(),
+            payment_method: 'stripe',
+            payment_provider: 'stripe',
+            payment_intent_id: autoChargeOutcome.payment_intent_id
+          });
+          // Centralised post-paid hooks (subscription restore + referral commission)
+          const { handleInvoicePaid } = require('./invoiceLifecycle');
+          handleInvoicePaid(fresh.id).catch(e =>
+            console.error('[invoiceScheduler auto-charge] handleInvoicePaid:', e.message)
+          );
+          console.log(`✓ Auto-charged invoice ${invoiceNumber} via saved card`);
+        } else {
+          console.warn(`⚠️ Auto-charge ${autoChargeOutcome?.status}: ${invoiceNumber} — falling back to email reminder`);
+        }
+      } catch (e) {
+        console.error(`[auto-charge] failed for ${invoiceNumber}:`, e.message);
+        autoChargeOutcome = { status: 'failed', message: e.message };
+      }
+    }
+
+    // Email notification — only when invoice still needs manual action.
+    // (auto-charge succeeded → user gets a separate paid receipt via webhook flow)
+    if (!autoChargeOutcome || autoChargeOutcome.status !== 'paid') {
+      this.sendInvoiceEmail(invoice, restaurant, 'system_admin', null, invoiceNumber);
+    }
   }
 
   /**
