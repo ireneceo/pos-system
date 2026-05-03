@@ -269,7 +269,7 @@ router.get('/', authenticateToken, async (req, res) => {
     res.json({ success: true, data: counts });
   } catch (error) {
     console.error('Error fetching badge counts:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch badge counts' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch badge counts', code: 'INTERNAL_ERROR' } });
   }
 });
 

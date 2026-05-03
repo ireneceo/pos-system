@@ -195,7 +195,7 @@ router.get('/', authenticateToken, async (req, res) => {
     } else if (req.user.role === 'System Admin') {
       console.log(`👑 System Admin: Returning all foodcourts`);
     } else {
-      return res.status(403).json({ error: 'Insufficient permissions' });
+      return res.status(403).json({ success: false, error: { message: 'Insufficient permissions', code: 'FORBIDDEN' } });
     }
 
     const foodcourts = await Foodcourt.findAll({
@@ -219,7 +219,7 @@ router.get('/', authenticateToken, async (req, res) => {
     res.json(foodcourts);
   } catch (error) {
     console.error('Error fetching foodcourts:', error);
-    res.status(500).json({ error: 'Failed to fetch foodcourts' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch foodcourts', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -229,7 +229,7 @@ router.get('/company-info', authenticateToken, async (req, res) => {
     console.log(`🏢 GET /api/foodcourts/company-info - User: ${req.user.email} (${req.user.role})`);
 
     if (req.user.role !== 'Foodcourt General' && req.user.role !== 'Foodcourt Manager') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     const foodcourt = await Foodcourt.findOne({
@@ -237,7 +237,7 @@ router.get('/company-info', authenticateToken, async (req, res) => {
     });
 
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     res.json({
@@ -262,7 +262,7 @@ router.get('/company-info', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching foodcourt company info:', error);
-    res.status(500).json({ error: 'Failed to fetch company info' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch company info', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -272,7 +272,7 @@ router.put('/company-info', authenticateToken, async (req, res) => {
     console.log(`🏢 PUT /api/foodcourts/company-info - User: ${req.user.email}`);
 
     if (req.user.role !== 'Foodcourt General' && req.user.role !== 'Foodcourt Manager') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     const foodcourt = await Foodcourt.findOne({
@@ -280,7 +280,7 @@ router.put('/company-info', authenticateToken, async (req, res) => {
     });
 
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     const updateData = {
@@ -315,7 +315,7 @@ router.put('/company-info', authenticateToken, async (req, res) => {
     res.json({ success: true, message: 'Company info updated successfully' });
   } catch (error) {
     console.error('Error updating foodcourt company info:', error);
-    res.status(500).json({ error: 'Failed to update company info' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update company info', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -341,7 +341,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     });
 
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     // Check access permissions — System Admin (all), owner (Foodcourt General),
@@ -350,13 +350,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const isOwner = foodcourt.owner_id === req.user.id;
     const isScoped = Number(req.user.foodcourt_id) === Number(foodcourt.id);
     if (!isSA && !isOwner && !isScoped) {
-      return res.status(403).json({ error: 'Access denied to this foodcourt' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this foodcourt', code: 'FORBIDDEN' } });
     }
 
     res.json(foodcourt);
   } catch (error) {
     console.error('Error fetching foodcourt:', error);
-    res.status(500).json({ error: 'Failed to fetch foodcourt' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch foodcourt', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -403,10 +403,10 @@ router.post('/', authenticateToken, requireRole('Foodcourt General', 'System Adm
     console.error('Error creating foodcourt:', error);
 
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({ error: 'Foodcourt code already exists' });
+      return res.status(400).json({ success: false, error: { message: 'Foodcourt code already exists', code: 'VALIDATION_ERROR' } });
     }
 
-    res.status(500).json({ error: 'Failed to create foodcourt' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create foodcourt', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -419,12 +419,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const foodcourt = await Foodcourt.findByPk(id);
 
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     // Check access permissions
     if (req.user.role !== 'System Admin' && foodcourt.owner_id !== req.user.id) {
-      return res.status(403).json({ error: 'Access denied to this foodcourt' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this foodcourt', code: 'FORBIDDEN' } });
     }
 
     const { name, code, description, logo_url, email, phone, address, website, status, currency } = req.body;
@@ -470,10 +470,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
     console.error('Error updating foodcourt:', error);
 
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({ error: 'Foodcourt code already exists' });
+      return res.status(400).json({ success: false, error: { message: 'Foodcourt code already exists', code: 'VALIDATION_ERROR' } });
     }
 
-    res.status(500).json({ error: 'Failed to update foodcourt' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update foodcourt', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -485,12 +485,12 @@ router.get('/:id/restaurants', authenticateToken, async (req, res) => {
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     // Check access permissions
     if (req.user.role !== 'System Admin' && foodcourt.owner_id !== req.user.id) {
-      return res.status(403).json({ error: 'Access denied to this foodcourt' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this foodcourt', code: 'FORBIDDEN' } });
     }
 
     const restaurants = await Restaurant.findAll({
@@ -502,7 +502,7 @@ router.get('/:id/restaurants', authenticateToken, async (req, res) => {
     res.json({ success: true, data: restaurants });
   } catch (error) {
     console.error('Error fetching foodcourt restaurants:', error);
-    res.status(500).json({ error: 'Failed to fetch foodcourt restaurants' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch foodcourt restaurants', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -520,12 +520,12 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     });
 
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     // Check access permissions
     if (req.user.role !== 'System Admin' && foodcourt.owner_id !== req.user.id) {
-      return res.status(403).json({ error: 'Access denied to this foodcourt' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this foodcourt', code: 'FORBIDDEN' } });
     }
 
     // Check if foodcourt has restaurants
@@ -541,7 +541,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'Foodcourt deleted successfully' });
   } catch (error) {
     console.error('Error deleting foodcourt:', error);
-    res.status(500).json({ error: 'Failed to delete foodcourt' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete foodcourt', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -557,12 +557,12 @@ router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     // Check access permissions
     if (req.user.role !== 'System Admin' && foodcourt.owner_id !== req.user.id) {
-      return res.status(403).json({ error: 'Access denied to this foodcourt' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this foodcourt', code: 'FORBIDDEN' } });
     }
 
     res.json({
@@ -575,7 +575,7 @@ router.get('/:id/payment-settings', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching foodcourt payment settings:', error);
-    res.status(500).json({ error: 'Failed to fetch payment settings' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch payment settings', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -587,13 +587,13 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     // Check access permissions (Foodcourt General only or System Admin)
     if (req.user.role !== 'System Admin' &&
         (req.user.role !== 'Foodcourt General' || foodcourt.owner_id !== req.user.id)) {
-      return res.status(403).json({ error: 'Access denied. Only Foodcourt General or System Admin can update payment settings.' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied. Only Foodcourt General or System Admin can update payment settings.', code: 'FORBIDDEN' } });
     }
 
     const { payment_settings, invoice_settings, supported_currencies } = req.body;
@@ -651,7 +651,7 @@ router.put('/:id/payment-settings', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating foodcourt payment settings:', error);
-    res.status(500).json({ error: 'Failed to update payment settings' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update payment settings', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -663,14 +663,14 @@ router.get('/:id/payment-settings/available/:currency', authenticateToken, async
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     const result = getAvailablePaymentMethods(foodcourt.payment_settings || {}, currency);
     res.json(result);
   } catch (error) {
     console.error('Error fetching foodcourt available payment methods:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch payment methods' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch payment methods', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -994,7 +994,7 @@ router.get('/:id/allowed-routes', async (req, res) => {
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     // Subscription data is on users table (foodcourt owner)
@@ -1072,7 +1072,7 @@ router.get('/:id/allowed-routes', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching foodcourt allowed routes:', error);
-    res.status(500).json({ error: 'Failed to fetch allowed routes' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch allowed routes', code: 'INTERNAL_ERROR' } });
   }
 });
 

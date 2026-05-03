@@ -11,20 +11,14 @@ router.get('/settings', authenticateToken, async (req, res) => {
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
 
     if (!restaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant ID is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Get restaurant settings
     const restaurant = await Restaurant.findByPk(restaurantId);
 
     if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        error: 'Restaurant not found'
-      });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Parse settings
@@ -111,10 +105,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
     if (!restaurantId) {
       console.error('✗ No restaurant ID provided');
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant ID is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Access control: Only allow users to update their own restaurant
@@ -123,10 +114,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
       if (req.user.role === 'Restaurant Admin' || req.user.role === 'Staff') {
         if (parseInt(req.user.restaurant_id) !== parseInt(restaurantId)) {
           console.error('✗ Access denied: User restaurant_id does not match target');
-          return res.status(403).json({
-            success: false,
-            error: 'Access denied to this restaurant'
-          });
+          return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
         }
       }
     }
@@ -157,10 +145,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
 
     if (!restaurant) {
       console.error('✗ Restaurant not found:', restaurantId);
-      return res.status(404).json({
-        success: false,
-        error: 'Restaurant not found'
-      });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     console.log('✓ Restaurant found:', restaurant.name);

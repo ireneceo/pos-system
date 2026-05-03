@@ -268,7 +268,7 @@ router.get('/subscriptions/manager/:managerId', authenticateToken, async (req, r
     res.json(subscriptions);
   } catch (error) {
     console.error('Error fetching manager subscriptions:', error);
-    res.status(500).json({ error: 'Failed to fetch manager subscriptions' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch manager subscriptions', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -354,13 +354,13 @@ router.post('/subscriptions', authenticateToken, async (req, res) => {
     // Get restaurant
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Get manager
     const manager = await User.findByPk(managerId);
     if (!manager) {
-      return res.status(404).json({ error: 'Manager not found' });
+      return res.status(404).json({ success: false, error: { message: 'Manager not found', code: 'NOT_FOUND' } });
     }
 
     // Plan pricing
@@ -466,7 +466,7 @@ router.post('/subscriptions', authenticateToken, async (req, res) => {
     res.json({ success: true, message: 'Subscription added successfully' });
   } catch (error) {
     console.error('Error adding subscription:', error);
-    res.status(500).json({ error: 'Failed to add subscription' });
+    res.status(500).json({ success: false, error: { message: 'Failed to add subscription', code: 'INTERNAL_ERROR' } });
   }
 });
 

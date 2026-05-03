@@ -80,7 +80,7 @@ router.get('/:id', async (req, res) => {
     });
 
     if (!optionGroup) {
-      return res.status(404).json({ success: false, error: 'Option group not found' });
+      return res.status(404).json({ success: false, error: { message: 'Option group not found', code: 'NOT_FOUND' } });
     }
 
     res.json({ success: true, data: optionGroup });
@@ -95,7 +95,7 @@ router.post('/', async (req, res) => {
     const { name, required, multiple, options } = req.body;
 
     if (!name) {
-      return res.status(400).json({ success: false, error: 'Option group name is required' });
+      return res.status(400).json({ success: false, error: { message: 'Option group name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Create option group (support both camelCase and snake_case)
@@ -171,7 +171,7 @@ router.put('/:id', async (req, res) => {
 
     const optionGroup = await OptionGroup.findByPk(req.params.id);
     if (!optionGroup) {
-      return res.status(404).json({ success: false, error: 'Option group not found' });
+      return res.status(404).json({ success: false, error: { message: 'Option group not found', code: 'NOT_FOUND' } });
     }
 
     // Update option group
@@ -256,7 +256,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const optionGroup = await OptionGroup.findByPk(req.params.id);
     if (!optionGroup) {
-      return res.status(404).json({ success: false, error: 'Option group not found' });
+      return res.status(404).json({ success: false, error: { message: 'Option group not found', code: 'NOT_FOUND' } });
     }
 
     // Soft delete: set isActive to false

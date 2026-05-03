@@ -14,7 +14,7 @@ const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth
 // non-System-Admin overrides. Handler-level WHERE `{ id, restaurant_id }`
 // then enforces row-level ownership.
 function checkProductTenant(req, res, next) {
-  if (!req.user) return res.status(401).json({ error: 'Authentication required' });
+  if (!req.user) return res.status(401).json({ success: false, error: { message: 'Authentication required', code: 'UNAUTHORIZED' } });
   if (req.user.role === 'System Admin') return next();
 
   const requested =
@@ -22,7 +22,7 @@ function checkProductTenant(req, res, next) {
     req.body?.restaurantId || req.body?.restaurant_id;
 
   if (requested && parseInt(requested) !== parseInt(req.user.restaurant_id)) {
-    return res.status(403).json({ error: 'Access denied to this restaurant' });
+    return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
   }
   return next();
 }
@@ -49,10 +49,7 @@ router.get('/', checkRestaurantAccess, async (req, res) => {
     const limitNum = parseInt(limit);
 
     if (!restaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant ID is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Get categories from categories table
@@ -244,10 +241,7 @@ router.get('/categories', checkRestaurantAccess, async (req, res) => {
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
 
     if (!restaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant ID is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Get categories from categories table
@@ -289,7 +283,7 @@ router.get('/product/:id', checkProductTenant, async (req, res) => {
     });
 
     if (!product) {
-      return res.status(404).json({ success: false, error: 'Product not found' });
+      return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
     }
     res.json({ success: true, data: product });
   } catch (error) {
@@ -304,17 +298,11 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
     const restaurantId = req.body.restaurantId || req.body.restaurant_id || req.user.restaurant_id;
 
     if (!restaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant ID is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
     if (!req.body.name || !req.body.category) {
-      return res.status(400).json({
-        success: false,
-        error: 'Name and category are required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Name and category are required', code: 'VALIDATION_ERROR' } });
     }
 
     // Check menu item limit
@@ -339,19 +327,13 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
     if (req.body.is_set_menu) {
       // Check if set_items exists and has at least one item
       if (!req.body.set_items || !Array.isArray(req.body.set_items) || req.body.set_items.length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Set menu must contain at least one item'
-        });
+        return res.status(400).json({ success: false, error: { message: 'Set menu must contain at least one item', code: 'VALIDATION_ERROR' } });
       }
 
       // Validate each set item structure
       for (const item of req.body.set_items) {
         if (!item.menuItemId || !item.name || !item.quantity || item.quantity < 1) {
-          return res.status(400).json({
-            success: false,
-            error: 'Each set item must have menuItemId, name, and quantity (minimum 1)'
-          });
+          return res.status(400).json({ success: false, error: { message: 'Each set item must have menuItemId, name, and quantity (minimum 1)', code: 'VALIDATION_ERROR' } });
         }
       }
 
@@ -366,18 +348,12 @@ router.post('/product', checkRestaurantAccess, async (req, res) => {
 
       const hasSetMenu = referencedProducts.some(prod => prod.is_set_menu === true);
       if (hasSetMenu) {
-        return res.status(400).json({
-          success: false,
-          error: 'Set menu cannot contain other set menus'
-        });
+        return res.status(400).json({ success: false, error: { message: 'Set menu cannot contain other set menus', code: 'VALIDATION_ERROR' } });
       }
 
       // Verify all referenced menu items exist
       if (referencedProducts.length !== menuItemIds.length) {
-        return res.status(400).json({
-          success: false,
-          error: 'One or more referenced menu items do not exist'
-        });
+        return res.status(400).json({ success: false, error: { message: 'One or more referenced menu items do not exist', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -489,7 +465,7 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
     });
 
     if (!product) {
-      return res.status(404).json({ success: false, error: 'Product not found' });
+      return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
     }
 
     // Set menu validation (if updating to set menu or already is set menu)
@@ -500,19 +476,13 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
 
       // Check if set_items exists and has at least one item
       if (!setItems || !Array.isArray(setItems) || setItems.length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Set menu must contain at least one item'
-        });
+        return res.status(400).json({ success: false, error: { message: 'Set menu must contain at least one item', code: 'VALIDATION_ERROR' } });
       }
 
       // Validate each set item structure
       for (const item of setItems) {
         if (!item.menuItemId || !item.name || !item.quantity || item.quantity < 1) {
-          return res.status(400).json({
-            success: false,
-            error: 'Each set item must have menuItemId, name, and quantity (minimum 1)'
-          });
+          return res.status(400).json({ success: false, error: { message: 'Each set item must have menuItemId, name, and quantity (minimum 1)', code: 'VALIDATION_ERROR' } });
         }
       }
 
@@ -529,18 +499,12 @@ router.put('/product/:id', checkProductTenant, async (req, res) => {
 
       const hasSetMenu = referencedProducts.some(prod => prod.is_set_menu === true);
       if (hasSetMenu) {
-        return res.status(400).json({
-          success: false,
-          error: 'Set menu cannot contain other set menus'
-        });
+        return res.status(400).json({ success: false, error: { message: 'Set menu cannot contain other set menus', code: 'VALIDATION_ERROR' } });
       }
 
       // Verify all referenced menu items exist
       if (referencedProducts.length !== menuItemIds.length) {
-        return res.status(400).json({
-          success: false,
-          error: 'One or more referenced menu items do not exist'
-        });
+        return res.status(400).json({ success: false, error: { message: 'One or more referenced menu items do not exist', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -691,7 +655,7 @@ router.post('/product/:id/copy', checkProductTenant, async (req, res) => {
     });
 
     if (!sourceProduct) {
-      return res.status(404).json({ success: false, error: 'Product not found' });
+      return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
     }
 
     // Check menu item limit
@@ -771,7 +735,7 @@ router.put('/product/:id/toggle-active', checkProductTenant, async (req, res) =>
     });
 
     if (!product) {
-      return res.status(404).json({ success: false, error: 'Product not found' });
+      return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
     }
 
     const newActiveState = !product.is_active;
@@ -804,7 +768,7 @@ router.delete('/product/:id', checkProductTenant, async (req, res) => {
     });
 
     if (!product) {
-      return res.status(404).json({ success: false, error: 'Product not found' });
+      return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
     }
 
     const productName = product.name;

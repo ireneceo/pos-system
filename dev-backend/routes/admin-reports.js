@@ -81,7 +81,7 @@ router.get('/default-currency', async (req, res) => {
     res.json({ success: true, data: { currency: defaultCurrency } });
   } catch (error) {
     console.error('Error fetching default currency:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch default currency' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch default currency', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -131,7 +131,7 @@ router.get('/revenue-summary', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching revenue summary:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch revenue summary' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch revenue summary', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -184,7 +184,7 @@ router.get('/revenue-trend', async (req, res) => {
     res.json({ success: true, data });
   } catch (error) {
     console.error('Error fetching revenue trend:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch revenue trend' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch revenue trend', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -221,7 +221,7 @@ router.get('/revenue-by-category', async (req, res) => {
     res.json({ success: true, data });
   } catch (error) {
     console.error('Error fetching revenue by category:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch revenue by category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch revenue by category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -317,7 +317,7 @@ router.get('/payment-analysis', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching payment analysis:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch payment analysis' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch payment analysis', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -355,7 +355,7 @@ router.get('/overdue-invoices', async (req, res) => {
     res.json({ success: true, data });
   } catch (error) {
     console.error('Error fetching overdue invoices:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch overdue invoices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch overdue invoices', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -488,7 +488,7 @@ router.get('/customer-analysis', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching customer analysis:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch customer analysis' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch customer analysis', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -571,7 +571,7 @@ router.get('/subscription-stats', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching subscription stats:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch subscription stats' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch subscription stats', code: 'INTERNAL_ERROR' } });
   }
 });
 

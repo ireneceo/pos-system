@@ -103,7 +103,7 @@ router.get('/public/faq', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching public FAQ:', error);
-    res.status(500).json({ error: 'Failed to fetch FAQ' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch FAQ', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -255,7 +255,7 @@ async function listPublishedPosts(req, res, { isNews }) {
     });
   } catch (error) {
     console.error('Error fetching public posts:', error);
-    res.status(500).json({ error: 'Failed to fetch posts' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch posts', code: 'INTERNAL_ERROR' } });
   }
 }
 
@@ -325,7 +325,7 @@ router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => 
     }
 
     if (!post) {
-      return res.status(404).json({ error: 'Post not found' });
+      return res.status(404).json({ success: false, error: { message: 'Post not found', code: 'NOT_FOUND' } });
     }
 
     // Increment view count
@@ -371,7 +371,7 @@ router.get('/public/blog/:slug', optionalAuthenticateToken, async (req, res) => 
     });
   } catch (error) {
     console.error('Error fetching blog post:', error);
-    res.status(500).json({ error: 'Failed to fetch blog post' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch blog post', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -408,7 +408,7 @@ router.get('/categories', authenticateToken, async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching categories:', error);
-    res.status(500).json({ error: 'Failed to fetch categories' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -418,7 +418,7 @@ router.post('/categories', authenticateToken, requireRole('System Admin'), async
     const { type, name, description, icon } = req.body;
 
     if (!type || !name) {
-      return res.status(400).json({ error: 'Type and name are required' });
+      return res.status(400).json({ success: false, error: { message: 'Type and name are required', code: 'VALIDATION_ERROR' } });
     }
 
     // Generate slug
@@ -430,7 +430,7 @@ router.post('/categories', authenticateToken, requireRole('System Admin'), async
     });
 
     if (existing) {
-      return res.status(400).json({ error: 'Category with this name already exists' });
+      return res.status(400).json({ success: false, error: { message: 'Category with this name already exists', code: 'VALIDATION_ERROR' } });
     }
 
     // Get max sort order
@@ -448,7 +448,7 @@ router.post('/categories', authenticateToken, requireRole('System Admin'), async
     res.status(201).json(category);
   } catch (error) {
     console.error('Error creating category:', error);
-    res.status(500).json({ error: 'Failed to create category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -460,7 +460,7 @@ router.put('/categories/:id', authenticateToken, requireRole('System Admin'), as
 
     const category = await ContentCategory.findByPk(id);
     if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     const updates = {};
@@ -477,7 +477,7 @@ router.put('/categories/:id', authenticateToken, requireRole('System Admin'), as
     res.json(category);
   } catch (error) {
     console.error('Error updating category:', error);
-    res.status(500).json({ error: 'Failed to update category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -488,22 +488,20 @@ router.delete('/categories/:id', authenticateToken, requireRole('System Admin'),
 
     const category = await ContentCategory.findByPk(id);
     if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     // Check if category has contents
     const contentCount = await Content.count({ where: { category_id: id } });
     if (contentCount > 0) {
-      return res.status(400).json({
-        error: 'Cannot delete category with existing contents. Move or delete contents first.'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Cannot delete category with existing contents. Move or delete contents first.', code: 'VALIDATION_ERROR' } });
     }
 
     await category.destroy();
     res.json({ message: 'Category deleted successfully' });
   } catch (error) {
     console.error('Error deleting category:', error);
-    res.status(500).json({ error: 'Failed to delete category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -522,7 +520,7 @@ router.put('/categories/reorder', authenticateToken, requireRole('System Admin')
     res.json({ message: 'Categories reordered successfully' });
   } catch (error) {
     console.error('Error reordering categories:', error);
-    res.status(500).json({ error: 'Failed to reorder categories' });
+    res.status(500).json({ success: false, error: { message: 'Failed to reorder categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -566,7 +564,7 @@ router.get('/', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching contents:', error);
-    res.status(500).json({ error: 'Failed to fetch contents' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch contents', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -584,13 +582,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
     });
 
     if (!content) {
-      return res.status(404).json({ error: 'Content not found' });
+      return res.status(404).json({ success: false, error: { message: 'Content not found', code: 'NOT_FOUND' } });
     }
 
     res.json(content);
   } catch (error) {
     console.error('Error fetching content:', error);
-    res.status(500).json({ error: 'Failed to fetch content' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch content', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -605,7 +603,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
             slug: providedSlug } = req.body;
 
     if (!type || !category_id || !title || !content) {
-      return res.status(400).json({ error: 'Type, category, title, and content are required' });
+      return res.status(400).json({ success: false, error: { message: 'Type, category, title, and content are required', code: 'VALIDATION_ERROR' } });
     }
 
     const lang = normalizeLang(language);
@@ -613,7 +611,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
     // Verify category exists and matches type
     const category = await ContentCategory.findByPk(category_id);
     if (!category || category.type !== type) {
-      return res.status(400).json({ error: 'Invalid category' });
+      return res.status(400).json({ success: false, error: { message: 'Invalid category', code: 'VALIDATION_ERROR' } });
     }
 
     // Slug handling (unique per language)
@@ -663,7 +661,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
     res.status(201).json(newContent);
   } catch (error) {
     console.error('Error creating content:', error);
-    res.status(500).json({ error: 'Failed to create content' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create content', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -679,20 +677,20 @@ router.post('/bulk', authenticateToken, requireRole('System Admin'), async (req,
 
     if (!type || !category_id || !translations || typeof translations !== 'object') {
       await t.rollback();
-      return res.status(400).json({ error: 'type, category_id, translations required' });
+      return res.status(400).json({ success: false, error: { message: 'type, category_id, translations required', code: 'VALIDATION_ERROR' } });
     }
 
     const langKeys = Object.keys(translations).filter(l => SUPPORTED_LANGS.includes(l));
     if (langKeys.length === 0) {
       await t.rollback();
-      return res.status(400).json({ error: 'No valid languages in translations' });
+      return res.status(400).json({ success: false, error: { message: 'No valid languages in translations', code: 'VALIDATION_ERROR' } });
     }
 
     // Category check
     const category = await ContentCategory.findByPk(category_id);
     if (!category || category.type !== type) {
       await t.rollback();
-      return res.status(400).json({ error: 'Invalid category' });
+      return res.status(400).json({ success: false, error: { message: 'Invalid category', code: 'VALIDATION_ERROR' } });
     }
 
     // Generate translation_group_id: use next available integer (max + 1)
@@ -776,7 +774,7 @@ router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, r
 
     const existingContent = await Content.findByPk(id);
     if (!existingContent) {
-      return res.status(404).json({ error: 'Content not found' });
+      return res.status(404).json({ success: false, error: { message: 'Content not found', code: 'NOT_FOUND' } });
     }
 
     const updates = {};
@@ -836,7 +834,7 @@ router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, r
     res.json(existingContent);
   } catch (error) {
     console.error('Error updating content:', error);
-    res.status(500).json({ error: 'Failed to update content' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update content', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -847,14 +845,14 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
 
     const content = await Content.findByPk(id);
     if (!content) {
-      return res.status(404).json({ error: 'Content not found' });
+      return res.status(404).json({ success: false, error: { message: 'Content not found', code: 'NOT_FOUND' } });
     }
 
     await content.destroy();
     res.json({ message: 'Content deleted successfully' });
   } catch (error) {
     console.error('Error deleting content:', error);
-    res.status(500).json({ error: 'Failed to delete content' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete content', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -865,7 +863,7 @@ router.put('/:id/publish', authenticateToken, requireRole('System Admin'), async
 
     const content = await Content.findByPk(id);
     if (!content) {
-      return res.status(404).json({ error: 'Content not found' });
+      return res.status(404).json({ success: false, error: { message: 'Content not found', code: 'NOT_FOUND' } });
     }
 
     await content.update({
@@ -876,7 +874,7 @@ router.put('/:id/publish', authenticateToken, requireRole('System Admin'), async
     res.json(content);
   } catch (error) {
     console.error('Error publishing content:', error);
-    res.status(500).json({ error: 'Failed to publish content' });
+    res.status(500).json({ success: false, error: { message: 'Failed to publish content', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -887,14 +885,14 @@ router.put('/:id/unpublish', authenticateToken, requireRole('System Admin'), asy
 
     const content = await Content.findByPk(id);
     if (!content) {
-      return res.status(404).json({ error: 'Content not found' });
+      return res.status(404).json({ success: false, error: { message: 'Content not found', code: 'NOT_FOUND' } });
     }
 
     await content.update({ status: 'draft' });
     res.json(content);
   } catch (error) {
     console.error('Error unpublishing content:', error);
-    res.status(500).json({ error: 'Failed to unpublish content' });
+    res.status(500).json({ success: false, error: { message: 'Failed to unpublish content', code: 'INTERNAL_ERROR' } });
   }
 });
 

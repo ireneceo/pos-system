@@ -47,11 +47,11 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
 
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
+      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
     if (invoice.status === 'paid') {
-      return res.status(400).json({ error: 'Invoice is already paid' });
+      return res.status(400).json({ success: false, error: { message: 'Invoice is already paid', code: 'VALIDATION_ERROR' } });
     }
 
     // Update invoice with payment information + SOA cascade (B1 재설계)
@@ -96,7 +96,7 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
     res.json({ success: true, invoice: await Invoice.findByPk(req.params.id) });
   } catch (error) {
     console.error('Error recording payment:', error);
-    res.status(500).json({ error: 'Failed to record payment' });
+    res.status(500).json({ success: false, error: { message: 'Failed to record payment', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -112,14 +112,14 @@ router.post('/:id/create-payment-intent', authenticateToken, async (req, res) =>
       include: [{ model: Restaurant, as: 'restaurant' }]
     });
 
-    if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+    if (!invoice) return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     if (invoice.status !== 'pending_payment' && invoice.status !== 'rejected') {
       return res.status(400).json({ success: false, error: `Cannot pay invoice with status: ${invoice.status}` });
     }
 
     // Check payment permission
     const canPay = await checkPaymentPermission(req.user, invoice);
-    if (!canPay) return res.status(403).json({ success: false, error: 'Permission denied' });
+    if (!canPay) return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
 
     // Get Stripe for the correct issuer
     const stripe = await getStripeForIssuer(invoice.issuer_type, invoice.issuer_id);
@@ -182,13 +182,13 @@ router.post('/:id/create-paypal-order', authenticateToken, async (req, res) => {
       include: [{ model: Restaurant, as: 'restaurant' }]
     });
 
-    if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+    if (!invoice) return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     if (invoice.status !== 'pending_payment' && invoice.status !== 'rejected') {
       return res.status(400).json({ success: false, error: `Cannot pay invoice with status: ${invoice.status}` });
     }
 
     const canPay = await checkPaymentPermission(req.user, invoice);
-    if (!canPay) return res.status(403).json({ success: false, error: 'Permission denied' });
+    if (!canPay) return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
 
     const { client } = await createPayPalClient(invoice.issuer_type, invoice.issuer_id);
 
@@ -248,13 +248,13 @@ router.post('/:id/capture-paypal-order', authenticateToken, async (req, res) => 
       include: [{ model: Restaurant, as: 'restaurant' }]
     });
 
-    if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
+    if (!invoice) return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
 
     const canPay = await checkPaymentPermission(req.user, invoice);
-    if (!canPay) return res.status(403).json({ success: false, error: 'Permission denied' });
+    if (!canPay) return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
 
     if (invoice.payment_intent_id !== orderId) {
-      return res.status(400).json({ success: false, error: 'Order ID mismatch' });
+      return res.status(400).json({ success: false, error: { message: 'Order ID mismatch', code: 'VALIDATION_ERROR' } });
     }
 
     const { client } = await createPayPalClient(invoice.issuer_type, invoice.issuer_id);
@@ -321,7 +321,7 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
     });
 
     if (!invoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
+      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
     // Check if invoice is in payable state
@@ -334,7 +334,7 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
     // Verify user has permission to pay this invoice
     const canPay = await checkPaymentPermission(req.user, invoice);
     if (!canPay) {
-      return res.status(403).json({ error: 'You do not have permission to pay this invoice' });
+      return res.status(403).json({ success: false, error: { message: 'You do not have permission to pay this invoice', code: 'FORBIDDEN' } });
     }
 
     // Validate payment_method against issuer's configured methods
@@ -402,7 +402,7 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error submitting payment:', error);
-    res.status(500).json({ error: 'Failed to submit payment' });
+    res.status(500).json({ success: false, error: { message: 'Failed to submit payment', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -415,7 +415,7 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
 
     const invoice = await Invoice.findByPk(id);
     if (!invoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
+      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
     // Check if invoice is in confirmable state
@@ -428,7 +428,7 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
     // Verify user has permission to confirm this invoice
     const canConfirm = await checkConfirmPermission(req.user, invoice);
     if (!canConfirm) {
-      return res.status(403).json({ error: 'You do not have permission to confirm this invoice' });
+      return res.status(403).json({ success: false, error: { message: 'You do not have permission to confirm this invoice', code: 'FORBIDDEN' } });
     }
 
     // Update invoice as paid + cascade to SOA children if this is a SOA invoice (B1 재설계)
@@ -505,7 +505,7 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error confirming payment:', error);
-    res.status(500).json({ error: 'Failed to confirm payment' });
+    res.status(500).json({ success: false, error: { message: 'Failed to confirm payment', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -517,12 +517,12 @@ router.post('/:id/reject-payment', authenticateToken, async (req, res) => {
 
 
     if (!reason || reason.trim() === '') {
-      return res.status(400).json({ error: 'Rejection reason is required' });
+      return res.status(400).json({ success: false, error: { message: 'Rejection reason is required', code: 'VALIDATION_ERROR' } });
     }
 
     const invoice = await Invoice.findByPk(id);
     if (!invoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
+      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
     // Check if invoice is in rejectable state
@@ -535,7 +535,7 @@ router.post('/:id/reject-payment', authenticateToken, async (req, res) => {
     // Verify user has permission to reject this invoice
     const canReject = await checkConfirmPermission(req.user, invoice);
     if (!canReject) {
-      return res.status(403).json({ error: 'You do not have permission to reject this invoice' });
+      return res.status(403).json({ success: false, error: { message: 'You do not have permission to reject this invoice', code: 'FORBIDDEN' } });
     }
 
     // Update invoice back to pending with rejection reason
@@ -562,7 +562,7 @@ router.post('/:id/reject-payment', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error rejecting payment:', error);
-    res.status(500).json({ error: 'Failed to reject payment' });
+    res.status(500).json({ success: false, error: { message: 'Failed to reject payment', code: 'INTERNAL_ERROR' } });
   }
 });
 

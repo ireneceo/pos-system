@@ -14,10 +14,7 @@ router.get('/', authenticateToken, async (req, res) => {
     const finalRestaurantId = restaurantId || restaurant_id;
 
     if (!finalRestaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant ID is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
     const whereCondition = {
@@ -168,10 +165,7 @@ router.post('/validate', optionalAuthenticateToken, async (req, res) => {
     const finalOrderType = orderType || order_type || 'dine_in';
 
     if (!code || !finalRestaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Coupon code and restaurant ID are required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Coupon code and restaurant ID are required', code: 'VALIDATION_ERROR' } });
     }
 
     // Find coupon
@@ -354,7 +348,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const coupon = await Coupon.findByPk(req.params.id);
 
     if (!coupon) {
-      return res.status(404).json({ success: false, error: 'Coupon not found' });
+      return res.status(404).json({ success: false, error: { message: 'Coupon not found', code: 'NOT_FOUND' } });
     }
 
     res.json({ success: true, data: coupon });
@@ -391,10 +385,7 @@ router.post('/', authenticateToken, async (req, res) => {
     const finalRestaurantId = restaurant_id || restaurantId;
 
     if (!finalRestaurantId || !code || !type || value === undefined) {
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant ID, code, type, and value are required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID, code, type, and value are required', code: 'VALIDATION_ERROR' } });
     }
 
     // Check for duplicate code
@@ -406,10 +397,7 @@ router.post('/', authenticateToken, async (req, res) => {
     });
 
     if (existing) {
-      return res.status(400).json({
-        success: false,
-        error: 'A coupon with this code already exists'
-      });
+      return res.status(400).json({ success: false, error: { message: 'A coupon with this code already exists', code: 'VALIDATION_ERROR' } });
     }
 
     const coupon = await Coupon.create({
@@ -446,7 +434,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const coupon = await Coupon.findByPk(req.params.id);
 
     if (!coupon) {
-      return res.status(404).json({ success: false, error: 'Coupon not found' });
+      return res.status(404).json({ success: false, error: { message: 'Coupon not found', code: 'NOT_FOUND' } });
     }
 
     const {
@@ -479,10 +467,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       });
 
       if (existing) {
-        return res.status(400).json({
-          success: false,
-          error: 'A coupon with this code already exists'
-        });
+        return res.status(400).json({ success: false, error: { message: 'A coupon with this code already exists', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -521,7 +506,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const coupon = await Coupon.findByPk(req.params.id);
 
     if (!coupon) {
-      return res.status(404).json({ success: false, error: 'Coupon not found' });
+      return res.status(404).json({ success: false, error: { message: 'Coupon not found', code: 'NOT_FOUND' } });
     }
 
     await coupon.destroy();
@@ -541,7 +526,7 @@ router.post('/:id/use', authenticateToken, async (req, res) => {
     const coupon = await Coupon.findByPk(req.params.id);
 
     if (!coupon) {
-      return res.status(404).json({ success: false, error: 'Coupon not found' });
+      return res.status(404).json({ success: false, error: { message: 'Coupon not found', code: 'NOT_FOUND' } });
     }
 
     await coupon.update({

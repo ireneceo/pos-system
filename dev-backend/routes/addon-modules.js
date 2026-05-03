@@ -24,7 +24,7 @@ router.get('/', async (req, res, next) => {
     res.json(modules);
   } catch (error) {
     console.error('Error fetching addon modules:', error);
-    res.status(500).json({ error: 'Failed to fetch addon modules' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch addon modules', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -34,13 +34,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const module = await AddonModule.findByPk(req.params.id);
 
     if (!module) {
-      return res.status(404).json({ error: 'Module not found' });
+      return res.status(404).json({ success: false, error: { message: 'Module not found', code: 'NOT_FOUND' } });
     }
 
     res.json(module);
   } catch (error) {
     console.error('Error fetching addon module:', error);
-    res.status(500).json({ error: 'Failed to fetch addon module' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch addon module', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -52,13 +52,13 @@ router.get('/code/:code', authenticateToken, async (req, res) => {
     });
 
     if (!module) {
-      return res.status(404).json({ error: 'Module not found' });
+      return res.status(404).json({ success: false, error: { message: 'Module not found', code: 'NOT_FOUND' } });
     }
 
     res.json(module);
   } catch (error) {
     console.error('Error fetching addon module:', error);
-    res.status(500).json({ error: 'Failed to fetch addon module' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch addon module', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -71,12 +71,10 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
     console.error('Error creating addon module:', error);
 
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(409).json({
-        error: 'Module code already exists'
-      });
+      return res.status(409).json({ success: false, error: { message: 'Module code already exists', code: 'DUPLICATE' } });
     }
 
-    res.status(500).json({ error: 'Failed to create addon module' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create addon module', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -86,14 +84,14 @@ router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, r
     const module = await AddonModule.findByPk(req.params.id);
 
     if (!module) {
-      return res.status(404).json({ error: 'Module not found' });
+      return res.status(404).json({ success: false, error: { message: 'Module not found', code: 'NOT_FOUND' } });
     }
 
     await module.update(req.body);
     res.json(module);
   } catch (error) {
     console.error('Error updating addon module:', error);
-    res.status(500).json({ error: 'Failed to update addon module' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update addon module', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -103,14 +101,14 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
     const module = await AddonModule.findByPk(req.params.id);
 
     if (!module) {
-      return res.status(404).json({ error: 'Module not found' });
+      return res.status(404).json({ success: false, error: { message: 'Module not found', code: 'NOT_FOUND' } });
     }
 
     await module.destroy();
     res.json({ success: true, message: 'Module deleted successfully' });
   } catch (error) {
     console.error('Error deleting addon module:', error);
-    res.status(500).json({ error: 'Failed to delete addon module' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete addon module', code: 'INTERNAL_ERROR' } });
   }
 });
 

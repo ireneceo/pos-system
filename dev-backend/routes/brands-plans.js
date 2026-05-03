@@ -18,12 +18,12 @@ router.get('/:id/subscription', authenticateToken, requireBrandModule('brand_sub
 
     const brand = await Brand.findByPk(id);
     if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
+      return res.status(404).json({ success: false, error: { message: 'Brand not found', code: 'NOT_FOUND' } });
     }
 
     // Check access permissions
     if (req.user.role !== 'System Admin' && brand.owner_id !== req.user.id) {
-      return res.status(403).json({ error: 'Access denied to this brand' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this brand', code: 'FORBIDDEN' } });
     }
 
     res.json({
@@ -37,7 +37,7 @@ router.get('/:id/subscription', authenticateToken, requireBrandModule('brand_sub
     });
   } catch (error) {
     console.error('Error fetching brand subscription:', error);
-    res.status(500).json({ error: 'Failed to fetch subscription info' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch subscription info', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -49,7 +49,7 @@ router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), 
 
     const brand = await Brand.findByPk(id);
     if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
+      return res.status(404).json({ success: false, error: { message: 'Brand not found', code: 'NOT_FOUND' } });
     }
 
     const { subscription_status, subscription_start, subscription_end, plan_type } = req.body;
@@ -86,7 +86,7 @@ router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), 
     });
   } catch (error) {
     console.error('Error updating brand subscription:', error);
-    res.status(500).json({ error: 'Failed to update subscription info' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update subscription info', code: 'INTERNAL_ERROR' } });
   }
 });
 

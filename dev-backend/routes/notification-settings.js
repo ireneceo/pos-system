@@ -146,7 +146,7 @@ router.get('/:entityType/:entityId', authenticateToken, async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('알림 설정 조회 에러:', error);
-    res.status(500).json({ error: '알림 설정을 조회할 수 없습니다.' });
+    res.status(500).json({ success: false, error: { message: '알림 설정을 조회할 수 없습니다.', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -266,7 +266,7 @@ router.post('/:entityType/:entityId', authenticateToken, async (req, res) => {
     res.json({ success: true, message: '알림 설정이 저장되었습니다.' });
   } catch (error) {
     console.error('알림 설정 저장 에러:', error);
-    res.status(500).json({ error: '알림 설정을 저장할 수 없습니다.' });
+    res.status(500).json({ success: false, error: { message: '알림 설정을 저장할 수 없습니다.', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -277,13 +277,13 @@ router.post('/:entityType/:entityId/test-email', authenticateToken, async (req, 
     const { testEmail } = req.body;
 
     if (!testEmail) {
-      return res.status(400).json({ error: 'Test email address is required' });
+      return res.status(400).json({ success: false, error: { message: 'Test email address is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(testEmail)) {
-      return res.status(400).json({ error: 'Invalid email address' });
+      return res.status(400).json({ success: false, error: { message: 'Invalid email address', code: 'VALIDATION_ERROR' } });
     }
 
     // Import email service

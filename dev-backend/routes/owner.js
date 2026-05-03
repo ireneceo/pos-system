@@ -996,7 +996,7 @@ router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) 
     });
   } catch (error) {
     console.error('Error fetching owner allowed routes:', error);
-    res.status(500).json({ error: 'Failed to fetch allowed routes' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch allowed routes', code: 'INTERNAL_ERROR' } });
   }
 });
 

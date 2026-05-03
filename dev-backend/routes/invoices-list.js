@@ -51,7 +51,7 @@ router.get('/invoice-settings', async (req, res) => {
     });
 
     if (!companySettings) {
-      return res.status(404).json({ error: 'Company settings not found' });
+      return res.status(404).json({ success: false, error: { message: 'Company settings not found', code: 'NOT_FOUND' } });
     }
 
     // Get bank info from Payment Settings based on currency
@@ -80,7 +80,7 @@ router.get('/invoice-settings', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching company settings:', error);
-    res.status(500).json({ error: 'Failed to fetch company settings' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch company settings', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -435,7 +435,7 @@ router.get('/', authenticateToken, async (req, res) => {
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching all invoices:', error);
-    res.status(500).json({ error: 'Failed to fetch invoices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch invoices', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -538,7 +538,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching invoices:', error);
-    res.status(500).json({ error: 'Failed to fetch invoices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch invoices', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -697,7 +697,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching manager invoices:', error);
-    res.status(500).json({ error: 'Failed to fetch manager invoices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch manager invoices', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -715,7 +715,7 @@ router.get('/categories', async (req, res) => {
     res.json({ success: true, data: categories });
   } catch (error) {
     console.error('Error fetching invoice categories:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch invoice categories' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch invoice categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -728,7 +728,7 @@ router.get('/categories/all', authenticateToken, async (req, res) => {
     res.json({ success: true, data: categories });
   } catch (error) {
     console.error('Error fetching all invoice categories:', error);
-    res.status(500).json({ success: false, error: 'Failed to fetch invoice categories' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch invoice categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -856,7 +856,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
       };
     }
     else {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     // Filter by status: default shows unpaid only, ?status=paid for paid, ?status=all for everything
@@ -1005,7 +1005,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching invoices to pay:', error);
-    res.status(500).json({ error: 'Failed to fetch invoices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch invoices', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -1023,14 +1023,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
     });
 
     if (!invoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
+      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
     // Branch-scoped Foodcourt Manager: verify invoice is linked to their branch
     const mgrScope = getManagerScope(req.user);
     if (mgrScope.scoped && mgrScope.branch_id) {
       const inBranch = await invoiceInBranch(invoice, mgrScope.branch_id);
-      if (!inBranch) return res.status(403).json({ error: 'No access to this invoice' });
+      if (!inBranch) return res.status(403).json({ success: false, error: { message: 'No access to this invoice', code: 'FORBIDDEN' } });
     }
 
     const items = await InvoiceItem.findAll({
@@ -1124,7 +1124,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
     res.json({ invoice: transformedInvoice, items });
   } catch (error) {
     console.error('Error fetching invoice details:', error);
-    res.status(500).json({ error: 'Failed to fetch invoice details' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch invoice details', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -1133,7 +1133,7 @@ router.get('/issued-by/:issuerType/:issuerId', authenticateToken, async (req, re
     const { issuerType, issuerId } = req.params;
     // Validate issuer type
     if (!['system_admin', 'brand', 'foodcourt'].includes(issuerType)) {
-      return res.status(400).json({ error: 'Invalid issuer type' });
+      return res.status(400).json({ success: false, error: { message: 'Invalid issuer type', code: 'VALIDATION_ERROR' } });
     }
 
     // Check permission
@@ -1141,15 +1141,15 @@ router.get('/issued-by/:issuerType/:issuerId', authenticateToken, async (req, re
       if (issuerType === 'brand') {
         const brand = await Brand.findByPk(issuerId);
         if (!brand || brand.owner_id !== req.user.id) {
-          return res.status(403).json({ error: 'Access denied' });
+          return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
         }
       } else if (issuerType === 'foodcourt') {
         const foodcourt = await Foodcourt.findByPk(issuerId);
         if (!foodcourt || foodcourt.owner_id !== req.user.id) {
-          return res.status(403).json({ error: 'Access denied' });
+          return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
         }
       } else {
-        return res.status(403).json({ error: 'Access denied' });
+        return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
       }
     }
 
@@ -1195,7 +1195,7 @@ router.get('/issued-by/:issuerType/:issuerId', authenticateToken, async (req, re
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching issued invoices:', error);
-    res.status(500).json({ error: 'Failed to fetch invoices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch invoices', code: 'INTERNAL_ERROR' } });
   }
 });
 

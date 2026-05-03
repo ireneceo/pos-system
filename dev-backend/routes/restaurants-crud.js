@@ -298,7 +298,7 @@ router.get('/', authenticateToken, async (req, res) => {
     res.json(transformedRestaurants);
   } catch (error) {
     console.error('Error fetching restaurants:', error);
-    res.status(500).json({ error: 'Failed to fetch restaurants' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch restaurants', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -310,7 +310,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
     // Get the target user to determine scope strategy
     const targetUser = await User.findByPk(managerId, { attributes: ['id', 'role', 'brand_id', 'foodcourt_id'] });
     if (!targetUser) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
     }
 
     let restaurants;
@@ -566,7 +566,7 @@ router.get('/:id/company-info', authenticateToken, checkRestaurantAccess, async 
     });
 
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Format response similar to brand/foodcourt company-info
@@ -594,7 +594,7 @@ router.get('/:id/company-info', authenticateToken, checkRestaurantAccess, async 
     res.json(companyInfo);
   } catch (error) {
     console.error('Error fetching restaurant company info:', error);
-    res.status(500).json({ error: 'Failed to fetch restaurant company info' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch restaurant company info', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -625,13 +625,13 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
     });
 
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Branch-scoped Foodcourt Manager: restrict to restaurants in their branch
     if (req.user.role === 'Foodcourt Manager' && req.user.branch_id) {
       if (restaurant.branch_id !== req.user.branch_id) {
-        return res.status(403).json({ error: 'No access to this restaurant' });
+        return res.status(403).json({ success: false, error: { message: 'No access to this restaurant', code: 'FORBIDDEN' } });
       }
     }
 
@@ -742,7 +742,7 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
     res.json(response);
   } catch (error) {
     console.error('Error fetching restaurant details:', error);
-    res.status(500).json({ error: 'Failed to fetch restaurant details' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch restaurant details', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -891,19 +891,19 @@ router.post('/', authenticateToken, requireRole(
 
       if (!adminEmail || !adminUsername || !adminFullName) {
         await transaction.rollback();
-        return res.status(400).json({ error: 'Admin email, username, and full name are required' });
+        return res.status(400).json({ success: false, error: { message: 'Admin email, username, and full name are required', code: 'VALIDATION_ERROR' } });
       }
 
       // 이메일/유저네임 중복 체크
       const existingEmail = await User.findOne({ where: { email: adminEmail } });
       if (existingEmail) {
         await transaction.rollback();
-        return res.status(400).json({ error: 'Admin email is already in use' });
+        return res.status(400).json({ success: false, error: { message: 'Admin email is already in use', code: 'VALIDATION_ERROR' } });
       }
       const existingUsername = await User.findOne({ where: { username: adminUsername } });
       if (existingUsername) {
         await transaction.rollback();
-        return res.status(400).json({ error: 'Admin username is already in use' });
+        return res.status(400).json({ success: false, error: { message: 'Admin username is already in use', code: 'VALIDATION_ERROR' } });
       }
 
       // 비밀번호 자동 생성 (12자, 대소문자+숫자+특수문자)
@@ -935,13 +935,13 @@ router.post('/', authenticateToken, requireRole(
       const { adminUserId } = req.body;
       if (!adminUserId) {
         await transaction.rollback();
-        return res.status(400).json({ error: 'adminUserId is required when assigning existing user' });
+        return res.status(400).json({ success: false, error: { message: 'adminUserId is required when assigning existing user', code: 'VALIDATION_ERROR' } });
       }
 
       adminUser = await User.findByPk(adminUserId);
       if (!adminUser) {
         await transaction.rollback();
-        return res.status(404).json({ error: 'Admin user not found' });
+        return res.status(404).json({ success: false, error: { message: 'Admin user not found', code: 'NOT_FOUND' } });
       }
       if (adminUser.restaurant_id) {
         await transaction.rollback();
@@ -1232,7 +1232,7 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
           }
         });
         if (!isManager) {
-          return res.status(403).json({ error: 'You can only set brand for restaurants you manage' });
+          return res.status(403).json({ success: false, error: { message: 'You can only set brand for restaurants you manage', code: 'FORBIDDEN' } });
         }
       }
 
@@ -1244,16 +1244,16 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
 
     const restaurant = await Restaurant.findByPk(req.params.id);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Branch-scoped Foodcourt Manager: block edits outside their branch + block moving to another branch
     if (req.user.role === 'Foodcourt Manager' && req.user.branch_id) {
       if (restaurant.branch_id !== req.user.branch_id) {
-        return res.status(403).json({ error: 'No access to this restaurant' });
+        return res.status(403).json({ success: false, error: { message: 'No access to this restaurant', code: 'FORBIDDEN' } });
       }
       if (req.body.branch_id !== undefined && req.body.branch_id !== null && Number(req.body.branch_id) !== Number(req.user.branch_id)) {
-        return res.status(403).json({ error: 'Cannot move restaurant to another branch' });
+        return res.status(403).json({ success: false, error: { message: 'Cannot move restaurant to another branch', code: 'FORBIDDEN' } });
       }
     }
 
@@ -1529,17 +1529,17 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
           const { adminEmail, adminUsername, adminFullName, adminPhone } = req.body;
           if (!adminEmail || !adminUsername || !adminFullName) {
             await adminTransaction.rollback();
-            return res.status(400).json({ error: 'Admin email, username, and full name are required' });
+            return res.status(400).json({ success: false, error: { message: 'Admin email, username, and full name are required', code: 'VALIDATION_ERROR' } });
           }
           const existingEmail = await User.findOne({ where: { email: adminEmail } });
           if (existingEmail) {
             await adminTransaction.rollback();
-            return res.status(400).json({ error: 'Admin email is already in use' });
+            return res.status(400).json({ success: false, error: { message: 'Admin email is already in use', code: 'VALIDATION_ERROR' } });
           }
           const existingUsername = await User.findOne({ where: { username: adminUsername } });
           if (existingUsername) {
             await adminTransaction.rollback();
-            return res.status(400).json({ error: 'Admin username is already in use' });
+            return res.status(400).json({ success: false, error: { message: 'Admin username is already in use', code: 'VALIDATION_ERROR' } });
           }
           // 비밀번호 자동 생성
           const pwChars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
@@ -1569,12 +1569,12 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
           const { adminUserId } = req.body;
           if (!adminUserId) {
             await adminTransaction.rollback();
-            return res.status(400).json({ error: 'adminUserId is required' });
+            return res.status(400).json({ success: false, error: { message: 'adminUserId is required', code: 'VALIDATION_ERROR' } });
           }
           newAdminUser = await User.findByPk(adminUserId);
           if (!newAdminUser) {
             await adminTransaction.rollback();
-            return res.status(404).json({ error: 'Admin user not found' });
+            return res.status(404).json({ success: false, error: { message: 'Admin user not found', code: 'NOT_FOUND' } });
           }
           if (newAdminUser.restaurant_id && newAdminUser.restaurant_id !== restaurant.id) {
             await adminTransaction.rollback();
@@ -1756,7 +1756,7 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
     const restaurant = await Restaurant.findByPk(req.params.id);
     if (!restaurant) {
       await t.rollback();
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     const rid = restaurant.id;
@@ -1836,14 +1836,14 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     const { status } = req.body;
     const restaurant = await Restaurant.findByPk(req.params.id);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     await restaurant.update({ status });
     res.json({ success: true, restaurant });
   } catch (error) {
     console.error('Error updating restaurant status:', error);
-    res.status(500).json({ error: 'Failed to update restaurant status' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update restaurant status', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -1871,7 +1871,7 @@ router.get('/available/:managerId', authenticateToken, async (req, res) => {
     })));
   } catch (error) {
     console.error('Error fetching available restaurants:', error);
-    res.status(500).json({ error: 'Failed to fetch available restaurants' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch available restaurants', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -1883,10 +1883,7 @@ router.get('/:id/categories', authenticateToken, async (req, res) => {
     // Verify restaurant exists
     const restaurant = await Restaurant.findByPk(id);
     if (!restaurant) {
-      return res.status(404).json({
-        success: false,
-        error: 'Restaurant not found'
-      });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Get categories from categories table filtered by restaurant
@@ -1934,7 +1931,7 @@ router.get('/:id/allowed-routes', authenticateToken, async (req, res) => {
     // Find restaurant
     const restaurant = await Restaurant.findByPk(id);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Demo restaurants: use highest plan for full access
@@ -1998,7 +1995,7 @@ router.get('/:id/allowed-routes', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching allowed routes:', error);
-    res.status(500).json({ error: 'Failed to fetch allowed routes' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch allowed routes', code: 'INTERNAL_ERROR' } });
   }
 });
 

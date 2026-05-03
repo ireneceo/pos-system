@@ -335,7 +335,7 @@ router.get('/restaurant/:restaurantId/stats', authenticateToken, checkRestaurant
       nest: false
     });
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Reload the restaurant to ensure we have the latest data
@@ -562,7 +562,7 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
     // Get restaurant timezone
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
     const operationSettings = restaurant.operation_settings || {};
     const timeZone = operationSettings.timeZone || 'Asia/Kuala_Lumpur';
@@ -751,15 +751,15 @@ router.get('/restaurant/:restaurantId/daily-stats', authenticateToken, checkRest
     const { from, to } = req.query;
 
     if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
-      return res.status(400).json({ success: false, error: 'from and to are required (YYYY-MM-DD)' });
+      return res.status(400).json({ success: false, error: { message: 'from and to are required (YYYY-MM-DD)', code: 'VALIDATION_ERROR' } });
     }
     if (from > to) {
-      return res.status(400).json({ success: false, error: 'from must be <= to' });
+      return res.status(400).json({ success: false, error: { message: 'from must be <= to', code: 'VALIDATION_ERROR' } });
     }
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
     const tz = restaurant.operation_settings?.timeZone || 'Asia/Kuala_Lumpur';
     const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: tz });
@@ -881,13 +881,13 @@ router.get('/restaurant/:restaurantId/reports-summary', authenticateToken, check
     const { startDate, endDate } = req.query;
 
     if (!startDate || !endDate) {
-      return res.status(400).json({ success: false, error: 'startDate and endDate are required' });
+      return res.status(400).json({ success: false, error: { message: 'startDate and endDate are required', code: 'VALIDATION_ERROR' } });
     }
 
     // Get restaurant timezone
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
     const operationSettings = restaurant.operation_settings || {};
     const timeZone = operationSettings.timeZone || 'Asia/Kuala_Lumpur';

@@ -24,37 +24,27 @@ router.post('/contact', async (req, res) => {
 
     // 필수 필드 검증
     if (!name || !email || !message) {
-      return res.status(400).json({
-        error: 'Name, email, and message are required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Name, email, and message are required', code: 'VALIDATION_ERROR' } });
     }
 
     // 이메일 형식 검증
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        error: 'Invalid email format'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Invalid email format', code: 'VALIDATION_ERROR' } });
     }
 
     // Free Trial 신청 시 필수 필드 검증
     if (inquiry_type === 'free_trial') {
       if (!interested_plan) {
-        return res.status(400).json({
-          error: 'Please select a plan for free trial'
-        });
+        return res.status(400).json({ success: false, error: { message: 'Please select a plan for free trial', code: 'VALIDATION_ERROR' } });
       }
       if (!preferred_username) {
-        return res.status(400).json({
-          error: 'Preferred username is required for free trial'
-        });
+        return res.status(400).json({ success: false, error: { message: 'Preferred username is required for free trial', code: 'VALIDATION_ERROR' } });
       }
       // username 형식 검증
       const usernameRegex = /^[a-zA-Z0-9_]+$/;
       if (!usernameRegex.test(preferred_username)) {
-        return res.status(400).json({
-          error: 'Username can only contain letters, numbers, and underscores'
-        });
+        return res.status(400).json({ success: false, error: { message: 'Username can only contain letters, numbers, and underscores', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -138,9 +128,7 @@ router.post('/contact', async (req, res) => {
 
   } catch (error) {
     console.error('Error submitting contact inquiry:', error);
-    res.status(500).json({
-      error: 'Failed to submit inquiry. Please try again.'
-    });
+    res.status(500).json({ success: false, error: { message: 'Failed to submit inquiry. Please try again.', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -216,9 +204,7 @@ router.get('/plans', async (_req, res) => {
 
   } catch (error) {
     console.error('Error fetching public plans:', error);
-    res.status(500).json({
-      error: 'Failed to load plans'
-    });
+    res.status(500).json({ success: false, error: { message: 'Failed to load plans', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -231,7 +217,7 @@ router.get('/admin/inquiries', authenticateToken, async (req, res) => {
   try {
     // System Admin 권한 확인
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     const { status, search } = req.query;
@@ -259,7 +245,7 @@ router.get('/admin/inquiries', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching contact inquiries:', error);
-    res.status(500).json({ error: 'Failed to fetch inquiries' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch inquiries', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -267,20 +253,20 @@ router.get('/admin/inquiries', authenticateToken, async (req, res) => {
 router.get('/admin/inquiries/:id', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     const inquiry = await ContactInquiry.findByPk(req.params.id);
 
     if (!inquiry) {
-      return res.status(404).json({ error: 'Inquiry not found' });
+      return res.status(404).json({ success: false, error: { message: 'Inquiry not found', code: 'NOT_FOUND' } });
     }
 
     res.json(inquiry);
 
   } catch (error) {
     console.error('Error fetching inquiry:', error);
-    res.status(500).json({ error: 'Failed to fetch inquiry' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch inquiry', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -288,13 +274,13 @@ router.get('/admin/inquiries/:id', authenticateToken, async (req, res) => {
 router.patch('/admin/inquiries/:id', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     const inquiry = await ContactInquiry.findByPk(req.params.id);
 
     if (!inquiry) {
-      return res.status(404).json({ error: 'Inquiry not found' });
+      return res.status(404).json({ success: false, error: { message: 'Inquiry not found', code: 'NOT_FOUND' } });
     }
 
     const { status, notes, assigned_to } = req.body;
@@ -314,7 +300,7 @@ router.patch('/admin/inquiries/:id', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Error updating inquiry:', error);
-    res.status(500).json({ error: 'Failed to update inquiry' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update inquiry', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -322,19 +308,19 @@ router.patch('/admin/inquiries/:id', authenticateToken, async (req, res) => {
 router.post('/admin/inquiries/:id/reply', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     const inquiry = await ContactInquiry.findByPk(req.params.id);
 
     if (!inquiry) {
-      return res.status(404).json({ error: 'Inquiry not found' });
+      return res.status(404).json({ success: false, error: { message: 'Inquiry not found', code: 'NOT_FOUND' } });
     }
 
     const { reply_message, send_email } = req.body;
 
     if (!reply_message || reply_message.trim() === '') {
-      return res.status(400).json({ error: 'Reply message is required' });
+      return res.status(400).json({ success: false, error: { message: 'Reply message is required', code: 'VALIDATION_ERROR' } });
     }
 
     // 답변 저장
@@ -391,7 +377,7 @@ router.post('/admin/inquiries/:id/reply', authenticateToken, async (req, res) =>
 
   } catch (error) {
     console.error('Error replying to inquiry:', error);
-    res.status(500).json({ error: 'Failed to send reply' });
+    res.status(500).json({ success: false, error: { message: 'Failed to send reply', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -399,13 +385,13 @@ router.post('/admin/inquiries/:id/reply', authenticateToken, async (req, res) =>
 router.delete('/admin/inquiries/:id', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     const inquiry = await ContactInquiry.findByPk(req.params.id);
 
     if (!inquiry) {
-      return res.status(404).json({ error: 'Inquiry not found' });
+      return res.status(404).json({ success: false, error: { message: 'Inquiry not found', code: 'NOT_FOUND' } });
     }
 
     await inquiry.destroy();
@@ -414,7 +400,7 @@ router.delete('/admin/inquiries/:id', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Error deleting inquiry:', error);
-    res.status(500).json({ error: 'Failed to delete inquiry' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete inquiry', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -422,7 +408,7 @@ router.delete('/admin/inquiries/:id', authenticateToken, async (req, res) => {
 router.get('/admin/inquiries-stats', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     const [total, newCount, inProgress, resolved] = await Promise.all([
@@ -441,7 +427,7 @@ router.get('/admin/inquiries-stats', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching inquiry stats:', error);
-    res.status(500).json({ error: 'Failed to fetch stats' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch stats', code: 'INTERNAL_ERROR' } });
   }
 });
 

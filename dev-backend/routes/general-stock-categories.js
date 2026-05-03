@@ -17,7 +17,7 @@ router.get('/restaurants/:restaurantId/general-stock-categories', authenticateTo
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     const result = {
@@ -49,7 +49,7 @@ router.get('/restaurants/:restaurantId/general-stock-categories', authenticateTo
     res.json({ success: true, data: result });
   } catch (error) {
     console.error('Get restaurant general stock categories error:', error);
-    res.status(500).json({ error: 'Failed to fetch categories' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -64,11 +64,11 @@ router.post('/restaurants/:restaurantId/general-stock-categories', authenticateT
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Category name is required' });
+      return res.status(400).json({ success: false, error: { message: 'Category name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // 중복 확인
@@ -76,7 +76,7 @@ router.post('/restaurants/:restaurantId/general-stock-categories', authenticateT
       where: { restaurant_id: restaurantId, name: name.trim() }
     });
     if (existing) {
-      return res.status(400).json({ error: 'Category already exists' });
+      return res.status(400).json({ success: false, error: { message: 'Category already exists', code: 'VALIDATION_ERROR' } });
     }
 
     // display_order 자동 설정
@@ -99,7 +99,7 @@ router.post('/restaurants/:restaurantId/general-stock-categories', authenticateT
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Create restaurant general stock category error:', error);
-    res.status(500).json({ error: 'Failed to create category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -117,7 +117,7 @@ router.put('/restaurants/:restaurantId/general-stock-categories/:categoryId', au
     });
 
     if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     // 이름 중복 확인 (자기 자신 제외)
@@ -126,7 +126,7 @@ router.put('/restaurants/:restaurantId/general-stock-categories/:categoryId', au
         where: { restaurant_id: restaurantId, name: name.trim() }
       });
       if (existing) {
-        return res.status(400).json({ error: 'Category name already exists' });
+        return res.status(400).json({ success: false, error: { message: 'Category name already exists', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -141,7 +141,7 @@ router.put('/restaurants/:restaurantId/general-stock-categories/:categoryId', au
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Update restaurant general stock category error:', error);
-    res.status(500).json({ error: 'Failed to update category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -158,7 +158,7 @@ router.delete('/restaurants/:restaurantId/general-stock-categories/:categoryId',
     });
 
     if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     // 해당 카테고리를 사용하는 일반재고가 있는지 확인
@@ -177,7 +177,7 @@ router.delete('/restaurants/:restaurantId/general-stock-categories/:categoryId',
     res.json({ success: true, message: 'Category deleted' });
   } catch (error) {
     console.error('Delete restaurant general stock category error:', error);
-    res.status(500).json({ error: 'Failed to delete category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -191,7 +191,7 @@ router.put('/restaurants/:restaurantId/general-stock-categories/reorder', authen
     const { orders } = req.body;
 
     if (!orders || !Array.isArray(orders)) {
-      return res.status(400).json({ error: 'Order data is required' });
+      return res.status(400).json({ success: false, error: { message: 'Order data is required', code: 'VALIDATION_ERROR' } });
     }
 
     for (const item of orders) {
@@ -204,7 +204,7 @@ router.put('/restaurants/:restaurantId/general-stock-categories/reorder', authen
     res.json({ success: true, message: 'Order updated' });
   } catch (error) {
     console.error('Reorder restaurant general stock categories error:', error);
-    res.status(500).json({ error: 'Failed to reorder' });
+    res.status(500).json({ success: false, error: { message: 'Failed to reorder', code: 'INTERNAL_ERROR' } });
   }
 });
 

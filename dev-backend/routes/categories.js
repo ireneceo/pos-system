@@ -16,10 +16,7 @@ router.get('/', async (req, res) => {
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
 
     if (!restaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant ID is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Get categories from categories table filtered by restaurant
@@ -93,7 +90,7 @@ router.put('/id/:categoryId', async (req, res) => {
     });
 
     if (!category) {
-      return res.status(404).json({ success: false, error: 'Category not found' });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     const oldName = category.name;
@@ -110,10 +107,7 @@ router.put('/id/:categoryId', async (req, res) => {
       });
 
       if (existingCategory) {
-        return res.status(400).json({
-          success: false,
-          error: 'Category with this name already exists'
-        });
+        return res.status(400).json({ success: false, error: { message: 'Category with this name already exists', code: 'VALIDATION_ERROR' } });
       }
 
       updateData.name = name;
@@ -176,7 +170,7 @@ router.put('/reorder', async (req, res) => {
     console.log('   Categories:', JSON.stringify(categories));
 
     if (!Array.isArray(categories)) {
-      return res.status(400).json({ success: false, error: 'Categories array is required' });
+      return res.status(400).json({ success: false, error: { message: 'Categories array is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Update each category's displayOrder
@@ -215,7 +209,7 @@ router.put('/:oldName', async (req, res) => {
     const restaurantId = req.user.restaurant_id;
 
     if (!newName) {
-      return res.status(400).json({ success: false, error: 'New category name is required' });
+      return res.status(400).json({ success: false, error: { message: 'New category name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Check if new name already exists for this restaurant
@@ -227,10 +221,7 @@ router.put('/:oldName', async (req, res) => {
     });
 
     if (existingCategory && newName !== oldName) {
-      return res.status(400).json({
-        success: false,
-        error: 'Category with this name already exists'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Category with this name already exists', code: 'VALIDATION_ERROR' } });
     }
 
     // Update category in categories table
@@ -315,7 +306,7 @@ router.post('/', async (req, res) => {
     const restaurantId = req.user.restaurant_id;
 
     if (!name) {
-      return res.status(400).json({ success: false, error: 'Category name is required' });
+      return res.status(400).json({ success: false, error: { message: 'Category name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Check if category already exists for this restaurant
@@ -327,10 +318,7 @@ router.post('/', async (req, res) => {
     });
 
     if (existingCategory) {
-      return res.status(400).json({
-        success: false,
-        error: 'Category already exists'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Category already exists', code: 'VALIDATION_ERROR' } });
     }
 
     // Create category in categories table with restaurant_id
@@ -376,7 +364,7 @@ router.put('/id/:categoryId/toggle-active', async (req, res) => {
     });
 
     if (!category) {
-      return res.status(404).json({ success: false, error: 'Category not found' });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     const newIsActive = !category.isActive;
@@ -409,7 +397,7 @@ router.get('/:categoryName/stats', async (req, res) => {
     });
 
     if (products.length === 0) {
-      return res.status(404).json({ success: false, error: 'Category not found' });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     const totalProducts = products.length;

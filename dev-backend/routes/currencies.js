@@ -49,7 +49,7 @@ router.get('/config', async (req, res) => {
     });
   } catch (error) {
     console.error('Get currency config error:', error);
-    res.status(500).json({ error: 'Failed to get currency config' });
+    res.status(500).json({ success: false, error: { message: 'Failed to get currency config', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -67,7 +67,7 @@ router.get('/default', async (req, res) => {
     res.json({ success: true, defaultCurrency });
   } catch (error) {
     console.error('Get default currency error:', error);
-    res.status(500).json({ error: 'Failed to get default currency' });
+    res.status(500).json({ success: false, error: { message: 'Failed to get default currency', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -78,13 +78,13 @@ router.get('/default', async (req, res) => {
 router.put('/default', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'System Admin only' });
+      return res.status(403).json({ success: false, error: { message: 'System Admin only', code: 'FORBIDDEN' } });
     }
 
     const { defaultCurrency } = req.body;
 
     if (!defaultCurrency || !CURRENCY_CONFIG[defaultCurrency]) {
-      return res.status(400).json({ error: 'Invalid currency code' });
+      return res.status(400).json({ success: false, error: { message: 'Invalid currency code', code: 'VALIDATION_ERROR' } });
     }
 
     await SystemSettings.upsert({
@@ -104,7 +104,7 @@ router.put('/default', authenticateToken, async (req, res) => {
     res.json({ success: true, defaultCurrency });
   } catch (error) {
     console.error('Update default currency error:', error);
-    res.status(500).json({ error: 'Failed to update default currency' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update default currency', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -127,7 +127,7 @@ router.get('/supported', async (req, res) => {
     res.json({ success: true, data: result });
   } catch (error) {
     console.error('Get supported currencies error:', error);
-    res.status(500).json({ error: 'Failed to get supported currencies' });
+    res.status(500).json({ success: false, error: { message: 'Failed to get supported currencies', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -138,13 +138,13 @@ router.get('/supported', async (req, res) => {
 router.put('/supported', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'System Admin only' });
+      return res.status(403).json({ success: false, error: { message: 'System Admin only', code: 'FORBIDDEN' } });
     }
 
     const { currencies } = req.body;
 
     if (!Array.isArray(currencies) || currencies.length === 0) {
-      return res.status(400).json({ error: 'currencies must be a non-empty array' });
+      return res.status(400).json({ success: false, error: { message: 'currencies must be a non-empty array', code: 'VALIDATION_ERROR' } });
     }
 
     // Validate all currencies exist in config
@@ -162,7 +162,7 @@ router.put('/supported', authenticateToken, async (req, res) => {
     res.json({ success: true, data: currencies });
   } catch (error) {
     console.error('Update supported currencies error:', error);
-    res.status(500).json({ error: 'Failed to update supported currencies' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update supported currencies', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -186,7 +186,7 @@ router.get('/plans/:planId/prices', authenticateToken, async (req, res) => {
     res.json({ success: true, data: prices });
   } catch (error) {
     console.error('Get plan prices error:', error);
-    res.status(500).json({ error: 'Failed to get plan prices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to get plan prices', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -197,14 +197,14 @@ router.get('/plans/:planId/prices', authenticateToken, async (req, res) => {
 router.put('/plans/:planId/prices', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'System Admin only' });
+      return res.status(403).json({ success: false, error: { message: 'System Admin only', code: 'FORBIDDEN' } });
     }
 
     const { planId } = req.params;
     const { prices } = req.body; // [{ currency, monthly_price, annual_price }]
 
     if (!Array.isArray(prices)) {
-      return res.status(400).json({ error: 'prices must be an array' });
+      return res.status(400).json({ success: false, error: { message: 'prices must be an array', code: 'VALIDATION_ERROR' } });
     }
 
     // Upsert each price
@@ -226,7 +226,7 @@ router.put('/plans/:planId/prices', authenticateToken, async (req, res) => {
     res.json({ success: true, data: updatedPrices });
   } catch (error) {
     console.error('Update plan prices error:', error);
-    res.status(500).json({ error: 'Failed to update plan prices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update plan prices', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -237,7 +237,7 @@ router.put('/plans/:planId/prices', authenticateToken, async (req, res) => {
 router.delete('/plans/:planId/prices/:currency', authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== 'System Admin') {
-      return res.status(403).json({ error: 'System Admin only' });
+      return res.status(403).json({ success: false, error: { message: 'System Admin only', code: 'FORBIDDEN' } });
     }
 
     const { planId, currency } = req.params;
@@ -249,7 +249,7 @@ router.delete('/plans/:planId/prices/:currency', authenticateToken, async (req, 
     res.json({ success: true, message: 'Price deleted' });
   } catch (error) {
     console.error('Delete plan price error:', error);
-    res.status(500).json({ error: 'Failed to delete plan price' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete plan price', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -270,13 +270,13 @@ router.get('/brands/:brandId', authenticateToken, async (req, res) => {
     });
 
     if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
+      return res.status(404).json({ success: false, error: { message: 'Brand not found', code: 'NOT_FOUND' } });
     }
 
     res.json({ success: true, data: brand });
   } catch (error) {
     console.error('Get brand currencies error:', error);
-    res.status(500).json({ error: 'Failed to get brand currencies' });
+    res.status(500).json({ success: false, error: { message: 'Failed to get brand currencies', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -291,12 +291,12 @@ router.put('/brands/:brandId', authenticateToken, async (req, res) => {
 
     const brand = await Brand.findByPk(brandId);
     if (!brand) {
-      return res.status(404).json({ error: 'Brand not found' });
+      return res.status(404).json({ success: false, error: { message: 'Brand not found', code: 'NOT_FOUND' } });
     }
 
     // Check permission
     if (req.user.role !== 'System Admin' && req.user.role !== 'Brand General') {
-      return res.status(403).json({ error: 'Permission denied' });
+      return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
     }
 
     await brand.update({
@@ -307,7 +307,7 @@ router.put('/brands/:brandId', authenticateToken, async (req, res) => {
     res.json({ success: true, data: brand });
   } catch (error) {
     console.error('Update brand currencies error:', error);
-    res.status(500).json({ error: 'Failed to update brand currencies' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update brand currencies', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -331,7 +331,7 @@ router.get('/ingredients/:ingredientId/costs', authenticateToken, async (req, re
     res.json({ success: true, data: costs });
   } catch (error) {
     console.error('Get ingredient costs error:', error);
-    res.status(500).json({ error: 'Failed to get ingredient costs' });
+    res.status(500).json({ success: false, error: { message: 'Failed to get ingredient costs', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -345,7 +345,7 @@ router.put('/ingredients/:ingredientId/costs', authenticateToken, async (req, re
     const { costs } = req.body; // [{ currency, unit_cost }]
 
     if (!Array.isArray(costs)) {
-      return res.status(400).json({ error: 'costs must be an array' });
+      return res.status(400).json({ success: false, error: { message: 'costs must be an array', code: 'VALIDATION_ERROR' } });
     }
 
     // Upsert each cost
@@ -373,7 +373,7 @@ router.put('/ingredients/:ingredientId/costs', authenticateToken, async (req, re
     res.json({ success: true, data: updatedCosts });
   } catch (error) {
     console.error('Update ingredient costs error:', error);
-    res.status(500).json({ error: 'Failed to update ingredient costs' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update ingredient costs', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -397,7 +397,7 @@ router.get('/recipes/:recipeId/costs', authenticateToken, async (req, res) => {
     res.json({ success: true, data: costs });
   } catch (error) {
     console.error('Get recipe costs error:', error);
-    res.status(500).json({ error: 'Failed to get recipe costs' });
+    res.status(500).json({ success: false, error: { message: 'Failed to get recipe costs', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -411,7 +411,7 @@ router.put('/recipes/:recipeId/costs', authenticateToken, async (req, res) => {
     const { costs } = req.body; // [{ currency, suggested_price }]
 
     if (!Array.isArray(costs)) {
-      return res.status(400).json({ error: 'costs must be an array' });
+      return res.status(400).json({ success: false, error: { message: 'costs must be an array', code: 'VALIDATION_ERROR' } });
     }
 
     // Get recipe ingredients for cost calculation
@@ -452,7 +452,7 @@ router.put('/recipes/:recipeId/costs', authenticateToken, async (req, res) => {
     res.json({ success: true, data: updatedCosts });
   } catch (error) {
     console.error('Update recipe costs error:', error);
-    res.status(500).json({ error: 'Failed to update recipe costs' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update recipe costs', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -512,7 +512,7 @@ router.post('/recipes/:recipeId/calculate', authenticateToken, async (req, res) 
     res.json({ success: true, data: updatedCosts });
   } catch (error) {
     console.error('Calculate recipe costs error:', error);
-    res.status(500).json({ error: 'Failed to calculate recipe costs' });
+    res.status(500).json({ success: false, error: { message: 'Failed to calculate recipe costs', code: 'INTERNAL_ERROR' } });
   }
 });
 

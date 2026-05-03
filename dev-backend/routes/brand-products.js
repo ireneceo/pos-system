@@ -129,7 +129,7 @@ router.get('/brand-product-categories', authenticateToken, requireBGScope, async
     res.json({ success: true, data: categoriesWithCount });
   } catch (error) {
     console.error('Get brand product categories error:', error);
-    res.status(500).json({ error: 'Failed to fetch product categories' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch product categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -142,7 +142,7 @@ router.post('/brand-product-categories', authenticateToken, requireBGScope, asyn
     const { name, description, emoji, sort_order, is_active } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Category name is required' });
+      return res.status(400).json({ success: false, error: { message: 'Category name is required', code: 'VALIDATION_ERROR' } });
     }
 
     if (req.bgOwnerId == null) {
@@ -154,7 +154,7 @@ router.post('/brand-product-categories', authenticateToken, requireBGScope, asyn
       where: { name: name.trim(), owner_user_id: req.bgOwnerId }
     });
     if (existing) {
-      return res.status(400).json({ error: 'A category with this name already exists' });
+      return res.status(400).json({ success: false, error: { message: 'A category with this name already exists', code: 'VALIDATION_ERROR' } });
     }
 
     // Auto-set sort_order (within BG scope)
@@ -176,7 +176,7 @@ router.post('/brand-product-categories', authenticateToken, requireBGScope, asyn
     res.status(201).json({ success: true, data: category });
   } catch (error) {
     console.error('Create brand product category error:', error);
-    res.status(500).json({ error: 'Failed to create product category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create product category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -198,7 +198,7 @@ router.put('/brand-product-categories/:categoryId', authenticateToken, requireBG
         where: { name: name.trim(), owner_user_id: category.owner_user_id }
       });
       if (existing && existing.id !== parseInt(categoryId)) {
-        return res.status(400).json({ error: 'A category with this name already exists' });
+        return res.status(400).json({ success: false, error: { message: 'A category with this name already exists', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -213,7 +213,7 @@ router.put('/brand-product-categories/:categoryId', authenticateToken, requireBG
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Update brand product category error:', error);
-    res.status(500).json({ error: 'Failed to update product category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update product category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -232,16 +232,14 @@ router.delete('/brand-product-categories/:categoryId', authenticateToken, requir
     if (!assertBGOwnsRow(category, req, res)) return;
 
     if (category.products && category.products.length > 0) {
-      return res.status(400).json({
-        error: 'This category has products. Please delete or move products first.'
-      });
+      return res.status(400).json({ success: false, error: { message: 'This category has products. Please delete or move products first.', code: 'VALIDATION_ERROR' } });
     }
 
     await category.destroy();
     res.json({ success: true, message: 'Category deleted successfully' });
   } catch (error) {
     console.error('Delete brand product category error:', error);
-    res.status(500).json({ error: 'Failed to delete product category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete product category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -255,7 +253,7 @@ router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, r
     const { direction } = req.body;
 
     if (!direction || !['up', 'down'].includes(direction)) {
-      return res.status(400).json({ error: 'direction must be up or down' });
+      return res.status(400).json({ success: false, error: { message: 'direction must be up or down', code: 'VALIDATION_ERROR' } });
     }
 
     const category = await BrandProductCategory.findByPk(categoryId);
@@ -272,7 +270,7 @@ router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, r
     const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
 
     if (targetIndex < 0 || targetIndex >= allCategories.length) {
-      return res.status(400).json({ error: 'Cannot move further' });
+      return res.status(400).json({ success: false, error: { message: 'Cannot move further', code: 'VALIDATION_ERROR' } });
     }
 
     const targetCategory = allCategories[targetIndex];
@@ -283,7 +281,7 @@ router.put('/brand-product-categories/:categoryId/reorder', authenticateToken, r
     res.json({ success: true, message: 'Order changed successfully' });
   } catch (error) {
     console.error('Reorder brand product category error:', error);
-    res.status(500).json({ error: 'Failed to reorder category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to reorder category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -332,7 +330,7 @@ router.get('/brand-product-option-groups', authenticateToken, requireBGScope, as
     res.json({ success: true, data: transformed });
   } catch (error) {
     console.error('Get option groups error:', error);
-    res.status(500).json({ error: 'Failed to fetch option groups' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch option groups', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -345,7 +343,7 @@ router.post('/brand-product-option-groups', authenticateToken, requireBGScope, a
     const { name, is_required, min_selections, max_selections, sort_order, options } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Option group name is required' });
+      return res.status(400).json({ success: false, error: { message: 'Option group name is required', code: 'VALIDATION_ERROR' } });
     }
     if (req.bgOwnerId == null) {
       return res.status(400).json({ success: false, message: 'owner_user_id required' });
@@ -398,7 +396,7 @@ router.post('/brand-product-option-groups', authenticateToken, requireBGScope, a
     res.status(201).json({ success: true, data: createdGroup });
   } catch (error) {
     console.error('Create option group error:', error);
-    res.status(500).json({ error: 'Failed to create option group' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create option group', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -461,7 +459,7 @@ router.put('/brand-product-option-groups/:groupId', authenticateToken, requireBG
     res.json({ success: true, data: updatedGroup });
   } catch (error) {
     console.error('Update option group error:', error);
-    res.status(500).json({ error: 'Failed to update option group' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update option group', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -492,7 +490,7 @@ router.delete('/brand-product-option-groups/:groupId', authenticateToken, requir
     res.json({ success: true, message: '옵션 그룹이 삭제되었습니다' });
   } catch (error) {
     console.error('Delete option group error:', error);
-    res.status(500).json({ error: 'Failed to delete option group' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete option group', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -550,7 +548,7 @@ router.get('/brand-products', authenticateToken, requireBGScope, async (req, res
     res.json({ success: true, data: products });
   } catch (error) {
     console.error('Get brand products error:', error);
-    res.status(500).json({ error: 'Failed to fetch products' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch products', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -598,7 +596,7 @@ router.get('/brand-products/:productId', authenticateToken, requireBGScope, asyn
     res.json({ success: true, data: product });
   } catch (error) {
     console.error('Get brand product error:', error);
-    res.status(500).json({ error: 'Failed to fetch product' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch product', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -616,18 +614,18 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
     } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Product name is required' });
+      return res.status(400).json({ success: false, error: { message: 'Product name is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Set menu validation
     if (is_set_menu) {
       if (!set_items || !Array.isArray(set_items) || set_items.length === 0) {
-        return res.status(400).json({ error: 'Set menu must have at least 1 item' });
+        return res.status(400).json({ success: false, error: { message: 'Set menu must have at least 1 item', code: 'VALIDATION_ERROR' } });
       }
       // Validate each set item
       for (const item of set_items) {
         if (!item.productId || !item.name || !item.quantity || item.quantity < 1) {
-          return res.status(400).json({ error: 'Each set item must have productId, name, and quantity >= 1' });
+          return res.status(400).json({ success: false, error: { message: 'Each set item must have productId, name, and quantity >= 1', code: 'VALIDATION_ERROR' } });
         }
       }
       // Prevent circular reference: set cannot contain other sets
@@ -637,7 +635,7 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
         attributes: ['id', 'is_set_menu']
       });
       if (referencedProducts.some(p => p.is_set_menu)) {
-        return res.status(400).json({ error: 'Set menu cannot contain other set menus' });
+        return res.status(400).json({ success: false, error: { message: 'Set menu cannot contain other set menus', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -744,7 +742,7 @@ router.post('/brand-products', authenticateToken, requireBGScope, async (req, re
     res.status(201).json({ success: true, data: createdProduct });
   } catch (error) {
     console.error('Create brand product error:', error);
-    res.status(500).json({ error: 'Failed to create product' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create product', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -769,11 +767,11 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
     const finalIsSet = is_set_menu !== undefined ? is_set_menu : product.is_set_menu;
     if (finalIsSet && set_items !== undefined) {
       if (!Array.isArray(set_items) || set_items.length === 0) {
-        return res.status(400).json({ error: 'Set menu must have at least 1 item' });
+        return res.status(400).json({ success: false, error: { message: 'Set menu must have at least 1 item', code: 'VALIDATION_ERROR' } });
       }
       for (const item of set_items) {
         if (!item.productId || !item.name || !item.quantity || item.quantity < 1) {
-          return res.status(400).json({ error: 'Each set item must have productId, name, and quantity >= 1' });
+          return res.status(400).json({ success: false, error: { message: 'Each set item must have productId, name, and quantity >= 1', code: 'VALIDATION_ERROR' } });
         }
       }
       const referencedIds = set_items.map(i => i.productId);
@@ -782,7 +780,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
         attributes: ['id', 'is_set_menu']
       });
       if (referencedProducts.some(p => p.is_set_menu)) {
-        return res.status(400).json({ error: 'Set menu cannot contain other set menus' });
+        return res.status(400).json({ success: false, error: { message: 'Set menu cannot contain other set menus', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -884,7 +882,7 @@ router.put('/brand-products/:productId', authenticateToken, requireBGScope, asyn
     res.json({ success: true, data: updatedProduct });
   } catch (error) {
     console.error('Update brand product error:', error);
-    res.status(500).json({ error: 'Failed to update product' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update product', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -920,7 +918,7 @@ router.delete('/brand-products/:productId', authenticateToken, requireBGScope, a
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     console.error('Delete brand product error:', error);
-    res.status(500).json({ error: 'Failed to delete product' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete product', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -1064,7 +1062,7 @@ router.get('/brands/:brandId/products', authenticateToken, async (req, res) => {
     res.json({ success: true, data: products });
   } catch (error) {
     console.error('Get brand products error:', error);
-    res.status(500).json({ error: 'Failed to fetch products' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch products', code: 'INTERNAL_ERROR' } });
   }
 });
 

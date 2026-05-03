@@ -138,7 +138,7 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
     res.json({ success: true, data: ingredients });
   } catch (error) {
     console.error('Get brand ingredients error:', error);
-    res.status(500).json({ error: '재료 목록 조회 실패' });
+    res.status(500).json({ success: false, error: { message: '재료 목록 조회 실패', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -289,7 +289,7 @@ router.post('/brands/:brandId/ingredients', authenticateToken, isBrandManager, a
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Create brand ingredient error:', error);
-    res.status(500).json({ error: 'Failed to create ingredient' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create ingredient', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -305,7 +305,7 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
-      return res.status(404).json({ error: 'Ingredient not found' });
+      return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
     }
 
     // Build update object with only provided fields
@@ -348,7 +348,7 @@ router.put('/brands/:brandId/ingredients/:ingredientId', authenticateToken, isBr
     res.json({ success: true, data: updatedIngredient });
   } catch (error) {
     console.error('Update brand ingredient error:', error);
-    res.status(500).json({ error: 'Failed to update ingredient' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update ingredient', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -363,7 +363,7 @@ router.delete('/brands/:brandId/ingredients/:ingredientId', authenticateToken, i
 
     const ingredient = await Ingredient.findByPk(ingredient_id);
     if (!ingredient) {
-      return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
+      return res.status(404).json({ success: false, error: { message: '재료를 찾을 수 없습니다', code: 'NOT_FOUND' } });
     }
 
     await ingredient.destroy();
@@ -371,7 +371,7 @@ router.delete('/brands/:brandId/ingredients/:ingredientId', authenticateToken, i
     res.json({ success: true, message: '재료가 삭제되었습니다' });
   } catch (error) {
     console.error('Delete brand ingredient error:', error);
-    res.status(500).json({ error: '재료 삭제 실패' });
+    res.status(500).json({ success: false, error: { message: '재료 삭제 실패', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -475,7 +475,7 @@ router.get('/restaurants/:restaurantId/ingredients', authenticateToken, checkRes
     res.json({ success: true, data: ingredients });
   } catch (error) {
     console.error('Get restaurant ingredients error:', error);
-    res.status(500).json({ error: '재료 목록 조회 실패' });
+    res.status(500).json({ success: false, error: { message: '재료 목록 조회 실패', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -489,7 +489,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // 브랜드에 속하지 않은 레스토랑
@@ -551,7 +551,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
     res.json({ success: true, data: enrichedIngredients });
   } catch (error) {
     console.error('Get brand ingredients for restaurant error:', error);
-    res.status(500).json({ error: 'Failed to fetch brand ingredients' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch brand ingredients', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -589,7 +589,7 @@ router.post('/restaurants/:restaurantId/ingredients', authenticateToken, checkRe
     res.json({ success: true, data: ingredient });
   } catch (error) {
     console.error('Create restaurant ingredient error:', error);
-    res.status(500).json({ error: 'Failed to create ingredient' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create ingredient', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -606,7 +606,7 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
-      return res.status(404).json({ error: 'Ingredient not found' });
+      return res.status(404).json({ success: false, error: { message: 'Ingredient not found', code: 'NOT_FOUND' } });
     }
 
     // Build update object with only provided fields
@@ -651,7 +651,7 @@ router.put('/restaurants/:restaurantId/ingredients/:ingredientId', authenticateT
     res.json({ success: true, data: updatedIngredient });
   } catch (error) {
     console.error('Update restaurant ingredient error:', error);
-    res.status(500).json({ error: 'Failed to update ingredient' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update ingredient', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -665,7 +665,7 @@ router.delete('/restaurants/:restaurantId/ingredients/:ingredientId', authentica
 
     const ingredient = await Ingredient.findByPk(ingredientId);
     if (!ingredient) {
-      return res.status(404).json({ error: '재료를 찾을 수 없습니다' });
+      return res.status(404).json({ success: false, error: { message: '재료를 찾을 수 없습니다', code: 'NOT_FOUND' } });
     }
 
     await ingredient.destroy();
@@ -673,7 +673,7 @@ router.delete('/restaurants/:restaurantId/ingredients/:ingredientId', authentica
     res.json({ success: true, message: '재료가 삭제되었습니다' });
   } catch (error) {
     console.error('Delete restaurant ingredient error:', error);
-    res.status(500).json({ error: '재료 삭제 실패' });
+    res.status(500).json({ success: false, error: { message: '재료 삭제 실패', code: 'INTERNAL_ERROR' } });
   }
 });
 

@@ -275,10 +275,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Validate required fields
     if (!email) {
-      return res.status(400).json({
-        success: false,
-        error: 'Email is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Email is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Restaurant-scoped roles must be tied to a restaurant at creation time.
@@ -312,10 +309,7 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     if (!username) {
-      return res.status(400).json({
-        success: false,
-        error: 'Username is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Username is required', code: 'VALIDATION_ERROR' } });
     }
 
     console.log('📝 Parsed username:', username);
@@ -796,7 +790,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   if (req.user.role === 'Restaurant Admin') {
     try {
       const target = await User.findByPk(req.params.id, { attributes: ['id', 'restaurant_id', 'role'] });
-      if (!target) return res.status(404).json({ success: false, error: 'User not found' });
+      if (!target) return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
       if (!req.user.restaurant_id || target.restaurant_id !== req.user.restaurant_id) {
         return res.status(403).json({
           success: false,
@@ -812,7 +806,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         });
       }
     } catch (e) {
-      return res.status(500).json({ success: false, error: 'Permission check failed' });
+      return res.status(500).json({ success: false, error: { message: 'Permission check failed', code: 'INTERNAL_ERROR' } });
     }
   }
   return deleteUserHandler(req, res);
@@ -833,7 +827,7 @@ async function deleteUserHandler(req, res) {
 
   // Self-delete 차단 (System Admin이라도 자기 계정은 못 지움)
   if (req.user.id.toString() === req.params.id.toString()) {
-    return res.status(400).json({ success: false, error: 'You cannot delete your own account.' });
+    return res.status(400).json({ success: false, error: { message: 'You cannot delete your own account.', code: 'VALIDATION_ERROR' } });
   }
 
   const t = await sequelize.transaction();
@@ -842,7 +836,7 @@ async function deleteUserHandler(req, res) {
     const user = await User.findByPk(req.params.id);
     if (!user) {
       await t.rollback();
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
     }
 
     const uid = user.id;
@@ -955,27 +949,27 @@ router.patch('/:id/password', authenticateToken, demoProtection, async (req, res
     const user = await User.findByPk(req.params.id);
 
     if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
     }
 
     // Verify current password
     const isValidPassword = await bcrypt.compare(currentPassword, user.password);
     if (!isValidPassword) {
-      return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+      return res.status(400).json({ success: false, error: { message: 'Current password is incorrect', code: 'VALIDATION_ERROR' } });
     }
 
     // Validate new password strength
     if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters long' });
+      return res.status(400).json({ success: false, error: { message: 'Password must be at least 8 characters long', code: 'VALIDATION_ERROR' } });
     }
     if (!/[a-z]/.test(newPassword)) {
-      return res.status(400).json({ success: false, error: 'Password must contain at least one lowercase letter' });
+      return res.status(400).json({ success: false, error: { message: 'Password must contain at least one lowercase letter', code: 'VALIDATION_ERROR' } });
     }
     if (!/[A-Z]/.test(newPassword)) {
-      return res.status(400).json({ success: false, error: 'Password must contain at least one uppercase letter' });
+      return res.status(400).json({ success: false, error: { message: 'Password must contain at least one uppercase letter', code: 'VALIDATION_ERROR' } });
     }
     if (!/[0-9]/.test(newPassword)) {
-      return res.status(400).json({ success: false, error: 'Password must contain at least one number' });
+      return res.status(400).json({ success: false, error: { message: 'Password must contain at least one number', code: 'VALIDATION_ERROR' } });
     }
 
     // Hash and update new password
@@ -999,7 +993,7 @@ router.post('/:id/reset-password', authenticateToken, async (req, res) => {
     const user = await User.findByPk(req.params.id);
 
     if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+      return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
     }
 
     // 데모/테스트 계정 비밀번호 리셋 차단
@@ -1012,13 +1006,13 @@ router.post('/:id/reset-password', authenticateToken, async (req, res) => {
       // OK
     } else if (req.user.role === 'Restaurant Admin') {
       if (!req.user.restaurant_id || user.restaurant_id?.toString() !== req.user.restaurant_id.toString()) {
-        return res.status(403).json({ success: false, error: 'You can only reset passwords for your own restaurant staff' });
+        return res.status(403).json({ success: false, error: { message: 'You can only reset passwords for your own restaurant staff', code: 'FORBIDDEN' } });
       }
       if (user.role !== 'Staff' && user.id !== req.user.id) {
-        return res.status(403).json({ success: false, error: 'You can only reset passwords for Staff members' });
+        return res.status(403).json({ success: false, error: { message: 'You can only reset passwords for Staff members', code: 'FORBIDDEN' } });
       }
     } else {
-      return res.status(403).json({ success: false, error: 'Not authorized to reset passwords' });
+      return res.status(403).json({ success: false, error: { message: 'Not authorized to reset passwords', code: 'FORBIDDEN' } });
     }
 
     // 강력한 임시 비밀번호 생성 (12자)

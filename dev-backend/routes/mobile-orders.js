@@ -390,7 +390,7 @@ router.get('/order/:orderId', async (req, res) => {
     const order = await Order.findByPk(numericId);
 
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
     // Parse order_items - it's stored as an array of items
@@ -476,17 +476,17 @@ router.patch('/order/:orderId/retry-payment', async (req, res) => {
     const { payment_proof } = req.body;
 
     if (!payment_proof) {
-      return res.status(400).json({ success: false, error: 'Payment proof is required' });
+      return res.status(400).json({ success: false, error: { message: 'Payment proof is required', code: 'VALIDATION_ERROR' } });
     }
 
     const order = await Order.findByPk(numericId);
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
     // rejected 상태에서만 retry 허용
     if (order.payment_status !== 'rejected') {
-      return res.status(400).json({ success: false, error: 'Order is not in rejected state' });
+      return res.status(400).json({ success: false, error: { message: 'Order is not in rejected state', code: 'VALIDATION_ERROR' } });
     }
 
     // 기존 proof history 보존 + 새 proof를 current에 저장
@@ -534,7 +534,7 @@ router.post('/order/:orderId/cancel', async (req, res) => {
     const order = await Order.findByPk(numericId);
     
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
     
     if (order.status !== 'pending') {

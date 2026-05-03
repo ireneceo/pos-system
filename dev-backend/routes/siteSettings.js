@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Error fetching site settings:', error);
-    res.status(500).json({ error: 'Failed to fetch site settings' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch site settings', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -124,7 +124,7 @@ router.put('/', authenticateToken, requireRole('System Admin'), async (req, res)
     });
   } catch (error) {
     console.error('Error updating site settings:', error);
-    res.status(500).json({ error: 'Failed to update site settings' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update site settings', code: 'INTERNAL_ERROR' } });
   }
 });
 

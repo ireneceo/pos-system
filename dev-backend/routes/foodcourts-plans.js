@@ -18,12 +18,12 @@ router.get('/:id/subscription', authenticateToken, requireFoodcourtModule('fc_su
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     // Check access permissions
     if (req.user.role !== 'System Admin' && foodcourt.owner_id !== req.user.id) {
-      return res.status(403).json({ error: 'Access denied to this foodcourt' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this foodcourt', code: 'FORBIDDEN' } });
     }
 
     res.json({
@@ -37,7 +37,7 @@ router.get('/:id/subscription', authenticateToken, requireFoodcourtModule('fc_su
     });
   } catch (error) {
     console.error('Error fetching foodcourt subscription:', error);
-    res.status(500).json({ error: 'Failed to fetch subscription info' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch subscription info', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -49,7 +49,7 @@ router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), 
 
     const foodcourt = await Foodcourt.findByPk(id);
     if (!foodcourt) {
-      return res.status(404).json({ error: 'Foodcourt not found' });
+      return res.status(404).json({ success: false, error: { message: 'Foodcourt not found', code: 'NOT_FOUND' } });
     }
 
     const { subscription_status, subscription_start, subscription_end, plan_type } = req.body;
@@ -85,7 +85,7 @@ router.put('/:id/subscription', authenticateToken, requireRole('System Admin'), 
     });
   } catch (error) {
     console.error('Error updating foodcourt subscription:', error);
-    res.status(500).json({ error: 'Failed to update subscription info' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update subscription info', code: 'INTERNAL_ERROR' } });
   }
 });
 

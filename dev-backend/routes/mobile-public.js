@@ -72,7 +72,7 @@ router.get('/store/:slug', async (req, res) => {
     });
 
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Get operation settings with defaults
@@ -136,7 +136,7 @@ router.get('/menu/:slug', async (req, res) => {
     });
 
     if (!restaurant) {
-      return res.status(404).json({ success: false, error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     const restaurantId = restaurant.id;
@@ -342,7 +342,7 @@ router.get('/menu/item/:itemId', async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.itemId);
     if (!product) {
-      return res.status(404).json({ success: false, error: 'Product not found' });
+      return res.status(404).json({ success: false, error: { message: 'Product not found', code: 'NOT_FOUND' } });
     }
 
     // Get option groups for this product from DB
@@ -481,7 +481,7 @@ router.post('/auth/guest', async (req, res) => {
 router.get('/featured/:slug', async (req, res) => {
   try {
     const restaurant = await Restaurant.findOne({ where: { slug: req.params.slug } });
-    if (!restaurant) return res.status(404).json({ success: false, error: 'Restaurant not found' });
+    if (!restaurant) return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
 
     const products = await Product.findAll({
       where: { restaurant_id: restaurant.id, is_featured: true, soldOut: false },
@@ -513,7 +513,7 @@ router.get('/featured/:slug', async (req, res) => {
 router.get('/popular/:slug', async (req, res) => {
   try {
     const restaurant = await Restaurant.findOne({ where: { slug: req.params.slug } });
-    if (!restaurant) return res.status(404).json({ success: false, error: 'Restaurant not found' });
+    if (!restaurant) return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
 
     // Get orders from last 30 days
     const thirtyDaysAgo = new Date();

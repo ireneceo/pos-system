@@ -38,7 +38,7 @@ router.get('/brands/:brandId/recipes', authenticateToken, isBrandManager, async 
     res.json({ success: true, data: recipes });
   } catch (error) {
     console.error('Get brand recipes error:', error);
-    res.status(500).json({ error: 'Failed to fetch recipes' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch recipes', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -54,7 +54,7 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
 
     // 필수 필드 검증
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: '레시피 이름은 필수입니다' });
+      return res.status(400).json({ success: false, error: { message: '레시피 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
     }
 
     // 이미지 처리 (base64 → 파일 저장)
@@ -132,7 +132,7 @@ router.post('/brands/:brandId/recipes', authenticateToken, isBrandManager, async
     res.json({ success: true, data: createdRecipe });
   } catch (error) {
     console.error('Create brand recipe error:', error);
-    res.status(500).json({ error: 'Failed to create recipe' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create recipe', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -148,7 +148,7 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: 'Recipe not found' });
+      return res.status(404).json({ success: false, error: { message: 'Recipe not found', code: 'NOT_FOUND' } });
     }
 
     // 기본 정보 업데이트 (빈 문자열은 null로 처리)
@@ -221,7 +221,7 @@ router.put('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRecip
     res.json({ success: true, data: updatedRecipe });
   } catch (error) {
     console.error('Update brand recipe error:', error);
-    res.status(500).json({ error: 'Failed to update recipe' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update recipe', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -236,7 +236,7 @@ router.delete('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRe
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: 'Recipe not found' });
+      return res.status(404).json({ success: false, error: { message: 'Recipe not found', code: 'NOT_FOUND' } });
     }
 
     await recipe.destroy();
@@ -244,7 +244,7 @@ router.delete('/brands/:brandId/recipes/:recipeId', authenticateToken, canEditRe
     res.json({ success: true, message: 'Recipe deleted successfully' });
   } catch (error) {
     console.error('Delete brand recipe error:', error);
-    res.status(500).json({ error: 'Failed to delete recipe' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete recipe', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -263,7 +263,7 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // 레스토랑 자체 레시피만 조회 (owner_type = 'restaurant')
@@ -289,7 +289,7 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
     res.json({ success: true, data: recipes });
   } catch (error) {
     console.error('Get restaurant recipes error:', error);
-    res.status(500).json({ error: 'Failed to fetch recipes' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch recipes', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -303,7 +303,7 @@ router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkR
 
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // 브랜드에 속하지 않은 레스토랑
@@ -378,7 +378,7 @@ router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkR
     res.json({ success: true, data: enrichedRecipes });
   } catch (error) {
     console.error('Get brand recipes for restaurant error:', error);
-    res.status(500).json({ error: 'Failed to fetch brand recipes' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch brand recipes', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -393,7 +393,7 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
 
     // 필수 필드 검증
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: '레시피 이름은 필수입니다' });
+      return res.status(400).json({ success: false, error: { message: '레시피 이름은 필수입니다', code: 'VALIDATION_ERROR' } });
     }
 
     // 이미지 처리 (base64 → 파일 저장)
@@ -465,7 +465,7 @@ router.post('/restaurants/:restaurantId/recipes', authenticateToken, checkRestau
     res.json({ success: true, data: createdRecipe });
   } catch (error) {
     console.error('Create restaurant recipe error:', error);
-    res.status(500).json({ error: 'Failed to create recipe' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create recipe', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -479,12 +479,12 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
 
     const recipe = await Recipe.findByPk(recipeId);
     if (!recipe) {
-      return res.status(404).json({ error: 'Recipe not found' });
+      return res.status(404).json({ success: false, error: { message: 'Recipe not found', code: 'NOT_FOUND' } });
     }
 
     // 자신의 레시피인지 확인 (owner_type이 'restaurant'이고 restaurant_id가 일치해야 함)
     if (recipe.owner_type !== 'restaurant' || recipe.restaurant_id !== parseInt(restaurantId)) {
-      return res.status(403).json({ error: 'You can only edit your own restaurant recipes' });
+      return res.status(403).json({ success: false, error: { message: 'You can only edit your own restaurant recipes', code: 'FORBIDDEN' } });
     }
 
     const { name, description, category, emoji, image, option_groups, ingredients, yield_amount, yield_unit, prep_time, cook_time, instructions, instructions_summary, instructions_detail, suggested_price } = req.body;
@@ -553,7 +553,7 @@ router.put('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken, ch
     res.json({ success: true, data: updatedRecipe });
   } catch (error) {
     console.error('Update restaurant recipe error:', error);
-    res.status(500).json({ error: 'Failed to update recipe' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update recipe', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -567,12 +567,12 @@ router.delete('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken,
 
     const recipe = await Recipe.findByPk(recipeId);
     if (!recipe) {
-      return res.status(404).json({ error: 'Recipe not found' });
+      return res.status(404).json({ success: false, error: { message: 'Recipe not found', code: 'NOT_FOUND' } });
     }
 
     // 자신의 레시피인지 확인 (owner_type이 'restaurant'이고 restaurant_id가 일치해야 함)
     if (recipe.owner_type !== 'restaurant' || recipe.restaurant_id !== parseInt(restaurantId)) {
-      return res.status(403).json({ error: 'You can only delete your own restaurant recipes' });
+      return res.status(403).json({ success: false, error: { message: 'You can only delete your own restaurant recipes', code: 'FORBIDDEN' } });
     }
 
     await recipe.destroy();
@@ -580,7 +580,7 @@ router.delete('/restaurants/:restaurantId/recipes/:recipeId', authenticateToken,
     res.json({ success: true, message: 'Recipe deleted successfully' });
   } catch (error) {
     console.error('Delete restaurant recipe error:', error);
-    res.status(500).json({ error: 'Failed to delete recipe' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete recipe', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -601,7 +601,7 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
       }]
     });
     if (!recipe) {
-      return res.status(404).json({ error: 'Recipe not found' });
+      return res.status(404).json({ success: false, error: { message: 'Recipe not found', code: 'NOT_FOUND' } });
     }
 
     // 레시피 카테고리가 있으면 메뉴 카테고리로 매핑
@@ -660,7 +660,7 @@ router.post('/restaurants/:restaurantId/products/create-from-recipe', authentica
     });
   } catch (error) {
     console.error('Create product from recipe error:', error);
-    res.status(500).json({ error: 'Failed to create product' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create product', code: 'INTERNAL_ERROR' } });
   }
 });
 

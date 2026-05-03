@@ -52,10 +52,7 @@ router.put('/reorder', async (req, res) => {
     const { categoryIds } = req.body;
 
     if (!Array.isArray(categoryIds)) {
-      return res.status(400).json({
-        success: false,
-        error: 'categoryIds must be an array'
-      });
+      return res.status(400).json({ success: false, error: { message: 'categoryIds must be an array', code: 'VALIDATION_ERROR' } });
     }
 
     const scopedWhere = req.bgOwnerIsAdmin && req.bgOwnerId == null

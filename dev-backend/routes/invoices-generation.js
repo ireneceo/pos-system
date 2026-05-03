@@ -282,7 +282,7 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
 
   } catch (error) {
     console.error('Error generating subscription invoices:', error);
-    res.status(500).json({ error: 'Failed to generate subscription invoices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to generate subscription invoices', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -301,7 +301,7 @@ router.post('/generate-automatic', authenticateToken, async (req, res) => {
     });
     
     if (!settings) {
-      return res.status(400).json({ error: 'Auto-generation not enabled for this restaurant' });
+      return res.status(400).json({ success: false, error: { message: 'Auto-generation not enabled for this restaurant', code: 'VALIDATION_ERROR' } });
     }
     
     // Calculate billing period (previous month)
@@ -321,7 +321,7 @@ router.post('/generate-automatic', authenticateToken, async (req, res) => {
     });
     
     if (existingInvoice) {
-      return res.status(400).json({ error: 'Invoice already exists for this period' });
+      return res.status(400).json({ success: false, error: { message: 'Invoice already exists for this period', code: 'VALIDATION_ERROR' } });
     }
     
     // Generate invoice number (system_admin issuer for settings-based auto invoices)
@@ -432,7 +432,7 @@ router.post('/generate-automatic', authenticateToken, async (req, res) => {
     res.json({ success: true, invoice, items });
   } catch (error) {
     console.error('Error generating automatic invoice:', error);
-    res.status(500).json({ error: 'Failed to generate automatic invoice' });
+    res.status(500).json({ success: false, error: { message: 'Failed to generate automatic invoice', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -462,7 +462,7 @@ router.post('/generate-missing/:restaurantId', authenticateToken, checkRestauran
 
   } catch (error) {
     console.error('Error generating missing invoices:', error);
-    res.status(500).json({ error: 'Failed to generate missing invoices' });
+    res.status(500).json({ success: false, error: { message: 'Failed to generate missing invoices', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -473,7 +473,7 @@ router.post('/trigger-daily-generation', authenticateToken, async (req, res) => 
     res.json({ success: true, message: 'Daily invoice generation triggered' });
   } catch (error) {
     console.error('Error triggering daily generation:', error);
-    res.status(500).json({ error: 'Failed to trigger daily generation' });
+    res.status(500).json({ success: false, error: { message: 'Failed to trigger daily generation', code: 'INTERNAL_ERROR' } });
   }
 });
 

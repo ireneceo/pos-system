@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
     res.json(plansWithPrices);
   } catch (error) {
     console.error('Error fetching plans:', error);
-    res.status(500).json({ error: 'Failed to fetch plans' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch plans', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -65,12 +65,12 @@ router.get('/:id', async (req, res, next) => {
   try {
     const plan = await PlanTemplate.findByPk(req.params.id);
     if (!plan) {
-      return res.status(404).json({ error: 'Plan not found' });
+      return res.status(404).json({ success: false, error: { message: 'Plan not found', code: 'NOT_FOUND' } });
     }
     res.json(plan);
   } catch (error) {
     console.error('Error fetching plan:', error);
-    res.status(500).json({ error: 'Failed to fetch plan' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch plan', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -95,7 +95,7 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       });
     }
 
-    res.status(500).json({ error: 'Failed to create plan' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create plan', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -104,14 +104,14 @@ router.put('/:id', authenticateToken, requireRole('System Admin'), async (req, r
   try {
     const plan = await PlanTemplate.findByPk(req.params.id);
     if (!plan) {
-      return res.status(404).json({ error: 'Plan not found' });
+      return res.status(404).json({ success: false, error: { message: 'Plan not found', code: 'NOT_FOUND' } });
     }
 
     await plan.update(req.body);
     res.json(plan);
   } catch (error) {
     console.error('Error updating plan:', error);
-    res.status(500).json({ error: 'Failed to update plan' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update plan', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -120,7 +120,7 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
   try {
     const plan = await PlanTemplate.findByPk(req.params.id);
     if (!plan) {
-      return res.status(404).json({ error: 'Plan not found' });
+      return res.status(404).json({ success: false, error: { message: 'Plan not found', code: 'NOT_FOUND' } });
     }
 
     // Check if any restaurants are using this plan
@@ -144,7 +144,7 @@ router.delete('/:id', authenticateToken, requireRole('System Admin'), async (req
     res.json({ success: true, message: 'Plan deleted successfully' });
   } catch (error) {
     console.error('Error deleting plan:', error);
-    res.status(500).json({ error: 'Failed to delete plan' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete plan', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -176,7 +176,7 @@ router.get('/stats/subscriptions', authenticateToken, requireRole('System Admin'
     res.json(transformedStats);
   } catch (error) {
     console.error('Error fetching subscription stats:', error);
-    res.status(500).json({ error: 'Failed to fetch subscription statistics' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch subscription statistics', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -228,7 +228,7 @@ router.get('/export/csv', authenticateToken, requireRole('System Admin'), async 
     res.send(csvContent);
   } catch (error) {
     console.error('Error exporting plans:', error);
-    res.status(500).json({ error: 'Failed to export plans' });
+    res.status(500).json({ success: false, error: { message: 'Failed to export plans', code: 'INTERNAL_ERROR' } });
   }
 });
 

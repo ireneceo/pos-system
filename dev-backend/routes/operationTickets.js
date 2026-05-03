@@ -82,7 +82,7 @@ router.get('/', async (req, res) => {
     res.json(tickets);
   } catch (error) {
     console.error('Error fetching operation tickets:', error);
-    res.status(500).json({ error: 'Failed to fetch operation tickets' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch operation tickets', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -98,13 +98,13 @@ router.get('/:id', async (req, res) => {
     });
 
     if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: { message: 'Ticket not found', code: 'NOT_FOUND' } });
     }
 
     res.json(ticket);
   } catch (error) {
     console.error('Error fetching operation ticket:', error);
-    res.status(500).json({ error: 'Failed to fetch operation ticket' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch operation ticket', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -125,7 +125,7 @@ router.post('/', authenticateToken, async (req, res) => {
     let finalManagerName = managerName;
 
     if (!finalRestaurantId) {
-      return res.status(400).json({ error: 'Restaurant ID is required' });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
     // If managerId not provided from frontend, look up from restaurant
@@ -135,7 +135,7 @@ router.post('/', authenticateToken, async (req, res) => {
       });
 
       if (!restaurant) {
-        return res.status(400).json({ error: 'Restaurant not found' });
+        return res.status(400).json({ success: false, error: { message: 'Restaurant not found', code: 'VALIDATION_ERROR' } });
       }
 
       finalRestaurantName = finalRestaurantName || restaurant.name;
@@ -144,7 +144,7 @@ router.post('/', authenticateToken, async (req, res) => {
         finalManagerId = restaurant.admin.id;
         finalManagerName = restaurant.admin.full_name;
       } else {
-        return res.status(400).json({ error: 'No admin assigned to this restaurant' });
+        return res.status(400).json({ success: false, error: { message: 'No admin assigned to this restaurant', code: 'VALIDATION_ERROR' } });
       }
     }
 
@@ -189,7 +189,7 @@ router.post('/', authenticateToken, async (req, res) => {
     res.status(201).json(createdTicket);
   } catch (error) {
     console.error('Error creating operation ticket:', error);
-    res.status(500).json({ error: 'Failed to create operation ticket' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create operation ticket', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -199,7 +199,7 @@ router.put('/:id', async (req, res) => {
     const ticket = await OperationTicket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: { message: 'Ticket not found', code: 'NOT_FOUND' } });
     }
 
     const updateData = {};
@@ -237,7 +237,7 @@ router.put('/:id', async (req, res) => {
     res.json(updatedTicket);
   } catch (error) {
     console.error('Error updating operation ticket:', error);
-    res.status(500).json({ error: 'Failed to update operation ticket' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update operation ticket', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -247,14 +247,14 @@ router.delete('/:id', async (req, res) => {
     const ticket = await OperationTicket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: { message: 'Ticket not found', code: 'NOT_FOUND' } });
     }
 
     await ticket.destroy();
     res.json({ message: 'Ticket deleted successfully' });
   } catch (error) {
     console.error('Error deleting operation ticket:', error);
-    res.status(500).json({ error: 'Failed to delete operation ticket' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete operation ticket', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -277,7 +277,7 @@ router.get('/stats/summary', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching operation ticket stats:', error);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch statistics', code: 'INTERNAL_ERROR' } });
   }
 });
 

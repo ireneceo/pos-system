@@ -48,7 +48,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
     res.json({ success: true, data: tickets });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to fetch support tickets' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch support tickets', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -58,17 +58,17 @@ router.get('/:id', authenticateToken, async (req, res) => {
     const ticket = await SupportTicket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ success: false, error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: { message: 'Ticket not found', code: 'NOT_FOUND' } });
     }
 
     // Non-admin can only view their own tickets
     if (req.user.role !== 'System Admin' && ticket.customerId !== String(req.user.id)) {
-      return res.status(403).json({ success: false, error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     res.json({ success: true, data: ticket });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to fetch ticket' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch ticket', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -124,7 +124,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     res.status(201).json({ success: true, data: ticket });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to create support ticket' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create support ticket', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -134,7 +134,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const ticket = await SupportTicket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ success: false, error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: { message: 'Ticket not found', code: 'NOT_FOUND' } });
     }
 
     const updateData = {};
@@ -161,7 +161,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     res.json({ success: true, data: ticket });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to update support ticket' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update support ticket', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -171,19 +171,19 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const ticket = await SupportTicket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ success: false, error: 'Ticket not found' });
+      return res.status(404).json({ success: false, error: { message: 'Ticket not found', code: 'NOT_FOUND' } });
     }
 
     // Only System Admin or ticket creator can delete
     if (req.user.role !== 'System Admin' && ticket.customerId !== String(req.user.id)) {
-      return res.status(403).json({ success: false, error: 'Access denied' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
     }
 
     await ticket.destroy();
 
     res.json({ success: true, message: 'Ticket deleted successfully' });
   } catch (error) {
-    res.status(500).json({ success: false, error: 'Failed to delete support ticket' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete support ticket', code: 'INTERNAL_ERROR' } });
   }
 });
 

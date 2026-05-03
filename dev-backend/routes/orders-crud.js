@@ -118,7 +118,7 @@ router.get('/:id', authenticateToken, async (req, res, next) => {
     }, { maxRetries: 3 });
     
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
     res.json({ success: true, data: order });
   } catch (error) {
@@ -695,7 +695,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     const order = await Order.findByPk(req.params.id);
 
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
     // Served + 결제완료 → 자동으로 completed로 점프 (순방향 진행일 때만, revert 제외)
@@ -840,7 +840,7 @@ router.patch('/:id/items', authenticateToken, async (req, res) => {
     const order = await Order.findByPk(req.params.id);
 
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
     // Note: Don't use JSON.stringify - Sequelize setter handles it automatically
@@ -884,7 +884,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
     const restaurantId = order.restaurant_id;
@@ -916,10 +916,7 @@ router.post('/merge', authenticateToken, async (req, res) => {
 
     // Validate input
     if (!orderIds || !Array.isArray(orderIds) || orderIds.length < 2) {
-      return res.status(400).json({
-        success: false,
-        error: 'At least 2 order IDs are required for merging'
-      });
+      return res.status(400).json({ success: false, error: { message: 'At least 2 order IDs are required for merging', code: 'VALIDATION_ERROR' } });
     }
 
     // Use transaction for atomicity
@@ -1085,24 +1082,18 @@ router.post('/:id/add-items', authenticateToken, async (req, res) => {
     const orderId = req.params.id;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Items array is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Items array is required', code: 'VALIDATION_ERROR' } });
     }
 
     const order = await Order.findByPk(orderId);
 
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
     // Validate order can accept new items
     if (order.payment_status === 'completed') {
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot add items to a paid order'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Cannot add items to a paid order', code: 'VALIDATION_ERROR' } });
     }
 
     if (['served', 'completed', 'cancelled'].includes(order.status)) {
@@ -1205,24 +1196,18 @@ router.post('/:id/merge-items', authenticateToken, async (req, res) => {
     const orderId = req.params.id;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Items array is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Items array is required', code: 'VALIDATION_ERROR' } });
     }
 
     const order = await Order.findByPk(orderId);
 
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
     // Validate order can accept new items
     if (order.payment_status === 'completed') {
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot add items to a paid order'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Cannot add items to a paid order', code: 'VALIDATION_ERROR' } });
     }
 
     if (['served', 'completed', 'cancelled'].includes(order.status)) {
@@ -1286,15 +1271,12 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
     const order = await Order.findByPk(orderId);
 
     if (!order) {
-      return res.status(404).json({ success: false, error: 'Order not found' });
+      return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
 
     // Only allow deletion before payment
     if (order.payment_status === 'completed') {
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot remove items from a paid order'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Cannot remove items from a paid order', code: 'VALIDATION_ERROR' } });
     }
 
     if (['served', 'completed', 'cancelled'].includes(order.status)) {
@@ -1311,18 +1293,12 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
     }
 
     if (itemIndex < 0 || itemIndex >= orderItems.length) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid item index'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Invalid item index', code: 'VALIDATION_ERROR' } });
     }
 
     // Cannot delete last item - must cancel order instead
     if (orderItems.length === 1) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot remove the last item. Please cancel the order instead.'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Cannot remove the last item. Please cancel the order instead.', code: 'VALIDATION_ERROR' } });
     }
 
     // Calculate what the new subtotal would be BEFORE removing the item
@@ -1340,10 +1316,7 @@ router.delete('/:id/items/:itemIndex', authenticateToken, async (req, res) => {
 
     if (totalDiscount > newSubtotal) {
       console.log(`⚠️ [DELETE-ITEM] Rejected: discount (${totalDiscount}) exceeds new subtotal (${newSubtotal})`);
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot remove this item. The applied discount exceeds the new subtotal. Please add other items first, then remove this item.'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Cannot remove this item. The applied discount exceeds the new subtotal. Please add other items first, then remove this item.', code: 'VALIDATION_ERROR' } });
     }
 
     // Check coupon min_order requirement if coupon is applied

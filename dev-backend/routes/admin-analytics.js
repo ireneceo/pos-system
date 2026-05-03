@@ -27,7 +27,7 @@ router.use(heavyAnalyticsLimiter);
 const requireManagerRole = (req, res, next) => {
   const allowedRoles = ['System Admin', 'Brand General', 'Foodcourt General', 'Brand Manager', 'Foodcourt Manager'];
   if (!allowedRoles.includes(req.user.role)) {
-    return res.status(403).json({ success: false, error: 'Access denied' });
+    return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
   }
   next();
 };

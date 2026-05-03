@@ -105,20 +105,20 @@ router.put('/categories/:categoryId', authenticateToken, async (req, res) => {
 
     const category = await InvoiceCategory.findByPk(categoryId);
     if (!category) {
-      return res.status(404).json({ success: false, error: 'Category not found' });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     // Check for duplicate code if changing
     if (code && code !== category.code) {
       const existing = await InvoiceCategory.findOne({ where: { code } });
       if (existing) {
-        return res.status(400).json({ success: false, error: 'Category code already exists' });
+        return res.status(400).json({ success: false, error: { message: 'Category code already exists', code: 'VALIDATION_ERROR' } });
       }
     }
 
     // Don't allow changing system category code
     if (category.is_system && code && code !== category.code) {
-      return res.status(400).json({ success: false, error: 'Cannot change system category code' });
+      return res.status(400).json({ success: false, error: { message: 'Cannot change system category code', code: 'VALIDATION_ERROR' } });
     }
 
     await category.update({
@@ -132,7 +132,7 @@ router.put('/categories/:categoryId', authenticateToken, async (req, res) => {
     res.json({ success: true, data: category });
   } catch (error) {
     console.error('Error updating invoice category:', error);
-    res.status(500).json({ success: false, error: 'Failed to update invoice category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update invoice category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -144,7 +144,7 @@ router.delete('/categories/:categoryId', authenticateToken, async (req, res) => 
 
     const category = await InvoiceCategory.findByPk(categoryId);
     if (!category) {
-      return res.status(404).json({ success: false, error: 'Category not found' });
+      return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
     }
 
     if (force === 'true') {
@@ -156,7 +156,7 @@ router.delete('/categories/:categoryId', authenticateToken, async (req, res) => 
     }
   } catch (error) {
     console.error('Error deleting invoice category:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete invoice category' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete invoice category', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -193,7 +193,7 @@ router.post('/categories/init', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error initializing invoice categories:', error);
-    res.status(500).json({ success: false, error: 'Failed to initialize invoice categories' });
+    res.status(500).json({ success: false, error: { message: 'Failed to initialize invoice categories', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -287,7 +287,7 @@ router.post('/', authenticateToken, async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error('Error creating invoice:', error);
-    res.status(500).json({ error: 'Failed to create invoice' });
+    res.status(500).json({ success: false, error: { message: 'Failed to create invoice', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -317,7 +317,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const invoice = await Invoice.findByPk(invoiceId, { transaction });
     if (!invoice) {
       await transaction.rollback();
-      return res.status(404).json({ error: 'Invoice not found' });
+      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
     // Authorization: only the issuer or payer (restaurant) or System Admin can edit
@@ -333,7 +333,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     else if (sameId(invoice.restaurant_id, userRestaurantId)) allowed = true;
     if (!allowed) {
       await transaction.rollback();
-      return res.status(403).json({ success: false, error: 'Access denied: you cannot edit this invoice' });
+      return res.status(403).json({ success: false, error: { message: 'Access denied: you cannot edit this invoice', code: 'FORBIDDEN' } });
     }
 
     // Branch-scoped Foodcourt Manager: limit edits to their branch's invoices
@@ -342,7 +342,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
       const inBranch = await invoiceInBranch(invoice, mgrScope.branch_id);
       if (!inBranch) {
         await transaction.rollback();
-        return res.status(403).json({ success: false, error: 'No access to this invoice' });
+        return res.status(403).json({ success: false, error: { message: 'No access to this invoice', code: 'FORBIDDEN' } });
       }
     }
 
@@ -356,7 +356,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     const { modificationReason } = req.body;
     if (invoice.type === 'automatic' && !modificationReason) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'Modification reason is required for automatic invoices' });
+      return res.status(400).json({ success: false, error: { message: 'Modification reason is required for automatic invoices', code: 'VALIDATION_ERROR' } });
     }
 
     // Build modification history record
@@ -530,7 +530,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
+      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
     const previousStatus = invoice.status;
@@ -571,7 +571,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
     res.json({ success: true, invoice });
   } catch (error) {
     console.error('Error updating invoice status:', error);
-    res.status(500).json({ error: 'Failed to update invoice status' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update invoice status', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -581,7 +581,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const invoice = await Invoice.findByPk(req.params.id);
     if (!invoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
+      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
     // Branch-scoped Foodcourt Manager: limit deletes to their branch's invoices
@@ -639,7 +639,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     res.json({ success: true, message: 'Invoice deleted successfully' });
   } catch (error) {
     console.error('Error deleting invoice:', error);
-    res.status(500).json({ error: 'Failed to delete invoice' });
+    res.status(500).json({ success: false, error: { message: 'Failed to delete invoice', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -664,7 +664,7 @@ router.get('/settings/:restaurantId', authenticateToken, checkRestaurantAccess, 
     res.json(settings);
   } catch (error) {
     console.error('Error fetching invoice settings:', error);
-    res.status(500).json({ error: 'Failed to fetch invoice settings' });
+    res.status(500).json({ success: false, error: { message: 'Failed to fetch invoice settings', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -689,7 +689,7 @@ router.put('/settings/:restaurantId', authenticateToken, checkRestaurantAccess, 
     res.json({ success: true, settings });
   } catch (error) {
     console.error('Error updating invoice settings:', error);
-    res.status(500).json({ error: 'Failed to update invoice settings' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update invoice settings', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -700,7 +700,7 @@ router.put('/update-payer/:restaurantId', authenticateToken, checkRestaurantAcce
     // Get restaurant with brand/foodcourt info
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant not found' });
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Determine new payer based on payment_model
@@ -744,7 +744,7 @@ router.put('/update-payer/:restaurantId', authenticateToken, checkRestaurantAcce
     });
   } catch (error) {
     console.error('Error updating invoice payers:', error);
-    res.status(500).json({ error: 'Failed to update invoice payers' });
+    res.status(500).json({ success: false, error: { message: 'Failed to update invoice payers', code: 'INTERNAL_ERROR' } });
   }
 });
 
@@ -805,7 +805,7 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
     }
 
     if (!recipientEmail || !recipientEmail.includes('@')) {
-      return res.status(400).json({ error: 'Valid recipient email is required' });
+      return res.status(400).json({ success: false, error: { message: 'Valid recipient email is required', code: 'VALIDATION_ERROR' } });
     }
 
     // Get the invoice with items and restaurant
@@ -821,7 +821,7 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
     });
 
     if (!invoice) {
-      return res.status(404).json({ error: 'Invoice not found' });
+      return res.status(404).json({ success: false, error: { message: 'Invoice not found', code: 'NOT_FOUND' } });
     }
 
     const { sendIssuerEmail } = require('../utils/emailService');

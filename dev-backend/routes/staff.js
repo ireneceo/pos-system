@@ -13,10 +13,7 @@ router.get('/', async (req, res) => {
     const restaurantId = req.query.restaurantId || req.user.restaurant_id;
 
     if (!restaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Restaurant ID is required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'Restaurant ID is required', code: 'VALIDATION_ERROR' } });
     }
 
     const staff = await User.findAll({
@@ -47,10 +44,7 @@ router.post('/verify-pin', async (req, res) => {
     const restaurantId = req.body.restaurant_id || req.user.restaurant_id;
 
     if (!pin_code || !restaurantId) {
-      return res.status(400).json({
-        success: false,
-        error: 'PIN code and restaurant ID are required'
-      });
+      return res.status(400).json({ success: false, error: { message: 'PIN code and restaurant ID are required', code: 'VALIDATION_ERROR' } });
     }
 
     const staff = await User.findOne({
@@ -64,10 +58,7 @@ router.post('/verify-pin', async (req, res) => {
     });
 
     if (!staff) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid PIN'
-      });
+      return res.status(401).json({ success: false, error: { message: 'Invalid PIN', code: 'UNAUTHORIZED' } });
     }
 
     // JWT 발급 (authService.js와 동일 패턴)
