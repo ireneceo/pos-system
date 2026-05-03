@@ -46,6 +46,36 @@ router.post('/login', validateLogin, async (req, res, next) => {
   }
 });
 
+// Quick demo / test login (no password — server resolves email by whitelist key).
+// Used by LoginPage quick-login cards so passwords stay out of the bundle.
+const demoLoginLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 30,
+  message: { success: false, message: 'Too many demo-login attempts.' },
+  standardHeaders: true, legacyHeaders: false
+});
+
+router.post('/demo-login', demoLoginLimiter, async (req, res, next) => {
+  try {
+    const { key } = req.body || {};
+    if (typeof key !== 'string' || !key) {
+      return errorResponse(res, 'key is required', 400, 'VALIDATION_ERROR');
+    }
+    const result = await authService.loginAsDemo(key);
+    successResponse(res, result, 'Login successful');
+  } catch (error) {
+    if (error.code === 'INVALID_DEMO_KEY') {
+      return errorResponse(res, error.message, 400, 'INVALID_DEMO_KEY');
+    }
+    if (error.code === 'DEMO_ACCOUNT_MISSING') {
+      return errorResponse(res, error.message, 404, 'DEMO_ACCOUNT_MISSING');
+    }
+    if (error.code === 'NOT_DEMO_ACCOUNT') {
+      return errorResponse(res, error.message, 403, 'NOT_DEMO_ACCOUNT');
+    }
+    next(error);
+  }
+});
+
 // 회원가입 (validateRegister 미들웨어로 입력 검증 + 강력한 비밀번호 정책)
 router.post('/register', validateRegister, async (req, res, next) => {
   try {

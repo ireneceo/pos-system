@@ -5,65 +5,58 @@ import { useAuth } from '../../contexts/AuthContext';
 import { LanguageSelector } from '../../components/Common';
 import { useTranslation } from 'react-i18next';
 
-// Demo accounts (always visible)
+// Demo / Test accounts — passwords are NOT shipped in the bundle.
+// Server resolves the email by `key` and issues a token via /api/auth/demo-login,
+// guarded by the user's is_demo / is_test flag.
 const DEMO_ACCOUNTS = [
   {
+    key: 'demo_brand_general',
     role: 'Brand General',
-    email: 'demo-brand@purplehere.com',
-    password: 'Demo@2024',
     description: 'Manage multiple brands and restaurants from a single dashboard',
     color: '#059669'
   },
   {
+    key: 'demo_restaurant_admin',
     role: 'Restaurant Admin',
-    email: 'demo-restaurant@purplehere.com',
-    password: 'Demo@2024',
     description: 'Full restaurant management experience with all features',
     color: '#0891B2'
   },
   {
+    key: 'demo_supplier_admin',
     role: 'Supplier Admin',
-    email: 'demo-supplier@purplehere.com',
-    password: 'Demo@2024',
     description: 'B2B supplier portal — products, contracts, purchase orders, trade invoices',
     color: '#9333EA'
   }
 ];
 
-// Test accounts (hidden by default)
 const TEST_ACCOUNTS = [
   {
+    key: 'test_brand_general',
     role: 'Brand General',
-    email: 'brand_general@orderhere.center',
-    password: 'Test1234',
     description: 'Brand General Manager (Multi-Brand Management)',
     color: '#DC2626'
   },
   {
+    key: 'test_foodcourt_general',
     role: 'Foodcourt General',
-    email: 'foodcourt_general@orderhere.center',
-    password: 'Test1234',
     description: 'Foodcourt General Manager (Overall Foodcourt Management)',
     color: '#EA580C'
   },
   {
+    key: 'test_restaurant_owner',
     role: 'Restaurant Owner',
-    email: 'owner@purplehere.com',
-    password: 'Test1234',
     description: 'Restaurant Owner (Multi-Restaurant Financial Dashboard)',
     color: '#7C3AED'
   },
   {
+    key: 'test_restaurant_admin',
     role: 'Restaurant Admin',
-    email: 'admin@kdine.com',
-    password: 'Restaurant1',
     description: 'K-DINE Restaurant Admin (300+ orders for testing)',
     color: '#0891B2'
   },
   {
+    key: 'test_staff',
     role: 'Staff',
-    email: 'staff@kdine.com',
-    password: 'Staff1234',
     description: 'Test Restaurant Updated - Staff (INACTIVE)',
     color: '#65A30D'
   }
@@ -431,7 +424,7 @@ const LoginPage: React.FC = () => {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { login, loginAsDemo, user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -504,26 +497,19 @@ const LoginPage: React.FC = () => {
   }, [authLoading, isAuthenticated, user, navigate, location]);
 
   const handleQuickLogin = async (account: typeof DEMO_ACCOUNTS[0] | typeof TEST_ACCOUNTS[0]) => {
-    setEmail(account.email);
-    setPassword(account.password);
     setError('');
     setEmailNotVerified(false);
     setResendMessage('');
     setIsLoading(true);
     try {
-      const loginSuccess = await login(account.email, account.password);
+      const loginSuccess = await loginAsDemo(account.key);
       if (!loginSuccess) {
-        setError('Invalid email/username or password');
+        setError('Demo login failed. The account may not be provisioned.');
       }
       // Navigation is handled by the useEffect that watches isAuthenticated
     } catch (error: any) {
       console.error('Quick login error:', error);
-      if (error?.code === 'EMAIL_NOT_VERIFIED') {
-        setEmailNotVerified(true);
-        setUnverifiedEmail(error.email || account.email);
-      } else {
-        setError(error?.message || 'Login failed. Please try again.');
-      }
+      setError(error?.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -687,7 +673,7 @@ const LoginPage: React.FC = () => {
             <DemoTitle>{t('auth:loginPage.demoAccounts')}</DemoTitle>
             {DEMO_ACCOUNTS.map((account) => (
               <DemoCard
-                key={account.email}
+                key={account.key}
                 color={account.color}
                 onClick={() => handleQuickLogin(account)}
               >
@@ -708,7 +694,7 @@ const LoginPage: React.FC = () => {
           <TestAccountsSection show={showTestAccounts}>
             {TEST_ACCOUNTS.map((account) => (
               <TestAccountCard
-                key={account.email}
+                key={account.key}
                 color={account.color}
                 onClick={() => handleQuickLogin(account)}
               >

@@ -218,11 +218,11 @@ const ErrorMessage = styled.div`
   text-align: center;
 `;
 
-// Demo account credentials
+// Demo account metadata — passwords are NOT shipped in the bundle.
+// Server resolves the email by `key` via /api/auth/demo-login (gated by is_demo flag).
 const DEMO_ACCOUNTS = {
   brand_general: {
-    email: 'demo-brand@purplehere.com',
-    password: 'Demo@2024',
+    key: 'demo_brand_general',
     role: 'Brand General',
     icon: '#',
     description: 'Manage multiple brands and restaurants from a single dashboard',
@@ -235,8 +235,7 @@ const DEMO_ACCOUNTS = {
     ]
   },
   restaurant_admin: {
-    email: 'demo-restaurant@purplehere.com',
-    password: 'Demo@2024',
+    key: 'demo_restaurant_admin',
     role: 'Restaurant Admin',
     icon: '%',
     description: 'Full restaurant management experience with all features',
@@ -253,7 +252,7 @@ const DEMO_ACCOUNTS = {
 const DemoPage: React.FC = () => {
   const { t } = useTranslation('landing');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { loginAsDemo } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
 
@@ -264,26 +263,20 @@ const DemoPage: React.FC = () => {
     const account = DEMO_ACCOUNTS[accountType];
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/demo-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: account.email,
-          password: account.password
-        })
+        body: JSON.stringify({ key: account.key })
       });
 
       const data = await response.json();
 
       if (response.ok && data.success && data.data && data.data.token) {
-        // Store token and user info
         setAuthToken(data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
 
-        // Call login from AuthContext
-        await login(account.email, account.password);
+        await loginAsDemo(account.key);
 
-        // Redirect based on role
         if (accountType === 'brand_general') {
           navigate('/pos/brand/general/dashboard');
         } else {
@@ -291,7 +284,7 @@ const DemoPage: React.FC = () => {
           navigate(`/restaurant/${restaurantId}/dashboard`);
         }
       } else {
-        setError(data.message || data.error || 'Demo account login failed. Please contact support.');
+        setError(data?.error?.message || data.message || 'Demo account login failed. Please contact support.');
       }
     } catch (err) {
       setError('Network error. Please try again.');

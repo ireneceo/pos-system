@@ -771,4 +771,129 @@ async function signupReferralPartner(data) {
   }
 }
 
-module.exports = { login, register, signup, signupReferralPartner };
+/**
+ * Whitelist mapping demo/test login key → account email.
+ * Key is what the frontend sends; email is resolved server-side so passwords
+ * never leave the bundle. Each resolved user MUST be flagged is_demo or is_test
+ * (defence-in-depth — if a non-demo email is ever placed here by mistake, the
+ * gate below blocks it).
+ */
+const DEMO_KEY_TO_EMAIL = Object.freeze({
+  // Demo (showcase / landing)
+  demo_brand_general:     'demo-brand@purplehere.com',
+  demo_restaurant_admin:  'demo-restaurant@purplehere.com',
+  demo_supplier_admin:    'demo-supplier@purplehere.com',
+  // Test (QA / staging)
+  test_brand_general:     'brand_general@orderhere.center',
+  test_foodcourt_general: 'foodcourt_general@orderhere.center',
+  test_restaurant_owner:  'owner@purplehere.com',
+  test_restaurant_admin:  'admin@kdine.com',
+  test_staff:             'staff@kdine.com'
+});
+
+/**
+ * Login as a demo / test account by key (no password required).
+ * Used by the LoginPage quick-login cards so passwords stay out of the bundle.
+ *
+ * Security gate: the resolved user must have is_demo === true or is_test === true.
+ * Any whitelist accident that resolves to a real account is rejected.
+ */
+async function loginAsDemo(key) {
+  const email = DEMO_KEY_TO_EMAIL[key];
+  if (!email) {
+    const err = new Error('Unknown demo account');
+    err.code = 'INVALID_DEMO_KEY';
+    throw err;
+  }
+
+  const { Op } = require('sequelize');
+  const sequelize = require('../db').sequelize;
+  const user = await User.findOne({
+    where: sequelize.where(
+      sequelize.fn('LOWER', sequelize.col('email')),
+      sequelize.fn('LOWER', email)
+    )
+  });
+  if (!user) {
+    const err = new Error('Demo account not provisioned');
+    err.code = 'DEMO_ACCOUNT_MISSING';
+    throw err;
+  }
+  if (!user.is_demo && !user.is_test) {
+    // Defence-in-depth: never issue a token for a real account via this path.
+    const err = new Error('Account is not a demo/test account');
+    err.code = 'NOT_DEMO_ACCOUNT';
+    throw err;
+  }
+
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+  }
+  const token = jwt.sign({
+    userId: user.id,
+    email: user.email,
+    role: user.role,
+    username: user.username,
+    brand_id: user.brand_id,
+    foodcourt_id: user.foodcourt_id,
+    branch_id: user.branch_id,
+    restaurant_id: user.restaurant_id,
+    manager_id: user.manager_id
+  }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
+
+  // Permissions / supplier company / restaurant context — same shape as login()
+  let permissions = [];
+  if (user.permissions) {
+    try {
+      permissions = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions;
+    } catch (e) { permissions = []; }
+  }
+  let supplierCompanyId = user.supplier_company_id || null;
+  if (!supplierCompanyId && user.role === 'Supplier Admin') {
+    const SupplierCompany = require('../models/SupplierCompany');
+    const sc = await SupplierCompany.findOne({ where: { owner_id: user.id }, attributes: ['id'] });
+    if (sc) supplierCompanyId = sc.id;
+  }
+  let restaurantStatus = null;
+  let restaurantName = null;
+  let restaurantIsDemo = false;
+  let restaurantIsTest = false;
+  if (user.restaurant_id) {
+    const r = await Restaurant.findByPk(user.restaurant_id, {
+      attributes: ['status', 'name', 'is_demo', 'is_test']
+    });
+    if (r) {
+      restaurantStatus = r.status;
+      restaurantName = r.name;
+      restaurantIsDemo = !!r.is_demo;
+      restaurantIsTest = !!r.is_test;
+    }
+  }
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      username: user.username,
+      restaurant_id: user.restaurant_id,
+      manager_id: user.manager_id,
+      brand_id: user.brand_id,
+      foodcourt_id: user.foodcourt_id,
+      branch_id: user.branch_id,
+      supplier_company_id: supplierCompanyId,
+      subscription_status: user.subscription_status || null,
+      restaurantStatus,
+      restaurantName,
+      restaurantIsDemo,
+      restaurantIsTest,
+      is_demo: !!user.is_demo,
+      is_test: !!user.is_test,
+      preferred_language: user.preferred_language || 'en',
+      permissions
+    }
+  };
+}
+
+module.exports = { login, loginAsDemo, register, signup, signupReferralPartner, DEMO_KEY_TO_EMAIL };

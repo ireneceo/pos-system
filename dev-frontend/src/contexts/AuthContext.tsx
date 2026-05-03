@@ -41,6 +41,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  loginAsDemo: (key: string) => Promise<boolean>;
   logout: () => void;
   switchUser: (token: string, userData: SwitchUserData) => void;
   updateUser: (userData: Partial<User>) => void;
@@ -570,6 +571,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Demo / test quick login by whitelist key — no password leaves the bundle.
+  const loginAsDemo = async (key: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/auth/demo-login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key })
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          const apiUser = result.data.user;
+          const loginPermissions = apiUser.role === 'Staff' && Array.isArray(apiUser.permissions)
+            ? apiUser.permissions
+            : ROLE_PERMISSIONS[apiUser.role as UserRole] || [];
+          const userData: User = {
+            id: apiUser.id?.toString() || '1',
+            email: apiUser.email,
+            name: apiUser.username || apiUser.email.split('@')[0],
+            role: apiUser.role as UserRole,
+            restaurantId: apiUser.restaurant_id?.toString() || null,
+            managerId: apiUser.manager_id?.toString() || null,
+            brand_id: apiUser.brand_id || null,
+            foodcourt_id: apiUser.foodcourt_id || null,
+            permissions: loginPermissions,
+            restaurantStatus: apiUser.restaurantStatus || null,
+            restaurantName: apiUser.restaurantName || null,
+            isDemo: !!apiUser.is_demo,
+            isTest: !!apiUser.is_test,
+            restaurantIsDemo: !!apiUser.restaurantIsDemo,
+            restaurantIsTest: !!apiUser.restaurantIsTest,
+            subscriptionStatus: apiUser.subscription_status || null,
+            preferred_language: apiUser.preferred_language || 'en'
+          };
+          setUser(userData);
+          setAuthToken(result.data.token);
+          if (apiUser.preferred_language) {
+            i18n.changeLanguage(apiUser.preferred_language);
+          }
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const logoutRef = React.useRef<(() => void) | null>(null);
 
   const logout = async () => {
@@ -726,6 +776,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     isLoading,
     login,
+    loginAsDemo,
     logout,
     switchUser,
     updateUser,
