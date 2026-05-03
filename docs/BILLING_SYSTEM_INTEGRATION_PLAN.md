@@ -84,7 +84,14 @@
 | Invoice Payment Page (공용) | 이메일 링크로 접근하는 결제 페이지 (로그인 없이) |
 | Stripe 실제 연동 | 카드 자동결제, 정기결제 |
 | PayPal 실제 연동 | PayPal 자동결제 |
-| Overdue 자동 전환 Cron | 서버에서 마감일 초과 인보이스 자동 상태 변경 |
+
+### 2.3 완료 ✅
+
+| 항목 | 위치 | 메모 |
+|------|------|------|
+| Overdue 자동 전환 Cron — subscription | `services/subscriptionScheduler.js` `processOverduePayments()` | Restaurant.status active→overdue + Invoice.status pending_payment→overdue |
+| Overdue 자동 전환 Cron — non-subscription | `services/invoiceOverdueScheduler.js` (2026-05-03 신규) | service/hardware/po 등 매일 02:30 UTC, parent_soa_invoice_id 제외, invoiceOverdueEmail 알림 |
+| Overdue D+3/D+7/D+14 reminders | `services/subscriptionScheduler.js` `processOverdueReminders()` | 모든 invoice category 적용 |
 
 ---
 

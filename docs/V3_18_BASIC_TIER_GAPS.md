@@ -1,5 +1,9 @@
 # Basic Tier Access Gaps (v3.18)
 
+> **2026-05-03 갱신**: 아래에 표시된 ❌ UNGUARDED 2 endpoint 는 후속 작업에서 fix 완료.
+> `routes/brands-plans.js:14` + `routes/foodcourts-plans.js:14` 에 `requireBrandModule('brand_subscriptions')` /
+> `requireFoodcourtModule('fc_subscriptions')` 미들웨어 적용됨. 본 문서 historical record 로 보존.
+
 ## Summary
 
 Comprehensive audit of Purple POS subscription module gating system across 3 enforcement layers (Backend, URL gate, UI). 
