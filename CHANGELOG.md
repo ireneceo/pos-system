@@ -6,6 +6,88 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+## [v3.23] — 2026-05-03 배포
+
+**비대 라우트 분리 + Sentry cleanup + B9 dashboard 사전 집계 + B10 Jest 27 tests + Overdue cron + UI/UX 친절도 보강 (Stripe/PayPal/SMTP 가이드 + Empty states + Mobile hints) + 백엔드 에러 응답 표준화 (fieldErrors + hint)**
+
+### 비대 라우트 분리 (CLAUDE.md 500줄 가이드 시정 완료)
+- `inventory-routes.js` 1820줄 → inventory-core (1108) + inventory-extra (732). barrel 마운트
+- `purchase-orders.js` 1624줄 → purchase-orders-crud (889) + purchase-orders-workflow (971). barrel 마운트
+- 모든 sub-router 1500줄 미만 달성
+
+### Sentry 코드 정리 (사용자 미사용 결정 후속)
+- server.js Sentry init + setupExpressErrorHandler 제거
+- middleware/auth + customerAuth Sentry.setUser + import 제거
+- frontend index.tsx Sentry.init + Sentry.ErrorBoundary → React 표준 inline class
+- frontend AuthContext Sentry.setUser 4곳 + import 제거
+- 효과: frontend 번들 1726KB → 1447KB (−280KB)
+
+### Dashboard 통계 사전 집계 인프라 (B9)
+- DB 모델 `RestaurantDailyStats` (restaurant_id × date UNIQUE, revenue/order_count/AOV/currency/timezone)
+- `services/dailyStatsScheduler.js` 매일 00:30 SGT cron + SchedulerRun 기록 + upsert 멱등
+- `scripts/backfill-daily-stats.js` (1회 실행: 25 식당 × 30일 = 750 row)
+- 신규 endpoint `GET /api/dashboard/restaurant/:rid/daily-stats?from&to` (어제까지 사전집계 + 오늘 실시간 fallback + 누락 zero row)
+- 기존 sales-chart endpoint도 사전 집계 lookup + today live 로 통합 (B9 v2 — week=daily / month=weekly / year=monthly bucket)
+- `docs/DASHBOARD_AGGREGATION.md` 설계 문서
+
+### Jest 도입 + 27 contract tests + CI workflow template (B10)
+- jest ^30.3.0 + supertest ^7.2.2 (devDependency)
+- `tests/_helpers.js` — uniqueIP + http + login (X-Forwarded-For 로 authLimiter 우회, trust proxy=1 활용)
+- tests/auth.test.js (8) — login valid/invalid + anonymous + garbage token
+- tests/idor.test.js (5) — RA cross-tenant + RP scope
+- tests/payment-flow.test.js (6) — payment endpoint surface + invoice schema invariants
+- tests/suspended-ux.test.js (3) — login response + /auth/me restaurantStatus 필드 surface
+- tests/referral-commission.test.js (4) — UNIQUE(invoice_id, referrer_id) 제약 + wallet 잔액≥0 + (user, currency) UNIQUE
+- npm test → "jest --forceExit"
+- `dev-backend/ci-workflow.yml.template` — MySQL 8.0 service container + 3 jobs (backend-tests / i18n-verify / state-hydration)
+- 검증: 27/27 PASS
+
+### 비-subscription 인보이스 overdue 자동 전환 cron
+- `services/invoiceOverdueScheduler.js` 신규 — service/hardware/po/soa 등 (subscription 외) due_date 지난 invoice 자동 status='overdue' + invoiceOverdueEmail
+- SOA child (parent_soa_invoice_id) 제외 — finalizeInvoice cascade 가 처리
+- 매일 02:30 UTC, SchedulerRun 기록
+- subscription overdue 는 기존 subscriptionScheduler.processOverduePayments 가 그대로 처리
+
+### 결제 게이트웨이 + 알림 연동 안내 보강 (UI/UX 친절도)
+- `components/Payment/PaymentGatewayGuide.tsx` 신규 — Stripe/PayPal/Bank 단계별 가이드 (가입 → API key → webhook 등록 → test 카드/Sandbox)
+- 4 PaymentSettings 페이지 (Admin/Brand/Foodcourt/Supplier) 에 Stripe/PayPal 섹션 위 가이드 마운트
+- `components/Common/SmtpGuide.tsx` 신규 — Gmail/Outlook/Other (SES/SendGrid/Mailgun) 3-tab 단계별 가이드 (App Password 생성 + SMTP AUTH + STARTTLS 등)
+- NotificationSettings Email tab 에 마운트
+
+### Empty states + 빈 상태 가이드
+- `components/Common/EmptyState.tsx` 표준 컴포넌트 (아이콘 + 제목 + 설명 + 1/2차 CTA + 단계 list)
+- Customers 빈상태 — "QR 메뉴 자동 등록 / 수동 추가" 안내 + CTA
+- NewPurchaseOrder 빈 카탈로그 — "Suppliers → 계약 → 발주" 3-step 가이드 + Browse suppliers CTA
+- Ingredients 빈상태 — "Stock items 추가 → Recipe 연결 → min/par level → 자동 알림" 3-step + 도메인 설명
+
+### Mobile / Settings 친절도
+- Mobile MenuPage — 첫 사용자 dismissable 3-step banner (Browse → Cart → Checkout) + localStorage 기억
+- Mobile PaymentPage — 결제방법별 hint (card 즉시 / paypal 리디렉션 / bank 몇 시간 / qr 앱 / counter 매장 cash)
+- Admin SiteSettings — 페이지 상단 "어디 표시되나" 영향 범위 박스 (site name → 랜딩/탭/이메일 / brand logo → 헤더/이메일/PDF / default currency → 신규 식당만)
+- Brand/Foodcourt PaymentSettings — Stripe 토글 비활성화 시 "고객 화면에서 옵션 사라짐" 작은 안내
+- Restaurant Invoices Submit Payment 모달 — "How payment works" 보라 박스 (카드/PayPal 즉시 vs 은행 이체 + transaction reference + admin 확인 ~몇 시간)
+- InvoiceSettings Late Fee — 입력 시 실시간 example ("RM 1,000 overdue → adds RM 20.00")
+
+### 백엔드 에러 응답 표준화 (fieldErrors + hint)
+- `middleware/errorHandler.js` 강화 — Sequelize ValidationError → fieldErrors 자동 / UniqueConstraintError → 409 DUPLICATE / FK / JWT errors 모두 명확한 code + hint
+- `requireFields(res, fields)` 신규 헬퍼 — 인라인 검증 단축
+- `middleware/validation.js` handleValidationErrors → fieldErrors map 변환 (하위호환 details 유지)
+- `utils/parseApiError.ts` 프론트엔드 헬퍼 — modern + legacy 응답 통합 파싱
+- 표준 형식:
+  ```json
+  { "success": false, "error": { "message": "...", "code": "VALIDATION_ERROR", "fieldErrors": {"name": "Required"}, "hint": "Both Name and Code are required." }}
+  ```
+- 44 라우트 파일 일괄 sweep (Python regex) — legacy `error: 'string'` → `error: { message, code }`. status → code 자동 매핑 (400→VALIDATION_ERROR / 401→UNAUTHORIZED / 403→FORBIDDEN / 404→NOT_FOUND / 409→DUPLICATE / 500→INTERNAL_ERROR 등)
+- middleware/auth + recipeAuth 도 동일 sweep
+- Sample 라우트 (POST /api/invoices/categories) 에 fieldErrors + hint 수동 보강 (패턴 예시)
+- 회귀 0 — parseApiError 가 modern + legacy 모두 호환
+
+### 운영 점검 보고서 갱신
+- `docs/OPERATIONAL_READINESS_AUDIT.md` PM2 logrotate + Sentry 미사용 후속 + uploads 백업 + financial audit log 처리 이력
+- `docs/DASHBOARD_AGGREGATION.md` (신규) — B9 설계
+- `docs/V3_18_BASIC_TIER_GAPS.md` 갱신 — UNGUARDED 이미 fix 표기 (historical)
+- `docs/BILLING_SYSTEM_INTEGRATION_PLAN.md` 갱신 — Overdue Cron 완료 표기
+
 ## [v3.22] — 2026-05-03 배포
 
 **리퍼럴 UX 보강 + `/api/restaurants` 익명 노출 fix + 인보이스 사유 표시 + 운영 준비 점검 P0+P1 + 비대 라우트 분리**

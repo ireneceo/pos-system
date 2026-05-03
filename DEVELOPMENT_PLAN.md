@@ -1,9 +1,41 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-03 (v3.22 운영 배포 + 운영 SaaS 정합성 P0/P1 + 비대 라우트 분리)
+> **최종 업데이트:** 2026-05-03 (v3.23 운영 배포 — B9+B10 + Overdue cron + 친절도 보강 + 에러 응답 표준화)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.22** (2026-05-03 운영 배포)
+> **현재 버전:** **v3.23** (2026-05-03 운영 배포)
+
+## ✅ 완료: v3.23 운영 배포 (2026-05-03)
+
+**비대 라우트 분리 + Sentry cleanup + B9 dashboard 사전 집계 + B10 Jest 27 tests + Overdue cron + UI/UX 친절도 보강 + 백엔드 에러 응답 표준화 (fieldErrors + hint)**
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 비대 라우트 분리 마무리 | inventory-routes 1820 → core+extra, purchase-orders 1624 → crud+workflow. 모든 sub-router 1500줄 미만 달성 | ✅ |
+| Sentry 코드 정리 | server.js init/error handler + middleware/auth setUser + frontend AuthContext setUser + index.tsx ErrorBoundary → React 표준 inline class. 번들 1726→1447KB (−280KB) | ✅ |
+| B9 — Dashboard 사전 집계 | RestaurantDailyStats 모델 + dailyStatsScheduler (매일 00:30 SGT) + backfill (25 식당 × 30일 = 750 row) + 신규 endpoint /daily-stats + sales-chart 통합 (사전집계 + today live) + docs/DASHBOARD_AGGREGATION.md | ✅ |
+| B10 — Jest 27 contract tests | jest+supertest devDeps + tests/_helpers (X-Forwarded-For 우회) + auth(8) + idor(5) + payment-flow(6) + suspended-ux(3) + referral-commission(4). 27/27 PASS. ci-workflow.yml.template (MySQL service container + 3 jobs) | ✅ |
+| 비-subscription invoice overdue cron | invoiceOverdueScheduler (service/hardware/po/soa, 매일 02:30 UTC, SOA child 제외, invoiceOverdueEmail) | ✅ |
+| Stripe/PayPal/SMTP 연동 가이드 | components/Payment/PaymentGatewayGuide (4 페이지) + components/Common/SmtpGuide (Gmail/Outlook/Other 3-tab). 가입 → API key → webhook → test 단계별 | ✅ |
+| Empty states + 빈 상태 가이드 | EmptyState 표준 컴포넌트 + Customers/NewPO/Ingredients 빈상태 (3-step 가이드 + CTA + 도메인 설명) | ✅ |
+| Mobile / Settings 친절도 | Mobile MenuPage 첫 사용자 banner + Mobile PaymentPage 결제방법 hint + SiteSettings 영향 박스 + Brand/FG 토글 비활성화 경고 + Restaurant Invoice 결제 흐름 + Late Fee preview | ✅ |
+| 백엔드 에러 응답 표준화 | errorHandler 강화 (Sequelize/JWT 자동 변환) + requireFields 헬퍼 + parseApiError frontend 헬퍼 + 44 라우트 + middleware/auth+recipeAuth sweep (legacy → object form) + sample 1 endpoint fieldErrors+hint 보강 | ✅ |
+| Overdue Cron 문서화 | BILLING_SYSTEM_INTEGRATION_PLAN 갱신 (Overdue Cron 완료 표기) + V3_18_BASIC_TIER_GAPS UNGUARDED 이미 fix 표기 | ✅ |
+
+### 자동 마이그레이션 (운영 배포 시)
+- sprint4/5/6/7-migration / migrate-2026-03-18 / migrate-supplier-staff / migrate-soa-invoice / migrate-referral
+- RestaurantDailyStats 자동 sync (124 tables, 이전 123 → +1)
+
+### 검증 (배포 후 라이브)
+- frontend https://purplehere.com → 200 / backend /api/health → 200
+- 익명 /api/restaurants → 401 / POST /invoices/categories → 새 에러 형식
+- 분리된 라우트 prod 도착 (inventory-core/extra, purchase-orders-crud/workflow)
+- 신규 서비스 prod (dailyStatsScheduler, invoiceOverdueScheduler)
+- health-check 73/73 PASS, Jest 27/27 PASS
+
+---
 
 ## ✅ 완료: v3.22 운영 배포 (2026-05-03)
 
