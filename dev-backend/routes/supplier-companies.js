@@ -79,7 +79,8 @@ router.get('/:id/allowed-routes', authenticateToken, async (req, res) => {
 
     const owner = company.owner_id ? await User.findByPk(company.owner_id) : null;
     const isDemo = !!(owner?.is_demo);
-    const planType = isDemo ? 'Supplier Enterprise' : (company.plan_type || null);
+    // Demo: highest plan ('Supplier Advanced' is the top tier — no 'Enterprise' yet)
+    const planType = isDemo ? 'Supplier Advanced' : (company.plan_type || null);
     const subStatus = isDemo ? 'active' : (company.subscription_status || null);
 
     const empty = {

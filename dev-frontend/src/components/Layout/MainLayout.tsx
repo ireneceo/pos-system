@@ -10,6 +10,7 @@ import { PaymentStatusModals } from '../PaymentStatus/PaymentStatusModals';
 import { AccessBlocked } from '../PaymentStatus/AccessBlocked';
 import LanguageSelector from '../Common/LanguageSelector';
 import InboxBell from '../Inbox/InboxBell';
+import PlanBadge from './PlanBadge';
 import { useTranslation } from 'react-i18next';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 
@@ -552,7 +553,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
 
   // Get allowed routes based on subscription plan (all roles)
-  const { isRouteAllowed, hasActiveSubscription, hasModule, loading: routesLoading } = useAllowedRoutes(
+  const { isRouteAllowed, hasActiveSubscription, hasModule, loading: routesLoading, planType } = useAllowedRoutes(
     user?.role ? {
       role: user.role,
       restaurantId: (user.role === 'Restaurant Admin' || user.role === 'Staff') ? Number(restaurantId) : null,
@@ -1005,6 +1006,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <img src={globalAudioEnabled ? '/speaker-on.svg' : '/speaker-off.svg'} alt="Sound" style={{ width: '20px', height: '20px' }} />
             </button>
           )}
+          {isLoggedIn && planType && <PlanBadge planType={planType} loading={routesLoading} />}
           {isLoggedIn && <InboxBell />}
           <LanguageSelector variant="globe" />
           {isLoggedIn && currentStaff ? (

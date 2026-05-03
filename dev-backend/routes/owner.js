@@ -926,9 +926,9 @@ router.get('/allowed-routes', requireRole('Restaurant Owner'), async (req, res) 
     const AddonModule = require('../models/AddonModule');
 
     const owner = await User.findByPk(req.user.id);
-    // Demo owners: full access
+    // Demo owners: highest plan (enterprise) for full module access
     const isDemo = owner?.is_demo;
-    const effectivePlanType = isDemo ? 'Owner Basic Plan' : owner?.plan_type;
+    const effectivePlanType = isDemo ? 'Owner Enterprise' : owner?.plan_type;
     const effectiveSubStatus = isDemo ? 'active' : owner?.subscription_status;
     if (!owner || !effectivePlanType) {
       return res.json({
