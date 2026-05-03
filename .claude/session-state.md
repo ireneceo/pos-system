@@ -71,12 +71,44 @@
 
 **커밋 4건**: 4d9ecafd / ec1eab11 / fd877d48 / b7cb1947
 
+### 추가 완료 (2026-05-03 운영 SaaS 정합성 P1 라운드)
+
+**Sentry 미사용 결정 + PM2 logrotate 도입 (A)** — 사용자가 Sentry 효용성 낮다고 판단
+- pm2 install pm2-logrotate (양쪽). dev 14일/prod 30일 retain, 10MB max, gzip, 매일 자정
+- Sentry 코드는 잔존 (DSN env 비우면 SDK no-op, 무해)
+
+**점검 보고서 갱신 (C)** — `docs/OPERATIONAL_READINESS_AUDIT.md`
+- Baseline 의 관측 항목: Sentry → PM2 logrotate 로 표기 변경
+- 처리 이력에 PM2 log rotation + Sentry 미사용 결정 기록
+
+**per-route rate limit 미세조정 (D)** — apiLimiter 1000/15min 보다 tight 한 endpoint:
+- routes/auth.js: signupLimiter 10/h, forgotPasswordLimiter 5/15min
+- routes/admin-analytics.js: heavyAnalyticsLimiter 30/min (sales-trend, regional-stats DB 부하)
+- routes/admin-reports.js: heavyReportsLimiter 30/min (revenue-trend, customer-analysis)
+
+**utils/logger.js thin wrapper (E)** — Sentry 미사용 후 prod 추적 단일 진입점
+- info (dev only) / warn / error / debug (DEBUG=true)
+- 향후 winston/pino 로 swap 시 호출 지점 그대로
+
+**비대 라우트 3개 분리 (F+G)** — CLAUDE.md 500줄 가이드 위배 시정:
+- invoices-main.js 2622줄 → invoices-list (1203) + invoices-crud (926) + invoices-generation (513)
+- brands.js 2596줄 → brands-core (1247) + brands-plans (1368)
+- foodcourts.js 2333줄 → foodcourts-core (1243) + foodcourts-plans (1109)
+- 각 파일 자체 helpers 통합 이동 (verifyBrandAccess/computeNextBillingDate/calculatePlanCharges/generateBrandInvoiceNumber 등)
+- barrel 파일 (invoices.js / brands.js / foodcourts.js) 가 sub-router 마운트
+- server.js mount 변경 없음 (`/api/invoices`, `/api/brands`, `/api/foodcourts` 그대로)
+- invoiceInBranch shared helper 를 invoices-helpers.js 로 이동 (list/crud 공유)
+
+**커밋 4건**: 842780e3 (A+C+D) / feb332fd (E) / 46be2604 (F+G) — 검증 73/73 PASS
+
 ### 다음 할 일
 
-1. **운영 배포 결정** — 누적 변경 (보안 fix + 리퍼럴 UX + 인보이스 사유 + 운영 점검 P0 5건) 운영 배포 시점
-2. **내일 03:00 자동 백업 도착 확인** — dev `~/backups/cross-backup/production-pos/db_2026-05-04.sql.gz` + `uploads_2026-05-04.tar.gz`
-3. **P1 별도 세션 권고** — winston 로거 도입 (B5) + per-route rate limit 미세조정 (B6) + invoices-main 분리 2622줄 (B1)
-4. **P2 인프라 도입 결정 사안 (사용자 영역)** — S3/R2, BullMQ+Redis, Socket.IO Redis adapter, JWT refresh token (트래픽 트리거 도달 전엔 over-engineering)
+1. **운영 배포 결정** — 누적 변경 8 커밋 (보안 fix + 리퍼럴 UX + 인보이스 사유 + 운영 점검 P0+P1) 운영 배포 시점 — 사용자가 직접 `/배포`
+2. **내일 03:00 자동 백업 도착 확인** — dev `~/backups/cross-backup/production-pos/{db,uploads}_2026-05-04.{sql,tar}.gz`
+3. **B9 dashboard 통계 사전 집계** — 별도 라운드, DB 모델 신규 + cron worker (설계 문서 필요)
+4. **B10 unit test + CI** — 별도 라운드, Jest/Vitest 인프라 + CI 파이프라인 (현재는 health-check 통합 테스트만)
+5. **P2 인프라 도입 결정 사안 (사용자 영역)** — S3/R2, BullMQ+Redis, Socket.IO Redis adapter, JWT refresh token (트래픽 트리거 도달 전엔 over-engineering)
+6. **Sentry 코드 명시적 호출 5곳 (BE auth/customerAuth setUser, FE AuthContext) 정리** — DSN 비우면 no-op 이라 미루어도 OK, 향후 정리 시 함께
 4. **브라우저 E2E 검증** (Irene 수동, 25분):
    - RP 가입 → POS 가입 with code → 첫 인보이스 20% 할인 → 결제 → 커미션 → wallet → payout 요청 → Admin 승인 → 7종 이메일 수신
 5. **운영 SMTP 7종 메일 수신 확인** (배포 직후)
