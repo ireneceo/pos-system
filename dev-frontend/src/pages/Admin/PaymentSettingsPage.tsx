@@ -328,7 +328,8 @@ const defaultPaymentSettings: PaymentSettings = {
   paypal: {
     enabled: false,
     clientId: '',
-    clientSecret: ''
+    clientSecret: '',
+    webhookId: ''
   },
   bankTransfer: {},
   qrPayment: {},
@@ -839,6 +840,20 @@ const PaymentSettingsPage: React.FC = () => {
                         onChange={(e) => handlePayPalChange('clientSecret', e.target.value)}
                       />
                     </AutoSaveField>
+                  </FormGroup>
+                  <FormGroup>
+                    <Label>Webhook ID</Label>
+                    <AutoSaveField onSave={savePaymentSettings}>
+                      <Input
+                        type="text"
+                        placeholder="Enter PayPal Webhook ID (e.g. WH-…)"
+                        value={paymentSettings.paypal.webhookId || ''}
+                        onChange={(e) => handlePayPalChange('webhookId', e.target.value)}
+                      />
+                    </AutoSaveField>
+                    <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 4, lineHeight: 1.5 }}>
+                      From PayPal Developer Dashboard → your app → Live Webhooks → click your webhook → copy "Webhook ID".
+                    </div>
                   </FormGroup>
                 </MethodContent>
               )}
