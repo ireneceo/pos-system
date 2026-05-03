@@ -11,12 +11,12 @@ const authenticateToken = async (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      return res.status(401).json({ error: 'Access token required' });
+      return res.status(401).json({ success: false, error: { message: 'Access token required', code: 'UNAUTHORIZED' } });
     }
 
     if (!process.env.JWT_SECRET) {
       console.error('[AUTH] JWT_SECRET environment variable is not set');
-      return res.status(500).json({ error: 'Server configuration error' });
+      return res.status(500).json({ success: false, error: { message: 'Server configuration error', code: 'INTERNAL_ERROR' } });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -24,7 +24,7 @@ const authenticateToken = async (req, res, next) => {
 
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(401).json({ error: 'Invalid token - user not found' });
+      return res.status(401).json({ success: false, error: { message: 'Invalid token - user not found', code: 'UNAUTHORIZED' } });
     }
 
     req.user = {
@@ -43,7 +43,7 @@ const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('[AUTH] Token verification error:', error.message);
-    return res.status(403).json({ error: 'Invalid token' });
+    return res.status(403).json({ success: false, error: { message: 'Invalid token', code: 'FORBIDDEN' } });
   }
 };
 
@@ -51,7 +51,7 @@ const authenticateToken = async (req, res, next) => {
 const requireRole = (...allowedRoles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return res.status(401).json({ success: false, error: { message: 'Authentication required', code: 'UNAUTHORIZED' } });
     }
 
     if (!allowedRoles.includes(req.user.role)) {
@@ -91,7 +91,7 @@ const checkRestaurantAccess = async (req, res, next) => {
       req.body?.restaurantId || req.body?.restaurant_id;
 
     if (!req.user) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return res.status(401).json({ success: false, error: { message: 'Authentication required', code: 'UNAUTHORIZED' } });
     }
 
     if (!targetRestaurantId) {
@@ -109,7 +109,7 @@ const checkRestaurantAccess = async (req, res, next) => {
         }
         return next();
       }
-      return res.status(400).json({ error: 'restaurantId required' });
+      return res.status(400).json({ success: false, error: { message: 'restaurantId required', code: 'VALIDATION_ERROR' } });
     }
 
     // System Admin can access everything
@@ -120,11 +120,11 @@ const checkRestaurantAccess = async (req, res, next) => {
     // Restaurant Admin and Staff can only access their own restaurant
     if (req.user.role === 'Restaurant Admin' || req.user.role === 'Staff') {
       if (!req.user.restaurant_id) {
-        return res.status(403).json({ error: 'User not assigned to any restaurant' });
+        return res.status(403).json({ success: false, error: { message: 'User not assigned to any restaurant', code: 'FORBIDDEN' } });
       }
 
       if (parseInt(req.user.restaurant_id) !== parseInt(targetRestaurantId)) {
-        return res.status(403).json({ error: 'Access denied to this restaurant' });
+        return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
       }
 
       return next();
@@ -141,7 +141,7 @@ const checkRestaurantAccess = async (req, res, next) => {
       });
 
       if (!ownership) {
-        return res.status(403).json({ error: 'Access denied to this restaurant' });
+        return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
       }
 
       return next();
@@ -159,21 +159,21 @@ const checkRestaurantAccess = async (req, res, next) => {
       });
 
       if (!restaurant) {
-        return res.status(404).json({ error: 'Restaurant not found' });
+        return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
       }
 
       const hasAccess = restaurant.managers && restaurant.managers.length > 0;
       if (!hasAccess && restaurant.admin_id !== req.user.id) {
-        return res.status(403).json({ error: 'Access denied to this restaurant' });
+        return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
       }
 
       return next();
     }
 
-    return res.status(403).json({ error: 'Insufficient permissions' });
+    return res.status(403).json({ success: false, error: { message: 'Insufficient permissions', code: 'FORBIDDEN' } });
   } catch (error) {
     console.error('[AUTH] Restaurant access check error:', error.message);
-    return res.status(500).json({ error: 'Failed to verify access' });
+    return res.status(500).json({ success: false, error: { message: 'Failed to verify access', code: 'INTERNAL_ERROR' } });
   }
 };
 

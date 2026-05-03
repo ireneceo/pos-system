@@ -10,7 +10,7 @@ async function canEditRecipe(req, res, next) {
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: 'Recipe not found' });
+      return res.status(404).json({ success: false, error: { message: 'Recipe not found', code: 'NOT_FOUND' } });
     }
 
     // System Admin can do everything
@@ -27,9 +27,7 @@ async function canEditRecipe(req, res, next) {
           return next();
         }
       }
-      return res.status(403).json({
-        error: 'Only brand owner can edit brand recipes'
-      });
+      return res.status(403).json({ success: false, error: { message: 'Only brand owner can edit brand recipes', code: 'FORBIDDEN' } });
     }
 
     // Restaurant recipe
@@ -39,15 +37,13 @@ async function canEditRecipe(req, res, next) {
           && user.restaurant_id === recipe.restaurant_id) {
         return next();
       }
-      return res.status(403).json({
-        error: 'Only restaurant admin can edit this recipe'
-      });
+      return res.status(403).json({ success: false, error: { message: 'Only restaurant admin can edit this recipe', code: 'FORBIDDEN' } });
     }
 
-    return res.status(403).json({ error: 'Permission denied' });
+    return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
   } catch (error) {
     console.error('canEditRecipe error:', error);
-    return res.status(500).json({ error: 'Error checking permissions' });
+    return res.status(500).json({ success: false, error: { message: 'Error checking permissions', code: 'INTERNAL_ERROR' } });
   }
 }
 
@@ -61,7 +57,7 @@ async function canViewRecipe(req, res, next) {
 
     const recipe = await Recipe.findByPk(recipe_id);
     if (!recipe) {
-      return res.status(404).json({ error: 'Recipe not found' });
+      return res.status(404).json({ success: false, error: { message: 'Recipe not found', code: 'NOT_FOUND' } });
     }
 
     // System Admin can view everything
@@ -87,7 +83,7 @@ async function canViewRecipe(req, res, next) {
         }
       }
 
-      return res.status(403).json({ error: 'Permission denied' });
+      return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
     }
 
     // Restaurant recipe
@@ -96,13 +92,13 @@ async function canViewRecipe(req, res, next) {
           && user.restaurant_id === recipe.restaurant_id) {
         return next();
       }
-      return res.status(403).json({ error: 'Permission denied' });
+      return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
     }
 
-    return res.status(403).json({ error: 'Permission denied' });
+    return res.status(403).json({ success: false, error: { message: 'Permission denied', code: 'FORBIDDEN' } });
   } catch (error) {
     console.error('canViewRecipe error:', error);
-    return res.status(500).json({ error: 'Error checking permissions' });
+    return res.status(500).json({ success: false, error: { message: 'Error checking permissions', code: 'INTERNAL_ERROR' } });
   }
 }
 
@@ -158,7 +154,7 @@ function isRestaurantManager(req, res, next) {
     return next();
   }
 
-  return res.status(403).json({ error: 'Restaurant admin access only' });
+  return res.status(403).json({ success: false, error: { message: 'Restaurant admin access only', code: 'FORBIDDEN' } });
 }
 
 module.exports = {
