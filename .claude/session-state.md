@@ -119,12 +119,15 @@
 
 ### 다음 할 일
 
-1. **운영 배포 결정** — v3.22 이후 미배포 변경 (B9 모델 + 신규 endpoint + scheduler + Jest devDeps) 한 번에 prod 적용 시점 — 사용자가 직접 `/배포`
-2. **`.github/workflows/ci.yml` 이동** — `sudo cp /var/www/dev-backend/ci-workflow.yml.template /var/www/.github/workflows/ci.yml` (또는 GitHub repo settings 에서 직접 추가). `/var/www/.github` 가 root 권한이라 Claude 단독 생성 불가
-3. **내일 03:00 자동 백업 도착 확인** — dev `~/backups/cross-backup/production-pos/{db,uploads}_2026-05-04.{sql,tar}.gz`
-4. **B9 v2 (별도 라운드)** — 기존 sales-chart endpoint 를 신규 daily-stats 로 통합 (영향 광범위, 충분한 검증 시간 필요)
-5. **B10 v2 (별도 라운드)** — CI 측 dev-backend bootstrap (Docker MySQL + sync-database + 시드) → backend-tests 활성화. 추가 테스트: payment + commission idempotency + suspended UX
-6. **P2 인프라 도입 결정 사안 (사용자 영역)** — S3/R2, BullMQ+Redis, Socket.IO Redis adapter, JWT refresh token (트래픽 트리거 도달 전엔 over-engineering)
+1. **운영 배포 결정** — v3.22 이후 미배포 변경 (B9 v1+v2 + B10 v1+v2 + 라운드 2) 한 번에 prod 적용 — 사용자가 직접 `/배포`
+2. **`.github/workflows/ci.yml` 생성 (sudo 권한 필요)**:
+   ```bash
+   sudo mkdir -p /var/www/.github/workflows && sudo cp /var/www/dev-backend/ci-workflow.yml.template /var/www/.github/workflows/ci.yml && sudo chown -R irene:irene /var/www/.github
+   git -C /var/www add .github/workflows/ci.yml && git -C /var/www commit -m "ci: GitHub Actions workflow"
+   ```
+3. **CI seed 단계 추가 (B10 v3, 별도 라운드)** — `tests/fixtures/seed.js` 신규 (RP + RA + 식당 + 인보이스 시드) → CI 측 `if: ${{ false }}` 해제 → backend-tests 활성화
+4. **내일 03:00 자동 백업 도착 확인** — dev `~/backups/cross-backup/production-pos/{db,uploads}_2026-05-04.{sql,tar}.gz`
+5. **P2 인프라 (사용자 결정 영역, 미진행)** — S3/R2, BullMQ+Redis, Socket.IO Redis adapter, JWT refresh. 트리거 도달 전엔 over-engineering
 4. **브라우저 E2E 검증** (Irene 수동, 25분):
    - RP 가입 → POS 가입 with code → 첫 인보이스 20% 할인 → 결제 → 커미션 → wallet → payout 요청 → Admin 승인 → 7종 이메일 수신
 5. **운영 SMTP 7종 메일 수신 확인** (배포 직후)
