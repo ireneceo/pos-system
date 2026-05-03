@@ -101,14 +101,30 @@
 
 **커밋 4건**: 842780e3 (A+C+D) / feb332fd (E) / 46be2604 (F+G) — 검증 73/73 PASS
 
+**라운드 2 추가 (8acc8f48)**: inventory-routes 1820줄 → core+extra 분리 / purchase-orders 1624줄 → crud+workflow 분리 / Sentry 코드 정리 (frontend bundle 1726KB → 1447KB)
+
+**라운드 3 — B9+B10 인프라 (v3.22 이후 누적, 미배포)**:
+- **B9 (dca93e6a)**: dashboard 통계 사전 집계 인프라 v1
+  - DB 모델 `RestaurantDailyStats` (restaurant_id × date UNIQUE)
+  - `services/dailyStatsScheduler.js` 매일 00:30 SGT cron + SchedulerRun
+  - `scripts/backfill-daily-stats.js` (1회 검증: 25 식당 × 30일 = 750 row)
+  - 신규 endpoint `GET /api/dashboard/restaurant/:rid/daily-stats?from&to` (어제까지 사전집계 + 오늘 실시간 fallback)
+  - `docs/DASHBOARD_AGGREGATION.md` 설계 문서
+  - 기존 sales-chart 변경 X (v2 별도)
+- **B10 (b687a58c)**: Jest + 14 contract tests + CI template
+  - jest ^30 + supertest ^7 (devDependency)
+  - tests/auth.test.js (8 tests) + tests/idor.test.js (6 tests) **14/14 PASS**
+  - npm scripts: test, test:watch
+  - `dev-backend/ci-workflow.yml.template` (3 jobs — backend-tests / i18n-verify / state-hydration)
+
 ### 다음 할 일
 
-1. **운영 배포 결정** — 누적 변경 8 커밋 (보안 fix + 리퍼럴 UX + 인보이스 사유 + 운영 점검 P0+P1) 운영 배포 시점 — 사용자가 직접 `/배포`
-2. **내일 03:00 자동 백업 도착 확인** — dev `~/backups/cross-backup/production-pos/{db,uploads}_2026-05-04.{sql,tar}.gz`
-3. **B9 dashboard 통계 사전 집계** — 별도 라운드, DB 모델 신규 + cron worker (설계 문서 필요)
-4. **B10 unit test + CI** — 별도 라운드, Jest/Vitest 인프라 + CI 파이프라인 (현재는 health-check 통합 테스트만)
-5. **P2 인프라 도입 결정 사안 (사용자 영역)** — S3/R2, BullMQ+Redis, Socket.IO Redis adapter, JWT refresh token (트래픽 트리거 도달 전엔 over-engineering)
-6. **Sentry 코드 명시적 호출 5곳 (BE auth/customerAuth setUser, FE AuthContext) 정리** — DSN 비우면 no-op 이라 미루어도 OK, 향후 정리 시 함께
+1. **운영 배포 결정** — v3.22 이후 미배포 변경 (B9 모델 + 신규 endpoint + scheduler + Jest devDeps) 한 번에 prod 적용 시점 — 사용자가 직접 `/배포`
+2. **`.github/workflows/ci.yml` 이동** — `sudo cp /var/www/dev-backend/ci-workflow.yml.template /var/www/.github/workflows/ci.yml` (또는 GitHub repo settings 에서 직접 추가). `/var/www/.github` 가 root 권한이라 Claude 단독 생성 불가
+3. **내일 03:00 자동 백업 도착 확인** — dev `~/backups/cross-backup/production-pos/{db,uploads}_2026-05-04.{sql,tar}.gz`
+4. **B9 v2 (별도 라운드)** — 기존 sales-chart endpoint 를 신규 daily-stats 로 통합 (영향 광범위, 충분한 검증 시간 필요)
+5. **B10 v2 (별도 라운드)** — CI 측 dev-backend bootstrap (Docker MySQL + sync-database + 시드) → backend-tests 활성화. 추가 테스트: payment + commission idempotency + suspended UX
+6. **P2 인프라 도입 결정 사안 (사용자 영역)** — S3/R2, BullMQ+Redis, Socket.IO Redis adapter, JWT refresh token (트래픽 트리거 도달 전엔 over-engineering)
 4. **브라우저 E2E 검증** (Irene 수동, 25분):
    - RP 가입 → POS 가입 with code → 첫 인보이스 20% 할인 → 결제 → 커미션 → wallet → payout 요청 → Admin 승인 → 7종 이메일 수신
 5. **운영 SMTP 7종 메일 수신 확인** (배포 직후)
