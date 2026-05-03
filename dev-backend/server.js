@@ -50,6 +50,7 @@ const { syncDatabase } = require('./db');
 const invoiceScheduler = require('./services/invoiceScheduler');
 const subscriptionScheduler = require('./services/subscriptionScheduler');
 const demoResetScheduler = require('./services/demoResetScheduler');
+const dailyStatsScheduler = require('./services/dailyStatsScheduler');
 const { startSoaCron } = require('./services/soaScheduler');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initSocketServer } = require('./services/socketService');
@@ -696,6 +697,9 @@ async function startServer() {
 
     // Start monthly SOA scheduler (Sprint 4) — runs at 00:30 on the 1st of each month
     startSoaCron();
+
+    // Start daily stats aggregation scheduler — runs daily at 00:30 SGT (UTC+8)
+    dailyStatsScheduler.start();
 
     // 포트 충돌 체크 - PM2 환경에서는 더 유연하게 처리
     server.listen(PORT, '0.0.0.0', () => {

@@ -7,6 +7,7 @@ const InvoiceItem = require('./InvoiceItem');
 const InvoiceSettings = require('./InvoiceSettings');
 const InvoiceCategory = require('./InvoiceCategory');
 const Order = require('./Order');
+const RestaurantDailyStats = require('./RestaurantDailyStats');
 const PlanTemplate = require('./PlanTemplate');
 const OperationTicket = require('./OperationTicket');
 const SupportTicket = require('./SupportTicket');
@@ -157,6 +158,8 @@ Invoice.hasMany(InvoiceItem, { foreignKey: 'invoice_id', as: 'items' });
 
 Order.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
 Restaurant.hasMany(Order, { foreignKey: 'restaurant_id', as: 'orders' });
+RestaurantDailyStats.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant' });
+Restaurant.hasMany(RestaurantDailyStats, { foreignKey: 'restaurant_id', as: 'dailyStats' });
 
 OperationTicket.belongsTo(User, { foreignKey: 'managerId', as: 'manager' });
 OperationTicket.belongsTo(User, { foreignKey: 'requesterId', as: 'requester' });
@@ -812,6 +815,7 @@ module.exports = {
   InvoiceSettings,
   InvoiceCategory,
   Order,
+  RestaurantDailyStats,
   PlanTemplate,
   OperationTicket,
   SupportTicket,

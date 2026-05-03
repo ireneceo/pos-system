@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 require('../models'); // Load associations
 const Order = require('../models/Order');
+const RestaurantDailyStats = require('../models/RestaurantDailyStats');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const User = require('../models/User');
@@ -716,6 +717,116 @@ router.get('/restaurant/:restaurantId/sales-chart', authenticateToken, checkRest
     });
   } catch (error) {
     console.error('Error fetching restaurant sales chart:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Pre-aggregated daily stats lookup (B9 — see docs/DASHBOARD_AGGREGATION.md).
+// Returns daily revenue/order_count/AOV from RestaurantDailyStats (cron-populated)
+// + today's row computed live (cron hasn't run yet for today).
+//
+// Query: ?from=YYYY-MM-DD&to=YYYY-MM-DD (both required, restaurant timezone dates)
+router.get('/restaurant/:restaurantId/daily-stats', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const { restaurantId } = req.params;
+    const { from, to } = req.query;
+
+    if (!from || !to || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+      return res.status(400).json({ success: false, error: 'from and to are required (YYYY-MM-DD)' });
+    }
+    if (from > to) {
+      return res.status(400).json({ success: false, error: 'from must be <= to' });
+    }
+
+    const restaurant = await Restaurant.findByPk(restaurantId);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, error: 'Restaurant not found' });
+    }
+    const tz = restaurant.operation_settings?.timeZone || 'Asia/Kuala_Lumpur';
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+
+    // Pre-aggregated rows (yesterday and earlier — today is computed live below)
+    const aggUntil = todayStr <= to ? (() => {
+      const d = new Date(todayStr);
+      d.setDate(d.getDate() - 1);
+      return d.toISOString().split('T')[0];
+    })() : to;
+    const aggregated = await RestaurantDailyStats.findAll({
+      where: {
+        restaurant_id: restaurantId,
+        date: { [Op.between]: [from, aggUntil] }
+      },
+      attributes: ['date', 'revenue', 'order_count', 'average_order_value', 'currency'],
+      order: [['date', 'ASC']]
+    });
+
+    const aggMap = {};
+    aggregated.forEach(a => {
+      aggMap[a.date] = {
+        date: a.date,
+        revenue: parseFloat(a.revenue),
+        order_count: a.order_count,
+        average_order_value: parseFloat(a.average_order_value),
+        currency: a.currency
+      };
+    });
+
+    // Today's row computed live (cron hasn't aggregated today yet)
+    let todayRow = null;
+    if (from <= todayStr && todayStr <= to) {
+      const offsetMatch = new Date().toLocaleString('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).match(/GMT([+-]\d+)/);
+      const offsetHours = offsetMatch ? parseInt(offsetMatch[1], 10) : 0;
+      const start = new Date(`${todayStr}T00:00:00`);
+      start.setHours(start.getHours() - offsetHours);
+      const end = new Date(`${todayStr}T23:59:59.999`);
+      end.setHours(end.getHours() - offsetHours);
+
+      const todayOrders = await Order.findAll({
+        where: {
+          restaurant_id: restaurantId,
+          order_date: { [Op.gte]: start, [Op.lte]: end },
+          status: 'completed'
+        },
+        attributes: ['total_amount']
+      });
+      const revenue = todayOrders.reduce((s, o) => s + parseFloat(o.total_amount || 0), 0);
+      const order_count = todayOrders.length;
+      todayRow = {
+        date: todayStr,
+        revenue: Math.round(revenue * 100) / 100,
+        order_count,
+        average_order_value: order_count > 0 ? Math.round(revenue / order_count * 100) / 100 : 0,
+        currency: restaurant.operation_settings?.currency || 'MYR',
+        live: true
+      };
+    }
+
+    // Build full date range result (fill missing dates with zero)
+    const result = [];
+    const cur = new Date(from);
+    const end = new Date(to);
+    while (cur <= end) {
+      const ds = cur.toISOString().split('T')[0];
+      if (ds === todayStr && todayRow) {
+        result.push(todayRow);
+      } else if (aggMap[ds]) {
+        result.push(aggMap[ds]);
+      } else {
+        result.push({
+          date: ds,
+          revenue: 0,
+          order_count: 0,
+          average_order_value: 0,
+          currency: restaurant.operation_settings?.currency || 'MYR',
+          missing: true
+        });
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    res.json({ success: true, data: result, source: 'pre_aggregated_with_today_live' });
+  } catch (error) {
+    console.error('Error fetching daily-stats:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
