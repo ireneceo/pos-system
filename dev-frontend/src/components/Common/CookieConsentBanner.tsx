@@ -115,13 +115,14 @@ const CookieConsentBanner: React.FC = () => {
   const [visible, setVisible] = useState(false);
   const location = useLocation();
 
-  // Only show on public website pages, not inside POS/restaurant app
+  // Only show on public website pages, not inside POS/restaurant/referral app
   const isPosRoute = location.pathname.startsWith('/pos') ||
                      location.pathname.startsWith('/restaurant') ||
                      location.pathname.startsWith('/kitchen') ||
                      location.pathname.startsWith('/customer-display') ||
                      location.pathname.startsWith('/mobile-order') ||
-                     location.pathname.startsWith('/mobile');
+                     location.pathname.startsWith('/mobile') ||
+                     location.pathname.startsWith('/referral');
 
   useEffect(() => {
     const consent = localStorage.getItem(COOKIE_CONSENT_KEY);

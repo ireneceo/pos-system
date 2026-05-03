@@ -166,7 +166,7 @@ const ReferralLayout: React.FC<Props> = ({ children }) => {
       <TopBar>
         <LeftBlock>
           <Logo
-            src="/images/purple-referral-logo.svg"
+            src="/images/purple-referral-logo-v2.svg"
             alt={t('layout.brand', 'Purple Referral')}
             onClick={() => navigate('/referral/dashboard')}
           />

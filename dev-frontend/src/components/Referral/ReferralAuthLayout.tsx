@@ -74,7 +74,7 @@ const ReferralAuthLayout: React.FC<Props> = ({ children, topRight }) => {
     <Shell>
       <TopBar>
         <Logo to="/referral/login">
-          <img src="/images/purple-referral-logo.svg" alt={t('layout.brand', 'Purple Referral')} />
+          <img src="/images/purple-referral-logo-v2.svg" alt={t('layout.brand', 'Purple Referral')} />
         </Logo>
         <TopRight>{topRight}</TopRight>
       </TopBar>
