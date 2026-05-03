@@ -75,7 +75,6 @@ router.post('/:id/payment', authenticateToken, async (req, res) => {
             transaction: t
           }
         );
-        console.log(`✓ SOA cascade (mark paid): ${updatedCount} child invoices`);
       }
     });
 
@@ -313,8 +312,6 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
     const transaction_id = req.body.transaction_id || req.body.transactionId;
     const notes = req.body.notes || req.body.payment_notes;
 
-    console.log(`💸 POST /api/invoices/${id}/submit-payment - User: ${req.user.email}`);
-    console.log(`  payment_method: ${payment_method}, transaction_id: ${transaction_id}, receipt_url length: ${receipt_url ? receipt_url.length : 'NULL'}`);
 
     const invoice = await Invoice.findByPk(id, {
       include: [{
@@ -394,11 +391,9 @@ router.post('/:id/submit-payment', authenticateToken, async (req, res) => {
             transaction: t
           }
         );
-        console.log(`✓ SOA cascade (submit-payment): ${updatedCount} child invoices marked payment_submitted`);
       }
     });
 
-    console.log(`✓ Payment submitted for invoice ${invoice.invoice_number}`);
 
     res.json({
       success: true,
@@ -417,7 +412,6 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { notes } = req.body;
 
-    console.log(`✓ POST /api/invoices/${id}/confirm-payment - User: ${req.user.email}`);
 
     const invoice = await Invoice.findByPk(id);
     if (!invoice) {
@@ -463,11 +457,9 @@ router.post('/:id/confirm-payment', authenticateToken, async (req, res) => {
             transaction: t
           }
         );
-        console.log(`✓ SOA cascade: ${updatedCount} child trade invoices marked paid`);
       }
     });
 
-    console.log(`✓ Payment confirmed for invoice ${invoice.invoice_number} by user ${req.user.id}`);
 
     // Centralised post-paid side-effects (this path was missing restoreSubscription pre-1B).
     // Runs after the SOA cascade transaction has committed.
@@ -523,7 +515,6 @@ router.post('/:id/reject-payment', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    console.log(`✗ POST /api/invoices/${id}/reject-payment - User: ${req.user.email}`);
 
     if (!reason || reason.trim() === '') {
       return res.status(400).json({ error: 'Rejection reason is required' });
@@ -554,7 +545,6 @@ router.post('/:id/reject-payment', authenticateToken, async (req, res) => {
       payment_submitted_at: null
     });
 
-    console.log(`✗ Payment rejected for invoice ${invoice.invoice_number} by user ${req.user.id}. Reason: ${reason}`);
 
     logActivity(req, {
       action_type: 'update',

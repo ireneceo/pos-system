@@ -7,7 +7,7 @@ import AttachmentList from '../../components/Common/AttachmentList';
 import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
 
-import { getAuthToken } from '../../utils/auth';
+import { getAuthToken, getAuthHeaders } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 interface SupportTicket {
   id: string;
@@ -464,7 +464,7 @@ const SupportTicketsPage: React.FC = () => {
     // - 새 응답 형식 { success: true, data: [...] } 처리
     const fetchTickets = async () => {
       try {
-        const response = await fetch('/api/support-tickets');
+        const response = await fetch('/api/support-tickets', { headers: getAuthHeaders() });
         if (response.ok) {
           const result = await response.json();
           const ticketsData = result.data || result;

@@ -21,7 +21,7 @@ import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import ConfirmModal from '../../components/ConfirmModal';
 
-import { getAuthToken } from '../../utils/auth';
+import { getAuthToken, getAuthHeaders } from '../../utils/auth';
 interface Recipe {
   id: number;
   brand_id: number | null;
@@ -440,7 +440,7 @@ const RecipesPage: React.FC = () => {
     const fetchUserBrand = async () => {
       if (user?.role === 'Brand General' || user?.role === 'Brand Manager') {
         try {
-          const response = await fetch('/api/brands');
+          const response = await fetch('/api/brands', { headers: getAuthHeaders() });
           const data = await response.json();
           if (data.success && data.data.length > 0) {
             // Find brand where owner_id matches user.id
