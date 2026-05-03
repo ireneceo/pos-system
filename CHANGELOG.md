@@ -6,6 +6,36 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### External QR ↔ Coupon 자동 매핑 (협력업체 할인)
+External QR (Settings → Operations) 에 발행된 쿠폰을 연결하면 QR 스캔 진입 시 자동 적용. 협력업체 (호텔/사무실 등) 직원이 매번 코드 입력 없이 자동 할인.
+
+#### 데이터
+- `restaurant.table_settings.externalQRs`: `string[]` → `Array<{name, coupon_id?}>`
+- legacy string 자동 normalize (백워드 호환). DB 마이그레이션 X
+
+#### 백엔드 (`routes/external-qrs.js`)
+- `GET /api/restaurants/:id/external-qr-coupon?name=X` — 익명 (모바일 진입), 매핑된 active 쿠폰 + 유효성 반환
+- `GET /api/restaurants/:id/coupons-linked-qrs` — 인증, byCouponId 맵 (Coupons list "Linked to" 뱃지)
+- `inventory-core` router-level `authenticateToken` fall-through 회피 위해 `restaurantsRouter` 보다 먼저 mount
+- 자체 `ensureRestaurantAccess` (System Admin / token restaurant_id / DB admin_id 매핑) — RA token 의 restaurant_id null 케이스 fallback
+
+#### 프론트엔드
+- **Settings → External QR** 섹션
+  - Add 폼 단순화 (이름 + Add). 쿠폰 link 는 list 항목 inline select 로
+  - List 카드: ✕ 삭제 우측 상단 absolute / inline 쿠폰 select AutoSaveField wrap (저장 표시)
+  - 항목별 연결 쿠폰 정보 보라색 뱃지 (`PARTNER10 10% off`)
+- **Promotions → Coupons list**
+  - Code 셀에 "Linked to: Hotel ABC, ..." 보라색 뱃지
+  - 삭제 confirm 시 linked QR 영향 안내
+- **Mobile PaymentPage**
+  - `selectedTable + currentStore.id` → `external-qr-coupon` API 자동 fetch
+  - linked → `partnerCoupon` state set, `couponCode` 자동 입력
+  - subtotal/orderType 변경 시 `validateCouponAPI` 재호출로 discount 갱신
+  - Coupon Code 섹션 보라색 partner 배너 + 수동 input disabled (partner 우선)
+
+#### 문서
+- `docs/EXTERNAL_QR_PARTNER_DISCOUNT.md` — 도메인/API/UI/검증 시나리오
+
 ### 리퍼럴 로고 v2 + Cookie banner /referral 제외
 - `public/images/purple-referral-logo.svg` → `purple-referral-logo-v2.svg` (Cloudflare CDN 7일 캐시 우회)
 - `ReferralLayout.tsx` + `ReferralAuthLayout.tsx` import path → -v2.svg
