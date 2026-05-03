@@ -46,14 +46,32 @@ router.post('/categories', authenticateToken, async (req, res) => {
   try {
     const { name, code, description, display_order, is_active } = req.body;
 
-    if (!name || !code) {
-      return res.status(400).json({ success: false, error: 'Name and code are required' });
+    const fieldErrors = {};
+    if (!name) fieldErrors.name = 'Name is required';
+    if (!code) fieldErrors.code = 'Code is required';
+    if (Object.keys(fieldErrors).length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'Some fields are invalid. Please check the highlighted fields.',
+          code: 'VALIDATION_ERROR',
+          fieldErrors,
+          hint: 'Both Name and Code are required to create a category.'
+        }
+      });
     }
 
-    // Check for duplicate code
     const existing = await InvoiceCategory.findOne({ where: { code } });
     if (existing) {
-      return res.status(400).json({ success: false, error: 'Category code already exists' });
+      return res.status(409).json({
+        success: false,
+        error: {
+          message: `Category code "${code}" already exists`,
+          code: 'DUPLICATE',
+          fieldErrors: { code: 'Already used by another category' },
+          hint: 'Pick a different code, or edit the existing category instead.'
+        }
+      });
     }
 
     const category = await InvoiceCategory.create({
@@ -68,7 +86,14 @@ router.post('/categories', authenticateToken, async (req, res) => {
     res.status(201).json({ success: true, data: category });
   } catch (error) {
     console.error('Error creating invoice category:', error);
-    res.status(500).json({ success: false, error: 'Failed to create invoice category' });
+    res.status(500).json({
+      success: false,
+      error: {
+        message: 'Failed to create invoice category',
+        code: 'INTERNAL_ERROR',
+        hint: 'Please try again. If this persists, refresh the page or contact support.'
+      }
+    });
   }
 });
 

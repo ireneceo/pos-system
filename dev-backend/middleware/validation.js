@@ -7,19 +7,21 @@
 
 const { body, param, query, validationResult } = require('express-validator');
 
-// 검증 결과 처리 미들웨어
+// 검증 결과 처리 미들웨어 — fieldErrors + hint 포함 (errorHandler 와 동일 형식)
 const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    const fieldErrors = {};
+    errors.array().forEach(err => { if (err.path) fieldErrors[err.path] = err.msg; });
     return res.status(400).json({
       success: false,
       error: {
-        message: 'Validation failed',
+        message: 'Some fields are invalid. Please check the highlighted fields.',
         code: 'VALIDATION_ERROR',
-        details: errors.array().map(err => ({
-          field: err.path,
-          message: err.msg
-        }))
+        fieldErrors,
+        hint: 'Each red field has a specific error message — fix and resubmit.',
+        // 하위 호환 — 기존 details 형태도 유지
+        details: errors.array().map(err => ({ field: err.path, message: err.msg }))
       }
     });
   }
