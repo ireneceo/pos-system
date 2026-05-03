@@ -937,7 +937,6 @@ const SettingsPage: React.FC = () => {
     externalQRs: [] as Array<string | { name: string; coupon_id?: number }>
   });
   const [newExternalQR, setNewExternalQR] = useState('');
-  const [newExternalQRCouponId, setNewExternalQRCouponId] = useState<number | null>(null);
   const [activeCoupons, setActiveCoupons] = useState<Array<{ id: number; code: string; name?: string; type: string; value: number }>>([]);
   
   const [tables, setTables] = useState<Table[]>([]);
@@ -1683,10 +1682,8 @@ const SettingsPage: React.FC = () => {
       return;
     }
     const newEntry: { name: string; coupon_id?: number } = { name };
-    if (newExternalQRCouponId) newEntry.coupon_id = newExternalQRCouponId;
     setTableSettings({ ...tableSettings, externalQRs: [...current, newEntry] });
     setNewExternalQR('');
-    setNewExternalQRCouponId(null);
     externalQRRef.current?.triggerSave();
   };
 
@@ -3583,42 +3580,27 @@ const SettingsPage: React.FC = () => {
 
                 <FormGroup>
                   <Label>Add Custom QR</Label>
-                  <AutoSaveField ref={externalQRRef} onSave={handleSave}>
-                    <Input
-                      type="text"
-                      value={newExternalQR}
-                      onChange={(e) => setNewExternalQR(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddExternalQR(); } }}
-                      placeholder="e.g., Cafe Maru"
-                      maxLength={20}
-                    />
-                  </AutoSaveField>
-                  <div style={{ marginTop: '12px' }}>
-                    <Label style={{ fontSize: '13px', color: '#6B7C93', marginBottom: '6px', display: 'block' }}>
-                      Link partner discount coupon (optional)
-                    </Label>
-                    <select
-                      value={newExternalQRCouponId ?? ''}
-                      onChange={(e) => setNewExternalQRCouponId(e.target.value ? Number(e.target.value) : null)}
-                      style={{ width: '100%', padding: '8px 12px', border: '1px solid #E6EBF1', borderRadius: '6px', fontSize: '14px', background: '#fff' }}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+                    <AutoSaveField ref={externalQRRef} onSave={handleSave} style={{ flex: 1 }}>
+                      <Input
+                        type="text"
+                        value={newExternalQR}
+                        onChange={(e) => setNewExternalQR(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddExternalQR(); } }}
+                        placeholder="e.g., Cafe Maru"
+                        maxLength={20}
+                      />
+                    </AutoSaveField>
+                    <button
+                      type="button"
+                      onClick={handleAddExternalQR}
+                      style={{ padding: '10px 20px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
-                      <option value="">No coupon (regular QR)</option>
-                      {activeCoupons.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.code}{c.name ? ` — ${c.name}` : ''} ({c.type === 'percentage' ? `${c.value}% off` : `${c.value} off`})
-                        </option>
-                      ))}
-                    </select>
+                      Add
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddExternalQR}
-                    style={{ marginTop: '12px', padding: '10px 20px', background: '#635BFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 500, cursor: 'pointer' }}
-                  >
-                    Add
-                  </button>
                   <HelpText>
-                    Up to 20 characters. Customers scanning this QR will automatically receive the linked partner discount.
+                    Up to 20 characters. After adding, link a partner discount coupon from the list below.
                   </HelpText>
                 </FormGroup>
 
@@ -3637,7 +3619,24 @@ const SettingsPage: React.FC = () => {
                             ? activeCoupons.find(c => c.id === entry.coupon_id)
                             : null;
                           return (
-                            <TableItem key={`ext-${idx}-${name}`}>
+                            <TableItem key={`ext-${idx}-${name}`} style={{ position: 'relative' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveExternalQR(name)}
+                                title="Delete"
+                                style={{
+                                  position: 'absolute', top: '8px', right: '8px',
+                                  width: '24px', height: '24px',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  background: 'transparent', border: 'none', borderRadius: '4px',
+                                  color: '#9CA3AF', fontSize: '16px', lineHeight: 1, cursor: 'pointer',
+                                  transition: 'all 0.15s'
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = '#FEE2E2'; e.currentTarget.style.color = '#DC2626'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9CA3AF'; }}
+                              >
+                                ✕
+                              </button>
                               <TableNumber>{name}</TableNumber>
                               {linkedCoupon ? (
                                 <div style={{ marginTop: '4px', padding: '4px 8px', background: '#F0F0FF', borderRadius: '4px', fontSize: '11px', color: '#635BFF', fontWeight: 500, textAlign: 'center' }}>
@@ -3652,30 +3651,24 @@ const SettingsPage: React.FC = () => {
                                 <QRCodeCanvas id={`qr-ext-${idx}`} value={qrUrl} size={100} level="H" includeMargin={true} style={{ display: 'none' }} />
                                 <QRCodeSVG id={`qr-svg-ext-${idx}`} value={qrUrl} size={100} level="H" includeMargin={true} />
                               </QRContainer>
-                              <select
-                                value={entry.coupon_id ?? ''}
-                                onChange={(e) => handleChangeExternalQRCoupon(name, e.target.value ? Number(e.target.value) : null)}
-                                style={{ width: '100%', marginTop: '8px', padding: '6px 8px', border: '1px solid #E6EBF1', borderRadius: '4px', fontSize: '12px', background: '#fff' }}
-                              >
-                                <option value="">No discount</option>
-                                {activeCoupons.map(c => (
-                                  <option key={c.id} value={c.id}>
-                                    {c.code} ({c.type === 'percentage' ? `${c.value}%` : c.value})
-                                  </option>
-                                ))}
-                              </select>
-                              <TableActions>
+                              <AutoSaveField onSave={handleSave}>
+                                <select
+                                  value={entry.coupon_id ?? ''}
+                                  onChange={(e) => handleChangeExternalQRCoupon(name, e.target.value ? Number(e.target.value) : null)}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #E6EBF1', borderRadius: '4px', fontSize: '12px', background: '#fff' }}
+                                >
+                                  <option value="">No discount</option>
+                                  {activeCoupons.map(c => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.code} ({c.type === 'percentage' ? `${c.value}%` : c.value})
+                                    </option>
+                                  ))}
+                                </select>
+                              </AutoSaveField>
+                              <TableActions style={{ marginTop: '12px' }}>
                                 <ActionButton onClick={() => handleDownloadExternalSVG(name, idx)} title="Download SVG">SVG</ActionButton>
                                 <ActionButton onClick={() => handleDownloadExternalPNG(name, idx)} title="Download PNG">PNG</ActionButton>
                                 <ActionButton onClick={() => handlePrintExternalQR(name, idx)}>Print</ActionButton>
-                                <ActionButton
-                                  type="button"
-                                  onClick={() => handleRemoveExternalQR(name)}
-                                  title="Delete"
-                                  style={{ color: '#DC2626' }}
-                                >
-                                  ✕
-                                </ActionButton>
                               </TableActions>
                             </TableItem>
                           );
