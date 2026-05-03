@@ -273,6 +273,37 @@ async function processCommission(invoice, opts = {}) {
     description: `Commission from invoice ${invoice.invoice_number || invoice.id}`
   }, { transaction });
 
+  // Audit trail (system-triggered — invoice paid hook)
+  (async () => {
+    try {
+      const { logSystemActivity } = require('../utils/activityLogger');
+      await logSystemActivity({
+        action_type: 'create',
+        entity_type: 'referral_commission',
+        entity_id: commission.id,
+        entity_name: `Commission ${commissionAmount} ${currency}`,
+        user_id: referrer.id,
+        username: referrer.username || referrer.email,
+        full_name: referrer.full_name,
+        restaurant_id: invoice.restaurant_id || null,
+        changes: {
+          referrer_id: referrer.id,
+          referred_id: payer.id,
+          invoice_id: invoice.id,
+          invoice_number: invoice.invoice_number,
+          paid_amount: paidAmount,
+          rate: rate,
+          commission_amount: commissionAmount,
+          currency,
+          wallet_balance_after: newBalance
+        },
+        description: `Referral commission credited: ${commissionAmount} ${currency} (${rate}% of ${paidAmount}) from invoice ${invoice.invoice_number || invoice.id}`
+      });
+    } catch (e) {
+      console.error('[processCommission] audit log error:', e.message);
+    }
+  })();
+
   // Email referrer (fire-and-forget — never block payment processing)
   (async () => {
     try {
@@ -409,6 +440,35 @@ async function applyCredit(userId, invoiceId, amount, opts = {}) {
     reference_id: invoice.id,
     description: `Credit applied to invoice ${invoice.invoice_number || invoice.id}`
   }, { transaction });
+
+  // Audit trail
+  (async () => {
+    try {
+      const { logSystemActivity } = require('../utils/activityLogger');
+      await logSystemActivity({
+        action_type: 'update',
+        entity_type: 'referral_wallet',
+        entity_id: wallet.id,
+        entity_name: `Credit applied ${apply} ${currency}`,
+        user_id: userId,
+        restaurant_id: invoice.restaurant_id || null,
+        changes: {
+          invoice_id: invoice.id,
+          invoice_number: invoice.invoice_number,
+          applied: apply,
+          currency,
+          balance_before: balance,
+          balance_after: newBalance,
+          invoice_paid_before: already,
+          invoice_paid_after: newPaid,
+          invoice_remaining: Math.max(0, total - newPaid)
+        },
+        description: `Referral wallet credit applied: ${apply} ${currency} → invoice ${invoice.invoice_number || invoice.id} (remaining ${Math.max(0, total - newPaid)})`
+      });
+    } catch (e) {
+      console.error('[applyCredit] audit log error:', e.message);
+    }
+  })();
 
   return {
     wallet,

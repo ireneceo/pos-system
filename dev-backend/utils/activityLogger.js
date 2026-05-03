@@ -17,9 +17,9 @@ const ActivityLog = require('../models/ActivityLog');
 async function logActivity(req, options) {
   try {
     const user = req.user || {};
-    const restaurantId = options.restaurant_id || user.restaurantId || user.restaurant_id;
+    const restaurantId = options.restaurant_id || user.restaurantId || user.restaurant_id || null;
 
-    if (!restaurantId || !user.id) return null;
+    if (!user.id) return null;
 
     return await ActivityLog.createLog({
       restaurant_id: restaurantId,
@@ -41,4 +41,42 @@ async function logActivity(req, options) {
   }
 }
 
-module.exports = { logActivity };
+/**
+ * Log a system-triggered activity (no Express req — schedulers, services, webhooks).
+ * Use when audit happens outside a request lifecycle (cron, post-payment hooks, commission).
+ *
+ * @param {Object} options
+ * @param {string} options.action_type - 'create' | 'update' | 'delete'
+ * @param {string} options.entity_type
+ * @param {string|number} [options.entity_id]
+ * @param {string} [options.entity_name]
+ * @param {Object} [options.changes]
+ * @param {string} options.description
+ * @param {number} [options.restaurant_id]
+ * @param {number} [options.user_id]    actor — omit for pure system events
+ * @param {string} [options.username]   actor label (default 'system')
+ * @param {string} [options.full_name]
+ */
+async function logSystemActivity(options) {
+  try {
+    return await ActivityLog.createLog({
+      restaurant_id: options.restaurant_id || null,
+      user_id: options.user_id || null,
+      username: options.username || 'system',
+      full_name: options.full_name || null,
+      action_type: options.action_type,
+      entity_type: options.entity_type,
+      entity_id: options.entity_id ? String(options.entity_id) : null,
+      entity_name: options.entity_name || null,
+      changes: options.changes || null,
+      description: options.description,
+      ip_address: null,
+      user_agent: 'system'
+    });
+  } catch (error) {
+    console.error('System activity logging failed:', error.message);
+    return null;
+  }
+}
+
+module.exports = { logActivity, logSystemActivity };

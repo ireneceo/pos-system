@@ -474,15 +474,32 @@ class SubscriptionScheduler {
         return { success: true, message: 'Restaurant is not in a suspended state' };
       }
 
+      const previousStatus = restaurant.status;
       await restaurant.update({
         status: 'active',
         grace_period_start: null,
         last_payment_date: new Date()
       });
 
-      console.log(`✓ Subscription restored for ${restaurant.name}: ${restaurant.status} -> Active`);
+      console.log(`✓ Subscription restored for ${restaurant.name}: ${previousStatus} -> Active`);
 
-      return { success: true, previousStatus: restaurant.status };
+      // Audit trail (system-triggered — invoice paid hook)
+      try {
+        const { logSystemActivity } = require('../utils/activityLogger');
+        await logSystemActivity({
+          action_type: 'update',
+          entity_type: 'restaurant_subscription',
+          entity_id: restaurant.id,
+          entity_name: restaurant.name,
+          restaurant_id: restaurant.id,
+          changes: { status: { from: previousStatus, to: 'active' }, grace_period_start: { from: restaurant.grace_period_start, to: null } },
+          description: `Subscription restored: ${restaurant.name} (${previousStatus} → active)`
+        });
+      } catch (e) {
+        console.error('[restoreSubscription] audit log error:', e.message);
+      }
+
+      return { success: true, previousStatus };
 
     } catch (error) {
       console.error('✗ Error restoring subscription:', error);

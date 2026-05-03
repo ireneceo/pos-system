@@ -29,6 +29,7 @@ const { Op } = require('sequelize');
 const rateLimit = require('express-rate-limit');
 const { sequelize } = require('../config/database');
 const { authenticateToken, requireRole } = require('../middleware/auth');
+const { logActivity } = require('../utils/activityLogger');
 require('../models'); // ensure associations
 const User = require('../models/User');
 const Restaurant = require('../models/Restaurant');
@@ -422,6 +423,19 @@ router.post('/payouts', authenticateToken, async (req, res) => {
         { bank_name, bank_account_number, bank_account_holder },
         { transaction: t }
       );
+    });
+
+    logActivity(req, {
+      action_type: 'create',
+      entity_type: 'referral_payout',
+      entity_id: payout.id,
+      entity_name: `Payout ${parseFloat(payout.amount)} ${payout.currency}`,
+      changes: {
+        amount: parseFloat(payout.amount),
+        currency: payout.currency,
+        bank_name, bank_account_number, bank_account_holder
+      },
+      description: `Payout requested: ${parseFloat(payout.amount)} ${payout.currency} → ${bank_name} ${bank_account_holder}`
     });
 
     res.json({ success: true, data: {
@@ -1001,6 +1015,21 @@ router.put('/admin/payouts/:id', ...adminGuard, async (req, res) => {
         }
       })();
     }
+
+    logActivity(req, {
+      action_type: 'update',
+      entity_type: 'referral_payout',
+      entity_id: result.id,
+      entity_name: `Payout ${parseFloat(result.amount)} ${result.currency}`,
+      changes: {
+        action,
+        status_to: result.status,
+        transaction_reference: result.transaction_reference || null,
+        reject_reason: result.reject_reason || null,
+        partner_user_id: result.user_id
+      },
+      description: `Admin payout ${action}: payout #${result.id} → ${result.status}${reason ? ` (reason: ${reason})` : ''}`
+    });
 
     res.json({ success: true, data: {
       id: result.id, status: result.status, paid_at: result.paid_at,
