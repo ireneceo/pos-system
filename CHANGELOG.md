@@ -6,6 +6,49 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+## [v3.22] — 2026-05-03 배포
+
+**리퍼럴 UX 보강 + `/api/restaurants` 익명 노출 fix + 인보이스 사유 표시 + 운영 준비 점검 P0+P1 + 비대 라우트 분리**
+
+### 리퍼럴 UX 보강
+- `/referral/dashboard` 헤더 아래 "How it works" 보라 카드 (15% recurring / 20% off first month / Forever) — 3컬럼 desktop, 1컬럼 mobile
+- `/signup` Referral Code 필드 옆 항상 보이는 hint *"Have a referral code? Get 20% off your first month."* (코드 입력 전에도 노출 → 신규 가입자 유도)
+- ReferralLogin/Signup Input/Submit `box-sizing: border-box` 추가 (Input padding 28px 가 카드 밖으로 튀어나오던 레이아웃 깨짐 fix)
+- 리퍼럴 페이지 모바일 반응형 (StatCard DashboardStats, ReferralLayout, ReferralAuthLayout) + 신규 `purple-referral-logo.svg`
+- i18n 4언어 (en/ko/zh/ms): referrals.json + landing.json 32 신규 키
+
+### 보안 fix
+- `/api/restaurants` GET 익명 노출 차단 — `optionalAuth` → `authenticateToken` (admin email/businessReg/taxId/subscription 미인증 GET 차단)
+- `Manager/SalesPage`, `Manager/SystemInquiryPage`, `Recipes/RecipesPage` 인증 헤더 누락 fetch fix
+- health-check 익명 `/restaurants` → 401 영구 케이스 (security 21 → 22)
+
+### 인보이스 사유 표시
+- Restaurant/Owner/Admin 인보이스 페이지 우측 패널 + print HTML 에 `discount_reason` 라인 노출
+- 효과: 자동 세팅된 'Referral: 20% off first month (PURPLE-XXXX)' 가 사용자에게 보임 (이전엔 'Discount (20%)' 만)
+
+### 운영 준비 점검 (P0+P1 라운드)
+- **uploads 백업** (C1): `backup-database.sh` dev/prod 양쪽 패치 — tar.gz + cross-backup, dev 14일/prod 7일 retention. 디스크 사고 시 32MB 이미지 영구 손실 위험 차단
+- **financial path audit log** (C2): `utils/activityLogger.js` logActivity restaurant_id 가드 완화 + logSystemActivity 신규. referralService.processCommission/applyCredit, subscriptionScheduler.restoreSubscription, routes/referrals.js POST /payouts + PUT /admin/payouts/:id 모두 audit
+- **결제/인보이스 console.log 정리** (C5+D1): invoices-payment 10건 + invoices-main 26건 제거 (User email + payment_method + transaction_id 평문 노출 차단). console.error 보존
+- **PM2 log rotation** (A): pm2-logrotate dev/prod 양쪽 도입. dev 14일/prod 30일 retain, 10MB max, gzip, 매일 자정. Sentry 미사용 결정 후속
+- **per-route rate limit** (D): auth signup 10/h, forgot 5/15min, admin-analytics/admin-reports 30/min
+- **utils/logger.js thin wrapper** (E): info/warn/error/debug + 환경별 필터, 향후 winston/pino swap 가능
+- **운영 sysops cron 이전**: root crontab → irene crontab, `/var/backups/orderhere/` chown irene
+
+### 비대 라우트 분리 (CLAUDE.md 500줄 가이드 시정)
+- `invoices-main.js` 2622줄 → invoices-list (1203) + invoices-crud (926) + invoices-generation (513). `invoiceInBranch` shared helper 를 invoices-helpers.js 로 이동
+- `brands.js` 2596줄 → brands-core (1247) + brands-plans (1368). `brands.js` 는 barrel
+- `foodcourts.js` 2333줄 → foodcourts-core (1243) + foodcourts-plans (1109). `foodcourts.js` 는 barrel
+- 모든 sub-router barrel mount, server.js mount path 변경 없음
+
+### 운영 준비 점검 보고서 (신규)
+- `docs/OPERATIONAL_READINESS_AUDIT.md` — 실서비스 SaaS 기준 점검 (Baseline + 부족 + 위험 C1~C5 + 트래픽 트리거 + 실행 계획)
+
+### 검증
+- health-check 73/73 PASS (security 22, auth, pos, mobile, payment, referral)
+- /api/restaurants 익명 401, RA 인증 200
+- IDOR cross-tenant 라이브 401/403
+
 ## [v3.21] — 2026-05-01 배포
 
 **Refer & Earn (리퍼럴 시스템) Phase 1+2+3 + IDOR 7 endpoint fix + Suspended account UX 재설계 + DB 인덱스 정리**

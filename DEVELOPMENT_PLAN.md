@@ -1,9 +1,43 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-01 (v3.21 운영 배포 + 양방향 cross-backup 정돈)
+> **최종 업데이트:** 2026-05-03 (v3.22 운영 배포 + 운영 SaaS 정합성 P0/P1 + 비대 라우트 분리)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.21** (2026-05-01 운영 배포)
+> **현재 버전:** **v3.22** (2026-05-03 운영 배포)
+
+## ✅ 완료: v3.22 운영 배포 (2026-05-03)
+
+**리퍼럴 UX 보강 + `/api/restaurants` 익명 노출 fix + 인보이스 사유 표시 + 운영 준비 점검 P0+P1 + 비대 라우트 분리**
+
+### 완료된 작업
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 리퍼럴 UX 보강 | `/referral/dashboard` "How it works" 카드 (15%/20%/Forever) + `/signup` Referral Code hint 항상 노출 + ReferralLogin/Signup box-sizing fix + 모바일 반응형 (StatCard/Layout) + 신규 `purple-referral-logo.svg` + i18n 4언어 32 키. | ✅ |
+| `/api/restaurants` 익명 노출 차단 | `optionalAuth` → `authenticateToken`. admin email/businessReg/taxId/subscription 미인증 GET 차단. health-check 영구 케이스 (security 21→22). | ✅ |
+| fetch 헤더 누락 sweep | `Manager/SalesPage`, `SystemInquiryPage`, `Recipes/RecipesPage` 401 버그 fix (getAuthHeaders 적용). | ✅ |
+| 인보이스 사유 표시 | Restaurant/Owner/Admin 인보이스 우측 패널 + print HTML 에 `discount_reason` 노출. 'Referral: 20% off first month (PURPLE-XXXX)' 가 사용자에게 보임. | ✅ |
+| uploads 백업 (C1) | dev/prod backup-database.sh tar.gz + cross-backup. 디스크 사고 32MB 손실 차단. | ✅ |
+| financial path audit log (C2) | logActivity 가드 완화 + logSystemActivity 신규. processCommission/applyCredit/restoreSubscription/payout request·review 모두 audit. | ✅ |
+| 결제/인보이스 console 정리 (C5+D1) | invoices-payment 10건 + invoices-main 26건 제거. PII (User email + payment_method + transaction_id) 평문 차단. console.error 보존. | ✅ |
+| PM2 log rotation (A) | pm2-logrotate dev/prod (dev 14일/prod 30일/10MB/gzip). Sentry 미사용 결정 후속. | ✅ |
+| per-route rate limit (D) | auth signup 10/h, forgot 5/15min, admin-analytics/admin-reports 30/min. | ✅ |
+| utils/logger.js (E) | thin wrapper. info/warn/error/debug + 환경별 필터. winston 호환 인터페이스. | ✅ |
+| 비대 라우트 분리 (F+G) | invoices-main 2622→list+crud+generation. brands 2596→core+plans (barrel). foodcourts 2333→core+plans (barrel). 모든 sub-router 1500줄 미만. | ✅ |
+| 운영 sysops cron 이전 | root crontab → irene crontab, `/var/backups/orderhere/` chown irene. | ✅ |
+| 운영 준비 점검 보고서 | `docs/OPERATIONAL_READINESS_AUDIT.md` 신규 (Baseline + 부족 + 위험 + 트래픽 트리거 + 실행 계획). | ✅ |
+
+### 자동 마이그레이션 (운영 배포 시)
+- sprint4/5/6/7-migration / migrate-2026-03-18 / migrate-supplier-staff / migrate-soa-invoice / migrate-referral / cleanup-sequelize-duplicate-indexes (idempotent skip)
+
+### 검증 (배포 후 라이브)
+- frontend `https://purplehere.com` 200 / backend `/api/health` 200
+- 익명 `/api/restaurants` 401 (보안 fix 적용)
+- 분리된 라우트 prod 도착 (invoices-list/crud/generation, brands-core/plans, foodcourts-core/plans + barrel)
+- logger.js + pm2-logrotate prod online
+- health-check 73/73 PASS
+
+---
 
 ## ✅ 완료: v3.21 운영 배포 (2026-05-01)
 
