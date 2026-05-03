@@ -176,9 +176,6 @@ router.get('/', authenticateToken, async (req, res) => {
       if (orConditions.length === 0) return res.json([]);
       whereClause = { ...whereClause, [Op.and]: [{ [Op.or]: orConditions }] };
     }
-
-    console.log(`📋 GET /api/invoices - User: ${req.user.email} (${role}), Where:`, whereClause);
-
     // Demo filter: System Admin excludes demo restaurants by default
     const includeDemo = req.query.includeDemo === 'true';
     const excludeDemo = (role === 'System Admin' && !includeDemo);
@@ -450,13 +447,6 @@ router.get('/', authenticateToken, async (req, res) => {
         issuerInfo
       };
     }));
-
-    console.log('📊 Transformed invoices count:', transformedInvoices.length);
-    console.log('📊 First 3 invoices:', transformedInvoices.slice(0, 3).map(inv => ({
-      id: inv.id,
-      invoiceNumber: inv.invoiceNumber,
-      status: inv.status
-    })));
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching all invoices:', error);
@@ -571,16 +561,12 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
 router.get('/manager/:managerId', authenticateToken, async (req, res) => {
   try {
     const { managerId } = req.params;
-    console.log(`📋 GET /manager/${managerId} - Fetching invoices for manager`);
-
     // Get restaurants managed by this manager
     const restaurants = await Restaurant.findAll({
       where: { admin_id: managerId }
     });
 
     const restaurantIds = restaurants.map(r => r.id);
-    console.log(`  Found ${restaurantIds.length} restaurants managed by this manager`);
-
     // Build where clause to get:
     // 1. Invoices for restaurants where this manager manages AND manager pays (payment_responsibility = 'manager')
     // 2. Invoices directly issued to this manager (payer_type = 'manager', payer_id = managerId)
@@ -612,7 +598,6 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
 
     // If no conditions, return empty
     if (whereConditions.length === 0) {
-      console.log('  No valid conditions, returning empty');
       return res.json([]);
     }
 
@@ -636,9 +621,6 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
       ],
       order: [['createdAt', 'DESC']]
     });
-
-    console.log(`  Found ${invoices.length} invoices`);
-
     // Transform data to match frontend format
     const transformedInvoices = invoices.map(invoice => {
       // Determine items to show
@@ -903,8 +885,6 @@ router.post('/categories/init', authenticateToken, async (req, res) => {
 // Get invoices to pay (for payer view) - MUST be before /:id route
 router.get('/to-pay', authenticateToken, async (req, res) => {
   try {
-    console.log(`💳 GET /api/invoices/to-pay - User: ${req.user.email} (${req.user.role})`);
-
     let whereClause = {};
 
     // System Admin sees all
@@ -959,8 +939,6 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
           }
         ]
       };
-      console.log(`  Brand ${brand.id} (User ${req.user.id}): Found ${brandPayRestaurantIds.length} brand-pay restaurants`);
-      console.log(`  Excluding invoices issued by this brand`);
     }
     // Foodcourt General/Manager sees:
     // 1. Invoices directly issued to them (payer_type: 'foodcourt', payer_id: foodcourt.id)
@@ -1010,8 +988,6 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
           }
         ]
       };
-      console.log(`  Foodcourt ${foodcourt.id}: Found ${foodcourtPayRestaurantIds.length} foodcourt-pay restaurants`);
-      console.log(`  Excluding invoices issued by this foodcourt`);
     }
     // Restaurant Admin sees invoices for their restaurant
     // Includes invoices where restaurant_id matches OR (payer_type='restaurant' AND payer_id matches)
@@ -1177,8 +1153,6 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         modificationHistory: invoice.modification_history || []
       };
     }));
-
-    console.log(`  Found ${invoices.length} invoices to pay:`, transformedInvoices.map(i => i.invoiceNumber));
     res.json(transformedInvoices);
   } catch (error) {
     console.error('Error fetching invoices to pay:', error);
@@ -1307,7 +1281,6 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
 // Create new invoice (manual)
 router.post('/', authenticateToken, async (req, res) => {
-  console.log('POST /api/invoices called with:', JSON.stringify(req.body, null, 2));
   const { sequelize } = require('../config/database');
   const transaction = await sequelize.transaction();
 
@@ -1801,8 +1774,6 @@ router.put('/settings/:restaurantId', authenticateToken, checkRestaurantAccess, 
 // Generate invoices for all active subscriptions
 router.post('/generate-for-subscriptions', authenticateToken, async (req, res) => {
   try {
-    console.log('Generating invoices for all active subscriptions...');
-
     // Get all active restaurants with subscriptions
     const restaurants = await Restaurant.findAll({
       where: {
@@ -1811,9 +1782,6 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
         subscription_end: { [Op.gte]: new Date() } // Active subscriptions
       }
     });
-
-    console.log(`Found ${restaurants.length} active restaurants with subscriptions`);
-
     const results = [];
     const errors = [];
 
@@ -1905,7 +1873,6 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
         });
 
         if (existingInvoice) {
-          console.log(`Invoice already exists for restaurant ${restaurant.name} for this period`);
           continue;
         }
 
@@ -1920,7 +1887,6 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
         const { hasPaymentMethodForCurrency: hasMethod } = require('../utils/paymentSettingsHelper');
         const sysPaySettings = await SystemSettings.findOne({ where: { setting_key: 'payment_settings' } });
         if (!hasMethod(sysPaySettings?.setting_value || {}, currency)) {
-          console.log(`⚠️ Skipping ${restaurant.name}: No payment methods for ${currency}`);
           errors.push({ restaurant: restaurant.name, error: `No payment methods configured for ${currency}` });
           continue;
         }
@@ -2027,9 +1993,6 @@ router.post('/generate-for-subscriptions', authenticateToken, async (req, res) =
           amount: totalAmount,
           currency: currency
         });
-
-        console.log(`Created invoice ${invoiceNumber} for ${restaurant.name} - ${totalAmount}`);
-
       } catch (error) {
         console.error(`Error creating invoice for restaurant ${restaurant.name}:`, error);
         errors.push({
@@ -2214,8 +2177,6 @@ router.post('/generate-automatic', authenticateToken, async (req, res) => {
 router.get('/issued-by/:issuerType/:issuerId', authenticateToken, async (req, res) => {
   try {
     const { issuerType, issuerId } = req.params;
-    console.log(`📋 GET /api/invoices/issued-by/${issuerType}/${issuerId} - User: ${req.user.email}`);
-
     // Validate issuer type
     if (!['system_admin', 'brand', 'foodcourt'].includes(issuerType)) {
       return res.status(400).json({ error: 'Invalid issuer type' });
@@ -2289,9 +2250,6 @@ router.put('/update-payer/:restaurantId', authenticateToken, checkRestaurantAcce
   try {
     const { restaurantId } = req.params;
     const { payment_model } = req.body;
-
-    console.log(`💰 Updating payer for unpaid invoices of restaurant ${restaurantId} to ${payment_model}`);
-
     // Get restaurant with brand/foodcourt info
     const restaurant = await Restaurant.findByPk(restaurantId);
     if (!restaurant) {
@@ -2330,9 +2288,6 @@ router.put('/update-payer/:restaurantId', authenticateToken, checkRestaurantAcce
         }
       }
     );
-
-    console.log(`✓ Updated ${updatedCount} unpaid invoices to payer_type: ${newPayerType}`);
-
     res.json({
       success: true,
       message: `Updated ${updatedCount} unpaid invoices`,
@@ -2530,9 +2485,6 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
       html: emailContent.html,
       text: emailContent.text
     });
-
-    console.log(`📧 Invoice email sent: ${invoice.invoice_number} to ${recipientEmail} (${result.messageId})`);
-
     res.json({
       success: true,
       message: `Invoice ${invoice.invoice_number} sent to ${recipientEmail}`,
@@ -2552,9 +2504,6 @@ router.post('/generate-missing/:restaurantId', authenticateToken, checkRestauran
   try {
     const { restaurantId } = req.params;
     const { fromDate } = req.body;
-
-    console.log(`📊 Generating missing invoices for restaurant ${restaurantId}...`);
-
     const result = await invoiceScheduler.generateMissingInvoices(restaurantId, fromDate);
 
     if (result.success) {
@@ -2576,7 +2525,6 @@ router.post('/generate-missing/:restaurantId', authenticateToken, checkRestauran
 // Trigger daily invoice generation manually (for testing)
 router.post('/trigger-daily-generation', authenticateToken, async (req, res) => {
   try {
-    console.log('📊 Manually triggering daily invoice generation...');
     await invoiceScheduler.generateSubscriptionInvoices();
     res.json({ success: true, message: 'Daily invoice generation triggered' });
   } catch (error) {
@@ -2591,9 +2539,6 @@ router.post('/generate-missing-bulk', authenticateToken, async (req, res) => {
     if (req.user.role !== 'System Admin') {
       return res.status(403).json({ success: false, message: 'System Admin only' });
     }
-
-    console.log('📊 [BULK] Generating missing invoices for all active restaurants...');
-
     const subResult = await invoiceScheduler.generateSubscriptionInvoices();
     const entityResult = await invoiceScheduler.generateEntityPlanInvoices();
     const entitySubResult = await invoiceScheduler.generateEntitySubscriptionInvoices();
