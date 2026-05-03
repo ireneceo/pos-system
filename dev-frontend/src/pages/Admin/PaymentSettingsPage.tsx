@@ -4,6 +4,7 @@ import PageHeader from '../../components/Common/PageHeader';
 import { Modal, ModalButton } from '../../components/UI/Modal';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import PaymentGatewayGuide from '../../components/Payment/PaymentGatewayGuide';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -750,6 +751,7 @@ const PaymentSettingsPage: React.FC = () => {
               </MethodHeader>
               {paymentSettings.stripe.enabled && (
                 <MethodContent>
+                  <PaymentGatewayGuide gateway="stripe" />
                   <FormGroup>
                     <Label>{t('admin:paymentSettingsPage.publishableKey')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>
@@ -815,6 +817,7 @@ const PaymentSettingsPage: React.FC = () => {
               </MethodHeader>
               {paymentSettings.paypal.enabled && (
                 <MethodContent>
+                  <PaymentGatewayGuide gateway="paypal" />
                   <FormGroup>
                     <Label>{t('admin:paymentSettingsPage.clientId')}</Label>
                     <AutoSaveField onSave={savePaymentSettings}>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import AutoSaveField from '../../components/Common/AutoSaveField';
+import PaymentGatewayGuide from '../../components/Payment/PaymentGatewayGuide';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { CURRENCY_CONFIG } from '../../utils/currency';
@@ -478,6 +479,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
             </MethodHeader>
             {settings.stripe.enabled && (
               <MethodContent>
+                <PaymentGatewayGuide gateway="stripe" />
                 <FormGroup>
                   <Label>Publishable Key</Label>
                   <AutoSaveField onSave={() => saveKey('stripe')}>
@@ -533,6 +535,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
             </MethodHeader>
             {settings.paypal.enabled && (
               <MethodContent>
+                <PaymentGatewayGuide gateway="paypal" />
                 <FormGroup>
                   <Label>Client ID</Label>
                   <AutoSaveField onSave={() => saveKey('paypal')}>
