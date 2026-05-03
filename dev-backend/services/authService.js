@@ -779,16 +779,18 @@ async function signupReferralPartner(data) {
  * gate below blocks it).
  */
 const DEMO_KEY_TO_EMAIL = Object.freeze({
-  // Demo (showcase / landing)
-  demo_brand_general:     'demo-brand@purplehere.com',
-  demo_restaurant_admin:  'demo-restaurant@purplehere.com',
-  demo_supplier_admin:    'demo-supplier@purplehere.com',
+  // Demo (showcase / landing) — 5 roles in canonical order
+  demo_restaurant_admin:    'demo-restaurant@purplehere.com',
+  demo_brand_general:       'demo-brand@purplehere.com',
+  demo_foodcourt_general:   'demo-foodcourt@purplehere.com',
+  demo_multi_owner:         'demo-owner@purplehere.com',
+  demo_supplier_admin:      'demo-supplier@purplehere.com',
   // Test (QA / staging)
-  test_brand_general:     'brand_general@orderhere.center',
-  test_foodcourt_general: 'foodcourt_general@orderhere.center',
-  test_restaurant_owner:  'owner@purplehere.com',
-  test_restaurant_admin:  'admin@kdine.com',
-  test_staff:             'staff@kdine.com'
+  test_brand_general:       'brand_general@orderhere.center',
+  test_foodcourt_general:   'foodcourt_general@orderhere.center',
+  test_restaurant_owner:    'owner@purplehere.com',
+  test_restaurant_admin:    'admin@kdine.com',
+  test_staff:               'staff@kdine.com'
 });
 
 /**

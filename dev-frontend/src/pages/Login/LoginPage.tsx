@@ -8,7 +8,14 @@ import { useTranslation } from 'react-i18next';
 // Demo / Test accounts — passwords are NOT shipped in the bundle.
 // Server resolves the email by `key` and issues a token via /api/auth/demo-login,
 // guarded by the user's is_demo / is_test flag.
+// Order: Restaurant Admin, Brand General, Foodcourt General, Multi-Restaurant Owner, Supplier Admin
 const DEMO_ACCOUNTS = [
+  {
+    key: 'demo_restaurant_admin',
+    role: 'Restaurant Admin',
+    description: 'Full restaurant management — POS, kitchen, menu, reports, customers',
+    color: '#0891B2'
+  },
   {
     key: 'demo_brand_general',
     role: 'Brand General',
@@ -16,10 +23,16 @@ const DEMO_ACCOUNTS = [
     color: '#059669'
   },
   {
-    key: 'demo_restaurant_admin',
-    role: 'Restaurant Admin',
-    description: 'Full restaurant management experience with all features',
-    color: '#0891B2'
+    key: 'demo_foodcourt_general',
+    role: 'Foodcourt General',
+    description: 'Operate a foodcourt — tenants, common products, contracts, invoicing',
+    color: '#EA580C'
+  },
+  {
+    key: 'demo_multi_owner',
+    role: 'Multi-Restaurant Owner',
+    description: 'Financial dashboard across multiple restaurants you own',
+    color: '#7C3AED'
   },
   {
     key: 'demo_supplier_admin',
@@ -44,8 +57,8 @@ const TEST_ACCOUNTS = [
   },
   {
     key: 'test_restaurant_owner',
-    role: 'Restaurant Owner',
-    description: 'Restaurant Owner (Multi-Restaurant Financial Dashboard)',
+    role: 'Multi-Restaurant Owner',
+    description: 'Multi-restaurant financial dashboard',
     color: '#7C3AED'
   },
   {

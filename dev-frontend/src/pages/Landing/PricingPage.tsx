@@ -511,6 +511,28 @@ const MODULE_NAMES: Record<string, string> = {
   owner_reports: 'Financial Reports',
   owner_work_manuals: 'Work Manuals',
   owner_activity_logs: 'Change History',
+  // Foodcourt — additional product/inventory modules
+  fc_products: 'Product Management',
+  fc_inventory: 'Inventory Management',
+  // Supplier
+  supplier_products: 'Product Management',
+  supplier_inventory: 'Inventory Management',
+  supplier_directory: 'Directory Listing',
+  supplier_contracts: 'Contract Management',
+  supplier_customers: 'Customer Management',
+  supplier_orders: 'Order Management',
+  supplier_shipping: 'Shipping & Delivery',
+  supplier_trade_invoices: 'Trade Invoice',
+  supplier_soa: 'Statement of Account',
+  supplier_admin_staff: 'Admin & Staff Management',
+  supplier_performance: 'Performance Analytics',
+  supplier_activity_logs: 'Change History',
+  supplier_multi_warehouse: 'Multi-Warehouse',
+  // Buyer-side (shared B2B modules — Restaurant / Brand / Foodcourt all reuse)
+  buyer_supplier_directory: 'Supplier Directory',
+  buyer_supplier_contracts: 'Supplier Contracts',
+  buyer_purchase_orders: 'Purchase Orders',
+  buyer_purchase_invoices: 'Purchase Invoices',
 };
 
 // 국가 코드 → 통화 매핑 (컴포넌트 외부에 정의)

@@ -333,6 +333,9 @@ const PosRootRedirect: React.FC = () => {
       return <Navigate to="/pos/brand/general/dashboard" replace />;
     case 'Restaurant Owner':
       return <Navigate to="/pos/owner/dashboard" replace />;
+    case 'Supplier Admin':
+    case 'Supplier Staff':
+      return <Navigate to="/pos/supplier/dashboard" replace />;
     case 'Referral Partner':
       // Referral-only users have no POS dashboard — bounce to their app instead
       return <Navigate to="/referral/dashboard" replace />;

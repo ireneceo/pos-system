@@ -220,34 +220,49 @@ const ErrorMessage = styled.div`
 
 // Demo account metadata — passwords are NOT shipped in the bundle.
 // Server resolves the email by `key` via /api/auth/demo-login (gated by is_demo flag).
-const DEMO_ACCOUNTS = {
-  brand_general: {
-    key: 'demo_brand_general',
-    role: 'Brand General',
-    icon: '#',
-    description: 'Manage multiple brands and restaurants from a single dashboard',
-    features: [
-      'Multi-brand dashboard',
-      'Restaurant management',
-      'Centralized inventory',
-      'Performance reports',
-      'Staff management'
-    ]
-  },
-  restaurant_admin: {
+// Order: Restaurant Admin, Brand General, Foodcourt General, Multi-Restaurant Owner, Supplier Admin
+const DEMO_ACCOUNTS_LIST = [
+  {
     key: 'demo_restaurant_admin',
     role: 'Restaurant Admin',
-    icon: '%',
-    description: 'Full restaurant management experience with all features',
-    features: [
-      'POS Terminal',
-      'Kitchen Display',
-      'Menu Management',
-      'Reports & Analytics',
-      'Customer Management'
-    ]
+    icon: 'R',
+    color: '#0891B2',
+    description: 'Full restaurant management — POS, kitchen, menu, reports',
+    features: ['POS Terminal', 'Kitchen Display', 'Menu Management', 'Reports & Analytics', 'Customer Management']
+  },
+  {
+    key: 'demo_brand_general',
+    role: 'Brand General',
+    icon: 'B',
+    color: '#059669',
+    description: 'Manage multiple brands and restaurants from a single dashboard',
+    features: ['Multi-brand dashboard', 'Restaurant oversight', 'Centralized inventory', 'Performance reports', 'Staff management']
+  },
+  {
+    key: 'demo_foodcourt_general',
+    role: 'Foodcourt General',
+    icon: 'F',
+    color: '#EA580C',
+    description: 'Operate a foodcourt — tenants, common products, contracts, invoicing',
+    features: ['Tenant management', 'Common product catalog', 'Contract & invoicing', 'Floor plan', 'Foodcourt reports']
+  },
+  {
+    key: 'demo_multi_owner',
+    role: 'Multi-Restaurant Owner',
+    icon: 'O',
+    color: '#7C3AED',
+    description: 'Financial dashboard across multiple restaurants you own',
+    features: ['Multi-restaurant P&L', 'Cross-location reports', 'Operation inquiries', 'Subscription overview']
+  },
+  {
+    key: 'demo_supplier_admin',
+    role: 'Supplier Admin',
+    icon: 'S',
+    color: '#9333EA',
+    description: 'B2B supplier portal — products, contracts, purchase orders, trade invoices',
+    features: ['Product catalog', 'Restaurant contracts', 'Purchase orders', 'Trade invoices', 'SOA bundling']
   }
-};
+];
 
 const DemoPage: React.FC = () => {
   const { t } = useTranslation('landing');
@@ -256,33 +271,47 @@ const DemoPage: React.FC = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const handleDemoLogin = async (accountType: 'brand_general' | 'restaurant_admin') => {
-    setLoading(accountType);
+  /**
+   * Default route per role — matches App.tsx role-based redirect.
+   */
+  function defaultRouteForUser(user: any): string {
+    switch (user?.role) {
+      case 'Brand General':
+      case 'Brand Manager':
+        return '/pos/brand/general/dashboard';
+      case 'Foodcourt General':
+      case 'Foodcourt Manager':
+        return '/pos/foodcourt/general/dashboard';
+      case 'Restaurant Owner':
+        return '/pos/owner/dashboard';
+      case 'Supplier Admin':
+      case 'Supplier Staff':
+        return '/pos/supplier/dashboard';
+      case 'Restaurant Admin':
+      case 'Staff': {
+        const rid = user?.restaurant_id || user?.restaurantId;
+        return rid ? `/restaurant/${rid}/dashboard` : '/';
+      }
+      default:
+        return '/';
+    }
+  }
+
+  const handleDemoLogin = async (account: typeof DEMO_ACCOUNTS_LIST[number]) => {
+    setLoading(account.key);
     setError('');
-
-    const account = DEMO_ACCOUNTS[accountType];
-
     try {
       const response = await fetch('/api/auth/demo-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: account.key })
       });
-
       const data = await response.json();
-
       if (response.ok && data.success && data.data && data.data.token) {
         setAuthToken(data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data.user));
-
         await loginAsDemo(account.key);
-
-        if (accountType === 'brand_general') {
-          navigate('/pos/brand/general/dashboard');
-        } else {
-          const restaurantId = data.data.user?.restaurant_id || data.data.user?.restaurantId;
-          navigate(`/restaurant/${restaurantId}/dashboard`);
-        }
+        navigate(defaultRouteForUser(data.data.user));
       } else {
         setError(data?.error?.message || data.message || 'Demo account login failed. Please contact support.');
       }
@@ -313,45 +342,25 @@ const DemoPage: React.FC = () => {
           {error && <ErrorMessage>{error}</ErrorMessage>}
 
           <DemoGrid>
-            <DemoCard>
-              <CardIcon>{DEMO_ACCOUNTS.brand_general.icon}</CardIcon>
-              <CardTitle>{t('landing:demoPage.brandGeneral')}</CardTitle>
-              <CardDescription>
-                {DEMO_ACCOUNTS.brand_general.description}
-              </CardDescription>
-              <FeatureList>
-                {DEMO_ACCOUNTS.brand_general.features.map((feature, index) => (
-                  <FeatureItem key={index}>{feature}</FeatureItem>
-                ))}
-              </FeatureList>
-              <LoginButton
-                onClick={() => handleDemoLogin('brand_general')}
-                disabled={loading === 'brand_general'}
-                isLoading={loading === 'brand_general'}
-              >
-                {loading === 'brand_general' ? 'Logging in...' : 'Login as Brand General'}
-              </LoginButton>
-            </DemoCard>
-
-            <DemoCard>
-              <CardIcon>{DEMO_ACCOUNTS.restaurant_admin.icon}</CardIcon>
-              <CardTitle>{t('landing:demoPage.restaurantAdmin')}</CardTitle>
-              <CardDescription>
-                {DEMO_ACCOUNTS.restaurant_admin.description}
-              </CardDescription>
-              <FeatureList>
-                {DEMO_ACCOUNTS.restaurant_admin.features.map((feature, index) => (
-                  <FeatureItem key={index}>{feature}</FeatureItem>
-                ))}
-              </FeatureList>
-              <LoginButton
-                onClick={() => handleDemoLogin('restaurant_admin')}
-                disabled={loading === 'restaurant_admin'}
-                isLoading={loading === 'restaurant_admin'}
-              >
-                {loading === 'restaurant_admin' ? 'Logging in...' : 'Login as Restaurant'}
-              </LoginButton>
-            </DemoCard>
+            {DEMO_ACCOUNTS_LIST.map(account => (
+              <DemoCard key={account.key}>
+                <CardIcon>{account.icon}</CardIcon>
+                <CardTitle>{account.role}</CardTitle>
+                <CardDescription>{account.description}</CardDescription>
+                <FeatureList>
+                  {account.features.map((feature, index) => (
+                    <FeatureItem key={index}>{feature}</FeatureItem>
+                  ))}
+                </FeatureList>
+                <LoginButton
+                  onClick={() => handleDemoLogin(account)}
+                  disabled={loading === account.key}
+                  isLoading={loading === account.key}
+                >
+                  {loading === account.key ? 'Logging in...' : `Login as ${account.role}`}
+                </LoginButton>
+              </DemoCard>
+            ))}
           </DemoGrid>
 
           <NoticeBox>
