@@ -465,19 +465,27 @@ const IngredientsPage: React.FC = () => {
             </EmptyState>
           ) : filteredIngredients.length === 0 ? (
             <EmptyState>
-              <EmptyTitle>{'No ingredients found'}</EmptyTitle>
+              <EmptyTitle>{searchTerm || selectedCategory !== 'all' ? 'No ingredients match' : 'No stock items yet'}</EmptyTitle>
               <EmptyDescription>
                 {searchTerm || selectedCategory !== 'all'
-                  ? 'Try adjusting your filters'
-                  : 'Create your first ingredient to get started'}
+                  ? 'Try adjusting your filters or category.'
+                  : 'Stock items track raw materials with quantity, cost, and supplier links — used for inventory deduction when orders are completed and for purchase order suggestions.'}
               </EmptyDescription>
               {!searchTerm && selectedCategory === 'all' && (
-                <ThemedButton
-                  variant="primary"
-                  onClick={() => handleOpenModal(null)}
-                >
-                  Create First Ingredient
-                </ThemedButton>
+                <>
+                  <div style={{ marginTop: 14, padding: '10px 14px', background: 'white', border: '1px solid #E6EBF1', borderRadius: 8, fontSize: 12.5, color: '#4B5563', textAlign: 'left', maxWidth: 460 }}>
+                    <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>1.</strong> Add a stock item with name, unit, and starting quantity</div>
+                    <div style={{ marginBottom: 4 }}><strong style={{ color: '#635BFF' }}>2.</strong> Link it to menu products (Recipes) so it deducts on each sale</div>
+                    <div><strong style={{ color: '#635BFF' }}>3.</strong> Set min/par levels to enable reorder alerts and PO suggestions</div>
+                  </div>
+                  <ThemedButton
+                    variant="primary"
+                    onClick={() => handleOpenModal(null)}
+                    style={{ marginTop: 14 }}
+                  >
+                    Add your first stock item
+                  </ThemedButton>
+                </>
               )}
             </EmptyState>
           ) : (

@@ -743,6 +743,11 @@ const InvoiceSettingsPage: React.FC = () => {
                     placeholder="2.0"
                   />
                 </AutoSaveField>
+                {settings.lateFeePercentage > 0 && (
+                  <div style={{ fontSize: 12, color: '#6B7C93', marginTop: 4, lineHeight: 1.5 }}>
+                    Example: a {settings.invoicePrefix || 'INV'} of <strong>RM 1,000</strong> overdue → adds <strong>RM {(1000 * settings.lateFeePercentage / 100).toFixed(2)}</strong> per overdue cycle.
+                  </div>
+                )}
               </FormGroup>
             </FormGrid>
           </Section>
