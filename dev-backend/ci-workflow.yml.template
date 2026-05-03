@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    name: Backend — Jest contract tests
+    # Note: tests assume a running backend at localhost:3001 with the dev seed.
+    # In CI we'd need a Docker MySQL + dev-backend boot step. For now this is a
+    # placeholder that documents the intended pipeline; enable when test DB is wired.
+    if: ${{ false }}  # disabled until CI-side dev-backend bootstrap is added
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: dev-backend/package-lock.json
+
+      - name: Install dev-backend deps
+        working-directory: dev-backend
+        run: npm ci
+
+      - name: Run Jest
+        working-directory: dev-backend
+        run: npm test
+
+  i18n-verify:
+    runs-on: ubuntu-latest
+    name: Frontend — i18n key parity
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: dev-frontend/package-lock.json
+
+      - name: Install dev-frontend deps
+        working-directory: dev-frontend
+        run: npm ci
+
+      - name: Verify i18n keys
+        working-directory: dev-frontend
+        run: npm run i18n:verify
+
+  state-hydration:
+    runs-on: ubuntu-latest
+    name: Frontend — state hydration safety
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # need HEAD~1 for the diff range
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: State hydration check on PR diff
+        working-directory: dev-frontend
+        run: node scripts/state-hydration-check.js --range HEAD~1..HEAD

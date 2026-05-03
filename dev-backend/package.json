@@ -12,7 +12,9 @@
     "plesk": "node server.js",
     "sync-db": "node sync-database.js",
     "check": "node scripts/check-duplicates.js",
-    "prestart": "node scripts/check-duplicates.js || true"
+    "prestart": "node scripts/check-duplicates.js || true",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@paypal/checkout-server-sdk": "^1.0.3",
@@ -40,6 +42,8 @@
     "stripe": "^20.3.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.2.2"
   }
 }
