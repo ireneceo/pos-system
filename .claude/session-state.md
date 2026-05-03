@@ -41,11 +41,42 @@
 - 수동 실행 검증: dev `~/backups/cross-backup/production-pos/db_2026-05-03.sql.gz` 1.95M 도착 (08:07)
 - 다음 03:00 자동 도착 확인만 남음
 
+### 추가 완료 (2026-05-03 운영 준비 점검 라운드)
+
+**📋 운영 준비 점검 보고서** — `docs/OPERATIONAL_READINESS_AUDIT.md`
+- 실서비스 SaaS 기준 7항목 점검 (Baseline + 부족 + 위험 C1~C5 + 트래픽 트리거 + 실행 계획)
+- 메모리/문서 인덱스 통합
+
+**🛡️ uploads 백업 추가 (C1)** — 디스크 사고 시 32MB 이미지 영구 손실 위험 차단
+- dev/prod backup-database.sh 양쪽 패치 — tar.gz + cross-backup
+- 검증: dev 4.7MB + prod 30MB cross-backup 도착
+
+**🔐 financial path audit log 보강 (C2)**
+- utils/activityLogger.js: logSystemActivity 추가, restaurant_id 가드 완화
+- referralService.processCommission/applyCredit audit
+- subscriptionScheduler.restoreSubscription audit
+- routes/referrals.js POST /payouts + PUT /admin/payouts/:id audit
+
+**✓ commission 트랜잭션 감사 (C3)** — 보강 불필요 확인
+- handleInvoicePaid → sequelize.transaction 으로 processCommission 호출 (이미 보장)
+
+**🔧 fetch 헤더 누락 fix (C4)** — 401 발생 페이지 2건
+- Manager/SystemInquiryPage `/api/support-tickets`
+- Recipes/RecipesPage `/api/brands`
+
+**🧹 결제/인보이스 console.log 정리 (C5+D1)**
+- invoices-payment.js: 10건 제거 (User email + payment_method + transaction_id 평문 노출 차단)
+- invoices-main.js: 26건 일괄 제거 (디버그/카운트/이모지)
+- console.error 모두 보존 (Sentry breadcrumb)
+
+**커밋 4건**: 4d9ecafd / ec1eab11 / fd877d48 / b7cb1947
+
 ### 다음 할 일
 
-1. **이번 세션 변경 커밋** (진행 중)
-2. **내일 03:00 자동 백업 도착 확인** — `/home/irene/backups/cross-backup/production-pos/db_2026-05-04.sql.gz`
-3. **운영 배포 결정** — 누적 변경 (보안 fix + 리퍼럴 UX + 인보이스 사유) 운영 배포 시점
+1. **운영 배포 결정** — 누적 변경 (보안 fix + 리퍼럴 UX + 인보이스 사유 + 운영 점검 P0 5건) 운영 배포 시점
+2. **내일 03:00 자동 백업 도착 확인** — dev `~/backups/cross-backup/production-pos/db_2026-05-04.sql.gz` + `uploads_2026-05-04.tar.gz`
+3. **P1 별도 세션 권고** — winston 로거 도입 (B5) + per-route rate limit 미세조정 (B6) + invoices-main 분리 2622줄 (B1)
+4. **P2 인프라 도입 결정 사안 (사용자 영역)** — S3/R2, BullMQ+Redis, Socket.IO Redis adapter, JWT refresh token (트래픽 트리거 도달 전엔 over-engineering)
 4. **브라우저 E2E 검증** (Irene 수동, 25분):
    - RP 가입 → POS 가입 with code → 첫 인보이스 20% 할인 → 결제 → 커미션 → wallet → payout 요청 → Admin 승인 → 7종 이메일 수신
 5. **운영 SMTP 7종 메일 수신 확인** (배포 직후)
