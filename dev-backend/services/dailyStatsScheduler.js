@@ -63,7 +63,7 @@ async function runDailyAggregation() {
   let run;
   try {
     run = await SchedulerRun.create({
-      scheduler: 'daily_stats',
+      job_name: 'daily_stats_aggregation',
       status: 'running',
       started_at: new Date()
     });

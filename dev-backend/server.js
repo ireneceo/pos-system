@@ -51,6 +51,7 @@ const invoiceScheduler = require('./services/invoiceScheduler');
 const subscriptionScheduler = require('./services/subscriptionScheduler');
 const demoResetScheduler = require('./services/demoResetScheduler');
 const dailyStatsScheduler = require('./services/dailyStatsScheduler');
+const invoiceOverdueScheduler = require('./services/invoiceOverdueScheduler');
 const { startSoaCron } = require('./services/soaScheduler');
 const { errorHandler } = require('./middleware/errorHandler');
 const { initSocketServer } = require('./services/socketService');
@@ -700,6 +701,10 @@ async function startServer() {
 
     // Start daily stats aggregation scheduler — runs daily at 00:30 SGT (UTC+8)
     dailyStatsScheduler.start();
+
+    // Start invoice overdue scheduler — runs daily at 02:30 UTC, transitions
+    // non-subscription invoices past due_date to 'overdue' status.
+    invoiceOverdueScheduler.start();
 
     // 포트 충돌 체크 - PM2 환경에서는 더 유연하게 처리
     server.listen(PORT, '0.0.0.0', () => {
