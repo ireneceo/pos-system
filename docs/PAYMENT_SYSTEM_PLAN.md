@@ -1,6 +1,13 @@
-# 결제 시스템 설계 문서
+# 결제 시스템 설계 문서 (DEPRECATED)
 
 > 최종 업데이트: 2026-03-06
+>
+> ⚠️ **DEPRECATED (v3.24, 2026-05-03)**: 이 문서는 Phase 1-3 시절 (직접 cron + off_session)
+> 의 설계입니다. v3.24 부터 **Stripe Subscriptions / PayPal Subscriptions API + Hosted
+> Checkout + Customer Portal** 표준으로 재설계되었으며, 이 문서의 "Enable auto-charge",
+> "saved card" 같은 직접 관리 흐름은 모두 폐기되었습니다.
+>
+> **현재 진실의 원천 (truth source)**: `docs/PAYMENT_ARCHITECTURE.md`
 
 ## 1. 결제 흐름 개요
 

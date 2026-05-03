@@ -1,7 +1,13 @@
-# 청구/결제 시스템 통합 개발 기획서
+# 청구/결제 시스템 통합 개발 기획서 (PARTIALLY DEPRECATED)
 
 > **작성일:** 2026-01-19 | **최종 업데이트:** 2026-03-06
 > **목표:** 역할별 청구/결제 시스템 완성 및 유기적 연동
+>
+> ⚠️ **부분 DEPRECATED (v3.24, 2026-05-03)**: Phase 10 PayPal 연동, Phase 11 자동 인보이스
+> 발행, Phase 12 이메일 알림 흐름은 v3.24 표준화로 대체되었습니다. **결제 게이트웨이 부분
+> (Stripe/PayPal Subscriptions API + Hosted Checkout + Customer Portal + Webhook 8종)** 은
+> `docs/PAYMENT_ARCHITECTURE.md` 가 진실의 원천. 청구서 발행 / 카테고리 / 역할별 권한 부분은
+> 이 문서 그대로 유효.
 
 ---
 
