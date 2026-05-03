@@ -397,6 +397,25 @@ const SiteSettingsPage: React.FC = () => {
           <Title>{t('admin:siteSettingsPage.siteSettings')}</Title>
         </Header>
         <Content>
+          <div style={{
+            margin: '0 0 20px',
+            padding: '14px 16px',
+            background: '#F1F0FF',
+            border: '1px solid #D4D0FF',
+            borderRadius: 10,
+            fontSize: 13,
+            color: '#4B5563',
+            lineHeight: 1.6
+          }}>
+            <div style={{ fontWeight: 600, color: '#635BFF', marginBottom: 6 }}>Where these settings appear</div>
+            <div style={{ fontSize: 12.5 }}>
+              <strong>Site name</strong> — public landing pages, browser tab title, email subject lines.<br />
+              <strong>Brand logo</strong> — landing header, all email notifications (sender header), invoice PDFs.<br />
+              <strong>Favicon</strong> — browser tab icon for the public site.<br />
+              <strong>Default currency</strong> — applied to <em>new</em> restaurants only. Existing restaurants keep their own currency.<br />
+              <strong>Contact info</strong> — public footer + Contact page.
+            </div>
+          </div>
           <Form onSubmit={(e) => e.preventDefault()}>
             {/* Basic Settings */}
             <Section>

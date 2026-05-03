@@ -659,7 +659,14 @@ const BrandPaymentSettingsPage: React.FC = () => {
               <MethodHeader>
                 <MethodInfo>
                   <MethodLabel>{t('brand:brandPaymentSettingsPage.stripe')}</MethodLabel>
-                  <MethodDescription>{t('brand:brandPaymentSettingsPage.creditdebitCardPayments')}</MethodDescription>
+                  <MethodDescription>
+                    {t('brand:brandPaymentSettingsPage.creditdebitCardPayments')}
+                    {!paymentSettings.stripe.enabled && (
+                      <span style={{ display: 'block', fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
+                        Disabled — restaurants you bill will not see the card option.
+                      </span>
+                    )}
+                  </MethodDescription>
                 </MethodInfo>
                 <ToggleSwitch>
                   <ToggleInput

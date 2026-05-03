@@ -1480,6 +1480,14 @@ const RestaurantInvoicesPage: React.FC = () => {
                   </p>
                 </div>
 
+                <div style={{ marginBottom: '16px', padding: '12px 14px', background: '#F1F0FF', border: '1px solid #D4D0FF', borderRadius: '8px', fontSize: '13px', color: '#4B5563', lineHeight: 1.6 }}>
+                  <div style={{ fontWeight: 600, color: '#635BFF', marginBottom: 4 }}>How payment works</div>
+                  <div style={{ fontSize: 12.5 }}>
+                    <strong>Card / PayPal</strong> — paid instantly when you complete checkout.<br />
+                    <strong>Bank transfer</strong> — make the transfer using the merchant's account info, then submit the transaction reference (and optionally a receipt). The invoice issuer reviews and confirms it (usually within a few hours during business days).
+                  </div>
+                </div>
+
                 {loadingPaymentMethods ? (
                   <div style={{ textAlign: 'center', padding: '20px', color: '#6B7280' }}>{t('settings:invoicesPage.loadingPaymentMethods')}</div>
                 ) : availablePaymentMethods.length === 0 ? (

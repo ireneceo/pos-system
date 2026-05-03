@@ -33,6 +33,33 @@ interface PaginationInfo {
   hasMore: boolean;
 }
 
+// First-visit hint (3-step) — dismissable, remembers via localStorage.
+const FirstVisitHint: React.FC = () => {
+  const [dismissed, setDismissed] = React.useState(() => localStorage.getItem('mobile_menu_hint_dismissed') === 'true');
+  if (dismissed) return null;
+  return (
+    <div style={{
+      margin: '0 16px 16px', padding: '12px 14px',
+      background: 'linear-gradient(135deg, #F1F0FF 0%, #E0DDFF 100%)',
+      border: '1px solid #D4D0FF', borderRadius: 10, position: 'relative',
+      fontSize: 13, color: '#0A2540', lineHeight: 1.6
+    }}>
+      <button
+        type="button"
+        onClick={() => { localStorage.setItem('mobile_menu_hint_dismissed', 'true'); setDismissed(true); }}
+        aria-label="Dismiss"
+        style={{ position: 'absolute', top: 6, right: 8, background: 'none', border: 'none', color: '#6B7C93', fontSize: 18, cursor: 'pointer', padding: 4, lineHeight: 1 }}
+      >×</button>
+      <div style={{ fontWeight: 600, marginBottom: 4, color: '#635BFF' }}>How to order</div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12.5 }}>
+        <div><strong style={{ color: '#635BFF' }}>1</strong> Browse menu</div>
+        <div><strong style={{ color: '#635BFF' }}>2</strong> Add items to cart</div>
+        <div><strong style={{ color: '#635BFF' }}>3</strong> Checkout & pay</div>
+      </div>
+    </div>
+  );
+};
+
 const StoreHeader = styled.div`
   background: white;
   padding: 16px;
@@ -780,6 +807,8 @@ const MenuPage: React.FC = () => {
           </StoreStatus>
         </StoreHeader>
       )}
+
+      <FirstVisitHint />
 
       <SearchSection>
         <SearchInputContainer>

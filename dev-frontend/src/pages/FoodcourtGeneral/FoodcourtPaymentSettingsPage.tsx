@@ -657,7 +657,14 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
               <MethodHeader>
                 <MethodInfo>
                   <MethodLabel>{t('foodcourt:foodcourtPaymentSettingsPage.stripe')}</MethodLabel>
-                  <MethodDescription>{t('foodcourt:foodcourtPaymentSettingsPage.creditdebitCardPayments')}</MethodDescription>
+                  <MethodDescription>
+                    {t('foodcourt:foodcourtPaymentSettingsPage.creditdebitCardPayments')}
+                    {!paymentSettings.stripe.enabled && (
+                      <span style={{ display: 'block', fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
+                        Disabled — tenant restaurants will not see the card option.
+                      </span>
+                    )}
+                  </MethodDescription>
                 </MethodInfo>
                 <ToggleSwitch>
                   <ToggleInput
