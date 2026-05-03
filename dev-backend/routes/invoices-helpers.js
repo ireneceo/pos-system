@@ -440,6 +440,25 @@ async function checkConfirmPermission(user, invoice) {
   return false;
 }
 
+// Branch scope check — used by list/crud sub-routers to enforce branch-scoped Foodcourt Manager access.
+async function invoiceInBranch(invoice, branchId) {
+  if (!invoice || !branchId) return false;
+  if (invoice.restaurant_id) {
+    const r = await Restaurant.findByPk(invoice.restaurant_id, { attributes: ['branch_id'] });
+    if (r && r.branch_id === branchId) return true;
+  }
+  if (invoice.contract_id) {
+    const Contract = require('../models/Contract');
+    const FoodcourtUnit = require('../models/FoodcourtUnit');
+    const c = await Contract.findByPk(invoice.contract_id, {
+      attributes: ['unit_id'],
+      include: [{ model: FoodcourtUnit, as: 'unit', attributes: ['branch_id'] }]
+    });
+    if (c && c.unit && c.unit.branch_id === branchId) return true;
+  }
+  return false;
+}
+
 module.exports = {
   generateInvoiceNumber,
   getAdditionalCharges,
@@ -452,4 +471,5 @@ module.exports = {
   getCategoryDisplayName,
   checkPaymentPermission,
   checkConfirmPermission,
+  invoiceInBranch,
 };

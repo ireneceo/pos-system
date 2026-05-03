@@ -1,15 +1,20 @@
 // /api/invoices 라우트 barrel
-// - invoices-helpers.js : 공유 헬퍼 (company-info, permission 체크 등)
-// - invoices-main.js    : list/CRUD/settings/categories/generation/email
-// - invoices-payment.js : Stripe/PayPal/Manual 결제 흐름
+// - invoices-helpers.js     : 공유 헬퍼 (company-info, permission, invoiceInBranch 등)
+// - invoices-list.js        : GET endpoints (list/get/categories list/to-pay/issued-by)
+// - invoices-crud.js        : invoice CRUD + categories CRUD + settings + email + link-account + update-payer
+// - invoices-generation.js  : auto/manual 인보이스 생성 (subscription/automatic/missing/bulk)
+// - invoices-payment.js     : Stripe/PayPal/Manual 결제 흐름
 //
-// 마운트 순서 무관. routes/owner.js 등 외부 모듈은 헬퍼를 ./invoices-helpers 에서 직접 require 권장,
+// 라우트 순서: 동일 method/path 가 한 sub-router 에만 존재 → mount 순서 무관.
+// 외부 모듈(routes/owner.js 등) 은 헬퍼를 ./invoices-helpers 에서 직접 require 권장,
 // 하위 호환을 위해 이 배럴에서도 동일 헬퍼를 re-export한다.
 
 const express = require('express');
 const router = express.Router();
 
-router.use(require('./invoices-main'));
+router.use(require('./invoices-list'));
+router.use(require('./invoices-crud'));
+router.use(require('./invoices-generation'));
 router.use(require('./invoices-payment'));
 
 module.exports = router;
