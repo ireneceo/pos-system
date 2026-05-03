@@ -3615,11 +3615,18 @@ const SettingsPage: React.FC = () => {
                         {normalizeQREntries(tableSettings.externalQRs).map((entry, idx) => {
                           const name = entry.name;
                           const qrUrl = externalQRUrl(name);
-                          const linkedCoupon = entry.coupon_id
-                            ? activeCoupons.find(c => c.id === entry.coupon_id)
-                            : null;
+                          const hasCoupon = !!entry.coupon_id;
+                          // Fallback option when the linked coupon is no longer in the active list
+                          // (deactivated/expired). Avoids select value-mismatch and avoids a separate
+                          // "Coupon unavailable" badge that would flicker while activeCoupons loads.
+                          const optionExists = entry.coupon_id
+                            ? activeCoupons.some(c => c.id === entry.coupon_id)
+                            : true;
                           return (
-                            <TableItem key={`ext-${idx}-${name}`} style={{ position: 'relative' }}>
+                            <TableItem key={`ext-${idx}-${name}`} style={{
+                              position: 'relative',
+                              borderLeft: hasCoupon ? '4px solid #F59E0B' : undefined
+                            }}>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveExternalQR(name)}
@@ -3638,15 +3645,6 @@ const SettingsPage: React.FC = () => {
                                 ✕
                               </button>
                               <TableNumber>{name}</TableNumber>
-                              {linkedCoupon ? (
-                                <div style={{ marginTop: '4px', padding: '4px 8px', background: '#F0F0FF', borderRadius: '4px', fontSize: '11px', color: '#635BFF', fontWeight: 500, textAlign: 'center' }}>
-                                  {linkedCoupon.code} {linkedCoupon.type === 'percentage' ? `${linkedCoupon.value}% off` : `${linkedCoupon.value} off`}
-                                </div>
-                              ) : entry.coupon_id ? (
-                                <div style={{ marginTop: '4px', padding: '4px 8px', background: '#FEF3C7', borderRadius: '4px', fontSize: '11px', color: '#92400E', fontWeight: 500, textAlign: 'center' }}>
-                                  Coupon unavailable
-                                </div>
-                              ) : null}
                               <QRContainer>
                                 <QRCodeCanvas id={`qr-ext-${idx}`} value={qrUrl} size={100} level="H" includeMargin={true} style={{ display: 'none' }} />
                                 <QRCodeSVG id={`qr-svg-ext-${idx}`} value={qrUrl} size={100} level="H" includeMargin={true} />
@@ -3655,7 +3653,12 @@ const SettingsPage: React.FC = () => {
                                 <select
                                   value={entry.coupon_id ?? ''}
                                   onChange={(e) => handleChangeExternalQRCoupon(name, e.target.value ? Number(e.target.value) : null)}
-                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #E6EBF1', borderRadius: '4px', fontSize: '12px', background: '#fff' }}
+                                  style={{
+                                    width: '100%', padding: '6px 8px',
+                                    border: '1px solid ' + (hasCoupon ? '#F59E0B' : '#E6EBF1'),
+                                    background: hasCoupon ? '#FFFBEB' : '#fff',
+                                    borderRadius: '4px', fontSize: '12px'
+                                  }}
                                 >
                                   <option value="">No discount</option>
                                   {activeCoupons.map(c => (
@@ -3663,6 +3666,11 @@ const SettingsPage: React.FC = () => {
                                       {c.code} ({c.type === 'percentage' ? `${c.value}%` : c.value})
                                     </option>
                                   ))}
+                                  {entry.coupon_id && !optionExists && (
+                                    <option value={entry.coupon_id} disabled>
+                                      Linked coupon (inactive)
+                                    </option>
+                                  )}
                                 </select>
                               </AutoSaveField>
                               <TableActions style={{ marginTop: '12px' }}>
