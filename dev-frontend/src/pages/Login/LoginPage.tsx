@@ -279,27 +279,6 @@ const AccountRole = styled.div<{ color: string }>`
   letter-spacing: 0.5px;
 `;
 
-const AccountInfo = styled.div`
-  display: flex;
-  gap: 20px;
-  margin: 8px 0;
-  
-  @media (max-width: 1200px) {
-    flex-direction: column;
-    gap: 4px;
-  }
-`;
-
-const AccountCredential = styled.div`
-  font-size: 13px;
-  color: #374151;
-  
-  strong {
-    color: #0A2540;
-    font-weight: 600;
-  }
-`;
-
 const AccountDescription = styled.div`
   font-size: 12px;
   color: #6B7280;
@@ -715,14 +694,6 @@ const LoginPage: React.FC = () => {
                 <AccountRole color={account.color}>
                   {account.role}
                 </AccountRole>
-                <AccountInfo>
-                  <AccountCredential>
-                    <strong>Email:</strong> {account.email}
-                  </AccountCredential>
-                  <AccountCredential>
-                    <strong>Pass:</strong> {account.password}
-                  </AccountCredential>
-                </AccountInfo>
                 <AccountDescription>
                   {account.description}
                 </AccountDescription>
@@ -744,14 +715,6 @@ const LoginPage: React.FC = () => {
                 <AccountRole color={account.color}>
                   {account.role}
                 </AccountRole>
-                <AccountInfo>
-                  <AccountCredential>
-                    <strong>Email:</strong> {account.email}
-                  </AccountCredential>
-                  <AccountCredential>
-                    <strong>Pass:</strong> {account.password}
-                  </AccountCredential>
-                </AccountInfo>
                 <AccountDescription>
                   {account.description}
                 </AccountDescription>
