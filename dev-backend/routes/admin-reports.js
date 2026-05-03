@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { Op, fn, col, literal } = require('sequelize');
 const { sequelize } = require('../config/database');
 const Invoice = require('../models/Invoice');
@@ -8,8 +9,17 @@ const EntityPlan = require('../models/EntityPlan');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { getLocalDate, getSiteTimezone } = require('../utils/dateTimeHelper');
 
-// All endpoints require System Admin
-router.use(authenticateToken, requireRole('System Admin'));
+// Heavy compute (revenue-trend, customer-analysis etc.) — protect DB from burst queries.
+const heavyReportsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: { success: false, message: 'Too many report requests. Slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// All endpoints require System Admin + heavy compute rate limit
+router.use(heavyReportsLimiter, authenticateToken, requireRole('System Admin'));
 
 // Load site timezone + demo restaurant IDs for all admin-reports endpoints
 router.use(async (req, res, next) => {

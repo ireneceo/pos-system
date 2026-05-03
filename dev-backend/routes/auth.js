@@ -1,8 +1,27 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const authService = require('../services/authService');
 const { successResponse, errorResponse } = require('../middleware/errorHandler');
 const { validateLogin, validateRegister } = require('../middleware/validation');
+
+// Per-route rate limits — global apiLimiter (1000/15min) is too loose for
+// signup/forgot-password (spam vector). Tight per-IP windows here.
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1h
+  max: 10,
+  message: { success: false, message: 'Too many signup attempts. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15min
+  max: 5,
+  message: { success: false, message: 'Too many password reset requests. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // 로그인 (validateLogin 미들웨어로 입력 검증)
 router.post('/login', validateLogin, async (req, res, next) => {
@@ -39,7 +58,7 @@ router.post('/register', validateRegister, async (req, res, next) => {
 });
 
 // Self-signup (public endpoint)
-router.post('/signup', async (req, res, next) => {
+router.post('/signup', signupLimiter, async (req, res, next) => {
   try {
     const { role, full_name, email, username, password, phone,
             restaurant_name, restaurant_address, restaurant_phone, restaurant_email,
@@ -111,7 +130,7 @@ router.post('/signup', async (req, res, next) => {
 });
 
 // Self-signup for Referral Partner (no plan, no entity, no trial)
-router.post('/referral-signup', async (req, res, next) => {
+router.post('/referral-signup', signupLimiter, async (req, res, next) => {
   try {
     const { full_name, email, username, password, phone, referral_code } = req.body;
 
@@ -270,7 +289,7 @@ router.get('/me', async (req, res, next) => {
 });
 
 // Forgot password - send reset email
-router.post('/forgot-password', async (req, res, next) => {
+router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -334,7 +353,7 @@ router.post('/forgot-password', async (req, res, next) => {
 });
 
 // Reset password with token
-router.post('/reset-password', async (req, res, next) => {
+router.post('/reset-password', forgotPasswordLimiter, async (req, res, next) => {
   try {
     const { email, token, password } = req.body;
     if (!email || !token || !password) {

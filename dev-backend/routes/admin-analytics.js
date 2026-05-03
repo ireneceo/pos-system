@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { Op } = require('sequelize');
 const Restaurant = require('../models/Restaurant');
 const Order = require('../models/Order');
@@ -7,6 +8,18 @@ const User = require('../models/User');
 const PlanTemplate = require('../models/PlanTemplate');
 const { authenticateToken } = require('../middleware/auth');
 const { getPeriodBounds, getSiteTimezone } = require('../utils/dateTimeHelper');
+
+// Heavy compute (sales-trend, regional-stats etc.) — limit per IP to protect DB.
+// Tighter than apiLimiter (1000/15min global). 30/min ≈ tab refresh + manual queries.
+const heavyAnalyticsLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1min
+  max: 30,
+  message: { success: false, message: 'Too many analytics requests. Slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+router.use(heavyAnalyticsLimiter);
 
 // What and Why: 모든 admin-analytics API에 인증 필수
 // - 민감한 비즈니스 데이터 보호 (매출, 주문, 구독 통계)

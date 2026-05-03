@@ -10,7 +10,7 @@
 
 | 영역 | 현황 | 위치 |
 |------|------|------|
-| 관측 | Sentry BE+FE 이중, environment/component 분리 | `server.js:50,96`, `index.tsx:26` |
+| 관측 | **PM2 logrotate 양쪽 활성화** (dev 14일 / prod 30일 / 10MB / gzip). Sentry SDK 코드 잔존하나 사용자 결정으로 미사용 (DSN env 비우면 no-op) | `pm2 conf pm2-logrotate` |
 | 보안 미들웨어 | Helmet + apiLimiter (1000/15min) + authLimiter (20/15min) + 익명 IDOR sweep 22 영구 | `server.js:170-197`, `scripts/health-check.js` |
 | 권한 분리 | 14개 전문 미들웨어 (auth, brandScope, buyerScope, sellerScope, supplierScope, customerAuth, recipeAuth, requireModule, requirePlanLimit, security, validation, dbHealthCheck, errorHandler, addressValidation) | `middleware/` |
 | 실시간 | Socket.IO `/orders` namespace + `poRealtimeService` 분리, 9곳 emit (created/updated/deleted/items-added) | `services/socketService.js`, `routes/orders-crud.js` |
@@ -82,10 +82,26 @@ health-check 통합 외 unit test 없음, CI 연동 없음 (deploy-to-production
 | **C3** | referralService.processCommission 트랜잭션 감사 | 진행 예정 |
 | **C4** | fetch 호출 헤더 누락 sweep (`Manager/SalesPage` 외 가능성) | 진행 예정 |
 | **C5** | 결제/인보이스 console.log prod 노출 | 진행 예정 |
+| **A** | PM2 log rotation 미설정 (Sentry 미사용 결정 후속 — prod 추적 유일 수단) | **2026-05-03 적용 완료** (§4) |
 
 ---
 
 ## 4. 처리 이력
+
+### 2026-05-03 — PM2 log rotation 활성화 (A — Sentry 미사용 후속)
+
+**배경**: 사용자가 Sentry 효용성 낮다고 판단, 미사용 결정 → prod 운영 추적은 PM2 stdout/stderr 만 남음. logrotate 없이는 무한 누적 → 디스크 차오름 위험.
+
+**적용**:
+- `pm2 install pm2-logrotate` (양쪽)
+- dev: `max_size=10M`, `retain=14`, `compress=true`, `rotateInterval='0 0 * * *'`
+- prod: `max_size=10M`, `retain=30`, `compress=true`, `rotateInterval='0 0 * * *'` (운영 더 긴 retain)
+- 매일 자정 rotate, 10MB 도달 시 즉시 rotate, gzip 압축, dev 14일/prod 30일 후 삭제
+
+**Sentry 코드 처리**:
+- 명시적 호출 5곳 (BE: middleware/auth, customerAuth / FE: AuthContext) 잔존
+- 코드 그대로 두고 SENTRY_DSN env 비우면 SDK no-op (안전 비활성화)
+- 추후 정리는 별도 작업 (코드 삭제는 import 의존성 검토 필요)
 
 ### 2026-05-03 — uploads 백업 추가 (C1)
 
