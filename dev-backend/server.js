@@ -147,218 +147,10 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth/login', authLimiter);
 
-// Stripe Webhook - MUST be before express.json() for raw body signature verification
-app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-  const systemLogger = require('./utils/systemLogger');
-  try {
-    const sig = req.headers['stripe-signature'];
-    if (!sig) {
-      return res.status(400).json({ error: 'Missing stripe-signature header' });
-    }
+// Payment Gateway Webhooks (v3.24+) — Stripe + PayPal 통합 라우터, signature + dedupe + 8 종 처리
+// MUST be before express.json() for raw body signature verification
+app.use('/api/webhooks', require('./routes/webhooks-payments'));
 
-    const Invoice = require('./models/Invoice');
-    const { getWebhookSecretForIssuer } = require('./utils/stripeService');
-    const Stripe = require('stripe');
-
-    const webhookSecret = await getWebhookSecretForIssuer('system_admin', null);
-    if (!webhookSecret) {
-      await systemLogger.warn('payment', 'stripe-webhook', 'No webhook secret configured');
-      return res.status(400).json({ error: 'Webhook secret not configured' });
-    }
-
-    let event;
-    try {
-      event = Stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } catch (err) {
-      await systemLogger.error('security', 'stripe-webhook', 'Webhook signature verification failed', { error: err.message });
-      return res.status(400).json({ error: `Webhook Error: ${err.message}` });
-    }
-
-    switch (event.type) {
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data.object;
-        const invoiceId = paymentIntent.metadata?.invoice_id;
-        if (invoiceId) {
-          const invoice = await Invoice.findByPk(invoiceId);
-          if (invoice && invoice.payment_intent_id === paymentIntent.id) {
-            await invoice.update({
-              status: 'paid',
-              paid_at: new Date(),
-              paid_amount: invoice.total_amount,
-              payment_method: 'stripe',
-              payment_provider: 'stripe',
-              transaction_id: paymentIntent.id,
-              confirmed_at: new Date(),
-              confirmed_by: 0
-            });
-            await systemLogger.info('payment', 'stripe-webhook', `Invoice ${invoice.invoice_number} auto-confirmed via Stripe`, { paymentIntentId: paymentIntent.id });
-          }
-        }
-        break;
-      }
-      case 'payment_intent.payment_failed': {
-        const paymentIntent = event.data.object;
-        const invoiceId = paymentIntent.metadata?.invoice_id;
-        if (invoiceId) {
-          const invoice = await Invoice.findByPk(invoiceId);
-          if (invoice) {
-            await invoice.update({
-              payment_notes: `Stripe payment failed: ${paymentIntent.last_payment_error?.message || 'Unknown error'}`
-            });
-            await systemLogger.warn('payment', 'stripe-webhook', `Payment failed: ${invoice.invoice_number}`, {
-              paymentIntentId: paymentIntent.id, error: paymentIntent.last_payment_error?.message
-            });
-          }
-        }
-        break;
-      }
-    }
-
-    res.json({ received: true });
-  } catch (error) {
-    console.error('Stripe webhook error:', error);
-    await systemLogger.error('payment', 'stripe-webhook', 'Webhook handler error', { error: error.message });
-    res.status(500).json({ error: 'Webhook handler error' });
-  }
-});
-
-// PayPal Webhook - MUST be before express.json() for raw body verification
-app.post('/api/webhooks/paypal', express.raw({ type: 'application/json' }), async (req, res) => {
-  const systemLogger = require('./utils/systemLogger');
-  try {
-    const Invoice = require('./models/Invoice');
-    const { getWebhookIdForIssuer, getPayPalConfigForIssuer } = require('./utils/paypalService');
-
-    const rawBody = req.body.toString();
-    const event = JSON.parse(rawBody);
-
-    // ========================================
-    // PayPal Webhook Signature Verification
-    // ========================================
-    const webhookId = await getWebhookIdForIssuer('system_admin', null);
-    if (webhookId) {
-      const transmissionId = req.headers['paypal-transmission-id'];
-      const transmissionTime = req.headers['paypal-transmission-time'];
-      const transmissionSig = req.headers['paypal-transmission-sig'];
-      const certUrl = req.headers['paypal-cert-url'];
-      const authAlgo = req.headers['paypal-auth-algo'];
-
-      if (!transmissionId || !transmissionTime || !transmissionSig || !certUrl) {
-        await systemLogger.error('security', 'paypal-webhook', 'Missing PayPal signature headers');
-        return res.status(400).json({ error: 'Missing PayPal signature headers' });
-      }
-
-      // Verify signature via PayPal API
-      try {
-        const config = await getPayPalConfigForIssuer('system_admin', null);
-        const baseUrl = config.sandbox !== false
-          ? 'https://api-m.sandbox.paypal.com'
-          : 'https://api-m.paypal.com';
-
-        // Get access token
-        const tokenRes = await fetch(`${baseUrl}/v1/oauth2/token`, {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Basic ' + Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64'),
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: 'grant_type=client_credentials'
-        });
-        const tokenData = await tokenRes.json();
-
-        if (!tokenData.access_token) {
-          await systemLogger.error('security', 'paypal-webhook', 'Failed to get PayPal access token for verification');
-          return res.status(500).json({ error: 'Verification failed' });
-        }
-
-        // Verify webhook signature
-        const verifyRes = await fetch(`${baseUrl}/v1/notifications/verify-webhook-signature`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${tokenData.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            auth_algo: authAlgo,
-            cert_url: certUrl,
-            transmission_id: transmissionId,
-            transmission_sig: transmissionSig,
-            transmission_time: transmissionTime,
-            webhook_id: webhookId,
-            webhook_event: event
-          })
-        });
-        const verifyData = await verifyRes.json();
-
-        if (verifyData.verification_status !== 'SUCCESS') {
-          await systemLogger.error('security', 'paypal-webhook', 'Webhook signature verification FAILED', {
-            status: verifyData.verification_status
-          });
-          return res.status(400).json({ error: 'Webhook signature verification failed' });
-        }
-      } catch (verifyError) {
-        await systemLogger.error('security', 'paypal-webhook', 'Signature verification error', { error: verifyError.message });
-        return res.status(400).json({ error: 'Signature verification error' });
-      }
-    } else {
-      // No webhookId configured — log warning but still process (graceful degradation)
-      await systemLogger.warn('payment', 'paypal-webhook', 'No webhookId configured — processing without signature verification');
-    }
-
-    // ========================================
-    // Process webhook event
-    // ========================================
-    switch (event.event_type) {
-      case 'PAYMENT.CAPTURE.COMPLETED': {
-        const resource = event.resource;
-        const invoiceId = resource.custom_id;
-        if (invoiceId) {
-          const invoice = await Invoice.findByPk(invoiceId);
-          if (invoice && invoice.payment_provider === 'paypal' && invoice.status !== 'paid') {
-            await invoice.update({
-              status: 'paid',
-              paid_at: new Date(),
-              paid_amount: invoice.total_amount,
-              payment_method: 'paypal',
-              payment_provider: 'paypal',
-              transaction_id: resource.id,
-              confirmed_at: new Date(),
-              confirmed_by: 0
-            });
-            await systemLogger.info('payment', 'paypal-webhook',
-              `Invoice ${invoice.invoice_number} auto-confirmed via PayPal webhook`,
-              { captureId: resource.id });
-          }
-        }
-        break;
-      }
-      case 'PAYMENT.CAPTURE.DENIED':
-      case 'PAYMENT.CAPTURE.DECLINED': {
-        const resource = event.resource;
-        const invoiceId = resource.custom_id;
-        if (invoiceId) {
-          const invoice = await Invoice.findByPk(invoiceId);
-          if (invoice) {
-            await invoice.update({
-              payment_notes: `PayPal payment denied: ${resource.status_details?.reason || 'Unknown error'}`
-            });
-            await systemLogger.warn('payment', 'paypal-webhook',
-              `Payment denied: ${invoice.invoice_number}`,
-              { captureId: resource.id, reason: resource.status_details?.reason });
-          }
-        }
-        break;
-      }
-    }
-
-    res.json({ received: true });
-  } catch (error) {
-    console.error('PayPal webhook error:', error);
-    const systemLogger = require('./utils/systemLogger');
-    await systemLogger.error('payment', 'paypal-webhook', 'Webhook handler error', { error: error.message });
-    res.status(500).json({ error: 'Webhook handler error' });
-  }
-});
 
 // Sprint 7: Carrier Webhook - MUST be before express.json() for HMAC raw body verification
 app.use('/api/carrier-webhooks/:carrier_code',
@@ -435,6 +227,7 @@ const adminSettingsRouter = require('./routes/admin-settings');
 const addressSuggestionsRouter = require('./routes/address-suggestions');
 const schedulerRunsRouter = require('./routes/scheduler-runs');
 const adminPaymentSettingsRouter = require('./routes/admin-payment-settings');
+const paymentsRouter = require('./routes/payments');
 const supportTicketsRouter = require('./routes/support-tickets');
 const operationTicketsRouter = require('./routes/operationTickets');
 const customersRouter = require('./routes/customers');
@@ -552,6 +345,7 @@ app.use('/api/admin-reports', adminReportsRouter);
 app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/address', addressSuggestionsRouter);
 app.use('/api/admin/payment-settings', adminPaymentSettingsRouter);
+app.use('/api/payments', paymentsRouter);
 app.use('/api/support-tickets', supportTicketsRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/membership', membershipRouter);

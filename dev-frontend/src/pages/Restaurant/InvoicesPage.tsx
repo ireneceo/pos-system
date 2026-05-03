@@ -31,7 +31,8 @@ import {
 } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
-import StripePaymentForm from '../../components/Invoice/StripePaymentForm';
+import HostedCheckoutLauncher from '../../components/Payment/HostedCheckoutLauncher';
+import SubscriptionPanel from '../../components/Payment/SubscriptionPanel';
 import ApplyCreditModal from '../../components/Referral/ApplyCreditModal';
 import { renderIframeToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -1170,6 +1171,10 @@ const RestaurantInvoicesPage: React.FC = () => {
 
         <Content>
           <SuspendedBanner />
+          {/* Active subscriptions + Customer Portal entry */}
+          {restaurantId && (
+            <SubscriptionPanel payerType="restaurant" payerId={restaurantId} hideWhenEmpty />
+          )}
           {/* Stats */}
           <StatsGrid>
             <StatCard>
@@ -1529,18 +1534,11 @@ const RestaurantInvoicesPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Stripe Card Payment Form */}
-                    {paymentData.paymentMethod === 'stripe' && selectedInvoice && (
-                      <StripePaymentForm
-                        invoiceId={selectedInvoice.id}
-                        onSuccess={() => {
-                          setShowPaymentSubmitModal(false);
-                          setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
-                          fetchAllInvoices();
-                          fetchInvoicesToPay();
-                          window.dispatchEvent(new Event('refreshBadgeCounts'));
-                        }}
-                        onError={() => {}}
+                    {/* Stripe / PayPal — hosted Checkout redirect */}
+                    {(paymentData.paymentMethod === 'stripe' || paymentData.paymentMethod === 'paypal') && selectedInvoice && (
+                      <HostedCheckoutLauncher
+                        invoice={selectedInvoice}
+                        gateway={paymentData.paymentMethod as 'stripe' | 'paypal'}
                       />
                     )}
 
@@ -1569,7 +1567,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                       ) : null;
                     })()}
 
-                    {/* Manual payment fields (bank_transfer, qr_payment only) */}
+                    {/* Manual payment fields (bank_transfer, qr_payment only) — hosted Stripe/PayPal redirect handles itself */}
                     {paymentData.paymentMethod && paymentData.paymentMethod !== 'stripe' && paymentData.paymentMethod !== 'paypal' && (
                       <>
                         <div style={{ padding: '12px 16px', background: '#FEF3C7', borderRadius: '8px', marginBottom: '16px', fontSize: '13px', color: '#92400E', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>

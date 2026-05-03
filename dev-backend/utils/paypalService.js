@@ -10,8 +10,13 @@ const SystemSettings = require('../models/SystemSettings');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const Restaurant = require('../models/Restaurant');
+const SupplierCompany = require('../models/SupplierCompany');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
+
+function normalizeIssuerType(t) {
+  return t === 'system_admin' ? 'system' : t;
+}
 
 /**
  * Extract PayPal config from payment_settings JSON.
@@ -32,8 +37,8 @@ function extractPayPalConfig(paymentSettings) {
  * @returns {Promise<{clientId: string, clientSecret: string, sandbox?: boolean}>}
  */
 async function getPayPalConfigForIssuer(issuerType, issuerId) {
-  switch (issuerType) {
-    case 'system_admin': {
+  switch (normalizeIssuerType(issuerType)) {
+    case 'system': {
       const settings = await SystemSettings.findOne({ where: { setting_key: PAYMENT_SETTINGS_KEY } });
       const config = extractPayPalConfig(settings?.setting_value);
       if (!config) throw new Error('PayPal is not configured for System Admin');
@@ -66,6 +71,13 @@ async function getPayPalConfigForIssuer(issuerType, issuerId) {
       }
       return { clientId, clientSecret };
     }
+    case 'supplier': {
+      const supplier = await SupplierCompany.findByPk(issuerId);
+      if (!supplier) throw new Error(`Supplier ${issuerId} not found`);
+      const config = extractPayPalConfig(supplier.payment_settings);
+      if (!config) throw new Error(`PayPal is not configured for Supplier ${issuerId}`);
+      return config;
+    }
     default:
       throw new Error(`Unknown issuer type: ${issuerType}`);
   }
@@ -75,8 +87,8 @@ async function getPayPalConfigForIssuer(issuerType, issuerId) {
  * Get PayPal client ID for frontend (safe to expose).
  */
 async function getClientIdForIssuer(issuerType, issuerId) {
-  switch (issuerType) {
-    case 'system_admin': {
+  switch (normalizeIssuerType(issuerType)) {
+    case 'system': {
       const settings = await SystemSettings.findOne({ where: { setting_key: PAYMENT_SETTINGS_KEY } });
       const ps = settings?.setting_value;
       return ps?.paypal?.clientId || null;
@@ -99,6 +111,12 @@ async function getClientIdForIssuer(issuerType, issuerId) {
         ? JSON.parse(restaurant.payment_settings) : restaurant?.payment_settings;
       return ps?.online?.config?.paypalClientId || null;
     }
+    case 'supplier': {
+      const supplier = await SupplierCompany.findByPk(issuerId);
+      const ps = typeof supplier?.payment_settings === 'string'
+        ? JSON.parse(supplier.payment_settings) : supplier?.payment_settings;
+      return ps?.paypal?.clientId || null;
+    }
     default:
       return null;
   }
@@ -108,8 +126,8 @@ async function getClientIdForIssuer(issuerType, issuerId) {
  * Get PayPal webhook ID for webhook signature verification.
  */
 async function getWebhookIdForIssuer(issuerType, issuerId) {
-  switch (issuerType) {
-    case 'system_admin': {
+  switch (normalizeIssuerType(issuerType)) {
+    case 'system': {
       const settings = await SystemSettings.findOne({ where: { setting_key: PAYMENT_SETTINGS_KEY } });
       const ps = settings?.setting_value;
       return ps?.paypal?.webhookId || null;
@@ -124,6 +142,12 @@ async function getWebhookIdForIssuer(issuerType, issuerId) {
       const foodcourt = await Foodcourt.findByPk(issuerId);
       const ps = typeof foodcourt?.payment_settings === 'string'
         ? JSON.parse(foodcourt.payment_settings) : foodcourt?.payment_settings;
+      return ps?.paypal?.webhookId || null;
+    }
+    case 'supplier': {
+      const supplier = await SupplierCompany.findByPk(issuerId);
+      const ps = typeof supplier?.payment_settings === 'string'
+        ? JSON.parse(supplier.payment_settings) : supplier?.payment_settings;
       return ps?.paypal?.webhookId || null;
     }
     default:
@@ -148,5 +172,6 @@ module.exports = {
   getPayPalConfigForIssuer,
   getClientIdForIssuer,
   getWebhookIdForIssuer,
-  createPayPalClient
+  createPayPalClient,
+  normalizeIssuerType
 };

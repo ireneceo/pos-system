@@ -73,6 +73,7 @@ import BrandInvoiceViewModal from './invoices/BrandInvoiceViewModal';
 import BrandInvoiceEditModal from './invoices/BrandInvoiceEditModal';
 import BrandInvoiceCreateModal from './invoices/BrandInvoiceCreateModal';
 import BrandInvoiceCategoryManager from './invoices/BrandInvoiceCategoryManager';
+import SubscriptionPanel from '../../components/Payment/SubscriptionPanel';
 
 const BrandInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('brand');
@@ -1356,6 +1357,9 @@ const BrandInvoicesPage: React.FC = () => {
         </Header>
         <Content>
           <SuspendedBanner />
+          {user?.brand_id && (
+            <SubscriptionPanel payerType="brand" payerId={user.brand_id} hideWhenEmpty />
+          )}
 
         <StatsGrid>
           <StatCard color="#059669"><StatValue>{totalIssuedCount}</StatValue><StatLabel>{t('brand:brandInvoicesPage.issued')}</StatLabel><StatDescription>{t('brand:brandInvoicesPage.invoicesYouSent')}</StatDescription></StatCard>

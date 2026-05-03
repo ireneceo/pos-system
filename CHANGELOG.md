@@ -6,6 +6,38 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 리퍼럴 로고 v2 + Cookie banner /referral 제외
+- `public/images/purple-referral-logo.svg` → `purple-referral-logo-v2.svg` (Cloudflare CDN 7일 캐시 우회)
+- `ReferralLayout.tsx` + `ReferralAuthLayout.tsx` import path → -v2.svg
+- `components/Common/CookieConsentBanner.tsx` isPosRoute 분기에 `/referral` 추가
+
+### Stripe/PayPal 결제 표준화 — Subscriptions API + Hosted Checkout + Customer Portal
+**Phase 1-3 (직접 cron + off_session) 폐기**. Stripe Subscriptions / PayPal Subscriptions / Hosted Checkout 표준으로 재설계.
+
+- **카드 정보 PurpleHere DB 저장 X** — Stripe Customer / PayPal Vault 에 위임, 토큰만 매핑
+- **자동 결제는 게이트웨이 위임** — Card Updater (만료 카드 자동 갱신) / Smart Retries / Dunning email / 3DS / SCA 모두 Stripe·PayPal 무료 제공
+- **사용자 셀프서비스** — Stripe Customer Portal redirect / PayPal 은 paypal.com 셀프서비스
+- **4 issuer 정합화** — System / Brand / Foodcourt / Supplier 자격증명만 보유. autoCharge 토글 4 페이지에서 제거 (구독 가입 자체가 곧 auto-charge)
+- **3 결제자 SubscriptionPanel mount** — Restaurant / Brand / Foodcourt InvoicesPage 상단에 자기 구독 카드 + Manage / Cancel
+
+#### 백엔드
+- 신규 모델: `PaymentCustomer`, `Subscription` (`payment_subscriptions`), `WebhookEvent`. Invoice 에 `gateway_session_id` + `subscription_id` 추가. Phase 1-3 잔재 컬럼 4종 (`stripe_customer_id` 외) Restaurant/Brand/Foodcourt 에서 제거
+- `services/stripeCheckoutService.js` — Customer / Subscription / Checkout (subscription · payment) / Portal / Cancel — 4 issuer 지원
+- `services/paypalCheckoutService.js` — Plan / Subscription / Order / Cancel (직접 fetch v1/billing + v2/checkout)
+- `routes/payments.js` — `POST /checkout/start`, `POST /portal/start`, `GET /subscriptions`, `POST /subscriptions/:id/cancel`, `GET /issuer-gateways`
+- `routes/webhooks-payments.js` — Stripe 5종 + PayPal 6종 + signature 검증 + WebhookEvent dedupe (event_id UNIQUE). 기존 server.js inline 제거
+- `utils/stripeService` + `utils/paypalService` — `system` alias + `supplier` issuer 추가
+- `scripts/migrate-payment-v324.js` — idempotent
+
+#### 프론트엔드
+- `components/Payment/HostedCheckoutLauncher.tsx` — hosted Checkout redirect. 기존 StripePaymentForm 분기 대체
+- `components/Payment/SubscriptionPanel.tsx` — 구독 카드 + 상태 badge 6종 + Customer Portal + Cancel
+- 4 PaymentSettings (Admin/Brand/Foodcourt/Supplier) — autoCharge 토글 제거 + 자격증명 통합
+- 3 InvoicesPage (Restaurant/Brand/Foodcourt) — SubscriptionPanel mount
+
+#### 문서
+- `docs/PAYMENT_ARCHITECTURE.md` — 결제 도메인/API/모델/Webhook/UI 명세
+
 ## [v3.23] — 2026-05-03 배포
 
 **비대 라우트 분리 + Sentry cleanup + B9 dashboard 사전 집계 + B10 Jest 27 tests + Overdue cron + UI/UX 친절도 보강 (Stripe/PayPal/SMTP 가이드 + Empty states + Mobile hints) + 백엔드 에러 응답 표준화 (fieldErrors + hint)**

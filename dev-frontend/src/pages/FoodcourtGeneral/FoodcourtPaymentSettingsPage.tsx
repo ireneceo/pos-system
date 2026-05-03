@@ -23,7 +23,6 @@ interface StripeConfig {
   publishableKey: string;
   secretKey: string;
   webhookSecret: string;
-  autoCharge: boolean;
 }
 
 interface PayPalConfig {
@@ -297,8 +296,7 @@ const defaultPaymentSettings: PaymentSettings = {
     enabled: false,
     publishableKey: '',
     secretKey: '',
-    webhookSecret: '',
-    autoCharge: false
+    webhookSecret: ''
   },
   paypal: {
     enabled: false,
@@ -711,16 +709,6 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         onChange={(e) => handleStripeChange('webhookSecret', e.target.value)}
                       />
                     </AutoSaveField>
-                  </FormGroup>
-                  <FormGroup>
-                    <CheckboxLabel>
-                      <Checkbox
-                        type="checkbox"
-                        checked={paymentSettings.stripe.autoCharge}
-                        onChange={(e) => { handleStripeChange('autoCharge', e.target.checked); setTimeout(savePaymentSettings, 0); }}
-                      />
-                      Enable auto-charge for subscription renewals
-                    </CheckboxLabel>
                   </FormGroup>
                 </MethodContent>
               )}

@@ -170,6 +170,16 @@ Invoice.init({
     allowNull: true,
     comment: 'Stripe PaymentIntent ID or PayPal Order ID'
   },
+  gateway_session_id: {
+    type: DataTypes.STRING(120),
+    allowNull: true,
+    comment: 'Stripe Checkout session id or PayPal order id (for resume / idempotency)'
+  },
+  subscription_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Subscription FK if this invoice is part of a recurring subscription cycle'
+  },
   // Payment Confirmation (by issuer)
   confirmed_by: {
     type: DataTypes.INTEGER,

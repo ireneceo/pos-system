@@ -115,6 +115,11 @@ const ReferralPayout = require('./ReferralPayout');
 const ReferralClick = require('./ReferralClick');
 const ReferralSettings = require('./ReferralSettings');
 
+// Payment gateway (v3.24+)
+const PaymentCustomer = require('./PaymentCustomer');
+const Subscription = require('./Subscription');
+const WebhookEvent = require('./WebhookEvent');
+
 // Define associations
 // Brand - Restaurant associations
 Brand.hasMany(Restaurant, { foreignKey: 'brand_id', as: 'restaurants' });
@@ -782,6 +787,10 @@ User.hasMany(ReferralCommission, { foreignKey: 'referrer_id', as: 'commissionsEa
 User.hasMany(ReferralCommission, { foreignKey: 'referred_id', as: 'commissionsTriggered' });
 Invoice.hasMany(ReferralCommission, { foreignKey: 'invoice_id', as: 'referralCommissions' });
 
+// Payment gateway associations (v3.24+)
+Invoice.belongsTo(Subscription, { foreignKey: 'subscription_id', as: 'subscription', constraints: false });
+Subscription.hasMany(Invoice, { foreignKey: 'subscription_id', as: 'invoices', constraints: false });
+
 // Wallet Transaction — wallet ledger
 ReferralWalletTransaction.belongsTo(ReferralWallet, { foreignKey: 'wallet_id', as: 'wallet' });
 ReferralWallet.hasMany(ReferralWalletTransaction, { foreignKey: 'wallet_id', as: 'transactions' });
@@ -923,5 +932,9 @@ module.exports = {
   ReferralWalletTransaction,
   ReferralPayout,
   ReferralClick,
-  ReferralSettings
+  ReferralSettings,
+  // Payment gateway (v3.24+)
+  PaymentCustomer,
+  Subscription,
+  WebhookEvent
 };

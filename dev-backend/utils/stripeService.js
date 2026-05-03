@@ -9,8 +9,14 @@ const SystemSettings = require('../models/SystemSettings');
 const Brand = require('../models/Brand');
 const Foodcourt = require('../models/Foodcourt');
 const Restaurant = require('../models/Restaurant');
+const SupplierCompany = require('../models/SupplierCompany');
 
 const PAYMENT_SETTINGS_KEY = 'payment_settings';
+
+// Normalize issuer types — accept both 'system' and legacy 'system_admin'
+function normalizeIssuerType(t) {
+  return t === 'system_admin' ? 'system' : t;
+}
 
 /**
  * Get a Stripe instance for the given issuer.
@@ -27,8 +33,8 @@ async function getStripeForIssuer(issuerType, issuerId) {
  * Get the Stripe secret key for a given issuer.
  */
 async function getSecretKeyForIssuer(issuerType, issuerId) {
-  switch (issuerType) {
-    case 'system_admin': {
+  switch (normalizeIssuerType(issuerType)) {
+    case 'system': {
       const settings = await SystemSettings.findOne({ where: { setting_key: PAYMENT_SETTINGS_KEY } });
       const ps = settings?.setting_value;
       if (!ps?.stripe?.enabled || !ps?.stripe?.secretKey) {
@@ -68,6 +74,16 @@ async function getSecretKeyForIssuer(issuerType, issuerId) {
       }
       return secretKey;
     }
+    case 'supplier': {
+      const supplier = await SupplierCompany.findByPk(issuerId);
+      if (!supplier) throw new Error(`Supplier ${issuerId} not found`);
+      const ps = typeof supplier.payment_settings === 'string'
+        ? JSON.parse(supplier.payment_settings) : supplier.payment_settings;
+      if (!ps?.stripe?.enabled || !ps?.stripe?.secretKey) {
+        throw new Error(`Stripe is not configured for Supplier ${issuerId}`);
+      }
+      return ps.stripe.secretKey;
+    }
     default:
       throw new Error(`Unknown issuer type: ${issuerType}`);
   }
@@ -77,8 +93,8 @@ async function getSecretKeyForIssuer(issuerType, issuerId) {
  * Get the publishable key for a given issuer.
  */
 async function getPublishableKeyForIssuer(issuerType, issuerId) {
-  switch (issuerType) {
-    case 'system_admin': {
+  switch (normalizeIssuerType(issuerType)) {
+    case 'system': {
       const settings = await SystemSettings.findOne({ where: { setting_key: PAYMENT_SETTINGS_KEY } });
       const ps = settings?.setting_value;
       return ps?.stripe?.publishableKey || null;
@@ -101,6 +117,12 @@ async function getPublishableKeyForIssuer(issuerType, issuerId) {
         ? JSON.parse(restaurant.payment_settings) : restaurant?.payment_settings;
       return ps?.online?.config?.stripePublicKey || null;
     }
+    case 'supplier': {
+      const supplier = await SupplierCompany.findByPk(issuerId);
+      const ps = typeof supplier?.payment_settings === 'string'
+        ? JSON.parse(supplier.payment_settings) : supplier?.payment_settings;
+      return ps?.stripe?.publishableKey || ps?.stripe?.publicKey || null;
+    }
     default:
       return null;
   }
@@ -110,8 +132,8 @@ async function getPublishableKeyForIssuer(issuerType, issuerId) {
  * Get the webhook secret for a given issuer.
  */
 async function getWebhookSecretForIssuer(issuerType, issuerId) {
-  switch (issuerType) {
-    case 'system_admin': {
+  switch (normalizeIssuerType(issuerType)) {
+    case 'system': {
       const settings = await SystemSettings.findOne({ where: { setting_key: PAYMENT_SETTINGS_KEY } });
       const ps = settings?.setting_value;
       return ps?.stripe?.webhookSecret || null;
@@ -128,6 +150,12 @@ async function getWebhookSecretForIssuer(issuerType, issuerId) {
         ? JSON.parse(foodcourt.payment_settings) : foodcourt?.payment_settings;
       return ps?.stripe?.webhookSecret || null;
     }
+    case 'supplier': {
+      const supplier = await SupplierCompany.findByPk(issuerId);
+      const ps = typeof supplier?.payment_settings === 'string'
+        ? JSON.parse(supplier.payment_settings) : supplier?.payment_settings;
+      return ps?.stripe?.webhookSecret || null;
+    }
     default:
       return null;
   }
@@ -135,6 +163,8 @@ async function getWebhookSecretForIssuer(issuerType, issuerId) {
 
 module.exports = {
   getStripeForIssuer,
+  getSecretKeyForIssuer,
   getPublishableKeyForIssuer,
-  getWebhookSecretForIssuer
+  getWebhookSecretForIssuer,
+  normalizeIssuerType
 };

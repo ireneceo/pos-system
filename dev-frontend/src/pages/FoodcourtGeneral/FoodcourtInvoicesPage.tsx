@@ -51,6 +51,7 @@ import {
 import { FoodcourtInvoiceViewModal } from './invoices';
 import { FoodcourtInvoiceEditModal } from './invoices';
 import { FoodcourtInvoiceCreateModal } from './invoices';
+import SubscriptionPanel from '../../components/Payment/SubscriptionPanel';
 
 const FoodcourtInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('foodcourt');
@@ -1250,6 +1251,9 @@ const FoodcourtInvoicesPage: React.FC = () => {
         </Header>
         <Content>
           <SuspendedBanner />
+          {user?.foodcourt_id && (
+            <SubscriptionPanel payerType="foodcourt" payerId={user.foodcourt_id} hideWhenEmpty />
+          )}
 
         <Tabs>
           <Tab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
