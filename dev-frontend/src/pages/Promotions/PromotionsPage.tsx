@@ -417,6 +417,8 @@ const CouponsPage: React.FC = () => {
   const restaurantId = user?.restaurantId;
   const currency = operationSettings?.currency || 'MYR';
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  // Map: coupon_id → array of External QR names that link to it (for "Linked to" badges)
+  const [couponLinkedQRs, setCouponLinkedQRs] = useState<Record<number, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -450,9 +452,23 @@ const CouponsPage: React.FC = () => {
   useEffect(() => {
     if (restaurantId) {
       fetchCoupons();
+      fetchCouponLinkedQRs();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurantId]);
+
+  const fetchCouponLinkedQRs = async () => {
+    try {
+      const token = getAuthToken();
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/restaurants/${restaurantId}/coupons-linked-qrs`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!res.ok) return;
+      const json = await res.json();
+      setCouponLinkedQRs(json?.data?.byCouponId || {});
+    } catch { /* ignore — badge optional */ }
+  };
 
   const fetchCoupons = async () => {
     try {
@@ -725,7 +741,14 @@ const CouponsPage: React.FC = () => {
                     const status = getCouponStatus(coupon);
                     return (
                       <tr key={coupon.id}>
-                        <TableCell style={{ fontWeight: 600 }}>{coupon.code}</TableCell>
+                        <TableCell style={{ fontWeight: 600 }}>
+                          {coupon.code}
+                          {(couponLinkedQRs[coupon.id] || []).length > 0 && (
+                            <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0F0FF', padding: '2px 8px', borderRadius: '10px', display: 'inline-block' }}>
+                              Linked to: {couponLinkedQRs[coupon.id].join(', ')}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{coupon.name || '-'}</TableCell>
                         <TableCell>{formatDiscount(coupon)}</TableCell>
                         <TableCell>
@@ -999,7 +1022,11 @@ const CouponsPage: React.FC = () => {
       <ConfirmModal
         isOpen={showDeleteConfirm}
         title="Delete Coupon"
-        message={`Are you sure you want to delete coupon "${deletingCoupon?.code}"?`}
+        message={
+          deletingCoupon && (couponLinkedQRs[deletingCoupon.id] || []).length > 0
+            ? `Coupon "${deletingCoupon.code}" is linked to External QR(s): ${couponLinkedQRs[deletingCoupon.id].join(', ')}. Deleting will remove the partner discount from those QRs (orders made via those QRs will no longer auto-apply this discount). Continue?`
+            : `Are you sure you want to delete coupon "${deletingCoupon?.code}"?`
+        }
         onConfirm={confirmDeleteCoupon}
         onCancel={() => { setShowDeleteConfirm(false); setDeletingCoupon(null); }}
         confirmText="Delete"

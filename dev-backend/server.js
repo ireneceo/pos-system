@@ -336,6 +336,9 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/categories', categoriesRouter);
+// External QR ↔ Coupon mapping — must mount BEFORE restaurantsRouter (inventory-core uses
+// router.use(authenticateToken) which would otherwise gate all /api/restaurants/* requests)
+app.use('/api/restaurants', require('./routes/external-qrs').router);
 app.use('/api/restaurants', restaurantsRouter);
 app.use('/api/restaurant', restaurantsRouter); // Support singular form for backward compatibility
 app.use('/api/plans', plansRouter);

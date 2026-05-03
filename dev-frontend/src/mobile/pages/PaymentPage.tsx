@@ -542,6 +542,15 @@ const PaymentPage: React.FC = () => {
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState('');
+  // Partner coupon — auto-applied via External QR (?table=Hotel ABC). When set, manual coupon
+  // input is locked and the partner discount is recomputed every time subtotal changes.
+  const [partnerCoupon, setPartnerCoupon] = useState<{
+    qrName: string;
+    code: string;
+    name: string | null;
+    type: string;
+    value: number;
+  } | null>(null);
 
   // Delivery address state
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -955,6 +964,68 @@ const PaymentPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStore?.id]);
+
+  // Partner coupon auto-detect: External QR (?table=...) → linked Coupon → auto-apply.
+  // Runs once when restaurant + table become known.
+  React.useEffect(() => {
+    const rid = currentStore?.id;
+    const tableName = selectedTable;
+    if (!rid || !tableName) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${process.env.REACT_APP_API_URL}/api/restaurants/${rid}/external-qr-coupon?name=${encodeURIComponent(tableName)}`
+        );
+        if (!res.ok) return;
+        const json = await res.json();
+        if (cancelled) return;
+        if (json?.data?.linked && json.data.coupon) {
+          const c = json.data.coupon;
+          setPartnerCoupon({
+            qrName: tableName,
+            code: c.code,
+            name: c.name || null,
+            type: c.type,
+            value: Number(c.value)
+          });
+          setCouponCode(c.code);
+        } else {
+          setPartnerCoupon(null);
+        }
+      } catch { /* ignore — fall back to manual coupon flow */ }
+    })();
+    return () => { cancelled = true; };
+  }, [currentStore?.id, selectedTable]);
+
+  // Recompute partner-coupon discount whenever subtotal / orderType / customer changes
+  React.useEffect(() => {
+    if (!partnerCoupon || !currentStore?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await validateCouponAPI(
+          partnerCoupon.code,
+          parseInt(currentStore.id as string, 10),
+          subtotal,
+          orderType,
+          currentCustomer?.id ? parseInt(currentCustomer.id as string, 10) : undefined
+        );
+        if (cancelled) return;
+        if (result.valid && result.data) {
+          setCouponDiscount(result.data.discountAmount);
+          setCouponError('');
+        } else {
+          setCouponDiscount(0);
+          setCouponError(result.error || 'Partner discount unavailable for this order');
+        }
+      } catch {
+        if (!cancelled) setCouponDiscount(0);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partnerCoupon?.code, subtotal, orderType, currentCustomer?.id, currentStore?.id]);
 
   // Load delivery zones from operationSettings
   React.useEffect(() => {
@@ -2262,7 +2333,33 @@ const PaymentPage: React.FC = () => {
 
         <Section>
           <SectionTitle>Coupon Code</SectionTitle>
-          {couponDiscount > 0 ? (
+          {partnerCoupon ? (
+            /* Partner discount — auto-applied via External QR. Not removable. */
+            <div style={{
+              padding: '14px 16px',
+              background: '#F0F0FF',
+              border: '1px solid #C7D2FE',
+              borderRadius: '8px'
+            }}>
+              <div style={{ fontWeight: 600, color: '#3730A3', fontSize: '14px', marginBottom: '4px' }}>
+                {partnerCoupon.qrName} partner discount
+              </div>
+              <div style={{ fontSize: '13px', color: '#4338CA', lineHeight: 1.5 }}>
+                {partnerCoupon.type === 'percentage'
+                  ? `${partnerCoupon.value}% off`
+                  : `${formatCurrency(partnerCoupon.value, currency)} off`}
+                {' '}automatically applied
+                {couponDiscount > 0 ? (
+                  <> — saving {formatCurrency(couponDiscount, currency)}</>
+                ) : couponError ? (
+                  <> — {couponError}</>
+                ) : null}
+              </div>
+              <div style={{ marginTop: '6px', fontSize: '12px', color: '#6B7C93' }}>
+                Manual coupon input disabled while partner discount is in effect.
+              </div>
+            </div>
+          ) : couponDiscount > 0 ? (
             /* Show applied coupon with remove button */
             <div style={{
               display: 'flex',
