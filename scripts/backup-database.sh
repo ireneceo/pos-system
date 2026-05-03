@@ -50,20 +50,41 @@ fi
 
 # 14일 이상 된 백업 삭제
 find $BACKUP_DIR/daily/ -name "dev_db_*.sql.gz" -mtime +14 -delete
+find $BACKUP_DIR/daily/ -name "dev_uploads_*.tar.gz" -mtime +14 -delete
 # 크로스 백업도 14일 이상 삭제
 find /home/irene/backups/cross-backup/production-pos/ -name "db_*.sql.gz" -mtime +14 -delete 2>/dev/null
+find /home/irene/backups/cross-backup/production-pos/ -name "uploads_*.tar.gz" -mtime +14 -delete 2>/dev/null
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Cleaned up backups older than 14 days" >> $LOG_FILE
+
+# Uploads 백업 (이미지/계약서/첨부파일)
+UPLOADS_BACKUP="$BACKUP_DIR/daily/dev_uploads_${DATE}.tar.gz"
+if [ -d /var/www/uploads ]; then
+    tar czf $UPLOADS_BACKUP -C /var/www uploads/ 2>/dev/null
+    if [ $? -eq 0 ] && [ -s $UPLOADS_BACKUP ]; then
+        UPLOADS_SIZE=$(du -h $UPLOADS_BACKUP | cut -f1)
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - ✓ Uploads backup: $UPLOADS_BACKUP ($UPLOADS_SIZE)" >> $LOG_FILE
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') - ✗ Uploads backup failed!" >> $LOG_FILE
+    fi
+fi
 
 # 백업 디렉토리 총 용량
 TOTAL_SIZE=$(du -sh $BACKUP_DIR | cut -f1)
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Total backup size: $TOTAL_SIZE" >> $LOG_FILE
 echo "$(date '+%Y-%m-%d %H:%M:%S') - Dev DB backup completed!" >> $LOG_FILE
 
-# 크로스 백업: 개발 DB 백업을 운영서버로 전송
+# 크로스 백업: 개발 DB + uploads 백업을 운영서버로 전송
 CROSS_BACKUP_DIR="irene@87.106.78.146:/home/irene/backups/cross-backup/dev"
 scp -o ConnectTimeout=10 -q $BACKUP_FILE $CROSS_BACKUP_DIR/ 2>/dev/null
-if [ $? -eq 0 ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - ✓ Cross-backup sent to production server" >> $LOG_FILE
+DB_SCP=$?
+if [ -s "$UPLOADS_BACKUP" ]; then
+    scp -o ConnectTimeout=30 -q $UPLOADS_BACKUP $CROSS_BACKUP_DIR/ 2>/dev/null
+    UPLOADS_SCP=$?
 else
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - ⚠️ Cross-backup to production server failed" >> $LOG_FILE
+    UPLOADS_SCP=0
+fi
+if [ $DB_SCP -eq 0 ] && [ $UPLOADS_SCP -eq 0 ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - ✓ Cross-backup sent to production server (DB + uploads)" >> $LOG_FILE
+else
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - ⚠️ Cross-backup to production server failed (DB=$DB_SCP, uploads=$UPLOADS_SCP)" >> $LOG_FILE
 fi
