@@ -1,9 +1,26 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-03 (v3.24 운영 배포 — 결제 시스템 표준화 + External QR ↔ Coupon 매핑)
+> **최종 업데이트:** 2026-05-03 (v3.24 + backstage cleanup 후속 배포 — 데모 5 역할 / PlanBadge / demo-login 보안 / Pricing-Features 보강)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.24** (2026-05-03 운영 배포)
+
+## ✅ 완료: v3.24 backstage cleanup 후속 배포 (2026-05-03, 버전 미상승)
+
+**데모 5 역할 정합화 + 헤더 PlanBadge + demo-login 보안 (번들 password 0건) + Pricing/Features 누락 32 모듈 보강**
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 데모 5 역할 추가 + 순서 | RA / BG / FG / Multi-Owner / Supplier (foodcourt + owner 신규 user 생성) | ✓ |
+| Multi-Restaurant Owner 표시 | utils/roleDisplay.ts 헬퍼, Login/Demo 카드 적용 | ✓ |
+| App.tsx Supplier default redirect | /pos/supplier/dashboard case 추가 (이전 누락) | ✓ |
+| 헤더 PlanBadge | components/Layout/PlanBadge.tsx — useAllowedRoutes planType 표시 | ✓ |
+| 5 역할 enterprise fallback | Owner / Supplier 의 demo fallback 정정 (Owner Enterprise 13 모듈 / Supplier Advanced 13 모듈) | ✓ |
+| demo-login endpoint | POST /api/auth/demo-login + DEMO_KEY_TO_EMAIL 화이트리스트 + is_demo/is_test 가드 | ✓ |
+| 번들 password 평문 제거 | Demo@2024 / Test1234 / 8 emails 모두 main.js 에서 0 file | ✓ |
+| Pricing 19 누락 매핑 | MODULE_NAMES 에 supplier 13 + fc 2 + buyer 4 추가 | ✓ |
+| Features 13 누락 entry | fc 2 + supplier 7 + buyer 4 (B2B Procurement 카테고리 신규) | ✓ |
+| 운영 DB demo user 정합화 | demo-foodcourt + demo-owner + demo-supplier 5종 운영 생성 | ✓ |
 
 ## ✅ 완료: v3.24 운영 배포 (2026-05-03)
 

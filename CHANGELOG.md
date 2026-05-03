@@ -6,6 +6,16 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 데모 5 역할 정합화 + 헤더 PlanBadge + Pricing/Features 누락 32 보강 (2026-05-03)
+- **데모 5 계정**: Foodcourt General + Multi-Restaurant Owner 신규 user 생성 (foodcourt entity + supplier company 포함). Login/Demo 카드 5개 + 순서 (RA / BG / FG / Multi-Owner / Supplier)
+- **Multi-Restaurant Owner 표시**: `utils/roleDisplay.ts` 헬퍼 (ENUM 그대로, 표시만 변경)
+- **App.tsx Supplier default redirect**: `/pos/supplier/dashboard` case 추가 (이전 누락)
+- **헤더 PlanBadge**: `components/Layout/PlanBadge.tsx` — useAllowedRoutes planType 기반 보라 그라데이션 pill (대시보드 우측 상단)
+- **5 역할 enterprise fallback**: Owner `Owner Enterprise` (13 modules) / Supplier `Supplier Advanced` (13 modules) 정정. RA/Brand/Foodcourt 는 이미 enterprise fallback
+- **Pricing 19 누락 모듈 매핑 추가**: supplier 13 + fc 2 + buyer 4
+- **Features 13 누락 entry 추가**: fc 2 + supplier 7 + buyer 4 (B2B Procurement 카테고리 신규)
+- **운영 DB demo user 5종 정합**: foodcourt + owner + supplier 신규 생성 (Demo Hawker Center foodcourt id=1, Demo Supplier Co. supplier_company id=1)
+
 ### LoginPage / DemoPage 보안 정리 — 번들에서 평문 비밀번호/이메일 완전 제거
 - **POST `/api/auth/demo-login`** (신규) — 화이트리스트 key 기반 (`demo_brand_general`, `test_restaurant_admin` 등 8 entries). 서버 가드: 매핑된 user 의 `is_demo` OR `is_test === true` 만 토큰 발급. rate limit 30/min
 - `services/authService.js` — `loginAsDemo(key)` + `DEMO_KEY_TO_EMAIL` 화이트리스트

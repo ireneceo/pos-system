@@ -1,7 +1,44 @@
 # 데모/테스트 계정 관리 가이드
 
-> **최종 업데이트:** 2026-03-18
+> **최종 업데이트:** 2026-05-03
 > **목적:** 데모/테스트 계정이 실제 매출 통계에 영향을 주지 않도록 관리
+
+## 2026-05-03 업데이트 — 5 데모 역할 + demo-login endpoint + enterprise fallback
+
+### 5 데모 계정 (DEMO_KEY_TO_EMAIL — `services/authService.js`)
+
+| key | email | role | 표시명 |
+|-----|-------|------|------|
+| `demo_restaurant_admin` | demo-restaurant@purplehere.com | Restaurant Admin | Restaurant Admin |
+| `demo_brand_general`    | demo-brand@purplehere.com    | Brand General    | Brand General |
+| `demo_foodcourt_general`| demo-foodcourt@purplehere.com| Foodcourt General | Foodcourt General |
+| `demo_multi_owner`      | demo-owner@purplehere.com    | Restaurant Owner | **Multi-Restaurant Owner** (display) |
+| `demo_supplier_admin`   | demo-supplier@purplehere.com | Supplier Admin   | Supplier Admin |
+
+순서: Restaurant → Brand → Foodcourt → Multi-Owner → Supplier (Login/Demo 카드 정합).
+
+### demo-login endpoint — 번들 password 0건
+
+`POST /api/auth/demo-login { key }` — 비밀번호 없이 quick login.
+
+- 화이트리스트 매핑 (`DEMO_KEY_TO_EMAIL`) — 알 수 없는 key → 400 INVALID_DEMO_KEY
+- 가드: 매핑된 user 의 `is_demo === true` OR `is_test === true` 만 토큰 발급. 그 외 → 403 NOT_DEMO_ACCOUNT
+- Rate limit 30/min
+- 결과: LoginPage / DemoPage 의 카드 클릭 시 password 코드가 main.js 에 0 file 노출
+
+### Enterprise fallback (모든 모듈 활성)
+
+`/api/.../allowed-routes` 엔드포인트가 `is_demo=true` 인 경우 자동으로 최고 plan 사용:
+
+| 역할 | display_name | 모듈 수 |
+|------|-------------|--------|
+| Restaurant | `Enterprise Plan` | 25 |
+| Brand | `Brand Enterprise` | 24 |
+| Foodcourt | `Foodcourt Enterprise` | 25 |
+| Owner | `Owner Enterprise` | 13 |
+| Supplier | `Supplier Advanced` | 13 (실제 최고 — Enterprise 없음) |
+
+헤더 PlanBadge (`components/Layout/PlanBadge.tsx`) 가 우측 상단에 표시.
 
 ---
 
