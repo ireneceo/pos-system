@@ -6,6 +6,15 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### LoginPage / DemoPage 보안 정리 — 번들에서 평문 비밀번호/이메일 완전 제거
+- **POST `/api/auth/demo-login`** (신규) — 화이트리스트 key 기반 (`demo_brand_general`, `test_restaurant_admin` 등 8 entries). 서버 가드: 매핑된 user 의 `is_demo` OR `is_test === true` 만 토큰 발급. rate limit 30/min
+- `services/authService.js` — `loginAsDemo(key)` + `DEMO_KEY_TO_EMAIL` 화이트리스트
+- `AuthContext.tsx` — `loginAsDemo(key)` context 함수
+- `LoginPage.tsx` / `DemoPage.tsx` — `DEMO_ACCOUNTS` / `TEST_ACCOUNTS` 배열에서 `email`/`password` 필드 완전 제거. `key` 필드만 전송
+- **UI 노출 제거** — Demo/Test 카드에서 Email/Pass 텍스트 표시 제거 (역할 + 설명만)
+- **번들 검증** — Demo@2024 / Test1234 / 8 emails 모두 main.js 에서 0 file (검색 불가)
+- **DB 정정** — demo-supplier / admin@kdine / staff@kdine 3 계정 is_test=true 마킹 (가드 통과 위해)
+
 ## [v3.24] — 2026-05-03 배포
 
 **결제 시스템 표준화 (Stripe/PayPal Subscriptions + Hosted Checkout + Customer Portal) + External QR ↔ Coupon 자동 매핑 (협력업체 할인) + PayPal 가이드 보완 + 리퍼럴 로고 v2**
