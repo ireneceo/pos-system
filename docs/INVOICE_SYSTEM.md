@@ -1,7 +1,12 @@
 # 인보이스 시스템 기술 문서
 
-> **최종 업데이트:** 2026-04-26 (Sprint 4 — Supply Chain Trade Invoice 추가)
+> **최종 업데이트:** 2026-05-04 (BG/FG → Restaurant Trade Billing 동급 확장)
 > **상태:** 구현 완료 (수동 결제 확인 방식, 결제 게이트웨이 미연동)
+>
+> **2026-05-04 추가**: BG/FG → Restaurant Trade Billing 시스템 — [BG_FG_TRADE_BILLING.md](./BG_FG_TRADE_BILLING.md)
+> - SOA scheduler가 `Restaurant.{brand,foodcourt}_billing_terms` 도 처리 (3 평행 루프, supplier와 동일 SOA invoice 발행 + parent_soa_invoice_id cascade)
+> - `/api/purchase-invoices/soa/current` (RA buyer-side) 가 `issuer_type ['supplier','brand','foodcourt']` 통합 처리
+> - PO 생성 시 `checkCreditLimit()` 강제 차단 (`code:'CREDIT_LIMIT_EXCEEDED'`)
 >
 > **Sprint 4 (2026-04-26) 추가**: Supply Chain Trade Invoice 자동 발행 시스템.
 > - `invoice_category='trade'` + `issuer_type IN ('supplier','brand','foodcourt','system_admin')` 활용

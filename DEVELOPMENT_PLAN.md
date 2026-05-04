@@ -1,9 +1,46 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-03 (v3.24 + backstage cleanup 후속 배포 — 데모 5 역할 / PlanBadge / demo-login 보안 / Pricing-Features 보강)
+> **최종 업데이트:** 2026-05-04 (v3.24 BG/FG → Restaurant Trade Billing 시스템 운영 배포 — 버전 미상승)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.24** (2026-05-03 운영 배포)
+> **현재 버전:** **v3.24** (2026-05-04 운영 배포)
+
+## ✅ 완료: v3.24 BG/FG → Restaurant Trade Billing (2026-05-04, 버전 미상승)
+
+**Supplier SOA 패턴(`SupplierContract.payment_terms`)을 Brand General/Foodcourt General seller 측에 동급 확장. BG가 자기 산하 가맹점에, FG가 자기 입점 매장에 monthly SOA 청구 가능. credit_limit 강제 차단 포함.**
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Restaurant 모델 컬럼 추가 | `brand_billing_terms` / `foodcourt_billing_terms` JSON nullable. 운영 DB 자동 sync 적용. | ✅ |
+| 공통 검증 헬퍼 추출 | `utils/paymentTerms.js` — `validatePaymentTerms` / `buildPaymentTerms` / `VALID_INVOICE_CYCLES`. supplier.js + entity-billing.js 공유. | ✅ |
+| BG/FG billing-terms PUT/GET | `routes/entity-billing.js` 신규. brandScope/foodcourtScope 검증, cross-tenant 404. | ✅ |
+| BG SOA 흐름 endpoint | `routes/brand-soa.js` — `/soa/current` + `/soa/:id/remind` + `/trade-invoices`. | ✅ |
+| FG SOA 흐름 endpoint | `routes/foodcourt-soa.js` — 동일 패턴. | ✅ |
+| Trade invoice 자동 발행 시 결제조건 적용 | `services/purchaseOrderService.resolvePaymentTerms()` 에 brand/foodcourt 분기. `Restaurant.{brand,foodcourt}_billing_terms` lookup. | ✅ |
+| SOA scheduler 3 평행 처리 | `services/soaScheduler.js` `issueSoaForPair()` 헬퍼 추출 + supplier/brand/foodcourt 3 평행 루프. invoice_category='soa' + parent_soa_invoice_id cascade. | ✅ |
+| RA 통합 SOA bundle | `routes/purchase-invoices.js` `/soa/current` 가 issuer_type ['supplier','brand','foodcourt'] 모두 처리, seller_type 필드 추가. | ✅ |
+| Credit limit 강제 차단 | `routes/purchase-orders-crud.js` `checkCreditLimit()` — 미수금+신규 합계 한도 초과 시 400 + `code:'CREDIT_LIMIT_EXCEEDED'` + hint. NULL/0 통과. SOA child 중복 카운트 방지. | ✅ |
+| BG/FG Restaurants list 수정 | `pages/Manager/RestaurantsPage.tsx` 매장 카드에 Billing 항목 + Edit 트리거. | ✅ |
+| BillingTermsModal 공용 컴포넌트 | `components/Billing/BillingTermsModal.tsx` — BG/FG 양쪽 사용 (entityType prop). reset to default 액션 포함. | ✅ |
+| BG/FG TradeInvoicesPage 신규 | `BrandTradeInvoicesPage.tsx` (entityType prop) + `FoodcourtTradeInvoicesPage.tsx` (wrapper). Supplier 패턴 100% 복제. | ✅ |
+| 사이드바 + 라우트 + ProtectedRoute | MainLayout BG/FG `Plans & Payments` NavItem 추가. App.tsx lazy + Route. ProtectedRoute 화이트리스트. | ✅ |
+| i18n 4 언어 신규 | `billing.json` 27 키 × 4언어 + `brand.tradeInvoices.*` 21 키 × 4언어 + `nav.tradeInvoices` × 4언어. | ✅ |
+| 설계 문서 | `/var/www/docs/BG_FG_TRADE_BILLING.md` 1~4단계 통합. | ✅ |
+
+### 검증
+- 통합 API 테스트: 25/25 PASS (Billing CRUD 6 / Security 6 / Validation 3 / Response 3 / FG mirror 2 / Credit limit 5)
+- credit_limit 단위 테스트: 9/9 PASS (NULL/0 통과 / 부분결제 / SOA child 중복 방지)
+- health-check regression: 73/73 PASS
+- state hydration: 0 warnings
+- 빌드: exit 0
+
+### 운영 배포 검증 (2026-05-04 07:46 UTC)
+- 운영 DB 컬럼 자동 추가 확인 (`SHOW COLUMNS` 양쪽 JSON nullable)
+- `/api/{brand|foodcourt}/soa/current` + `billing-terms` anon 401 정상
+- 운영 i18n 4언어 200
+- Backup: `/var/www/backups/20260504_074323`
+
+---
 
 ## ✅ 완료: v3.24 backstage cleanup 후속 배포 (2026-05-03, 버전 미상승)
 

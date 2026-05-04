@@ -1,0 +1,35 @@
+{
+  "modal": {
+    "title": "Edit Terma Bil",
+    "restaurantLabel": "Restoran",
+    "terms": "Terma Pembayaran",
+    "invoiceCycle": "Kitaran Invois",
+    "paymentDueDay": "Hari Tamat Bayar (1-31)",
+    "currency": "Mata Wang",
+    "creditLimit": "Had Kredit (pilihan)",
+    "notes": "Nota (pilihan)"
+  },
+  "terms": {
+    "COD": "Bayar Semasa Hantar",
+    "NET_15": "Net 15 hari",
+    "NET_30": "Net 30 hari",
+    "NET_60": "Net 60 hari"
+  },
+  "cycle": {
+    "immediate": "Serta-merta (per-invois)",
+    "monthly_soa": "Penyata Bulanan (SOA)"
+  },
+  "column": {
+    "title": "Bil Dagangan",
+    "editAction": "Bil"
+  },
+  "reset": {
+    "action": "Set semula ke lalai",
+    "confirm": "Set semula ke lalai (Serta-merta, tiada SOA)?"
+  },
+  "errors": {
+    "invalidDueDay": "Hari tamat bayar mesti 1-31",
+    "invalidCreditLimit": "Had kredit tidak sah",
+    "saveFailed": "Gagal menyimpan"
+  }
+}

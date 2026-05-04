@@ -15,6 +15,8 @@ import DateRangeField from '../../components/Common/DateRangeField';
 import { AddressFields } from '../../components/Form';
 import type { Address } from '../../utils/formatAddress';
 import { useTranslation } from 'react-i18next';
+import BillingTermsModal, { formatTermsSummary } from '../../components/Billing/BillingTermsModal';
+import type { PaymentTerms } from '../../components/Billing/BillingTermsModal';
 
 import { getAuthToken } from '../../utils/auth';
 interface Restaurant extends Omit<BaseRestaurant, 'status'> {
@@ -30,6 +32,10 @@ interface Restaurant extends Omit<BaseRestaurant, 'status'> {
   monthlyFee: number;
   nextPayment: string;
   brand_id?: number;
+  foodcourt_id?: number;
+  // BG/FG → Restaurant trade billing terms (see docs/BG_FG_TRADE_BILLING.md)
+  brand_billing_terms?: import('../../components/Billing/BillingTermsModal').PaymentTerms | null;
+  foodcourt_billing_terms?: import('../../components/Billing/BillingTermsModal').PaymentTerms | null;
 }
 
 const Container = styled.div`
@@ -601,6 +607,27 @@ const ManagerRestaurantsPage: React.FC = () => {
   const [editingRestaurant, setEditingRestaurant] = useState<Restaurant | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
+  // BG/FG → Restaurant trade billing terms modal
+  const [billingModalRestaurant, setBillingModalRestaurant] = useState<Restaurant | null>(null);
+  const billingEntityType: 'brand' | 'foodcourt' = (
+    user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager'
+  ) ? 'foodcourt' : 'brand';
+  const showBillingFeature = (
+    user?.role === 'Brand General' || user?.role === 'Brand Manager' ||
+    user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager'
+  );
+  const billingTermsOf = (r: Restaurant): PaymentTerms | null | undefined =>
+    billingEntityType === 'brand' ? r.brand_billing_terms : r.foodcourt_billing_terms;
+  const handleBillingSaved = (newTerms: PaymentTerms | null) => {
+    if (!billingModalRestaurant) return;
+    setRestaurants(prev => prev.map(r => {
+      if (r.id !== billingModalRestaurant.id) return r;
+      return billingEntityType === 'brand'
+        ? { ...r, brand_billing_terms: newTerms }
+        : { ...r, foodcourt_billing_terms: newTerms };
+    }));
+  };
+
   // Phase B: Contract + Plan pickers for Brand General (inline search + link)
   const [showContractPicker, setShowContractPicker] = useState(false);
   const [showPlanPicker, setShowPlanPicker] = useState(false);
@@ -777,7 +804,9 @@ const ManagerRestaurantsPage: React.FC = () => {
             branch_id: restaurant.branch_id || null,
             branch: restaurant.branch || null,
             payment_model: restaurant.payment_model || 'restaurant',
-            contract_summary: restaurant.contract_summary || null
+            contract_summary: restaurant.contract_summary || null,
+            brand_billing_terms: restaurant.brand_billing_terms ?? null,
+            foodcourt_billing_terms: restaurant.foodcourt_billing_terms ?? null
           } as any));
 
           setRestaurants(transformedRestaurants);
@@ -1033,7 +1062,9 @@ const ManagerRestaurantsPage: React.FC = () => {
             branch_id: restaurant.branch_id || null,
             branch: restaurant.branch || null,
             payment_model: restaurant.payment_model || 'restaurant',
-            contract_summary: restaurant.contract_summary || null
+            contract_summary: restaurant.contract_summary || null,
+            brand_billing_terms: restaurant.brand_billing_terms ?? null,
+            foodcourt_billing_terms: restaurant.foodcourt_billing_terms ?? null
           } as any));
           setRestaurants(transformedRestaurants);
         }
@@ -1773,8 +1804,32 @@ const ManagerRestaurantsPage: React.FC = () => {
                   </Metric>
                 </MetricsGrid>
 
+                {showBillingFeature && (
+                  ((billingEntityType === 'brand' && restaurant.brand_id) ||
+                   (billingEntityType === 'foodcourt' && restaurant.foodcourt_id)) && (
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '8px 0', marginTop: 8, marginBottom: 4,
+                    borderTop: '1px dashed #F1F5F9'
+                  }}>
+                    <div style={{ fontSize: 12, color: '#6B7280' }}>
+                      {t('billing:column.title', 'Trade Billing')}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0A2540' }}>
+                      {formatTermsSummary(billingTermsOf(restaurant))}
+                    </div>
+                  </div>
+                ))}
+
                 <ActionButtons>
                   <ActionButton onClick={(e) => handleEditRestaurant(e, restaurant)}>{t('admin:restaurantsPage.edit')}</ActionButton>
+                  {showBillingFeature && (
+                    ((billingEntityType === 'brand' && restaurant.brand_id) ||
+                     (billingEntityType === 'foodcourt' && restaurant.foodcourt_id)) && (
+                    <ActionButton onClick={(e) => { e.stopPropagation(); setBillingModalRestaurant(restaurant); }}>
+                      {t('billing:column.editAction', 'Billing')}
+                    </ActionButton>
+                  ))}
                   <ActionButton onClick={(e) => handleViewReports(e, restaurant)}>{t('admin:restaurantsPage.viewReports')}</ActionButton>
                   <ActionButton onClick={(e) => handleDeleteRestaurant(e, restaurant)} style={{ color: '#DC2626', borderColor: '#FEE2E2' }}>{t('admin:restaurantsPage.delete')}</ActionButton>
                 </ActionButtons>
@@ -1783,6 +1838,17 @@ const ManagerRestaurantsPage: React.FC = () => {
           </RestaurantGrid>
         </Content>
       </Container>
+
+      {/* BG/FG → Restaurant trade billing terms modal */}
+      <BillingTermsModal
+        open={!!billingModalRestaurant}
+        onClose={() => setBillingModalRestaurant(null)}
+        entityType={billingEntityType}
+        restaurantId={billingModalRestaurant?.id ?? null}
+        restaurantName={billingModalRestaurant?.name}
+        currentTerms={billingModalRestaurant ? billingTermsOf(billingModalRestaurant) : null}
+        onSaved={handleBillingSaved}
+      />
 
       {/* Add Restaurant Modal */}
       {showAddModal && (

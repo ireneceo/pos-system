@@ -80,13 +80,42 @@ async function generateTradeInvoiceNumber(po) {
 /**
  * Get payment_terms from PO context.
  *  - supplier seller → SupplierContract.payment_terms
- *  - others → default Immediate
+ *  - brand seller + restaurant buyer → Restaurant.brand_billing_terms
+ *  - foodcourt seller + restaurant buyer → Restaurant.foodcourt_billing_terms
+ *  - others (system_admin, BG/FG buyer with brand/foodcourt seller) → default Immediate
+ *
+ * BG/FG → Restaurant trade billing terms — see docs/BG_FG_TRADE_BILLING.md.
+ * Restaurant.{brand,foodcourt}_billing_terms uses the same JSON schema as
+ * SupplierContract.payment_terms, so it can be returned as-is.
  */
 async function resolvePaymentTerms(po) {
+  // Supplier seller — existing behavior
   if (po.seller_type === 'supplier' && po.contract_id) {
     const contract = await SupplierContract.findByPk(po.contract_id);
     if (contract?.payment_terms) return contract.payment_terms;
   }
+
+  // Brand / Foodcourt seller → Restaurant buyer-only billing terms.
+  // BG/FG buyers (BG buying from another brand) keep default — that scenario isn't a use case.
+  if (po.entity_type === 'restaurant' && po.entity_id) {
+    if (po.seller_type === 'brand' && po.seller_entity_id) {
+      const r = await Restaurant.findByPk(po.entity_id, {
+        attributes: ['id', 'brand_id', 'brand_billing_terms']
+      });
+      // Sanity: only honor terms if buyer's brand_id matches the seller brand
+      if (r && r.brand_id === po.seller_entity_id && r.brand_billing_terms) {
+        return r.brand_billing_terms;
+      }
+    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id) {
+      const r = await Restaurant.findByPk(po.entity_id, {
+        attributes: ['id', 'foodcourt_id', 'foodcourt_billing_terms']
+      });
+      if (r && r.foodcourt_id === po.seller_entity_id && r.foodcourt_billing_terms) {
+        return r.foodcourt_billing_terms;
+      }
+    }
+  }
+
   return { terms: 'NET_15', invoice_cycle: 'immediate', currency: po.currency || 'MYR' };
 }
 

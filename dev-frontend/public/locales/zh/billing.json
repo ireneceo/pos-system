@@ -1,0 +1,35 @@
+{
+  "modal": {
+    "title": "编辑账单条款",
+    "restaurantLabel": "餐厅",
+    "terms": "付款条款",
+    "invoiceCycle": "开票周期",
+    "paymentDueDay": "付款到期日 (1-31)",
+    "currency": "货币",
+    "creditLimit": "信用额度 (可选)",
+    "notes": "备注 (可选)"
+  },
+  "terms": {
+    "COD": "货到付款",
+    "NET_15": "15 天净期",
+    "NET_30": "30 天净期",
+    "NET_60": "60 天净期"
+  },
+  "cycle": {
+    "immediate": "即时 (逐张)",
+    "monthly_soa": "月结对账单 (SOA)"
+  },
+  "column": {
+    "title": "贸易账单",
+    "editAction": "账单"
+  },
+  "reset": {
+    "action": "重置为默认",
+    "confirm": "重置为默认 (即时,无 SOA)?"
+  },
+  "errors": {
+    "invalidDueDay": "付款到期日必须为 1-31",
+    "invalidCreditLimit": "信用额度无效",
+    "saveFailed": "保存失败"
+  }
+}

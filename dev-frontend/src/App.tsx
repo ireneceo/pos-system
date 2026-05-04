@@ -185,6 +185,7 @@ const FoodcourtManagement = React.lazy(() => import('./pages/FoodcourtGeneral/Fo
 const FoodcourtReportsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtReportsPage'));
 const FoodcourtSubscriptionsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtSubscriptionsPage'));
 const FoodcourtInvoicesPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtInvoicesPage'));
+const FoodcourtTradeInvoicesPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtTradeInvoicesPage'));
 const FoodcourtPlansPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtPlansPage'));
 const FoodcourtPaymentSettingsPage = React.lazy(() => import('./pages/FoodcourtGeneral/FoodcourtPaymentSettingsPage'));
 const BrandManagement = React.lazy(() => import('./pages/BrandGeneral/BrandManagement'));
@@ -192,6 +193,7 @@ const BrandPerformance = React.lazy(() => import('./pages/BrandGeneral/BrandPerf
 const BrandReportsPage = React.lazy(() => import('./pages/BrandGeneral/BrandReportsPage'));
 const BrandSubscriptionsPage = React.lazy(() => import('./pages/BrandGeneral/BrandSubscriptionsPage'));
 const BrandInvoicesPage = React.lazy(() => import('./pages/BrandGeneral/BrandInvoicesPage'));
+const BrandTradeInvoicesPage = React.lazy(() => import('./pages/BrandGeneral/BrandTradeInvoicesPage'));
 const BrandPlansPage = React.lazy(() => import('./pages/BrandGeneral/BrandPlansPage'));
 const BrandPaymentSettingsPage = React.lazy(() => import('./pages/BrandGeneral/BrandPaymentSettingsPage'));
 const FranchiseManagementPage = React.lazy(() => import('./pages/BrandGeneral/FranchiseManagementPage'));
@@ -834,6 +836,11 @@ function App() {
                           <FoodcourtInvoicesPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/pos/foodcourt/trade-invoices" element={
+                        <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
+                          <FoodcourtTradeInvoicesPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/pos/foodcourt/history" element={
                         <ProtectedRoute requiredRole={['Foodcourt General', 'Foodcourt Manager']}>
                           <ActivityHistoryPage />
@@ -919,6 +926,11 @@ function App() {
                       <Route path="/pos/brand/invoices" element={
                         <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
                           <BrandInvoicesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/pos/brand/trade-invoices" element={
+                        <ProtectedRoute requiredRole={['Brand General', 'Brand Manager']}>
+                          <BrandTradeInvoicesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/pos/brand/plans" element={

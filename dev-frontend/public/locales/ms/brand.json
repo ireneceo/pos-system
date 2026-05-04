@@ -535,5 +535,27 @@
   "productsTab.errors.saveFailed": "Gagal menyimpan produk",
   "productsTab.errors.deleteFailed": "Gagal memadam produk",
   "productsTab.errors.copyFailed": "Gagal menyalin produk",
-  "productsTab.errors.tryAgain": "Gagal menyimpan produk. Sila cuba lagi."
+  "productsTab.errors.tryAgain": "Gagal menyimpan produk. Sila cuba lagi.",
+
+  "tradeInvoices.title": "Invois Dagangan",
+  "tradeInvoices.titleFc": "Invois Dagangan",
+  "tradeInvoices.searchPlaceholder": "Cari restoran atau no. invois",
+  "tradeInvoices.allStatuses": "Semua status",
+  "tradeInvoices.empty": "Tiada invois dagangan",
+  "tradeInvoices.bundledInSoa": "Termasuk dalam SOA",
+  "tradeInvoices.items": "Item",
+  "tradeInvoices.itemDescription": "Penerangan",
+  "tradeInvoices.itemQty": "Kuantiti",
+  "tradeInvoices.itemUnit": "Harga Unit",
+  "tradeInvoices.stats.outstanding": "Belum dibayar",
+  "tradeInvoices.stats.paidThisMonth": "Diterima bulan ini",
+  "tradeInvoices.stats.overdue": "Tertunggak",
+  "tradeInvoices.stats.totalIssued": "Jumlah dikeluarkan",
+  "tradeInvoices.col.invoiceNumber": "No. Invois",
+  "tradeInvoices.col.restaurant": "Restoran",
+  "tradeInvoices.col.total": "Jumlah",
+  "tradeInvoices.col.status": "Status",
+  "tradeInvoices.col.issuedAt": "Tarikh Keluar",
+  "tradeInvoices.col.dueDate": "Tarikh Tamat",
+  "tradeInvoices.col.actions": "Tindakan"
 }

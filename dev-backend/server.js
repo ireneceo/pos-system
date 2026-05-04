@@ -271,6 +271,10 @@ const carrierWebhooksRouter = require('./routes/carrier-webhooks');
 // Sprint 4 — Supply Chain Design 4 (Seller-side order management + buyer-side trade invoices)
 const sellerOrdersRouter = require('./routes/seller-orders');
 const purchaseInvoicesRouter = require('./routes/purchase-invoices');
+// BG/FG → Restaurant trade billing — see docs/BG_FG_TRADE_BILLING.md
+const entityBillingRouter = require('./routes/entity-billing');
+const brandSoaRouter = require('./routes/brand-soa');
+const foodcourtSoaRouter = require('./routes/foodcourt-soa');
 const ingredientSellerProductsRouter = require('./routes/ingredient-seller-products');
 const foodcourtProductsRouter = require('./routes/foodcourt-products');
 const foodcourtInventoryRouter = require('./routes/foodcourt-inventory');
@@ -391,6 +395,10 @@ app.use('/api', poReturnsRouter);  // exposes /api/purchase-orders/:id/returns +
 app.use('/api', carrierWebhooksRouter);  // Sprint 7: /api/carrier-webhooks/:carrier_code + /api/admin/carrier-webhook-events/*
 // Sprint 4 — buyer-side
 app.use('/api', purchaseInvoicesRouter);  // exposes /api/purchase-invoices/*
+// BG/FG → Restaurant trade billing endpoints (must be on /api root for full path control)
+app.use('/api', entityBillingRouter);     // /api/{brand|foodcourt}/restaurants/:id/billing-terms
+app.use('/api', brandSoaRouter);          // /api/brand/soa/*
+app.use('/api', foodcourtSoaRouter);      // /api/foodcourt/soa/*
 app.use('/api', ingredientSellerProductsRouter);  // exposes /api/ingredients/:id/seller-sources, /api/ingredient-seller-products/:id, /api/seller-catalog
 app.use('/api', foodcourtProductsRouter);  // exposes /api/foodcourt-products + /api/foodcourt-product-categories + /api/foodcourt-product-option-groups
 app.use('/api', foodcourtInventoryRouter);  // exposes /api/foodcourts/:foodcourtId/inventory/*

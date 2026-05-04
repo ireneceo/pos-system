@@ -1,0 +1,35 @@
+{
+  "modal": {
+    "title": "결제 조건 수정",
+    "restaurantLabel": "레스토랑",
+    "terms": "결제 조건",
+    "invoiceCycle": "인보이스 주기",
+    "paymentDueDay": "결제일 (1-31일)",
+    "currency": "통화",
+    "creditLimit": "여신 한도 (선택)",
+    "notes": "비고 (선택)"
+  },
+  "terms": {
+    "COD": "현장 결제 (COD)",
+    "NET_15": "15일 후 결제",
+    "NET_30": "30일 후 결제",
+    "NET_60": "60일 후 결제"
+  },
+  "cycle": {
+    "immediate": "즉시 (건별)",
+    "monthly_soa": "월말 정산 (SOA)"
+  },
+  "column": {
+    "title": "거래 청구",
+    "editAction": "청구"
+  },
+  "reset": {
+    "action": "기본값으로 초기화",
+    "confirm": "기본값(즉시 결제, SOA 없음)으로 초기화하시겠습니까?"
+  },
+  "errors": {
+    "invalidDueDay": "결제일은 1~31 사이여야 합니다",
+    "invalidCreditLimit": "잘못된 여신 한도",
+    "saveFailed": "저장 실패"
+  }
+}

@@ -535,5 +535,27 @@
   "productsTab.errors.saveFailed": "保存产品失败",
   "productsTab.errors.deleteFailed": "删除产品失败",
   "productsTab.errors.copyFailed": "复制产品失败",
-  "productsTab.errors.tryAgain": "保存产品失败,请重试。"
+  "productsTab.errors.tryAgain": "保存产品失败,请重试。",
+
+  "tradeInvoices.title": "贸易发票",
+  "tradeInvoices.titleFc": "贸易发票",
+  "tradeInvoices.searchPlaceholder": "搜索餐厅或发票号",
+  "tradeInvoices.allStatuses": "所有状态",
+  "tradeInvoices.empty": "尚无贸易发票",
+  "tradeInvoices.bundledInSoa": "已并入 SOA",
+  "tradeInvoices.items": "项目",
+  "tradeInvoices.itemDescription": "描述",
+  "tradeInvoices.itemQty": "数量",
+  "tradeInvoices.itemUnit": "单价",
+  "tradeInvoices.stats.outstanding": "未结",
+  "tradeInvoices.stats.paidThisMonth": "本月已收",
+  "tradeInvoices.stats.overdue": "逾期",
+  "tradeInvoices.stats.totalIssued": "已开总数",
+  "tradeInvoices.col.invoiceNumber": "发票号",
+  "tradeInvoices.col.restaurant": "餐厅",
+  "tradeInvoices.col.total": "合计",
+  "tradeInvoices.col.status": "状态",
+  "tradeInvoices.col.issuedAt": "开票日期",
+  "tradeInvoices.col.dueDate": "到期日",
+  "tradeInvoices.col.actions": "操作"
 }

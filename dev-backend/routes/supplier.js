@@ -1059,8 +1059,12 @@ router.get('/reports/summary', async (req, res) => {
 // Sprint 2 — Contracts (Supplier-side)
 // ==========================================================================
 
-const VALID_PAYMENT_TERMS = ['COD', 'NET_15', 'NET_30', 'NET_60'];
-const VALID_INVOICE_CYCLES = ['immediate', 'monthly_soa'];
+const {
+  VALID_PAYMENT_TERMS,
+  VALID_INVOICE_CYCLES,
+  validatePaymentTerms,
+  buildPaymentTerms
+} = require('../utils/paymentTerms');
 
 const FRONTEND_BASE_URL = process.env.FRONTEND_URL ||
   (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
@@ -1127,46 +1131,8 @@ function assertContractIsMine(contract, req, res) {
   return true;
 }
 
-function validatePaymentTerms(pt) {
-  if (!pt || typeof pt !== 'object') return 'payment_terms is required';
-  if (!VALID_PAYMENT_TERMS.includes(pt.terms)) {
-    return `payment_terms.terms must be one of ${VALID_PAYMENT_TERMS.join(', ')}`;
-  }
-  if (!VALID_INVOICE_CYCLES.includes(pt.invoice_cycle)) {
-    return `payment_terms.invoice_cycle must be one of ${VALID_INVOICE_CYCLES.join(', ')}`;
-  }
-  if (pt.payment_due_day !== undefined && pt.payment_due_day !== null) {
-    const d = parseInt(pt.payment_due_day, 10);
-    if (!Number.isFinite(d) || d < 0 || d > 31) {
-      return 'payment_terms.payment_due_day must be 0-31';
-    }
-  }
-  if (pt.credit_limit !== undefined && pt.credit_limit !== null) {
-    const cl = parseFloat(pt.credit_limit);
-    if (!Number.isFinite(cl) || cl < 0) {
-      return 'payment_terms.credit_limit must be a non-negative number';
-    }
-  }
-  if (pt.currency !== undefined && pt.currency !== null) {
-    if (typeof pt.currency !== 'string' || pt.currency.length < 3 || pt.currency.length > 8) {
-      return 'payment_terms.currency must be a 3-8 character string';
-    }
-  }
-  return null;
-}
-
-function buildPaymentTerms(pt) {
-  return {
-    terms: pt.terms,
-    invoice_cycle: pt.invoice_cycle,
-    payment_due_day: pt.payment_due_day !== undefined && pt.payment_due_day !== null
-      ? parseInt(pt.payment_due_day, 10) : null,
-    credit_limit: pt.credit_limit !== undefined && pt.credit_limit !== null
-      ? parseFloat(pt.credit_limit) : null,
-    currency: pt.currency ? String(pt.currency).toUpperCase() : null,
-    notes: pt.notes ? sanitizeString(String(pt.notes)) : null
-  };
-}
+// validatePaymentTerms / buildPaymentTerms — moved to utils/paymentTerms.js
+// (shared with Brand/Foodcourt → Restaurant trade billing — see docs/BG_FG_TRADE_BILLING.md)
 
 /**
  * GET /api/supplier/contracts

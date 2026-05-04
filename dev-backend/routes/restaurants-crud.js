@@ -272,6 +272,9 @@ router.get('/', authenticateToken, async (req, res) => {
         payment_model: restaurantData.payment_model || 'restaurant',
         contract_summary: contractSummaryMap[restaurantData.id] || null,
         foodcourt_id: restaurantData.foodcourt_id || null,
+        // BG/FG → Restaurant trade billing terms (see docs/BG_FG_TRADE_BILLING.md)
+        brand_billing_terms: restaurantData.brand_billing_terms || null,
+        foodcourt_billing_terms: restaurantData.foodcourt_billing_terms || null,
         branch_id: restaurantData.branch_id || null,
         branch: restaurantData.branch ? {
           id: restaurantData.branch.id,

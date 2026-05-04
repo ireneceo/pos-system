@@ -6,6 +6,20 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### BG/FG → Restaurant Trade Billing 시스템 (2026-05-04)
+- **결제조건 컬럼 신설**: `Restaurant.brand_billing_terms` / `foodcourt_billing_terms` JSON (terms / invoice_cycle / payment_due_day / credit_limit / currency / notes). NULL = immediate (default)
+- **BG/FG 결제조건 설정 UI**: `Restaurants` 메뉴의 매장 카드에 Billing 항목 + Edit 버튼 추가 → `BillingTermsModal` 공용 모달 (Supplier Customers 모달 패턴)
+- **BG/FG Trade Invoices 메뉴 신설**: `Plans & Payments` 섹션에 추가. Supplier `Trade Invoices` 페이지 패턴 100% 복제 (SOA invoice purple badge 통합 list)
+- **PO → Trade Invoice 자동 발행 시 결제조건 적용**: `purchaseOrderService.resolvePaymentTerms()` 에 brand/foodcourt 분기 추가. 발행되는 trade invoice의 due_date가 결제조건 기반으로 산출
+- **SOA scheduler 3 평행 처리**: 매월 1일 cron이 supplier / brand / foodcourt 모두 처리. SOA invoice (`invoice_category='soa'`) 발행 + child trade invoice의 `parent_soa_invoice_id` cascade 세팅
+- **RA Trade Invoices 통합 SOA bundle**: `/api/purchase-invoices/soa/current` 가 `issuer_type ['supplier','brand','foodcourt']` 모두 반환. supplier 그룹은 `SupplierContract.payment_terms`, brand/foodcourt 그룹은 `Restaurant.{brand,foodcourt}_billing_terms` 기반으로 monthly_soa 필터
+- **Credit limit 강제 차단**: PO 생성 시점에 `checkCreditLimit()` 호출. 미수금 누적 + 신규 PO 합계가 한도 초과 시 400 차단 + `code:'CREDIT_LIMIT_EXCEEDED'` + hint `"Pay outstanding trade invoices first..."`. 한도 미설정(NULL/0) 통과. SOA child invoice 중복 카운트 방지 (`parent_soa_invoice_id` skip)
+- **공통 검증 헬퍼 추출**: `utils/paymentTerms.js` 신규 (validatePaymentTerms / buildPaymentTerms / VALID_INVOICE_CYCLES). `routes/supplier.js` + `routes/entity-billing.js` 가 동일 검증 공유
+- **백엔드 신규 라우트**: `routes/entity-billing.js` (BG/FG billing-terms PUT/GET) + `routes/brand-soa.js` + `routes/foodcourt-soa.js` (SOA bundle + reminder + trade-invoices list)
+- **i18n 4 언어 신규 namespace**: `billing.json` (en/ko/zh/ms 각 27 키) + `brand.tradeInvoices.*` 21 키 추가 + `nav.tradeInvoices` 4 언어
+- **검증**: 통합 25/25 PASS, credit_limit 단위 9/9 PASS, health-check 73/73 PASS, 빌드 성공
+- **설계 문서**: `docs/BG_FG_TRADE_BILLING.md`
+
 ### 데모 5 역할 정합화 + 헤더 PlanBadge + Pricing/Features 누락 32 보강 (2026-05-03)
 - **데모 5 계정**: Foodcourt General + Multi-Restaurant Owner 신규 user 생성 (foodcourt entity + supplier company 포함). Login/Demo 카드 5개 + 순서 (RA / BG / FG / Multi-Owner / Supplier)
 - **Multi-Restaurant Owner 표시**: `utils/roleDisplay.ts` 헬퍼 (ENUM 그대로, 표시만 변경)

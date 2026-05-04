@@ -1,0 +1,35 @@
+{
+  "modal": {
+    "title": "Edit Billing Terms",
+    "restaurantLabel": "Restaurant",
+    "terms": "Payment Terms",
+    "invoiceCycle": "Invoice Cycle",
+    "paymentDueDay": "Payment Due Day (1-31)",
+    "currency": "Currency",
+    "creditLimit": "Credit Limit (optional)",
+    "notes": "Notes (optional)"
+  },
+  "terms": {
+    "COD": "Cash on Delivery",
+    "NET_15": "Net 15 days",
+    "NET_30": "Net 30 days",
+    "NET_60": "Net 60 days"
+  },
+  "cycle": {
+    "immediate": "Immediate (per-invoice)",
+    "monthly_soa": "Monthly Statement (SOA)"
+  },
+  "column": {
+    "title": "Trade Billing",
+    "editAction": "Billing"
+  },
+  "reset": {
+    "action": "Reset to default",
+    "confirm": "Reset to default (Immediate, no SOA)?"
+  },
+  "errors": {
+    "invalidDueDay": "Payment due day must be 1-31",
+    "invalidCreditLimit": "Invalid credit limit",
+    "saveFailed": "Failed to save"
+  }
+}

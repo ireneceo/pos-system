@@ -516,6 +516,135 @@ router.get('/purchase-orders/:id', async (req, res) => {
 // PO creation core (used by single + bulk endpoints)
 // Returns: { ok: true, po } or { ok: false, status, body }
 // ============================================
+/**
+ * Resolve credit_limit for a given (buyer, seller) pair, plus the (issuer,payer)
+ * filter needed to total outstanding invoices.
+ *
+ * Returns: { credit_limit, currency, issuer_type, issuer_id, payer_type, payer_id }
+ *  - credit_limit null/0 → no limit (caller passes through)
+ */
+async function resolveCreditTermsForPair({ buyerEntity, seller_type, seller_entity_id, contract_id }) {
+  if (seller_type === 'supplier' && contract_id) {
+    const SupplierContract = require('../models/SupplierContract');
+    const contract = await SupplierContract.findByPk(contract_id);
+    if (!contract?.payment_terms) return null;
+    // payer = buyer side (restaurant / brand_manager / foodcourt_manager)
+    let payer_type = null, payer_id = null;
+    if (buyerEntity.type === 'restaurant') {
+      payer_type = 'restaurant'; payer_id = buyerEntity.id;
+    } else if (buyerEntity.type === 'brand') {
+      const Brand = require('../models/Brand');
+      const b = await Brand.findByPk(buyerEntity.id, { attributes: ['owner_id'] });
+      if (!b?.owner_id) return null;
+      payer_type = 'brand_manager'; payer_id = b.owner_id;
+    } else if (buyerEntity.type === 'foodcourt') {
+      const Foodcourt = require('../models/Foodcourt');
+      const f = await Foodcourt.findByPk(buyerEntity.id, { attributes: ['owner_id'] });
+      if (!f?.owner_id) return null;
+      payer_type = 'foodcourt_manager'; payer_id = f.owner_id;
+    }
+    if (!payer_type) return null;
+    return {
+      credit_limit: contract.payment_terms.credit_limit,
+      currency: contract.payment_terms.currency,
+      issuer_type: 'supplier',
+      issuer_id: contract.supplier_company_id,
+      payer_type, payer_id
+    };
+  }
+
+  if (seller_type === 'brand' && seller_entity_id && buyerEntity.type === 'restaurant') {
+    const Restaurant = require('../models/Restaurant');
+    const r = await Restaurant.findByPk(buyerEntity.id, {
+      attributes: ['id', 'brand_id', 'brand_billing_terms']
+    });
+    if (!r || r.brand_id !== parseInt(seller_entity_id, 10)) return null;
+    if (!r.brand_billing_terms) return null;
+    return {
+      credit_limit: r.brand_billing_terms.credit_limit,
+      currency: r.brand_billing_terms.currency,
+      issuer_type: 'brand',
+      issuer_id: r.brand_id,
+      payer_type: 'restaurant',
+      payer_id: r.id
+    };
+  }
+
+  if (seller_type === 'foodcourt' && seller_entity_id && buyerEntity.type === 'restaurant') {
+    const Restaurant = require('../models/Restaurant');
+    const r = await Restaurant.findByPk(buyerEntity.id, {
+      attributes: ['id', 'foodcourt_id', 'foodcourt_billing_terms']
+    });
+    if (!r || r.foodcourt_id !== parseInt(seller_entity_id, 10)) return null;
+    if (!r.foodcourt_billing_terms) return null;
+    return {
+      credit_limit: r.foodcourt_billing_terms.credit_limit,
+      currency: r.foodcourt_billing_terms.currency,
+      issuer_type: 'foodcourt',
+      issuer_id: r.foodcourt_id,
+      payer_type: 'restaurant',
+      payer_id: r.id
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Enforce credit limit on PO create.
+ * Returns { ok: true } when no limit is configured or under limit.
+ * Returns { ok: false, message, hint, outstanding, credit_limit } when blocked.
+ */
+async function checkCreditLimit({ buyerEntity, seller_type, seller_entity_id, contract_id, newOrderTotal, currency }) {
+  const terms = await resolveCreditTermsForPair({ buyerEntity, seller_type, seller_entity_id, contract_id });
+  if (!terms) return { ok: true };
+  const limit = parseFloat(terms.credit_limit);
+  if (!Number.isFinite(limit) || limit <= 0) return { ok: true };
+
+  // Sum outstanding (unpaid / overdue / payment_submitted) trade+SOA invoices for this pair.
+  // SOA child invoices have parent_soa_invoice_id set — count only the SOA parent or
+  // standalone trade invoices, not both, to avoid double-counting.
+  const Invoice = require('../models/Invoice');
+  const { Op } = require('sequelize');
+  const invoices = await Invoice.findAll({
+    where: {
+      invoice_category: { [Op.in]: ['trade', 'soa'] },
+      issuer_type: terms.issuer_type,
+      issuer_id: terms.issuer_id,
+      payer_type: terms.payer_type,
+      payer_id: terms.payer_id,
+      status: { [Op.in]: ['pending_payment', 'overdue', 'payment_submitted'] }
+    },
+    attributes: ['id', 'total_amount', 'paid_amount', 'invoice_category', 'parent_soa_invoice_id']
+  });
+
+  let outstanding = 0;
+  for (const inv of invoices) {
+    // Skip child trade invoices already bundled into a SOA parent (avoid double count)
+    if (inv.invoice_category === 'trade' && inv.parent_soa_invoice_id) continue;
+    const total = parseFloat(inv.total_amount) || 0;
+    const paid = parseFloat(inv.paid_amount) || 0;
+    outstanding += Math.max(0, total - paid);
+  }
+  outstanding = Math.round(outstanding * 100) / 100;
+
+  const projected = outstanding + (parseFloat(newOrderTotal) || 0);
+  if (projected <= limit) return { ok: true };
+
+  const cur = currency || terms.currency || 'MYR';
+  const fmt = (n) => `${cur} ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return {
+    ok: false,
+    outstanding,
+    credit_limit: limit,
+    currency: cur,
+    message: `Credit limit exceeded: outstanding ${fmt(outstanding)} + this order ${fmt(newOrderTotal)} = ${fmt(projected)} > limit ${fmt(limit)}.`,
+    hint: outstanding > 0
+      ? 'Pay outstanding trade invoices first, then place this order again.'
+      : 'Reduce the order total or ask the seller to raise the credit limit.'
+  };
+}
+
 async function createPurchaseOrderCore({ buyerEntity, userId, payload, transaction, poNumberOffset = 0 }) {
   const { seller_type, seller_entity_id, items, expected_delivery_date, delivery_address, notes } = payload || {};
 
@@ -667,6 +796,34 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
   }
 
   const totals = computeTotals(validatedItems);
+
+  // ─────────────────────────────────────────────────────────────────
+  // Credit limit 검증 — 미수금 누적 + 신규 PO 총액이 한도 초과면 차단.
+  // 한도 미설정(null/0)이면 통과. supplier/brand/foodcourt seller 3종 지원.
+  // ─────────────────────────────────────────────────────────────────
+  const creditCheck = await checkCreditLimit({
+    buyerEntity,
+    seller_type,
+    seller_entity_id,
+    contract_id: contractId,
+    newOrderTotal: totals.total_amount,
+    currency: buyerCurrency
+  });
+  if (!creditCheck.ok) {
+    return {
+      ok: false, status: 400,
+      body: {
+        success: false,
+        code: 'CREDIT_LIMIT_EXCEEDED',
+        message: creditCheck.message,
+        hint: creditCheck.hint,
+        outstanding: creditCheck.outstanding,
+        credit_limit: creditCheck.credit_limit,
+        currency: creditCheck.currency
+      }
+    };
+  }
+
   const poNumber = await generatePoNumber(buyerEntity, poNumberOffset);
 
   const po = await PurchaseOrder.create({

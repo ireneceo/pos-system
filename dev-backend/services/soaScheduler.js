@@ -84,7 +84,114 @@ async function getBuyerRecipientUserIds(entityType, entityId) {
 }
 
 /**
- * Process monthly SOA for all eligible contracts.
+ * Issue one SOA invoice + cascade child trade invoices for a single (seller, buyer) pair.
+ * Returns { issued: boolean, reason?: string }.
+ *
+ * Used for all 3 seller types (supplier / brand / foodcourt) — caller resolves payer,
+ * sellerName, sellerCurrency, dueDay, soaPrefix, soaIdSuffix beforehand.
+ */
+async function issueSoaForPair({
+  issuerType,           // 'supplier' | 'brand' | 'foodcourt'
+  issuerId,             // supplier_company_id | brand_id | foodcourt_id
+  payer,                // { payer_type, payer_id }
+  buyerEntityType,      // 'restaurant' | 'brand' | 'foodcourt' (for tz resolution)
+  buyerEntityId,
+  sellerName,
+  sellerCurrency,
+  dueDay,
+  referenceDate,
+  lastMonthStart,
+  lastMonthEnd,
+  soaInvoiceNumber
+}) {
+  const invoices = await Invoice.findAll({
+    where: {
+      invoice_category: 'trade',
+      issuer_type: issuerType,
+      issuer_id: issuerId,
+      payer_type: payer.payer_type,
+      payer_id: payer.payer_id,
+      parent_soa_invoice_id: null,
+      createdAt: { [Op.between]: [lastMonthStart, lastMonthEnd] }
+    },
+    include: [{ model: InvoiceItem, as: 'items' }],
+    order: [['createdAt', 'ASC']]
+  });
+
+  if (invoices.length === 0) return { issued: false, reason: 'no_invoices' };
+
+  let totalDue = 0;
+  for (const inv of invoices) totalDue += Number(inv.total_amount || 0);
+  totalDue = Math.round(totalDue * 100) / 100;
+
+  const dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), dueDay);
+  const currency = invoices[0]?.currency || sellerCurrency || 'MYR';
+
+  const recipients = await getBuyerRecipientUserIds(buyerEntityType, buyerEntityId);
+  if (recipients.length === 0) return { issued: false, reason: 'no_recipients' };
+
+  const soaInvoice = await sequelize.transaction(async (t) => {
+    const newSoa = await Invoice.create({
+      invoice_number: soaInvoiceNumber,
+      invoice_category: 'soa',
+      issuer_type: issuerType,
+      issuer_id: issuerId,
+      payer_type: payer.payer_type,
+      payer_id: payer.payer_id,
+      currency,
+      subtotal: totalDue,
+      total_amount: totalDue,
+      tax_amount: 0,
+      paid_amount: 0,
+      status: 'pending_payment',
+      issued_at: referenceDate,
+      due_date: dueDate,
+      service_description: `Monthly Statement of Account — ${invoices.length} invoices`,
+      notes: `Bundled SOA for ${invoices.length} trade invoices in ${lastMonthStart.toISOString().slice(0, 7)}`
+    }, { transaction: t });
+
+    await Invoice.update(
+      { parent_soa_invoice_id: newSoa.id },
+      { where: { id: invoices.map(i => i.id) }, transaction: t }
+    );
+
+    return newSoa;
+  });
+
+  console.log(`[soaScheduler] SOA #${soaInvoice.id} (${soaInvoiceNumber}) — ${issuerType} → ${buyerEntityType} #${buyerEntityId}, ${invoices.length} invoices, ${currency} ${totalDue}`);
+
+  // Resolve buyer timezone (per-buyer)
+  let buyerTz = 'Asia/Kuala_Lumpur';
+  try {
+    let buyerEntity = null;
+    if (buyerEntityType === 'restaurant') {
+      buyerEntity = await Restaurant.findByPk(buyerEntityId, { attributes: ['operation_settings'] });
+    } else if (buyerEntityType === 'brand') {
+      buyerEntity = await Brand.findByPk(buyerEntityId, { attributes: ['operation_settings'] });
+    } else if (buyerEntityType === 'foodcourt') {
+      buyerEntity = await Foodcourt.findByPk(buyerEntityId, { attributes: ['operation_settings'] });
+    }
+    if (buyerEntity) buyerTz = getRestaurantTimezone(buyerEntity);
+  } catch (e) { /* fallback default */ }
+  const monthLabel = lastMonthStart.toLocaleDateString('en-US', { year: 'numeric', month: 'long', timeZone: buyerTz });
+
+  const mail = monthlySoaEmail({
+    sellerName,
+    month: monthLabel,
+    invoices: invoices.map(i => i.toJSON()),
+    totalDue,
+    currency,
+    dueDate,
+    link: `${FRONTEND_URL}/pos/purchase-invoices/soa`,
+    timezone: buyerTz
+  });
+
+  await sendNotificationBatch(recipients, 'monthly_soa', mail);
+  return { issued: true, totalDue, currency, invoiceCount: invoices.length };
+}
+
+/**
+ * Process monthly SOA for all eligible (supplier + brand + foodcourt) sellers.
  * Returns { processed, success, errors, skipped }.
  */
 async function processMonthlySoa(referenceDate = new Date()) {
@@ -106,124 +213,135 @@ async function processMonthlySoa(referenceDate = new Date()) {
 
     console.log(`[soaScheduler] Processing monthly SOA (${lastMonthStart.toISOString()} → ${lastMonthEnd.toISOString()})`);
 
-    // Find all active SupplierContracts with monthly_soa payment cycle
+    let processed = 0, success = 0, errors = 0, skipped = 0;
+
+    // ────────────────────────────────────────────────────────────────────
+    // 1. SUPPLIER SOA — SupplierContract.payment_terms.invoice_cycle='monthly_soa'
+    // ────────────────────────────────────────────────────────────────────
     const contracts = await SupplierContract.findAll({
       where: { status: 'active' },
       include: [{ model: SupplierCompany, as: 'supplierCompany', attributes: ['id', 'name', 'company_name', 'currency'] }]
     });
     const monthlyContracts = contracts.filter(c => c.payment_terms?.invoice_cycle === 'monthly_soa');
-
-    let success = 0, errors = 0, skipped = 0;
+    processed += monthlyContracts.length;
 
     for (const contract of monthlyContracts) {
       try {
         const payer = await computePayerForBuyer(contract.entity_type, contract.entity_id);
         if (!payer) { skipped++; continue; }
 
-        // Find trade invoices issued by this supplier to this buyer in last month
-        // Skip invoices already bundled in a SOA (idempotency — rerun safe)
-        const invoices = await Invoice.findAll({
-          where: {
-            invoice_category: 'trade',
-            issuer_type: 'supplier',
-            issuer_id: contract.supplier_company_id,
-            payer_type: payer.payer_type,
-            payer_id: payer.payer_id,
-            parent_soa_invoice_id: null,
-            createdAt: { [Op.between]: [lastMonthStart, lastMonthEnd] }
-          },
-          include: [{ model: InvoiceItem, as: 'items' }],
-          order: [['createdAt', 'ASC']]
-        });
-
-        if (invoices.length === 0) { skipped++; continue; }
-
-        // Aggregate totals
-        let totalDue = 0;
-        for (const inv of invoices) totalDue += Number(inv.total_amount || 0);
-        totalDue = Math.round(totalDue * 100) / 100;
-
-        // Compute due date based on payment_due_day
         const dueDay = parseInt(contract.payment_terms?.payment_due_day, 10) || 15;
-        const dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), dueDay);
-
         const supplierName = contract.supplierCompany?.company_name || contract.supplierCompany?.name || 'Supplier';
-        const currency = invoices[0]?.currency || contract.supplierCompany?.currency || 'MYR';
-
-        const recipients = await getBuyerRecipientUserIds(contract.entity_type, contract.entity_id);
-        if (recipients.length === 0) { skipped++; continue; }
-
-        // === SOA Invoice 발행 (B1 재설계) — invoice_category='soa' ===
-        // 트랜잭션으로 SOA 생성 + 모든 child invoices 에 parent_soa_invoice_id 설정.
         const soaInvoiceNumber = `SOA-${contract.supplier_company_id}-${lastMonthStart.toISOString().slice(0, 7)}-${contract.id}`;
-        const soaInvoice = await sequelize.transaction(async (t) => {
-          const newSoa = await Invoice.create({
-            invoice_number: soaInvoiceNumber,
-            invoice_category: 'soa',
-            issuer_type: 'supplier',
-            issuer_id: contract.supplier_company_id,
-            payer_type: payer.payer_type,
-            payer_id: payer.payer_id,
-            currency,
-            subtotal: totalDue,
-            total_amount: totalDue,
-            tax_amount: 0,
-            paid_amount: 0,
-            status: 'pending_payment',
-            issued_at: referenceDate,
-            due_date: dueDate,
-            service_description: `Monthly Statement of Account — ${invoices.length} invoices`,
-            notes: `Bundled SOA for ${invoices.length} trade invoices in ${lastMonthStart.toISOString().slice(0, 7)}`
-          }, { transaction: t });
 
-          // 각 child invoice 에 parent_soa_invoice_id 설정 + status 잠금 (pending → SOA 결제로 일괄)
-          await Invoice.update(
-            { parent_soa_invoice_id: newSoa.id },
-            { where: { id: invoices.map(i => i.id) }, transaction: t }
-          );
-
-          return newSoa;
-        });
-        console.log(`[soaScheduler] SOA invoice #${soaInvoice.id} (${soaInvoiceNumber}) created with ${invoices.length} children, total ${currency} ${totalDue}`);
-
-        // Resolve buyer timezone (per-buyer for accurate SOA dates)
-        let buyerTz = 'Asia/Kuala_Lumpur';
-        try {
-          let buyerEntity = null;
-          if (contract.entity_type === 'restaurant') {
-            buyerEntity = await Restaurant.findByPk(contract.entity_id, { attributes: ['operation_settings'] });
-          } else if (contract.entity_type === 'brand') {
-            buyerEntity = await Brand.findByPk(contract.entity_id, { attributes: ['operation_settings'] });
-          } else if (contract.entity_type === 'foodcourt') {
-            buyerEntity = await Foodcourt.findByPk(contract.entity_id, { attributes: ['operation_settings'] });
-          }
-          if (buyerEntity) buyerTz = getRestaurantTimezone(buyerEntity);
-        } catch (e) { /* fallback default */ }
-        const monthLabel = lastMonthStart.toLocaleDateString('en-US', { year: 'numeric', month: 'long', timeZone: buyerTz });
-
-        const mail = monthlySoaEmail({
+        const result = await issueSoaForPair({
+          issuerType: 'supplier',
+          issuerId: contract.supplier_company_id,
+          payer,
+          buyerEntityType: contract.entity_type,
+          buyerEntityId: contract.entity_id,
           sellerName: supplierName,
-          month: monthLabel,
-          invoices: invoices.map(i => i.toJSON()),
-          totalDue,
-          currency,
-          dueDate,
-          link: `${FRONTEND_URL}/pos/purchase-invoices/soa`,
-          timezone: buyerTz
+          sellerCurrency: contract.supplierCompany?.currency,
+          dueDay,
+          referenceDate,
+          lastMonthStart,
+          lastMonthEnd,
+          soaInvoiceNumber
         });
-
-        await sendNotificationBatch(recipients, 'monthly_soa', mail);
-        success++;
-        console.log(`[soaScheduler] SOA sent: ${supplierName} → ${contract.entity_type} #${contract.entity_id} (${invoices.length} invoices, ${currency} ${totalDue})`);
+        if (result.issued) success++; else skipped++;
       } catch (e) {
         errors++;
-        console.error(`[soaScheduler] Error processing contract #${contract.id}:`, e.message);
+        console.error(`[soaScheduler] Error processing supplier contract #${contract.id}:`, e.message);
+      }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // 2. BRAND SOA — Restaurant.brand_billing_terms.invoice_cycle='monthly_soa'
+    // ────────────────────────────────────────────────────────────────────
+    const brandRestaurants = await Restaurant.findAll({
+      where: { brand_id: { [Op.ne]: null } },
+      attributes: ['id', 'name', 'brand_id', 'brand_billing_terms']
+    });
+    const brandMonthly = brandRestaurants.filter(r =>
+      r.brand_billing_terms?.invoice_cycle === 'monthly_soa'
+    );
+    processed += brandMonthly.length;
+
+    for (const restaurant of brandMonthly) {
+      try {
+        const brand = await Brand.findByPk(restaurant.brand_id, { attributes: ['id', 'name'] });
+        if (!brand) { skipped++; continue; }
+
+        const dueDay = parseInt(restaurant.brand_billing_terms?.payment_due_day, 10) || 15;
+        const sellerName = brand.name || 'Brand';
+        const soaInvoiceNumber = `SOA-BRD${brand.id}-${lastMonthStart.toISOString().slice(0, 7)}-R${restaurant.id}`;
+
+        const result = await issueSoaForPair({
+          issuerType: 'brand',
+          issuerId: brand.id,
+          payer: { payer_type: 'restaurant', payer_id: restaurant.id },
+          buyerEntityType: 'restaurant',
+          buyerEntityId: restaurant.id,
+          sellerName,
+          sellerCurrency: restaurant.brand_billing_terms?.currency,
+          dueDay,
+          referenceDate,
+          lastMonthStart,
+          lastMonthEnd,
+          soaInvoiceNumber
+        });
+        if (result.issued) success++; else skipped++;
+      } catch (e) {
+        errors++;
+        console.error(`[soaScheduler] Error processing brand SOA for restaurant #${restaurant.id}:`, e.message);
+      }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // 3. FOODCOURT SOA — Restaurant.foodcourt_billing_terms.invoice_cycle='monthly_soa'
+    // ────────────────────────────────────────────────────────────────────
+    const fcRestaurants = await Restaurant.findAll({
+      where: { foodcourt_id: { [Op.ne]: null } },
+      attributes: ['id', 'name', 'foodcourt_id', 'foodcourt_billing_terms']
+    });
+    const fcMonthly = fcRestaurants.filter(r =>
+      r.foodcourt_billing_terms?.invoice_cycle === 'monthly_soa'
+    );
+    processed += fcMonthly.length;
+
+    for (const restaurant of fcMonthly) {
+      try {
+        const fc = await Foodcourt.findByPk(restaurant.foodcourt_id, { attributes: ['id', 'name'] });
+        if (!fc) { skipped++; continue; }
+
+        const dueDay = parseInt(restaurant.foodcourt_billing_terms?.payment_due_day, 10) || 15;
+        const sellerName = fc.name || 'Foodcourt';
+        const soaInvoiceNumber = `SOA-FC${fc.id}-${lastMonthStart.toISOString().slice(0, 7)}-R${restaurant.id}`;
+
+        const result = await issueSoaForPair({
+          issuerType: 'foodcourt',
+          issuerId: fc.id,
+          payer: { payer_type: 'restaurant', payer_id: restaurant.id },
+          buyerEntityType: 'restaurant',
+          buyerEntityId: restaurant.id,
+          sellerName,
+          sellerCurrency: restaurant.foodcourt_billing_terms?.currency,
+          dueDay,
+          referenceDate,
+          lastMonthStart,
+          lastMonthEnd,
+          soaInvoiceNumber
+        });
+        if (result.issued) success++; else skipped++;
+      } catch (e) {
+        errors++;
+        console.error(`[soaScheduler] Error processing foodcourt SOA for restaurant #${restaurant.id}:`, e.message);
       }
     }
 
     const elapsedMs = Date.now() - startTime;
     const results = {
-      processed: monthlyContracts.length,
+      processed,
       success,
       errors,
       skipped,

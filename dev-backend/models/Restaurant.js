@@ -518,6 +518,22 @@ Restaurant.init({
     allowNull: true,
     comment: 'Foodcourt ID if restaurant is a tenant in a foodcourt'
   },
+  // Trade billing terms (BG/FG → Restaurant) — see docs/BG_FG_TRADE_BILLING.md
+  // Schema mirrors SupplierContract.payment_terms:
+  //   { terms, invoice_cycle: 'immediate'|'monthly_soa', payment_due_day, credit_limit, currency, notes }
+  // NULL = immediate (default). Set by Brand General / Foodcourt General per restaurant.
+  brand_billing_terms: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Brand → Restaurant trade billing terms. NULL = immediate (default).'
+  },
+  foodcourt_billing_terms: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Foodcourt → Restaurant trade billing terms. NULL = immediate (default).'
+  },
   branch_id: {
     type: DataTypes.INTEGER,
     allowNull: true,

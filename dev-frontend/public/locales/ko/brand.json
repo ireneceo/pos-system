@@ -535,5 +535,27 @@
   "productsTab.errors.saveFailed": "제품 저장 실패",
   "productsTab.errors.deleteFailed": "제품 삭제 실패",
   "productsTab.errors.copyFailed": "제품 복사 실패",
-  "productsTab.errors.tryAgain": "제품 저장 실패. 다시 시도해주세요."
+  "productsTab.errors.tryAgain": "제품 저장 실패. 다시 시도해주세요.",
+
+  "tradeInvoices.title": "거래 인보이스",
+  "tradeInvoices.titleFc": "거래 인보이스",
+  "tradeInvoices.searchPlaceholder": "레스토랑명 또는 인보이스 번호 검색",
+  "tradeInvoices.allStatuses": "모든 상태",
+  "tradeInvoices.empty": "발행된 거래 인보이스가 없습니다",
+  "tradeInvoices.bundledInSoa": "SOA에 묶임",
+  "tradeInvoices.items": "항목",
+  "tradeInvoices.itemDescription": "내역",
+  "tradeInvoices.itemQty": "수량",
+  "tradeInvoices.itemUnit": "단가",
+  "tradeInvoices.stats.outstanding": "미수금",
+  "tradeInvoices.stats.paidThisMonth": "이번 달 수금",
+  "tradeInvoices.stats.overdue": "연체",
+  "tradeInvoices.stats.totalIssued": "발행 합계",
+  "tradeInvoices.col.invoiceNumber": "인보이스 번호",
+  "tradeInvoices.col.restaurant": "레스토랑",
+  "tradeInvoices.col.total": "합계",
+  "tradeInvoices.col.status": "상태",
+  "tradeInvoices.col.issuedAt": "발행일",
+  "tradeInvoices.col.dueDate": "지급일",
+  "tradeInvoices.col.actions": "작업"
 }

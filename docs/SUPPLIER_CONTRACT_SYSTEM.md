@@ -5,6 +5,7 @@
 > **Scale:** Medium-Large
 > **Dependency:** Design 1 (Seller Product & Inventory System)
 > **Parent:** Supply Chain System (docs/SUPPLY_CHAIN_SYSTEM_OVERVIEW.md)
+> **Sibling (2026-05-04):** [BG_FG_TRADE_BILLING.md](./BG_FG_TRADE_BILLING.md) — same `payment_terms` JSON shape extended to Brand/Foodcourt → Restaurant trade billing. `utils/paymentTerms.js` shared validator/builder.
 
 ---
 

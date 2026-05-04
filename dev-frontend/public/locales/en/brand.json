@@ -535,5 +535,27 @@
   "productsTab.errors.saveFailed": "Failed to save product",
   "productsTab.errors.deleteFailed": "Failed to delete product",
   "productsTab.errors.copyFailed": "Failed to copy product",
-  "productsTab.errors.tryAgain": "Failed to save product. Please try again."
+  "productsTab.errors.tryAgain": "Failed to save product. Please try again.",
+
+  "tradeInvoices.title": "Trade Invoices",
+  "tradeInvoices.titleFc": "Trade Invoices",
+  "tradeInvoices.searchPlaceholder": "Search restaurant or invoice #",
+  "tradeInvoices.allStatuses": "All statuses",
+  "tradeInvoices.empty": "No trade invoices yet",
+  "tradeInvoices.bundledInSoa": "Bundled in SOA",
+  "tradeInvoices.items": "Items",
+  "tradeInvoices.itemDescription": "Description",
+  "tradeInvoices.itemQty": "Qty",
+  "tradeInvoices.itemUnit": "Unit Price",
+  "tradeInvoices.stats.outstanding": "Outstanding",
+  "tradeInvoices.stats.paidThisMonth": "Paid this month",
+  "tradeInvoices.stats.overdue": "Overdue",
+  "tradeInvoices.stats.totalIssued": "Total issued",
+  "tradeInvoices.col.invoiceNumber": "Invoice #",
+  "tradeInvoices.col.restaurant": "Restaurant",
+  "tradeInvoices.col.total": "Total",
+  "tradeInvoices.col.status": "Status",
+  "tradeInvoices.col.issuedAt": "Issued",
+  "tradeInvoices.col.dueDate": "Due Date",
+  "tradeInvoices.col.actions": "Actions"
 }

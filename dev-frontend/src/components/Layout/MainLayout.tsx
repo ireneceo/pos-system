@@ -1305,6 +1305,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                         {t("nav.invoices")}
                       </NavItem>
                     )}
+                    {isRouteAllowed('/pos/brand/trade-invoices') && (
+                      <NavItem to="/pos/brand/trade-invoices" active={isActive('/pos/brand/trade-invoices')} onClick={closeSidebar}>
+                        <NavIcon>◧</NavIcon>
+                        {t("nav.tradeInvoices", "Trade Invoices")}
+                      </NavItem>
+                    )}
                     {isRouteAllowed('/pos/brand/general/reports') && (
                       <NavItem to="/pos/brand/general/reports" active={isActive('/pos/brand/general/reports')} onClick={closeSidebar}>
                         <NavIcon>◉</NavIcon>
@@ -1526,6 +1532,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                       <NavItem to="/pos/foodcourt/invoices" active={isActive('/pos/foodcourt/invoices')} hasPending={badgeCounts.invoices > 0} onClick={closeSidebar}>
                         <NavIcon hasPending={badgeCounts.invoices > 0}>▦</NavIcon>
                         {t("nav.invoices")}
+                      </NavItem>
+                    )}
+                    {isRouteAllowed('/pos/foodcourt/trade-invoices') && (
+                      <NavItem to="/pos/foodcourt/trade-invoices" active={isActive('/pos/foodcourt/trade-invoices')} onClick={closeSidebar}>
+                        <NavIcon>◧</NavIcon>
+                        {t("nav.tradeInvoices", "Trade Invoices")}
                       </NavItem>
                     )}
                     {isRouteAllowed('/pos/foodcourt/general/reports') && (
