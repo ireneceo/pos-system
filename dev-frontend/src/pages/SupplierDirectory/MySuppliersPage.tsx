@@ -186,7 +186,10 @@ const MySuppliersPage: React.FC = () => {
         setRows([]);
         return;
       }
-      setRows(Array.isArray(data.data) ? data.data : []);
+      setRows(Array.isArray(data.data) ? data.data.map((r: any) => ({
+        ...r,
+        supplier_name: r.supplier_name || r.supplierCompany?.name || ''
+      })) : []);
     } catch (err) {
       console.error('Failed to fetch contracts:', err);
       setRows([]);

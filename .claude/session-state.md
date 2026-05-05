@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-04 (BG/FG → Restaurant Trade Billing 운영 배포 — 버전 미상승)
-**버전:** **v3.24** (운영, 버전 미상승 유지)
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-05-05 (Features 페이지 캡처 정합성 — backstage cleanup)
+**버전:** **v3.24** (개발 중, 운영 미배포)
+**작업 상태:** dev cleanup 완료 (운영 배포 안 함 — 사용자 지시)
 
 ---
 
@@ -15,78 +15,67 @@ session-state.md 읽고 이어서 개발해.
 
 ---
 
-## 📦 오늘 완료한 작업 (2026-05-04)
+## 📦 2026-05-05 작업 (Features 페이지 캡처 정합성)
 
-### BG/FG → Restaurant Trade Billing 시스템 (운영 배포 — 버전 미상승)
+### 배경
+Irene 피드백: `https://dev.purplehere.com/features` 의 카드들 중 이미지가 빠져있는 것들이 많고, 특히 Restaurant 탭 + 기타 모든 역할 탭에 빈 카드가 산재. "개발 안 된 기능이 있으면 'Coming soon'이라도 표시해야지 그냥 이미지만 없으면 어떻게 해?"
 
-**배경**: PurchaseOrder.seller_type ENUM은 4종(system_admin/brand/foodcourt/supplier) 동등 지원했지만, monthly SOA 결제조건은 Supplier 전용. notification-settings에 BG/FG는 등록되어 있었으나 SOA 흐름 미구현 (gap). 동급 처리.
+### 수행 내역
+1. **Audit 스크립트** — 선언된 `getImages(code, count)` vs 실제 webp 파일 정합성 검사 (`/tmp/audit.js`)
+2. **빈 캡처 16개 삭제** — 9KB 이하 blank webp / "데이터 없음" 페이지 캡처 폐기
+3. **고아 파일 rename** — brand_products_5→3, inventory_management_5→4 (선언 슬롯 채움)
+4. **Work Manuals 시드 14건** — brand 1+4, restaurant 5, foodcourt 7 (Daily Opening Checklist, K-DINE 표준 등)
+5. **Owner ownership + tickets 시드** — demo_owner(289) ↔ restaurant 1/2/3 ownership + 5개 OperationTicket
+6. **MySuppliersPage 버그 fix** — API `supplierCompany.name` 중첩 → 평면 `supplier_name` fallback 매핑
+7. **Phase 6+7 캡처 11개 신규**
+   - Restaurant: buyer_supplier_contracts / buyer_purchase_orders / buyer_purchase_invoices / work_manuals
+   - Brand: brand_work_manuals
+   - Foodcourt: fc_work_manuals
+   - Owner: operation_inquiry / system_inquiry / reports / work_manuals
+   - Supplier: admin_staff
+8. **FeaturesPage count 0→1 일괄 업데이트** — 11 codes × 4 role tabs = 20 위치
+9. **빌드 + dev 배포** — `main.49f61c9d.js` (운영 미배포)
 
-#### Backend
-- `models/Restaurant.js` — `brand_billing_terms` / `foodcourt_billing_terms` JSON 컬럼 추가 (운영 DB 자동 sync)
-- `utils/paymentTerms.js` (신규) — `validatePaymentTerms` / `buildPaymentTerms` / `VALID_INVOICE_CYCLES` 공통 헬퍼 (supplier.js + entity-billing.js 공유)
-- `routes/entity-billing.js` (신규) — PUT/GET `/api/{brand|foodcourt}/restaurants/:id/billing-terms`
-- `routes/brand-soa.js` (신규) — `GET /api/brand/soa/current` + `POST /remind` + `GET /api/brand/trade-invoices`
-- `routes/foodcourt-soa.js` (신규) — 동일 패턴
-- `routes/restaurants-crud.js` — list response에 brand_billing_terms / foodcourt_billing_terms 노출
-- `routes/purchase-invoices.js` `/soa/current` — issuer_type ['supplier','brand','foodcourt'] 통합 처리, seller_type 필드 추가
-- `routes/purchase-orders-crud.js` — `resolveCreditTermsForPair()` + `checkCreditLimit()` 추가. PO 생성 시 미수금 누적 + 신규 합계가 한도 초과면 400 차단 + `code:'CREDIT_LIMIT_EXCEEDED'` + hint
-- `services/purchaseOrderService.js` — `resolvePaymentTerms()` 에 brand/foodcourt 분기 추가
-- `services/soaScheduler.js` — `issueSoaForPair()` 헬퍼 추출 + supplier/brand/foodcourt 3 평행 루프
+### 최종 상태
+- 104 declared codes / **81 with images** (이전 70) / **23 coming soon** (이전 34) / 0 broken
+- Restaurant 탭 5개 중 4개가 실제 데이터 캡처 (Membership만 진짜 Phase 2)
 
-#### Frontend
-- `components/Billing/BillingTermsModal.tsx` (신규) — 공용 모달 (BG/FG 양쪽 사용)
-- `pages/BrandGeneral/BrandTradeInvoicesPage.tsx` (신규) — Supplier 패턴 복제 (entityType prop으로 FG도 사용)
-- `pages/FoodcourtGeneral/FoodcourtTradeInvoicesPage.tsx` (신규) — Brand 페이지 wrapper
-- `pages/Manager/RestaurantsPage.tsx` — 매장 카드에 Billing 항목 + Edit 버튼 + 모달 트리거
-- `MainLayout.tsx` — BG/FG `Plans & Payments` 섹션에 Trade Invoices NavItem
-- `App.tsx` + `ProtectedRoute.tsx` — 라우트 등록 + 화이트리스트
+### 남은 23개 "Coming soon" — 진짜 미개발 / 시드 큰 작업
+- Membership, supplier_multi_warehouse 등 Phase 2
+- fc_inventory: i18n 버그 ("KEY 'STATUS (EN)' RETURNED AN OBJECT" literal 출력) — 별도 fix 필요
+- brand_ingredients/brand_suppliers: 재료-공급자 매핑 + 카탈로그 셋업 큰 작업
 
-#### i18n (4 언어)
-- `public/locales/{en,ko,zh,ms}/billing.json` (신규, 27 키 균등)
-- `public/locales/{en,ko,zh,ms}/brand.json` `tradeInvoices.*` 21 키 추가
-- `public/locales/{en,ko,zh,ms}/common.json` `nav.tradeInvoices` 추가
+### 신규 시드 스크립트
+- `dev-backend/scripts/seed-work-manuals-v3.25.js`
+- `dev-backend/scripts/seed-owner-inquiries-v3.25.js`
 
-#### 검증 (10단계 통과)
-- 통합 API: 25/25 PASS
-- credit_limit 단위: 9/9 PASS
-- health-check: 73/73 PASS
-- 빌드: exit 0
-- state hydration: 0 warnings
-
-#### 운영 배포 검증 (2026-05-04 07:46 UTC)
-- 운영 DB 컬럼 자동 추가: `brand_billing_terms`, `foodcourt_billing_terms` (JSON, nullable)
-- 신규 endpoint anon 차단: 3건 401 정상
-- i18n 4언어 200 OK
-- Backup: `/var/www/backups/20260504_074323`
-
-#### 설계 문서
-- `/var/www/docs/BG_FG_TRADE_BILLING.md`
+### 수정된 파일
+- `dev-frontend/src/pages/Landing/FeaturesPage.tsx`
+- `dev-frontend/src/pages/SupplierDirectory/MySuppliersPage.tsx`
+- `dev-frontend/scripts/capture-features.js`
+- `dev-frontend/public/images/features/dashboard/` (11 신규 + 16 삭제 + 2 rename)
+- `dev-backend/scripts/seed-work-manuals-v3.25.js` (신규)
+- `dev-backend/scripts/seed-owner-inquiries-v3.25.js` (신규)
 
 ---
 
-## 🔖 다음 할 일
+## 다음 할 일 (DEVELOPMENT_PLAN.md 기반)
 
-1. **Multi-Restaurant Owner 표시 sweep** — 157곳의 'Restaurant Owner' 텍스트를 `getRoleDisplayName()` 헬퍼로 점진 적용
-2. **데모 sample data 확장** — Multi-Owner의 multi-restaurant 매핑, FG sample tenants, Supplier product/contract sample
-3. **i18n 4언어 보강** — Multi-Restaurant Owner / B2B Procurement 등 신규 모듈 description ko/zh/ms
-4. **결제 Test mode 검증** — Stripe Test 키 등록 후 자동 검증
-5. **Ingredient 모델 vs DB 스키마 불일치** — `supplier_product_id`/`foodcourt_product_id` 컬럼 모델에 있는데 DB에 없음 (User 64-key sync fail 영향). PO 생성 endpoint 500 에러 원인. 별도 sweep 필요.
+남은 "Coming soon" 23개 중 우선순위:
 
----
+1. **fc_inventory i18n 버그 fix** — `KEY 'STATUS (EN)' RETURNED AN OBJECT INSTEAD OF STRING` literal 출력. 백엔드 응답 status 가 객체 (다국어 객체?)인데 frontend 가 문자열 기대. status 키 정상화.
+2. **brand_ingredients / brand_suppliers 시드 + 캡처** — Brand 레벨 재료 카탈로그 + 공급자 매핑 데이터 셋업
+3. **System Inquiry 모델 확인 + owner_system_inquiry 시드** — OperationTicket 외 별도 SystemTicket 모델인지 확인 필요
+4. **Foodcourt fc_coupons / fc_customers / fc_floor_plan / fc_products / fc_stats 캡처** — 데이터 시드 필요
+5. **Supplier 측 incoming PO 흐름 캡처** — buyer 측 PO 가 supplier 20번에 도달하도록 흐름 점검
 
-## 📂 주요 문서 위치
-
-- 신규 설계서: `/var/www/docs/BG_FG_TRADE_BILLING.md`
-- 개발 로드맵: `/var/www/DEVELOPMENT_PLAN.md`
-- CHANGELOG: `/var/www/CHANGELOG.md` (Unreleased 유지 — 버전 미상승)
-- 결제 아키텍처: `/var/www/docs/PAYMENT_ARCHITECTURE.md`
-- Supplier Contract: `/var/www/docs/SUPPLIER_CONTRACT_SYSTEM.md`
-- UI 가이드: `/var/www/dev-frontend/UI_DESIGN_GUIDE.md`
-- 프로젝트 규칙: `/var/www/CLAUDE.md`
+또는 v3.24 backstage cleanup 후속으로 통합 운영 배포 (사용자 지시 시).
 
 ---
 
 ## 서버 재시작 후 복구 가이드
+
+새 Claude 세션 시작 시 아래 내용을 붙여넣으세요:
 
 ```
 이전 세션에서 진행하던 작업을 이어서 하고 싶어.

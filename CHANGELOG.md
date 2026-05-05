@@ -6,6 +6,12 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+### 2026-05-05
+- Features 페이지 (`/features`) 캡처 정합성 정리 — 깨진/빈 카드 16개 삭제, 11개 신규 캡처, 23개 정직하게 "Coming soon" 표시
+- Work manuals 14개 시드 (brand/restaurant/foodcourt 각 영역)
+- demo_owner ↔ restaurant 1/2/3 ownership 연결 + 5개 OperationTicket 시드 → Owner inquiry 페이지 실제 데이터 노출
+- MySuppliersPage `supplier_name` 표시 버그 fix (API `supplierCompany.name` 중첩 → 평면 fallback)
+
 ### BG/FG → Restaurant Trade Billing 시스템 (2026-05-04)
 - **결제조건 컬럼 신설**: `Restaurant.brand_billing_terms` / `foodcourt_billing_terms` JSON (terms / invoice_cycle / payment_due_day / credit_limit / currency / notes). NULL = immediate (default)
 - **BG/FG 결제조건 설정 UI**: `Restaurants` 메뉴의 매장 카드에 Billing 항목 + Edit 버튼 추가 → `BillingTermsModal` 공용 모달 (Supplier Customers 모달 패턴)

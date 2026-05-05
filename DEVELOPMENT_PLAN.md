@@ -1,9 +1,47 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-04 (v3.24 BG/FG → Restaurant Trade Billing 시스템 운영 배포 — 버전 미상승)
+> **최종 업데이트:** 2026-05-05 (Features 페이지 캡처 정합성 — backstage cleanup, 버전 미상승)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.24** (2026-05-04 운영 배포)
+
+## ✅ 완료: Features 페이지 캡처 정합성 (2026-05-05, 버전 미상승)
+
+**Landing `/features` 페이지의 깨진 이미지 / 빈 카드 정리. 실제 데이터로 11개 카드 신규 캡처. 빈 슬롯은 정직하게 "Screenshot coming soon" 표시.**
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| Capture audit 시스템 | 선언된 getImages count vs 실제 webp 파일 차이 자동 검사 스크립트 (`/tmp/audit.js`) | ✓ |
+| 빈/희박 캡처 16개 삭제 | 9KB 이하 빈 webp / 데이터 없이 페이지만 보이는 캡처 폐기 | ✓ |
+| 고아 파일 rename | brand_products_5→3, inventory_management_5→4 (선언 슬롯 채움) | ✓ |
+| Work Manuals 시드 | brand 1+4, restaurant 5, foodcourt 7 — 14개 매뉴얼 (Daily Opening Checklist 등) | ✓ |
+| Owner ownership + 티켓 시드 | demo_owner(289) ↔ restaurant 1/2/3 ownership 연결 + 5개 OperationTicket | ✓ |
+| MySuppliersPage `supplier_name` 버그 fix | API 가 `supplierCompany.name` 중첩으로 반환하는 데 frontend 가 평면 `supplier_name` 기대 → fetch 결과 매핑에서 fallback 추가 | ✓ |
+| Phase 6+7 캡처 11개 신규 | Restaurant: buyer_supplier_contracts/buyer_purchase_orders/buyer_purchase_invoices/work_manuals · Brand: brand_work_manuals · Foodcourt: fc_work_manuals · Owner: operation/system inquiry/reports/work_manuals · Supplier: admin_staff | ✓ |
+| FeaturesPage count 0→1 일괄 수정 | 11 codes × 4 role tabs = 20 위치. 실제 webp 있는 슬롯이 carousel 에 노출되도록 | ✓ |
+| 최종 audit | 104 declared codes / 81 with images / 23 coming soon / 0 broken | ✓ |
+| 빌드 + 배포 | `main.49f61c9d.js` dev 배포 (운영 미배포) | ✓ |
+
+### 신규 시드/스크립트
+- `/var/www/dev-backend/scripts/seed-work-manuals-v3.25.js` — work manuals 14건
+- `/var/www/dev-backend/scripts/seed-buyer-data-v3.25.js` — Brand → Supplier 거래 흐름 (이전 세션 유산)
+- `/var/www/dev-backend/scripts/seed-foodcourt-rich-v3.25.js` — fc admins/staff/branches
+- `/var/www/dev-backend/scripts/seed-owner-inquiries-v3.25.js` — demo_owner 권한 + tickets
+
+### 한계 (남은 23개 "Coming soon")
+- **진짜 미개발**: Membership, supplier_multi_warehouse 등 Phase 2
+- **i18n 버그 회귀 위험**: fc_inventory ("KEY 'STATUS (EN)' RETURNED AN OBJECT" literal 출력 → 별도 fix 필요)
+- **데이터 시드 큰 작업**: brand_ingredients/brand_suppliers (재료-공급자 매핑 + 카탈로그 셋업), supplier 측 incoming PO 흐름
+
+### 수정된 파일
+- `dev-frontend/src/pages/Landing/FeaturesPage.tsx` (count 변경 20곳)
+- `dev-frontend/src/pages/SupplierDirectory/MySuppliersPage.tsx` (supplier_name 매핑)
+- `dev-frontend/scripts/capture-features.js` (Phase 6+7 타깃)
+- `dev-frontend/public/images/features/dashboard/` (11 신규 + 16 삭제 + 2 rename)
+- `dev-backend/scripts/seed-work-manuals-v3.25.js` (신규)
+- `dev-backend/scripts/seed-owner-inquiries-v3.25.js` (신규)
+
+---
 
 ## ✅ 완료: v3.24 BG/FG → Restaurant Trade Billing (2026-05-04, 버전 미상승)
 
