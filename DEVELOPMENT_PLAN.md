@@ -1,9 +1,42 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-05 (Features 페이지 캡처 정합성 — backstage cleanup, 버전 미상승)
+> **최종 업데이트:** 2026-05-05 (JSON 컬럼 이중 stringify 정합성 복구 — backstage cleanup, 버전 미상승)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.24** (2026-05-04 운영 배포)
+
+## ✅ 완료: JSON 컬럼 이중 stringify 정합성 복구 (2026-05-05, 버전 미상승)
+
+**데모 레스토랑 13의 결제 settings 페이지에서 카드가 안 보이는 증상 시작 → 시드 코드의 `JSON.stringify(...)` 래퍼와 Sequelize setter의 `JSON.stringify(value)`가 겹쳐 발생한 이중 stringify 광범위 점검 + 모델 setter 가드 + 운영/dev DB 데이터 복구.**
+
+| 작업 | 설명 | 상태 |
+|------|------|:----:|
+| 진단 | restaurant 13 `payment_settings` JSON_TYPE=STRING + 레거시 스키마(label/availableIn 누락) 확인 | ✓ |
+| 운영 DB 정합 scan | 모든 영향 컬럼 일괄 점검 → 99건 깨진 row 발견 (모두 데모/테스트 기원) | ✓ |
+| Restaurant 모델 setter 가드 | payment_settings / operation_settings / table_settings — `typeof value === 'string'` 분기로 재래거시 입력도 안전 | ✓ |
+| Brand/Foodcourt/SupplierCompany setter 가드 | payment/operation/invoice settings 9개 setter 동일 패턴 적용 | ✓ |
+| seed-demo-data.js cleanup | 9곳의 `JSON.stringify(...)` 래퍼 제거 + restaurant 1 payment_settings를 Restaurant 모델 default와 동일한 7-method 정식 스키마로 교체 (cash/card/ewallet/bankTransfer/counter/online/staffMeal) | ✓ |
+| 운영 DB 복구 | 백업(`prod:/tmp/json_repair_20260505_220159/`) 후 트랜잭션 1개로 99건 → 0건. orders.payment_proof id=517 "test data" 잔여물은 NULL 처리 | ✓ |
+| dev DB 복구 | 백업 후 동일 방식 88건 → 0건 | ✓ |
+| 검증 (10단계) | hydration 0 warning · build:dev exit 0 · health-check 73/73 · write→read 왕복 OK · DB raw type=OBJECT · 401 가드 정상 · 역할별 흐름 통과 | ✓ |
+| 운영 배포 | 13 백엔드 + 686 프론트 파일 rsync, npm install, PM2 재시작, Nginx 리로드. 운영 demo 페이지 7-method 정상 응답 검증 | ✓ |
+
+### 미반영 (의도)
+- `users.permissions` id=10/26/28: User 모델 자체 unwrap+filter 가드가 이미 안전 처리. raw가 깨져 있어도 동작 영향 없음. 사용자가 권한 페이지 한 번 저장하면 자가 정정.
+- Order/Coupon 등 운영 데이터 setter: 시드 cleanup으로 재발 차단 + 운영 정합성 검증 0건. 안정성 우선해 손대지 않음.
+
+### 영향
+- 운영 일반 유저 데이터 0건 영향 (모든 깨진 row가 데모/테스트 기원)
+- 데모 admin 페이지: `https://purplehere.com/restaurant/13/settings?tab=payment` 카드 7개 정상 표시
+
+### 수정된 파일
+- `dev-backend/models/Restaurant.js` (3 setter)
+- `dev-backend/models/Brand.js` (3 setter)
+- `dev-backend/models/Foodcourt.js` (3 setter)
+- `dev-backend/models/SupplierCompany.js` (3 setter)
+- `dev-backend/seed-demo-data.js` (9곳 cleanup + payment_settings schema 교체)
+
+---
 
 ## ✅ 완료: Features 페이지 캡처 정합성 (2026-05-05, 버전 미상승)
 

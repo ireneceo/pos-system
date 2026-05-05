@@ -285,7 +285,11 @@ Restaurant.init({
       return JSON.parse(rawValue);
     },
     set(value) {
-      this.setDataValue('payment_settings', value ? JSON.stringify(value) : null);
+      if (!value) {
+        this.setDataValue('payment_settings', null);
+      } else {
+        this.setDataValue('payment_settings', typeof value === 'string' ? value : JSON.stringify(value));
+      }
     }
   },
   operation_settings: {
@@ -401,7 +405,11 @@ Restaurant.init({
       }
     },
     set(value) {
-      this.setDataValue('operation_settings', value ? JSON.stringify(value) : null);
+      if (!value) {
+        this.setDataValue('operation_settings', null);
+      } else {
+        this.setDataValue('operation_settings', typeof value === 'string' ? value : JSON.stringify(value));
+      }
     }
   },
   table_settings: {
@@ -432,7 +440,11 @@ Restaurant.init({
       }
     },
     set(value) {
-      this.setDataValue('table_settings', value ? JSON.stringify(value) : null);
+      if (!value) {
+        this.setDataValue('table_settings', null);
+      } else {
+        this.setDataValue('table_settings', typeof value === 'string' ? value : JSON.stringify(value));
+      }
     }
   },
   floor_plan: {

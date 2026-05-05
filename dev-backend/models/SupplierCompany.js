@@ -68,7 +68,7 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
       if (!raw) return def;
       try { return { ...def, ...JSON.parse(raw) }; } catch { return def; }
     },
-    set(value) { this.setDataValue('operation_settings', value ? JSON.stringify(value) : null); }
+    set(value) { this.setDataValue('operation_settings', !value ? null : (typeof value === 'string' ? value : JSON.stringify(value))); }
   },
   payment_settings: {
     type: DataTypes.TEXT('medium'), allowNull: true,
@@ -78,7 +78,7 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
       if (!raw) return def;
       try { return JSON.parse(raw); } catch { return def; }
     },
-    set(value) { this.setDataValue('payment_settings', value ? JSON.stringify(value) : null); }
+    set(value) { this.setDataValue('payment_settings', !value ? null : (typeof value === 'string' ? value : JSON.stringify(value))); }
   },
   invoice_settings: {
     type: DataTypes.TEXT, allowNull: true,
@@ -88,7 +88,7 @@ const SupplierCompany = sequelize.define('SupplierCompany', {
       if (!raw) return def;
       try { return { ...def, ...JSON.parse(raw) }; } catch { return def; }
     },
-    set(value) { this.setDataValue('invoice_settings', value ? JSON.stringify(value) : null); }
+    set(value) { this.setDataValue('invoice_settings', !value ? null : (typeof value === 'string' ? value : JSON.stringify(value))); }
   },
   supported_currencies: {
     type: DataTypes.TEXT, allowNull: true,

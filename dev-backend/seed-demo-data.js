@@ -97,7 +97,7 @@ function generateOrders(restaurant1Id, restaurant2Id) {
         payment_status: isCompleted ? 'completed' : (isCancelled ? 'failed' : 'pending'),
         kitchen_ready: ['preparing', 'ready', 'completed', 'served'].includes(status),
         order_date: orderDate,
-        order_items: JSON.stringify(items),
+        order_items: items,
         createdAt: orderCreatedAt
       });
     }
@@ -135,7 +135,7 @@ function generateOrders(restaurant1Id, restaurant2Id) {
         payment_status: status === 'completed' ? 'completed' : 'pending',
         kitchen_ready: status !== 'pending',
         order_date: orderDate,
-        order_items: JSON.stringify([{ name: 'Spicy Ramyeon', quantity: 1, price: subtotal, total: subtotal }]),
+        order_items: [{ name: 'Spicy Ramyeon', quantity: 1, price: subtotal, total: subtotal }],
         createdAt: orderCreatedAt2
       });
     }
@@ -496,18 +496,18 @@ async function seedDemoData() {
       postal_code: '55100',
       country: 'Malaysia',
       currency: 'RM',
-      operation_settings: JSON.stringify({
+      operation_settings: {
         timezone: 'Asia/Kuala_Lumpur',
         opening_time: '10:00',
         closing_time: '22:00'
-      }),
-      invoice_settings: JSON.stringify({
+      },
+      invoice_settings: {
         prefix: 'INV-DEMO',
         payment_terms: 30,
         tax_rate: 0,
         auto_generate: true
-      }),
-      payment_settings: JSON.stringify({
+      },
+      payment_settings: {
         defaultCurrency: 'MYR',
         bankTransfer: {
           enabled: true,
@@ -524,7 +524,7 @@ async function seedDemoData() {
           royaltyFee: { enabled: true, type: 'percentage', value: 5, label: 'Royalty Fee' },
           marketingFee: { enabled: true, type: 'fixed', value: 299, label: 'Marketing Contribution' }
         }
-      })
+      }
     }, { transaction: t });
 
     await demoBrandUser.update({ brand_id: demoBrand.id }, { transaction: t });
@@ -556,20 +556,23 @@ async function seedDemoData() {
       currency: 'RM',
       payment_model: 'restaurant',
       subscription_start: new Date('2025-01-01'),
-      operation_settings: JSON.stringify({
+      operation_settings: {
         timezone: 'Asia/Kuala_Lumpur',
         opening_time: '11:00',
         closing_time: '23:00',
         tax_rate: 6,
         service_charge_rate: 10,
         order_types: ['dine_in', 'takeaway', 'delivery']
-      }),
-      payment_settings: JSON.stringify({
-        cash: { enabled: true },
-        card: { enabled: true },
-        e_wallet: { enabled: true, providers: ['Touch n Go', 'GrabPay'] },
-        qr_payment: { enabled: true }
-      })
+      },
+      payment_settings: {
+        cash: { enabled: true, label: 'Cash', availableIn: ['pos'] },
+        card: { enabled: true, label: 'Card', availableIn: ['pos'] },
+        ewallet: { enabled: true, label: 'E-Wallet', availableIn: ['pos', 'mobile'], qrImage: '' },
+        bankTransfer: { enabled: true, label: 'Bank Transfer', availableIn: ['pos', 'mobile'], bankName: 'Maybank', accountNumber: '5123-4567-8901', accountName: 'Seoul Garden BBQ Sdn Bhd' },
+        counter: { enabled: true, label: 'Pay at Counter', availableIn: ['mobile'] },
+        online: { enabled: false, label: 'Online Payment', availableIn: ['mobile'], provider: '', config: { stripePublicKey: '', stripeSecretKey: '', paypalClientId: '', paypalClientSecret: '' } },
+        staffMeal: { enabled: false, label: 'Staff Meal', availableIn: ['pos'] }
+      }
     }, { transaction: t });
 
     await demoRestaurantUser.update({ restaurant_id: restaurant1.id }, { transaction: t });
@@ -592,14 +595,14 @@ async function seedDemoData() {
       currency: 'RM',
       payment_model: 'brand_manager',
       subscription_start: new Date('2025-06-01'),
-      operation_settings: JSON.stringify({
+      operation_settings: {
         timezone: 'Asia/Kuala_Lumpur',
         opening_time: '10:00',
         closing_time: '22:00',
         tax_rate: 6,
         service_charge_rate: 0,
         order_types: ['dine_in', 'takeaway']
-      })
+      }
     }, { transaction: t });
 
     await RestaurantManager.bulkCreate([
@@ -1016,7 +1019,7 @@ async function seedDemoData() {
         valid_from: new Date(now.getFullYear(), now.getMonth() - 1, 1),
         valid_until: new Date(now.getFullYear(), now.getMonth() + 2, 0),
         is_active: true,
-        applicable_order_types: JSON.stringify(['dine_in', 'takeaway'])
+        applicable_order_types: ['dine_in', 'takeaway']
       },
       {
         restaurant_id: restaurant1.id,
@@ -1031,7 +1034,7 @@ async function seedDemoData() {
         valid_from: new Date(now.getFullYear(), now.getMonth(), 15),
         valid_until: new Date(now.getFullYear(), now.getMonth() + 1, 15),
         is_active: true,
-        applicable_order_types: JSON.stringify(['dine_in'])
+        applicable_order_types: ['dine_in']
       },
       {
         restaurant_id: restaurant1.id,
@@ -1047,7 +1050,7 @@ async function seedDemoData() {
         valid_from: new Date(2025, 0, 20),
         valid_until: new Date(2025, 1, 15),
         is_active: false,
-        applicable_order_types: JSON.stringify(['dine_in', 'takeaway', 'delivery'])
+        applicable_order_types: ['dine_in', 'takeaway', 'delivery']
       }
     ], { transaction: t });
 

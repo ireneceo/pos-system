@@ -138,7 +138,11 @@ Foodcourt.init({
       }
     },
     set(value) {
-      this.setDataValue('operation_settings', value ? JSON.stringify(value) : null);
+      if (!value) {
+        this.setDataValue('operation_settings', null);
+      } else {
+        this.setDataValue('operation_settings', typeof value === 'string' ? value : JSON.stringify(value));
+      }
     }
   },
   // Payment Settings for Invoice (B2B)
@@ -172,7 +176,11 @@ Foodcourt.init({
       }
     },
     set(value) {
-      this.setDataValue('payment_settings', value ? JSON.stringify(value) : null);
+      if (!value) {
+        this.setDataValue('payment_settings', null);
+      } else {
+        this.setDataValue('payment_settings', typeof value === 'string' ? value : JSON.stringify(value));
+      }
     }
   },
   // Invoice Settings
@@ -199,7 +207,11 @@ Foodcourt.init({
       }
     },
     set(value) {
-      this.setDataValue('invoice_settings', value ? JSON.stringify(value) : null);
+      if (!value) {
+        this.setDataValue('invoice_settings', null);
+      } else {
+        this.setDataValue('invoice_settings', typeof value === 'string' ? value : JSON.stringify(value));
+      }
     }
   },
   // Supported Currencies
