@@ -23,8 +23,9 @@ require('dotenv').config();
 const REAL_USERNAMES = [
   'systemadmin',       // System Admin (Irene)
   'gitconsulting',     // Brand General (GIT Consulting)
-  'kdine_admin',       // Restaurant Admin (K-Dine Korean Restaurant)
-  'kdine_staff',       // Staff (K-Dine)
+  // kdine_admin / kdine_staff는 demo-login (test_restaurant_admin / test_staff) 용으로 사용되므로
+  // REAL 에서 제외. is_test=true 유지되어야 demo-login 가드 통과 (services/authService.loginAsDemo).
+  // Login 카드 라벨 "300+ orders for testing" 참조.
   'kdineipc1',         // Restaurant Admin (K-DINE IPC Branch)
   'withmin1',          // Restaurant Admin (with MIN Cafe)
   'Moon',              // Staff (K-DINE IPC Branch)
