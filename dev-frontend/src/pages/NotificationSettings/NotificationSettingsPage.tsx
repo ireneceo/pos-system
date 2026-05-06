@@ -385,6 +385,24 @@ const NotificationSettingsPage: React.FC = () => {
   const [categories, setCategories] = useState<NotificationCategory[]>([]);
   const [prefsLoading, setPrefsLoading] = useState(false);
 
+  // Live Order audio alert (browser-local; Restaurant Admin / Staff only)
+  const isOrderRole = user?.role === 'Restaurant Admin' || user?.role === 'Staff';
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('sound_enabled') !== 'false'
+  );
+  const handleAudioToggle = useCallback(() => {
+    setAudioEnabled(prev => {
+      const next = !prev;
+      try { localStorage.setItem('sound_enabled', String(next)); } catch { /* private mode */ }
+      if (!next) {
+        import('../../utils/notificationSound')
+          .then(({ stopRepeatingSound }) => stopRepeatingSound())
+          .catch(() => { /* ignore */ });
+      }
+      return next;
+    });
+  }, []);
+
   const [loading, setLoading] = useState(false);
 
   // Refs for per-toggle AutoSaveField instances (keyed by category key)
@@ -593,6 +611,23 @@ const NotificationSettingsPage: React.FC = () => {
 
           {activeTab === 'preferences' && (
             <SettingsCard>
+              {isOrderRole && (
+                <>
+                  <SectionTitle>{t('notifications:notificationSettingsPage.liveOrderAudio.section', 'Live Order Alert')}</SectionTitle>
+                  <PreferenceRow>
+                    <PreferenceInfo>
+                      <PreferenceLabel>{t('notifications:notificationSettingsPage.liveOrderAudio.label', 'Sound notification')}</PreferenceLabel>
+                      <PreferenceDesc>{t('notifications:notificationSettingsPage.liveOrderAudio.description', 'Play a sound when a new order arrives. This is a per-browser setting.')}</PreferenceDesc>
+                    </PreferenceInfo>
+                    <ToggleSwitch>
+                      <ToggleInput type="checkbox" checked={audioEnabled} onChange={handleAudioToggle} />
+                      <ToggleSlider checked={audioEnabled} />
+                    </ToggleSwitch>
+                  </PreferenceRow>
+                  <SectionSpacer />
+                </>
+              )}
+
               <DescriptionText>
                 Choose which notifications you want to receive via email. All notifications are enabled by default.
               </DescriptionText>

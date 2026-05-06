@@ -19,5 +19,8 @@
   "notificationSettingsPage.cancel": "Cancel",
   "notificationSettingsPage.enterTheEmailAddressWhereYouWantToReceiveTheTestEmail": "Enter the email address where you want to receive the test email.",
   "notificationSettingsPage.emailAddress": "Email Address",
-  "notificationSettingsPage.ok": "OK"
+  "notificationSettingsPage.ok": "OK",
+  "notificationSettingsPage.liveOrderAudio.section": "Live Order Alert",
+  "notificationSettingsPage.liveOrderAudio.label": "Sound notification",
+  "notificationSettingsPage.liveOrderAudio.description": "Play a sound when a new order arrives. This is a per-browser setting."
 }

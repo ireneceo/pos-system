@@ -19,5 +19,8 @@
   "notificationSettingsPage.cancel": "취소",
   "notificationSettingsPage.enterTheEmailAddressWhereYouWantToReceiveTheTestEmail": "테스트 이메일을 받을 이메일 주소를 입력하세요.",
   "notificationSettingsPage.emailAddress": "이메일 주소",
-  "notificationSettingsPage.ok": "확인"
+  "notificationSettingsPage.ok": "확인",
+  "notificationSettingsPage.liveOrderAudio.section": "실시간 주문 알림",
+  "notificationSettingsPage.liveOrderAudio.label": "알림음",
+  "notificationSettingsPage.liveOrderAudio.description": "새 주문이 도착하면 알림음을 재생합니다. 브라우저 단위 설정입니다."
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -12,6 +13,7 @@ import { formatCurrency } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
 import { formatPaymentDisplay } from '../../constants';
 import { useTranslation } from 'react-i18next';
+import { useRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
@@ -148,11 +150,15 @@ const MainGrid = styled.div`
 const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   border: 1px solid #E6EBF1;
 
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
+
   h3 {
-    margin: 0 0 20px 0;
+    margin: 0 0 24px 0;
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
@@ -252,55 +258,6 @@ const AlertDescription = styled.div`
   font-size: 12px;
   color: #6B7280;
   margin-top: 2px;
-`;
-
-const TableContainer = styled.div`
-  background: white;
-  border-radius: 0 0 16px 16px;
-  border: 1px solid #E6EBF1;
-  border-top: none;
-  overflow: hidden;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const Thead = styled.thead`
-  background: #F8FAFC;
-`;
-
-const Th = styled.th`
-  padding: 16px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7C93;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const Tbody = styled.tbody``;
-
-const Tr = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
-  transition: background 0.2s;
-
-  &:hover {
-    background: #F8FAFC;
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const Td = styled.td`
-  padding: 16px;
-  font-size: 14px;
-  color: #374151;
-  vertical-align: middle;
 `;
 
 const OrderNumber = styled.div`
@@ -454,15 +411,32 @@ const QuickActionCard = styled.div`
 `;
 
 const RecentOrdersSection = styled.div`
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #E6EBF1;
+  overflow: hidden;
+
   h3 {
-    background: white;
     padding: 20px 24px;
     margin: 0;
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
-    border: 1px solid #E6EBF1;
-    border-radius: 16px 16px 0 0;
+    border-bottom: 1px solid #F3F4F6;
+  }
+
+  /* DataTable 가 1024px 이하에서 카드 그리드로 변하므로
+     컨테이너의 border/배경은 그 시점에 제거해 카드를 직접 노출시킨다. */
+  @media (max-width: 1024px) {
+    background: transparent;
+    border: none;
+    overflow: visible;
+    border-radius: 0;
+
+    h3 {
+      padding: 8px 0 12px;
+      border-bottom: none;
+    }
   }
 `;
 
@@ -474,6 +448,7 @@ interface SalesChartData {
 
 const RestaurantDashboard: React.FC = () => {
   const { t } = useTranslation('settings');
+  const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { paymentSettings } = useStore();
@@ -679,7 +654,7 @@ const RestaurantDashboard: React.FC = () => {
             <WelcomeModal
               userKey={user.id}
               userName={user.fullName || user.username}
-              roleLabel={user.role}
+              roleLabel={displayRole(user.role)}
               items={setupItems}
             />
           )}
@@ -781,7 +756,7 @@ const RestaurantDashboard: React.FC = () => {
 
               {salesChartData.length > 0 ? (
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', height: '120px', gap: '8px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', height: '160px', gap: '8px', marginBottom: '24px' }}>
                     {salesChartData.map((data, index) => {
                       const maxRevenue = Math.max(...salesChartData.map(d => d.revenue), 1);
                       const dateObj = new Date(data.date);
@@ -967,32 +942,24 @@ const RestaurantDashboard: React.FC = () => {
 
           <RecentOrdersSection>
             <h3>{t('settings:restaurantDashboard.recentOrders')}</h3>
-          </RecentOrdersSection>
-          <TableContainer>
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th>{t('settings:restaurantDashboard.order')}</Th>
-                  <Th>{t('settings:restaurantDashboard.items')}</Th>
-                  <Th>{t('settings:restaurantDashboard.status')}</Th>
-                  <Th>{t('settings:restaurantDashboard.time')}</Th>
-                  <Th>{t('settings:restaurantDashboard.amount')}</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {recentOrders.length === 0 ? (
-                  <Tr>
-                    <Td colSpan={5} style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                      No recent orders
-                    </Td>
-                  </Tr>
-                ) : (
-                  recentOrders.map(order => (
-                    <Tr key={order.id}>
-                      <Td>
-                        <OrderNumber>
-                          {order.order_number}
-                        </OrderNumber>
+            {recentOrders.length === 0 ? (
+              <DataTableEmpty>{t('settings:restaurantDashboard.noRecentOrders', 'No recent orders')}</DataTableEmpty>
+            ) : (
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell align="left">{t('settings:restaurantDashboard.order')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('settings:restaurantDashboard.items')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('settings:restaurantDashboard.status')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('settings:restaurantDashboard.time')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('settings:restaurantDashboard.amount')}</DataTableHeaderCell>
+                  </tr>
+                </DataTableHead>
+                <tbody>
+                  {recentOrders.map(order => (
+                    <DataTableRow key={order.id}>
+                      <DataTableCell data-label={t('settings:restaurantDashboard.order')}>
+                        <OrderNumber>{order.order_number}</OrderNumber>
                         <CustomerInfo>
                           {order.customer_name || 'Guest'}<br />
                           {order.customer_phone || 'N/A'}
@@ -1000,16 +967,14 @@ const RestaurantDashboard: React.FC = () => {
                             <><br />Table: {order.table_number}</>
                           )}
                         </CustomerInfo>
-                      </Td>
-                      <Td>
+                      </DataTableCell>
+                      <DataTableCell data-label={t('settings:restaurantDashboard.items')}>
                         <ItemsList>
                           {(() => {
-                            // 안전하게 items 배열 추출
                             const items = order.items || order.order_items || [];
                             if (!Array.isArray(items) || items.length === 0) {
                               return <span style={{ color: '#6B7280', fontSize: '13px' }}>{t('settings:restaurantDashboard.noItems')}</span>;
                             }
-
                             return items.map((item: any, index: number) => {
                               if (!item) return null;
                               return (
@@ -1028,8 +993,8 @@ const RestaurantDashboard: React.FC = () => {
                             });
                           })()}
                         </ItemsList>
-                      </Td>
-                      <Td>
+                      </DataTableCell>
+                      <DataTableCell data-label={t('settings:restaurantDashboard.status')}>
                         <Badge variant={order.status}>
                           {(() => {
                             switch(order.status) {
@@ -1044,8 +1009,8 @@ const RestaurantDashboard: React.FC = () => {
                             }
                           })()}
                         </Badge>
-                      </Td>
-                      <Td>
+                      </DataTableCell>
+                      <DataTableCell data-label={t('settings:restaurantDashboard.time')}>
                         <TimeInfo>
                           {formatDateTime(order.order_date, null, {
                             month: 'short',
@@ -1054,19 +1019,19 @@ const RestaurantDashboard: React.FC = () => {
                             minute: '2-digit'
                           })}
                         </TimeInfo>
-                      </Td>
-                      <Td>
+                      </DataTableCell>
+                      <DataTableCell align="right" data-label={t('settings:restaurantDashboard.amount')}>
                         <Amount>{formatCurrency(parseFloat(order.total_amount || 0), selectedCurrency)}</Amount>
                         <PaymentMethod isPending={order.payment_status === 'pending'}>
                           {order.payment_status === 'pending' ? 'Pending' : formatPaymentDisplay(order.payment_method, (order as any).card_type, paymentSettings || undefined)}
                         </PaymentMethod>
-                      </Td>
-                    </Tr>
-                  ))
-                )}
-              </Tbody>
-            </Table>
-          </TableContainer>
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </tbody>
+              </DataTable>
+            )}
+          </RecentOrdersSection>
         </Content>
       </Container>
     </>

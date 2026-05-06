@@ -19,5 +19,8 @@
   "notificationSettingsPage.cancel": "Batal",
   "notificationSettingsPage.enterTheEmailAddressWhereYouWantToReceiveTheTestEmail": "Masukkan alamat e-mel untuk menerima e-mel ujian.",
   "notificationSettingsPage.emailAddress": "E-mel Alamat",
-  "notificationSettingsPage.ok": "OK"
+  "notificationSettingsPage.ok": "OK",
+  "notificationSettingsPage.liveOrderAudio.section": "Amaran Pesanan Langsung",
+  "notificationSettingsPage.liveOrderAudio.label": "Pemberitahuan bunyi",
+  "notificationSettingsPage.liveOrderAudio.description": "Mainkan bunyi apabila pesanan baharu tiba. Ini ialah tetapan setiap pelayar."
 }
