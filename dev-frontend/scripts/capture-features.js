@@ -1,6 +1,6 @@
 /**
  * Auto-capture screenshots for FeaturesPage feature_code_N.{webp,png}
- * Phase 7 — fix MySuppliersPage display + re-capture remaining "Coming soon" cards
+ * v3.25 — supplier 4 슬롯 캡처 (demo_supplier_admin 데이터 풍부)
  */
 const { chromium } = require('@playwright/test');
 const sharp = require('sharp');
@@ -12,13 +12,11 @@ const API_BASE = process.env.API_BASE || 'http://localhost:3001';
 const OUT_DIR = '/var/www/dev-frontend/public/images/features/dashboard';
 
 const TARGETS = [
-  // After supplier_name display fix
-  { code: 'buyer_supplier_contracts', index: 1, role: 'test_restaurant_admin', path: '/pos/suppliers/contracts' },
-  // After brand_id=1 manual seed
-  { code: 'brand_work_manuals',       index: 1, role: 'test_brand_general',    path: '/pos/brand/general/work-manuals' },
-  // After demo_owner ownership + ticket seed
-  { code: 'owner_operation_inquiry',  index: 1, role: 'demo_multi_owner',      path: '/pos/owner/operation-inquiry' },
-  { code: 'owner_system_inquiry',     index: 1, role: 'demo_multi_owner',      path: '/pos/owner/system-inquiry' }
+  // v3.25 — Supplier 측 4 슬롯 (38 PO + 19 trade invoices + 5 contracts 시드 확인)
+  { code: 'supplier_dashboard',       index: 1, role: 'demo_supplier_admin', path: '/pos/supplier/dashboard' },
+  { code: 'supplier_orders',          index: 1, role: 'demo_supplier_admin', path: '/pos/supplier/orders' },
+  { code: 'supplier_contracts',       index: 1, role: 'demo_supplier_admin', path: '/pos/supplier/contracts' },
+  { code: 'supplier_trade_invoices',  index: 1, role: 'demo_supplier_admin', path: '/pos/supplier/trade-invoices' }
 ];
 
 async function loginAndGetToken(role) {

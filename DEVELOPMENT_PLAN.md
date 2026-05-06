@@ -1,9 +1,53 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-05 (JSON 컬럼 이중 stringify 정합성 복구 — backstage cleanup, 버전 미상승)
+> **최종 업데이트:** 2026-05-06 (v3.25 Pricing/Module Audience — backstage cleanup, 버전 미상승)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.24** (2026-05-04 운영 배포)
+> **현재 버전:** **v3.24** (2026-05-04 운영 배포, v3.25 미배포 backstage)
+
+## ✅ 완료: v3.25 Pricing/Module Audience (2026-05-06, 미배포 / 버전 미상승)
+
+**PricingPage 모듈 정렬 깨짐 + buyer_* 카테고리 잘못 + Owner 잘못 노출 + Supplier 누락 + Features 빈 캡처 슬롯 일괄 정합화. Supplier role 의 모델 ENUM 등록 (target_user_type / plan_target / issuer_type / status=credit) + supplier 4 슬롯 캡처.**
+
+### 설계 문서
+`docs/PRICING_MODULE_AUDIENCE_v3.25.md` (305줄, 7-단계 작업 계획).
+
+### 작업 결과
+
+| # | 단계 | 결과 | 상태 |
+|---|------|------|:---:|
+| 1 | DB sort_order + category 정합화 | `update-module-sort-and-category-v3.25.js`. sort_order=0 모듈 0건. buyer_* 4 = advanced. 96 모듈 (target distribution: restaurant 24 / brand 23 / foodcourt 22 / owner 10 / all 4 / supplier 13) | ✓ |
+| 2 | PricingPage filter 분기 | 설계 §4 합성 ENUM 안 대신 한 줄 차단 (`if owner && code.startsWith('buyer_') return false`). supplier 는 'all' 매치로 자동 노출 | ✓ |
+| 3 | FeaturesPage Supplier 탭 buyer_* 4 카드 | 4 탭 모두 등록 (Supplier 탭 'Procurement' wording 차별화) | ✓ |
+| 4 | 시드 (idempotent) | `seed-buyer-data-v3.25.js` (Brand R10 → Demo Supplier 매입 흐름) + `seed-foodcourt-rich-v3.25.js` (FC 7 admin 4 + staff 5 + branch 2). 모두 기시드 skip | ✓ |
+| 5 | Features 캡처 (supplier 4) | supplier_dashboard / supplier_orders / supplier_contracts / supplier_trade_invoices 신규 캡처. FeaturesPage 0→1 갱신 | ✓ |
+| 6 | 모델 ENUM 확장 | AddonModule.target_user_type +supplier / PlanTemplate.plan_target +supplier / Invoice.issuer_type +supplier / Invoice.status +credit. DB sync 완료 | ✓ |
+| 7 | 빌드 + 검증 | `build:dev` exit 0 (89s, main.a29df543.js). v3.25 핵심 6/6 + health-check 73/73 + SPA 200 + webp 200 + anon 401 | ✓ |
+
+### 미반영 (의도)
+- 28 placeholder 슬롯 (brand_*/fc_*/owner_*/supplier_* 일부) 은 honest "coming soon" 유지. 데이터 시드 큰 작업 동반 필요 (설계 §6 한계와 일관). 후속 작업으로 분리.
+- TS 빌드 경고 누적 잔여 (POStatus 누락 / Badge variant=neutral) — v3.25 직접 origin 아님. 별도 cleanup 작업.
+
+### 부속 cleanup (같이 묶음)
+- `models/index.js` — Ingredient FK 폐기 (IngredientSellerProduct join table 단일화)
+- `scripts/sprint1-supply-chain-migration.js` — 위 변경 동기화
+- `services/invoiceScheduler.js` — subscription invoice 컬럼 누락 보강 (issued_by, status pending → pending_payment, calculated_amount + total_amount)
+
+### 수정된 파일
+**Backend (8)**
+- models/AddonModule.js, PlanTemplate.js, Invoice.js, index.js
+- scripts/update-module-sort-and-category-v3.25.js (신규), seed-buyer-data-v3.25.js (신규), seed-foodcourt-rich-v3.25.js (신규)
+- scripts/sprint1-supply-chain-migration.js, services/invoiceScheduler.js
+
+**Frontend (3)**
+- src/pages/Landing/PricingPage.tsx, FeaturesPage.tsx
+- scripts/capture-features.js
+- public/images/features/dashboard/supplier_{dashboard,orders,contracts,trade_invoices}_1.{webp,png} (8 파일)
+
+**Docs (1)**
+- docs/PRICING_MODULE_AUDIENCE_v3.25.md (신규)
+
+---
 
 ## ✅ 완료: JSON 컬럼 이중 stringify 정합성 복구 (2026-05-05, 버전 미상승)
 

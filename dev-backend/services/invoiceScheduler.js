@@ -1273,6 +1273,7 @@ class InvoiceScheduler {
       invoice_category: 'subscription',
       issuer_type: issuerType,
       issuer_id: 1,
+      issued_by: 0,
       restaurant_id: null,
       payer_type: payerType,
       payer_id: payerId,
@@ -1284,7 +1285,7 @@ class InvoiceScheduler {
       discount_amount: 0,
       total_amount: planAmount,
       currency: currency,
-      status: 'pending',
+      status: 'pending_payment',
       notes: `${plan.display_name || plan.name} - ${billingCycle} subscription (Trial period)`
     });
 
@@ -1294,7 +1295,8 @@ class InvoiceScheduler {
       description: `${plan.display_name || plan.name} Subscription (${billingCycle})`,
       quantity: 1,
       unit_price: planAmount,
-      amount: planAmount,
+      calculated_amount: planAmount,
+      total_amount: planAmount,
       item_type: 'subscription'
     });
 

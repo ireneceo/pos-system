@@ -51,7 +51,7 @@ Invoice.init({
     defaultValue: 0
   },
   status: {
-    type: DataTypes.ENUM('draft', 'pending_payment', 'payment_submitted', 'paid', 'overdue', 'cancelled'),
+    type: DataTypes.ENUM('draft', 'pending_payment', 'payment_submitted', 'paid', 'overdue', 'cancelled', 'credit'),
     defaultValue: 'draft'
   },
   notes: {
@@ -150,7 +150,7 @@ Invoice.init({
   },
   // Issuer Information (Who issued this invoice)
   issuer_type: {
-    type: DataTypes.ENUM('system_admin', 'brand', 'foodcourt'),
+    type: DataTypes.ENUM('system_admin', 'brand', 'foodcourt', 'supplier'),
     defaultValue: 'system_admin',
     comment: 'Who issued this invoice'
   },

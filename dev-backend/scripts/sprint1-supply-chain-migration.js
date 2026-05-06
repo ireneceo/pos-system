@@ -1,8 +1,11 @@
 /**
  * Sprint 1 (Supply Chain - Design 1) Migration
  * - ENUM extensions: User.role, PlanTemplate.plan_target, Invoice.issuer_type, Ingredient.owner_type, AddonModule.target_user_type
- * - Column additions: plan_templates.product_limit, customer_limit + ingredients.supplier_product_id, foodcourt_product_id
+ * - Column additions: plan_templates.product_limit, customer_limit
  * - Idempotent: safe to re-run
+ *
+ * v3.24+ 변경: ingredients.supplier_product_id / foodcourt_product_id 컬럼 추가 폐기.
+ *              매핑은 IngredientSellerProduct join table 사용. models/index.js 의 belongsTo 도 제거됨.
  *
  * Note: New tables (supplier_companies, supplier_products, etc.) created via sequelize.sync() after this migration
  * because Sequelize models reference these tables; running model loads requires schema to exist or be created via sync.
@@ -85,11 +88,11 @@ async function run() {
   await addColumnIfMissing('plan_templates', 'customer_limit',
     "INT NULL DEFAULT NULL COMMENT '-1 unlimited, NULL not applicable'");
 
-  console.log('\n[3/4] Ingredient FK extensions (Sprint 3 PO 준비)');
-  await addColumnIfMissing('ingredients', 'supplier_product_id', 'INT NULL');
-  await addColumnIfMissing('ingredients', 'foodcourt_product_id', 'INT NULL');
+  // [3/4] Removed (v3.24+): ingredients.supplier_product_id / foodcourt_product_id 직접 FK 디자인 폐기.
+  // ingredient ↔ supplier_product 매핑은 IngredientSellerProduct join table 단일 패턴 사용.
+  // models/index.js 의 dead belongsTo association 도 함께 제거됨.
 
-  console.log('\n[4/4] InvoiceCategory seed (trade)');
+  console.log('\n[3/3] InvoiceCategory seed (trade)');
   // Seed 'trade' invoice_category for Sprint 4 use (Sprint 1 = registration only)
   const [existingTrade] = await sequelize.query(
     `SELECT id FROM invoice_categories WHERE code = 'trade'`

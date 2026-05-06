@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-05 (JSON 컬럼 이중 stringify 정합성 복구 — backstage cleanup)
-**버전:** **v3.24** (운영 배포 완료, 버전 미상승 — backstage 성격)
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-05-06 (v3.25 Pricing/Module Audience — backstage cleanup, 버전 미상승)
+**버전:** **v3.24** (운영 배포 완료, v3.25 는 미배포 backstage 정합화)
+**작업 상태:** v3.25 커밋 직전
 
 ---
 
@@ -15,50 +15,62 @@ session-state.md 읽고 이어서 개발해.
 
 ---
 
-## 📦 2026-05-05 작업 (JSON 컬럼 이중 stringify 정합성 복구)
+## 📦 2026-05-06 작업 (v3.25 Pricing/Module Audience — backstage cleanup)
 
 ### 배경
-Irene 신고: `https://purplehere.com/restaurant/13/settings?tab=payment` 데모 페이지에서 결제수단 카드가 전혀 안 보임. "이런 일이 왜 생기지? 다른 유저들은 이 문제 없어?"
+PricingPage 의 모듈 정렬이 깨져 있고 (sort_order=0 모듈 19개 → Basic 그룹 상단에 buyer_*/supplier_* 가 잘못 끼어듦), buyer_* 4개가 `category='basic'` 으로 잘못 분류, target_user_type='all' 이 광범위해서 Owner 에 잘못 노출 + Supplier 에 누락. Features 페이지 빈 캡처 슬롯도 ~50 존재.
 
-### 진단
-1. 운영 DB 직접 점검 — restaurant 13의 `payment_settings`가 두 가지 동시에 깨짐:
-   - **JSON_TYPE = STRING** (다른 정상 row는 OBJECT) → 이중 stringify
-   - **레거시 스키마** — `{enabled: true}`만, `label`/`availableIn` 누락 (정식 스키마는 7-method)
-2. 원인: `seed-demo-data.js`에서 `payment_settings: JSON.stringify({...})`로 시드 → Sequelize setter도 `JSON.stringify(value)` → 이중 stringify
-3. 운영 DB 광범위 scan으로 99건 깨진 row 발견 (모두 데모/테스트 기원, 일반 유저 데이터 영향 0)
+### 설계 문서
+`docs/PRICING_MODULE_AUDIENCE_v3.25.md` (305줄, 7-단계 작업 계획).
 
 ### 수행 내역
-1. **Restaurant 모델 setter 가드** — payment/operation/table_settings 3 setter에 `typeof value === 'string'` 분기 추가
-2. **Brand/Foodcourt/SupplierCompany setter 가드** — 같은 패턴으로 9 setter (총 12개)
-3. **seed-demo-data.js cleanup** — 9곳 `JSON.stringify(...)` 래퍼 제거 + restaurant 1 payment_settings를 모델 default와 동일한 7-method 정식 스키마로 교체
-4. **운영 DB 복구** — 백업 후 트랜잭션 1개로 `JSON_UNQUOTE(col)` 처리. 99건 → 0건
-   - restaurants payment+operation 3건, brands 3 컬럼, orders.order_items 90건, orders.payment_proof "test data" NULL 처리, coupons 3건, users.permissions 3건(자가 회복 가능해 미처리)
-5. **dev DB 동일 복구** — 88건 → 0건
-6. **검증 (10단계)** — hydration 0w · build:dev exit 0 · health-check 73/73 · write→read 왕복 OK · DB raw type=OBJECT · 401 가드 정상
-7. **운영 배포** — 13 백엔드 + 686 프론트 파일 rsync. 데모 페이지 7-method 정상 응답 검증
 
-### 백업
-- 운영: `87.106.78.146:/tmp/json_repair_20260505_220159/` (5 sql 파일)
-- dev: `/tmp/json_repair_dev_20260505_220622/`
-- 배포 자동 백업: `87.106.78.146:/var/www/backups/20260505_221715`
+| # | 단계 | 결과 |
+|---|------|------|
+| 1 | DB sort_order + category 정합화 | `update-module-sort-and-category-v3.25.js` 실행. sort_order=0 모듈 0건. buyer_* 4 = advanced. 96 모듈 (target=restaurant 24 / brand 23 / foodcourt 22 / owner 10 / all 4 / supplier 13) |
+| 2 | PricingPage filter 분기 | 설계 §4 합성 ENUM 안 대신 한 줄 차단 (line 899: `if owner && code.startsWith('buyer_') return false`). supplier 는 'all' 매치로 자동 노출 |
+| 3 | FeaturesPage Supplier 탭 buyer_* 4 카드 | 4 탭 모두 등록 (Supplier 탭 'Procurement' wording 차별화) |
+| 4 | 시드 (idempotent) | `seed-buyer-data-v3.25.js` (Brand R10 → Demo Supplier 매입 흐름: contract + 3 PO + trade invoice) / `seed-foodcourt-rich-v3.25.js` (FC 7 admin 4 + staff 5 + branch 2). 모두 기시드 skip |
+| 5 | Features 캡처 (supplier 4) | supplier_dashboard / supplier_orders / supplier_contracts / supplier_trade_invoices 신규 캡처. FeaturesPage 의 0→1 갱신. 나머지 28 placeholder 슬롯은 honest "coming soon" 유지 (데이터 시드 큰 작업 동반 필요, 설계 §6 한계와 일관) |
+| 6 | 모델 ENUM 확장 | AddonModule.target_user_type +supplier / PlanTemplate.plan_target +supplier / Invoice.issuer_type +supplier / Invoice.status +credit. DB sync 완료 |
+| 7 | 빌드 | `build:dev` exit 0, 89초, `main.a29df543.js` (1.5M), nginx 배포 완료. TS 경고 누적 잔여 (POStatus 누락 / Badge variant=neutral) — v3.25 직접 origin 아님, 후속 별도 cleanup |
 
-### 수정된 파일
-- `dev-backend/models/Restaurant.js`
-- `dev-backend/models/Brand.js`
-- `dev-backend/models/Foodcourt.js`
-- `dev-backend/models/SupplierCompany.js`
-- `dev-backend/seed-demo-data.js`
+### 부속 cleanup (같이 묶음)
+- `models/index.js` — Ingredient FK 폐기 (IngredientSellerProduct join table 단일화)
+- `scripts/sprint1-supply-chain-migration.js` — 위 변경 동기화
+- `services/invoiceScheduler.js` — subscription invoice 컬럼 누락 보강 (issued_by, status pending → pending_payment, calculated_amount + total_amount)
 
-### 운영 검증 (배포 후)
-- `POST /api/auth/login` (demo): 200
-- `GET /api/restaurants/13`: 200, payment_settings 7개 메서드, schema OK
-- `GET /api/orders`: 200, order_items 정상 array
-- `/api/health` 5×200
+### 검증 (10단계)
+- v3.25 핵심 6/6 PASS (addon-modules total=96 / buyer_* category=advanced / sort=0 0건 / target=supplier 13 / target=all 4 / owner buyer_* 0건)
+- health-check 73/73 PASS
+- SPA `/pricing` 200, `/features` 200
+- supplier_{dashboard,orders,contracts,trade-invoices}_1.webp 200
+- anon `/api/addon-modules` 401, `/api/purchase-orders` 401
+
+### 미커밋 분리 (다음 작업)
+- **Signup UX 개선** — `SignupPage.tsx` +364줄 (missing fields UI + 비밀번호 실시간 체크리스트), `ReferralSignupPage.tsx` +236줄, `routes/auth.js` (`INVALID_EMAIL_DOMAIN` 에러), `services/authService.js` (이메일 MX 검증 추정), 4언어 i18n. 별도 검증/커밋.
+- **Frontend 잡다 변경** — MainLayout, Admin/BG/FG/Owner Dashboard, Demo, Pricing, Login, AdminManagement, Notices, OwnerOperationInquiry, RestaurantDashboard, roleDisplay.ts, routes/users.js (Brand/FC users 권한 확장), routes/restaurants-crud.js (Brand multi-restaurant view), 4언어 admin/common/settings.json. 의도 분류 후 별도 커밋.
+
+### 수정된 파일 (v3.25 커밋)
+**Backend (8)**
+- models/AddonModule.js, models/PlanTemplate.js, models/Invoice.js, models/index.js
+- scripts/update-module-sort-and-category-v3.25.js (신규), scripts/seed-buyer-data-v3.25.js (신규), scripts/seed-foodcourt-rich-v3.25.js (신규)
+- scripts/sprint1-supply-chain-migration.js, services/invoiceScheduler.js
+
+**Frontend (3)**
+- src/pages/Landing/PricingPage.tsx, src/pages/Landing/FeaturesPage.tsx
+- scripts/capture-features.js
+- public/images/features/dashboard/supplier_{dashboard,orders,contracts,trade_invoices}_1.{webp,png} (8 파일)
+
+**Docs (1)**
+- docs/PRICING_MODULE_AUDIENCE_v3.25.md (신규)
 
 ---
 
 ## 다음 할 일
-DEVELOPMENT_PLAN.md "🚀 서비스 오픈 준비 로드맵" 다음 미완료 항목 (Phase B/C 잔여 작업) 또는 Irene 신규 지시 대기.
+1. **Signup UX 개선** 별도 커밋 (이메일 MX 검증 + missing-fields UI + 비밀번호 체크리스트). signup API 실호출 검증 필요.
+2. **Frontend 잡다 변경** 의도 분류 후 별도 커밋.
+3. (v3.25 운영 배포는 Irene `/배포` 명령 시에만)
 
 ---
 

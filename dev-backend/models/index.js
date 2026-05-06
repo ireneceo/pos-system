@@ -762,12 +762,6 @@ SupplierInvitation.belongsTo(User, { foreignKey: 'invited_by', as: 'inviter' });
 SupplierInvitation.belongsTo(User, { foreignKey: 'used_by_user_id', as: 'usedBy' });
 SupplierInvitation.belongsTo(PlanTemplate, { foreignKey: 'plan_id', as: 'plan' });
 
-// Ingredient FK extensions (Sprint 3 PO 준비)
-Ingredient.belongsTo(SupplierProduct, { foreignKey: 'supplier_product_id', as: 'supplierProduct' });
-Ingredient.belongsTo(FoodcourtProduct, { foreignKey: 'foodcourt_product_id', as: 'foodcourtProduct' });
-SupplierProduct.hasMany(Ingredient, { foreignKey: 'supplier_product_id', as: 'ingredients' });
-FoodcourtProduct.hasMany(Ingredient, { foreignKey: 'foodcourt_product_id', as: 'ingredients' });
-
 // =====================================================================
 // Referral System associations
 // =====================================================================

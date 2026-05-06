@@ -892,9 +892,13 @@ const PricingPage: React.FC = () => {
                     </LimitsSection>
 
                     {(() => {
-                      const targetModules = allModules.filter(m =>
-                        m.target_user_type === plan.plan_target || m.target_user_type === 'all'
-                      );
+                      // Owner 는 매입을 하지 않으므로 buyer_* 4 모듈은 owner plan 에서 제외
+                      const targetModules = allModules.filter(m => {
+                        const matches = m.target_user_type === plan.plan_target || m.target_user_type === 'all';
+                        if (!matches) return false;
+                        if (plan.plan_target === 'owner' && m.module_code.startsWith('buyer_')) return false;
+                        return true;
+                      });
                       const basicMods = targetModules.filter(m => m.category === 'basic');
                       const advancedMods = targetModules.filter(m => m.category !== 'basic');
                       const includedSet = new Set(plan.included_modules || []);
