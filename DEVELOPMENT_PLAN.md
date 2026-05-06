@@ -5,6 +5,32 @@
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
 > **현재 버전:** **v3.24** (2026-05-04 운영 배포, v3.25 미배포 backstage)
 
+## ✅ 완료: Signup UX 개선 (2026-05-06, 미배포 / 버전 미상승)
+
+**SignupPage / ReferralSignupPage 의 사용자 친화적 흐름 개선. missing-fields UI + 비밀번호 실시간 체크리스트 + 강도 미터 + INVALID_EMAIL_DOMAIN 에러 핸들링 + signup transaction rollback guard.**
+
+| 작업 | 설명 | 상태 |
+|------|------|:---:|
+| SignupPage.tsx | +364줄. Step 1~3 missing fields 시각화 + 비밀번호 4-요건 체크리스트 (length/upper/lower/digit) + 강도 미터 (Weak/Fair/Strong) + 비밀번호 일치 표시 | ✓ |
+| ReferralSignupPage.tsx | +236줄. 같은 패턴 적용 | ✓ |
+| 4언어 i18n | landing.json `signupPage.*` 17 신규 키 × 4 = 68 entries | ✓ |
+| routes/auth.js | signup / referral-signup 의 `INVALID_EMAIL_DOMAIN` 에러 코드 핸들러 | ✓ |
+| services/authService.js | signup transaction double-rollback guard | ✓ |
+
+### 검증
+- /signup, /referral/signup SPA 200
+- npm run i18n:verify exit 0 (errors=0)
+- /api/auth/signup endpoint 200/400 응답 정상 + 표준 에러 형식
+- 빌드 main.a29df543.js (이미 v3.25 빌드에 포함, exit 0)
+
+### 수정된 파일
+- dev-frontend/src/pages/Landing/SignupPage.tsx
+- dev-frontend/src/pages/Referral/ReferralSignupPage.tsx
+- dev-frontend/public/locales/{en,ko,ms,zh}/landing.json
+- dev-backend/routes/auth.js, services/authService.js
+
+---
+
 ## ✅ 완료: v3.25 Pricing/Module Audience (2026-05-06, 미배포 / 버전 미상승)
 
 **PricingPage 모듈 정렬 깨짐 + buyer_* 카테고리 잘못 + Owner 잘못 노출 + Supplier 누락 + Features 빈 캡처 슬롯 일괄 정합화. Supplier role 의 모델 ENUM 등록 (target_user_type / plan_target / issuer_type / status=credit) + supplier 4 슬롯 캡처.**

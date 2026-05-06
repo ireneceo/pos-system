@@ -155,6 +155,9 @@ router.post('/signup', signupLimiter, async (req, res, next) => {
     if (error.message.includes('not available') || error.message.includes('Invalid account type')) {
       return errorResponse(res, error.message, 400, 'VALIDATION_ERROR');
     }
+    if (error.message.includes('does not have a mail server') || error.message.includes('Invalid email format')) {
+      return errorResponse(res, error.message, 400, 'INVALID_EMAIL_DOMAIN');
+    }
     next(error);
   }
 });
@@ -186,6 +189,9 @@ router.post('/referral-signup', signupLimiter, async (req, res, next) => {
   } catch (error) {
     if (error.message.includes('already registered') || error.message.includes('already taken')) {
       return errorResponse(res, error.message, 409, 'DUPLICATE_ERROR');
+    }
+    if (error.message.includes('does not have a mail server') || error.message.includes('Invalid email format')) {
+      return errorResponse(res, error.message, 400, 'INVALID_EMAIL_DOMAIN');
     }
     next(error);
   }

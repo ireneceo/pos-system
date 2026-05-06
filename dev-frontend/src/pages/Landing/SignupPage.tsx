@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
-import styled from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { Helmet } from 'react-helmet-async';
 import { LandingLayout } from '../../components/Landing';
 import PhoneInput from '../../components/Common/PhoneInput';
@@ -501,33 +501,109 @@ const SignupPage: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // 각 스텝의 필수 필드가 채워졌는지 확인 (버튼 활성화용)
-  const isStepComplete = (): boolean => {
-    if (step === 1) return !!form.role;
+  // 현재 스텝에서 빠진 필수 필드 목록 (UI 안내 + 버튼 dim용)
+  const getMissingFields = (): { name: string; label: string }[] => {
+    if (step === 1) {
+      return form.role ? [] : [{ name: 'role', label: t('landing:signupPage.accountType') }];
+    }
     if (step === 2) {
-      return !!(form.full_name.trim() && form.email.trim() && form.username.trim() && form.password && form.confirm_password && form.password === form.confirm_password);
+      const missing: { name: string; label: string }[] = [];
+      if (!form.full_name.trim()) missing.push({ name: 'full_name', label: t('landing:signupPage.fullName') });
+      if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+        missing.push({ name: 'email', label: t('landing:signupPage.email') });
+      }
+      if (!form.username.trim() || !/^[a-zA-Z0-9_]{3,30}$/.test(form.username)) {
+        missing.push({ name: 'username', label: t('landing:signupPage.username') });
+      }
+      if (!form.password || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(form.password)) {
+        missing.push({ name: 'password', label: 'Password' });
+      }
+      if (!form.confirm_password || form.password !== form.confirm_password) {
+        missing.push({ name: 'confirm_password', label: 'Confirm Password' });
+      }
+      return missing;
     }
     if (step === 3) {
+      const missing: { name: string; label: string }[] = [];
       const role = form.role as string;
-      if (role === 'Restaurant Admin' && !form.restaurant_name.trim()) return false;
-      if (role === 'Brand General' && !form.brand_name.trim()) return false;
-      if (role === 'Foodcourt General' && !form.foodcourt_name.trim()) return false;
-      if (role === 'Supplier Admin' && !form.supplier_name.trim()) return false;
-      return !!form.plan_id;
+      if (role === 'Restaurant Admin' && !form.restaurant_name.trim()) {
+        missing.push({ name: 'restaurant_name', label: t('landing:signupPage.restaurant') });
+      }
+      if (role === 'Brand General' && !form.brand_name.trim()) {
+        missing.push({ name: 'brand_name', label: t('landing:signupPage.brand') });
+      }
+      if (role === 'Foodcourt General' && !form.foodcourt_name.trim()) {
+        missing.push({ name: 'foodcourt_name', label: t('landing:signupPage.foodCourt') });
+      }
+      if (role === 'Supplier Admin' && !form.supplier_name.trim()) {
+        missing.push({ name: 'supplier_name', label: t('landing:signupPage.supplier') });
+      }
+      if (!form.plan_id) {
+        missing.push({ name: 'plan_id', label: t('landing:signupPage.plan') });
+      }
+      return missing;
     }
-    if (step === 4) return true; // 리뷰 단계
-    return false;
+    return [];
+  };
+
+  // 비밀번호 실시간 체크리스트 (Step 2 시각 피드백)
+  const pwReqs = {
+    length: form.password.length >= 8,
+    upper: /[A-Z]/.test(form.password),
+    lower: /[a-z]/.test(form.password),
+    digit: /\d/.test(form.password),
+  };
+  const pwScore = Object.values(pwReqs).filter(Boolean).length; // 0..4
+  const pwMatch = !!form.password && form.password === form.confirm_password;
+  const pwMismatch = !!form.confirm_password && form.password !== form.confirm_password;
+
+  const isStepComplete = (): boolean => getMissingFields().length === 0;
+
+  // 각 스텝 미충족 트리거 시 사용자를 가장 친절하게 안내
+  const focusFirstMissing = (missing: { name: string; label: string }[]) => {
+    if (missing.length === 0) return;
+    const first = missing[0].name;
+    if (first === 'role') {
+      const grid = document.getElementById('signup-role-grid');
+      if (grid) {
+        grid.classList.remove('signup-pulse');
+        void grid.offsetWidth; // reflow 강제 → 애니메이션 재시작
+        grid.classList.add('signup-pulse');
+        grid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    if (first === 'plan_id') {
+      const planEl = document.getElementById('signup-plan-grid');
+      if (planEl) {
+        planEl.classList.remove('signup-pulse');
+        void planEl.offsetWidth;
+        planEl.classList.add('signup-pulse');
+        planEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    const el = document.getElementById(`signup-field-${first}`) as HTMLInputElement | null;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => el.focus({ preventScroll: true }), 350);
+    }
   };
 
   // ─── Navigation ──────────────────────────────────────────────
   const handleNext = () => {
     setError('');
-    if (step === 1 && !form.role) {
-      setError('Please select an account type');
+    const missing = getMissingFields();
+    if (missing.length > 0) {
+      // 미충족 필드 inline error 표시 (기존 validateStepN 활용)
+      if (step === 2) validateStep2();
+      if (step === 3) validateStep3();
+      if (step === 1) {
+        setError(t('landing:signupPage.pleaseSelectAccountType'));
+      }
+      focusFirstMissing(missing);
       return;
     }
-    if (step === 2 && !validateStep2()) return;
-    if (step === 3 && !validateStep3()) return;
     setStep(prev => prev + 1);
   };
 
@@ -657,7 +733,7 @@ const SignupPage: React.FC = () => {
     <StepContent>
       <StepTitle>{t('landing:signupPage.chooseYourAccountType')}</StepTitle>
       <StepDescription>{t('landing:signupPage.selectTheTypeThatBestDescribesYourBusiness')}</StepDescription>
-      <RoleGrid>
+      <RoleGrid id="signup-role-grid">
         {(Object.entries(ROLE_CONFIG) as [AccountRole, typeof ROLE_CONFIG[AccountRole]][]).map(([role, config]) => (
           <RoleCard
             key={role}
@@ -680,11 +756,13 @@ const SignupPage: React.FC = () => {
       <StepDescription>{t('landing:signupPage.createYourLoginCredentials')}</StepDescription>
       <FormGrid>
         <FormGroup>
-          <FormLabel>Full Name *</FormLabel>
+          <FormLabel>Full Name<RequiredStar>*</RequiredStar></FormLabel>
           <FormInput
+            id="signup-field-full_name"
             type="text"
             value={form.full_name}
             onChange={e => updateField('full_name', e.target.value)}
+            onBlur={() => { if (!form.full_name.trim()) setFieldErrors(p => ({ ...p, full_name: 'Full name is required' })); }}
             placeholder="Enter your full name"
             hasError={!!fieldErrors.full_name}
           />
@@ -692,11 +770,16 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel>Email *</FormLabel>
+          <FormLabel>Email<RequiredStar>*</RequiredStar></FormLabel>
           <FormInput
+            id="signup-field-email"
             type="email"
             value={form.email}
             onChange={e => updateField('email', e.target.value)}
+            onBlur={() => {
+              if (!form.email.trim()) setFieldErrors(p => ({ ...p, email: 'Email is required' }));
+              else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) setFieldErrors(p => ({ ...p, email: 'Invalid email format' }));
+            }}
             placeholder="you@example.com"
             hasError={!!fieldErrors.email}
           />
@@ -704,11 +787,16 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel>Username *</FormLabel>
+          <FormLabel>Username<RequiredStar>*</RequiredStar></FormLabel>
           <FormInput
+            id="signup-field-username"
             type="text"
             value={form.username}
             onChange={e => updateField('username', e.target.value)}
+            onBlur={() => {
+              if (!form.username.trim()) setFieldErrors(p => ({ ...p, username: 'Username is required' }));
+              else if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.username)) setFieldErrors(p => ({ ...p, username: '3-30 characters, letters, numbers, underscore only' }));
+            }}
             placeholder="Choose a username"
             hasError={!!fieldErrors.username}
           />
@@ -724,9 +812,10 @@ const SignupPage: React.FC = () => {
         </FormGroup>
 
         <FormGroup>
-          <FormLabel>Password *</FormLabel>
+          <FormLabel>Password<RequiredStar>*</RequiredStar></FormLabel>
           <PasswordWrapper>
             <FormInput
+              id="signup-field-password"
               type={showPassword ? 'text' : 'password'}
               value={form.password}
               onChange={e => updateField('password', e.target.value)}
@@ -737,18 +826,39 @@ const SignupPage: React.FC = () => {
               {showPassword ? 'Hide' : 'Show'}
             </PasswordToggle>
           </PasswordWrapper>
+          {form.password && (
+            <PwMeterWrap>
+              <PwMeterBars>
+                {[0, 1, 2, 3].map(i => (
+                  <PwMeterBar key={i} $filled={pwScore > i} $score={pwScore} />
+                ))}
+              </PwMeterBars>
+              <PwReqList>
+                <PwReqItem $met={pwReqs.length}>{t('landing:signupPage.passwordReqLength')}</PwReqItem>
+                <PwReqItem $met={pwReqs.upper}>{t('landing:signupPage.passwordReqUpper')}</PwReqItem>
+                <PwReqItem $met={pwReqs.lower}>{t('landing:signupPage.passwordReqLower')}</PwReqItem>
+                <PwReqItem $met={pwReqs.digit}>{t('landing:signupPage.passwordReqDigit')}</PwReqItem>
+              </PwReqList>
+            </PwMeterWrap>
+          )}
           {fieldErrors.password && <FieldError>{fieldErrors.password}</FieldError>}
         </FormGroup>
 
         <FormGroup>
-          <FormLabel>Confirm Password *</FormLabel>
+          <FormLabel>Confirm Password<RequiredStar>*</RequiredStar></FormLabel>
           <FormInput
+            id="signup-field-confirm_password"
             type={showPassword ? 'text' : 'password'}
             value={form.confirm_password}
             onChange={e => updateField('confirm_password', e.target.value)}
             placeholder="Re-enter your password"
-            hasError={!!fieldErrors.confirm_password}
+            hasError={!!fieldErrors.confirm_password || pwMismatch}
           />
+          {form.confirm_password && (
+            <MatchIndicator $match={pwMatch}>
+              {pwMatch ? t('landing:signupPage.passwordsMatch') : t('landing:signupPage.passwordsDontMatch')}
+            </MatchIndicator>
+          )}
           {fieldErrors.confirm_password && <FieldError>{fieldErrors.confirm_password}</FieldError>}
         </FormGroup>
 
@@ -792,8 +902,9 @@ const SignupPage: React.FC = () => {
         {role === 'Restaurant Admin' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel>Restaurant Name *</FormLabel>
+              <FormLabel>Restaurant Name<RequiredStar>*</RequiredStar></FormLabel>
               <FormInput
+                id="signup-field-restaurant_name"
                 type="text"
                 value={form.restaurant_name}
                 onChange={e => updateField('restaurant_name', e.target.value)}
@@ -835,8 +946,9 @@ const SignupPage: React.FC = () => {
         {role === 'Brand General' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel>Brand Name *</FormLabel>
+              <FormLabel>Brand Name<RequiredStar>*</RequiredStar></FormLabel>
               <FormInput
+                id="signup-field-brand_name"
                 type="text"
                 value={form.brand_name}
                 onChange={e => updateField('brand_name', e.target.value)}
@@ -851,8 +963,9 @@ const SignupPage: React.FC = () => {
         {role === 'Foodcourt General' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel>Food Court Name *</FormLabel>
+              <FormLabel>Food Court Name<RequiredStar>*</RequiredStar></FormLabel>
               <FormInput
+                id="signup-field-foodcourt_name"
                 type="text"
                 value={form.foodcourt_name}
                 onChange={e => updateField('foodcourt_name', e.target.value)}
@@ -890,8 +1003,9 @@ const SignupPage: React.FC = () => {
         {role === 'Supplier Admin' && (
           <FormGrid>
             <FormGroup fullWidth>
-              <FormLabel>{t('landing:signupPage.supplierCompanyName')} *</FormLabel>
+              <FormLabel>{t('landing:signupPage.supplierCompanyName')}<RequiredStar>*</RequiredStar></FormLabel>
               <FormInput
+                id="signup-field-supplier_name"
                 type="text"
                 value={form.supplier_name}
                 onChange={e => updateField('supplier_name', e.target.value)}
@@ -944,8 +1058,11 @@ const SignupPage: React.FC = () => {
         )}
 
         {/* Plan Selection */}
-        <PlanSectionTitle>Select a plan *</PlanSectionTitle>
+        <PlanSectionTitle>Select a plan<RequiredStar>*</RequiredStar></PlanSectionTitle>
         <PlanTrialHint>{t('landing:signupPage.allPlansIncludeA7dayFreeTrialNoPaymentRequired')}</PlanTrialHint>
+        {!form.plan_id && (
+          <PlanHint>{t('landing:signupPage.choosePlanHint')}</PlanHint>
+        )}
         {fieldErrors.plan_id && <FieldError style={{ marginBottom: 12 }}>{fieldErrors.plan_id}</FieldError>}
 
         {/* Currency + Billing toggle row */}
@@ -973,7 +1090,7 @@ const SignupPage: React.FC = () => {
           )}
         </PlanControlsRow>
 
-        <PlanGrid>
+        <PlanGrid id="signup-plan-grid">
           {filteredPlans.map(plan => {
             const monthlyPrice = getPlanPrice(plan, 'monthly');
             const annualPrice = getPlanPrice(plan, 'annual');
@@ -1267,7 +1384,29 @@ const SignupPage: React.FC = () => {
             )}
             <ButtonSpacer />
             {step < 4 ? (
-              <NextButton onClick={handleNext} disabled={!isStepComplete()}>{t('landing:signupPage.continue')}</NextButton>
+              <ButtonAndHint>
+                <NextButton onClick={handleNext} $dim={!isStepComplete()}>
+                  {t('landing:signupPage.continue')}
+                </NextButton>
+                {(() => {
+                  const missing = getMissingFields();
+                  if (missing.length === 0) {
+                    return (
+                      <HintRow $ready={true}>
+                        <HintCheck />{t('landing:signupPage.readyToContinue')}
+                      </HintRow>
+                    );
+                  }
+                  return (
+                    <HintRow $ready={false}>
+                      <HintLead>{t('landing:signupPage.stillNeeded')}:</HintLead>
+                      {missing.map(m => (
+                        <HintChip key={m.name}>{m.label}</HintChip>
+                      ))}
+                    </HintRow>
+                  );
+                })()}
+              </ButtonAndHint>
             ) : (
               <SubmitButton onClick={handleSubmit} disabled={isSubmitting}>
                 {isSubmitting ? 'Creating Account...' : 'Create Account & Start Free Trial'}
@@ -1471,12 +1610,29 @@ const StepDescription = styled.p`
   margin: 0 0 24px;
 `;
 
+// ─── Pulse animation for misclick guidance (declared early — used by RoleGrid/PlanGrid) ───
+
+const pulseKeyframes = keyframes`
+  0%   { box-shadow: 0 0 0 0 rgba(99, 91, 255, 0.45); }
+  50%  { box-shadow: 0 0 0 8px rgba(99, 91, 255, 0.10); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 91, 255, 0); }
+`;
+
+const pulseStyle = css`
+  &.signup-pulse {
+    animation: ${pulseKeyframes} 1.1s ease-out 1;
+    border-radius: 12px;
+  }
+`;
+
 // ─── Step 1: Role Cards ────────────────────────────────────────
 
 const RoleGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  padding: 4px;
+  ${pulseStyle}
 
   @media (max-width: 640px) {
     grid-template-columns: 1fr;
@@ -1609,6 +1765,125 @@ const FieldError = styled.div`
   margin-top: 4px;
 `;
 
+// ─── Required indicator (red asterisk) ────────────────────────
+
+const RequiredStar = styled.span`
+  color: #DC2626;
+  margin-left: 2px;
+  font-weight: 700;
+`;
+
+// ─── Password strength + checklist ────────────────────────────
+
+const PwMeterWrap = styled.div`
+  margin-top: 8px;
+`;
+
+const PwMeterBars = styled.div`
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+`;
+
+const PwMeterBar = styled.div<{ $filled: boolean; $score: number }>`
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: ${({ $filled, $score }) => {
+    if (!$filled) return '#E6EBF1';
+    if ($score <= 1) return '#DC2626';
+    if ($score === 2) return '#F59E0B';
+    if ($score === 3) return '#10B981';
+    return '#059669';
+  }};
+  transition: background 0.2s;
+`;
+
+const PwReqList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 12px;
+`;
+
+const PwReqItem = styled.li<{ $met: boolean }>`
+  font-size: 11.5px;
+  color: ${({ $met }) => ($met ? '#059669' : '#9CA3AF')};
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  &::before {
+    content: ${({ $met }) => ($met ? '"✓"' : '"○"')};
+    font-weight: 700;
+    font-size: 11px;
+  }
+`;
+
+// ─── Confirm password match indicator ─────────────────────────
+
+const MatchIndicator = styled.div<{ $match: boolean }>`
+  font-size: 12px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: ${({ $match }) => ($match ? '#059669' : '#DC2626')};
+  &::before {
+    content: ${({ $match }) => ($match ? '"✓"' : '"✗"')};
+    font-weight: 700;
+  }
+`;
+
+// ─── Missing fields hint (button row) ─────────────────────────
+
+const HintRow = styled.div<{ $ready: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: ${({ $ready }) => ($ready ? '#059669' : '#6B7C93')};
+  flex-wrap: wrap;
+  line-height: 1.5;
+`;
+
+const HintLead = styled.span`
+  font-weight: 600;
+`;
+
+const HintChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: #FEF3C7;
+  color: #92400E;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+`;
+
+const HintCheck = styled.span`
+  font-weight: 700;
+  &::before { content: "✓"; }
+`;
+
+// ─── Plan section hint arrow ──────────────────────────────────
+
+const PlanHint = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #6B7C93;
+  margin: 6px 0 12px;
+  &::after {
+    content: "↓";
+    font-weight: 700;
+    color: #635BFF;
+  }
+`;
+
 // ─── Info Notice ───────────────────────────────────────────────
 
 const InfoNotice = styled.div`
@@ -1701,6 +1976,8 @@ const PlanGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
+  padding: 4px;
+  ${pulseStyle}
 `;
 
 const PlanCard = styled.div<{ selected: boolean }>`
@@ -1855,6 +2132,19 @@ const ButtonRow = styled.div`
   gap: 12px;
 `;
 
+const ButtonAndHint = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+  @media (max-width: 640px) {
+    flex: 1;
+    align-items: stretch;
+    > button { width: 100%; }
+  }
+`;
+
 const ButtonSpacer = styled.div`
   flex: 1;
 `;
@@ -1877,27 +2167,21 @@ const BackButton = styled.button`
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
-const NextButton = styled.button`
+const NextButton = styled.button<{ $dim?: boolean }>`
   padding: 12px 32px;
   border: none;
   border-radius: 8px;
-  background: #635BFF;
+  background: ${({ $dim }) => ($dim ? '#A29DF7' : '#635BFF')};
   color: white;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 
-  &:hover:not(:disabled) {
-    background: #5A51E6;
+  &:hover {
+    background: ${({ $dim }) => ($dim ? '#8E88EE' : '#5A51E6')};
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(99, 91, 255, 0.3);
-  }
-  &:disabled {
-    background: #C4C1F7;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
   }
 `;
 

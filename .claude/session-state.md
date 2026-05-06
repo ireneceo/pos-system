@@ -67,10 +67,32 @@ PricingPage 의 모듈 정렬이 깨져 있고 (sort_order=0 모듈 19개 → Ba
 
 ---
 
+## 📦 2026-05-06 작업 (Signup UX 개선 — backstage cleanup)
+
+**SignupPage / ReferralSignupPage 의 사용자 친화적 흐름 개선. missing-fields UI + 비밀번호 실시간 체크리스트 + 강도 미터 + INVALID_EMAIL_DOMAIN 에러 핸들링 + signup transaction rollback guard.**
+
+### 수행 내역
+- `SignupPage.tsx` (+364줄): step-별 missing fields 시각화 + 비밀번호 4-요건 체크리스트 (length/upper/lower/digit) + 강도 미터 (Weak/Fair/Strong) + 비밀번호 일치 표시
+- `ReferralSignupPage.tsx` (+236줄): 같은 패턴 적용
+- 4언어 i18n landing.json `signupPage.*` 17 신규 키 (×4 = 68 entries)
+- `routes/auth.js`: signup / referral-signup 의 `INVALID_EMAIL_DOMAIN` 에러 코드 핸들러 추가
+- `services/authService.js`: signup transaction double-rollback guard ("Transaction cannot be rolled back" 노이즈 차단)
+
+### 검증
+- /signup, /referral/signup SPA 200
+- npm run i18n:verify exit 0 (errors=0, warnings 누적 잔여)
+- /api/auth/signup endpoint 200/400 응답 정상 + 표준 에러 형식
+- 빌드 main.a29df543.js (이미 v3.25 빌드에 포함됨, exit 0)
+
+---
+
 ## 다음 할 일
-1. **Signup UX 개선** 별도 커밋 (이메일 MX 검증 + missing-fields UI + 비밀번호 체크리스트). signup API 실호출 검증 필요.
-2. **Frontend 잡다 변경** 의도 분류 후 별도 커밋.
-3. (v3.25 운영 배포는 Irene `/배포` 명령 시에만)
+1. **Frontend 잡다 변경** 의도 분류 후 별도 커밋
+   - MainLayout, Admin/BG/FG/Owner Dashboard, Demo, Pricing/Login/AdminManagement/Notices/OwnerOperationInquiry/RestaurantDashboard, roleDisplay.ts
+   - routes/users.js (Brand/FC users 권한), routes/restaurants-crud.js (Brand multi-restaurant)
+   - 4언어 admin/common/settings.json
+   - dev-frontend/package.json + lock (의존성 변경)
+2. (v3.25 + Signup UX 운영 배포는 Irene `/배포` 명령 시에만)
 
 ---
 

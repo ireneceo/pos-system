@@ -504,7 +504,12 @@ async function signup(data) {
       throw new Error('Invalid account type');
     }
   } catch (error) {
-    await transaction.rollback();
+    // Guard against double-rollback / rollback-after-commit which would mask
+    // the real error with "Transaction cannot be rolled back" noise.
+    if (transaction && transaction.finished !== 'commit' && transaction.finished !== 'rollback') {
+      try { await transaction.rollback(); }
+      catch (rbErr) { console.error('[Signup] rollback failed:', rbErr.message); }
+    }
     throw error;
   }
 }
