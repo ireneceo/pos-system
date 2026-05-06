@@ -48,6 +48,7 @@
   "foodcourtGeneralDashboard.activePlansLinked": "活跃方案已连接",
   "foodcourtGeneralDashboard.forecastNote": "仅含固定+组合最低保证金额。按营收比例部分不含。",
   "foodcourtGeneralDashboard.tenant": "租户",
+  "foodcourtGeneralDashboard.noTenantData": "暂无租户数据",
   "foodcourtGeneralDashboard.plan": "套餐",
   "foodcourtGeneralDashboard.orders": "订单",
   "foodcourtGeneralDashboard.estimatedCharges": "预估费用",

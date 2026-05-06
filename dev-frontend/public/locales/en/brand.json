@@ -48,6 +48,7 @@
   "brandGeneralDashboard.activePlansLinked": "active plans linked",
   "brandGeneralDashboard.forecastNote": "Fixed + combined min-guarantee only. Percentage-based royalty excluded (varies with restaurant revenue).",
   "brandGeneralDashboard.restaurant": "Restaurant",
+  "brandGeneralDashboard.noRestaurantData": "No restaurant data available",
   "brandGeneralDashboard.plan": "Plan",
   "brandGeneralDashboard.orders": "Orders",
   "brandGeneralDashboard.estimatedCharges": "Estimated Charges",

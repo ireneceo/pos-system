@@ -48,6 +48,7 @@
   "foodcourtGeneralDashboard.activePlansLinked": "pelan aktif disambung",
   "foodcourtGeneralDashboard.forecastNote": "Hanya tetap + jaminan minimum gabungan. Bahagian % berubah dikecualikan.",
   "foodcourtGeneralDashboard.tenant": "Penyewa",
+  "foodcourtGeneralDashboard.noTenantData": "Tiada data penyewa",
   "foodcourtGeneralDashboard.plan": "Pelan",
   "foodcourtGeneralDashboard.orders": "Pesanan",
   "foodcourtGeneralDashboard.estimatedCharges": "Anggaran Caj",

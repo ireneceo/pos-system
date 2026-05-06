@@ -8,6 +8,7 @@ import {
   Container, Header, Title, Content
 } from '../../components/UI';
 import { StatusBadge as CommonStatusBadge } from '../../components/UI/CommonStyles';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell } from '../../components/UI/DataTable';
 import { formatCurrency } from '../../utils/currency';
 import { formatDate } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
@@ -110,9 +111,14 @@ const MainGrid = styled.div`
 const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   border: 1px solid #E6EBF1;
-  h3 { margin: 0 0 20px 0; color: #0A2540; font-size: 18px; font-weight: 600; }
+
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
+
+  h3 { margin: 0 0 24px 0; color: #0A2540; font-size: 18px; font-weight: 600; }
 `;
 
 const AlertsPanel = styled.div`
@@ -178,10 +184,6 @@ const TableHeader = styled.div`
   a:hover { text-decoration: underline; }
 `;
 
-const Table = styled.table`width: 100%; border-collapse: collapse;`;
-const Th = styled.th`text-align: left; padding: 10px 16px; background: #F9FAFB; font-size: 11px; font-weight: 600; color: #6B7C93; text-transform: uppercase; letter-spacing: 0.5px;`;
-const Td = styled.td`padding: 12px 16px; font-size: 14px; color: #0A2540; border-top: 1px solid #F3F4F6;`;
-const Tr = styled.tr`cursor: pointer; &:hover { background: #FAFBFC; }`;
 
 // StatusBadge — map supplier domain status → CommonStatusBadge variant
 function mapSupplierStatusVariant(s: string): 'success' | 'warning' | 'error' | 'info' | '' {
@@ -396,26 +398,26 @@ const SupplierDashboard: React.FC = () => {
                 {data.recent_orders.length === 0 ? (
                   <EmptyTable>{t('dashboard.noRecentOrders', 'No orders yet.')}</EmptyTable>
                 ) : (
-                  <Table>
-                    <thead>
+                  <DataTable>
+                    <DataTableHead>
                       <tr>
-                        <Th>{t('dashboard.poNumber', 'PO #')}</Th>
-                        <Th>{t('dashboard.customer', 'Customer')}</Th>
-                        <Th>{t('dashboard.status', 'Status')}</Th>
-                        <Th style={{ textAlign: 'right' }}>{t('dashboard.total', 'Total')}</Th>
+                        <DataTableHeaderCell align="left">{t('dashboard.poNumber', 'PO #')}</DataTableHeaderCell>
+                        <DataTableHeaderCell align="left">{t('dashboard.customer', 'Customer')}</DataTableHeaderCell>
+                        <DataTableHeaderCell align="left">{t('dashboard.status', 'Status')}</DataTableHeaderCell>
+                        <DataTableHeaderCell align="right">{t('dashboard.total', 'Total')}</DataTableHeaderCell>
                       </tr>
-                    </thead>
+                    </DataTableHead>
                     <tbody>
                       {data.recent_orders.map(po => (
-                        <Tr key={po.id} onClick={() => navigate(`/pos/supplier/orders/${po.id}`)}>
-                          <Td><strong>{po.po_number}</strong></Td>
-                          <Td>{po.customer}</Td>
-                          <Td><CommonStatusBadge status={mapSupplierStatusVariant(po.status)} size="small">{po.status}</CommonStatusBadge></Td>
-                          <Td style={{ textAlign: 'right' }}>{formatCurrency(po.total_amount, po.currency || ccy)}</Td>
-                        </Tr>
+                        <DataTableRow key={po.id} onClick={() => navigate(`/pos/supplier/orders/${po.id}`)} style={{ cursor: 'pointer' }}>
+                          <DataTableCell data-label={t('dashboard.poNumber', 'PO #')}><strong>{po.po_number}</strong></DataTableCell>
+                          <DataTableCell data-label={t('dashboard.customer', 'Customer')}>{po.customer}</DataTableCell>
+                          <DataTableCell data-label={t('dashboard.status', 'Status')}><CommonStatusBadge status={mapSupplierStatusVariant(po.status)} size="small">{po.status}</CommonStatusBadge></DataTableCell>
+                          <DataTableCell align="right" data-label={t('dashboard.total', 'Total')}>{formatCurrency(po.total_amount, po.currency || ccy)}</DataTableCell>
+                        </DataTableRow>
                       ))}
                     </tbody>
-                  </Table>
+                  </DataTable>
                 )}
               </TableCard>
 
@@ -427,26 +429,26 @@ const SupplierDashboard: React.FC = () => {
                 {data.recent_invoices.length === 0 ? (
                   <EmptyTable>{t('dashboard.noRecentInvoices', 'No invoices yet.')}</EmptyTable>
                 ) : (
-                  <Table>
-                    <thead>
+                  <DataTable>
+                    <DataTableHead>
                       <tr>
-                        <Th>{t('dashboard.invoiceNumber', 'Invoice #')}</Th>
-                        <Th>{t('dashboard.customer', 'Customer')}</Th>
-                        <Th>{t('dashboard.status', 'Status')}</Th>
-                        <Th style={{ textAlign: 'right' }}>{t('dashboard.total', 'Total')}</Th>
+                        <DataTableHeaderCell align="left">{t('dashboard.invoiceNumber', 'Invoice #')}</DataTableHeaderCell>
+                        <DataTableHeaderCell align="left">{t('dashboard.customer', 'Customer')}</DataTableHeaderCell>
+                        <DataTableHeaderCell align="left">{t('dashboard.status', 'Status')}</DataTableHeaderCell>
+                        <DataTableHeaderCell align="right">{t('dashboard.total', 'Total')}</DataTableHeaderCell>
                       </tr>
-                    </thead>
+                    </DataTableHead>
                     <tbody>
                       {data.recent_invoices.map(inv => (
-                        <Tr key={inv.id} onClick={() => navigate('/pos/supplier/trade-invoices')}>
-                          <Td><strong>{inv.invoice_number}</strong></Td>
-                          <Td>{inv.customer}</Td>
-                          <Td><CommonStatusBadge status={mapSupplierStatusVariant(inv.status)} size="small">{inv.status.replace('_', ' ')}</CommonStatusBadge></Td>
-                          <Td style={{ textAlign: 'right' }}>{formatCurrency(inv.total_amount, ccy)}</Td>
-                        </Tr>
+                        <DataTableRow key={inv.id} onClick={() => navigate('/pos/supplier/trade-invoices')} style={{ cursor: 'pointer' }}>
+                          <DataTableCell data-label={t('dashboard.invoiceNumber', 'Invoice #')}><strong>{inv.invoice_number}</strong></DataTableCell>
+                          <DataTableCell data-label={t('dashboard.customer', 'Customer')}>{inv.customer}</DataTableCell>
+                          <DataTableCell data-label={t('dashboard.status', 'Status')}><CommonStatusBadge status={mapSupplierStatusVariant(inv.status)} size="small">{inv.status.replace('_', ' ')}</CommonStatusBadge></DataTableCell>
+                          <DataTableCell align="right" data-label={t('dashboard.total', 'Total')}>{formatCurrency(inv.total_amount, ccy)}</DataTableCell>
+                        </DataTableRow>
                       ))}
                     </tbody>
-                  </Table>
+                  </DataTable>
                 )}
               </TableCard>
             </TwoCol>

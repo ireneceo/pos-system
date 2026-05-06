@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency } from '../../utils/currency';
@@ -9,6 +10,7 @@ import { formatDateTime } from '../../utils/timezone';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 
@@ -236,11 +238,15 @@ const MainGrid = styled.div`
 const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   border: 1px solid #E6EBF1;
 
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
+
   h3 {
-    margin: 0 0 20px 0;
+    margin: 0 0 24px 0;
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
@@ -416,47 +422,6 @@ const TableContainer = styled.div`
   overflow: hidden;
 `;
 
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const Thead = styled.thead`
-  background: #F8FAFC;
-`;
-
-const Th = styled.th`
-  padding: 16px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7C93;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const Tbody = styled.tbody``;
-
-const Tr = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
-  transition: background 0.2s;
-
-  &:hover {
-    background: #F8FAFC;
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
-`;
-
-const Td = styled.td`
-  padding: 16px;
-  font-size: 14px;
-  color: #374151;
-  vertical-align: middle;
-`;
-
 const CompanyInfo = styled.div`
   .name {
     font-weight: 600;
@@ -553,6 +518,7 @@ const Badge = styled.span<{ variant: string }>`
 
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation('admin');
+  const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { operationSettings, siteTimezone } = useStore();
@@ -967,7 +933,7 @@ const AdminDashboard: React.FC = () => {
             <WelcomeModal
               userKey={user.id}
               userName={user.fullName || user.username}
-              roleLabel={user.role}
+              roleLabel={displayRole(user.role)}
               items={setupItems}
             />
           )}
@@ -1389,56 +1355,52 @@ const AdminDashboard: React.FC = () => {
         </Tabs>
 
         {activeTab === 'overview' && (
-          <TableContainer>
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th>{t('admin:adminDashboard.managerCompany')}</Th>
-                  <Th>{t('admin:adminDashboard.plan')}</Th>
-                  <Th>{t('admin:adminDashboard.status')}</Th>
-                  <Th>{t('admin:adminDashboard.restaurants')}</Th>
-                  <Th>{t('admin:adminDashboard.monthlyRevenue')}</Th>
-                  <Th>{t('admin:adminDashboard.healthScore')}</Th>
-                  <Th>{t('admin:adminDashboard.riskLevel')}</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
+          managers.length === 0 ? (
+            <DataTableEmpty>{t('admin:adminDashboard.noManagerData', 'No manager data available')}</DataTableEmpty>
+          ) : (
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeaderCell align="left">{t('admin:adminDashboard.managerCompany')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:adminDashboard.plan')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:adminDashboard.status')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('admin:adminDashboard.restaurants')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('admin:adminDashboard.monthlyRevenue')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:adminDashboard.healthScore')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:adminDashboard.riskLevel')}</DataTableHeaderCell>
+                </tr>
+              </DataTableHead>
+              <tbody>
                 {managers.map(manager => (
-                  <Tr key={manager.id}>
-                    <Td>
+                  <DataTableRow key={manager.id}>
+                    <DataTableCell data-label={t('admin:adminDashboard.managerCompany')}>
                       <CompanyInfo>
                         <div className="name">{manager.companyName}</div>
                         <div className="email">{manager.email}</div>
                       </CompanyInfo>
-                    </Td>
-                    <Td>
-                      <Badge variant={manager.planType}>
-                        {manager.planType}
-                      </Badge>
-                    </Td>
-                    <Td>
-                      <Badge variant={manager.subscriptionStatus}>
-                        {manager.subscriptionStatus}
-                      </Badge>
-                    </Td>
-                    <Td>{manager.restaurantCount}</Td>
-                    <Td>{formatMultiCurrency(manager.totalRevenueByCurrency)}</Td>
-                    <Td>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('admin:adminDashboard.plan')}>
+                      <Badge variant={manager.planType}>{manager.planType}</Badge>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('admin:adminDashboard.status')}>
+                      <Badge variant={manager.subscriptionStatus}>{manager.subscriptionStatus}</Badge>
+                    </DataTableCell>
+                    <DataTableCell align="right" data-label={t('admin:adminDashboard.restaurants')}>{manager.restaurantCount}</DataTableCell>
+                    <DataTableCell align="right" data-label={t('admin:adminDashboard.monthlyRevenue')}>{formatMultiCurrency(manager.totalRevenueByCurrency)}</DataTableCell>
+                    <DataTableCell data-label={t('admin:adminDashboard.healthScore')}>
                       <HealthScore score={manager.healthScore}>
                         <span className="score">{manager.healthScore}%</span>
                         <div className="bar"></div>
                       </HealthScore>
-                    </Td>
-                    <Td>
-                      <Badge variant={manager.riskLevel}>
-                        {manager.riskLevel}
-                      </Badge>
-                    </Td>
-                  </Tr>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('admin:adminDashboard.riskLevel')}>
+                      <Badge variant={manager.riskLevel}>{manager.riskLevel}</Badge>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
+              </tbody>
+            </DataTable>
+          )
         )}
 
         {activeTab === 'performance' && (

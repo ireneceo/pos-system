@@ -48,6 +48,7 @@
   "foodcourtGeneralDashboard.activePlansLinked": "active plans linked",
   "foodcourtGeneralDashboard.forecastNote": "Fixed + combined min-guarantee only. Variable % portion depends on tenant revenue.",
   "foodcourtGeneralDashboard.tenant": "Tenant",
+  "foodcourtGeneralDashboard.noTenantData": "No tenant data available",
   "foodcourtGeneralDashboard.plan": "Plan",
   "foodcourtGeneralDashboard.orders": "Orders",
   "foodcourtGeneralDashboard.estimatedCharges": "Estimated Charges",

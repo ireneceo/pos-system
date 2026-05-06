@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
@@ -10,6 +11,7 @@ import { formatCurrency } from '../../utils/currency';
 import { useAuth } from '../../contexts/AuthContext';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { useRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 // ============================================================================
@@ -107,11 +109,15 @@ const MainGrid = styled.div`
 const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   border: 1px solid #E6EBF1;
 
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
+
   h3 {
-    margin: 0 0 20px 0;
+    margin: 0 0 24px 0;
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
@@ -300,59 +306,31 @@ const ChartTitle = styled.h3`
 
 // Table
 const RecentOrdersSection = styled.div`
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #E6EBF1;
+  overflow: hidden;
+
   h3 {
-    background: white;
     padding: 20px 24px;
     margin: 0;
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
-    border: 1px solid #E6EBF1;
-    border-radius: 16px 16px 0 0;
+    border-bottom: 1px solid #F3F4F6;
   }
-`;
 
-const TableContainer = styled.div`
-  background: white;
-  border-radius: 0 0 16px 16px;
-  border: 1px solid #E6EBF1;
-  border-top: none;
-  overflow: hidden;
-`;
+  @media (max-width: 1024px) {
+    background: transparent;
+    border: none;
+    overflow: visible;
+    border-radius: 0;
 
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const Thead = styled.thead`
-  background: #F8FAFC;
-`;
-
-const Th = styled.th`
-  padding: 16px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7C93;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const Tbody = styled.tbody``;
-
-const Tr = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
-  transition: background 0.2s;
-  &:hover { background: #F8FAFC; }
-  &:last-child { border-bottom: none; }
-`;
-
-const Td = styled.td`
-  padding: 16px;
-  font-size: 14px;
-  color: #374151;
-  vertical-align: middle;
+    h3 {
+      padding: 8px 0 12px;
+      border-bottom: none;
+    }
+  }
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -481,6 +459,7 @@ const ForecastNote = styled.div`font-size: 11px; color: #9CA3AF; font-style: ita
 
 const BrandGeneralDashboard: React.FC = () => {
   const { t } = useTranslation('brand');
+  const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
@@ -734,7 +713,7 @@ const BrandGeneralDashboard: React.FC = () => {
           <WelcomeModal
             userKey={user.id}
             userName={user.fullName || user.username}
-            roleLabel={user.role}
+            roleLabel={displayRole(user.role)}
             items={setupItems}
           />
         )}
@@ -1086,45 +1065,41 @@ const BrandGeneralDashboard: React.FC = () => {
         {/* Restaurant Performance Table */}
         <RecentOrdersSection>
           <h3>{t('brand:brandGeneralDashboard.restaurantPerformance')}</h3>
-        </RecentOrdersSection>
-        <TableContainer>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>{t('brand:brandGeneralDashboard.restaurant')}</Th>
-                <Th>{t('brand:brandGeneralDashboard.plan')}</Th>
-                <Th>{t('brand:brandGeneralDashboard.monthlyRevenue')}</Th>
-                <Th>{t('brand:brandGeneralDashboard.orders')}</Th>
-                <Th>{t('brand:brandGeneralDashboard.estimatedCharges')}</Th>
-                <Th>{t('brand:brandGeneralDashboard.invoiceStatus')}</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {topSubscriptions.length > 0 ? (
-                topSubscriptions.map((sub: any, idx: number) => (
-                  <Tr key={idx}>
-                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{sub.restaurant_branch_name ? `${sub.restaurant_name} (${sub.restaurant_branch_name})` : (sub.restaurant_name || '-')}</Td>
-                    <Td>{sub.plan?.name || 'No Plan'}</Td>
-                    <Td>{formatCurrency(sub.current_month?.revenue || 0, currency)}</Td>
-                    <Td>{sub.current_month?.order_count || 0}</Td>
-                    <Td>{formatCurrency(sub.current_month?.estimated_charges || 0, currency)}</Td>
-                    <Td>
+          {topSubscriptions.length === 0 ? (
+            <DataTableEmpty>{t('brand:brandGeneralDashboard.noRestaurantData', 'No restaurant data available')}</DataTableEmpty>
+          ) : (
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeaderCell align="left">{t('brand:brandGeneralDashboard.restaurant')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('brand:brandGeneralDashboard.plan')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('brand:brandGeneralDashboard.monthlyRevenue')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('brand:brandGeneralDashboard.orders')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('brand:brandGeneralDashboard.estimatedCharges')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('brand:brandGeneralDashboard.invoiceStatus')}</DataTableHeaderCell>
+                </tr>
+              </DataTableHead>
+              <tbody>
+                {topSubscriptions.map((sub: any, idx: number) => (
+                  <DataTableRow key={idx}>
+                    <DataTableCell data-label={t('brand:brandGeneralDashboard.restaurant')} style={{ fontWeight: 600, color: '#0A2540' }}>
+                      {sub.restaurant_branch_name ? `${sub.restaurant_name} (${sub.restaurant_branch_name})` : (sub.restaurant_name || '-')}
+                    </DataTableCell>
+                    <DataTableCell data-label={t('brand:brandGeneralDashboard.plan')}>{sub.plan?.name || 'No Plan'}</DataTableCell>
+                    <DataTableCell align="right" data-label={t('brand:brandGeneralDashboard.monthlyRevenue')}>{formatCurrency(sub.current_month?.revenue || 0, currency)}</DataTableCell>
+                    <DataTableCell align="right" data-label={t('brand:brandGeneralDashboard.orders')}>{sub.current_month?.order_count || 0}</DataTableCell>
+                    <DataTableCell align="right" data-label={t('brand:brandGeneralDashboard.estimatedCharges')}>{formatCurrency(sub.current_month?.estimated_charges || 0, currency)}</DataTableCell>
+                    <DataTableCell data-label={t('brand:brandGeneralDashboard.invoiceStatus')}>
                       <StatusBadge status={sub.latest_invoice?.status || 'none'}>
                         {(sub.latest_invoice?.status || 'N/A').replace(/_/g, ' ')}
                       </StatusBadge>
-                    </Td>
-                  </Tr>
-                ))
-              ) : (
-                <Tr>
-                  <Td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                    No restaurant data available
-                  </Td>
-                </Tr>
-              )}
-            </Tbody>
-          </Table>
-        </TableContainer>
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
+              </tbody>
+            </DataTable>
+          )}
+        </RecentOrdersSection>
       </Content>
     </Container>
   );

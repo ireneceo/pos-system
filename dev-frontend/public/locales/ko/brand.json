@@ -48,6 +48,7 @@
   "brandGeneralDashboard.activePlansLinked": "활성 플랜 연결됨",
   "brandGeneralDashboard.forecastNote": "고정 + 결합형 최소보장액만 반영. 매출 연동 로열티 부분은 제외.",
   "brandGeneralDashboard.restaurant": "레스토랑",
+  "brandGeneralDashboard.noRestaurantData": "레스토랑 데이터가 없습니다",
   "brandGeneralDashboard.plan": "플랜",
   "brandGeneralDashboard.orders": "주문",
   "brandGeneralDashboard.estimatedCharges": "예상 요금",

@@ -7,6 +7,7 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 
@@ -106,11 +107,15 @@ const MainGrid = styled.div`
 const ChartContainer = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   border: 1px solid #E6EBF1;
 
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
+
   h3 {
-    margin: 0 0 20px 0;
+    margin: 0 0 24px 0;
     color: #0A2540;
     font-size: 18px;
     font-weight: 600;
@@ -278,15 +283,19 @@ const ChartGrid = styled.div`
 const ChartCard = styled.div`
   background: white;
   border-radius: 16px;
-  padding: 24px;
+  padding: 28px;
   border: 1px solid #E6EBF1;
+
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
 `;
 
 const ChartHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 `;
 
 const ChartTitle = styled.h3`
@@ -428,6 +437,7 @@ const SubscriptionBanner = styled.div<{ $type: 'trial' | 'warning' | 'danger' }>
 
 const OwnerDashboardPage: React.FC = () => {
   const { t } = useTranslation('owner');
+  const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { paymentStatus } = usePaymentStatus();
@@ -641,7 +651,7 @@ const OwnerDashboardPage: React.FC = () => {
           <WelcomeModal
             userKey={user.id}
             userName={user.fullName || user.username}
-            roleLabel={user.role}
+            roleLabel={displayRole(user.role)}
             items={setupItems}
           />
         )}

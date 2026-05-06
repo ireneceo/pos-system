@@ -48,6 +48,7 @@
   "foodcourtGeneralDashboard.activePlansLinked": "활성 플랜 연결됨",
   "foodcourtGeneralDashboard.forecastNote": "고정 + 결합형 최소보장액만 반영. 매출 연동 % 부분은 제외.",
   "foodcourtGeneralDashboard.tenant": "입점자",
+  "foodcourtGeneralDashboard.noTenantData": "입점자 데이터가 없습니다",
   "foodcourtGeneralDashboard.plan": "플랜",
   "foodcourtGeneralDashboard.orders": "주문",
   "foodcourtGeneralDashboard.estimatedCharges": "예상 요금",
