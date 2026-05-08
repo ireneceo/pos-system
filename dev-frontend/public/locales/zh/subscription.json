@@ -1,0 +1,51 @@
+{
+  "currency": "货币",
+  "planType": "套餐类型",
+  "selectPlan": "选择套餐",
+  "billingCycle": "计费周期",
+  "selectCycle": "选择周期",
+  "monthly": "按月",
+  "annual": "按年",
+  "paymentModel": "付款方",
+  "paymentModelOptions": {
+    "restaurant": "餐厅管理员",
+    "brand": "品牌经理",
+    "foodcourt": "美食广场经理"
+  },
+  "period": "订阅期间",
+  "endAuto": "(结束日期自动计算)",
+  "autoRenew": "自动续订",
+  "settingsHeader": "订阅设置",
+  "discountHeader": "订阅折扣",
+  "trial": {
+    "title": "在订阅开始前作为试用",
+    "desc": "如果订阅开始日期为将来,账户在该日期之前处于试用状态。试用天数 = 距离订阅开始日的天数。"
+  },
+  "activateNow": {
+    "title": "立即激活订阅",
+    "descOn": "将立即生成所选套餐的订阅发票。",
+    "descOff": "不会生成发票。适用于仅硬件或占位账户。稍后可通过编辑此账户激活。"
+  },
+  "discount": {
+    "type": "折扣类型",
+    "none": "无折扣",
+    "percentage": "百分比 (%)",
+    "fixed": "固定金额",
+    "valuePct": "折扣 %",
+    "valueFixed": "折扣金额",
+    "reason": "原因 (可选)",
+    "reasonPlaceholder": "例如:早鸟优惠、合作伙伴折扣"
+  },
+  "summary": "摘要",
+  "summary.discount": "折扣",
+  "summary.final": "最终",
+  "summary.paidBy": "付款方",
+  "userTypeLabel": "用户类型",
+  "userTypeOptions": {
+    "restaurant": "餐厅管理员",
+    "brand": "品牌经理",
+    "foodcourt": "美食广场经理",
+    "owner": "餐厅业主",
+    "supplier": "供应商管理员"
+  }
+}

@@ -13,12 +13,10 @@ import {
   StatCard,
   StatValue,
   StatLabel,
-  Table,
-  TableHeader,
-  TableRow,
   ActionButtons,
   ActionButton
 } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -762,45 +760,51 @@ const ContentManagementPage: React.FC = () => {
           </ThemedButton>
         </EmptyState>
       ) : (
-        <Table>
-          <TableHeader columns="2fr 1fr 1fr 1fr 120px">
-            <span className="col-info">{t('admin:contentManagementPage.title')}</span>
-            <span>{t('admin:contentManagementPage.category')}</span>
-            <span>{t('admin:contentManagementPage.status')}</span>
-            <span>{t('admin:contentManagementPage.date')}</span>
-            <span className="col-action">{t('admin:contentManagementPage.actions')}</span>
-          </TableHeader>
-          {filteredContents.map(item => (
-            <TableRow key={item.id} columns="2fr 1fr 1fr 1fr 120px">
-              <div className="col-info">
-                <strong>{item.title}</strong>
-                {contentType === 'blog' && item.view_count > 0 && (
-                  <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>
-                    {item.view_count} views
-                  </span>
-                )}
-              </div>
-              <div>{item.category?.icon} {item.category?.name}</div>
-              <div>
-                <StatusBadge status={item.status}>
-                  {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                </StatusBadge>
-              </div>
-              <div>{formatDateTz(item.updated_at, null)}</div>
-              <ActionButtons>
-                <ActionButton onClick={() => { setEditingContent(item); setIsEditing(true); }}>
-                  Edit
-                </ActionButton>
-                <ActionButton onClick={() => handleTogglePublish(item)}>
-                  {item.status === 'published' ? 'Unpublish' : 'Publish'}
-                </ActionButton>
-                <ActionButton onClick={() => handleDeleteContent(item.id)} className="danger">
-                  Delete
-                </ActionButton>
-              </ActionButtons>
-            </TableRow>
-          ))}
-        </Table>
+        <DataTable>
+          <DataTableHead>
+            <tr>
+              <DataTableHeaderCell align="left">{t('admin:contentManagementPage.title')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('admin:contentManagementPage.category')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('admin:contentManagementPage.status')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('admin:contentManagementPage.date')}</DataTableHeaderCell>
+              <DataTableHeaderCell align="left">{t('admin:contentManagementPage.actions')}</DataTableHeaderCell>
+            </tr>
+          </DataTableHead>
+          <tbody>
+            {filteredContents.map(item => (
+              <DataTableRow key={item.id}>
+                <DataTableCell data-label={t('admin:contentManagementPage.title')}>
+                  <strong>{item.title}</strong>
+                  {contentType === 'blog' && item.view_count > 0 && (
+                    <span style={{ fontSize: '12px', color: '#6B7280', marginLeft: '8px' }}>
+                      {item.view_count} views
+                    </span>
+                  )}
+                </DataTableCell>
+                <DataTableCell data-label={t('admin:contentManagementPage.category')}>{item.category?.icon} {item.category?.name}</DataTableCell>
+                <DataTableCell data-label={t('admin:contentManagementPage.status')}>
+                  <StatusBadge status={item.status}>
+                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                  </StatusBadge>
+                </DataTableCell>
+                <DataTableCell data-label={t('admin:contentManagementPage.date')}>{formatDateTz(item.updated_at, null)}</DataTableCell>
+                <DataTableCell data-label={t('admin:contentManagementPage.actions')} mobileFullWidth>
+                  <ActionButtons>
+                    <ActionButton onClick={() => { setEditingContent(item); setIsEditing(true); }}>
+                      Edit
+                    </ActionButton>
+                    <ActionButton onClick={() => handleTogglePublish(item)}>
+                      {item.status === 'published' ? 'Unpublish' : 'Publish'}
+                    </ActionButton>
+                    <ActionButton onClick={() => handleDeleteContent(item.id)} className="danger">
+                      Delete
+                    </ActionButton>
+                  </ActionButtons>
+                </DataTableCell>
+              </DataTableRow>
+            ))}
+          </tbody>
+        </DataTable>
       )}
     </>
   );

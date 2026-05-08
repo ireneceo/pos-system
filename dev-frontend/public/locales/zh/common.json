@@ -161,10 +161,12 @@
     "brandManager": "品牌经理",
     "foodcourtGeneral": "美食广场总管",
     "foodcourtManager": "美食广场经理",
-    "restaurantOwner": "餐厅业主",
+    "restaurantOwner": "多餐厅业主",
     "restaurantAdmin": "餐厅管理员",
     "staff": "员工",
-    "supplier_admin": "供应商管理员"
+    "supplier_admin": "供应商管理员",
+    "supplierStaff": "供应商员工",
+    "referralPartner": "推荐合作伙伴"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -346,7 +348,7 @@
   "noticesPage.systemAdmin": "系统管理员",
   "noticesPage.brandGeneral": "品牌总管",
   "noticesPage.foodcourtGeneral": "美食广场总管",
-  "noticesPage.restaurantOwner": "餐厅业主",
+  "noticesPage.restaurantOwner": "多餐厅业主",
   "noticesPage.allPriorities": "全部优先级",
   "noticesPage.normal": "普通",
   "noticesPage.loadingNotices": "公告加载中...",

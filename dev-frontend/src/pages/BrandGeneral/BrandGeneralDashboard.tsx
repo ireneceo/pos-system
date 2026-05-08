@@ -5,6 +5,7 @@ import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
+import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
@@ -362,6 +363,40 @@ const LoadingContainer = styled.div`
 
 const PIE_COLORS = ['#DC2626', '#EF4444', '#F87171', '#FCA5A5', '#FECACA', '#FEE2E2', '#FFF5F5'];
 
+// Brand General walkthrough — 5 step over sidebar items + header trigger.
+const bgTourSteps = (t: (k: string, fallback?: string) => string): TourStep[] => ([
+  {
+    selector: '[data-tour="sidebar-bg-company-info"]',
+    title: t('walkthrough:bg.step1.title', 'Start with brand company info'),
+    description: t('walkthrough:bg.step1.description', "Add your brand's business registration, tax ID and contact details."),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-bg-restaurants"]',
+    title: t('walkthrough:bg.step2.title', 'Link restaurants to your brand'),
+    description: t('walkthrough:bg.step2.description', 'Each franchisee location must be connected to your brand to share recipes, ingredients and products.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-bg-ingredients"]',
+    title: t('walkthrough:bg.step3.title', 'Define brand ingredients'),
+    description: t('walkthrough:bg.step3.description', 'Set up the master list of ingredients used across all your recipes.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-bg-products"]',
+    title: t('walkthrough:bg.step4.title', 'Add brand products'),
+    description: t('walkthrough:bg.step4.description', 'Register the menu items your brand offers. Linked restaurants pull from this catalog automatically.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="header-tour-trigger"]',
+    title: t('walkthrough:bg.step5.title', 'Replay anytime'),
+    description: t('walkthrough:bg.step5.description', 'Use Show me around in the header to revisit this tour whenever you need.'),
+    position: 'bottom'
+  }
+]);
+
 // ============================================================================
 // Franchise Operations section — contract pipeline + expiring + billing gaps + royalty forecast
 // Mirrors Foodcourt Dashboard's Tenancy Operations for visual + mental-model consistency.
@@ -686,8 +721,10 @@ const BrandGeneralDashboard: React.FC = () => {
 
   return (
     <Container>
+      <Walkthrough tourKey="bg_dashboard" steps={bgTourSteps(t)} version={1} autoStart />
       <Header>
         <Title>{t('brand:brandGeneralDashboard.brandDashboard')}</Title>
+        <TourTrigger tourKey="bg_dashboard" />
         {subscriptionInfo.planType && (
           <Subtitle>
             <span>{subscriptionInfo.planType}</span>

@@ -539,7 +539,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
         category: newTicket.category,
         inquiryType: 'owner',
         managerId: user?.id,
-        managerName: user?.name || 'Restaurant Owner',
+        managerName: user?.name || 'Multi-Restaurant Owner',
         attachments: newAttachments.length > 0 ? newAttachments : undefined
       };
 

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 
 interface JobSummary {
   job_name: string;
@@ -204,33 +205,33 @@ const SchedulerMonitorPage: React.FC = () => {
         {filteredRuns.length === 0 ? (
           <Empty><EmptyTitle>{t('schedulerMonitor.noRuns', 'No runs match the current filter')}</EmptyTitle></Empty>
         ) : (
-          <Table>
-            <thead>
+          <DataTable>
+            <DataTableHead>
               <tr>
-                <Th>{t('schedulerMonitor.job', 'Job')}</Th>
-                <Th>{t('schedulerMonitor.startedAt', 'Started')}</Th>
-                <Th>{t('schedulerMonitor.duration', 'Duration')}</Th>
-                <Th>{t('schedulerMonitor.status', 'Status')}</Th>
-                <Th>{t('schedulerMonitor.summary', 'Summary')}</Th>
+                <DataTableHeaderCell align="left">{t('schedulerMonitor.job', 'Job')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('schedulerMonitor.startedAt', 'Started')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('schedulerMonitor.duration', 'Duration')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('schedulerMonitor.status', 'Status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('schedulerMonitor.summary', 'Summary')}</DataTableHeaderCell>
               </tr>
-            </thead>
+            </DataTableHead>
             <tbody>
               {filteredRuns.map(r => {
                 const sc = STATUS_COLORS[r.status] || STATUS_COLORS.running;
                 const summary = summarizeResults(r.results, r.error_message);
                 const jobMeta = JOB_LABELS[r.job_name];
                 return (
-                  <tr key={r.id}>
-                    <Td>{jobMeta?.label || r.job_name}</Td>
-                    <Td>{formatTime(r.started_at)}</Td>
-                    <Td>{fmtDuration(r.duration_ms)}</Td>
-                    <Td><StatusPill $bg={sc.bg} $fg={sc.fg}>{r.status}</StatusPill></Td>
-                    <Td $small title={summary}>{summary}</Td>
-                  </tr>
+                  <DataTableRow key={r.id}>
+                    <DataTableCell data-label={t('schedulerMonitor.job', 'Job')}>{jobMeta?.label || r.job_name}</DataTableCell>
+                    <DataTableCell data-label={t('schedulerMonitor.startedAt', 'Started')}>{formatTime(r.started_at)}</DataTableCell>
+                    <DataTableCell data-label={t('schedulerMonitor.duration', 'Duration')}>{fmtDuration(r.duration_ms)}</DataTableCell>
+                    <DataTableCell data-label={t('schedulerMonitor.status', 'Status')}><StatusPill $bg={sc.bg} $fg={sc.fg}>{r.status}</StatusPill></DataTableCell>
+                    <DataTableCell data-label={t('schedulerMonitor.summary', 'Summary')} title={summary}>{summary}</DataTableCell>
+                  </DataTableRow>
                 );
               })}
             </tbody>
-          </Table>
+          </DataTable>
         )}
       </Content>
     </Container>
@@ -390,37 +391,6 @@ const FilterSelect = styled.select`
   color: #4B5563;
 `;
 const ResultMeta = styled.span`font-size: 12px; color: #9CA3AF; margin-left: auto;`;
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid #E6EBF1;
-`;
-const Th = styled.th`
-  text-align: left;
-  padding: 12px 16px;
-  background: #F8FAFC;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7C93;
-  border-bottom: 1px solid #E6EBF1;
-`;
-const Td = styled.td<{ $small?: boolean }>`
-  padding: 12px 16px;
-  font-size: ${p => p.$small ? '12px' : '13px'};
-  color: #0A2540;
-  border-bottom: 1px solid #F3F4F6;
-  ${p => p.$small && `
-    max-width: 400px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: #6B7C93;
-    font-family: ui-monospace, monospace;
-  `}
-`;
 const Empty = styled.div`
   background: white;
   border: 1px dashed #E6EBF1;

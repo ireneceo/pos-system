@@ -272,6 +272,29 @@ User.init({
     },
     comment: 'UI language preference (en, ko, zh, ms)'
   },
+  tutorial_progress: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Per-tour completion state. { [tourKey]: { completed, skipped, last_seen, version } }'
+  },
+  discount_type: {
+    type: DataTypes.ENUM('none', 'percentage', 'fixed'),
+    allowNull: false,
+    defaultValue: 'none',
+    comment: 'Subscription discount type for Brand/FG/Owner/Supplier (mirrors Restaurant.discount_type)'
+  },
+  discount_value: {
+    type: DataTypes.DECIMAL(8, 2),
+    allowNull: false,
+    defaultValue: 0,
+    comment: 'Discount amount: percentage (0-100) when type=percentage, currency amount when type=fixed'
+  },
+  discount_reason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Free-text reason shown on subscription invoices'
+  },
   referral_code: {
     type: DataTypes.STRING(20),
     allowNull: true,

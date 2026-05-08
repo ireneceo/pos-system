@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
+import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { formatCurrency } from '../../utils/currency';
@@ -70,6 +71,13 @@ const Subtitle = styled.div`
   font-size: 14px;
   color: #6B7C93;
   margin-top: 4px;
+`;
+
+const HeaderRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 `;
 
 const SubscriptionBadge = styled.span<{ variant: 'trial' | 'active' | 'expiring' | 'expired' }>`
@@ -357,6 +365,40 @@ const LoadingContainer = styled.div`
 `;
 
 const PIE_COLORS = ['#EA580C', '#F97316', '#FB923C', '#FDBA74', '#FED7AA', '#FFF7ED', '#FFFBEB'];
+
+// FG dashboard walkthrough — 5 step tour over sidebar items + header trigger.
+const fgTourSteps = (t: (k: string, fallback?: string) => string): TourStep[] => ([
+  {
+    selector: '[data-tour="sidebar-company-info"]',
+    title: t('walkthrough:fg.step1.title', 'Start with company info'),
+    description: t('walkthrough:fg.step1.description', 'Add your business registration, tax ID and contact details. These appear on every invoice you issue.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-branches"]',
+    title: t('walkthrough:fg.step2.title', 'Add your first branch'),
+    description: t('walkthrough:fg.step2.description', 'A branch is a physical food court location. You need at least one before you can place units or tenants.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-floor-plan"]',
+    title: t('walkthrough:fg.step3.title', 'Lay out the floor plan'),
+    description: t('walkthrough:fg.step3.description', 'Draw the unit grid for each branch. Tenants will be placed onto these units later.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-tenancy"]',
+    title: t('walkthrough:fg.step4.title', 'Bring in tenant restaurants'),
+    description: t('walkthrough:fg.step4.description', 'Connect existing restaurants or invite new ones to operate inside your food court.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="header-tour-trigger"]',
+    title: t('walkthrough:fg.step5.title', 'Replay anytime'),
+    description: t('walkthrough:fg.step5.description', 'Use the Show me around button in the header whenever you want to see this tour again.'),
+    position: 'bottom'
+  }
+]);
 
 // ============================================================================
 // Tenancy Operations section — contract pipeline + expiring + billing gaps + forecast
@@ -778,10 +820,13 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
   return (
     <Container>
+      <Walkthrough tourKey="fg_dashboard" steps={fgTourSteps(t)} version={1} autoStart />
       <Header>
         <Title>{t('foodcourt:foodcourtGeneralDashboard.foodcourtDashboard')}</Title>
-        {subscriptionInfo.planType && (
-          <Subtitle>
+        <HeaderRight>
+          <TourTrigger tourKey="fg_dashboard" />
+          {subscriptionInfo.planType && (
+            <Subtitle>
             <span>{subscriptionInfo.planType}</span>
             {(() => {
               const s = subscriptionInfo;
@@ -794,8 +839,9 @@ const FoodcourtGeneralDashboard: React.FC = () => {
               if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.status}</SubscriptionBadge>;
               return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('foodcourt:foodcourtGeneralDashboard.active')}</SubscriptionBadge>;
             })()}
-          </Subtitle>
-        )}
+            </Subtitle>
+          )}
+        </HeaderRight>
       </Header>
 
       <Content>

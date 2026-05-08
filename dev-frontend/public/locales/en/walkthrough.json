@@ -1,0 +1,131 @@
+{
+  "skip": "Skip tour",
+  "back": "Back",
+  "next": "Next",
+  "done": "Got it",
+  "trigger": {
+    "label": "Show me around",
+    "title": "Replay the introduction tour",
+    "ariaLabel": "Show me around"
+  },
+  "fg": {
+    "step1": {
+      "title": "Start with company info",
+      "description": "Add your business registration, tax ID and contact details. These appear on every invoice you issue."
+    },
+    "step2": {
+      "title": "Add your first branch",
+      "description": "A branch is a physical food court location. You need at least one before you can place units or tenants."
+    },
+    "step3": {
+      "title": "Lay out the floor plan",
+      "description": "Draw the unit grid for each branch. Tenants will be placed onto these units later."
+    },
+    "step4": {
+      "title": "Bring in tenant restaurants",
+      "description": "Connect existing restaurants or invite new ones to operate inside your food court."
+    },
+    "step5": {
+      "title": "Replay anytime",
+      "description": "Use the 'Show me around' button in the header whenever you want to see this tour again."
+    }
+  },
+  "ra": {
+    "step1": {
+      "title": "Start with company info",
+      "description": "Add your business registration, tax ID and contact details. They appear on every invoice and receipt."
+    },
+    "step2": {
+      "title": "Create menu categories",
+      "description": "Organize your menu into categories like Mains, Sides and Drinks. Categories also route orders to kitchen stations."
+    },
+    "step3": {
+      "title": "Add menu items",
+      "description": "Register at least one item per category to start taking orders. You can add prices, options and recipes later."
+    },
+    "step4": {
+      "title": "Configure payment & operations",
+      "description": "Enable payment methods (cash, card, QR), set operating hours and currency to start serving real customers."
+    },
+    "step5": {
+      "title": "Replay anytime",
+      "description": "Use 'Show me around' in the header to see this tour again whenever you need a refresher."
+    }
+  },
+  "bg": {
+    "step1": {
+      "title": "Start with brand company info",
+      "description": "Add your brand's business registration, tax ID and contact details. They appear on franchisee invoices."
+    },
+    "step2": {
+      "title": "Link restaurants to your brand",
+      "description": "Each franchisee location must be connected to your brand to share recipes, ingredients and products."
+    },
+    "step3": {
+      "title": "Define brand ingredients",
+      "description": "Set up the master list of ingredients used across all your recipes. Costs and stock are tracked per restaurant."
+    },
+    "step4": {
+      "title": "Add brand products",
+      "description": "Register the menu items your brand offers. Linked restaurants pull from this catalog automatically."
+    },
+    "step5": {
+      "title": "Replay anytime",
+      "description": "Use 'Show me around' in the header to revisit this tour whenever you need a refresher."
+    }
+  },
+  "owner": {
+    "step1": {
+      "title": "Manage your restaurants",
+      "description": "Register restaurants, assign admins and choose subscription plans here. You can compare them side by side once you have more than one."
+    },
+    "step2": {
+      "title": "Replay anytime",
+      "description": "Use 'Show me around' in the header to see this tour again whenever you need."
+    }
+  },
+  "admin": {
+    "step1": {
+      "title": "Set platform company info",
+      "description": "Configure the platform operator's business details. They appear on subscription invoices sent to customers."
+    },
+    "step2": {
+      "title": "Configure SMTP & email",
+      "description": "Set up the outbound email server so notifications, invoices and receipts can be delivered."
+    },
+    "step3": {
+      "title": "Create subscription plan templates",
+      "description": "Define the plans customers can subscribe to. Each plan controls modules, limits and pricing."
+    },
+    "step4": {
+      "title": "Enable a payment channel",
+      "description": "Turn on at least one payment channel (Stripe, bank transfer) so customers can pay subscription invoices."
+    },
+    "step5": {
+      "title": "Replay anytime",
+      "description": "Use 'Show me around' in the header to revisit this tour whenever you need."
+    }
+  },
+  "supplier": {
+    "step1": {
+      "title": "Set company info",
+      "description": "Add your supplier company's business registration, tax ID and contact details. They appear on every trade invoice."
+    },
+    "step2": {
+      "title": "Build your product catalog",
+      "description": "Register the products you sell with prices, units and minimum order quantities. Buyers see this catalog when placing orders."
+    },
+    "step3": {
+      "title": "Process incoming purchase orders",
+      "description": "Buyers send POs from the catalog. Confirm, dispatch and invoice them from the orders page."
+    },
+    "step4": {
+      "title": "Manage buyer accounts",
+      "description": "View who is buying from you, set credit limits and payment terms per buyer."
+    },
+    "step5": {
+      "title": "Replay anytime",
+      "description": "Use 'Show me around' in the header to see this tour again whenever you need."
+    }
+  }
+}

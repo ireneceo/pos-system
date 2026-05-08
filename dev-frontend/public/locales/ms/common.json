@@ -161,10 +161,12 @@
     "brandManager": "Pengurus Jenama",
     "foodcourtGeneral": "Ketua Medan Selera",
     "foodcourtManager": "Pengurus Medan Selera",
-    "restaurantOwner": "Pemilik Restoran",
+    "restaurantOwner": "Pemilik Berbilang Restoran",
     "restaurantAdmin": "Pentadbir Restoran",
     "staff": "Kakitangan",
-    "supplier_admin": "Pentadbir Pembekal"
+    "supplier_admin": "Pentadbir Pembekal",
+    "supplierStaff": "Kakitangan Pembekal",
+    "referralPartner": "Rakan Rujukan"
   },
   "nav": {
     "dashboard": "Papan Pemuka",
@@ -346,7 +348,7 @@
   "noticesPage.systemAdmin": "Pentadbir Sistem",
   "noticesPage.brandGeneral": "Ketua Jenama",
   "noticesPage.foodcourtGeneral": "Ketua Medan Selera",
-  "noticesPage.restaurantOwner": "Pemilik Restoran",
+  "noticesPage.restaurantOwner": "Pemilik Berbilang Restoran",
   "noticesPage.allPriorities": "Semua Keutamaan",
   "noticesPage.normal": "Biasa",
   "noticesPage.loadingNotices": "Memuatkan notis...",

@@ -375,7 +375,7 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               key: 'first_branch',
               label: 'Add Your First Branch',
               description: 'Register a foodcourt branch (location) to start managing tenants',
-              path: '/pos/foodcourt/general/branches',
+              path: '/pos/foodcourt/branches',
               completed: hasBranch,
               dependsOn: ['company_info']
             },
@@ -383,7 +383,7 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               key: 'fc_floor_plan',
               label: 'Set up Floor Plan & Units',
               description: 'Add units to your branch so tenants can be placed on the floor plan',
-              path: '/pos/foodcourt/general/floor-plan',
+              path: '/pos/foodcourt/floor-plan',
               completed: hasFloorPlanFc,
               dependsOn: ['first_branch']
             },

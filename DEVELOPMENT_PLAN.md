@@ -1,9 +1,87 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-06 (v3.25 Pricing/Module Audience — backstage cleanup, 버전 미상승)
+> **최종 업데이트:** 2026-05-08 (v3.27 운영 배포 — Subscription Form 통일 + 5 역할 walkthrough + FG 온보딩 + 데모 정합)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.24** (2026-05-04 운영 배포, v3.25 미배포 backstage)
+> **현재 버전:** **v3.27** (2026-05-08 운영 배포)
+
+## ✅ 완료: v3.27 운영 배포 (2026-05-08)
+
+**오늘 세션의 4 sprint 누적 + v3.24 → v3.27 점프 운영 배포**
+
+### Sprint 1: FG 온보딩 + Walkthrough 시스템 신규
+
+| 작업 | 상태 |
+|------|:----:|
+| `User.tutorial_progress` JSON 컬럼 추가 + DB sync | ✅ |
+| `GET/PUT /api/users/me/tutorial-progress` API | ✅ |
+| `useTourProgress` hook + `<Walkthrough>` 컴포넌트 (overlay/spotlight/tooltip 자체 구현) | ✅ |
+| `<TourTrigger>` 헤더 "Show me around" 버튼 | ✅ |
+| `useSetupStatus` FG path 정합 (`/general/branches`→`/branches`, `/general/floor-plan`→`/floor-plan`) | ✅ |
+| `SetupGuide` locked 클릭 차단 + 3초 inline flash | ✅ |
+| FG 5 페이지 EmptyState 통일 (Branches / FloorPlan / TenancyMap / RentManagement / Tenancy) + steps 가이드 + CTA | ✅ |
+| FG Dashboard 5 step Walkthrough mount + MainLayout sidebar 4개 NavItem `data-tour` 부착 | ✅ |
+| i18n 4언어 walkthrough.json 신규 + i18n.ts ns 등록 | ✅ |
+| 설계 문서 `docs/FG_ONBOARDING_v3.26.md` | ✅ |
+
+### Sprint 2: 트랙 C 데모 데이터 4-step 시드
+
+| 작업 | 상태 |
+|------|:----:|
+| FC44 (demo_foodcourt_general) — units 0→**12** + tenants 0→**2** + 6 contracts (varied stage) + company info | ✅ |
+| Owner 매장 4곳 (R2/R3/R6/R7) — cats 3 + prods 8 + orders 25 (30일 분포) + company info | ✅ |
+| BG B10/B1 brandProducts 0→8 / 0→7 + brand_product_brands join + brand company info | ✅ |
+| R38 시계열 주문 30건 + company info / SC20 supplier company info | ✅ |
+| idempotent 시드 마커 (`SEED-V326-FC44`, `SEED-V326-OWNER-DEMO`, `SEED-V326-BG`) | ✅ |
+| 5 idempotent seed 스크립트 신규 | ✅ |
+
+### Sprint 3: 5 역할 Walkthrough 확장
+
+| 작업 | 상태 |
+|------|:----:|
+| MainLayout 17개 NavItem 에 `data-tour` 부착 (RA 4 / BG 4 / Owner 1 / Admin 4 / Supplier 4) | ✅ |
+| 5 dashboard 에 step 정의 + Walkthrough mount + TourTrigger (RA/BG/Admin/Supplier 5 step / Owner 2 step) | ✅ |
+| i18n 4언어 walkthrough.json 확장 — 27 step entries × 4 언어 | ✅ |
+| 5 역할 tutorial-progress write→read 왕복 5/5 검증 | ✅ |
+
+### Sprint 4: Subscription Form 통일 + Discount 전 역할 (v3.27)
+
+| 작업 | 상태 |
+|------|:----:|
+| `User` 테이블 `discount_type` ENUM + `discount_value` DECIMAL + `discount_reason` TEXT 컬럼 추가 | ✅ |
+| `routes/users.js` POST/PUT 에 discount 처리 + `SUBSCRIBING_ROLES` 에 Supplier Admin 추가 | ✅ |
+| `<SubscriptionFormFields>` 컴포넌트 신규 — 9 필드 + 자동 재계산 + Discount + Summary, BillingCycle default 빈값 | ✅ |
+| SubscriptionsPage Add 폼 통합 — User Type 5 옵션 (Supplier 포함) + Currency 동적 + Discount + Activate now | ✅ |
+| ManagersPage Add 폼 통합 — BG/FG/Owner 분기 시 동일 컴포넌트 | ✅ |
+| i18n 4언어 subscription.json 신규 + i18n.ts ns 등록 | ✅ |
+| 설계 문서 `docs/SUBSCRIPTION_FORM_UNIFY_v3.27.md` | ✅ |
+
+### v3.27 운영 배포
+
+| 작업 | 상태 |
+|------|:----:|
+| `/var/www/deploy-to-production.sh --auto` 실행 (rsync + npm install + PM2 + nginx) | ✅ |
+| 운영 DB 자동 sync — `tutorial_progress` JSON + `discount_type/value/reason` 컬럼 자동 적용 | ✅ |
+| 운영 live 7/7 200 (홈 + API health + 4 dashboard + 2 i18n) | ✅ |
+| CHANGELOG.md `[Unreleased]` → `[v3.27] — 2026-05-08 배포` 섹션 이동 | ✅ |
+| session-state.md / DEVELOPMENT_PLAN.md 버전 v3.24 → **v3.27** | ✅ |
+| 랜딩 블로그 `release-v3.27` (id=86) + System Admin 공지 (id=54) 자동 등록 — 운영 sync 포함 5 운영 수신자 자동 생성 | ✅ |
+
+### 검증 (각 sprint 별 10단계 통과)
+
+- 0단계 hydration 0 warning (전 sprint)
+- 1단계 빌드 exit 0, sprint origin TS 경고 0건
+- 3단계 API 실호출 — discount API 10/10, walkthrough API 8/8, tutorial-progress 5/5
+- health-check **73/73 PASS** (모든 sprint)
+- 빌드 hash: `main.0b1c23bb.js` (최종)
+
+### 운영 동기화 대기 (의도된 비범위, 별도 sprint)
+
+- 운영 demo 계정 ID 가 dev 와 다름 (FC44→FC1, B10→B4, R38→R13, SC20→SC1) → 시드 스크립트 ID 파라미터화 후 별도 적용
+- RestaurantsPage Add/Edit 의 SubscriptionFormFields 통합 (현재 잘 동작하므로 안정성 우선)
+- SubscriptionsPage / ManagersPage 의 Edit modal — 이번엔 Add 만 통일
+
+---
 
 ## ✅ 완료: Signup UX 개선 (2026-05-06, 미배포 / 버전 미상승)
 

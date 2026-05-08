@@ -1,19 +1,46 @@
 /**
  * Role display helper.
  *
- * The internal ENUM value `Restaurant Owner` is misleading — that role manages
- * multiple restaurants (ownership relationships through restaurant_managers).
- * In all user-facing UI we show "Multi-Restaurant Owner" to communicate intent
- * without the cost of a destructive ENUM migration.
+ * 내부 ENUM 값 `Restaurant Owner`는 multi-restaurant ownership을 가지는 역할이라
+ * 사용자 노출 표시는 "Multi-Restaurant Owner" (4언어 번역) 로 분기한다.
  *
- * Backend code that checks role strings (`if (user.role === 'Restaurant Owner')`)
- * is unchanged. Only display goes through this helper.
+ * 백엔드 권한 비교 (`if (user.role === 'Restaurant Owner')`)는 ENUM 값 그대로 유지.
+ * 모든 변수 표시 (예: `<Td>{user.role}</Td>`)는 헬퍼/hook 으로 wrap한다.
+ *
+ * 사용 패턴:
+ *   1) 컴포넌트 내부 (권장):
+ *      const roleLabel = useRoleDisplayName();
+ *      <Td>{roleLabel(user.role)}</Td>
+ *
+ *   2) 이미 `t` 인스턴스를 가진 자리:
+ *      <Td>{getRoleDisplayName(user.role, t)}</Td>
  */
-const ROLE_DISPLAY_OVERRIDES: Record<string, string> = {
-  'Restaurant Owner': 'Multi-Restaurant Owner'
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+
+/** Internal ENUM 값 → common.json `role.*` 키 매핑 */
+const ROLE_TO_KEY: Record<string, string> = {
+  'System Admin': 'role.systemAdmin',
+  'Brand General': 'role.brandGeneral',
+  'Brand Manager': 'role.brandManager',
+  'Foodcourt General': 'role.foodcourtGeneral',
+  'Foodcourt Manager': 'role.foodcourtManager',
+  'Restaurant Owner': 'role.restaurantOwner',
+  'Restaurant Admin': 'role.restaurantAdmin',
+  'Staff': 'role.staff',
+  'Supplier Admin': 'role.supplier_admin',
+  'Supplier Staff': 'role.supplierStaff',
+  'Referral Partner': 'role.referralPartner',
 };
 
-export function getRoleDisplayName(role: string | null | undefined): string {
+export function getRoleDisplayName(role: string | null | undefined, t: TFunction): string {
   if (!role) return '';
-  return ROLE_DISPLAY_OVERRIDES[role] ?? role;
+  const key = ROLE_TO_KEY[role];
+  if (!key) return role;
+  return t(`common:${key}`, { defaultValue: role });
+}
+
+export function useRoleDisplayName(): (role: string | null | undefined) => string {
+  const { t } = useTranslation('common');
+  return (role) => getRoleDisplayName(role, t);
 }

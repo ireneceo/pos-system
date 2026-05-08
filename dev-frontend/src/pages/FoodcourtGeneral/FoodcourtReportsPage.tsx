@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1192,42 +1193,42 @@ const FoodcourtReportsPage: React.FC = () => {
 
             <TableCard>
               <ChartTitle>{t('foodcourt:foodcourtReportsPage.completeMenuPerformanceRanking')}</ChartTitle>
-              <Table>
-                <thead>
+              <DataTable>
+                <DataTableHead>
                   <tr>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.rank')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.menuItem')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.category')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.price')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.orders')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.revenue')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.performance')}</TableHeader>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.rank')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.menuItem')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.category')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.price')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.orders')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.revenue')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.performance')}</DataTableHeaderCell>
                   </tr>
-                </thead>
+                </DataTableHead>
                 <tbody>
                   {allMenuData.map((menu, index) => {
                     const maxOrders = allMenuData[0]?.orders || 1;
                     return (
-                      <tr key={index} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
-                        <TableCell style={{ fontWeight: 600, color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540' }}>
+                      <DataTableRow key={index} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
+                        <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.rank')} style={{ fontWeight: 600, color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540' }}>
                           #{index + 1}{index === 0 && ' 🥇'}{index === 1 && ' 🥈'}{index === 2 && ' 🥉'}
-                        </TableCell>
-                        <TableCell style={{ fontWeight: 600 }}>{menu.name}</TableCell>
-                        <TableCell><span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', backgroundColor: '#F3F4F6', color: '#6B7280' }}>{menu.category}</span></TableCell>
-                        <TableCell>{formatCurrency(menu.price, selectedCurrency)}</TableCell>
-                        <TableCell>{menu.orders.toLocaleString()}</TableCell>
-                        <TableCell>{formatCurrency(menu.revenue, selectedCurrency)}</TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.menuItem')} style={{ fontWeight: 600 }}>{menu.name}</DataTableCell>
+                        <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.category')}><span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', backgroundColor: '#F3F4F6', color: '#6B7280' }}>{menu.category}</span></DataTableCell>
+                        <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.price')}>{formatCurrency(menu.price, selectedCurrency)}</DataTableCell>
+                        <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.orders')}>{menu.orders.toLocaleString()}</DataTableCell>
+                        <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.revenue')}>{formatCurrency(menu.revenue, selectedCurrency)}</DataTableCell>
+                        <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.performance')}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ProgressBar percentage={(menu.orders / maxOrders) * 100} />
                             <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{Math.round((menu.orders / maxOrders) * 100)}%</span>
                           </div>
-                        </TableCell>
-                      </tr>
+                        </DataTableCell>
+                      </DataTableRow>
                     );
                   })}
                 </tbody>
-              </Table>
+              </DataTable>
             </TableCard>
           </div>
 
@@ -1290,31 +1291,31 @@ const FoodcourtReportsPage: React.FC = () => {
 
             <TableCard>
               <ChartTitle>{t('foodcourt:foodcourtReportsPage.peakHoursPerformance')}</ChartTitle>
-              <Table>
-                <thead>
+              <DataTable>
+                <DataTableHead>
                   <tr>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.timeSlot')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.orders')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.revenue')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.efficiency')}</TableHeader>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.timeSlot')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.orders')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.revenue')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.efficiency')}</DataTableHeaderCell>
                   </tr>
-                </thead>
+                </DataTableHead>
                 <tbody>
                   {peakTimesData.map((item, index) => (
-                    <tr key={index}>
-                      <TableCell style={{ fontWeight: 600 }}>{item.time}</TableCell>
-                      <TableCell>{item.orders}</TableCell>
-                      <TableCell>{formatCurrency(item.revenue, selectedCurrency)}</TableCell>
-                      <TableCell>
+                    <DataTableRow key={index}>
+                      <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.timeSlot')} style={{ fontWeight: 600 }}>{item.time}</DataTableCell>
+                      <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.orders')}>{item.orders}</DataTableCell>
+                      <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.revenue')}>{formatCurrency(item.revenue, selectedCurrency)}</DataTableCell>
+                      <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.efficiency')}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <ProgressBar percentage={item.efficiency} />
                           <span style={{ fontSize: '12px', color: '#6B7C93' }}>{item.efficiency}%</span>
                         </div>
-                      </TableCell>
-                    </tr>
+                      </DataTableCell>
+                    </DataTableRow>
                   ))}
                 </tbody>
-              </Table>
+              </DataTable>
             </TableCard>
           </div>
 
@@ -1332,91 +1333,93 @@ const FoodcourtReportsPage: React.FC = () => {
             {/* Brand Rankings */}
             <RankingCard>
               <ChartTitle>{t('foodcourt:foodcourtReportsPage.brandSalesRanking')}</ChartTitle>
-              <Table>
-                <thead>
-                  <tr>
-                    <TableHeader style={{ width: '60px' }}>{t('foodcourt:foodcourtReportsPage.rank')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.brandName')}</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.restaurants')}</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.orders')}</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.revenue')}</TableHeader>
-                    <TableHeader style={{ width: '150px' }}>{t('foodcourt:foodcourtReportsPage.performance')}</TableHeader>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rankingData.brands.map((brand, index) => {
-                    const maxRevenue = rankingData.brands[0]?.revenue || 1;
-                    const percentage = Math.round((brand.revenue / maxRevenue) * 100);
-                    return (
-                      <tr key={brand.id} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
-                        <TableCell>
-                          <RankBadge rank={index + 1}>{index + 1}</RankBadge>
-                        </TableCell>
-                        <TableCell style={{ fontWeight: 600 }}>{brand.name}</TableCell>
-                        <TableCell style={{ textAlign: 'right' }}>{brand.restaurantCount}</TableCell>
-                        <TableCell style={{ textAlign: 'right' }}>{brand.orders.toLocaleString()}</TableCell>
-                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#635BFF' }}>{formatCurrency(brand.revenue, selectedCurrency)}</TableCell>
-                        <TableCell>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ProgressBar percentage={percentage} />
-                            <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{percentage}%</span>
-                          </div>
-                        </TableCell>
-                      </tr>
-                    );
-                  })}
-                  {rankingData.brands.length === 0 && (
-                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>{t('foodcourt:foodcourtReportsPage.noBrandDataAvailable')}</TableCell></tr>
-                  )}
-                </tbody>
-              </Table>
+              {rankingData.brands.length === 0 ? (
+                <DataTableEmpty>{t('foodcourt:foodcourtReportsPage.noBrandDataAvailable')}</DataTableEmpty>
+              ) : (
+                <DataTable>
+                  <DataTableHead>
+                    <tr>
+                      <DataTableHeaderCell align="left" width="60px">{t('foodcourt:foodcourtReportsPage.rank')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.brandName')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="right">{t('foodcourt:foodcourtReportsPage.restaurants')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="right">{t('foodcourt:foodcourtReportsPage.orders')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="right">{t('foodcourt:foodcourtReportsPage.revenue')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left" width="150px">{t('foodcourt:foodcourtReportsPage.performance')}</DataTableHeaderCell>
+                    </tr>
+                  </DataTableHead>
+                  <tbody>
+                    {rankingData.brands.map((brand, index) => {
+                      const maxRevenue = rankingData.brands[0]?.revenue || 1;
+                      const percentage = Math.round((brand.revenue / maxRevenue) * 100);
+                      return (
+                        <DataTableRow key={brand.id} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.rank')}>
+                            <RankBadge rank={index + 1}>{index + 1}</RankBadge>
+                          </DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.brandName')} style={{ fontWeight: 600 }}>{brand.name}</DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.restaurants')} align="right">{brand.restaurantCount}</DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.orders')} align="right">{brand.orders.toLocaleString()}</DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.revenue')} align="right" style={{ fontWeight: 600, color: '#635BFF' }}>{formatCurrency(brand.revenue, selectedCurrency)}</DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.performance')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <ProgressBar percentage={percentage} />
+                              <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{percentage}%</span>
+                            </div>
+                          </DataTableCell>
+                        </DataTableRow>
+                      );
+                    })}
+                  </tbody>
+                </DataTable>
+              )}
             </RankingCard>
 
             {/* Restaurant Rankings */}
             <RankingCard>
               <ChartTitle>{t('foodcourt:foodcourtReportsPage.restaurantSalesRanking')}</ChartTitle>
-              <Table>
-                <thead>
-                  <tr>
-                    <TableHeader style={{ width: '60px' }}>{t('foodcourt:foodcourtReportsPage.rank')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.restaurantName')}</TableHeader>
-                    <TableHeader>{t('foodcourt:foodcourtReportsPage.brand')}</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.orders')}</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>{t('foodcourt:foodcourtReportsPage.revenue')}</TableHeader>
-                    <TableHeader style={{ width: '150px' }}>{t('foodcourt:foodcourtReportsPage.performance')}</TableHeader>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rankingData.restaurants.slice(0, 20).map((restaurant, index) => {
-                    const maxRevenue = rankingData.restaurants[0]?.revenue || 1;
-                    const percentage = Math.round((restaurant.revenue / maxRevenue) * 100);
-                    return (
-                      <tr key={restaurant.id} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
-                        <TableCell>
-                          <RankBadge rank={index + 1}>{index + 1}</RankBadge>
-                        </TableCell>
-                        <TableCell style={{ fontWeight: 600 }}>{getRestaurantDisplayName(restaurant)}</TableCell>
-                        <TableCell>
-                          <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', backgroundColor: restaurant.brandName === 'Independent' ? '#F3F4F6' : '#E0E7FF', color: restaurant.brandName === 'Independent' ? '#6B7280' : '#4338CA' }}>
-                            {restaurant.brandName}
-                          </span>
-                        </TableCell>
-                        <TableCell style={{ textAlign: 'right' }}>{restaurant.orders.toLocaleString()}</TableCell>
-                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#635BFF' }}>{formatCurrency(restaurant.revenue, selectedCurrency)}</TableCell>
-                        <TableCell>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ProgressBar percentage={percentage} />
-                            <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{percentage}%</span>
-                          </div>
-                        </TableCell>
-                      </tr>
-                    );
-                  })}
-                  {rankingData.restaurants.length === 0 && (
-                    <tr><TableCell colSpan={6} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>{t('foodcourt:foodcourtReportsPage.noRestaurantDataAvailable')}</TableCell></tr>
-                  )}
-                </tbody>
-              </Table>
+              {rankingData.restaurants.length === 0 ? (
+                <DataTableEmpty>{t('foodcourt:foodcourtReportsPage.noRestaurantDataAvailable')}</DataTableEmpty>
+              ) : (
+                <DataTable>
+                  <DataTableHead>
+                    <tr>
+                      <DataTableHeaderCell align="left" width="60px">{t('foodcourt:foodcourtReportsPage.rank')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.restaurantName')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('foodcourt:foodcourtReportsPage.brand')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="right">{t('foodcourt:foodcourtReportsPage.orders')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="right">{t('foodcourt:foodcourtReportsPage.revenue')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left" width="150px">{t('foodcourt:foodcourtReportsPage.performance')}</DataTableHeaderCell>
+                    </tr>
+                  </DataTableHead>
+                  <tbody>
+                    {rankingData.restaurants.slice(0, 20).map((restaurant, index) => {
+                      const maxRevenue = rankingData.restaurants[0]?.revenue || 1;
+                      const percentage = Math.round((restaurant.revenue / maxRevenue) * 100);
+                      return (
+                        <DataTableRow key={restaurant.id} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.rank')}>
+                            <RankBadge rank={index + 1}>{index + 1}</RankBadge>
+                          </DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.restaurantName')} style={{ fontWeight: 600 }}>{getRestaurantDisplayName(restaurant)}</DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.brand')}>
+                            <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', backgroundColor: restaurant.brandName === 'Independent' ? '#F3F4F6' : '#E0E7FF', color: restaurant.brandName === 'Independent' ? '#6B7280' : '#4338CA' }}>
+                              {restaurant.brandName}
+                            </span>
+                          </DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.orders')} align="right">{restaurant.orders.toLocaleString()}</DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.revenue')} align="right" style={{ fontWeight: 600, color: '#635BFF' }}>{formatCurrency(restaurant.revenue, selectedCurrency)}</DataTableCell>
+                          <DataTableCell data-label={t('foodcourt:foodcourtReportsPage.performance')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <ProgressBar percentage={percentage} />
+                              <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{percentage}%</span>
+                            </div>
+                          </DataTableCell>
+                        </DataTableRow>
+                      );
+                    })}
+                  </tbody>
+                </DataTable>
+              )}
             </RankingCard>
           </div>
 

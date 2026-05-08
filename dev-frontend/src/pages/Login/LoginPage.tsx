@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { LanguageSelector } from '../../components/Common';
 import { useTranslation } from 'react-i18next';
+import { useRoleDisplayName } from '../../utils/roleDisplay';
 
 // Demo / Test accounts — passwords are NOT shipped in the bundle.
 // Server resolves the email by `key` and issues a token via /api/auth/demo-login,
@@ -30,7 +31,7 @@ const DEMO_ACCOUNTS = [
   },
   {
     key: 'demo_multi_owner',
-    role: 'Multi-Restaurant Owner',
+    role: 'Restaurant Owner',
     description: 'Financial dashboard across multiple restaurants you own',
     color: '#7C3AED'
   },
@@ -57,7 +58,7 @@ const TEST_ACCOUNTS = [
   },
   {
     key: 'test_restaurant_owner',
-    role: 'Multi-Restaurant Owner',
+    role: 'Restaurant Owner',
     description: 'Multi-restaurant financial dashboard',
     color: '#7C3AED'
   },
@@ -435,6 +436,7 @@ const HomeLink = styled(Link)`
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation('auth');
+  const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const location = useLocation();
   const { login, loginAsDemo, user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -691,7 +693,7 @@ const LoginPage: React.FC = () => {
                 onClick={() => handleQuickLogin(account)}
               >
                 <AccountRole color={account.color}>
-                  {account.role}
+                  {displayRole(account.role)}
                 </AccountRole>
                 <AccountDescription>
                   {account.description}
@@ -712,7 +714,7 @@ const LoginPage: React.FC = () => {
                 onClick={() => handleQuickLogin(account)}
               >
                 <AccountRole color={account.color}>
-                  {account.role}
+                  {displayRole(account.role)}
                 </AccountRole>
                 <AccountDescription>
                   {account.description}

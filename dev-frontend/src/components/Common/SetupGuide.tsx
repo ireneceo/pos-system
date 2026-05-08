@@ -34,6 +34,14 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ items, entityId }) => {
     if (allDone) return true;
     return localStorage.getItem(storageKey) === 'true';
   });
+  const [blockedKey, setBlockedKey] = React.useState<string | null>(null);
+  const blockedTimerRef = React.useRef<number | null>(null);
+  const flashBlocked = (key: string) => {
+    setBlockedKey(key);
+    if (blockedTimerRef.current) window.clearTimeout(blockedTimerRef.current);
+    blockedTimerRef.current = window.setTimeout(() => setBlockedKey(null), 3000);
+  };
+  React.useEffect(() => () => { if (blockedTimerRef.current) window.clearTimeout(blockedTimerRef.current); }, []);
 
   // Re-show if something becomes incomplete after dismiss
   React.useEffect(() => {
@@ -76,12 +84,26 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ items, entityId }) => {
           const tooltip = locked
             ? `Complete first: ${blockingDeps.map(d => d.label).join(', ')}`
             : '';
+          const isBlockedFlash = blockedKey === item.key;
           return (
-            <Item key={item.key} $locked={locked} title={tooltip} onClick={() => navigate(item.path)}>
+            <Item
+              key={item.key}
+              $locked={locked}
+              $flash={isBlockedFlash}
+              title={tooltip}
+              onClick={() => {
+                if (locked) { flashBlocked(item.key); return; }
+                navigate(item.path);
+              }}
+            >
               <ItemIcon>{locked ? '\u{1F512}' : '○'}</ItemIcon>
               <ItemContent>
                 <ItemLabel>{item.label}</ItemLabel>
-                <ItemDesc>{item.description}</ItemDesc>
+                <ItemDesc>
+                  {isBlockedFlash
+                    ? `Complete first: ${blockingDeps.map(d => d.label).join(', ')}`
+                    : item.description}
+                </ItemDesc>
               </ItemContent>
               <ItemArrow>&rarr;</ItemArrow>
             </Item>
@@ -166,18 +188,20 @@ const ItemList = styled.div`
   gap: 8px;
 `;
 
-const Item = styled.div<{ $locked?: boolean }>`
+const Item = styled.div<{ $locked?: boolean; $flash?: boolean }>`
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
   border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
+  cursor: ${p => p.$locked ? 'not-allowed' : 'pointer'};
+  transition: background 0.15s, opacity 0.15s;
   opacity: ${p => p.$locked ? 0.55 : 1};
+  background: ${p => p.$flash ? '#FFFBEB' : 'transparent'};
+  border: 1px solid ${p => p.$flash ? '#FDE68A' : 'transparent'};
 
   &:hover {
-    background: #F8FAFC;
+    background: ${p => p.$flash ? '#FFFBEB' : '#F8FAFC'};
     opacity: ${p => p.$locked ? 0.75 : 1};
   }
 `;

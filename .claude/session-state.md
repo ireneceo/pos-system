@@ -1,98 +1,57 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-06 (v3.25 Pricing/Module Audience — backstage cleanup, 버전 미상승)
-**버전:** **v3.24** (운영 배포 완료, v3.25 는 미배포 backstage 정합화)
-**작업 상태:** v3.25 커밋 직전
+**마지막 업데이트:** 2026-05-08
+**버전:** **v3.27** (2026-05-08 운영 배포 — Subscription Form 통일 + 5 역할 walkthrough + FG 온보딩 + 데모 데이터 정합)
+**작업 상태:** 완료
 
----
+### 진행 중인 작업
+- 없음
 
-## ⚡ 빠른 재개
+### 완료된 작업 (이번 세션)
 
-```
-session-state.md 읽고 이어서 개발해.
-```
+**Sprint 1 — FG 온보딩 + Walkthrough 시스템 신규**
+- User.tutorial_progress JSON 컬럼 + GET/PUT API
+- `<Walkthrough>` overlay/spotlight/tooltip 자체 구현 + `<TourTrigger>` 헤더 버튼
+- useSetupStatus FG path 정합 + SetupGuide locked 클릭 차단
+- FG 5 페이지 EmptyState 통일 + steps 가이드
+- i18n 4언어 walkthrough.json
+- 설계 문서 `docs/FG_ONBOARDING_v3.26.md`
 
----
+**Sprint 2 — 트랙 C 데모 데이터 시드**
+- FC44 12 units + 2 tenants + 6 contracts
+- Owner 4 매장 cats/prods/orders
+- BG B10/B1 brandProducts 시드
+- R38 30일 시계열 주문 + 모든 회사정보 정합
+- 5 idempotent seed scripts
 
-## 📦 2026-05-06 작업 (v3.25 Pricing/Module Audience — backstage cleanup)
+**Sprint 3 — 5 역할 Walkthrough 확장**
+- MainLayout 17개 NavItem data-tour 부착
+- 5 dashboard (RA/BG/Owner/Admin/Supplier) Walkthrough mount + step 정의
+- i18n 4언어 27 step entries
 
-### 배경
-PricingPage 의 모듈 정렬이 깨져 있고 (sort_order=0 모듈 19개 → Basic 그룹 상단에 buyer_*/supplier_* 가 잘못 끼어듦), buyer_* 4개가 `category='basic'` 으로 잘못 분류, target_user_type='all' 이 광범위해서 Owner 에 잘못 노출 + Supplier 에 누락. Features 페이지 빈 캡처 슬롯도 ~50 존재.
+**Sprint 4 — Subscription Form 통일 (v3.27)**
+- User 모델에 discount_type/value/reason 컬럼 추가
+- routes/users.js POST/PUT discount 처리 + SUBSCRIBING_ROLES 에 Supplier Admin
+- `<SubscriptionFormFields>` 9-필드 통합 컴포넌트
+- SubscriptionsPage / ManagersPage Add modal 통일
+- i18n 4언어 subscription.json
+- 설계 문서 `docs/SUBSCRIPTION_FORM_UNIFY_v3.27.md`
 
-### 설계 문서
-`docs/PRICING_MODULE_AUDIENCE_v3.25.md` (305줄, 7-단계 작업 계획).
+**v3.27 운영 배포**
+- 운영 sites 7/7 200 + DB 자동 sync (tutorial_progress / discount_*)
+- CHANGELOG `[Unreleased]` → `[v3.27] — 2026-05-08 배포` 이동
+- 버전 v3.24 → v3.27 일괄 점프
+- 랜딩 블로그 `/blog/release-v3.27` + System Admin 공지 자동 등록
 
-### 수행 내역
+### 다음 할 일
 
-| # | 단계 | 결과 |
-|---|------|------|
-| 1 | DB sort_order + category 정합화 | `update-module-sort-and-category-v3.25.js` 실행. sort_order=0 모듈 0건. buyer_* 4 = advanced. 96 모듈 (target=restaurant 24 / brand 23 / foodcourt 22 / owner 10 / all 4 / supplier 13) |
-| 2 | PricingPage filter 분기 | 설계 §4 합성 ENUM 안 대신 한 줄 차단 (line 899: `if owner && code.startsWith('buyer_') return false`). supplier 는 'all' 매치로 자동 노출 |
-| 3 | FeaturesPage Supplier 탭 buyer_* 4 카드 | 4 탭 모두 등록 (Supplier 탭 'Procurement' wording 차별화) |
-| 4 | 시드 (idempotent) | `seed-buyer-data-v3.25.js` (Brand R10 → Demo Supplier 매입 흐름: contract + 3 PO + trade invoice) / `seed-foodcourt-rich-v3.25.js` (FC 7 admin 4 + staff 5 + branch 2). 모두 기시드 skip |
-| 5 | Features 캡처 (supplier 4) | supplier_dashboard / supplier_orders / supplier_contracts / supplier_trade_invoices 신규 캡처. FeaturesPage 의 0→1 갱신. 나머지 28 placeholder 슬롯은 honest "coming soon" 유지 (데이터 시드 큰 작업 동반 필요, 설계 §6 한계와 일관) |
-| 6 | 모델 ENUM 확장 | AddonModule.target_user_type +supplier / PlanTemplate.plan_target +supplier / Invoice.issuer_type +supplier / Invoice.status +credit. DB sync 완료 |
-| 7 | 빌드 | `build:dev` exit 0, 89초, `main.a29df543.js` (1.5M), nginx 배포 완료. TS 경고 누적 잔여 (POStatus 누락 / Badge variant=neutral) — v3.25 직접 origin 아님, 후속 별도 cleanup |
-
-### 부속 cleanup (같이 묶음)
-- `models/index.js` — Ingredient FK 폐기 (IngredientSellerProduct join table 단일화)
-- `scripts/sprint1-supply-chain-migration.js` — 위 변경 동기화
-- `services/invoiceScheduler.js` — subscription invoice 컬럼 누락 보강 (issued_by, status pending → pending_payment, calculated_amount + total_amount)
-
-### 검증 (10단계)
-- v3.25 핵심 6/6 PASS (addon-modules total=96 / buyer_* category=advanced / sort=0 0건 / target=supplier 13 / target=all 4 / owner buyer_* 0건)
-- health-check 73/73 PASS
-- SPA `/pricing` 200, `/features` 200
-- supplier_{dashboard,orders,contracts,trade-invoices}_1.webp 200
-- anon `/api/addon-modules` 401, `/api/purchase-orders` 401
-
-### 미커밋 분리 (다음 작업)
-- **Signup UX 개선** — `SignupPage.tsx` +364줄 (missing fields UI + 비밀번호 실시간 체크리스트), `ReferralSignupPage.tsx` +236줄, `routes/auth.js` (`INVALID_EMAIL_DOMAIN` 에러), `services/authService.js` (이메일 MX 검증 추정), 4언어 i18n. 별도 검증/커밋.
-- **Frontend 잡다 변경** — MainLayout, Admin/BG/FG/Owner Dashboard, Demo, Pricing, Login, AdminManagement, Notices, OwnerOperationInquiry, RestaurantDashboard, roleDisplay.ts, routes/users.js (Brand/FC users 권한 확장), routes/restaurants-crud.js (Brand multi-restaurant view), 4언어 admin/common/settings.json. 의도 분류 후 별도 커밋.
-
-### 수정된 파일 (v3.25 커밋)
-**Backend (8)**
-- models/AddonModule.js, models/PlanTemplate.js, models/Invoice.js, models/index.js
-- scripts/update-module-sort-and-category-v3.25.js (신규), scripts/seed-buyer-data-v3.25.js (신규), scripts/seed-foodcourt-rich-v3.25.js (신규)
-- scripts/sprint1-supply-chain-migration.js, services/invoiceScheduler.js
-
-**Frontend (3)**
-- src/pages/Landing/PricingPage.tsx, src/pages/Landing/FeaturesPage.tsx
-- scripts/capture-features.js
-- public/images/features/dashboard/supplier_{dashboard,orders,contracts,trade_invoices}_1.{webp,png} (8 파일)
-
-**Docs (1)**
-- docs/PRICING_MODULE_AUDIENCE_v3.25.md (신규)
-
----
-
-## 📦 2026-05-06 작업 (Signup UX 개선 — backstage cleanup)
-
-**SignupPage / ReferralSignupPage 의 사용자 친화적 흐름 개선. missing-fields UI + 비밀번호 실시간 체크리스트 + 강도 미터 + INVALID_EMAIL_DOMAIN 에러 핸들링 + signup transaction rollback guard.**
-
-### 수행 내역
-- `SignupPage.tsx` (+364줄): step-별 missing fields 시각화 + 비밀번호 4-요건 체크리스트 (length/upper/lower/digit) + 강도 미터 (Weak/Fair/Strong) + 비밀번호 일치 표시
-- `ReferralSignupPage.tsx` (+236줄): 같은 패턴 적용
-- 4언어 i18n landing.json `signupPage.*` 17 신규 키 (×4 = 68 entries)
-- `routes/auth.js`: signup / referral-signup 의 `INVALID_EMAIL_DOMAIN` 에러 코드 핸들러 추가
-- `services/authService.js`: signup transaction double-rollback guard ("Transaction cannot be rolled back" 노이즈 차단)
-
-### 검증
-- /signup, /referral/signup SPA 200
-- npm run i18n:verify exit 0 (errors=0, warnings 누적 잔여)
-- /api/auth/signup endpoint 200/400 응답 정상 + 표준 에러 형식
-- 빌드 main.a29df543.js (이미 v3.25 빌드에 포함됨, exit 0)
-
----
-
-## 다음 할 일
-1. **Frontend 잡다 변경** 의도 분류 후 별도 커밋
-   - MainLayout, Admin/BG/FG/Owner Dashboard, Demo, Pricing/Login/AdminManagement/Notices/OwnerOperationInquiry/RestaurantDashboard, roleDisplay.ts
-   - routes/users.js (Brand/FC users 권한), routes/restaurants-crud.js (Brand multi-restaurant)
-   - 4언어 admin/common/settings.json
-   - dev-frontend/package.json + lock (의존성 변경)
-2. (v3.25 + Signup UX 운영 배포는 Irene `/배포` 명령 시에만)
+1. **운영 demo 시드 ID 파라미터화** (트랙 C 운영 적용)
+   - 운영 demo 계정 ID 가 dev 와 다름 (FC44→FC1, B10→B4, R38→R13, SC20→SC1)
+   - 시드 스크립트를 환경변수/인자로 ID 받게 리팩터 후 운영 적용
+2. **RestaurantsPage Add/Edit 의 SubscriptionFormFields 통합** (현재 잘 동작하는 분리 form 을 통일된 컴포넌트로 교체)
+3. **SubscriptionsPage / ManagersPage 의 Edit modal** 도 SubscriptionFormFields 사용으로 교체 (이번 sprint 는 Add 만)
+4. **Walkthrough 적용 페이지 확장** — 메뉴 / 설정 등 dashboard 외 페이지에도 step-by-step 안내 (사용자 요청 시)
 
 ---
 

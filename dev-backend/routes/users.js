@@ -12,12 +12,13 @@ router.get('/', authenticateToken, async (req, res) => {
   console.log('🔄 GET /api/users - Request received');
   console.log('📝 Query params:', req.query);
 
-  // Restaurant-scoped management: Restaurant Admin can list users in their own
-  // restaurant. Anything beyond Restaurant Admin / System Admin is rejected.
-  if (!['System Admin', 'Restaurant Admin'].includes(req.user.role)) {
+  // Tenant-scoped management: Restaurant Admin / Brand (General|Manager) /
+  // Foodcourt (General|Manager) can list users within their own scope.
+  const ALLOWED_LIST_ROLES = ['System Admin', 'Restaurant Admin', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'];
+  if (!ALLOWED_LIST_ROLES.includes(req.user.role)) {
     return res.status(403).json({
       success: false,
-      error: `This action requires System Admin or Restaurant Admin. Your role is ${req.user.role}.`,
+      error: `This action requires a tenant-management role. Your role is ${req.user.role}.`,
       code: 'INSUFFICIENT_ROLE'
     });
   }
@@ -36,10 +37,33 @@ router.get('/', authenticateToken, async (req, res) => {
     const conditions = [];
     const replacements = [];
 
-    // Tenant isolation — Restaurant Admin sees only their own restaurant.
+    // Tenant isolation
     if (req.user.role === 'Restaurant Admin') {
       conditions.push('u.restaurant_id = ?');
       replacements.push(req.user.restaurant_id);
+    } else if (req.user.role === 'Brand General' || req.user.role === 'Brand Manager') {
+      // Brand 측: owner 인 brand 들의 restaurants 안의 user
+      const { Brand, Restaurant } = require('../models');
+      const brands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+      const brandIds = brands.map(b => b.id);
+      const rests = brandIds.length === 0 ? [] : await Restaurant.findAll({ where: { brand_id: brandIds }, attributes: ['id'] });
+      const restIds = rests.map(r => r.id);
+      if (restIds.length === 0) {
+        conditions.push('1=0');
+      } else {
+        conditions.push(`u.restaurant_id IN (${restIds.map(() => '?').join(',')})`);
+        replacements.push(...restIds);
+      }
+    } else if (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') {
+      const { Restaurant } = require('../models');
+      const rests = !req.user.foodcourt_id ? [] : await Restaurant.findAll({ where: { foodcourt_id: req.user.foodcourt_id }, attributes: ['id'] });
+      const restIds = rests.map(r => r.id);
+      if (restIds.length === 0) {
+        conditions.push('1=0');
+      } else {
+        conditions.push(`u.restaurant_id IN (${restIds.map(() => '?').join(',')})`);
+        replacements.push(...restIds);
+      }
     }
 
     if (req.query.role) {
@@ -187,6 +211,49 @@ router.get('/available-admins', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching available admins:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Tutorial / walkthrough progress — per-tour completion state.
+// Read: own progress only. Patch a single tour_key without disturbing other keys.
+// Must be declared BEFORE /:id routes (Express routing order).
+router.get('/me/tutorial-progress', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, { attributes: ['tutorial_progress'] });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    res.json({ success: true, data: user.tutorial_progress || {} });
+  } catch (error) {
+    console.error('[Users] tutorial-progress GET error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to load tutorial progress' });
+  }
+});
+
+router.put('/me/tutorial-progress', authenticateToken, async (req, res) => {
+  try {
+    const { tour_key, completed, skipped, version } = req.body || {};
+    if (!tour_key || typeof tour_key !== 'string' || !/^[a-z0-9_]{2,40}$/i.test(tour_key)) {
+      return res.status(400).json({ success: false, message: 'Invalid tour_key' });
+    }
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const current = user.tutorial_progress && typeof user.tutorial_progress === 'object'
+      ? { ...user.tutorial_progress } : {};
+    const prev = current[tour_key] && typeof current[tour_key] === 'object' ? current[tour_key] : {};
+    current[tour_key] = {
+      ...prev,
+      ...(typeof completed === 'boolean' ? { completed } : {}),
+      ...(typeof skipped === 'boolean' ? { skipped } : {}),
+      ...(typeof version === 'number' && Number.isFinite(version) ? { version } : {}),
+      last_seen: new Date().toISOString()
+    };
+
+    user.tutorial_progress = current;
+    await user.save();
+    res.json({ success: true, data: current });
+  } catch (error) {
+    console.error('[Users] tutorial-progress PUT error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to update tutorial progress' });
   }
 });
 
@@ -400,10 +467,11 @@ router.post('/', authenticateToken, async (req, res) => {
        first_name || last_name || null);
 
     // Subscription fields from request
-    const { plan_type, plan_amount, billing_cycle, currency, subscription_start, auto_renew } = req.body;
+    const { plan_type, plan_amount, billing_cycle, currency, subscription_start, auto_renew,
+            discount_type, discount_value, discount_reason } = req.body;
 
     // Roles that have their own subscription stored on the User model
-    const SUBSCRIBING_ROLES = ['Brand General', 'Foodcourt General', 'Restaurant Owner'];
+    const SUBSCRIBING_ROLES = ['Brand General', 'Foodcourt General', 'Restaurant Owner', 'Supplier Admin'];
     const hasSubscription = SUBSCRIBING_ROLES.includes(role) && subscription_start && plan_type;
 
     // Calculate subscription end date (Monthly: +1 month - 1 day, Annual: +1 year - 1 day)
@@ -458,7 +526,7 @@ router.post('/', authenticateToken, async (req, res) => {
       pin_code: pin_code || null
     };
 
-    // Subscription fields — applies to Brand General / Foodcourt General / Restaurant Owner
+    // Subscription fields — applies to Brand General / Foodcourt General / Restaurant Owner / Supplier Admin
     if (hasSubscription) {
       userCreateData.plan_type = plan_type;
       userCreateData.plan_amount = plan_amount ? parseFloat(plan_amount) : null;
@@ -469,6 +537,12 @@ router.post('/', authenticateToken, async (req, res) => {
       userCreateData.subscription_end = calcSubscriptionEndDate;
       userCreateData.trial_end_date = calcTrialEndDate;
       userCreateData.auto_renew = auto_renew !== false;
+
+      // Discount (none/percentage/fixed) — mirrors Restaurant.discount_*
+      const validDt = ['none', 'percentage', 'fixed'].includes(discount_type) ? discount_type : 'none';
+      userCreateData.discount_type = validDt;
+      userCreateData.discount_value = (validDt === 'none') ? 0 : (Number(discount_value) || 0);
+      userCreateData.discount_reason = (validDt === 'none') ? null : (discount_reason || null);
     }
 
     // 관리자가 만드는 계정은 이메일 인증 건너뛰기 (셀프 가입만 인증 필요)
@@ -672,13 +746,27 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
       updateData.plan_amount = updateData.plan_amount ? parseFloat(updateData.plan_amount) : null;
     }
 
+    // Discount fields (mirror Restaurant.discount_*)
+    if (updateData.discount_type !== undefined) {
+      const validDt = ['none', 'percentage', 'fixed'].includes(updateData.discount_type) ? updateData.discount_type : 'none';
+      updateData.discount_type = validDt;
+      if (validDt === 'none') {
+        updateData.discount_value = 0;
+        updateData.discount_reason = null;
+      } else {
+        updateData.discount_value = Number(updateData.discount_value) || 0;
+      }
+    }
+
     // Detect subscription field changes (for invoice sync later)
     const subscriptionFieldsChanged =
       updateData.plan_type !== undefined ||
       updateData.plan_amount !== undefined ||
       updateData.billing_cycle !== undefined ||
       updateData.subscription_start !== undefined ||
-      updateData.currency !== undefined;
+      updateData.currency !== undefined ||
+      updateData.discount_type !== undefined ||
+      updateData.discount_value !== undefined;
 
     // Auto-calculate subscription_end if start + billing_cycle provided
     // Monthly: +1 month - 1 day. Annual: +1 year - 1 day.
@@ -713,7 +801,7 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
     await user.update(updateData);
 
     // Sync pending invoice if subscription changed (for subscribing roles)
-    const SUBSCRIBING_ROLES = ['Brand General', 'Foodcourt General', 'Restaurant Owner'];
+    const SUBSCRIBING_ROLES = ['Brand General', 'Foodcourt General', 'Restaurant Owner', 'Supplier Admin'];
     if (subscriptionFieldsChanged && SUBSCRIBING_ROLES.includes(user.role) && user.subscription_start && user.plan_type) {
       try {
         const { syncPendingInvoice, createInitialInvoice } = require('../services/subscriptionInvoiceService');

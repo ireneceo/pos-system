@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Modal as CommonModal } from '../../components/UI';
 import { EmptyState } from '../../components/UI/TableComponents';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { formatCurrency } from '../../utils/currency';
@@ -81,44 +82,6 @@ const SectionTitle = styled.h2`
 const EmptyStateText = styled.p`
   font-size: 14px;
   margin-bottom: 24px;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const TableHeader = styled.th`
-  padding: 12px 0;
-  text-align: left;
-  border-bottom: 1px solid #F6F9FC;
-  font-size: 11px;
-  color: #6B7C93;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-
-  &:nth-child(3) { text-align: right; } /* Discount */
-  &:nth-child(4) { text-align: center; } /* Target */
-  &:nth-child(5) { text-align: center; } /* Valid Until */
-  &:nth-child(6) { text-align: center; } /* Usage */
-  &:nth-child(7) { text-align: center; } /* Status */
-  &:nth-child(8) { text-align: right; } /* Actions */
-`;
-
-const TableCell = styled.td`
-  padding: 12px 0;
-  text-align: left;
-  border-bottom: 1px solid #F6F9FC;
-  font-size: 13px;
-  color: #0A2540;
-
-  &:nth-child(3) { text-align: right; } /* Discount */
-  &:nth-child(4) { text-align: center; } /* Target */
-  &:nth-child(5) { text-align: center; } /* Valid Until */
-  &:nth-child(6) { text-align: center; } /* Usage */
-  &:nth-child(7) { text-align: center; } /* Status */
-  &:nth-child(8) { text-align: right; } /* Actions */
 `;
 
 const StatusBadge = styled.span<{ status: 'active' | 'inactive' | 'expired' }>`
@@ -723,35 +686,35 @@ const CouponsPage: React.FC = () => {
                 <Button onClick={fetchCoupons}>{'Retry'}</Button>
               </EmptyState>
             ) : coupons.length > 0 ? (
-              <Table>
-                <thead>
+              <DataTable>
+                <DataTableHead>
                   <tr>
-                    <TableHeader>{'Code'}</TableHeader>
-                    <TableHeader>{'Name'}</TableHeader>
-                    <TableHeader>{'Discount'}</TableHeader>
-                    <TableHeader>{'Target'}</TableHeader>
-                    <TableHeader>{'Valid Until'}</TableHeader>
-                    <TableHeader>{'Usage'}</TableHeader>
-                    <TableHeader>{'Status'}</TableHeader>
-                    <TableHeader>{'Actions'}</TableHeader>
+                    <DataTableHeaderCell align="left">{'Code'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{'Name'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{'Discount'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{'Target'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{'Valid Until'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{'Usage'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{'Status'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{'Actions'}</DataTableHeaderCell>
                   </tr>
-                </thead>
+                </DataTableHead>
                 <tbody>
                   {coupons.map(coupon => {
                     const status = getCouponStatus(coupon);
                     return (
-                      <tr key={coupon.id}>
-                        <TableCell style={{ fontWeight: 600 }}>
+                      <DataTableRow key={coupon.id}>
+                        <DataTableCell data-label="Code" style={{ fontWeight: 600 }}>
                           {coupon.code}
                           {(couponLinkedQRs[coupon.id] || []).length > 0 && (
                             <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0F0FF', padding: '2px 8px', borderRadius: '10px', display: 'inline-block' }}>
                               Linked to: {couponLinkedQRs[coupon.id].join(', ')}
                             </div>
                           )}
-                        </TableCell>
-                        <TableCell>{coupon.name || '-'}</TableCell>
-                        <TableCell>{formatDiscount(coupon)}</TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell data-label="Name">{coupon.name || '-'}</DataTableCell>
+                        <DataTableCell data-label="Discount" align="right">{formatDiscount(coupon)}</DataTableCell>
+                        <DataTableCell data-label="Target" align="center">
                           {coupon.target_type === 'all' ? (
                             <TargetBadge>{'All'}</TargetBadge>
                           ) : coupon.target_type === 'customers' ? (
@@ -761,17 +724,17 @@ const CouponsPage: React.FC = () => {
                           ) : (
                             <TargetBadge>{'All'}</TargetBadge>
                           )}
-                        </TableCell>
-                        <TableCell>{formatDate(coupon.valid_until)}</TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell data-label="Valid Until" align="center">{formatDate(coupon.valid_until)}</DataTableCell>
+                        <DataTableCell data-label="Usage" align="center">
                           {coupon.usage_count} / {coupon.usage_limit || '∞'}
-                        </TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell data-label="Status" align="center">
                           <StatusBadge status={status}>
                             {status}
                           </StatusBadge>
-                        </TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell data-label="" align="right" mobileFullWidth>
                           <ActionButtons>
                             <ActionButton onClick={() => handleEditCoupon(coupon)}>
                               Edit
@@ -786,12 +749,12 @@ const CouponsPage: React.FC = () => {
                               Delete
                             </ActionButton>
                           </ActionButtons>
-                        </TableCell>
-                      </tr>
+                        </DataTableCell>
+                      </DataTableRow>
                     );
                   })}
                 </tbody>
-              </Table>
+              </DataTable>
             ) : (
               <EmptyState>
                 <EmptyStateText>{'No coupons created yet'}</EmptyStateText>

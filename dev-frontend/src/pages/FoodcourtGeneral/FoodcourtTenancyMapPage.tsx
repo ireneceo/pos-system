@@ -8,6 +8,7 @@ import 'leaflet.markercluster';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import CommonEmptyState from '../../components/Common/EmptyState';
 import { formatAddress, AppLocale } from '../../utils/formatAddress';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
@@ -529,7 +530,23 @@ const FoodcourtTenancyMapPage: React.FC = () => {
 
   if (loading) return <EmptyState>{t('common.loading', 'Loading...')}</EmptyState>;
   if (error) return <EmptyState style={{ color: '#DC2626' }}>{error}</EmptyState>;
-  if (!data || data.total_branches === 0) return <EmptyState>{t('map.emptyFoodcourt', 'No branches to display on the map yet.')}</EmptyState>;
+  if (!data || data.total_branches === 0) {
+    return (
+      <div style={{ padding: 32, display: 'flex', justifyContent: 'center' }}>
+        <CommonEmptyState
+          title={t('map.emptyTitle', 'No branches yet')}
+          description={t('map.emptyDescription', 'The tenancy map plots tenants onto branch units. Register a branch first, then lay out units to populate the map.')}
+          primaryAction={{ label: t('map.createBranchCta', 'Create Branch'), onClick: () => navigate('/pos/foodcourt/branches') }}
+          secondaryAction={{ label: t('map.openFloorPlanCta', 'Open Floor Plan'), onClick: () => navigate('/pos/foodcourt/floor-plan') }}
+          steps={[
+            { label: t('map.guideStep1', 'Register one or more branches.') },
+            { label: t('map.guideStep2', 'Lay out the floor plan & units for each branch.') },
+            { label: t('map.guideStep3', 'Place tenant restaurants onto units.') }
+          ]}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

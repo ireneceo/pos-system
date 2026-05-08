@@ -161,10 +161,12 @@
     "brandManager": "브랜드 매니저",
     "foodcourtGeneral": "푸드코트 총괄",
     "foodcourtManager": "푸드코트 매니저",
-    "restaurantOwner": "레스토랑 오너",
+    "restaurantOwner": "다점포 오너",
     "restaurantAdmin": "레스토랑 관리자",
     "staff": "직원",
-    "supplier_admin": "공급업체 관리자"
+    "supplier_admin": "공급업체 관리자",
+    "supplierStaff": "공급업체 직원",
+    "referralPartner": "리퍼럴 파트너"
   },
   "nav": {
     "dashboard": "대시보드",
@@ -346,7 +348,7 @@
   "noticesPage.systemAdmin": "시스템 관리자",
   "noticesPage.brandGeneral": "브랜드 총괄",
   "noticesPage.foodcourtGeneral": "푸드코트 총괄",
-  "noticesPage.restaurantOwner": "레스토랑 오너",
+  "noticesPage.restaurantOwner": "다점포 오너",
   "noticesPage.allPriorities": "전체 우선순위",
   "noticesPage.normal": "보통",
   "noticesPage.loadingNotices": "공지 불러오는 중...",

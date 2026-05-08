@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormInput } from '../../components/UI/Modal';
@@ -115,118 +116,6 @@ const TableContainer = styled.div`
     background: transparent;
     border: none;
     border-radius: 0;
-  }
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: auto;
-
-  @media (max-width: 768px) {
-    display: block;
-  }
-
-  tbody {
-    @media (max-width: 768px) {
-      display: block;
-    }
-  }
-`;
-
-const TableHead = styled.thead`
-  background: #F8FAFC;
-  border-bottom: 1px solid #E6EBF1;
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-
-  th {
-    padding: 14px 16px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 600;
-    color: #6B7280;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  th:first-child { text-align: left; }
-  th:last-child { text-align: right; }
-`;
-
-const TableRow = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #F8FAFC;
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  @media (max-width: 768px) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 14px;
-    margin-bottom: 10px;
-    background: white;
-    border-radius: 10px;
-    border: 1px solid #E6EBF1;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-    &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      transform: translateY(-1px);
-    }
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-`;
-
-const TableCell = styled.td`
-  padding: 16px;
-  font-size: 14px;
-  color: #0A2540;
-  vertical-align: middle;
-  text-align: center;
-
-  &:first-child { text-align: left; }
-  &:last-child { text-align: right; }
-
-  @media (max-width: 768px) {
-    flex: 1 1 calc(50% - 5px);
-    min-width: 140px;
-    padding: 0;
-    text-align: left !important;
-
-    &:before {
-      content: attr(data-label);
-      display: block;
-      font-size: 10px;
-      font-weight: 600;
-      color: #9CA3AF;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-
-    &:last-child {
-      flex: 1 1 100%;
-      padding-top: 10px;
-      margin-top: 10px;
-      border-top: 1px solid #F3F4F6;
-
-      &:before {
-        display: none;
-      }
-    }
   }
 `;
 
@@ -675,32 +564,32 @@ const FoodcourtStaffPage: React.FC = () => {
                 </div>
               </EmptyState>
             ) : (
-              <Table>
-                <TableHead>
+              <DataTable>
+                <DataTableHead>
                   <tr>
-                    <th>{t('common:foodcourtStaffPage.manager')}</th>
-                    <th>{t('common:foodcourtStaffPage.phone')}</th>
-                    <th>{t('common:foodcourtStaffPage.permissions')}</th>
-                    <th>{t('common:foodcourtStaffPage.joined')}</th>
-                    <th>{t('common:foodcourtStaffPage.status')}</th>
-                    <th>{t('common:foodcourtStaffPage.actions')}</th>
+                    <DataTableHeaderCell align="left">{t('common:foodcourtStaffPage.manager')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:foodcourtStaffPage.phone')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:foodcourtStaffPage.permissions')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:foodcourtStaffPage.joined')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:foodcourtStaffPage.status')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('common:foodcourtStaffPage.actions')}</DataTableHeaderCell>
                   </tr>
-                </TableHead>
+                </DataTableHead>
                 <tbody>
                   {filteredManagers.map(manager => (
-                    <TableRow key={manager.id}>
-                      <TableCell data-label="Manager">
+                    <DataTableRow key={manager.id}>
+                      <DataTableCell data-label="Manager">
                         <ManagerName>{manager.name}</ManagerName>
                         <ManagerMeta>{manager.email}</ManagerMeta>
-                      </TableCell>
+                      </DataTableCell>
 
-                      <TableCell data-label="Phone">
+                      <DataTableCell data-label="Phone" align="center">
                         <span style={{ fontSize: '13px', color: '#6B7280' }}>
                           {manager.phone || '—'}
                         </span>
-                      </TableCell>
+                      </DataTableCell>
 
-                      <TableCell data-label="Permissions">
+                      <DataTableCell data-label="Permissions" align="center">
                         <PermissionTags>
                           {manager.permissions.length === 0 ? (
                             <span style={{ fontSize: '12px', color: '#9CA3AF' }}>{t('common:foodcourtStaffPage.noPermissions')}</span>
@@ -712,21 +601,21 @@ const FoodcourtStaffPage: React.FC = () => {
                             ))
                           )}
                         </PermissionTags>
-                      </TableCell>
+                      </DataTableCell>
 
-                      <TableCell data-label="Joined">
+                      <DataTableCell data-label="Joined" align="center">
                         <span style={{ fontSize: '13px', color: '#6B7280' }}>
                           {manager.joinDate || '—'}
                         </span>
-                      </TableCell>
+                      </DataTableCell>
 
-                      <TableCell data-label="Status">
+                      <DataTableCell data-label="Status" align="center">
                         <StatusBadge active={manager.status === 'active'}>
                           {manager.status}
                         </StatusBadge>
-                      </TableCell>
+                      </DataTableCell>
 
-                      <TableCell data-label="">
+                      <DataTableCell data-label="" align="right" mobileFullWidth>
                         <ActionGroup>
                           <ActionButton onClick={() => handleOpenEditModal(manager)}>
                             Edit
@@ -742,11 +631,11 @@ const FoodcourtStaffPage: React.FC = () => {
                             </>
                           )}
                         </ActionGroup>
-                      </TableCell>
-                    </TableRow>
+                      </DataTableCell>
+                    </DataTableRow>
                   ))}
                 </tbody>
-              </Table>
+              </DataTable>
             )}
           </TableContainer>
         </Content>

@@ -8,6 +8,7 @@ import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, For
 import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
+import { useRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as formatDateTz } from '../../utils/timezone';
@@ -372,6 +373,7 @@ const ErrorMessage = styled.div`
 
 const ManagerAdminManagementPage: React.FC = () => {
   const { t } = useTranslation('admin');
+  const displayRole = useRoleDisplayName();
   const { user } = useAuth();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [restaurants, setRestaurants] = useState<any[]>([]);
@@ -710,7 +712,7 @@ const ManagerAdminManagementPage: React.FC = () => {
                     </StaffTableCell>
 
                     <StaffTableCell data-label="Role">
-                      <RoleBadge role={staff.role}>{staff.role}</RoleBadge>
+                      <RoleBadge role={staff.role}>{displayRole(staff.role)}</RoleBadge>
                     </StaffTableCell>
 
                     <StaffTableCell data-label="Status">
@@ -869,7 +871,7 @@ const ManagerAdminManagementPage: React.FC = () => {
             <ViewRow>
               <ViewField>
                 <ViewLabel>{t('admin:adminManagementPage.role')}</ViewLabel>
-                <ViewValue><RoleBadge role={viewStaff.role}>{viewStaff.role}</RoleBadge></ViewValue>
+                <ViewValue><RoleBadge role={viewStaff.role}>{displayRole(viewStaff.role)}</RoleBadge></ViewValue>
               </ViewField>
               <ViewField>
                 <ViewLabel>{t('admin:adminManagementPage.status')}</ViewLabel>

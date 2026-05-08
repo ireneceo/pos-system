@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
+import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 
 import { getAuthToken } from '../../utils/auth';
@@ -407,6 +408,22 @@ const LoadingContainer = styled.div`
 
 const PIE_COLORS = ['#635BFF', '#818CF8', '#A5B4FC', '#C7D2FE', '#E0E7FF', '#EEF2FF', '#F5F3FF'];
 
+// Owner walkthrough — 2 step (restaurants management + replay).
+const ownerTourSteps = (t: (k: string, fallback?: string) => string): TourStep[] => ([
+  {
+    selector: '[data-tour="sidebar-owner-restaurants"]',
+    title: t('walkthrough:owner.step1.title', 'Manage your restaurants'),
+    description: t('walkthrough:owner.step1.description', 'Register restaurants, assign admins and choose subscription plans here.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="header-tour-trigger"]',
+    title: t('walkthrough:owner.step2.title', 'Replay anytime'),
+    description: t('walkthrough:owner.step2.description', 'Use the Show me around button in the header whenever you want to see this tour again.'),
+    position: 'bottom'
+  }
+]);
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -626,8 +643,10 @@ const OwnerDashboardPage: React.FC = () => {
 
   return (
     <Container>
+      <Walkthrough tourKey="owner_dashboard" steps={ownerTourSteps(t)} version={1} autoStart />
       <Header>
         <Title>{t('owner:ownerDashboardPage.ownerDashboard')}</Title>
+        <TourTrigger tourKey="owner_dashboard" />
         {subscriptionInfo.planType && (
           <Subtitle>
             <span>{subscriptionInfo.planType}</span>

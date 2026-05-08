@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
+import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
@@ -446,6 +447,40 @@ interface SalesChartData {
   orders: number;
 }
 
+// Restaurant Admin walkthrough — 5 step over sidebar items + header trigger.
+const raTourSteps = (t: (k: string, fallback?: string) => string): TourStep[] => ([
+  {
+    selector: '[data-tour="sidebar-ra-company-info"]',
+    title: t('walkthrough:ra.step1.title', 'Start with company info'),
+    description: t('walkthrough:ra.step1.description', 'Add your business registration, tax ID and contact details.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-ra-categories"]',
+    title: t('walkthrough:ra.step2.title', 'Create menu categories'),
+    description: t('walkthrough:ra.step2.description', 'Organize your menu into categories like Mains, Sides and Drinks.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-ra-menu"]',
+    title: t('walkthrough:ra.step3.title', 'Add menu items'),
+    description: t('walkthrough:ra.step3.description', 'Register at least one item per category to start taking orders.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-ra-settings"]',
+    title: t('walkthrough:ra.step4.title', 'Configure payment & operations'),
+    description: t('walkthrough:ra.step4.description', 'Enable payment methods, set operating hours and currency.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="header-tour-trigger"]',
+    title: t('walkthrough:ra.step5.title', 'Replay anytime'),
+    description: t('walkthrough:ra.step5.description', 'Use Show me around in the header to see this tour again whenever you need.'),
+    position: 'bottom'
+  }
+]);
+
 const RestaurantDashboard: React.FC = () => {
   const { t } = useTranslation('settings');
   const displayRole = useRoleDisplayName();
@@ -623,8 +658,10 @@ const RestaurantDashboard: React.FC = () => {
   return (
     <>
       <Container>
+        <Walkthrough tourKey="ra_dashboard" steps={raTourSteps(t)} version={1} autoStart />
         <Header>
           <Title>{t('settings:restaurantDashboard.restaurantDashboard')}</Title>
+          <TourTrigger tourKey="ra_dashboard" />
           <Subtitle>
             <span>{getRestaurantDisplayName(restaurant)} • {restaurant.planType}</span>
             {(() => {

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { useSiteTimezone } from '../../hooks/useSiteTimezone';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 
 interface WalletRow {
   currency: string;
@@ -156,29 +157,6 @@ const FilterChip = styled.button<{ $active: boolean }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-`;
-
-const Th = styled.th`
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7C93;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding: 10px 8px;
-  border-bottom: 1px solid #E6EBF1;
-`;
-
-const Td = styled.td`
-  padding: 12px 8px;
-  border-bottom: 1px solid #F1F4F8;
-  color: #0A2540;
 `;
 
 const Empty = styled.div`
@@ -462,62 +440,62 @@ const ReferralWalletPage: React.FC = () => {
           ))}
         </FilterBar>
         {filteredTx.length === 0 ? (
-          <Empty>{t('wallet.tx.empty', 'No transactions to show.')}</Empty>
+          <DataTableEmpty>{t('wallet.tx.empty', 'No transactions to show.')}</DataTableEmpty>
         ) : (
-          <Table>
-            <thead>
+          <DataTable>
+            <DataTableHead>
               <tr>
-                <Th>{t('wallet.tx.col.date', 'Date')}</Th>
-                <Th>{t('wallet.tx.col.type', 'Type')}</Th>
-                <Th>{t('wallet.tx.col.description', 'Description')}</Th>
-                <Th>{t('wallet.tx.col.amount', 'Amount')}</Th>
-                <Th>{t('wallet.tx.col.balance', 'Balance')}</Th>
+                <DataTableHeaderCell align="left">{t('wallet.tx.col.date', 'Date')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('wallet.tx.col.type', 'Type')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('wallet.tx.col.description', 'Description')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('wallet.tx.col.amount', 'Amount')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('wallet.tx.col.balance', 'Balance')}</DataTableHeaderCell>
               </tr>
-            </thead>
+            </DataTableHead>
             <tbody>
               {filteredTx.map(tx => (
-                <tr key={tx.id}>
-                  <Td>{formatDateTime(tx.created_at, tz)}</Td>
-                  <Td><TypeBadge $type={tx.type}>{tx.type.replace('_', ' ')}</TypeBadge></Td>
-                  <Td>{tx.description || '—'}</Td>
-                  <Td style={{ color: tx.amount >= 0 ? '#059669' : '#DC2626' }}>
+                <DataTableRow key={tx.id}>
+                  <DataTableCell data-label={t('wallet.tx.col.date', 'Date')}>{formatDateTime(tx.created_at, tz)}</DataTableCell>
+                  <DataTableCell data-label={t('wallet.tx.col.type', 'Type')}><TypeBadge $type={tx.type}>{tx.type.replace('_', ' ')}</TypeBadge></DataTableCell>
+                  <DataTableCell data-label={t('wallet.tx.col.description', 'Description')}>{tx.description || '—'}</DataTableCell>
+                  <DataTableCell data-label={t('wallet.tx.col.amount', 'Amount')} style={{ color: tx.amount >= 0 ? '#059669' : '#DC2626' }}>
                     {tx.amount >= 0 ? '+ ' : '- '}{formatMoney(Math.abs(tx.amount), tx.currency)}
-                  </Td>
-                  <Td>{formatMoney(tx.balance_after, tx.currency)}</Td>
-                </tr>
+                  </DataTableCell>
+                  <DataTableCell data-label={t('wallet.tx.col.balance', 'Balance')}>{formatMoney(tx.balance_after, tx.currency)}</DataTableCell>
+                </DataTableRow>
               ))}
             </tbody>
-          </Table>
+          </DataTable>
         )}
       </Block>
 
       <Block>
         <BlockTitle>{t('wallet.payouts.title', 'Payout history')}</BlockTitle>
         {(payouts || []).length === 0 ? (
-          <Empty>{t('wallet.payouts.empty', 'No payouts yet.')}</Empty>
+          <DataTableEmpty>{t('wallet.payouts.empty', 'No payouts yet.')}</DataTableEmpty>
         ) : (
-          <Table>
-            <thead>
+          <DataTable>
+            <DataTableHead>
               <tr>
-                <Th>{t('wallet.payouts.col.requested', 'Requested')}</Th>
-                <Th>{t('wallet.payouts.col.amount', 'Amount')}</Th>
-                <Th>{t('wallet.payouts.col.status', 'Status')}</Th>
-                <Th>{t('wallet.payouts.col.completed', 'Completed')}</Th>
-                <Th>{t('wallet.payouts.col.note', 'Note')}</Th>
+                <DataTableHeaderCell align="left">{t('wallet.payouts.col.requested', 'Requested')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('wallet.payouts.col.amount', 'Amount')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('wallet.payouts.col.status', 'Status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('wallet.payouts.col.completed', 'Completed')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('wallet.payouts.col.note', 'Note')}</DataTableHeaderCell>
               </tr>
-            </thead>
+            </DataTableHead>
             <tbody>
               {(payouts || []).map(p => (
-                <tr key={p.id}>
-                  <Td>{formatDateTime(p.created_at, tz)}</Td>
-                  <Td>{formatMoney(p.amount, p.currency)}</Td>
-                  <Td><StatusBadge $s={p.status}>{p.status}</StatusBadge></Td>
-                  <Td>{formatDateTime(p.paid_at, tz)}</Td>
-                  <Td>{p.reject_reason || '—'}</Td>
-                </tr>
+                <DataTableRow key={p.id}>
+                  <DataTableCell data-label={t('wallet.payouts.col.requested', 'Requested')}>{formatDateTime(p.created_at, tz)}</DataTableCell>
+                  <DataTableCell data-label={t('wallet.payouts.col.amount', 'Amount')}>{formatMoney(p.amount, p.currency)}</DataTableCell>
+                  <DataTableCell data-label={t('wallet.payouts.col.status', 'Status')}><StatusBadge $s={p.status}>{p.status}</StatusBadge></DataTableCell>
+                  <DataTableCell data-label={t('wallet.payouts.col.completed', 'Completed')}>{formatDateTime(p.paid_at, tz)}</DataTableCell>
+                  <DataTableCell data-label={t('wallet.payouts.col.note', 'Note')}>{p.reject_reason || '—'}</DataTableCell>
+                </DataTableRow>
               ))}
             </tbody>
-          </Table>
+          </DataTable>
         )}
       </Block>
 

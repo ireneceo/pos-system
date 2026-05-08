@@ -6,6 +6,70 @@
 
 ## [Unreleased] — 미배포 (개발서버만)
 
+---
+
+## [v3.27] — 2026-05-08 배포
+
+### Subscription Form 통일 + Discount 전 역할 적용 (2026-05-08)
+- **신규 공통 컴포넌트** `components/Subscription/SubscriptionFormFields.tsx` — 9 필드 (Currency / Plan / Trial / Activate now / BillingCycle / PaymentModel / Period / Auto-renew / Discount / Summary). Plan/Currency/BillingCycle 변경 시 amount 자동 재계산
+- **BillingCycle default 빈 값** — 사용자가 선택해야 Summary 표시 (이전 'monthly' 자동 표시로 발생한 RM 29 등 phantom 값 제거)
+- **Discount 모든 역할 적용** — `users` 테이블에 `discount_type` ENUM(none/percentage/fixed) + `discount_value` DECIMAL(8,2) + `discount_reason` TEXT 컬럼 추가. 이전엔 Restaurant 만 있었음
+- **`SUBSCRIBING_ROLES` 확장** — Brand General / Foodcourt General / Restaurant Owner + **Supplier Admin** (4 → 5 역할)
+- **`/pos/admin/subscriptions`** Add 폼 통합 — User Type 5 옵션 (Restaurant / Brand / Foodcourt / Owner / **Supplier**, 이전 4 옵션) + Currency 동적 + Discount 등록 시 노출 (이전엔 edit 모드만)
+- **`/pos/admin/managers`** Add 폼 통합 — BG/FG/Owner 분기 시 동일 컴포넌트 사용. Discount + Activate now + Trial 옵션 추가
+- **i18n 4언어 신규 namespace** — `subscription.json` (en/ko/ms/zh)
+- **검증**: 0단계 hydration 0 warning / API 10/10 / 빌드 sprint origin TS 0건 / health-check 73/73 PASS
+- **설계 문서**: `docs/SUBSCRIPTION_FORM_UNIFY_v3.27.md`
+
+### 5 역할 Walkthrough 확장 (2026-05-08)
+- **5 역할 dashboard 모두 step-by-step 투어 적용** — Restaurant Admin / Brand General / Restaurant Owner / System Admin / Supplier Admin (이미 적용된 Foodcourt General 포함 6 역할)
+- **MainLayout 사이드바 17개 NavItem 에 `data-tour` attribute 부착** — 각 역할 핵심 메뉴 spotlight 가능
+- **각 dashboard step 정의**: RA/BG/Admin/Supplier 5 step / Owner 2 step (사이드바 단순함 반영)
+- **i18n 4언어 walkthrough.json 확장** — 27 step entries × 4 언어
+- **검증**: 22 data-tour selector 모두 번들 포함 / 5 역할 tutorial-progress write→read 왕복 5/5 / health-check 73/73 PASS
+
+### FG 온보딩 + Walkthrough 시스템 신규 (2026-05-08)
+- **신규 인프라**:
+  - `User.tutorial_progress` JSON 컬럼 — per-tour `{ completed, skipped, version, last_seen }`
+  - `GET/PUT /api/users/me/tutorial-progress` — 단일 tour_key patch + merge + 자기 자신 전용
+  - `useTourProgress` hook — optimistic PUT + `walkthrough:start` CustomEvent 디스패처
+  - `<Walkthrough>` overlay/spotlight/tooltip 자체 구현 (외부 의존성 0, 4-rect mask)
+  - `<TourTrigger>` 헤더 "Show me around" 버튼 — 언제든 재시청
+- **FG 온보딩 정합화**:
+  - `useSetupStatus` FG 라우트 정정 (`/general/branches`→`/branches`, `/general/floor-plan`→`/floor-plan`)
+  - `SetupGuide` locked 항목 클릭 차단 + 3초 inline flash "Complete X first"
+  - 5 페이지 EmptyState 통일 (Branches / FloorPlan / TenancyMap / RentManagement) + steps 가이드 + CTA
+- **i18n 4언어 walkthrough.json 신규**
+- **설계 문서**: `docs/FG_ONBOARDING_v3.26.md`
+
+### 데모 데이터 4-step 시드 (2026-05-08)
+- **FC44 (demo_foodcourt_general)** — units 0→**12** (다양한 stage) / tenants 0→**2** (R38, R39 link) / contracts 6 (active 2 / contracting 2 / proposal 1 / setup 1) / company info ✓
+- **Owner 매장 4곳 (R2/R3/R6/R7)** — cats 3 + prods 8 + orders 25 (30일 분포) + company info ✓ → demo-owner / test-owner 양쪽 다중 매장 비교 가능
+- **B10 / B1 (BG demo)** — brandProducts 0→8 (B10) / 0→7 (B1) + brand_product_brands join + brand company info ✓
+- **R38 시계열 주문** — 30일 분포 30건 신규 + company info ✓
+- **idempotent 시드 마커** (`SEED-V326-FC44`, `SEED-V326-OWNER-DEMO`, `SEED-V326-BG`) — 재실행 안전, 비-시드 데이터 격리
+
+### Pricing/Module Audience 정합화 (2026-05-06)
+- **PricingPage 모듈 정렬 깨짐 + buyer_* 카테고리 잘못 + Owner 잘못 노출 + Supplier 누락 + Features 빈 캡처 슬롯 일괄 정합**
+- DB sort_order + category 정합화 — sort_order=0 모듈 0건. buyer_* 4=advanced. 96 모듈 (target distribution: restaurant 24 / brand 23 / foodcourt 22 / owner 10 / all 4 / supplier 13)
+- PricingPage filter 분기 — owner 의 buyer_* 차단, supplier 'all' 매치 자동 노출
+- FeaturesPage Supplier 탭 buyer_* 4 카드 등록 (Procurement wording 차별화) + supplier 4 신규 캡처
+- 모델 ENUM 확장 — AddonModule.target_user_type +supplier / PlanTemplate.plan_target +supplier / Invoice.issuer_type +supplier / Invoice.status +credit
+- 시드 (idempotent) — `seed-buyer-data-v3.25.js` + `seed-foodcourt-rich-v3.25.js`
+- **설계 문서**: `docs/PRICING_MODULE_AUDIENCE_v3.25.md`
+
+### Signup UX 개선 (2026-05-06)
+- **SignupPage / ReferralSignupPage** missing fields UI + 비밀번호 4-요건 체크리스트 (length/upper/lower/digit) + 강도 미터 (Weak/Fair/Strong) + 비밀번호 일치 표시
+- **`INVALID_EMAIL_DOMAIN` 에러 핸들러** — `routes/auth.js` signup/referral-signup
+- **signup transaction double-rollback guard** — "Transaction cannot be rolled back" 노이즈 차단
+- **i18n 4언어 landing.json `signupPage.*` 17 신규 키**
+
+### JSON 컬럼 이중 stringify 정합성 복구 (2026-05-05)
+- **데모 레스토랑 13의 결제 settings 카드 미표시 증상에서 시작 → 광범위 점검**
+- 운영 DB scan: 99건 깨진 row → 백업 후 트랜잭션 1개로 0건. dev DB 88건 → 0건
+- Restaurant / Brand / Foodcourt / SupplierCompany 모델의 9 setter 에 `typeof value === 'string'` 가드 — 재래거시 입력 안전
+- seed-demo-data.js cleanup — 9곳 `JSON.stringify(...)` 래퍼 제거 + restaurant 1 payment_settings 정식 7-method 스키마
+
 ### 2026-05-05
 - Features 페이지 (`/features`) 캡처 정합성 정리 — 깨진/빈 카드 16개 삭제, 11개 신규 캡처, 23개 정직하게 "Coming soon" 표시
 - Work manuals 14개 시드 (brand/restaurant/foodcourt 각 영역)

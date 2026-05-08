@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import {
@@ -110,28 +111,6 @@ const TableCard = styled.div`
   padding: 24px;
   margin-bottom: 24px;
   overflow-x: auto;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const Th = styled.th`
-  text-align: left;
-  padding: 12px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #6B7280;
-  border-bottom: 2px solid #E6EBF1;
-  white-space: nowrap;
-`;
-
-const Td = styled.td`
-  padding: 12px 16px;
-  font-size: 14px;
-  color: #0A2540;
-  border-bottom: 1px solid #F3F4F6;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -531,26 +510,26 @@ const ReportsPage: React.FC = () => {
 
         <TableCard>
           <ChartTitle>{t('admin:reportsPage.revenueByCategoryDetail')}</ChartTitle>
-          <Table>
-            <thead>
+          <DataTable>
+            <DataTableHead>
               <tr>
-                <Th>{t('admin:reportsPage.category')}</Th>
-                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.invoices')}</Th>
-                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.amount')}</Th>
-                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.share')}</Th>
+                <DataTableHeaderCell align="left">{t('admin:reportsPage.category')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('admin:reportsPage.invoices')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('admin:reportsPage.amount')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('admin:reportsPage.share')}</DataTableHeaderCell>
               </tr>
-            </thead>
+            </DataTableHead>
             <tbody>
               {revenueByCategory.map((r, i) => (
-                <tr key={i}>
-                  <Td>{CATEGORY_LABELS[r.category] || r.category}</Td>
-                  <Td style={{ textAlign: 'right' }}>{r.count}</Td>
-                  <Td style={{ textAlign: 'right' }}>{formatCurrency(r.total, currency)}</Td>
-                  <Td style={{ textAlign: 'right' }}>{totalGrand > 0 ? ((r.total / totalGrand) * 100).toFixed(1) : 0}%</Td>
-                </tr>
+                <DataTableRow key={i}>
+                  <DataTableCell data-label={t('admin:reportsPage.category')}>{CATEGORY_LABELS[r.category] || r.category}</DataTableCell>
+                  <DataTableCell data-label={t('admin:reportsPage.invoices')} align="right">{r.count}</DataTableCell>
+                  <DataTableCell data-label={t('admin:reportsPage.amount')} align="right">{formatCurrency(r.total, currency)}</DataTableCell>
+                  <DataTableCell data-label={t('admin:reportsPage.share')} align="right">{totalGrand > 0 ? ((r.total / totalGrand) * 100).toFixed(1) : 0}%</DataTableCell>
+                </DataTableRow>
               ))}
             </tbody>
-          </Table>
+          </DataTable>
         </TableCard>
       </>
     );
@@ -589,24 +568,24 @@ const ReportsPage: React.FC = () => {
         <ChartGrid>
           <TableCard>
             <ChartTitle>{t('admin:reportsPage.paymentStatusBreakdown')}</ChartTitle>
-            <Table>
-              <thead>
+            <DataTable>
+              <DataTableHead>
                 <tr>
-                  <Th>{t('admin:reportsPage.status')}</Th>
-                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.count')}</Th>
-                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.amount')}</Th>
+                  <DataTableHeaderCell align="left">{t('admin:reportsPage.status')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('admin:reportsPage.count')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('admin:reportsPage.amount')}</DataTableHeaderCell>
                 </tr>
-              </thead>
+              </DataTableHead>
               <tbody>
                 {paymentAnalysis.statusBreakdown.map((s, i) => (
-                  <tr key={i}>
-                    <Td><StatusBadge status={s.status}>{STATUS_LABELS[s.status] || s.status}</StatusBadge></Td>
-                    <Td style={{ textAlign: 'right' }}>{s.count}</Td>
-                    <Td style={{ textAlign: 'right' }}>{formatCurrency(s.total, currency)}</Td>
-                  </tr>
+                  <DataTableRow key={i}>
+                    <DataTableCell data-label={t('admin:reportsPage.status')}><StatusBadge status={s.status}>{STATUS_LABELS[s.status] || s.status}</StatusBadge></DataTableCell>
+                    <DataTableCell data-label={t('admin:reportsPage.count')} align="right">{s.count}</DataTableCell>
+                    <DataTableCell data-label={t('admin:reportsPage.amount')} align="right">{formatCurrency(s.total, currency)}</DataTableCell>
+                  </DataTableRow>
                 ))}
               </tbody>
-            </Table>
+            </DataTable>
           </TableCard>
 
           <ChartCard>
@@ -634,30 +613,30 @@ const ReportsPage: React.FC = () => {
         {overdueInvoices.length > 0 && (
           <TableCard>
             <ChartTitle>Overdue Invoices ({overdueInvoices.length})</ChartTitle>
-            <Table>
-              <thead>
+            <DataTable>
+              <DataTableHead>
                 <tr>
-                  <Th>Invoice #</Th>
-                  <Th>{t('admin:reportsPage.restaurant')}</Th>
-                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.amount')}</Th>
-                  <Th>{t('admin:reportsPage.dueDate')}</Th>
-                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.daysOverdue')}</Th>
+                  <DataTableHeaderCell align="left">Invoice #</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:reportsPage.restaurant')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('admin:reportsPage.amount')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:reportsPage.dueDate')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('admin:reportsPage.daysOverdue')}</DataTableHeaderCell>
                 </tr>
-              </thead>
+              </DataTableHead>
               <tbody>
                 {overdueInvoices.map(inv => (
-                  <tr key={inv.id}>
-                    <Td style={{ fontWeight: 500 }}>{inv.invoiceNumber}</Td>
-                    <Td>{inv.restaurantName}</Td>
-                    <Td style={{ textAlign: 'right' }}>{formatCurrency(inv.amount, inv.currency)}</Td>
-                    <Td>{new Date(inv.dueDate).toLocaleDateString('en-GB', { timeZone: siteTimezone || 'Asia/Kuala_Lumpur' })}</Td>
-                    <Td style={{ textAlign: 'right', color: inv.daysOverdue > 30 ? '#DC2626' : '#D97706', fontWeight: 600 }}>
+                  <DataTableRow key={inv.id}>
+                    <DataTableCell data-label="Invoice #" style={{ fontWeight: 500 }}>{inv.invoiceNumber}</DataTableCell>
+                    <DataTableCell data-label={t('admin:reportsPage.restaurant')}>{inv.restaurantName}</DataTableCell>
+                    <DataTableCell data-label={t('admin:reportsPage.amount')} align="right">{formatCurrency(inv.amount, inv.currency)}</DataTableCell>
+                    <DataTableCell data-label={t('admin:reportsPage.dueDate')}>{new Date(inv.dueDate).toLocaleDateString('en-GB', { timeZone: siteTimezone || 'Asia/Kuala_Lumpur' })}</DataTableCell>
+                    <DataTableCell data-label={t('admin:reportsPage.daysOverdue')} align="right" style={{ color: inv.daysOverdue > 30 ? '#DC2626' : '#D97706', fontWeight: 600 }}>
                       {inv.daysOverdue}
-                    </Td>
-                  </tr>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
               </tbody>
-            </Table>
+            </DataTable>
           </TableCard>
         )}
       </>
@@ -734,30 +713,30 @@ const ReportsPage: React.FC = () => {
 
         <TableCard>
           <ChartTitle>{t('admin:reportsPage.top10RestaurantsByRevenue')}</ChartTitle>
-          <Table>
-            <thead>
+          <DataTable>
+            <DataTableHead>
               <tr>
-                <Th>#</Th>
-                <Th>{t('admin:reportsPage.restaurant')}</Th>
-                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.totalRevenue')}</Th>
-                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.invoices')}</Th>
-                <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.overdue')}</Th>
+                <DataTableHeaderCell align="left">#</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('admin:reportsPage.restaurant')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('admin:reportsPage.totalRevenue')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('admin:reportsPage.invoices')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('admin:reportsPage.overdue')}</DataTableHeaderCell>
               </tr>
-            </thead>
+            </DataTableHead>
             <tbody>
               {customerData.topRestaurants.map((r, i) => (
-                <tr key={i}>
-                  <Td style={{ fontWeight: 600, color: i < 3 ? '#635BFF' : '#6B7280' }}>{i + 1}</Td>
-                  <Td style={{ fontWeight: 500 }}>{r.restaurantName}</Td>
-                  <Td style={{ textAlign: 'right' }}>{formatCurrency(r.totalRevenue, currency)}</Td>
-                  <Td style={{ textAlign: 'right' }}>{r.invoiceCount}</Td>
-                  <Td style={{ textAlign: 'right', color: r.overdueCount > 0 ? '#DC2626' : '#059669' }}>
+                <DataTableRow key={i}>
+                  <DataTableCell data-label="#" style={{ fontWeight: 600, color: i < 3 ? '#635BFF' : '#6B7280' }}>{i + 1}</DataTableCell>
+                  <DataTableCell data-label={t('admin:reportsPage.restaurant')} style={{ fontWeight: 500 }}>{r.restaurantName}</DataTableCell>
+                  <DataTableCell data-label={t('admin:reportsPage.totalRevenue')} align="right">{formatCurrency(r.totalRevenue, currency)}</DataTableCell>
+                  <DataTableCell data-label={t('admin:reportsPage.invoices')} align="right">{r.invoiceCount}</DataTableCell>
+                  <DataTableCell data-label={t('admin:reportsPage.overdue')} align="right" style={{ color: r.overdueCount > 0 ? '#DC2626' : '#059669' }}>
                     {r.overdueCount}
-                  </Td>
-                </tr>
+                  </DataTableCell>
+                </DataTableRow>
               ))}
             </tbody>
-          </Table>
+          </DataTable>
         </TableCard>
       </>
     );
@@ -798,31 +777,32 @@ const ReportsPage: React.FC = () => {
         <ChartGrid>
           <TableCard>
             <ChartTitle>{t('admin:reportsPage.planRevenueBreakdown')}</ChartTitle>
-            <Table>
-              <thead>
-                <tr>
-                  <Th>{t('admin:reportsPage.plan')}</Th>
-                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.subscribers')}</Th>
-                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.monthlyRevenue')}</Th>
-                  <Th style={{ textAlign: 'right' }}>{t('admin:reportsPage.share')}</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {subscriptionData.planDistribution.map((p, i) => (
-                  <tr key={i}>
-                    <Td style={{ fontWeight: 500 }}>{p.planName}</Td>
-                    <Td style={{ textAlign: 'right' }}>{p.subscriberCount}</Td>
-                    <Td style={{ textAlign: 'right' }}>{formatCurrency(p.monthlyRevenue, currency)}</Td>
-                    <Td style={{ textAlign: 'right' }}>
-                      {totalRevenue > 0 ? ((p.monthlyRevenue / totalRevenue) * 100).toFixed(1) : 0}%
-                    </Td>
+            {subscriptionData.planDistribution.length === 0 ? (
+              <DataTableEmpty>{t('admin:reportsPage.noSubscriptionDataYet')}</DataTableEmpty>
+            ) : (
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell align="left">{t('admin:reportsPage.plan')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('admin:reportsPage.subscribers')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('admin:reportsPage.monthlyRevenue')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('admin:reportsPage.share')}</DataTableHeaderCell>
                   </tr>
-                ))}
-                {subscriptionData.planDistribution.length === 0 && (
-                  <tr><Td colSpan={4} style={{ textAlign: 'center', color: '#9CA3AF' }}>{t('admin:reportsPage.noSubscriptionDataYet')}</Td></tr>
-                )}
-              </tbody>
-            </Table>
+                </DataTableHead>
+                <tbody>
+                  {subscriptionData.planDistribution.map((p, i) => (
+                    <DataTableRow key={i}>
+                      <DataTableCell data-label={t('admin:reportsPage.plan')} style={{ fontWeight: 500 }}>{p.planName}</DataTableCell>
+                      <DataTableCell data-label={t('admin:reportsPage.subscribers')} align="right">{p.subscriberCount}</DataTableCell>
+                      <DataTableCell data-label={t('admin:reportsPage.monthlyRevenue')} align="right">{formatCurrency(p.monthlyRevenue, currency)}</DataTableCell>
+                      <DataTableCell data-label={t('admin:reportsPage.share')} align="right">
+                        {totalRevenue > 0 ? ((p.monthlyRevenue / totalRevenue) * 100).toFixed(1) : 0}%
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </tbody>
+              </DataTable>
+            )}
           </TableCard>
 
           <ChartCard>

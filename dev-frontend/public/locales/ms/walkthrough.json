@@ -1,0 +1,131 @@
+{
+  "skip": "Langkau lawatan",
+  "back": "Kembali",
+  "next": "Seterusnya",
+  "done": "Faham",
+  "trigger": {
+    "label": "Tunjuk saya",
+    "title": "Main semula lawatan pengenalan",
+    "ariaLabel": "Tunjuk saya"
+  },
+  "fg": {
+    "step1": {
+      "title": "Mulakan dengan info syarikat",
+      "description": "Tambah pendaftaran perniagaan, ID cukai dan butiran perhubungan. Maklumat ini akan dipaparkan pada setiap invois."
+    },
+    "step2": {
+      "title": "Tambah cawangan pertama",
+      "description": "Cawangan ialah lokasi fizikal medan selera. Anda perlu sekurang-kurangnya satu sebelum boleh letak unit atau penyewa."
+    },
+    "step3": {
+      "title": "Susun pelan lantai",
+      "description": "Lukis susunan unit untuk setiap cawangan. Penyewa akan diletakkan pada unit-unit ini kemudian."
+    },
+    "step4": {
+      "title": "Tambah restoran penyewa",
+      "description": "Sambungkan restoran sedia ada atau jemput yang baharu untuk beroperasi dalam medan selera anda."
+    },
+    "step5": {
+      "title": "Main semula bila-bila masa",
+      "description": "Gunakan butang 'Tunjuk saya' di pengepala apabila anda mahu melihat lawatan ini semula."
+    }
+  },
+  "ra": {
+    "step1": {
+      "title": "Mulakan dengan info syarikat",
+      "description": "Tambah pendaftaran perniagaan, ID cukai dan butiran perhubungan. Ia muncul pada setiap invois dan resit."
+    },
+    "step2": {
+      "title": "Buat kategori menu",
+      "description": "Susun menu anda dalam kategori seperti Hidangan Utama, Sampingan dan Minuman. Kategori juga mengarah pesanan ke stesen dapur."
+    },
+    "step3": {
+      "title": "Tambah item menu",
+      "description": "Daftar sekurang-kurangnya satu item bagi setiap kategori untuk mula menerima pesanan. Harga, pilihan dan resipi boleh ditambah kemudian."
+    },
+    "step4": {
+      "title": "Konfigurasi pembayaran & operasi",
+      "description": "Aktifkan kaedah pembayaran (tunai, kad, QR), tetapkan waktu operasi dan mata wang untuk mula melayan pelanggan sebenar."
+    },
+    "step5": {
+      "title": "Main semula bila-bila masa",
+      "description": "Gunakan 'Tunjuk saya' di pengepala untuk melihat lawatan ini semula bila-bila masa."
+    }
+  },
+  "bg": {
+    "step1": {
+      "title": "Mulakan dengan info syarikat jenama",
+      "description": "Tambah pendaftaran perniagaan jenama anda, ID cukai dan butiran perhubungan. Ia muncul pada invois francais."
+    },
+    "step2": {
+      "title": "Sambungkan restoran ke jenama",
+      "description": "Setiap lokasi francais mesti disambungkan ke jenama anda untuk berkongsi resipi, ramuan dan produk."
+    },
+    "step3": {
+      "title": "Tetapkan ramuan jenama",
+      "description": "Sediakan senarai induk ramuan yang digunakan dalam semua resipi. Kos dan stok dijejaki per restoran."
+    },
+    "step4": {
+      "title": "Tambah produk jenama",
+      "description": "Daftar item menu yang ditawarkan jenama anda. Restoran yang disambungkan akan menarik dari katalog ini secara automatik."
+    },
+    "step5": {
+      "title": "Main semula bila-bila masa",
+      "description": "Gunakan 'Tunjuk saya' di pengepala untuk melihat lawatan ini semula bila-bila masa."
+    }
+  },
+  "owner": {
+    "step1": {
+      "title": "Urus restoran anda",
+      "description": "Daftar restoran, lantik pentadbir dan pilih pelan langganan di sini. Anda boleh bandingkan sebelah-menyebelah jika ada lebih daripada satu."
+    },
+    "step2": {
+      "title": "Main semula bila-bila masa",
+      "description": "Gunakan 'Tunjuk saya' di pengepala untuk melihat lawatan ini semula bila-bila masa."
+    }
+  },
+  "admin": {
+    "step1": {
+      "title": "Tetapkan info syarikat platform",
+      "description": "Konfigurasi butiran perniagaan operator platform. Ia muncul pada invois langganan yang dihantar kepada pelanggan."
+    },
+    "step2": {
+      "title": "Konfigurasi SMTP & e-mel",
+      "description": "Sediakan pelayan e-mel keluar supaya notifikasi, invois dan resit boleh dihantar."
+    },
+    "step3": {
+      "title": "Cipta templat pelan langganan",
+      "description": "Tentukan pelan yang pelanggan boleh langgan. Setiap pelan mengawal modul, had dan harga."
+    },
+    "step4": {
+      "title": "Aktifkan saluran pembayaran",
+      "description": "Hidupkan sekurang-kurangnya satu saluran pembayaran (Stripe, pemindahan bank) supaya pelanggan boleh bayar invois langganan."
+    },
+    "step5": {
+      "title": "Main semula bila-bila masa",
+      "description": "Gunakan 'Tunjuk saya' di pengepala untuk melihat lawatan ini semula bila-bila masa."
+    }
+  },
+  "supplier": {
+    "step1": {
+      "title": "Tetapkan info syarikat",
+      "description": "Tambah pendaftaran perniagaan, ID cukai dan butiran perhubungan syarikat pembekal. Ia muncul pada setiap invois dagangan."
+    },
+    "step2": {
+      "title": "Bina katalog produk",
+      "description": "Daftar produk yang anda jual dengan harga, unit dan kuantiti pesanan minimum. Pembeli melihat katalog ini ketika membuat pesanan."
+    },
+    "step3": {
+      "title": "Proses pesanan belian masuk",
+      "description": "Pembeli menghantar PO dari katalog. Sahkan, hantar dan invois mereka dari halaman pesanan."
+    },
+    "step4": {
+      "title": "Urus akaun pembeli",
+      "description": "Lihat siapa yang membeli daripada anda, tetapkan had kredit dan terma pembayaran setiap pembeli."
+    },
+    "step5": {
+      "title": "Main semula bila-bila masa",
+      "description": "Gunakan 'Tunjuk saya' di pengepala untuk melihat lawatan ini semula bila-bila masa."
+    }
+  }
+}

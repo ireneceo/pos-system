@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
@@ -275,50 +276,6 @@ const RecentOrdersSection = styled.div`
     border: 1px solid #E6EBF1;
     border-radius: 16px 16px 0 0;
   }
-`;
-
-const TableContainer = styled.div`
-  background: white;
-  border-radius: 0 0 16px 16px;
-  border: 1px solid #E6EBF1;
-  border-top: none;
-  overflow: hidden;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const Thead = styled.thead`
-  background: #F8FAFC;
-`;
-
-const Th = styled.th`
-  padding: 16px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7C93;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const Tbody = styled.tbody``;
-
-const Tr = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
-  transition: background 0.2s;
-  cursor: pointer;
-  &:hover { background: #F8FAFC; }
-  &:last-child { border-bottom: none; }
-`;
-
-const Td = styled.td`
-  padding: 16px;
-  font-size: 14px;
-  color: #374151;
-  vertical-align: middle;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -626,42 +583,36 @@ const BrandManagerDashboard: React.FC = () => {
         <RecentOrdersSection>
           <h3>{t('common:brandManagerDashboard.restaurantPerformance')}</h3>
         </RecentOrdersSection>
-        <TableContainer>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>{t('common:brandManagerDashboard.restaurant')}</Th>
-                <Th>{t('common:brandManagerDashboard.admin')}</Th>
-                <Th>{t('common:brandManagerDashboard.status')}</Th>
-                <Th>{t('common:brandManagerDashboard.todaysOrders')}</Th>
-                <Th>{t('common:brandManagerDashboard.todaysRevenue')}</Th>
-                <Th>{t('common:brandManagerDashboard.monthlyRevenue')}</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {restaurants.length > 0 ? (
-                restaurants.map((restaurant) => (
-                  <Tr key={restaurant.id} onClick={() => navigate(`/pos/brand/general/reports?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)}>
-                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branch_name}</span>}</Td>
-                    <Td>{restaurant.adminName}</Td>
-                    <Td>
-                      <StatusBadge status={restaurant.status}>{restaurant.status}</StatusBadge>
-                    </Td>
-                    <Td>{restaurant.todayOrders}</Td>
-                    <Td>{formatCurrency(restaurant.todayRevenue, selectedCurrency)}</Td>
-                    <Td style={{ fontWeight: 600 }}>{formatCurrency(restaurant.monthlyRevenue, selectedCurrency)}</Td>
-                  </Tr>
-                ))
-              ) : (
-                <Tr>
-                  <Td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                    No restaurants registered yet
-                  </Td>
-                </Tr>
-              )}
-            </Tbody>
-          </Table>
-        </TableContainer>
+        {restaurants.length === 0 ? (
+          <DataTableEmpty>No restaurants registered yet</DataTableEmpty>
+        ) : (
+          <DataTable>
+            <DataTableHead>
+              <tr>
+                <DataTableHeaderCell align="left">{t('common:brandManagerDashboard.restaurant')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:brandManagerDashboard.admin')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:brandManagerDashboard.status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:brandManagerDashboard.todaysOrders')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:brandManagerDashboard.todaysRevenue')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:brandManagerDashboard.monthlyRevenue')}</DataTableHeaderCell>
+              </tr>
+            </DataTableHead>
+            <tbody>
+              {restaurants.map((restaurant) => (
+                <DataTableRow key={restaurant.id} onClick={() => navigate(`/pos/brand/general/reports?restaurantId=${restaurant.id}&restaurantName=${encodeURIComponent(restaurant.name)}`)} style={{ cursor: 'pointer' }}>
+                  <DataTableCell data-label={t('common:brandManagerDashboard.restaurant')} style={{ fontWeight: 600, color: '#0A2540' }}>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branch_name}</span>}</DataTableCell>
+                  <DataTableCell data-label={t('common:brandManagerDashboard.admin')}>{restaurant.adminName}</DataTableCell>
+                  <DataTableCell data-label={t('common:brandManagerDashboard.status')} align="center">
+                    <StatusBadge status={restaurant.status}>{restaurant.status}</StatusBadge>
+                  </DataTableCell>
+                  <DataTableCell data-label={t('common:brandManagerDashboard.todaysOrders')} align="center">{restaurant.todayOrders}</DataTableCell>
+                  <DataTableCell data-label={t('common:brandManagerDashboard.todaysRevenue')} align="right">{formatCurrency(restaurant.todayRevenue, selectedCurrency)}</DataTableCell>
+                  <DataTableCell data-label={t('common:brandManagerDashboard.monthlyRevenue')} align="right" style={{ fontWeight: 600 }}>{formatCurrency(restaurant.monthlyRevenue, selectedCurrency)}</DataTableCell>
+                </DataTableRow>
+              ))}
+            </tbody>
+          </DataTable>
+        )}
       </Content>
     </Container>
   );

@@ -12,6 +12,7 @@ import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableC
 import { formatCurrency } from '../../utils/currency';
 import { formatDate } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
+import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
 
 interface SubscriptionInfo {
   plan_name: string | null;
@@ -239,6 +240,40 @@ const ErrorBanner = styled.div`
   font-size: 14px;
 `;
 
+// Supplier walkthrough — 5 step over sidebar items + header trigger.
+const supplierTourSteps = (t: (k: string, fallback?: string) => string): TourStep[] => ([
+  {
+    selector: '[data-tour="sidebar-supplier-company-info"]',
+    title: t('walkthrough:supplier.step1.title', 'Set company info'),
+    description: t('walkthrough:supplier.step1.description', "Add your supplier company's business registration, tax ID and contact details."),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-supplier-products"]',
+    title: t('walkthrough:supplier.step2.title', 'Build your product catalog'),
+    description: t('walkthrough:supplier.step2.description', 'Register the products you sell. Buyers see this catalog when placing orders.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-supplier-orders"]',
+    title: t('walkthrough:supplier.step3.title', 'Process incoming purchase orders'),
+    description: t('walkthrough:supplier.step3.description', 'Confirm, dispatch and invoice purchase orders from buyers.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-supplier-customers"]',
+    title: t('walkthrough:supplier.step4.title', 'Manage buyer accounts'),
+    description: t('walkthrough:supplier.step4.description', 'View who is buying from you and set credit limits per buyer.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="header-tour-trigger"]',
+    title: t('walkthrough:supplier.step5.title', 'Replay anytime'),
+    description: t('walkthrough:supplier.step5.description', 'Use Show me around in the header to see this tour again whenever you need.'),
+    position: 'bottom'
+  }
+]);
+
 const SupplierDashboard: React.FC = () => {
   const { t } = useTranslation('supplier');
   const navigate = useNavigate();
@@ -298,8 +333,10 @@ const SupplierDashboard: React.FC = () => {
 
   return (
     <Container>
+      <Walkthrough tourKey="supplier_dashboard" steps={supplierTourSteps(t)} version={1} autoStart />
       <Header>
         <Title>{t('dashboard.title')}</Title>
+        <TourTrigger tourKey="supplier_dashboard" />
         {data?.subscription?.status && (
           <Subtitle>
             {data.subscription.plan_name && <span>{data.subscription.plan_name}</span>}

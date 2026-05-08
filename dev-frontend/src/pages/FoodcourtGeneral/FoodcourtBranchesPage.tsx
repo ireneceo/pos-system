@@ -12,6 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { AddressFields } from '../../components/Form';
 import type { Address } from '../../utils/formatAddress';
 import { getAuthToken } from '../../utils/auth';
+import EmptyState from '../../components/Common/EmptyState';
 
 interface Branch {
   id: number;
@@ -112,7 +113,16 @@ const FoodcourtBranchesPage: React.FC = () => {
         {loading ? (
           <DataTableEmpty>{t('common.loading', 'Loading...')}</DataTableEmpty>
         ) : branches.length === 0 ? (
-          <DataTableEmpty>{t('branches.empty', 'No branches yet')}</DataTableEmpty>
+          <EmptyState
+            title={t('branches.emptyTitle', 'Add your first branch')}
+            description={t('branches.emptyDesc', 'A branch is a physical food court location. You need at least one branch before you can lay out the floor plan or place tenant restaurants.')}
+            primaryAction={{ label: t('branches.addBranch', 'Add Branch'), onClick: openNew }}
+            steps={[
+              { label: t('branches.step1', 'Register at least one branch (location).') },
+              { label: t('branches.step2', 'Set up the floor plan & units for each branch.') },
+              { label: t('branches.step3', 'Place tenant restaurants onto the units.') }
+            ]}
+          />
         ) : (
           <DataTableContainer>
             <DataTable>

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { getAuthToken } from '../../utils/auth';
 import { useSiteTimezone } from '../../hooks/useSiteTimezone';
 
@@ -393,6 +394,7 @@ function fmtMoney(amount: number, currency: string) {
 
 const ReferralManagementPage: React.FC = () => {
   const { t } = useTranslation('referrals');
+  const displayRole = useRoleDisplayName();
   const tz = useSiteTimezone();
   const [tab, setTab] = useState<Tab>('overview');
 
@@ -768,7 +770,7 @@ const ReferralManagementPage: React.FC = () => {
                         <div style={{ fontSize: 12, color: '#6B7C93' }}>{p.email}</div>
                       </Td>
                       <Td><code style={{ color: '#635BFF', fontWeight: 600 }}>{p.referral_code}</code></Td>
-                      <Td>{p.role}</Td>
+                      <Td>{displayRole(p.role)}</Td>
                       <Td>{p.referral_count}</Td>
                       <Td>
                         {Object.keys(p.total_earned).length === 0
@@ -1024,7 +1026,7 @@ const ReferralManagementPage: React.FC = () => {
                       {partnerDetail.referrals.map(r => (
                         <tr key={r.id}>
                           <Td>{r.name}</Td>
-                          <Td>{r.role}</Td>
+                          <Td>{displayRole(r.role)}</Td>
                           <Td>{fmtDate(r.signed_up_at)}</Td>
                           <Td>{r.subscription_status || '—'}</Td>
                         </tr>

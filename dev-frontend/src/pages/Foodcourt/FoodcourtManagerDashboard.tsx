@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
@@ -275,50 +276,6 @@ const RecentOrdersSection = styled.div`
     border: 1px solid #E6EBF1;
     border-radius: 16px 16px 0 0;
   }
-`;
-
-const TableContainer = styled.div`
-  background: white;
-  border-radius: 0 0 16px 16px;
-  border: 1px solid #E6EBF1;
-  border-top: none;
-  overflow: hidden;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const Thead = styled.thead`
-  background: #F8FAFC;
-`;
-
-const Th = styled.th`
-  padding: 16px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7C93;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const Tbody = styled.tbody``;
-
-const Tr = styled.tr`
-  border-bottom: 1px solid #F3F4F6;
-  transition: background 0.2s;
-  cursor: pointer;
-  &:hover { background: #F8FAFC; }
-  &:last-child { border-bottom: none; }
-`;
-
-const Td = styled.td`
-  padding: 16px;
-  font-size: 14px;
-  color: #374151;
-  vertical-align: middle;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
@@ -611,42 +568,36 @@ const FoodcourtManagerDashboard: React.FC = () => {
         <RecentOrdersSection>
           <h3>{t('common:foodcourtManagerDashboard.tenantPerformance')}</h3>
         </RecentOrdersSection>
-        <TableContainer>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>{t('common:foodcourtManagerDashboard.tenant')}</Th>
-                <Th>{t('common:foodcourtManagerDashboard.admin')}</Th>
-                <Th>{t('common:foodcourtManagerDashboard.status')}</Th>
-                <Th>{t('common:foodcourtManagerDashboard.todaysOrders')}</Th>
-                <Th>{t('common:foodcourtManagerDashboard.todaysRevenue')}</Th>
-                <Th>{t('common:foodcourtManagerDashboard.monthlyRevenue')}</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {tenants.length > 0 ? (
-                tenants.map((tenant) => (
-                  <Tr key={tenant.id} onClick={() => navigate(`/pos/manager/reports?tab=sales&restaurantId=${tenant.id}&restaurantName=${encodeURIComponent(tenant.name)}`)}>
-                    <Td style={{ fontWeight: 600, color: '#0A2540' }}>{tenant.name}{tenant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{tenant.branch_name}</span>}</Td>
-                    <Td>{tenant.adminName}</Td>
-                    <Td>
-                      <StatusBadge status={tenant.status}>{tenant.status}</StatusBadge>
-                    </Td>
-                    <Td>{tenant.todayOrders}</Td>
-                    <Td>{formatCurrency(tenant.todayRevenue, selectedCurrency)}</Td>
-                    <Td style={{ fontWeight: 600 }}>{formatCurrency(tenant.monthlyRevenue, selectedCurrency)}</Td>
-                  </Tr>
-                ))
-              ) : (
-                <Tr>
-                  <Td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: '#6B7280' }}>
-                    No tenants registered yet. Click "Manage Tenants" to add your first tenant restaurant.
-                  </Td>
-                </Tr>
-              )}
-            </Tbody>
-          </Table>
-        </TableContainer>
+        {tenants.length === 0 ? (
+          <DataTableEmpty>No tenants registered yet. Click "Manage Tenants" to add your first tenant restaurant.</DataTableEmpty>
+        ) : (
+          <DataTable>
+            <DataTableHead>
+              <tr>
+                <DataTableHeaderCell align="left">{t('common:foodcourtManagerDashboard.tenant')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:foodcourtManagerDashboard.admin')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:foodcourtManagerDashboard.status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:foodcourtManagerDashboard.todaysOrders')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:foodcourtManagerDashboard.todaysRevenue')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:foodcourtManagerDashboard.monthlyRevenue')}</DataTableHeaderCell>
+              </tr>
+            </DataTableHead>
+            <tbody>
+              {tenants.map((tenant) => (
+                <DataTableRow key={tenant.id} onClick={() => navigate(`/pos/manager/reports?tab=sales&restaurantId=${tenant.id}&restaurantName=${encodeURIComponent(tenant.name)}`)} style={{ cursor: 'pointer' }}>
+                  <DataTableCell data-label={t('common:foodcourtManagerDashboard.tenant')} style={{ fontWeight: 600, color: '#0A2540' }}>{tenant.name}{tenant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7C93', background: '#F3F4F6', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{tenant.branch_name}</span>}</DataTableCell>
+                  <DataTableCell data-label={t('common:foodcourtManagerDashboard.admin')}>{tenant.adminName}</DataTableCell>
+                  <DataTableCell data-label={t('common:foodcourtManagerDashboard.status')} align="center">
+                    <StatusBadge status={tenant.status}>{tenant.status}</StatusBadge>
+                  </DataTableCell>
+                  <DataTableCell data-label={t('common:foodcourtManagerDashboard.todaysOrders')} align="center">{tenant.todayOrders}</DataTableCell>
+                  <DataTableCell data-label={t('common:foodcourtManagerDashboard.todaysRevenue')} align="right">{formatCurrency(tenant.todayRevenue, selectedCurrency)}</DataTableCell>
+                  <DataTableCell data-label={t('common:foodcourtManagerDashboard.monthlyRevenue')} align="right" style={{ fontWeight: 600 }}>{formatCurrency(tenant.monthlyRevenue, selectedCurrency)}</DataTableCell>
+                </DataTableRow>
+              ))}
+            </tbody>
+          </DataTable>
+        )}
       </Content>
     </Container>
   );

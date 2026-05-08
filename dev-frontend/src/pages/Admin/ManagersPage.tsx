@@ -14,18 +14,14 @@ import {
   StatValue,
   StatLabel,
   StatDescription,
-  Table,
-  TableHeader as CommonTableHeader,
-  TableRow as CommonTableRow,
-  MobileLabel,
-  MobileValue,
-  MobileGrid,
   ActionButtons,
   // ActionButton, // Removed - not used after handleEditManager was commented out
   IconButton
 , Modal as CommonModal } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency, getPlanPrice, formatPlanPrice, getActivePlanCurrencies, normalizeCurrencyCode } from '../../utils/currency';
+import SubscriptionFormFields, { type SubscriptionValues, type UserType as SubUserType, type BillingCycle, type PaymentModel, type DiscountType } from '../../components/Subscription/SubscriptionFormFields';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import PhoneInput from '../../components/Common/PhoneInput';
 import DateField from '../../components/Common/DateField';
@@ -65,42 +61,6 @@ interface Manager {
 
 // Common components now imported from ../../components/UI
 // Page-specific styled components below
-
-// 페이지별 반응형 테이블 헤더 (Managers 전용)
-const ManagerTableHeader = styled(CommonTableHeader)`
-  @media (max-width: 1400px) {
-    & > span:nth-child(4),
-    & > span:nth-child(5) {
-      display: none;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    & > span:nth-child(3),
-    & > span:nth-child(4),
-    & > span:nth-child(5) {
-      display: none;
-    }
-  }
-`;
-
-// 페이지별 반응형 테이블 행 (Managers 전용)
-const ManagerTableRow = styled(CommonTableRow)`
-  @media (max-width: 1400px) {
-    & > div:nth-child(4),
-    & > div:nth-child(5) {
-      display: none;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    & > div:nth-child(3),
-    & > div:nth-child(4),
-    & > div:nth-child(5) {
-      display: none;
-    }
-  }
-`;
 
 const ManagerInfo = styled.div``;
 
@@ -263,12 +223,17 @@ const ManagersPage: React.FC = () => {
     // Subscription fields
     currency: 'MYR',
     planType: '',
-    planAmount: '149.00',
-    billingCycle: 'monthly' as 'monthly' | 'annual',
-    paymentModel: 'foodcourt_manager' as 'foodcourt_manager' | 'brand_manager' | 'restaurant_owner',
+    planAmount: '0',
+    billingCycle: '' as '' | 'monthly' | 'annual',     // empty default — user picks
+    paymentModel: 'foodcourt_manager' as 'foodcourt_manager' | 'brand_manager' | 'restaurant',
     autoRenew: true,
     subscriptionStart: new Date().toISOString().split('T')[0],
-    subscriptionEnd: ''
+    subscriptionEnd: '',
+    treatAsTrial: false,
+    activateNow: true,
+    discountType: 'none' as 'none' | 'percentage' | 'fixed',
+    discountValue: 0,
+    discountReason: ''
   });
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
   const planCurrencies = useMemo(() => getActivePlanCurrencies(availablePlans), [availablePlans]);
@@ -533,12 +498,17 @@ const ManagersPage: React.FC = () => {
         parentManagerId: '',
         currency: 'MYR',
         planType: firstPlan ? firstPlan.display_name : '',
-        planAmount: firstPlan ? String(getPlanPrice(firstPlan || {}, 'MYR')) : '149.00',
-        billingCycle: 'monthly',
+        planAmount: firstPlan ? String(getPlanPrice(firstPlan || {}, 'MYR')) : '0',
+        billingCycle: '',
         paymentModel: 'foodcourt_manager',
         autoRenew: true,
         subscriptionStart: today,
-        subscriptionEnd: calcSubscriptionEnd(today, 'monthly')
+        subscriptionEnd: '',
+        treatAsTrial: false,
+        activateNow: true,
+        discountType: 'none',
+        discountValue: 0,
+        discountReason: ''
       });
 
       setShowAddModal(true);
@@ -618,12 +588,17 @@ const ManagersPage: React.FC = () => {
       parentManagerId: '',
       currency: 'MYR',
       planType: firstPlan ? firstPlan.display_name : '',
-      planAmount: firstPlan ? String(getPlanPrice(firstPlan || {}, 'MYR')) : '149.00',
-      billingCycle: 'monthly',
+      planAmount: firstPlan ? String(getPlanPrice(firstPlan || {}, 'MYR')) : '0',
+      billingCycle: '',
       paymentModel: 'foodcourt_manager',
       autoRenew: true,
       subscriptionStart: today,
-      subscriptionEnd: calcSubscriptionEnd(today, 'monthly')
+      subscriptionEnd: '',
+      treatAsTrial: false,
+      activateNow: true,
+      discountType: 'none',
+      discountValue: 0,
+      discountReason: ''
     });
   };
 
@@ -900,6 +875,10 @@ const ManagersPage: React.FC = () => {
         managerUserData.subscription_start = newManager.subscriptionStart;
         managerUserData.subscription_end = newManager.subscriptionEnd;
         managerUserData.auto_renew = newManager.autoRenew !== false;
+        // v3.27 unified subscription form fields
+        managerUserData.discount_type = newManager.discountType || 'none';
+        managerUserData.discount_value = newManager.discountValue || 0;
+        managerUserData.discount_reason = newManager.discountReason || null;
       }
 
       // Add manager_id (parent manager) for Brand Manager and Foodcourt Manager
@@ -1017,50 +996,46 @@ const ManagersPage: React.FC = () => {
           />
         </FilterBar>
 
-        <Table>
-          <ManagerTableHeader columns="2fr 1fr 1fr 1fr 1fr 200px">
-            <span className="col-info">{t('admin:managersPage.managerInfo')}</span>
-            <span>{t('admin:managersPage.status')}</span>
-            <span>{t('admin:managersPage.restaurants')}</span>
-            <span className="col-revenue">{t('admin:managersPage.revenueRm')}</span>
-            <span>{t('admin:managersPage.lastActive')}</span>
-            <span className="col-action">{t('admin:managersPage.actions')}</span>
-          </ManagerTableHeader>
-
-          {filteredManagers.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6B7280' }}>
-              <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                No managers found
-              </div>
-              <div style={{ fontSize: '14px' }}>
-                {managers.length === 0 ? 'Data may still be loading...' : 'Try adjusting your filters'}
-              </div>
+        {filteredManagers.length === 0 ? (
+          <DataTableEmpty>
+            <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+              No managers found
             </div>
-          ) : (
-            filteredManagers.map(manager => (
-              <ManagerTableRow columns="2fr 1fr 1fr 1fr 1fr 200px" key={manager.id}>
-                <MobileGrid>
-                  <MobileValue className="col-info">
-                    <MobileLabel>{t('admin:managersPage.managerInfo')}</MobileLabel>
+            <div style={{ fontSize: '14px' }}>
+              {managers.length === 0 ? 'Data may still be loading...' : 'Try adjusting your filters'}
+            </div>
+          </DataTableEmpty>
+        ) : (
+          <DataTable>
+            <DataTableHead>
+              <tr>
+                <DataTableHeaderCell align="left">{t('admin:managersPage.managerInfo')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('admin:managersPage.status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('admin:managersPage.restaurants')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('admin:managersPage.revenueRm')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('admin:managersPage.lastActive')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('admin:managersPage.actions')}</DataTableHeaderCell>
+              </tr>
+            </DataTableHead>
+            <tbody>
+              {filteredManagers.map(manager => (
+                <DataTableRow key={manager.id}>
+                  <DataTableCell data-label={t('admin:managersPage.managerInfo')}>
                     <ManagerInfo>
                       <CompanyName>{manager.fullName}{manager.is_demo && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#F59E0B', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:managersPage.demo')}</span>}{manager.is_test && <span style={{ fontSize: '10px', fontWeight: 600, color: '#fff', background: '#8B5CF6', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{t('admin:managersPage.test')}</span>}</CompanyName>
                       <ContactInfo>
                         {manager.managerId} • {manager.email}
                       </ContactInfo>
                     </ManagerInfo>
-                  </MobileValue>
+                  </DataTableCell>
 
-                  <MobileValue>
-                    <MobileLabel>{t('admin:managersPage.status')}</MobileLabel>
-                    <div>
-                      <StatusBadge status={manager.status}>
-                        {manager.status === 'active' ? 'Active' : 'Inactive'}
-                      </StatusBadge>
-                    </div>
-                  </MobileValue>
+                  <DataTableCell data-label={t('admin:managersPage.status')}>
+                    <StatusBadge status={manager.status}>
+                      {manager.status === 'active' ? 'Active' : 'Inactive'}
+                    </StatusBadge>
+                  </DataTableCell>
 
-                  <MobileValue>
-                    <MobileLabel>{t('admin:managersPage.restaurants')}</MobileLabel>
+                  <DataTableCell data-label={t('admin:managersPage.restaurants')}>
                     <span
                       style={{
                         color: '#635BFF',
@@ -1073,53 +1048,53 @@ const ManagersPage: React.FC = () => {
                     >
                       {manager.restaurantCount}
                     </span>
-                  </MobileValue>
+                  </DataTableCell>
 
-                  <MobileValue className="col-revenue">
-                    <MobileLabel>{t('admin:managersPage.revenueRm')}</MobileLabel>
+                  <DataTableCell data-label={t('admin:managersPage.revenueRm')} align="right">
                     <div style={{ fontSize: '14px', color: '#374151', fontWeight: '600' }}>
                       {manager.totalRevenue.toLocaleString()}
                     </div>
-                  </MobileValue>
+                  </DataTableCell>
 
-                  <MobileValue>
-                    <MobileLabel>{t('admin:managersPage.lastActive')}</MobileLabel>
+                  <DataTableCell data-label={t('admin:managersPage.lastActive')}>
                     <div style={{ fontSize: '14px', color: '#6B7280' }}>
                       {manager.lastActive}
                     </div>
-                  </MobileValue>
-                </MobileGrid>
+                  </DataTableCell>
 
-                <ActionButtons>
-                  <IconButton
-                    onClick={() => handleEditManager(manager)}
-                    title="Edit Manager"
-                  >
-                    <IconSymbol>{t('admin:managersPage.edit')}</IconSymbol>
-                  </IconButton>
-                  <IconButton
-                    onClick={() => handleToggleStatus(manager)}
-                    title={manager.status === 'active' ? 'Deactivate Manager' : 'Activate Manager'}
-                  >
-                    <IconSymbol>{manager.status === 'active' ? '⊗' : '◉'}</IconSymbol>
-                  </IconButton>
-                  <IconButton
-                    onClick={() => handlePasswordReset(manager)}
-                    title="Reset Password"
-                  >
-                    <IconSymbol>⚷</IconSymbol>
-                  </IconButton>
-                  <IconButton
-                    onClick={() => handleDeleteManager(manager)}
-                    title="Delete Manager"
-                  >
-                    <IconSymbol>✕</IconSymbol>
-                  </IconButton>
-                </ActionButtons>
-              </ManagerTableRow>
-            ))
-          )}
-        </Table>
+                  <DataTableCell data-label={t('admin:managersPage.actions')} mobileFullWidth>
+                    <ActionButtons>
+                      <IconButton
+                        onClick={() => handleEditManager(manager)}
+                        title="Edit Manager"
+                      >
+                        <IconSymbol>{t('admin:managersPage.edit')}</IconSymbol>
+                      </IconButton>
+                      <IconButton
+                        onClick={() => handleToggleStatus(manager)}
+                        title={manager.status === 'active' ? 'Deactivate Manager' : 'Activate Manager'}
+                      >
+                        <IconSymbol>{manager.status === 'active' ? '⊗' : '◉'}</IconSymbol>
+                      </IconButton>
+                      <IconButton
+                        onClick={() => handlePasswordReset(manager)}
+                        title="Reset Password"
+                      >
+                        <IconSymbol>⚷</IconSymbol>
+                      </IconButton>
+                      <IconButton
+                        onClick={() => handleDeleteManager(manager)}
+                        title="Delete Manager"
+                      >
+                        <IconSymbol>✕</IconSymbol>
+                      </IconButton>
+                    </ActionButtons>
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </tbody>
+          </DataTable>
+        )}
 
         {/* Add Manager Modal */}
         {showAddModal && (
@@ -1270,91 +1245,45 @@ const ManagersPage: React.FC = () => {
                   />
                 </FormGroup>
 
-                {/* Subscription Settings - Show for General roles and Owner */}
+                {/* Subscription Settings - Show for General roles and Owner (unified v3.27) */}
                 {(newManager.role === 'Foodcourt General' || newManager.role === 'Brand General' || newManager.role === 'Restaurant Owner') && (
-                  <>
-                    <FormGroup style={{gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1'}}>
-                      <h3 style={{fontSize: '14px', fontWeight: '600', color: '#0A2540', marginBottom: '12px'}}>{t('admin:managersPage.subscriptionSettings')}</h3>
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Currency *</FormLabel>
-                      <FilterSelect
-                        value={newManager.currency}
-                        onChange={(e) => {
-                          const cur = e.target.value;
-                          const selectedPlan = getFilteredPlans(newManager.role).find(p => p.display_name === newManager.planType);
-                          handleInputChange('currency', cur);
-                          if (selectedPlan) {
-                            handleInputChange('planAmount', String(getPlanPrice(selectedPlan, cur)));
-                          }
-                        }}
-                      >
-                        {planCurrencies.map(cur => (
-                          <option key={cur} value={cur}>{cur}</option>
-                        ))}
-                      </FilterSelect>
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Subscription Plan *</FormLabel>
-                      <FilterSelect
-                        value={newManager.planType}
-                        onChange={(e) => {
-                          const selectedPlan = getFilteredPlans(newManager.role).find(p => p.display_name === e.target.value);
-                          handleInputChange('planType', e.target.value);
-                          if (selectedPlan) {
-                            handleInputChange('planAmount', String(getPlanPrice(selectedPlan, newManager.currency)));
-                          }
-                        }}
-                      >
-                        <option value="">{t('admin:managersPage.selectPlan')}</option>
-                        {getFilteredPlans(newManager.role).map(plan => (
-                          <option key={plan.id} value={plan.display_name}>
-                            {plan.display_name} ({formatPlanPrice(plan, newManager.currency)}/month)
-                          </option>
-                        ))}
-                      </FilterSelect>
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Billing Cycle *</FormLabel>
-                      <FilterSelect
-                        value={newManager.billingCycle}
-                        onChange={(e) => handleInputChange('billingCycle', e.target.value)}
-                      >
-                        <option value="monthly">{t('admin:managersPage.monthly')}</option>
-                        <option value="annual">{t('admin:managersPage.annual')}</option>
-                      </FilterSelect>
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>Subscription Start Date *</FormLabel>
-                      <DateField
-                        value={newManager.subscriptionStart}
-                        onChange={(v) => handleInputChange('subscriptionStart', v)}
-                      />
-                    </FormGroup>
-
-                    <FormGroup>
-                      <FormLabel>{t('admin:managersPage.subscriptionEndDateAuto')}</FormLabel>
-                      <DateField
-                        value={newManager.subscriptionEnd}
-                        onChange={() => {}}
-                        disabled
-                      />
-                    </FormGroup>
-
-                    <FormGroup style={{gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                      <input
-                        type="checkbox"
-                        checked={newManager.autoRenew}
-                        onChange={(e) => handleInputChange('autoRenew', e.target.checked ? 'true' : 'false')}
-                        style={{width: '16px', height: '16px', accentColor: '#635BFF'}}
-                      />
-                      <FormLabel style={{marginBottom: 0}}>{t('admin:managersPage.autorenewSubscription')}</FormLabel>
-                    </FormGroup>
-                  </>
+                  <FormGroup style={{ gridColumn: '1 / -1', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E6EBF1' }}>
+                    <SubscriptionFormFields
+                      userType={newManager.role === 'Brand General' ? 'brand' : newManager.role === 'Foodcourt General' ? 'foodcourt' : 'owner'}
+                      mode="add"
+                      availablePlans={availablePlans}
+                      planCurrencies={planCurrencies}
+                      values={{
+                        currency: newManager.currency,
+                        plan_type: newManager.planType,
+                        plan_amount: newManager.planAmount || '0',
+                        billing_cycle: newManager.billingCycle as BillingCycle,
+                        payment_model: newManager.paymentModel as PaymentModel,
+                        subscription_start: newManager.subscriptionStart,
+                        subscription_end: newManager.subscriptionEnd,
+                        auto_renew: newManager.autoRenew,
+                        treat_as_trial: newManager.treatAsTrial,
+                        activate_now: newManager.activateNow,
+                        discount_type: newManager.discountType,
+                        discount_value: newManager.discountValue,
+                        discount_reason: newManager.discountReason
+                      }}
+                      onChange={(patch) => {
+                        Object.entries(patch).forEach(([k, v]) => {
+                          const map: Record<string, string> = {
+                            currency: 'currency', plan_type: 'planType', plan_amount: 'planAmount',
+                            billing_cycle: 'billingCycle', payment_model: 'paymentModel',
+                            subscription_start: 'subscriptionStart', subscription_end: 'subscriptionEnd',
+                            auto_renew: 'autoRenew', treat_as_trial: 'treatAsTrial',
+                            activate_now: 'activateNow', discount_type: 'discountType',
+                            discount_value: 'discountValue', discount_reason: 'discountReason'
+                          };
+                          const target = map[k];
+                          if (target) handleInputChange(target as any, v as any);
+                        });
+                      }}
+                    />
+                  </FormGroup>
                 )}
               </FormGrid>
               {addModalWarning && (

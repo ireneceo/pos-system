@@ -323,8 +323,17 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
         where: { foodcourt_id: targetUser.foodcourt_id },
         order: [['createdAt', 'DESC']]
       });
+    } else if (targetUser.role === 'Brand General' || targetUser.role === 'Brand Manager') {
+      // Brand-scoped: all restaurants under brands owned by this user (multi-brand support)
+      const { Brand } = require('../models');
+      const brands = await Brand.findAll({ where: { owner_id: managerId }, attributes: ['id'] });
+      const brandIds = brands.map(b => b.id);
+      restaurants = brandIds.length === 0 ? [] : await Restaurant.findAll({
+        where: { brand_id: brandIds },
+        order: [['createdAt', 'DESC']]
+      });
     } else {
-      // Default (Brand General, Brand Manager, Restaurant Owner): restaurants via RestaurantManager join
+      // Default (Restaurant Owner): restaurants via RestaurantManager join
       restaurants = await Restaurant.findAll({
         include: [{
           model: User,

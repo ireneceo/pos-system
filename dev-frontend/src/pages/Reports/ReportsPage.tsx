@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1244,62 +1245,62 @@ const ReportsPage: React.FC = () => {
 
               <TableCard>
                 <ChartTitle>Complete Menu Performance Ranking ({isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod})</ChartTitle>
-                <Table>
-                  <thead>
+                <DataTable>
+                  <DataTableHead>
                     <tr>
-                      <TableHeader>{t('reports:reportsPage.rank')}</TableHeader>
-                      <TableHeader>{t('reports:reportsPage.menuItem')}</TableHeader>
-                      <TableHeader>{t('reports:reportsPage.category')}</TableHeader>
-                      <TableHeader>{t('reports:reportsPage.price')}</TableHeader>
-                      <TableHeader>{t('reports:reportsPage.qtySold')}</TableHeader>
-                      <TableHeader>{t('reports:reportsPage.revenue')}</TableHeader>
-                      <TableHeader>{t('reports:reportsPage.performance')}</TableHeader>
+                      <DataTableHeaderCell align="left">{t('reports:reportsPage.rank')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:reportsPage.menuItem')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:reportsPage.category')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:reportsPage.price')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:reportsPage.qtySold')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:reportsPage.revenue')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('reports:reportsPage.performance')}</DataTableHeaderCell>
                     </tr>
-                  </thead>
+                  </DataTableHead>
                   <tbody>
                     {allMenuData.map((menu, index) => {
                       const maxOrders = allMenuData[0]?.orders || 1;
                       return (
-                        <tr key={index} style={{ 
+                        <DataTableRow key={index} style={{
                           backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent'
                         }}>
-                          <TableCell style={{ 
-                            fontWeight: 600, 
+                          <DataTableCell data-label={t('reports:reportsPage.rank')} style={{
+                            fontWeight: 600,
                             color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540'
                           }}>
                             #{index + 1}
                             {index === 0 && ' 🥇'}
                             {index === 1 && ' 🥈'}
                             {index === 2 && ' 🥉'}
-                          </TableCell>
-                          <TableCell style={{ fontWeight: 600 }}>{menu.name}</TableCell>
-                          <TableCell>
-                            <span style={{ 
-                              padding: '2px 6px', 
-                              borderRadius: '4px', 
+                          </DataTableCell>
+                          <DataTableCell data-label={t('reports:reportsPage.menuItem')} style={{ fontWeight: 600 }}>{menu.name}</DataTableCell>
+                          <DataTableCell data-label={t('reports:reportsPage.category')}>
+                            <span style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
                               fontSize: '11px',
                               backgroundColor: '#F3F4F6',
                               color: '#6B7280'
                             }}>
                               {menu.category}
                             </span>
-                          </TableCell>
-                          <TableCell>{formatCurrency(menu.price, operationSettings.currency)}</TableCell>
-                          <TableCell>{menu.orders.toLocaleString()}</TableCell>
-                          <TableCell>{formatCurrency(menu.revenue, operationSettings.currency)}</TableCell>
-                          <TableCell>
+                          </DataTableCell>
+                          <DataTableCell data-label={t('reports:reportsPage.price')}>{formatCurrency(menu.price, operationSettings.currency)}</DataTableCell>
+                          <DataTableCell data-label={t('reports:reportsPage.qtySold')}>{menu.orders.toLocaleString()}</DataTableCell>
+                          <DataTableCell data-label={t('reports:reportsPage.revenue')}>{formatCurrency(menu.revenue, operationSettings.currency)}</DataTableCell>
+                          <DataTableCell data-label={t('reports:reportsPage.performance')}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <ProgressBar percentage={(menu.orders / maxOrders) * 100} />
                               <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
                                 {Math.round((menu.orders / maxOrders) * 100)}%
                               </span>
                             </div>
-                          </TableCell>
-                        </tr>
+                          </DataTableCell>
+                        </DataTableRow>
                       );
                     })}
                   </tbody>
-                </Table>
+                </DataTable>
               </TableCard>
           </div>
 
@@ -1339,27 +1340,27 @@ const ReportsPage: React.FC = () => {
 
                   <TableCard>
                     <ChartTitle>Top Customers ({isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod})</ChartTitle>
-                    <Table>
-                      <thead>
+                    <DataTable>
+                      <DataTableHead>
                         <tr>
-                          <TableHeader>{t('reports:reportsPage.rank')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.name')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.phone')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.type')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.periodOrders')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.periodSpent')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.totalPoints')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.tier')}</TableHeader>
+                          <DataTableHeaderCell align="left">{t('reports:reportsPage.rank')}</DataTableHeaderCell>
+                          <DataTableHeaderCell align="left">{t('reports:reportsPage.name')}</DataTableHeaderCell>
+                          <DataTableHeaderCell align="left">{t('reports:reportsPage.phone')}</DataTableHeaderCell>
+                          <DataTableHeaderCell align="left">{t('reports:reportsPage.type')}</DataTableHeaderCell>
+                          <DataTableHeaderCell align="left">{t('reports:reportsPage.periodOrders')}</DataTableHeaderCell>
+                          <DataTableHeaderCell align="left">{t('reports:reportsPage.periodSpent')}</DataTableHeaderCell>
+                          <DataTableHeaderCell align="left">{t('reports:reportsPage.totalPoints')}</DataTableHeaderCell>
+                          <DataTableHeaderCell align="left">{t('reports:reportsPage.tier')}</DataTableHeaderCell>
                         </tr>
-                      </thead>
+                      </DataTableHead>
                       <tbody>
                         {filteredCustomers
                           .slice(0, 20)
                           .map((customerData: any, index: number) => (
-                            <tr key={customerData.customer?.id || index} style={{
+                            <DataTableRow key={customerData.customer?.id || index} style={{
                               backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent'
                             }}>
-                              <TableCell style={{
+                              <DataTableCell data-label={t('reports:reportsPage.rank')} style={{
                                 fontWeight: 600,
                                 color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540'
                               }}>
@@ -1367,10 +1368,10 @@ const ReportsPage: React.FC = () => {
                                 {index === 0 && ' 🥇'}
                                 {index === 1 && ' 🥈'}
                                 {index === 2 && ' 🥉'}
-                              </TableCell>
-                              <TableCell style={{ fontWeight: 600 }}>{customerData.customer?.name || 'Guest'}</TableCell>
-                              <TableCell>{customerData.customer?.phone || '-'}</TableCell>
-                              <TableCell>
+                              </DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.name')} style={{ fontWeight: 600 }}>{customerData.customer?.name || 'Guest'}</DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.phone')}>{customerData.customer?.phone || '-'}</DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.type')}>
                                 <span style={{
                                   padding: '2px 6px',
                                   borderRadius: '4px',
@@ -1380,11 +1381,11 @@ const ReportsPage: React.FC = () => {
                                 }}>
                                   {customerData.customer?.type === 'member' ? 'Member' : 'Guest'}
                                 </span>
-                              </TableCell>
-                              <TableCell>{customerData.period_orders || 0}</TableCell>
-                              <TableCell>{formatCurrency(customerData.period_spent || 0, operationSettings.currency)}</TableCell>
-                              <TableCell>{customerData.points || 0}</TableCell>
-                              <TableCell>
+                              </DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.periodOrders')}>{customerData.period_orders || 0}</DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.periodSpent')}>{formatCurrency(customerData.period_spent || 0, operationSettings.currency)}</DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.totalPoints')}>{customerData.points || 0}</DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.tier')}>
                                 <span style={{
                                   padding: '2px 6px',
                                   borderRadius: '4px',
@@ -1394,11 +1395,11 @@ const ReportsPage: React.FC = () => {
                                 }}>
                                   {customerData.loyalty_tier || 'Bronze'}
                                 </span>
-                              </TableCell>
-                            </tr>
+                              </DataTableCell>
+                            </DataTableRow>
                           ))}
                       </tbody>
-                    </Table>
+                    </DataTable>
                   </TableCard>
                 </div>
               )}
@@ -1443,45 +1444,41 @@ const ReportsPage: React.FC = () => {
 
                   <TableCard>
                     <ChartTitle>Peak Hours Performance ({isCustomDateRange ? `${dateRange.start} to ${dateRange.end}` : activePeriod})</ChartTitle>
-                    <Table>
-                      <thead>
-                        <tr>
-                          <TableHeader>{t('reports:reportsPage.timeSlot')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.orders')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.revenue')}</TableHeader>
-                          <TableHeader>{t('reports:reportsPage.share')}</TableHeader>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {peakTimesData.length === 0 ? (
+                    {peakTimesData.length === 0 ? (
+                      <DataTableEmpty>No peak hours data available</DataTableEmpty>
+                    ) : (
+                      <DataTable>
+                        <DataTableHead>
                           <tr>
-                            <TableCell colSpan={4} style={{ textAlign: 'center', color: '#6B7C93' }}>
-                              No peak hours data available
-                            </TableCell>
+                            <DataTableHeaderCell align="left">{t('reports:reportsPage.timeSlot')}</DataTableHeaderCell>
+                            <DataTableHeaderCell align="left">{t('reports:reportsPage.orders')}</DataTableHeaderCell>
+                            <DataTableHeaderCell align="left">{t('reports:reportsPage.revenue')}</DataTableHeaderCell>
+                            <DataTableHeaderCell align="left">{t('reports:reportsPage.share')}</DataTableHeaderCell>
                           </tr>
-                        ) : (
-                          peakTimesData.map((item, index) => (
-                            <tr key={index} style={{
+                        </DataTableHead>
+                        <tbody>
+                          {peakTimesData.map((item, index) => (
+                            <DataTableRow key={index} style={{
                               backgroundColor: index === 0 ? '#FEF3C7' : 'transparent'
                             }}>
-                              <TableCell style={{ fontWeight: 600 }}>
+                              <DataTableCell data-label={t('reports:reportsPage.timeSlot')} style={{ fontWeight: 600 }}>
                                 {index === 0 && '🔥 '}{item.time}
-                              </TableCell>
-                              <TableCell>{item.orders}</TableCell>
-                              <TableCell>{formatCurrency(item.revenue, operationSettings.currency)}</TableCell>
-                              <TableCell>
+                              </DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.orders')}>{item.orders}</DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.revenue')}>{formatCurrency(item.revenue, operationSettings.currency)}</DataTableCell>
+                              <DataTableCell data-label={t('reports:reportsPage.share')}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <ProgressBar percentage={totalOrders > 0 ? (item.orders / totalOrders) * 100 : 0} />
                                   <span style={{ fontSize: '12px', color: '#6B7C93' }}>
                                     {totalOrders > 0 ? Math.round((item.orders / totalOrders) * 100) : 0}%
                                   </span>
                                 </div>
-                              </TableCell>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
+                              </DataTableCell>
+                            </DataTableRow>
+                          ))}
+                        </tbody>
+                      </DataTable>
+                    )}
                   </TableCard>
 
                   <ChartCard style={{ marginTop: '24px' }}>
@@ -1585,50 +1582,46 @@ const ReportsPage: React.FC = () => {
                   <ChartGrid>
                     <TableCard>
                       <ChartTitle>{t('reports:reportsPage.paymentMethodsBreakdown')}</ChartTitle>
-                      <Table>
-                        <thead>
-                          <tr>
-                            <TableHeader>{t('reports:reportsPage.paymentMethod')}</TableHeader>
-                            <TableHeader>{t('reports:reportsPage.orders')}</TableHeader>
-                            <TableHeader>{t('reports:reportsPage.revenue')}</TableHeader>
-                            <TableHeader>{t('reports:reportsPage.share')}</TableHeader>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paymentMethodData.length === 0 ? (
+                      {paymentMethodData.length === 0 ? (
+                        <DataTableEmpty>No payment data available</DataTableEmpty>
+                      ) : (
+                        <DataTable>
+                          <DataTableHead>
                             <tr>
-                              <TableCell colSpan={4} style={{ textAlign: 'center', color: '#6B7C93' }}>
-                                No payment data available
-                              </TableCell>
+                              <DataTableHeaderCell align="left">{t('reports:reportsPage.paymentMethod')}</DataTableHeaderCell>
+                              <DataTableHeaderCell align="left">{t('reports:reportsPage.orders')}</DataTableHeaderCell>
+                              <DataTableHeaderCell align="left">{t('reports:reportsPage.revenue')}</DataTableHeaderCell>
+                              <DataTableHeaderCell align="left">{t('reports:reportsPage.share')}</DataTableHeaderCell>
                             </tr>
-                          ) : (
-                            paymentMethodData.map((item: any, index: number) => {
+                          </DataTableHead>
+                          <tbody>
+                            {paymentMethodData.map((item: any, index: number) => {
                               const pct = totalPaymentRevenue > 0 ? (item.revenue / totalPaymentRevenue) * 100 : 0;
                               return (
-                                <tr key={item.method} style={{
+                                <DataTableRow key={item.method} style={{
                                   backgroundColor: index === 0 ? '#F0F9FF' : 'transparent'
                                 }}>
-                                  <TableCell style={{ fontWeight: 600 }}>
+                                  <DataTableCell data-label={t('reports:reportsPage.paymentMethod')} style={{ fontWeight: 600 }}>
                                     {getLabel(item.method)}
-                                  </TableCell>
-                                  <TableCell>{item.orders}</TableCell>
-                                  <TableCell style={{ fontWeight: 500 }}>
+                                  </DataTableCell>
+                                  <DataTableCell data-label={t('reports:reportsPage.orders')}>{item.orders}</DataTableCell>
+                                  <DataTableCell data-label={t('reports:reportsPage.revenue')} style={{ fontWeight: 500 }}>
                                     {formatCurrency(item.revenue, operationSettings.currency)}
-                                  </TableCell>
-                                  <TableCell>
+                                  </DataTableCell>
+                                  <DataTableCell data-label={t('reports:reportsPage.share')}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <ProgressBar percentage={pct} />
                                       <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
                                         {pct.toFixed(1)}%
                                       </span>
                                     </div>
-                                  </TableCell>
-                                </tr>
+                                  </DataTableCell>
+                                </DataTableRow>
                               );
-                            })
-                          )}
-                        </tbody>
-                      </Table>
+                            })}
+                          </tbody>
+                        </DataTable>
+                      )}
                     </TableCard>
 
                     {/* Payment Method Pie Chart */}
@@ -1682,51 +1675,47 @@ const ReportsPage: React.FC = () => {
                           )
                         ))}
                       </PaymentFilterRow>
-                      <Table>
-                        <thead>
-                          <tr>
-                            <TableHeader>{t('reports:reportsPage.cardType')}</TableHeader>
-                            <TableHeader>{t('reports:reportsPage.orders')}</TableHeader>
-                            <TableHeader>{t('reports:reportsPage.revenue')}</TableHeader>
-                            <TableHeader>{t('reports:reportsPage.shareOfCardPayments')}</TableHeader>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {cardTypeData.length === 0 ? (
+                      {cardTypeData.length === 0 ? (
+                        <DataTableEmpty>No card type data for selected filter</DataTableEmpty>
+                      ) : (
+                        <DataTable>
+                          <DataTableHead>
                             <tr>
-                              <TableCell colSpan={4} style={{ textAlign: 'center', color: '#6B7C93' }}>
-                                No card type data for selected filter
-                              </TableCell>
+                              <DataTableHeaderCell align="left">{t('reports:reportsPage.cardType')}</DataTableHeaderCell>
+                              <DataTableHeaderCell align="left">{t('reports:reportsPage.orders')}</DataTableHeaderCell>
+                              <DataTableHeaderCell align="left">{t('reports:reportsPage.revenue')}</DataTableHeaderCell>
+                              <DataTableHeaderCell align="left">{t('reports:reportsPage.shareOfCardPayments')}</DataTableHeaderCell>
                             </tr>
-                          ) : (
-                            cardTypeData.map((item: any, index: number) => {
+                          </DataTableHead>
+                          <tbody>
+                            {cardTypeData.map((item: any, index: number) => {
                               const cardTotal = reportsSummary.cardTypeSales.reduce((s: number, c: any) => s + c.revenue, 0);
                               const pct = cardTotal > 0 ? (item.revenue / cardTotal) * 100 : 0;
                               return (
-                                <tr key={item.type} style={{
+                                <DataTableRow key={item.type} style={{
                                   backgroundColor: index === 0 ? '#F5F3FF' : 'transparent'
                                 }}>
-                                  <TableCell style={{ fontWeight: 600 }}>
+                                  <DataTableCell data-label={t('reports:reportsPage.cardType')} style={{ fontWeight: 600 }}>
                                     {CARD_TYPE_LABELS[item.type] || item.type}
-                                  </TableCell>
-                                  <TableCell>{item.orders}</TableCell>
-                                  <TableCell style={{ fontWeight: 500 }}>
+                                  </DataTableCell>
+                                  <DataTableCell data-label={t('reports:reportsPage.orders')}>{item.orders}</DataTableCell>
+                                  <DataTableCell data-label={t('reports:reportsPage.revenue')} style={{ fontWeight: 500 }}>
                                     {formatCurrency(item.revenue, operationSettings.currency)}
-                                  </TableCell>
-                                  <TableCell>
+                                  </DataTableCell>
+                                  <DataTableCell data-label={t('reports:reportsPage.shareOfCardPayments')}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <ProgressBar percentage={pct} />
                                       <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
                                         {pct.toFixed(1)}%
                                       </span>
                                     </div>
-                                  </TableCell>
-                                </tr>
+                                  </DataTableCell>
+                                </DataTableRow>
                               );
-                            })
-                          )}
-                        </tbody>
-                      </Table>
+                            })}
+                          </tbody>
+                        </DataTable>
+                      )}
                     </TableCard>
                   )}
                 </div>

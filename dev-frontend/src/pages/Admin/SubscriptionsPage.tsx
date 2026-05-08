@@ -26,7 +26,8 @@ import {
 , Modal as CommonModal } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import DateRangeField from '../../components/Common/DateRangeField';
-import { getPlanPrice, formatPlanPrice, normalizeCurrencyCode, formatCurrency } from '../../utils/currency';
+import SubscriptionFormFields, { type SubscriptionValues, type UserType as SubUserType, type BillingCycle, type PaymentModel, type DiscountType } from '../../components/Subscription/SubscriptionFormFields';
+import { getPlanPrice, formatPlanPrice, normalizeCurrencyCode, formatCurrency, getActivePlanCurrencies } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
@@ -292,17 +293,22 @@ const SubscriptionsPage: React.FC = () => {
     restaurantName: '',
     planType: 'basic' as 'basic' | 'professional' | 'enterprise' | 'custom',
     customPlanName: '',
-    status: 'trial' as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
-    billingCycle: 'monthly' as 'monthly' | 'annual',
-    paymentModel: 'restaurant' as 'restaurant' | 'foodcourt_manager' | 'brand_manager' | 'restaurant_owner',
-    autoRenew: false,
+    status: 'active' as 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled',
+    billingCycle: '' as BillingCycle,            // empty by default — user must pick
+    paymentModel: 'restaurant' as PaymentModel,
+    autoRenew: true,
     email: '',
     phone: '',
     address: '',
-    monthlyFee: 29,
+    monthlyFee: 0,
     currency: 'MYR',
     startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0]
+    endDate: '',
+    treatAsTrial: false,
+    activateNow: true,
+    discountType: 'none' as DiscountType,
+    discountValue: 0,
+    discountReason: ''
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -315,7 +321,7 @@ const SubscriptionsPage: React.FC = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [customPlans, setCustomPlans] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<any[]>([]);
-  const [userType, setUserType] = useState<'restaurant' | 'brand' | 'foodcourt' | 'owner'>('restaurant');
+  const [userType, setUserType] = useState<SubUserType>('restaurant');
 
   useEffect(() => {
     fetchSubscriptions();
@@ -541,24 +547,30 @@ const SubscriptionsPage: React.FC = () => {
     const filteredPlans = availablePlans.filter(p => p.plan_target === userType);
     const firstPlan = filteredPlans.length > 0 ? filteredPlans[0] : null;
 
-    // Reset form with appropriate defaults
+    // Reset form with appropriate defaults — keep all v3.27 unified fields
     setNewSubscription({
       restaurantId: '',
       managerId: '',
       managerName: '',
       restaurantName: '',
-      planType: firstPlan ? firstPlan.display_name : 'basic',
-      customPlanName: '',
-      status: 'trial',
-      billingCycle: 'monthly',
-      paymentModel: userType === 'restaurant' ? 'restaurant' : userType === 'owner' ? 'restaurant_owner' : (userType === 'brand' ? 'brand_manager' : 'foodcourt_manager'),
-      autoRenew: false,
+      planType: 'custom',
+      customPlanName: firstPlan ? firstPlan.display_name : '',
+      status: 'active',
+      billingCycle: '',                 // empty default — user must pick
+      currency: 'MYR',
+      paymentModel: userType === 'brand' ? 'brand_manager' : userType === 'foodcourt' ? 'foodcourt_manager' : 'restaurant',
+      autoRenew: true,
       email: '',
       phone: '',
       address: '',
-      monthlyFee: firstPlan ? getPlanPrice(firstPlan, 'MYR') : 49,
+      monthlyFee: firstPlan ? getPlanPrice(firstPlan, 'MYR') : 0,
       startDate: new Date().toISOString().split('T')[0],
-      endDate: ''
+      endDate: '',
+      treatAsTrial: false,
+      activateNow: true,
+      discountType: 'none',
+      discountValue: 0,
+      discountReason: ''
     });
 
     setSelectedTarget(null);
@@ -788,10 +800,15 @@ const SubscriptionsPage: React.FC = () => {
           plan_type: newSubscription.customPlanName || 'Custom Plan',
           plan_amount: newSubscription.monthlyFee,
           billing_cycle: newSubscription.billingCycle,
+          currency: newSubscription.currency || 'MYR',
           subscription_start: newSubscription.startDate,
           subscription_end: newSubscription.endDate,
           status: newSubscription.status,
-          auto_renew: newSubscription.autoRenew
+          auto_renew: newSubscription.autoRenew,
+          // v3.27 unified subscription form fields
+          discount_type: newSubscription.discountType || 'none',
+          discount_value: newSubscription.discountValue || 0,
+          discount_reason: newSubscription.discountReason || null
         };
 
         const restaurantResponse = await fetch(`/api/restaurants/${selectedTarget.data.id}`, {
@@ -812,7 +829,12 @@ const SubscriptionsPage: React.FC = () => {
           currency: newSubscription.currency || 'MYR',
           subscription_status: newSubscription.status === 'trial' ? 'trial' : 'active',
           subscription_start: newSubscription.startDate,
-          subscription_end: newSubscription.endDate
+          subscription_end: newSubscription.endDate,
+          auto_renew: newSubscription.autoRenew,
+          // v3.27 unified subscription form fields
+          discount_type: newSubscription.discountType || 'none',
+          discount_value: newSubscription.discountValue || 0,
+          discount_reason: newSubscription.discountReason || null
         };
 
         if (role === 'Brand General' || role === 'Brand Manager') {
@@ -1298,32 +1320,28 @@ const SubscriptionsPage: React.FC = () => {
 
                   <FormGrid>
                     <FormGroup>
-                      <FormLabel>User Type *</FormLabel>
+                      <FormLabel>{t('subscription:userTypeLabel', 'User Type')} *</FormLabel>
                       <FilterSelect
                         value={userType}
                         onChange={(e) => {
-                          const newType = e.target.value as 'restaurant' | 'brand' | 'foodcourt' | 'owner';
+                          const newType = e.target.value as SubUserType;
                           setUserType(newType);
                           setSelectedTarget(null);
                           setSearchQuery('');
-
-                          // Update plan to first available for new user type
-                          const filteredPlans = availablePlans.filter(p => p.plan_target === newType);
-                          const firstPlan = filteredPlans.length > 0 ? filteredPlans[0] : null;
-                          if (firstPlan) {
-                            setNewSubscription(prev => ({
-                              ...prev,
-                              planType: firstPlan.display_name,
-                              monthlyFee: parseFloat(firstPlan.base_price_monthly),
-                              paymentModel: newType === 'restaurant' ? 'restaurant' : newType === 'owner' ? 'restaurant_owner' : (newType === 'brand' ? 'brand_manager' : 'foodcourt_manager')
-                            }));
-                          }
+                          setNewSubscription(prev => ({
+                            ...prev,
+                            planType: 'custom',
+                            customPlanName: '',
+                            monthlyFee: 0,
+                            paymentModel: newType === 'brand' ? 'brand_manager' : newType === 'foodcourt' ? 'foodcourt_manager' : 'restaurant'
+                          }));
                         }}
                       >
-                        <option value="restaurant">{t('admin:subscriptionsPage.restaurant')}</option>
-                        <option value="owner">{t('admin:subscriptionsPage.restaurantOwner')}</option>
-                        <option value="brand">{t('admin:subscriptionsPage.brandManager')}</option>
-                        <option value="foodcourt">{t('admin:subscriptionsPage.foodcourtManager')}</option>
+                        <option value="restaurant">{t('subscription:userTypeOptions.restaurant', 'Restaurant Admin')}</option>
+                        <option value="brand">{t('subscription:userTypeOptions.brand', 'Brand General')}</option>
+                        <option value="foodcourt">{t('subscription:userTypeOptions.foodcourt', 'Foodcourt General')}</option>
+                        <option value="owner">{t('subscription:userTypeOptions.owner', 'Restaurant Owner')}</option>
+                        <option value="supplier">{t('subscription:userTypeOptions.supplier', 'Supplier Admin')}</option>
                       </FilterSelect>
                     </FormGroup>
 
@@ -1462,198 +1480,45 @@ const SubscriptionsPage: React.FC = () => {
                       )}
                     </FormGroup>
 
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>Subscription Plan *</FormLabel>
-                      <FormSelect
-                        value={newSubscription.customPlanName || ''}
-                        onChange={(e) => {
-                          const selectedValue = e.target.value;
-                          if (selectedValue === 'others') {
-                            setNewSubscription({
-                              ...newSubscription,
-                              planType: 'custom',
-                              customPlanName: 'others',
-                              monthlyFee: 0
-                            });
-                          } else if (selectedValue) {
-                            // Find the selected plan to get its monthly fee
-                            const selectedPlan = availablePlans.find(p => p.display_name === selectedValue);
-                            setNewSubscription({
-                              ...newSubscription,
-                              planType: 'custom',
-                              customPlanName: selectedValue,
-                              monthlyFee: selectedPlan ? getPlanPrice(selectedPlan, normalizeCurrencyCode(selectedTarget?.data?.currency || 'MYR')) : 0
-                            });
-                          } else {
-                            setNewSubscription({
-                              ...newSubscription,
-                              planType: 'custom',
-                              customPlanName: '',
-                              monthlyFee: 0
-                            });
-                          }
+                    {/* Unified subscription fields (v3.27) — replaces the old per-page form */}
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <SubscriptionFormFields
+                        userType={userType}
+                        mode="add"
+                        availablePlans={availablePlans}
+                        planCurrencies={getActivePlanCurrencies(availablePlans)}
+                        values={{
+                          currency: newSubscription.currency || 'MYR',
+                          plan_type: newSubscription.customPlanName || '',
+                          plan_amount: String(newSubscription.monthlyFee || 0),
+                          billing_cycle: newSubscription.billingCycle || '',
+                          payment_model: newSubscription.paymentModel as PaymentModel,
+                          subscription_start: newSubscription.startDate,
+                          subscription_end: newSubscription.endDate,
+                          auto_renew: newSubscription.autoRenew,
+                          treat_as_trial: newSubscription.treatAsTrial,
+                          activate_now: newSubscription.activateNow,
+                          discount_type: newSubscription.discountType,
+                          discount_value: newSubscription.discountValue,
+                          discount_reason: newSubscription.discountReason
                         }}
-                      >
-                        <option value="">{t('admin:subscriptionsPage.selectPlan')}</option>
-                        {availablePlans
-                          .filter(p => p.plan_target === userType)
-                          .map((plan) => (
-                            <option key={plan.id} value={plan.display_name}>
-                              {plan.display_name} - {formatPlanPrice(plan, normalizeCurrencyCode(selectedTarget?.data?.currency || 'MYR'))}
-                            </option>
-                          ))}
-                        <option value="others">{t('admin:subscriptionsPage.others')}</option>
-                      </FormSelect>
-                    </FormGroup>
-
-                    {newSubscription.customPlanName === 'others' && (
-                      <>
-                        <FormGroup style={{gridColumn: '1 / -1'}}>
-                          <FormLabel>Custom Plan Name *</FormLabel>
-                          <FormInput
-                            type="text"
-                            value=""
-                            onChange={(e) => setNewSubscription({...newSubscription, customPlanName: e.target.value})}
-                            placeholder="Enter custom plan name"
-                            required
-                          />
-                        </FormGroup>
-
-                        <FormGroup>
-                          <FormLabel>Monthly Fee (RM) *</FormLabel>
-                          <FormInput
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={newSubscription.monthlyFee}
-                            onChange={(e) => setNewSubscription({...newSubscription, monthlyFee: parseFloat(e.target.value) || 0})}
-                            placeholder="0.00"
-                            required
-                          />
-                        </FormGroup>
-                      </>
-                    )}
-
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <label style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '16px 20px',
-                        background: newSubscription.status === 'trial' ? '#F0EFFF' : '#F9FAFB',
-                        borderRadius: '12px',
-                        border: newSubscription.status === 'trial' ? '2px solid #635BFF' : '2px solid #E5E7EB',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={newSubscription.status === 'trial'}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              const startDate = new Date();
-                              const endDate = new Date();
-                              endDate.setDate(endDate.getDate() + 7);
-                              setNewSubscription({
-                                ...newSubscription,
-                                status: 'trial',
-                                startDate: startDate.toISOString().split('T')[0],
-                                endDate: endDate.toISOString().split('T')[0],
-                                monthlyFee: 0
-                              });
-                            } else {
-                              setNewSubscription({
-                                ...newSubscription,
-                                status: 'active',
-                                monthlyFee: 29
-                              });
-                            }
-                          }}
-                          style={{
-                            width: '20px',
-                            height: '20px',
-                            accentColor: '#635BFF',
-                            cursor: 'pointer'
-                          }}
-                        />
-                        <div>
-                          <div style={{fontWeight: '600', color: '#1F2937', fontSize: '15px'}}>
-                            Apply 7-Day Free Trial
-                          </div>
-                          <div style={{fontSize: '13px', color: '#6B7280', marginTop: '2px'}}>
-                            Subscription will start with a 7-day free trial period
-                          </div>
-                        </div>
-                      </label>
-                    </FormGroup>
-
-                    {/* Subscription Settings Section */}
-                    <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
-                      <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
-                        Subscription Settings
-                      </h3>
-                    </div>
-
-                    <FormGroup>
-                      <FormLabel>Billing Cycle *</FormLabel>
-                      <FormSelect
-                        value={newSubscription.billingCycle || 'monthly'}
-                        onChange={handleBillingCycleChange}
-                      >
-                        <option value="monthly">{t('admin:subscriptionsPage.monthly')}</option>
-                        <option value="annual">{t('admin:subscriptionsPage.annual')}</option>
-                      </FormSelect>
-                    </FormGroup>
-
-                    <FormGroup style={{ gridColumn: 'span 2' }}>
-                      <FormLabel>Subscription Start — End Date *</FormLabel>
-                      <DateRangeField
-                        startDate={newSubscription.startDate}
-                        endDate={newSubscription.endDate}
-                        onChange={(s, e) => setNewSubscription({...newSubscription, startDate: s, endDate: e})}
+                        onChange={(patch) => setNewSubscription(prev => ({
+                          ...prev,
+                          ...(patch.currency !== undefined ? { currency: patch.currency } : {}),
+                          ...(patch.plan_type !== undefined ? { customPlanName: patch.plan_type, planType: 'custom' } : {}),
+                          ...(patch.plan_amount !== undefined ? { monthlyFee: parseFloat(patch.plan_amount) || 0 } : {}),
+                          ...(patch.billing_cycle !== undefined ? { billingCycle: patch.billing_cycle } : {}),
+                          ...(patch.payment_model !== undefined ? { paymentModel: patch.payment_model } : {}),
+                          ...(patch.subscription_start !== undefined ? { startDate: patch.subscription_start } : {}),
+                          ...(patch.subscription_end !== undefined ? { endDate: patch.subscription_end } : {}),
+                          ...(patch.auto_renew !== undefined ? { autoRenew: patch.auto_renew } : {}),
+                          ...(patch.treat_as_trial !== undefined ? { treatAsTrial: patch.treat_as_trial, status: patch.treat_as_trial ? 'trial' : 'active' } : {}),
+                          ...(patch.activate_now !== undefined ? { activateNow: patch.activate_now } : {}),
+                          ...(patch.discount_type !== undefined ? { discountType: patch.discount_type } : {}),
+                          ...(patch.discount_value !== undefined ? { discountValue: patch.discount_value } : {}),
+                          ...(patch.discount_reason !== undefined ? { discountReason: patch.discount_reason } : {}),
+                        }))}
                       />
-                    </FormGroup>
-
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
-                        <input
-                          type="checkbox"
-                          checked={newSubscription.autoRenew || false}
-                          onChange={(e) => setNewSubscription({...newSubscription, autoRenew: e.target.checked})}
-                          style={{width: '16px', height: '16px'}}
-                        />
-                        <span style={{fontSize: '14px', color: '#374151'}}>
-                          Auto-renew subscription
-                        </span>
-                      </label>
-                    </FormGroup>
-
-                    <div style={{gridColumn: '1 / -1', padding: '16px', background: '#F3F4F6', borderRadius: '8px', marginTop: '10px'}}>
-                      <div style={{fontSize: '14px', color: '#6B7280', marginBottom: '8px'}}>
-                        <strong>Summary:</strong>
-                      </div>
-                      <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
-                        {newSubscription.planType === 'custom'
-                          ? (newSubscription.customPlanName || 'Custom Plan')
-                          : (newSubscription.planType === 'basic' ? 'Basic' : newSubscription.planType === 'professional' ? 'Professional' : 'Enterprise')
-                        } Plan - {formatCurrency(newSubscription.monthlyFee || 29, normalizeCurrencyCode(selectedTarget?.data?.currency || 'MYR'))} ({newSubscription.billingCycle || 'monthly'})
-                      </div>
-                      <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
-                        Paid by: {
-                          selectedTarget
-                            ? selectedTarget.type === 'restaurant'
-                              ? `${selectedTarget.data.name} (Restaurant Admin)`
-                              : (() => {
-                                  const roleName = selectedTarget.data.role === 'Foodcourt Manager' ? 'Foodcourt Manager' :
-                                                   selectedTarget.data.role === 'Foodcourt General' ? 'Foodcourt General Manager' :
-                                                   selectedTarget.data.role === 'Brand Manager' ? 'Brand Manager' :
-                                                   selectedTarget.data.role === 'Brand General' ? 'Brand General Manager' :
-                                                   'Manager';
-                                  return `${selectedTarget.data.fullName || selectedTarget.data.full_name || selectedTarget.data.username} (${roleName})`;
-                                })()
-                            : 'Not selected'
-                        }
-                      </div>
                     </div>
                   </FormGrid>
                 

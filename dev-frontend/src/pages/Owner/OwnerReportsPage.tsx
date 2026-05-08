@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { useSearchParams } from 'react-router-dom';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
@@ -1131,42 +1132,42 @@ const OwnerReportsPage: React.FC = () => {
 
             <TableCard>
               <ChartTitle>{t('owner:ownerReportsPage.completeMenuPerformanceRanking')}</ChartTitle>
-              <Table>
-                <thead>
+              <DataTable>
+                <DataTableHead>
                   <tr>
-                    <TableHeader>{t('owner:ownerReportsPage.rank')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.menuItem')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.category')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.price')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.orders')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.revenue')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.performance')}</TableHeader>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.rank')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.menuItem')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.category')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.price')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.orders')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.revenue')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.performance')}</DataTableHeaderCell>
                   </tr>
-                </thead>
+                </DataTableHead>
                 <tbody>
                   {allMenuData.map((menu, index) => {
                     const maxOrders = allMenuData[0]?.orders || 1;
                     return (
-                      <tr key={index} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
-                        <TableCell style={{ fontWeight: 600, color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540' }}>
+                      <DataTableRow key={index} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
+                        <DataTableCell data-label={t('owner:ownerReportsPage.rank')} style={{ fontWeight: 600, color: index < 3 ? (index === 0 ? '#FFB800' : index === 1 ? '#0EA5E9' : '#6FCF97') : '#0A2540' }}>
                           #{index + 1}
-                        </TableCell>
-                        <TableCell style={{ fontWeight: 600 }}>{menu.name}</TableCell>
-                        <TableCell><span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', backgroundColor: '#F3F4F6', color: '#6B7280' }}>{menu.category}</span></TableCell>
-                        <TableCell>{formatCurrency(menu.price)}</TableCell>
-                        <TableCell>{menu.orders.toLocaleString()}</TableCell>
-                        <TableCell>{formatCurrency(menu.revenue)}</TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell data-label={t('owner:ownerReportsPage.menuItem')} style={{ fontWeight: 600 }}>{menu.name}</DataTableCell>
+                        <DataTableCell data-label={t('owner:ownerReportsPage.category')}><span style={{ padding: '2px 6px', borderRadius: '4px', fontSize: '11px', backgroundColor: '#F3F4F6', color: '#6B7280' }}>{menu.category}</span></DataTableCell>
+                        <DataTableCell data-label={t('owner:ownerReportsPage.price')}>{formatCurrency(menu.price)}</DataTableCell>
+                        <DataTableCell data-label={t('owner:ownerReportsPage.orders')}>{menu.orders.toLocaleString()}</DataTableCell>
+                        <DataTableCell data-label={t('owner:ownerReportsPage.revenue')}>{formatCurrency(menu.revenue)}</DataTableCell>
+                        <DataTableCell data-label={t('owner:ownerReportsPage.performance')}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <ProgressBar percentage={(menu.orders / maxOrders) * 100} />
                             <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{Math.round((menu.orders / maxOrders) * 100)}%</span>
                           </div>
-                        </TableCell>
-                      </tr>
+                        </DataTableCell>
+                      </DataTableRow>
                     );
                   })}
                 </tbody>
-              </Table>
+              </DataTable>
             </TableCard>
           </div>
 
@@ -1229,31 +1230,31 @@ const OwnerReportsPage: React.FC = () => {
 
             <TableCard>
               <ChartTitle>{t('owner:ownerReportsPage.peakHoursPerformance')}</ChartTitle>
-              <Table>
-                <thead>
+              <DataTable>
+                <DataTableHead>
                   <tr>
-                    <TableHeader>{t('owner:ownerReportsPage.timeSlot')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.orders')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.revenue')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.efficiency')}</TableHeader>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.timeSlot')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.orders')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.revenue')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.efficiency')}</DataTableHeaderCell>
                   </tr>
-                </thead>
+                </DataTableHead>
                 <tbody>
                   {peakTimesData.map((item, index) => (
-                    <tr key={index}>
-                      <TableCell style={{ fontWeight: 600 }}>{item.time}</TableCell>
-                      <TableCell>{item.orders}</TableCell>
-                      <TableCell>{formatCurrency(item.revenue)}</TableCell>
-                      <TableCell>
+                    <DataTableRow key={index}>
+                      <DataTableCell data-label={t('owner:ownerReportsPage.timeSlot')} style={{ fontWeight: 600 }}>{item.time}</DataTableCell>
+                      <DataTableCell data-label={t('owner:ownerReportsPage.orders')}>{item.orders}</DataTableCell>
+                      <DataTableCell data-label={t('owner:ownerReportsPage.revenue')}>{formatCurrency(item.revenue)}</DataTableCell>
+                      <DataTableCell data-label={t('owner:ownerReportsPage.efficiency')}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <ProgressBar percentage={item.efficiency} />
                           <span style={{ fontSize: '12px', color: '#6B7C93' }}>{item.efficiency}%</span>
                         </div>
-                      </TableCell>
-                    </tr>
+                      </DataTableCell>
+                    </DataTableRow>
                   ))}
                 </tbody>
-              </Table>
+              </DataTable>
             </TableCard>
           </div>
 
@@ -1270,42 +1271,43 @@ const OwnerReportsPage: React.FC = () => {
             {/* Restaurant Rankings */}
             <RankingCard>
               <ChartTitle>{t('owner:ownerReportsPage.restaurantSalesRanking')}</ChartTitle>
-              <Table>
-                <thead>
-                  <tr>
-                    <TableHeader style={{ width: '60px' }}>{t('owner:ownerReportsPage.rank')}</TableHeader>
-                    <TableHeader>{t('owner:ownerReportsPage.restaurantName')}</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>{t('owner:ownerReportsPage.orders')}</TableHeader>
-                    <TableHeader style={{ textAlign: 'right' }}>{t('owner:ownerReportsPage.revenue')}</TableHeader>
-                    <TableHeader style={{ width: '150px' }}>{t('owner:ownerReportsPage.performance')}</TableHeader>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rankingData.restaurants.map((restaurant, index) => {
-                    const maxRevenue = rankingData.restaurants[0]?.revenue || 1;
-                    const percentage = Math.round((restaurant.revenue / maxRevenue) * 100);
-                    return (
-                      <tr key={restaurant.id} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
-                        <TableCell>
-                          <RankBadge rank={index + 1}>{index + 1}</RankBadge>
-                        </TableCell>
-                        <TableCell style={{ fontWeight: 600 }}>{getRestaurantDisplayName(restaurant)}</TableCell>
-                        <TableCell style={{ textAlign: 'right' }}>{restaurant.orders.toLocaleString()}</TableCell>
-                        <TableCell style={{ textAlign: 'right', fontWeight: 600, color: '#635BFF' }}>{formatCurrency(restaurant.revenue)}</TableCell>
-                        <TableCell>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <ProgressBar percentage={percentage} />
-                            <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{percentage}%</span>
-                          </div>
-                        </TableCell>
-                      </tr>
-                    );
-                  })}
-                  {rankingData.restaurants.length === 0 && (
-                    <tr><TableCell colSpan={5} style={{ textAlign: 'center', color: '#6B7C93', padding: '20px' }}>{t('owner:ownerReportsPage.noRestaurantDataAvailable')}</TableCell></tr>
-                  )}
-                </tbody>
-              </Table>
+              {rankingData.restaurants.length === 0 ? (
+                <DataTableEmpty>{t('owner:ownerReportsPage.noRestaurantDataAvailable')}</DataTableEmpty>
+              ) : (
+                <DataTable>
+                  <DataTableHead>
+                    <tr>
+                      <DataTableHeaderCell align="left" width="60px">{t('owner:ownerReportsPage.rank')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left">{t('owner:ownerReportsPage.restaurantName')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="right">{t('owner:ownerReportsPage.orders')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="right">{t('owner:ownerReportsPage.revenue')}</DataTableHeaderCell>
+                      <DataTableHeaderCell align="left" width="150px">{t('owner:ownerReportsPage.performance')}</DataTableHeaderCell>
+                    </tr>
+                  </DataTableHead>
+                  <tbody>
+                    {rankingData.restaurants.map((restaurant, index) => {
+                      const maxRevenue = rankingData.restaurants[0]?.revenue || 1;
+                      const percentage = Math.round((restaurant.revenue / maxRevenue) * 100);
+                      return (
+                        <DataTableRow key={restaurant.id} style={{ backgroundColor: index < 3 ? (index === 0 ? '#FFF9E6' : index === 1 ? '#F0F9FF' : '#F0FDF4') : 'transparent' }}>
+                          <DataTableCell data-label={t('owner:ownerReportsPage.rank')}>
+                            <RankBadge rank={index + 1}>{index + 1}</RankBadge>
+                          </DataTableCell>
+                          <DataTableCell data-label={t('owner:ownerReportsPage.restaurantName')} style={{ fontWeight: 600 }}>{getRestaurantDisplayName(restaurant)}</DataTableCell>
+                          <DataTableCell data-label={t('owner:ownerReportsPage.orders')} align="right">{restaurant.orders.toLocaleString()}</DataTableCell>
+                          <DataTableCell data-label={t('owner:ownerReportsPage.revenue')} align="right" style={{ fontWeight: 600, color: '#635BFF' }}>{formatCurrency(restaurant.revenue)}</DataTableCell>
+                          <DataTableCell data-label={t('owner:ownerReportsPage.performance')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <ProgressBar percentage={percentage} />
+                              <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>{percentage}%</span>
+                            </div>
+                          </DataTableCell>
+                        </DataTableRow>
+                      );
+                    })}
+                  </tbody>
+                </DataTable>
+              )}
             </RankingCard>
           </div>
 

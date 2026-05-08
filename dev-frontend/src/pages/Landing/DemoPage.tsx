@@ -5,6 +5,7 @@ import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { setAuthToken } from '../../utils/auth';
 
 const PageContainer = styled.div`
@@ -248,7 +249,7 @@ const DEMO_ACCOUNTS_LIST = [
   },
   {
     key: 'demo_multi_owner',
-    role: 'Multi-Restaurant Owner',
+    role: 'Restaurant Owner',
     icon: 'O',
     color: '#7C3AED',
     description: 'Financial dashboard across multiple restaurants you own',
@@ -266,6 +267,7 @@ const DEMO_ACCOUNTS_LIST = [
 
 const DemoPage: React.FC = () => {
   const { t } = useTranslation('landing');
+  const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
   const { loginAsDemo } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
@@ -345,7 +347,7 @@ const DemoPage: React.FC = () => {
             {DEMO_ACCOUNTS_LIST.map(account => (
               <DemoCard key={account.key}>
                 <CardIcon>{account.icon}</CardIcon>
-                <CardTitle>{account.role}</CardTitle>
+                <CardTitle>{displayRole(account.role)}</CardTitle>
                 <CardDescription>{account.description}</CardDescription>
                 <FeatureList>
                   {account.features.map((feature, index) => (

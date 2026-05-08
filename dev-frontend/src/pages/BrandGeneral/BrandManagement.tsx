@@ -17,12 +17,10 @@ import {
   Modal,
   FormLabel,
   FormInput,
-  Table,
-  TableHeader,
-  TableRow,
   ActionButtons,
   IconButton
 } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { AddressFields } from '../../components/Form';
@@ -396,54 +394,62 @@ const BrandManagement: React.FC = () => {
               <Button variant="primary" onClick={handleAddBrand}>{t('brand:brandManagement.addBrand')}</Button>
             </EmptyState>
           ) : (
-            <Table>
-              <TableHeader columns="2fr 2fr 1fr 1fr 1fr 120px">
-                <span className="col-info">{t('brand:brandManagement.brand')}</span>
-                <span>{t('brand:brandManagement.description')}</span>
-                <span>{t('brand:brandManagement.restaurants')}</span>
-                <span>{t('brand:brandManagement.status')}</span>
-                <span>{t('brand:brandManagement.contact')}</span>
-                <span className="col-action">{t('brand:brandManagement.actions')}</span>
-              </TableHeader>
-              {brands.map((brand) => (
-                <TableRow key={brand.id} columns="2fr 2fr 1fr 1fr 1fr 120px">
-                  <BrandInfo className="col-info">
-                    <BrandName>{brand.name}</BrandName>
-                    <BrandCode>{brand.code}</BrandCode>
-                  </BrandInfo>
-                  <div style={{ fontSize: '13px', color: '#6B7280' }}>{brand.description || '-'}</div>
-                  <div>
-                    <RestaurantLink onClick={() => handleNavigateToRestaurants(brand)}>
-                      {brand.restaurants?.length || 0} stores
-                    </RestaurantLink>
-                  </div>
-                  <div>
-                    <StatusBadge status={brand.status}>
-                      {brand.status === 'active' ? 'Active' : 'Inactive'}
-                    </StatusBadge>
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#6B7280' }}>
-                    {brand.email || brand.phone || '-'}
-                  </div>
-                  <ActionButtons>
-                    <IconButton
-                      variant="edit"
-                      onClick={() => handleEditBrand(brand)}
-                      title="Edit"
-                    >
-                      Edit
-                    </IconButton>
-                    <IconButton
-                      variant="delete"
-                      onClick={() => handleDeleteBrand(brand)}
-                      title="Delete"
-                    >
-                      ✕
-                    </IconButton>
-                  </ActionButtons>
-                </TableRow>
-              ))}
-            </Table>
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeaderCell align="left">{t('brand:brandManagement.brand')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('brand:brandManagement.description')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('brand:brandManagement.restaurants')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('brand:brandManagement.status')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('brand:brandManagement.contact')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('brand:brandManagement.actions')}</DataTableHeaderCell>
+                </tr>
+              </DataTableHead>
+              <tbody>
+                {brands.map((brand) => (
+                  <DataTableRow key={brand.id}>
+                    <DataTableCell data-label={t('brand:brandManagement.brand')}>
+                      <BrandInfo>
+                        <BrandName>{brand.name}</BrandName>
+                        <BrandCode>{brand.code}</BrandCode>
+                      </BrandInfo>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('brand:brandManagement.description')} style={{ fontSize: '13px', color: '#6B7280' }}>{brand.description || '-'}</DataTableCell>
+                    <DataTableCell data-label={t('brand:brandManagement.restaurants')}>
+                      <RestaurantLink onClick={() => handleNavigateToRestaurants(brand)}>
+                        {brand.restaurants?.length || 0} stores
+                      </RestaurantLink>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('brand:brandManagement.status')}>
+                      <StatusBadge status={brand.status}>
+                        {brand.status === 'active' ? 'Active' : 'Inactive'}
+                      </StatusBadge>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('brand:brandManagement.contact')} style={{ fontSize: '13px', color: '#6B7280' }}>
+                      {brand.email || brand.phone || '-'}
+                    </DataTableCell>
+                    <DataTableCell data-label={t('brand:brandManagement.actions')} mobileFullWidth>
+                      <ActionButtons>
+                        <IconButton
+                          variant="edit"
+                          onClick={() => handleEditBrand(brand)}
+                          title="Edit"
+                        >
+                          Edit
+                        </IconButton>
+                        <IconButton
+                          variant="delete"
+                          onClick={() => handleDeleteBrand(brand)}
+                          title="Delete"
+                        >
+                          ✕
+                        </IconButton>
+                      </ActionButtons>
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
+              </tbody>
+            </DataTable>
           )}
 
           {/* Add/Edit Modal */}

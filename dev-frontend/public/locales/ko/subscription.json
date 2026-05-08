@@ -1,0 +1,51 @@
+{
+  "currency": "통화",
+  "planType": "플랜 유형",
+  "selectPlan": "플랜 선택",
+  "billingCycle": "결제 주기",
+  "selectCycle": "주기 선택",
+  "monthly": "월간",
+  "annual": "연간",
+  "paymentModel": "결제 주체",
+  "paymentModelOptions": {
+    "restaurant": "레스토랑 관리자",
+    "brand": "브랜드 매니저",
+    "foodcourt": "푸드코트 매니저"
+  },
+  "period": "구독 기간",
+  "endAuto": "(종료일 자동 계산)",
+  "autoRenew": "자동 갱신",
+  "settingsHeader": "구독 설정",
+  "discountHeader": "구독 할인",
+  "trial": {
+    "title": "구독 시작 전까지 무료 체험으로 처리",
+    "desc": "구독 시작일이 미래라면 그 전까지 무료 체험 상태로 운영됩니다. 체험 기간 = 구독 시작일까지의 일수 (예: 20일 후 시작이면 20일간 체험)."
+  },
+  "activateNow": {
+    "title": "지금 구독 활성화",
+    "descOn": "선택한 플랜으로 구독 인보이스가 즉시 발행됩니다.",
+    "descOff": "인보이스가 발행되지 않습니다. 하드웨어 전용 또는 플레이스홀더 계정에 사용하세요. 나중에 편집해서 활성화 가능."
+  },
+  "discount": {
+    "type": "할인 유형",
+    "none": "할인 없음",
+    "percentage": "퍼센트 (%)",
+    "fixed": "정액",
+    "valuePct": "할인율 %",
+    "valueFixed": "할인 금액",
+    "reason": "사유 (선택)",
+    "reasonPlaceholder": "예: 얼리버드, 파트너 할인"
+  },
+  "summary": "요약",
+  "summary.discount": "할인",
+  "summary.final": "최종 금액",
+  "summary.paidBy": "결제자",
+  "userTypeLabel": "사용자 유형",
+  "userTypeOptions": {
+    "restaurant": "레스토랑 관리자",
+    "brand": "브랜드 매니저",
+    "foodcourt": "푸드코트 매니저",
+    "owner": "레스토랑 오너",
+    "supplier": "공급업체 관리자"
+  }
+}

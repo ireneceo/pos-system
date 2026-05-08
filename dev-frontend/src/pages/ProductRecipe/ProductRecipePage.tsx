@@ -8,15 +8,10 @@ import {
   ActionSection,
   Content,
   Button,
-  Table,
-  TableHeader,
-  TableRow,
-  MobileLabel,
-  MobileValue,
-  MobileGrid,
   ActionButtons,
   EmptyState
 } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect } from '../../components/UI/Modal';
@@ -493,45 +488,42 @@ const ProductRecipePage: React.FC = () => {
               </div>
             </EmptyState>
           ) : (
-            <Table>
-              <TableHeader columns="2fr 1fr 1fr 1fr 1fr 150px">
-                <span className="col-info">{t('recipes:productRecipePage.product')}</span>
-                <span className="col-price">{t('recipes:productRecipePage.price')}</span>
-                <span>{t('recipes:productRecipePage.recipeStatus')}</span>
-                <span className="col-cost">{t('recipes:productRecipePage.ingredientCost')}</span>
-                <span className="col-money">{t('recipes:productRecipePage.profitMargin')}</span>
-                <span className="col-action">{t('recipes:productRecipePage.actions')}</span>
-              </TableHeader>
-              {filteredProducts.map(product => (
-                <TableRow key={product.id} columns="2fr 1fr 1fr 1fr 1fr 150px">
-                  <MobileGrid>
-                    <MobileValue className="col-info">
-                      <MobileLabel>{t('recipes:productRecipePage.product')}</MobileLabel>
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeaderCell align="left">{t('recipes:productRecipePage.product')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('recipes:productRecipePage.price')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('recipes:productRecipePage.recipeStatus')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('recipes:productRecipePage.ingredientCost')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right">{t('recipes:productRecipePage.profitMargin')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('recipes:productRecipePage.actions')}</DataTableHeaderCell>
+                </tr>
+              </DataTableHead>
+              <tbody>
+                {filteredProducts.map(product => (
+                  <DataTableRow key={product.id}>
+                    <DataTableCell data-label={t('recipes:productRecipePage.product')}>
                       <ProductInfo>
                         <ProductName>{product.name}</ProductName>
                         <ProductMeta>{product.category} {product.code && `- ${product.code}`}</ProductMeta>
                       </ProductInfo>
-                    </MobileValue>
-                    <MobileValue className="col-price">
-                      <MobileLabel>{t('recipes:productRecipePage.price')}</MobileLabel>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('recipes:productRecipePage.price')} align="right">
                       <div style={{ fontWeight: 600, color: '#0A2540' }}>
                         {formatCurrency(product.price, selectedCurrency)}
                       </div>
-                    </MobileValue>
-                    <MobileValue>
-                      <MobileLabel>{t('recipes:productRecipePage.recipeStatus')}</MobileLabel>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('recipes:productRecipePage.recipeStatus')}>
                       <StatusBadge hasRecipe={product.has_recipe}>
                         {product.has_recipe ? 'Linked' : 'No Recipe'}
                       </StatusBadge>
-                    </MobileValue>
-                    <MobileValue className="col-cost">
-                      <MobileLabel>{t('recipes:productRecipePage.ingredientCost')}</MobileLabel>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('recipes:productRecipePage.ingredientCost')} align="right">
                       <div style={{ color: product.has_recipe ? '#0A2540' : '#9CA3AF' }}>
                         {product.has_recipe ? formatCurrency(product.ingredient_cost, selectedCurrency) : '-'}
                       </div>
-                    </MobileValue>
-                    <MobileValue className="col-money">
-                      <MobileLabel>{t('recipes:productRecipePage.profitMargin')}</MobileLabel>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('recipes:productRecipePage.profitMargin')} align="right">
                       {product.profit_margin ? (
                         <ProfitBadge profit={parseFloat(product.profit_margin)}>
                           {product.profit_margin}%
@@ -539,27 +531,29 @@ const ProductRecipePage: React.FC = () => {
                       ) : (
                         <span style={{ color: '#9CA3AF' }}>-</span>
                       )}
-                    </MobileValue>
-                  </MobileGrid>
-                  <ActionButtons>
-                    <Button
-                      variant="primary"
-                      onClick={() => openRecipeModal(product)}
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
-                    >
-                      {product.has_recipe ? 'Edit' : 'Create'}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => openLinkModal(product)}
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
-                    >
-                      Link
-                    </Button>
-                  </ActionButtons>
-                </TableRow>
-              ))}
-            </Table>
+                    </DataTableCell>
+                    <DataTableCell data-label={t('recipes:productRecipePage.actions')} mobileFullWidth>
+                      <ActionButtons>
+                        <Button
+                          variant="primary"
+                          onClick={() => openRecipeModal(product)}
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                        >
+                          {product.has_recipe ? 'Edit' : 'Create'}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={() => openLinkModal(product)}
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                        >
+                          Link
+                        </Button>
+                      </ActionButtons>
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
+              </tbody>
+            </DataTable>
           )}
         </Content>
       </Container>

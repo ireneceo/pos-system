@@ -12,6 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
 import { SetupGuide, WelcomeModal } from '../../components/Common';
+import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
 import { useSetupStatus } from '../../hooks/useSetupStatus';
 
 import { getAuthToken } from '../../utils/auth';
@@ -516,6 +517,40 @@ const Badge = styled.span<{ variant: string }>`
 //   }
 // `;
 
+// System Admin walkthrough — 5 step over sidebar items + header trigger.
+const adminTourSteps = (t: (k: string, fallback?: string) => string): TourStep[] => ([
+  {
+    selector: '[data-tour="sidebar-admin-settings"]',
+    title: t('walkthrough:admin.step1.title', 'Set platform company info'),
+    description: t('walkthrough:admin.step1.description', "Configure the platform operator's business details."),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-admin-site-settings"]',
+    title: t('walkthrough:admin.step2.title', 'Configure SMTP & email'),
+    description: t('walkthrough:admin.step2.description', 'Set up the outbound email server for notifications and invoices.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-admin-plans"]',
+    title: t('walkthrough:admin.step3.title', 'Create subscription plan templates'),
+    description: t('walkthrough:admin.step3.description', 'Define the plans customers can subscribe to.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="sidebar-admin-payment"]',
+    title: t('walkthrough:admin.step4.title', 'Enable a payment channel'),
+    description: t('walkthrough:admin.step4.description', 'Turn on at least one payment channel so customers can pay subscription invoices.'),
+    position: 'right'
+  },
+  {
+    selector: '[data-tour="header-tour-trigger"]',
+    title: t('walkthrough:admin.step5.title', 'Replay anytime'),
+    description: t('walkthrough:admin.step5.description', 'Use Show me around in the header to revisit this tour whenever you need.'),
+    position: 'bottom'
+  }
+]);
+
 const AdminDashboard: React.FC = () => {
   const { t } = useTranslation('admin');
   const displayRole = useRoleDisplayName();
@@ -924,8 +959,10 @@ const AdminDashboard: React.FC = () => {
   return (
     <>
       <Container>
+        <Walkthrough tourKey="admin_dashboard" steps={adminTourSteps(t)} version={1} autoStart />
         <Header>
           <Title>{t('admin:adminDashboard.adminDashboard')}</Title>
+          <TourTrigger tourKey="admin_dashboard" />
         </Header>
 
         <Content>

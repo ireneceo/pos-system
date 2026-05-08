@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { getCurrencySymbol } from '../../utils/currency';
 import { Button } from '../../components/Button';
+import EmptyState from '../../components/Common/EmptyState';
 
 // ───── Types ─────
 interface Branch { id: number; name: string; code: string; foodcourt_id: number; is_primary?: boolean; country?: string; }
@@ -521,6 +522,38 @@ const FoodcourtFloorPlanPage: React.FC = () => {
 
   if (!fcId) return <PageContainer><LoadingScreen>No foodcourt assigned.</LoadingScreen></PageContainer>;
 
+  // Prerequisite — no branches yet → guide to /branches before anything else.
+  if (!loading && branches.length === 0) {
+    return (
+      <PageContainer>
+        <Header>
+          <HeaderLeft>
+            <HeaderTitle>{t('floorPlan.title', 'Floor Plan')}</HeaderTitle>
+            <EditBtn onClick={() => {
+              if (window.opener) window.close();
+              else navigate('/pos/foodcourt/general/dashboard');
+            }}>← {t('common.back', 'Back')}</EditBtn>
+          </HeaderLeft>
+        </Header>
+        <MainContent>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+            <EmptyState
+              title={t('floorPlan.noBranchTitle', 'No branches yet')}
+              description={t('floorPlan.noBranchDesc', 'A floor plan belongs to a branch. Register at least one branch before laying out units.')}
+              primaryAction={{ label: t('floorPlan.createBranch', 'Create Branch'), onClick: () => navigate('/pos/foodcourt/branches') }}
+              secondaryAction={canEdit ? { label: t('common.back', 'Back'), onClick: () => navigate('/pos/foodcourt/general/dashboard') } : undefined}
+              steps={[
+                { label: t('floorPlan.guideStep1', 'Register at least one branch (location).') },
+                { label: t('floorPlan.guideStep2', 'Lay out the floor plan & units.') },
+                { label: t('floorPlan.guideStep3', 'Place tenant restaurants onto units.') }
+              ]}
+            />
+          </div>
+        </MainContent>
+      </PageContainer>
+    );
+  }
+
   const currentBranch = branches.find(b => b.id === selectedBranchId);
 
   return (
@@ -559,11 +592,18 @@ const FoodcourtFloorPlanPage: React.FC = () => {
           {loading ? (
             <LoadingScreen>{t('common.loading', 'Loading...')}</LoadingScreen>
           ) : floorPlans.length === 0 ? (
-            <LoadingScreen>
-              {canEdit
-                ? t('floorPlan.emptyEdit', 'No floor plans yet. Click "Edit Layout" to create one.')
-                : t('floorPlan.empty', 'No floor plans available for this branch yet.')}
-            </LoadingScreen>
+            <div style={{ padding: 32, display: 'flex', justifyContent: 'center' }}>
+              <EmptyState
+                title={t('floorPlan.emptyTitle', 'No floor plan for this branch')}
+                description={canEdit
+                  ? t('floorPlan.emptyDescEdit', 'Open the editor to draw your unit layout. Once units are placed, tenants can be assigned to them.')
+                  : t('floorPlan.emptyDescView', 'The branch admin has not laid out the floor plan yet. Check back later.')}
+                primaryAction={canEdit && selectedBranchId ? {
+                  label: t('floorPlan.editLayout', 'Edit Layout'),
+                  onClick: () => window.open(`/pos/foodcourt/floor-plan-editor?branch=${selectedBranchId}`, '_blank')
+                } : undefined}
+              />
+            </div>
           ) : !currentPlan ? null : (
             <FloorPlanCanvas
               floorPlan={floorPlanData}

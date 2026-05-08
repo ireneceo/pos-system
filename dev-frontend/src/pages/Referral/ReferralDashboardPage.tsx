@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { useSiteTimezone } from '../../hooks/useSiteTimezone';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 
 interface WalletRow {
   currency: string;
@@ -230,30 +231,6 @@ const PrimaryBtn = styled(Btn)`
   border-color: #635BFF;
   color: white;
   &:hover { background: #5A51E6; border-color: #5A51E6; }
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-`;
-
-const Th = styled.th`
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6B7C93;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  padding: 10px 8px;
-  border-bottom: 1px solid #E6EBF1;
-`;
-
-const Td = styled.td`
-  padding: 12px 8px;
-  border-bottom: 1px solid #F1F4F8;
-  color: #0A2540;
-  vertical-align: middle;
 `;
 
 const Pill = styled.span<{ $active?: boolean }>`
@@ -526,63 +503,63 @@ const ReferralDashboardPage: React.FC = () => {
       <Block>
         <BlockTitle>{t('dashboard.referrals.title', 'My referrals')}</BlockTitle>
         {(referrals || []).length === 0 ? (
-          <Empty>
+          <DataTableEmpty>
             {t('dashboard.referrals.empty', 'No referrals yet — share your code to start earning.')}
-          </Empty>
+          </DataTableEmpty>
         ) : (
-          <Table>
-            <thead>
+          <DataTable>
+            <DataTableHead>
               <tr>
-                <Th>{t('dashboard.referrals.col.business', 'Business')}</Th>
-                <Th>{t('dashboard.referrals.col.status', 'Status')}</Th>
-                <Th>{t('dashboard.referrals.col.signedUp', 'Signed up')}</Th>
-                <Th>{t('dashboard.referrals.col.commission', 'Commission')}</Th>
+                <DataTableHeaderCell align="left">{t('dashboard.referrals.col.business', 'Business')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('dashboard.referrals.col.status', 'Status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('dashboard.referrals.col.signedUp', 'Signed up')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('dashboard.referrals.col.commission', 'Commission')}</DataTableHeaderCell>
               </tr>
-            </thead>
+            </DataTableHead>
             <tbody>
               {(referrals || []).map(r => (
-                <tr key={r.id}>
-                  <Td>{r.business_name || r.name}</Td>
-                  <Td><Pill $active={r.status === 'Active'}>{r.status}</Pill></Td>
-                  <Td>{formatDate(r.signed_up_at, tz)}</Td>
-                  <Td>
+                <DataTableRow key={r.id}>
+                  <DataTableCell data-label={t('dashboard.referrals.col.business', 'Business')}>{r.business_name || r.name}</DataTableCell>
+                  <DataTableCell data-label={t('dashboard.referrals.col.status', 'Status')}><Pill $active={r.status === 'Active'}>{r.status}</Pill></DataTableCell>
+                  <DataTableCell data-label={t('dashboard.referrals.col.signedUp', 'Signed up')}>{formatDate(r.signed_up_at, tz)}</DataTableCell>
+                  <DataTableCell data-label={t('dashboard.referrals.col.commission', 'Commission')}>
                     {Object.keys(r.commissions || {}).length === 0
                       ? <Subtle>—</Subtle>
                       : Object.entries(r.commissions).map(([c, a]) => formatMoney(a, c)).join(', ')}
-                  </Td>
-                </tr>
+                  </DataTableCell>
+                </DataTableRow>
               ))}
             </tbody>
-          </Table>
+          </DataTable>
         )}
       </Block>
 
       <Block>
         <BlockTitle>{t('dashboard.recent.title', 'Recent commissions')}</BlockTitle>
         {data.recent_commissions.length === 0 ? (
-          <Empty>{t('dashboard.recent.empty', 'No commission yet. Refer your first business to get started.')}</Empty>
+          <DataTableEmpty>{t('dashboard.recent.empty', 'No commission yet. Refer your first business to get started.')}</DataTableEmpty>
         ) : (
           <>
-            <Table>
-              <thead>
+            <DataTable>
+              <DataTableHead>
                 <tr>
-                  <Th>{t('dashboard.recent.col.date', 'Date')}</Th>
-                  <Th>{t('dashboard.recent.col.from', 'From')}</Th>
-                  <Th>{t('dashboard.recent.col.invoice', 'Invoice')}</Th>
-                  <Th>{t('dashboard.recent.col.amount', 'Amount')}</Th>
+                  <DataTableHeaderCell align="left">{t('dashboard.recent.col.date', 'Date')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('dashboard.recent.col.from', 'From')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('dashboard.recent.col.invoice', 'Invoice')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('dashboard.recent.col.amount', 'Amount')}</DataTableHeaderCell>
                 </tr>
-              </thead>
+              </DataTableHead>
               <tbody>
                 {data.recent_commissions.map(c => (
-                  <tr key={c.id}>
-                    <Td>{formatDate(c.created_at, tz)}</Td>
-                    <Td>{c.referred_name || '—'}</Td>
-                    <Td><Subtle>{c.invoice_number || '—'}</Subtle></Td>
-                    <Td>+ {formatMoney(c.amount, c.currency)}</Td>
-                  </tr>
+                  <DataTableRow key={c.id}>
+                    <DataTableCell data-label={t('dashboard.recent.col.date', 'Date')}>{formatDate(c.created_at, tz)}</DataTableCell>
+                    <DataTableCell data-label={t('dashboard.recent.col.from', 'From')}>{c.referred_name || '—'}</DataTableCell>
+                    <DataTableCell data-label={t('dashboard.recent.col.invoice', 'Invoice')}><Subtle>{c.invoice_number || '—'}</Subtle></DataTableCell>
+                    <DataTableCell data-label={t('dashboard.recent.col.amount', 'Amount')}>+ {formatMoney(c.amount, c.currency)}</DataTableCell>
+                  </DataTableRow>
                 ))}
               </tbody>
-            </Table>
+            </DataTable>
             <div style={{ marginTop: 12, textAlign: 'right' }}>
               <Link to="/referral/wallet" style={{ color: '#635BFF', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
                 {t('dashboard.viewAllInWallet', 'View all in wallet →')}

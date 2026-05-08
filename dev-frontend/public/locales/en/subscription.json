@@ -1,0 +1,51 @@
+{
+  "currency": "Currency",
+  "planType": "Plan Type",
+  "selectPlan": "Select a plan",
+  "billingCycle": "Billing Cycle",
+  "selectCycle": "Select cycle",
+  "monthly": "Monthly",
+  "annual": "Annual",
+  "paymentModel": "Payment Model",
+  "paymentModelOptions": {
+    "restaurant": "Restaurant Admin",
+    "brand": "Brand Manager",
+    "foodcourt": "Foodcourt Manager"
+  },
+  "period": "Subscription Period",
+  "endAuto": "(end auto-calculated)",
+  "autoRenew": "Auto-renew subscription",
+  "settingsHeader": "Subscription Settings",
+  "discountHeader": "Subscription Discount",
+  "trial": {
+    "title": "Treat as trial until subscription starts",
+    "desc": "If Subscription Start Date is in the future, the account is in trial until then. Trial length = days until subscription start (e.g., 20 days if start is 20 days from today)."
+  },
+  "activateNow": {
+    "title": "Activate subscription now",
+    "descOn": "A subscription invoice will be generated immediately for the plan below.",
+    "descOff": "No invoice will be generated. Use for hardware-only or placeholder accounts. You can activate later by editing this account."
+  },
+  "discount": {
+    "type": "Discount Type",
+    "none": "No discount",
+    "percentage": "Percentage (%)",
+    "fixed": "Fixed amount",
+    "valuePct": "Discount %",
+    "valueFixed": "Discount amount",
+    "reason": "Reason (optional)",
+    "reasonPlaceholder": "e.g. Early bird, partner deal"
+  },
+  "summary": "Summary",
+  "summary.discount": "Discount",
+  "summary.final": "Final",
+  "summary.paidBy": "Paid by",
+  "userTypeLabel": "User Type",
+  "userTypeOptions": {
+    "restaurant": "Restaurant Admin",
+    "brand": "Brand General",
+    "foodcourt": "Foodcourt General",
+    "owner": "Restaurant Owner",
+    "supplier": "Supplier Admin"
+  }
+}

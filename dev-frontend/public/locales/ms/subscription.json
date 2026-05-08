@@ -1,0 +1,51 @@
+{
+  "currency": "Mata wang",
+  "planType": "Jenis Pelan",
+  "selectPlan": "Pilih pelan",
+  "billingCycle": "Kitaran Bil",
+  "selectCycle": "Pilih kitaran",
+  "monthly": "Bulanan",
+  "annual": "Tahunan",
+  "paymentModel": "Model Bayaran",
+  "paymentModelOptions": {
+    "restaurant": "Pentadbir Restoran",
+    "brand": "Pengurus Jenama",
+    "foodcourt": "Pengurus Medan Selera"
+  },
+  "period": "Tempoh Langganan",
+  "endAuto": "(tarikh tamat dikira automatik)",
+  "autoRenew": "Pembaharuan automatik",
+  "settingsHeader": "Tetapan Langganan",
+  "discountHeader": "Diskaun Langganan",
+  "trial": {
+    "title": "Anggap sebagai percubaan sehingga langganan bermula",
+    "desc": "Jika Tarikh Mula Langganan di masa hadapan, akaun berada dalam percubaan sehingga ke tarikh tersebut. Tempoh percubaan = hari hingga tarikh mula."
+  },
+  "activateNow": {
+    "title": "Aktifkan langganan sekarang",
+    "descOn": "Invois langganan akan dijana serta-merta untuk pelan di bawah.",
+    "descOff": "Tiada invois akan dijana. Gunakan untuk akaun perkakasan sahaja atau penampung. Anda boleh aktifkan kemudian dengan mengedit akaun ini."
+  },
+  "discount": {
+    "type": "Jenis Diskaun",
+    "none": "Tiada diskaun",
+    "percentage": "Peratus (%)",
+    "fixed": "Jumlah tetap",
+    "valuePct": "Diskaun %",
+    "valueFixed": "Jumlah diskaun",
+    "reason": "Sebab (pilihan)",
+    "reasonPlaceholder": "cth. Diskaun awal, perjanjian rakan kongsi"
+  },
+  "summary": "Ringkasan",
+  "summary.discount": "Diskaun",
+  "summary.final": "Akhir",
+  "summary.paidBy": "Dibayar oleh",
+  "userTypeLabel": "Jenis Pengguna",
+  "userTypeOptions": {
+    "restaurant": "Pentadbir Restoran",
+    "brand": "Brand General",
+    "foodcourt": "Foodcourt General",
+    "owner": "Pemilik Restoran",
+    "supplier": "Pentadbir Pembekal"
+  }
+}

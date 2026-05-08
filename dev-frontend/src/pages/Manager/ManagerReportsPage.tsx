@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell } from '../../components/UI/DataTable';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
@@ -140,30 +141,6 @@ const ChartPlaceholder = styled.div`
   color: #6B7280;
   font-size: 14px;
   text-align: center;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const TableHeader = styled.th`
-  padding: 12px 0;
-  text-align: left;
-  border-bottom: 1px solid #F6F9FC;
-  font-size: 11px;
-  color: #6B7C93;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-`;
-
-const TableCell = styled.td`
-  padding: 12px 0;
-  text-align: left;
-  border-bottom: 1px solid #F6F9FC;
-  font-size: 13px;
-  color: #0A2540;
 `;
 
 const ProgressBar = styled.div<{ percentage: number }>`
@@ -442,43 +419,43 @@ const ManagerReportsPage: React.FC = () => {
           {/* Popular Items */}
           <ReportSection>
             <SectionTitle>{t('admin:managerReportsPage.popularItems')}</SectionTitle>
-            <Table>
-              <thead>
+            <DataTable>
+              <DataTableHead>
                 <tr>
-                  <TableHeader>{t('admin:managerReportsPage.rank')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.itemName')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.quantitySold')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.revenue')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.performance')}</TableHeader>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.rank')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.itemName')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.quantitySold')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.revenue')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.performance')}</DataTableHeaderCell>
                 </tr>
-              </thead>
+              </DataTableHead>
               <tbody>
                 {reportData.topItems.map((item, index) => {
                   const maxQuantity = reportData.topItems[0]?.quantity || 1;
                   return (
-                    <tr key={index}>
-                      <TableCell style={{ fontWeight: '600' }}>
+                    <DataTableRow key={index}>
+                      <DataTableCell data-label={t('admin:managerReportsPage.rank')} style={{ fontWeight: '600' }}>
                         #{index + 1}
                         {index === 0 && ' 🥇'}
                         {index === 1 && ' 🥈'}
                         {index === 2 && ' 🥉'}
-                      </TableCell>
-                      <TableCell style={{ fontWeight: '600' }}>{item.name}</TableCell>
-                      <TableCell>{item.quantity}</TableCell>
-                      <TableCell>{formatCurrency(item.revenue, selectedCurrency)}</TableCell>
-                      <TableCell>
+                      </DataTableCell>
+                      <DataTableCell data-label={t('admin:managerReportsPage.itemName')} style={{ fontWeight: '600' }}>{item.name}</DataTableCell>
+                      <DataTableCell data-label={t('admin:managerReportsPage.quantitySold')}>{item.quantity}</DataTableCell>
+                      <DataTableCell data-label={t('admin:managerReportsPage.revenue')}>{formatCurrency(item.revenue, selectedCurrency)}</DataTableCell>
+                      <DataTableCell data-label={t('admin:managerReportsPage.performance')}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <ProgressBar percentage={(item.quantity / maxQuantity) * 100} />
                           <span style={{ fontSize: '12px', color: '#6B7C93', minWidth: '40px' }}>
                             {Math.round((item.quantity / maxQuantity) * 100)}%
                           </span>
                         </div>
-                      </TableCell>
-                    </tr>
+                      </DataTableCell>
+                    </DataTableRow>
                   );
                 })}
               </tbody>
-            </Table>
+            </DataTable>
           </ReportSection>
 
           {/* Hourly Analysis */}
@@ -492,56 +469,56 @@ const ManagerReportsPage: React.FC = () => {
                 </div>
               </ChartPlaceholder>
             </div>
-            <Table>
-              <thead>
+            <DataTable>
+              <DataTableHead>
                 <tr>
-                  <TableHeader>{t('admin:managerReportsPage.timeSlot')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.orders')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.revenue')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.avgOrderValue')}</TableHeader>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.timeSlot')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.orders')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.revenue')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.avgOrderValue')}</DataTableHeaderCell>
                 </tr>
-              </thead>
+              </DataTableHead>
               <tbody>
                 {reportData.hourlyData.map((hourData, index) => (
-                  <tr key={index}>
-                    <TableCell style={{ fontWeight: '600' }}>{hourData.hour}</TableCell>
-                    <TableCell>{hourData.orders}</TableCell>
-                    <TableCell>{formatCurrency(hourData.revenue, selectedCurrency)}</TableCell>
-                    <TableCell>{formatCurrency(hourData.revenue / hourData.orders, selectedCurrency)}</TableCell>
-                  </tr>
+                  <DataTableRow key={index}>
+                    <DataTableCell data-label={t('admin:managerReportsPage.timeSlot')} style={{ fontWeight: '600' }}>{hourData.hour}</DataTableCell>
+                    <DataTableCell data-label={t('admin:managerReportsPage.orders')}>{hourData.orders}</DataTableCell>
+                    <DataTableCell data-label={t('admin:managerReportsPage.revenue')}>{formatCurrency(hourData.revenue, selectedCurrency)}</DataTableCell>
+                    <DataTableCell data-label={t('admin:managerReportsPage.avgOrderValue')}>{formatCurrency(hourData.revenue / hourData.orders, selectedCurrency)}</DataTableCell>
+                  </DataTableRow>
                 ))}
               </tbody>
-            </Table>
+            </DataTable>
           </ReportSection>
 
           {/* Staff Performance */}
           <ReportSection>
             <SectionTitle>{t('admin:managerReportsPage.staffPerformance')}</SectionTitle>
-            <Table>
-              <thead>
+            <DataTable>
+              <DataTableHead>
                 <tr>
-                  <TableHeader>{t('admin:managerReportsPage.staffName')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.ordersHandled')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.efficiency')}</TableHeader>
-                  <TableHeader>{t('admin:managerReportsPage.performance')}</TableHeader>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.staffName')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.ordersHandled')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.efficiency')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:managerReportsPage.performance')}</DataTableHeaderCell>
                 </tr>
-              </thead>
+              </DataTableHead>
               <tbody>
                 {reportData.staffPerformance.map((staff, index) => (
-                  <tr key={index}>
-                    <TableCell style={{ fontWeight: '600' }}>{staff.name}</TableCell>
-                    <TableCell>{staff.orders}</TableCell>
-                    <TableCell>{staff.efficiency}%</TableCell>
-                    <TableCell>
+                  <DataTableRow key={index}>
+                    <DataTableCell data-label={t('admin:managerReportsPage.staffName')} style={{ fontWeight: '600' }}>{staff.name}</DataTableCell>
+                    <DataTableCell data-label={t('admin:managerReportsPage.ordersHandled')}>{staff.orders}</DataTableCell>
+                    <DataTableCell data-label={t('admin:managerReportsPage.efficiency')}>{staff.efficiency}%</DataTableCell>
+                    <DataTableCell data-label={t('admin:managerReportsPage.performance')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <ProgressBar percentage={staff.efficiency} />
                         <span style={{ fontSize: '12px', color: '#6B7C93' }}>{staff.efficiency}%</span>
                       </div>
-                    </TableCell>
-                  </tr>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
               </tbody>
-            </Table>
+            </DataTable>
           </ReportSection>
         </Content>
       </Container>

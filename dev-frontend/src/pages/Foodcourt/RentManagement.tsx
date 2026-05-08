@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { ModalComponent, FormGroup, FormLabel, FormInput, Button, StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import ConfirmModal from '../../components/ConfirmModal';
 import DateField from '../../components/Common/DateField';
+import EmptyState from '../../components/Common/EmptyState';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -121,35 +124,6 @@ const TableContainer = styled.div`
   overflow-x: auto;
 `;
 
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-`;
-
-const TableHeader = styled.th`
-  text-align: left;
-  padding: 16px 12px;
-  border-bottom: 2px solid #E6EBF1;
-  font-weight: 600;
-  color: #374151;
-  font-size: 14px;
-  white-space: nowrap;
-`;
-
-const TableRow = styled.tr`
-  &:hover {
-    background: #F9FAFB;
-  }
-`;
-
-const TableCell = styled.td`
-  padding: 16px 12px;
-  border-bottom: 1px solid #F3F4F6;
-  font-size: 14px;
-  color: #374151;
-  white-space: nowrap;
-`;
-
 const StatusBadge = styled.span<{ status: string }>`
   padding: 6px 12px;
   border-radius: 20px;
@@ -243,6 +217,7 @@ interface Stats {
 }
 
 const RentManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [rentData, setRentData] = useState<RentData[]>([]);
   const [stats, setStats] = useState<Stats>({
@@ -419,59 +394,72 @@ const RentManagement: React.FC = () => {
           </ActionBar>
 
           <TableContainer>
-            <Table>
-              <thead>
-                <tr>
-                  <TableHeader>{'Business Name'}</TableHeader>
-                  <TableHeader>{'Owner'}</TableHeader>
-                  <TableHeader>{'Contact'}</TableHeader>
-                  <TableHeader>{'Area'}</TableHeader>
-                  <TableHeader>{'Monthly Rent'}</TableHeader>
-                  <TableHeader>{'Due Date'}</TableHeader>
-                  <TableHeader>{'Status'}</TableHeader>
-                  <TableHeader>{'Payment Date'}</TableHeader>
-                  <TableHeader>{'Contract End'}</TableHeader>
-                  <TableHeader>{'Actions'}</TableHeader>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <strong>{item.storeName}</strong>
-                    </TableCell>
-                    <TableCell>{item.owner}</TableCell>
-                    <TableCell>{item.phone}</TableCell>
-                    <TableCell>{item.area}</TableCell>
-                    <TableCell>
-                      <strong>RM {item.rentAmount.toLocaleString()}</strong>
-                    </TableCell>
-                    <TableCell>{item.dueDate}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={item.status}>
-                        {getStatusText(item.status)}
-                      </StatusBadge>
-                    </TableCell>
-                    <TableCell>
-                      {item.paymentDate || '-'}
-                    </TableCell>
-                    <TableCell>{item.contractEndDate}</TableCell>
-                    <TableCell>
-                      <ActionButtons>
-                        <SmallButton variant="primary" onClick={() => handleEditRent(item)}>
-                          Edit
-                        </SmallButton>
-                        {item.status !== 'paid' && (
-                          <SmallButton variant="danger" onClick={() => handleSendReminder(item)}>
-                            Remind
+            {filteredData.length === 0 ? (
+              rentData.length === 0 ? (
+                <EmptyState
+                  title="No tenants yet"
+                  description="Rent management lists each active tenant restaurant and their monthly billing status. Once you have tenants linked to your branch units, they will appear here."
+                  primaryAction={{ label: 'Manage Tenants', onClick: () => navigate('/pos/foodcourt/general/management') }}
+                  secondaryAction={{ label: 'Open Floor Plan', onClick: () => navigate('/pos/foodcourt/floor-plan') }}
+                />
+              ) : (
+                <DataTableEmpty>No tenants match the current filter</DataTableEmpty>
+              )
+            ) : (
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell align="left">{'Business Name'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{'Owner'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{'Contact'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{'Area'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{'Monthly Rent'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{'Due Date'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{'Status'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{'Payment Date'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{'Contract End'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{'Actions'}</DataTableHeaderCell>
+                  </tr>
+                </DataTableHead>
+                <tbody>
+                  {filteredData.map((item) => (
+                    <DataTableRow key={item.id}>
+                      <DataTableCell data-label="Business Name">
+                        <strong>{item.storeName}</strong>
+                      </DataTableCell>
+                      <DataTableCell data-label="Owner">{item.owner}</DataTableCell>
+                      <DataTableCell data-label="Contact">{item.phone}</DataTableCell>
+                      <DataTableCell data-label="Area">{item.area}</DataTableCell>
+                      <DataTableCell data-label="Monthly Rent" align="right">
+                        <strong>RM {item.rentAmount.toLocaleString()}</strong>
+                      </DataTableCell>
+                      <DataTableCell data-label="Due Date" align="center">{item.dueDate}</DataTableCell>
+                      <DataTableCell data-label="Status" align="center">
+                        <StatusBadge status={item.status}>
+                          {getStatusText(item.status)}
+                        </StatusBadge>
+                      </DataTableCell>
+                      <DataTableCell data-label="Payment Date" align="center">
+                        {item.paymentDate || '-'}
+                      </DataTableCell>
+                      <DataTableCell data-label="Contract End" align="center">{item.contractEndDate}</DataTableCell>
+                      <DataTableCell data-label="" align="right" mobileFullWidth>
+                        <ActionButtons>
+                          <SmallButton variant="primary" onClick={() => handleEditRent(item)}>
+                            Edit
                           </SmallButton>
-                        )}
-                      </ActionButtons>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </tbody>
-            </Table>
+                          {item.status !== 'paid' && (
+                            <SmallButton variant="danger" onClick={() => handleSendReminder(item)}>
+                              Remind
+                            </SmallButton>
+                          )}
+                        </ActionButtons>
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </tbody>
+              </DataTable>
+            )}
           </TableContainer>
 
           {/* Add/Edit Modal */}

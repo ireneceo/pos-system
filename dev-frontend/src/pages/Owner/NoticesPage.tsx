@@ -915,7 +915,7 @@ const NoticesPage: React.FC = () => {
                 <option value="System Admin">{'System Admin'}</option>
                 <option value="Brand General">{'Brand General'}</option>
                 <option value="Foodcourt General">{'Foodcourt General'}</option>
-                <option value="Restaurant Owner">{'Restaurant Owner'}</option>
+                <option value="Restaurant Owner">{'Multi-Restaurant Owner'}</option>
               </FilterSelect>
             )}
             <FilterSelect

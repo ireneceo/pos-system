@@ -161,10 +161,12 @@
     "brandManager": "Brand Manager",
     "foodcourtGeneral": "Foodcourt General",
     "foodcourtManager": "Foodcourt Manager",
-    "restaurantOwner": "Restaurant Owner",
+    "restaurantOwner": "Multi-Restaurant Owner",
     "restaurantAdmin": "Restaurant Admin",
     "staff": "Staff",
-    "supplier_admin": "Supplier Admin"
+    "supplier_admin": "Supplier Admin",
+    "supplierStaff": "Supplier Staff",
+    "referralPartner": "Referral Partner"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -346,7 +348,7 @@
   "noticesPage.systemAdmin": "System Admin",
   "noticesPage.brandGeneral": "Brand General",
   "noticesPage.foodcourtGeneral": "Foodcourt General",
-  "noticesPage.restaurantOwner": "Restaurant Owner",
+  "noticesPage.restaurantOwner": "Multi-Restaurant Owner",
   "noticesPage.allPriorities": "All Priorities",
   "noticesPage.normal": "Normal",
   "noticesPage.loadingNotices": "Loading notices...",
