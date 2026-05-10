@@ -1,9 +1,9 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-10 08:38
-**버전:** **v3.27** (2026-05-08 운영 배포 — backstage cleanup 누적 미배포)
-**작업 상태:** 중단 (이어서 재개 예정)
+**마지막 업데이트:** 2026-05-10 (Irene 자리 비움 — 2시간 후 재개)
+**버전:** v3.27 + WIP v3.28 (PWA push notifications 80% 구현)
+**작업 상태:** 중단 (PWA push 시스템 구현 중, 빌드/검증 전)
 
 ---
 
@@ -15,30 +15,68 @@ session-state.md 읽고 이어서 개발해.
 
 ---
 
-## 🔖 지금 중단 지점
+## 🔖 지금 중단 지점 — PWA Push Notifications (v3.28 신규 sprint)
 
-**마지막 작업:** Self-managed Restaurant 모드 구현 + 10단계 검증 모두 통과 (health-check 73/73). 커밋 `2ee2f3ac` 완료, 미배포.
+**진행 단계:** 6단계 중 5단계(코드 구현) 80% 완료. 빌드 + 검증 미수행.
 
-**바로 다음 작업:**
-- 후보 1: 운영 배포 (`/배포`) — 이번 sprint + 직전 v3.27 backstage cleanup 누적 함께 가능
-- 후보 2: 1차 조사에서 발견된 Supplier 자체 구독 흐름 미완 fix (getPlanTarget 매핑 + Subscription.payer_type ENUM)
-- 후보 3: 운영 demo 시드 ID 파라미터화 (FC44→FC1 등) 후 운영 적용
+**완료된 것 (커밋 `6bc3d3ee`):**
+
+Backend (모두 작동, pm2 재시작 + DB sync 완료):
+- `models/PushSubscription.js` 신규 (endpoint UNIQUE prefix(255) 포함)
+- `models/PushLog.js` 신규 (90일 보존 가정 / cron 정리는 별도)
+- `models/User.js` 컬럼 3개 추가: `push_enabled` BOOLEAN, `push_preferences` JSON, `push_muted_hours` JSON
+- `models/index.js` association 추가
+- `services/pushService.js` 신규 — sendPushToUser/Role/Restaurant/Brand/Foodcourt/Supplier + emitInApp 통합 + 410/404 expired_at + isValidEndpoint 4 push service host whitelist
+- `routes/push.js` 신규 — 8 endpoints (vapid-public-key, subscribe, unsubscribe, preferences GET/PUT, test, admin/stats, admin/logs) + per-user rate-limit (5/min for /test)
+- `services/socketService.js` 에 `/notifications` namespace 추가 + JWT auth middleware + room join (user/restaurant/brand/foodcourt/supplier/system_admin)
+- `routes/notification-settings.js` 에 push-only 카테고리 5개 추가 (order_new/order_status/kitchen_alert/inventory_low/staff_call)
+- `server.js` push router 등록 + `module.exports.io = io` (pushService 가 io 참조)
+- `.env` VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT 추가 (생성됨)
+- npm: `web-push` 설치
+- DB: push_subscriptions / push_logs 테이블 sync 완료, users 컬럼 추가 완료. `GET /api/push/vapid-public-key` 200 검증됨
+
+Frontend:
+- `public/manifest.json` 갱신 (icons 192/512 + start_url + scope + maskable)
+- `public/sw.js` 신규 — push event + same-origin notificationclick + Badge API + pushsubscriptionchange
+- `src/services/push.ts` 신규 — register/subscribe/unsubscribe/reconcilePermissionState/getPreferences/updatePreferences/sendTestPush
+- `src/contexts/PwaInstallContext.tsx` 신규 — beforeinstallprompt + isStandalone + iOS UA + localStorage 7일 dismiss
+- `src/components/Common/PwaInstallBanner.tsx` 신규 — Android 설치 CTA + iOS 가이드 분기
+- `src/components/Common/NotificationToaster.tsx` 신규 — Socket.IO `/notifications` 연결 + 200ms ping debounce + Web Audio chime + 권한 reconcile on focus
+- `src/pages/Landing/InstallPage.tsx` 신규 — UA 분기 (android/ios/macos/windows/desktop) + iOS 16 미만 푸시 경고
+- `src/index.tsx` SW 등록 추가
+- `src/App.tsx` PwaInstallProvider + NotificationToaster + PwaInstallBanner mount + `/install` 라우트 + import 추가
+- `src/components/Landing/LandingHeader.tsx` GNB + 모바일 메뉴에 Install App 추가
+- `public/locales/en/landing.json` installPage.* 키 28개 추가 (영어만)
+
+**남은 작업 (재개 시 순서대로):**
+
+1. **i18n 3 언어** — `public/locales/{ko,zh,ms}/landing.json` 에 영어와 동일 28 키 번역 추가
+2. **i18n common.json (4 언어)** — `pwa.installBanner.{title,iosGuide,iosOldGuide,androidDesktopGuide,installButton,dismissButton}` 6 키 + `nav.install` 1 키
+3. **Settings 페이지에 Push 토글** — 기존 NotificationSettings 페이지에 master toggle + 카테고리 on/off + muted hours 설정 + Test 버튼 (subscribeToPush/sendTestPush 호출)
+4. **빌드** — `cd /var/www/dev-frontend && npm run build:dev` (run_in_background, CRA 빌드)
+5. **검증 (10단계 /검증)**:
+   - 0. state-hydration-check
+   - 1. 빌드 성공
+   - 2. pm2 dev-backend 재시작 + 에러로그
+   - 3. API 실호출 — VAPID/subscribe (mock endpoint test) + preferences GET/PUT + /test rate-limit (6번째 요청 429 확인) + admin/stats/logs
+   - 4. 프론트 SW 등록 확인 (curl /sw.js 200 + manifest.json + chunk 안 push.ts/Toaster/Banner 키 포함)
+   - 5. 5 역할 socket 연결 + room join 검증 (token 위조 시 connect_error)
+   - 6. 요구사항 대조 (PlanQ 개선 7개 모두 반영 — rate-limit / form dirty reload / ping debounce / endpoint host 검증 / endpoint reassign cleanup / PushLog / 권한 회수 자동)
+   - 7. 연관 영향 (기존 socket.io /orders namespace 영향 없음)
+   - 8. UI/UX (banner + toaster 디자인 토큰 일치)
+   - 9. SPA 라우팅 /install 200
+   - 10. health-check 73/73
+6. **설계 문서 작성** — `docs/PWA_PUSH_NOTIFICATIONS.md` (1~6단계 산출물)
+7. **session-state + DEVELOPMENT_PLAN 업데이트** — backstage cleanup? 아니면 신규 기능이라 v3.28 버전 상승? **신규 기능이라 v3.28 상승이 맞음** — 기존 사용자 영향 없는 선택적 기능이므로 CHANGELOG `[v3.28]` 추가 + 운영 배포 시 VAPID 키 운영 .env 따로 생성 필요 (dev 키 절대 운영 사용 X)
 
 **맥락 유지할 것:**
-- DB 모델 변경 없이 기존 nullable 컬럼 + activate_subscription 분기로 self-managed 구현 (일 안 키움)
-- Add/Edit 모달 토글 OFF → plan 섹션 hide + Self-managed 회색 banner + 목록 회색 배지
-- 검증 중 발견한 NULL guard 부재 2곳 (`restaurants-subscription.js:243` + `SubscriptionsPage.tsx:164,171`) 같이 수정
+- PlanQ 코드 절대 수정 X (메모리 [PlanQ 서버 정보])
+- PlanQ 에서 발견한 7개 개선사항 모두 반영 — rate-limit ✓ / endpoint host whitelist ✓ / endpoint reassign soft-delete ✓ / PushLog ✓ / 권한 회수 자동 ✓ / 200ms ping debounce ✓ / form dirty reload skip = 아직 미적용 (BUILD_ID 자동 무효화 자체를 이번 sprint 에서 안 만들었음 — POS 는 CRA 라 PlanQ Vite 패턴 다름. 별도 sprint)
+- /install 페이지 헤더에서 진입, beforeinstallprompt 받으면 Banner 자동 표시
+- iOS 16.4 미만은 PWA 설치 OK + 푸시 X — InstallPage 와 Banner 모두 안내
+- Subscription.payer_type ENUM 'supplier' 도 모델만 추가 (DB 레거시 — 별도 sprint)
 
----
-
-## 📦 이번 세션 작업 요약
-
-- BG/FG/Supplier 단독 사용 모드 광범위 조사 (Restaurant 추가 시 구독 강제 = 핵심 차단점 식별)
-- Self-managed Restaurant 모드 구현 (Backend POST/PUT 분기 + Frontend Add/Edit 모달 + 목록 배지 + i18n 4언어 6키)
-- NULL guard 부재 2곳 추가 fix (subscriptions list 렌더링 안전망)
-- 검증 10단계 + health-check 73/73 모두 통과
-
-**커밋:** `2ee2f3ac` chore: 세션 중간 저장 - Self-managed Restaurant 모드 (backstage cleanup, 미배포)
+**WIP commit:** `6bc3d3ee`
 
 ---
 
