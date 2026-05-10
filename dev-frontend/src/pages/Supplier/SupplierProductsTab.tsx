@@ -14,6 +14,7 @@ import {
   FormSelect,
   FormTextArea
 } from '../../components/UI/Modal';
+import { FormGrid2, FormGrid4 } from '../../components/UI/FormGrid';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import { getAuthToken } from '../../utils/auth';
@@ -945,7 +946,7 @@ const SupplierProductsTab: React.FC<Props> = ({
           <form onSubmit={handleSubmit}>
             {formError && <ErrorBanner style={{ marginTop: 0, marginBottom: 16 }}>{formError}</ErrorBanner>}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <FormGrid2>
               <UIFormGroup>
                 <FormLabel>{t('products.fields.name', 'Product Name')} *</FormLabel>
                 <FormInput
@@ -966,7 +967,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                   placeholder="Auto-generated if empty"
                 />
               </UIFormGroup>
-            </div>
+            </FormGrid2>
 
             <UIFormGroup>
               <FormLabel>{t('products.fields.category', 'Category')}</FormLabel>
@@ -993,7 +994,7 @@ const SupplierProductsTab: React.FC<Props> = ({
               />
             </UIFormGroup>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '16px' }}>
+            <FormGrid4>
               <UIFormGroup>
                 <FormLabel>{t('products.fields.unitPrice', 'Unit Price')} (RM) *</FormLabel>
                 <FormInput
@@ -1045,9 +1046,9 @@ const SupplierProductsTab: React.FC<Props> = ({
                   }
                 />
               </UIFormGroup>
-            </div>
+            </FormGrid4>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <FormGrid2>
               <UIFormGroup>
                 <FormLabel>
                   {t('products.fields.lowStockThreshold', 'Low Stock Threshold')}
@@ -1072,7 +1073,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                   onChange={(e) => setFormData({ ...formData, lead_time_days: e.target.value })}
                 />
               </UIFormGroup>
-            </div>
+            </FormGrid2>
 
             <UIFormGroup>
               <FormLabel>{t('products.fields.image', 'Product Image')}</FormLabel>

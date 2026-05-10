@@ -10,6 +10,7 @@ import {
   Modal
 } from '../../components/UI';
 import { SearchInput } from '../../components/Common/FilterComponents';
+import { FormGrid3 } from '../../components/UI/FormGrid';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
@@ -1259,7 +1260,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         ) : (
           <div style={{ display: 'grid', gap: 16 }}>
             {/* Header summary */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <FormGrid3>
               <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8 }}>
                 <div style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase' }}>
                   {tNs('orders.detail.buyer', 'Buyer')}
@@ -1287,7 +1288,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                   {formatMoney(detailFull.total_amount, detailFull.currency)}
                 </div>
               </div>
-            </div>
+            </FormGrid3>
 
             {/* Items */}
             <div>

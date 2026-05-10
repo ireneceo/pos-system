@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { EmptyState } from '../../components/UI/TableComponents';
+import { FormGrid2 } from '../../components/UI/FormGrid';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
 import {
@@ -554,7 +555,7 @@ const SupplierProductOptionsTab: React.FC<Props> = ({ onCountChange, onOptionGro
             </CheckboxLabel>
           </UIFormGroup>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <FormGrid2>
             <UIFormGroup>
               <FormLabel>Min Selections</FormLabel>
               <FormInput
@@ -577,7 +578,7 @@ const SupplierProductOptionsTab: React.FC<Props> = ({ onCountChange, onOptionGro
                 }
               />
             </UIFormGroup>
-          </div>
+          </FormGrid2>
 
           <UIFormGroup>
             <FormLabel>Options *</FormLabel>

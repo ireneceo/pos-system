@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
+import { FormGrid2 } from '../../components/UI/FormGrid';
 import {
   Container,
   Header,
@@ -662,7 +663,7 @@ const SupplierSystemInquiryPage: React.FC = () => {
             }
           >
             <div style={{ display: 'grid', gap: '20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <FormGrid2>
                 <div>
                   <FormLabel>Ticket Number</FormLabel>
                   <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: 600 }}>
@@ -675,9 +676,9 @@ const SupplierSystemInquiryPage: React.FC = () => {
                     <StatusBadge status={selectedTicket.status}>{selectedTicket.status}</StatusBadge>
                   </div>
                 </div>
-              </div>
+              </FormGrid2>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <FormGrid2>
                 <div>
                   <FormLabel>Priority</FormLabel>
                   <div style={{ padding: '8px 0' }}>
@@ -692,7 +693,7 @@ const SupplierSystemInquiryPage: React.FC = () => {
                     {selectedTicket.category.replace('-', ' ')}
                   </div>
                 </div>
-              </div>
+              </FormGrid2>
 
               <div>
                 <FormLabel>Subject</FormLabel>
@@ -721,7 +722,7 @@ const SupplierSystemInquiryPage: React.FC = () => {
                 <AttachmentList attachments={selectedTicket.attachments} />
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <FormGrid2>
                 <div>
                   <FormLabel>Created At</FormLabel>
                   <div style={{ padding: '8px 0', color: '#6B7280' }}>
@@ -734,7 +735,7 @@ const SupplierSystemInquiryPage: React.FC = () => {
                     {formatDateTime(selectedTicket.updatedAt)}
                   </div>
                 </div>
-              </div>
+              </FormGrid2>
 
               <CommentSection
                 entityType="support_ticket"
