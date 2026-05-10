@@ -313,7 +313,7 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 
   try {
-    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, monthly_salary, pin_code, skip_verification: skipVerification } = req.body;
+    const { username, email, password, role, full_name, first_name, last_name, phone, permissions, restaurantId, restaurant_id, department, company_name, manager_id, pin_code, skip_verification: skipVerification } = req.body;
     // Support both camelCase (new) and snake_case (legacy) for restaurant ID
     let finalRestaurantId = restaurantId || restaurant_id;
 
@@ -1089,18 +1089,70 @@ router.post('/:id/reset-password', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, error: `${user.is_demo ? 'Demo' : 'Test'} account passwords cannot be changed.` });
     }
 
-    // 권한 체크: System Admin은 모두 가능, Restaurant Admin은 자기 레스토랑 스태프만
+    // 권한 체크 (계층):
+    //   System Admin     → 모든 user
+    //   Brand General    → 본인 brand 산하 매장의 user (Restaurant Admin / Staff / Brand Manager)
+    //   Foodcourt General→ 본인 foodcourt 산하 매장의 user + Foodcourt Manager
+    //   Restaurant Admin → 본인 매장의 Staff (+ 본인 자신)
+    //   Restaurant Owner → 본인 소유 매장의 user
+    //   기타             → 차단
+    const FORBIDDEN_RESP = { success: false, error: { message: 'Not authorized to reset this user\'s password', code: 'FORBIDDEN' } };
+
     if (req.user.role === 'System Admin') {
       // OK
+    } else if (req.user.role === 'Brand General') {
+      const Brand = require('../models/Brand');
+      const myBrands = await Brand.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+      const myBrandIds = myBrands.map(b => b.id);
+      if (myBrandIds.length === 0) return res.status(403).json(FORBIDDEN_RESP);
+
+      // 분기 by target role:
+      //   Brand Manager / Brand General → user.brand_id 가 myBrandIds 에 있어야
+      //   Restaurant Admin / Staff      → restaurant.brand_id 가 myBrandIds 에 있어야
+      //   그 외 (System Admin / Owner / Supplier 등) → 차단
+      let allowed = false;
+      if (['Brand Manager', 'Brand General'].includes(user.role)) {
+        allowed = !!user.brand_id && myBrandIds.includes(user.brand_id);
+      } else if (['Restaurant Admin', 'Staff'].includes(user.role) && user.restaurant_id) {
+        const Restaurant = require('../models/Restaurant');
+        const r = await Restaurant.findByPk(user.restaurant_id, { attributes: ['brand_id'] });
+        allowed = !!r && myBrandIds.includes(r.brand_id);
+      }
+      if (!allowed) return res.status(403).json(FORBIDDEN_RESP);
+    } else if (req.user.role === 'Foodcourt General') {
+      const Foodcourt = require('../models/Foodcourt');
+      const myFoodcourts = await Foodcourt.findAll({ where: { owner_id: req.user.id }, attributes: ['id'] });
+      const myFoodcourtIds = myFoodcourts.map(f => f.id);
+      if (myFoodcourtIds.length === 0) return res.status(403).json(FORBIDDEN_RESP);
+
+      let allowed = false;
+      if (['Foodcourt Manager', 'Foodcourt General'].includes(user.role)) {
+        allowed = !!user.foodcourt_id && myFoodcourtIds.includes(user.foodcourt_id);
+      } else if (['Restaurant Admin', 'Staff'].includes(user.role) && user.restaurant_id) {
+        const Restaurant = require('../models/Restaurant');
+        const r = await Restaurant.findByPk(user.restaurant_id, { attributes: ['foodcourt_id'] });
+        allowed = !!r && myFoodcourtIds.includes(r.foodcourt_id);
+      }
+      if (!allowed) return res.status(403).json(FORBIDDEN_RESP);
     } else if (req.user.role === 'Restaurant Admin') {
       if (!req.user.restaurant_id || user.restaurant_id?.toString() !== req.user.restaurant_id.toString()) {
-        return res.status(403).json({ success: false, error: { message: 'You can only reset passwords for your own restaurant staff', code: 'FORBIDDEN' } });
+        return res.status(403).json(FORBIDDEN_RESP);
       }
       if (user.role !== 'Staff' && user.id !== req.user.id) {
-        return res.status(403).json({ success: false, error: { message: 'You can only reset passwords for Staff members', code: 'FORBIDDEN' } });
+        return res.status(403).json(FORBIDDEN_RESP);
+      }
+    } else if (req.user.role === 'Restaurant Owner') {
+      const RestaurantManager = require('../models/RestaurantManager');
+      const owned = await RestaurantManager.findAll({
+        where: { manager_id: req.user.id, relationship_type: 'ownership' },
+        attributes: ['restaurant_id']
+      });
+      const ownedIds = owned.map(o => o.restaurant_id);
+      if (!user.restaurant_id || !ownedIds.includes(user.restaurant_id)) {
+        return res.status(403).json(FORBIDDEN_RESP);
       }
     } else {
-      return res.status(403).json({ success: false, error: { message: 'Not authorized to reset passwords', code: 'FORBIDDEN' } });
+      return res.status(403).json(FORBIDDEN_RESP);
     }
 
     // 강력한 임시 비밀번호 생성 (12자)

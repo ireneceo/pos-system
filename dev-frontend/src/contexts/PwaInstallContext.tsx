@@ -69,19 +69,20 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return choice.outcome;
   }, [deferred]);
 
+  const [dismissedUntil, setDismissedUntil] = useState<number>(() => {
+    try {
+      const v = localStorage.getItem(DISMISS_KEY);
+      return v ? parseInt(v, 10) : 0;
+    } catch { return 0; }
+  });
+
   const dismissBanner = useCallback((days = 7) => {
     const until = Date.now() + days * 24 * 3600 * 1000;
     try { localStorage.setItem(DISMISS_KEY, String(until)); } catch {}
+    setDismissedUntil(until);
   }, []);
 
-  const isDismissed = (() => {
-    try {
-      const v = localStorage.getItem(DISMISS_KEY);
-      if (!v) return false;
-      return Date.now() < parseInt(v, 10);
-    } catch { return false; }
-  })();
-
+  const isDismissed = Date.now() < dismissedUntil;
   const shouldShowBanner = !isStandalone && !isDismissed && (Boolean(deferred) || isIOS);
 
   return (

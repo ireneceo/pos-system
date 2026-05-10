@@ -60,7 +60,6 @@ interface Staff {
   status: 'active' | 'inactive';
   joinDate: string;
   lastActive: string;
-  salary?: number;
   permissions: string[];
   is_demo?: boolean;
   is_test?: boolean;
@@ -416,7 +415,6 @@ const AdminStaffManagementPage: React.FC = () => {
     department: '',
     restaurantId: '',
     companyName: '',
-    salary: '',
     pin_code: ''
   });
   const [formError, setFormError] = useState('');
@@ -507,9 +505,6 @@ const AdminStaffManagementPage: React.FC = () => {
                 status: 'active' as const,
                 joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
                 lastActive: 'Active',
-                salary:
-                       user.role === 'System Admin' ? 12000 :
-                       user.role === 'Restaurant Admin' ? 5000 : 3000,
                 permissions: user.role === 'System Admin' ? ['all'] :
                             user.role === 'Restaurant Admin' ? ['pos', 'inventory', 'reports'] :
                             ['pos'],
@@ -576,8 +571,7 @@ const AdminStaffManagementPage: React.FC = () => {
     restaurantAdmin: staffList.filter(s => s.role === 'Restaurant Admin').length,
     staff: staffList.filter(s => s.role === 'Staff').length,
     managers: staffList.filter(s => managerRoles.includes(s.role)).length,
-    active: staffList.filter(s => s.status === 'active').length,
-    totalSalary: staffList.filter(s => s.salary).reduce((sum, s) => sum + (s.salary || 0), 0)
+    active: staffList.filter(s => s.status === 'active').length
   };
 
   // CSV 변환 함수
@@ -610,7 +604,6 @@ const AdminStaffManagementPage: React.FC = () => {
       'Role': staff.role,
       'Department': staff.department,
       'Status': staff.status,
-      'Salary': staff.salary ? formatCurrency(staff.salary, operationSettings.currency) : 'N/A',
       'Phone': staff.phone,
       'Join Date': staff.joinDate,
       'Last Active': staff.lastActive
@@ -647,7 +640,6 @@ const AdminStaffManagementPage: React.FC = () => {
       department: '',
       restaurantId: '',
       companyName: '',
-      salary: '',
       pin_code: ''
     });
   };
@@ -805,7 +797,6 @@ const AdminStaffManagementPage: React.FC = () => {
               status: 'active' as const,
               joinDate: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : '2024-01-01',
               lastActive: 'Active',
-              salary: 0,
               permissions: user.permissions || []
             };
           });
@@ -1366,11 +1357,6 @@ const AdminStaffManagementPage: React.FC = () => {
               <StatLabel>{t('admin:staffManagementPage.activeStaff')}</StatLabel>
               <StatDescription>{Math.round((stats.active/stats.total)*100)}% of total</StatDescription>
             </StatCard>
-            <StatCard color="#D97706">
-              <StatValue>{formatCurrency(stats.totalSalary, operationSettings.currency)}</StatValue>
-              <StatLabel>{t('admin:staffManagementPage.monthlyPayroll')}</StatLabel>
-              <StatDescription>{t('admin:staffManagementPage.allStaffCombined')}</StatDescription>
-            </StatCard>
           </StatsGrid>
 
           <Tabs>
@@ -1437,7 +1423,6 @@ const AdminStaffManagementPage: React.FC = () => {
               <span>{t('admin:staffManagementPage.role')}</span>
               <span>{t('admin:staffManagementPage.department')}</span>
               <span>{t('admin:staffManagementPage.status')}</span>
-              <span className="col-salary">{t('admin:staffManagementPage.salary')}</span>
               <span className="col-action">{t('admin:staffManagementPage.actions')}</span>
             </StaffTableHeader>
 
@@ -1493,13 +1478,6 @@ const AdminStaffManagementPage: React.FC = () => {
                       <StatusBadge status={staff.status}>
                         {staff.status === 'active' ? 'Active' : 'Inactive'}
                       </StatusBadge>
-                    </MobileValue>
-
-                    <MobileValue className="col-salary">
-                      <MobileLabel>{t('admin:staffManagementPage.salary')}</MobileLabel>
-                      <div style={{ fontSize: '13px', color: '#374151', fontWeight: '600' }}>
-                        {staff.salary ? formatCurrency(staff.salary, operationSettings.currency) : 'N/A'}
-                      </div>
                     </MobileValue>
                   </MobileGrid>
 
@@ -1721,15 +1699,6 @@ const AdminStaffManagementPage: React.FC = () => {
                 </FormGroup>
               )}
 
-              <FormGroup>
-                <Label>{t('admin:staffManagementPage.monthlySalaryRm')}</Label>
-                <Input
-                  type="number"
-                  value={newStaff.salary}
-                  onChange={(e) => handleInputChange('salary', e.target.value)}
-                  placeholder="Enter monthly salary"
-                />
-              </FormGroup>
             </FormGrid>
 
             {formError && (
@@ -1901,16 +1870,6 @@ const AdminStaffManagementPage: React.FC = () => {
                       </div>
                     </FormGroup>
                   )}
-
-                  <FormGroup>
-                    <Label>{t('admin:staffManagementPage.monthlySalaryRm')}</Label>
-                    <Input
-                      type="number"
-                      value={editingStaff.salary?.toString() || ''}
-                      onChange={(e) => setEditingStaff({...editingStaff, salary: parseFloat(e.target.value) || 0})}
-                      placeholder="Enter monthly salary"
-                    />
-                  </FormGroup>
                 </FormGrid>
 
               </>
