@@ -87,10 +87,10 @@ const Container = styled.div`
 `;
 
 const LanguageBar = styled.div`
-  position: absolute;
+  position: fixed;
   top: 16px;
   right: 24px;
-  z-index: 10;
+  z-index: 100;
 
   @media (max-width: 480px) {
     top: 12px;
