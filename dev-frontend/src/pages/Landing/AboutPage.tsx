@@ -81,6 +81,160 @@ const Section = styled.section`
   }
 `;
 
+const SectionEyebrow = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #635BFF;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+`;
+
+const CardGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const PainCard = styled.div`
+  background: #FAFBFC;
+  border: 1px solid #E6EBF1;
+  border-radius: 12px;
+  padding: 24px;
+  border-left: 4px solid #EF4444;
+`;
+
+const PainTitle = styled.h3`
+  font-size: 17px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 8px;
+  line-height: 1.4;
+`;
+
+const PainDesc = styled.p`
+  font-size: 14px;
+  color: #6B7C93;
+  line-height: 1.6;
+  margin: 0;
+`;
+
+const SolutionGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const SolutionCard = styled.div`
+  background: #FAFBFC;
+  border: 1px solid #E6EBF1;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const SolutionRole = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: #635BFF;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+`;
+
+const SolutionTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0;
+  line-height: 1.4;
+`;
+
+const SolutionPainLabel = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: #EF4444;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+`;
+
+const SolutionLine = styled.p`
+  font-size: 14px;
+  color: #6B7C93;
+  line-height: 1.6;
+  margin: 0;
+`;
+
+const SolutionWinLabel = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: #10B981;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+`;
+
+const WhyGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-top: 24px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const WhyPoint = styled.div`
+  padding: 20px;
+  border: 1px solid #E6EBF1;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAFBFF 100%);
+`;
+
+const WhyPointNumber = styled.div`
+  font-size: 12px;
+  font-weight: 700;
+  color: #635BFF;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+`;
+
+const WhyPointTitle = styled.h3`
+  font-size: 18px;
+  font-weight: 600;
+  color: #0A2540;
+  margin: 0 0 8px;
+  line-height: 1.4;
+`;
+
+const WhyPointDesc = styled.p`
+  font-size: 14px;
+  color: #6B7C93;
+  line-height: 1.6;
+  margin: 0;
+`;
+
+const CTAButtonRow = styled.div`
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 16px;
+`;
+
 const SectionTitle = styled.h2`
   font-size: 24px;
   font-weight: 700;
@@ -141,20 +295,22 @@ const CTATitle = styled.h2`
   margin-bottom: 16px;
 `;
 
-const CTAButton = styled.button`
-  background: white;
-  color: #635BFF;
-  border: none;
-  padding: 14px 32px;
-  font-size: 16px;
+const CTAButton = styled.button<{ variant?: 'primary' | 'secondary' | 'tertiary' }>`
+  background: ${p => p.variant === 'secondary' ? 'transparent' : p.variant === 'tertiary' ? 'transparent' : 'white'};
+  color: ${p => p.variant === 'secondary' || p.variant === 'tertiary' ? 'white' : '#635BFF'};
+  border: ${p => p.variant === 'secondary' ? '2px solid white' : p.variant === 'tertiary' ? 'none' : 'none'};
+  padding: ${p => p.variant === 'tertiary' ? '10px 18px' : '14px 32px'};
+  font-size: ${p => p.variant === 'tertiary' ? '14px' : '16px'};
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  text-decoration: ${p => p.variant === 'tertiary' ? 'underline' : 'none'};
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    transform: ${p => p.variant === 'tertiary' ? 'none' : 'translateY(-2px)'};
+    box-shadow: ${p => p.variant === 'tertiary' ? 'none' : '0 8px 20px rgba(0, 0, 0, 0.2)'};
+    opacity: ${p => p.variant === 'tertiary' ? '0.85' : '1'};
   }
 
   @media (max-width: 768px) {
@@ -168,93 +324,98 @@ const AboutPage: React.FC = () => {
   return (
     <LandingLayout>
       <SEOHead
-        title="About PurpleHere - Our Story & Mission"
-        description="Learn about PurpleHere, the cloud POS platform built for restaurants, brands, and food courts. Our mission is to simplify restaurant management."
-        keywords="about PurpleHere, restaurant POS company, cloud POS platform, restaurant technology"
+        title={t('landing:aboutPage.seo.title')}
+        description={t('landing:aboutPage.seo.description')}
+        keywords="restaurant POS, cloud POS, brand chain POS, foodcourt POS, supplier POS, multi-outlet management, mobile ordering"
         canonicalUrl="https://purplehere.com/about"
       />
       <PageContainer>
+        {/* HERO */}
         <HeroSection>
-          <HeroTitle>{t('landing:aboutPage.aboutPurplehere')}</HeroTitle>
-          <HeroSubtitle>
-            {t('landing:aboutPage.whereInnovationMeetsFoodBusiness')}
-          </HeroSubtitle>
+          <HeroTitle>{t('landing:aboutPage.hero.title')}</HeroTitle>
+          <HeroSubtitle>{t('landing:aboutPage.hero.subtitle')}</HeroSubtitle>
+          <CTAButtonRow style={{ marginTop: 20 }}>
+            <CTAButton onClick={() => navigate('/signup')}>
+              {t('landing:aboutPage.hero.ctaPrimary')}
+            </CTAButton>
+            <CTAButton variant="secondary" onClick={() => navigate('/features')}>
+              {t('landing:aboutPage.hero.ctaSecondary')}
+            </CTAButton>
+          </CTAButtonRow>
         </HeroSection>
 
         <ContentSection>
+          {/* SECTION 1 — Problem */}
           <Section>
-            <SectionTitle>{t('landing:aboutPage.ourStory')}</SectionTitle>
-            <Paragraph>
-              <strong>{t('landing:aboutPage.likeAPurpleCowStandingOutThroughCreativeInnovation')}</strong>
-            </Paragraph>
-            <Paragraph>
-              PurpleHere is inspired by Seth Godin's "Purple Cow" - a remarkable solution that stands out
-              in the foodcourt and chain restaurant industry. We break conventional thinking and deliver
-              innovation that truly matters.
-            </Paragraph>
-            <Paragraph>
-              <strong>"Here"</strong> represents the central hub where all your outlets, data, and solutions
-              converge into one unified platform. It embodies the immediacy of "start right here, right now"
-              and serves as the place where everything comes together.
-            </Paragraph>
+            <SectionEyebrow>{t('landing:aboutPage.problem.eyebrow')}</SectionEyebrow>
+            <SectionTitle>{t('landing:aboutPage.problem.title')}</SectionTitle>
+            <Paragraph>{t('landing:aboutPage.problem.lead')}</Paragraph>
+            <CardGrid>
+              {(['card1', 'card2', 'card3'] as const).map(key => (
+                <PainCard key={key}>
+                  <PainTitle>{t(`landing:aboutPage.problem.${key}.title`)}</PainTitle>
+                  <PainDesc>{t(`landing:aboutPage.problem.${key}.desc`)}</PainDesc>
+                </PainCard>
+              ))}
+            </CardGrid>
           </Section>
 
+          {/* SECTION 2 — Solutions by role */}
           <Section>
-            <SectionTitle>{t('landing:aboutPage.ourVision')}</SectionTitle>
-            <Paragraph>
-              <strong>"Not Just Another POS, But a Creative Unified Platform"</strong>
-            </Paragraph>
-            <Paragraph>
-              Beyond simple order processing, we revolutionize the entire food business operation like
-              a purple cow in the field. Our goal is to digitalize every aspect of store management,
-              maximize operational efficiency, and empower data-driven decision making.
-            </Paragraph>
+            <SectionEyebrow>{t('landing:aboutPage.solutions.eyebrow')}</SectionEyebrow>
+            <SectionTitle>{t('landing:aboutPage.solutions.title')}</SectionTitle>
+            <Paragraph>{t('landing:aboutPage.solutions.lead')}</Paragraph>
+            <SolutionGrid>
+              {(['singleStore', 'brand', 'foodcourt', 'owner', 'supplier'] as const).map(key => (
+                <SolutionCard key={key}>
+                  <SolutionRole>{t(`landing:aboutPage.solutions.${key}.role`)}</SolutionRole>
+                  <SolutionTitle>{t(`landing:aboutPage.solutions.${key}.title`)}</SolutionTitle>
+                  <div>
+                    <SolutionPainLabel>{t('landing:aboutPage.solutions.painLabel')}</SolutionPainLabel>
+                    <SolutionLine>{t(`landing:aboutPage.solutions.${key}.problem`)}</SolutionLine>
+                  </div>
+                  <div>
+                    <SolutionWinLabel>{t('landing:aboutPage.solutions.winLabel')}</SolutionWinLabel>
+                    <SolutionLine>{t(`landing:aboutPage.solutions.${key}.solution`)}</SolutionLine>
+                  </div>
+                </SolutionCard>
+              ))}
+            </SolutionGrid>
           </Section>
 
+          {/* SECTION 3 — Why PurpleHere */}
           <Section>
-            <SectionTitle>{t('landing:aboutPage.whyPurplehere')}</SectionTitle>
-            <List>
-              <ListItem>
-                <strong>{t('landing:aboutPage.innovativeThinking')}</strong> Stand out with a remarkable, differentiated solution
-                that breaks industry stereotypes
-              </ListItem>
-              <ListItem>
-                <strong>{t('landing:aboutPage.unifiedPlatform')}</strong> Manage all outlets, data, and features from a single
-                centralized system
-              </ListItem>
-              <ListItem>
-                <strong>{t('landing:aboutPage.realtimeInsights')}</strong> Monitor and analyze orders, sales, and inventory
-                across all locations in real-time
-              </ListItem>
-              <ListItem>
-                <strong>{t('landing:aboutPage.mobileOrdering')}</strong> QR code-based mobile ordering enhances both customer
-                convenience and operational efficiency
-              </ListItem>
-              <ListItem>
-                <strong>{t('landing:aboutPage.cloudbased')}</strong> Access your system anytime, anywhere with cloud technology
-                enabling remote management
-              </ListItem>
-            </List>
+            <SectionEyebrow>{t('landing:aboutPage.why.eyebrow')}</SectionEyebrow>
+            <SectionTitle>{t('landing:aboutPage.why.title')}</SectionTitle>
+            <Paragraph>{t('landing:aboutPage.why.lead')}</Paragraph>
+            <WhyGrid>
+              {(['point1', 'point2', 'point3', 'point4'] as const).map((key, idx) => (
+                <WhyPoint key={key}>
+                  <WhyPointNumber>0{idx + 1}</WhyPointNumber>
+                  <WhyPointTitle>{t(`landing:aboutPage.why.${key}.title`)}</WhyPointTitle>
+                  <WhyPointDesc>{t(`landing:aboutPage.why.${key}.desc`)}</WhyPointDesc>
+                </WhyPoint>
+              ))}
+            </WhyGrid>
           </Section>
 
-          <Section>
-            <SectionTitle>{t('landing:aboutPage.ourTechnology')}</SectionTitle>
-            <Paragraph>
-              Built on modern web technologies and cloud infrastructure, we deliver a stable and scalable
-              system. Our React-based intuitive UI and real-time Socket.IO communication provide a fast
-              and seamless user experience.
-            </Paragraph>
-            <Paragraph>
-              Works smoothly across various devices, and we continuously maintain the latest technology
-              and security standards through regular updates.
-            </Paragraph>
-          </Section>
-
+          {/* CTA */}
           <CTASection>
-            <CTATitle>{t('landing:aboutPage.experienceTheDifferenceStartToday')}</CTATitle>
-            <CTAButton onClick={() => navigate('/features')}>
-              {t('landing:aboutPage.exploreFeatures')}
-            </CTAButton>
+            <CTATitle>{t('landing:aboutPage.cta.title')}</CTATitle>
+            <Paragraph style={{ color: 'rgba(255,255,255,0.85)', marginBottom: 24 }}>
+              {t('landing:aboutPage.cta.subtitle')}
+            </Paragraph>
+            <CTAButtonRow>
+              <CTAButton onClick={() => navigate('/signup')}>
+                {t('landing:aboutPage.cta.primary')}
+              </CTAButton>
+              <CTAButton variant="secondary" onClick={() => navigate('/features')}>
+                {t('landing:aboutPage.cta.secondary')}
+              </CTAButton>
+              <CTAButton variant="tertiary" onClick={() => navigate('/contact')}>
+                {t('landing:aboutPage.cta.tertiary')}
+              </CTAButton>
+            </CTAButtonRow>
           </CTASection>
         </ContentSection>
       </PageContainer>
