@@ -6,6 +6,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useAuth } from '../../contexts/AuthContext';
 import ImportDataTab from '../../components/Settings/ImportDataTab';
+import PushPreferencesCard from '../../components/Settings/PushPreferencesCard';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
 import SmtpGuide from '../../components/Common/SmtpGuide';
 import { useTranslation } from 'react-i18next';
@@ -611,6 +612,10 @@ const NotificationSettingsPage: React.FC = () => {
 
           {activeTab === 'preferences' && (
             <SettingsCard>
+              <SectionTitle>Web Push & PWA</SectionTitle>
+              <div style={{ marginBottom: 24 }}>
+                <PushPreferencesCard />
+              </div>
               {isOrderRole && (
                 <>
                   <SectionTitle>{t('notifications:notificationSettingsPage.liveOrderAudio.section', 'Live Order Alert')}</SectionTitle>

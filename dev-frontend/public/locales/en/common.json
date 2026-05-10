@@ -64,6 +64,17 @@
     "inProgress": "In Progress",
     "resolved": "Resolved"
   },
+  "close": "Close",
+  "pwa": {
+    "installBanner": {
+      "title": "Install Purple POS",
+      "androidDesktopGuide": "Install this app for push notifications, a standalone window, and faster access.",
+      "iosGuide": "Tap the Share icon at the bottom and choose 'Add to Home Screen' to install.",
+      "iosOldGuide": "iOS 16.4+ is required for push notifications. You can still install the app for in-app alerts.",
+      "installButton": "Install",
+      "dismissButton": "Not now"
+    }
+  },
   "empty": {
     "default": "No data available",
     "search": "No results found",

@@ -64,6 +64,17 @@
     "inProgress": "进行中",
     "resolved": "已解决"
   },
+  "close": "关闭",
+  "pwa": {
+    "installBanner": {
+      "title": "安装 Purple POS",
+      "androidDesktopGuide": "安装此应用以获得推送通知、独立窗口和更快的访问。",
+      "iosGuide": "点击底部分享图标,选择「添加到主屏幕」即可安装。",
+      "iosOldGuide": "推送通知需要 iOS 16.4+ 系统。在更早版本上仍可安装应用并使用应用内通知。",
+      "installButton": "安装",
+      "dismissButton": "稍后"
+    }
+  },
   "empty": {
     "default": "暂无数据",
     "search": "未找到结果",

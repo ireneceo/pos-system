@@ -64,6 +64,17 @@
     "inProgress": "Sedang Berjalan",
     "resolved": "Diselesaikan"
   },
+  "close": "Tutup",
+  "pwa": {
+    "installBanner": {
+      "title": "Pasang Purple POS",
+      "androidDesktopGuide": "Pasang aplikasi ini untuk notifikasi push, tetingkap berdiri sendiri, dan akses lebih pantas.",
+      "iosGuide": "Ketik ikon Kongsi di bawah dan pilih 'Tambah ke Skrin Utama' untuk memasang.",
+      "iosOldGuide": "Notifikasi push memerlukan iOS 16.4+. Anda masih boleh memasang aplikasi untuk amaran dalam aplikasi.",
+      "installButton": "Pasang",
+      "dismissButton": "Nanti"
+    }
+  },
   "empty": {
     "default": "Tiada data",
     "search": "Tiada hasil ditemui",
