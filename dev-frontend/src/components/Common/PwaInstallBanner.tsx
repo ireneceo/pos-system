@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { usePwaInstall } from '../../contexts/PwaInstallContext';
 
 /**
@@ -13,8 +14,13 @@ import { usePwaInstall } from '../../contexts/PwaInstallContext';
  */
 const PwaInstallBanner: React.FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const { canInstall, isIOS, iosVersion, promptInstall, dismissBanner, shouldShowBanner } = usePwaInstall();
 
+  // POS 시스템 안에서만 노출 (랜딩 / 블로그 / 공개 페이지 제외).
+  // 랜딩 사용자에겐 /install 페이지가 안내 역할이고, 가입 후 첫 진입 시 배너로 알림.
+  const isPosRoute = location.pathname.startsWith('/pos');
+  if (!isPosRoute) return null;
   if (!shouldShowBanner) return null;
 
   const handleInstall = async () => {

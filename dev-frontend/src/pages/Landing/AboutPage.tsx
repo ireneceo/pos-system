@@ -244,7 +244,7 @@ const WhyGrid = styled.div`
 `;
 
 const WhyPoint = styled.div`
-  padding: 20px;
+  padding: 24px 22px;
   border: 1px solid #E6EBF1;
   border-radius: 12px;
   background: linear-gradient(135deg, #FFFFFF 0%, #FAFBFF 100%);
@@ -271,6 +271,8 @@ const WhyPointDesc = styled.p`
   color: #6B7C93;
   line-height: 1.6;
   margin: 0;
+  text-wrap: pretty;
+  word-break: keep-all;
 `;
 
 const CTAButtonRow = styled.div`
