@@ -240,7 +240,7 @@ router.get('/subscriptions/manager/:managerId', authenticateToken, async (req, r
         restaurantName: restaurant.name,
         managerId: (restaurant.admin_id || '').toString(),
         managerName: restaurant.admin_name || 'Unassigned',
-        planType: restaurant.plan_type.toLowerCase().replace(' plan', ''),
+        planType: (restaurant.plan_type || '').toLowerCase().replace(' plan', ''),
         status: restaurant.status,
         startDate: restaurant.subscription_start?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
         endDate: restaurant.subscription_end?.toISOString().split('T')[0] || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],

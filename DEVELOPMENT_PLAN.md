@@ -1,9 +1,41 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-08 (v3.27 운영 배포 — Subscription Form 통일 + 5 역할 walkthrough + FG 온보딩 + 데모 정합)
+> **최종 업데이트:** 2026-05-10 (Self-managed Restaurant 모드 — backstage cleanup, 버전 미상승)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.27** (2026-05-08 운영 배포)
+> **현재 버전:** **v3.27** (2026-05-08 운영 배포 + backstage cleanup 누적 미배포)
+
+## ✅ 완료: Self-managed Restaurant 모드 (2026-05-10, 미배포 / 버전 미상승)
+
+**BG/FG/Owner 가 본인 산하 매장을 시스템에 등록할 때 POS 유료 구독 강제 없이 데이터 관리 전용으로 저장 가능. 기존 `Activate Subscription` 토글이 invoice 생성만 건너뛰던 반쪽 동작 → 진짜 plan 필드 NULL 저장 + UI 분기 + Self-managed 안내/배지 완성. DB 모델 변경 없음 (기존 nullable 컬럼 활용).**
+
+| 작업 | 설명 | 상태 |
+|------|------|:---:|
+| Backend POST | `routes/restaurants-crud.js` POST `activate_subscription:false` 시 plan_type/plan_amount/billing_cycle/subscription_start/subscription_end/subscription_snapshot/limits 모두 NULL 명시 저장 | ✓ |
+| Backend PUT | `wipeSubscription` 분기 — 활성 → self-managed 전환 시 plan/billing/period + pending_* + plan_change_* 모두 NULL wipe + divertToPending 우회 + auto-calc subscription_end skip | ✓ |
+| Frontend Add 모달 | plan/billing/period/auto-renew/trial 섹션 `activateSubscription` conditional hide. Self-managed info banner (회색) 추가. 토글 텍스트 ⚠️ 제거 | ✓ |
+| Frontend Edit 모달 | `activateSubscription` 토글 추가. plan_type=NULL 매장 진입 시 OFF 자동 표시. Add 와 동일 conditional + banner. submit payload self-managed 분기 | ✓ |
+| 목록 배지 | RestaurantName 라인에 `Self-managed` 회색 배지 (plan_type IS NULL 일 때) | ✓ |
+| i18n 4언어 | en/ko/zh/ms `restaurantsPage.activateSubscription.{title,onHint,offHint}` + `restaurantsPage.selfManaged.{title,description,badge}` 6 키. `npm run i18n:verify` errors=0 | ✓ |
+
+### 검증
+
+- API 실호출 18/18 통과 — POST {activate=false} → DB NULL 확인 → invoices 0건 → PUT {activate=true} → plan_type 활성화 + subscription_end 자동 계산 + invoice 자동 생성 → PUT {activate=false} → 다시 NULL wipe
+- health-check 73/73 PASS
+- 빌드 main.e72df827.js (84초, exit 0)
+
+### 수정된 파일
+
+**Backend (1)**
+- `dev-backend/routes/restaurants-crud.js` — POST 분기 + PUT wipeSubscription 분기 + auto-calc skip + activateSubscription 변수 위로 끌어올림
+
+**Frontend (1)**
+- `dev-frontend/src/pages/Admin/RestaurantsPage.tsx` — Add/Edit 모달 conditional + banner + 토글 추가 + 목록 배지 + handleEditRestaurant fallback + handleSubmitEdit payload 분기
+
+**i18n (4)**
+- `dev-frontend/public/locales/{en,ko,zh,ms}/admin.json` — 6 키 추가
+
+---
 
 ## ✅ 완료: v3.27 운영 배포 (2026-05-08)
 

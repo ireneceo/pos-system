@@ -962,6 +962,11 @@ router.post('/', authenticateToken, requireRole(
     }
     // else: 하위 호환 - adminAction 없으면 기존 managerId 방식 사용
 
+    // Subscription mode: activate_subscription=false → self-managed mode.
+    // Restaurant record is created without a POS plan (BG/FG/Owner manages data only).
+    // Subscription can be activated later via PUT.
+    const activateSubscription = req.body.activate_subscription !== false;
+
     // Map frontend fields to database fields
     const restaurantData = {
       name: req.body.name,
@@ -980,10 +985,12 @@ router.post('/', authenticateToken, requireRole(
       longitude: req.body.longitude != null && req.body.longitude !== '' ? Number(req.body.longitude) : null,
       business_registration: req.body.business_registration || null,
       tax_id: req.body.tax_id || null,
-      plan_type: incomingPlanType || 'Basic Plan',
-      plan_amount: parseFloat(req.body.planAmount || req.body.plan_amount) || (planSnapshot ? planSnapshot.base_price_monthly : 29.00),
+      plan_type: activateSubscription ? (incomingPlanType || 'Basic Plan') : null,
+      plan_amount: activateSubscription
+        ? (parseFloat(req.body.planAmount || req.body.plan_amount) || (planSnapshot ? planSnapshot.base_price_monthly : 29.00))
+        : null,
       currency: req.body.currency || 'MYR',
-      billing_cycle: req.body.billingCycle || req.body.billing_cycle || 'monthly',
+      billing_cycle: activateSubscription ? (req.body.billingCycle || req.body.billing_cycle || 'monthly') : null,
       status: (() => {
         const requestedStatus = req.body.status;
         const validStatuses = ['active', 'inactive', 'trial', 'overdue', 'suspended', 'expired', 'cancelled'];
@@ -992,14 +999,18 @@ router.post('/', authenticateToken, requireRole(
         if (requestedStatus === 'trial' && req.user.role !== 'System Admin') return 'active';
         return requestedStatus;
       })(),
-      subscription_start: req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date(),
-      subscription_end: req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null,
-      subscription_snapshot: planSnapshot,
+      subscription_start: activateSubscription
+        ? (req.body.subscriptionStart ? new Date(req.body.subscriptionStart) : new Date())
+        : null,
+      subscription_end: activateSubscription
+        ? (req.body.subscriptionEnd ? new Date(req.body.subscriptionEnd) : null)
+        : null,
+      subscription_snapshot: activateSubscription ? planSnapshot : null,
       brand_id: req.body.brand_id || null,
       foodcourt_id: req.body.foodcourt_id || null,
       branch_id: req.body.branch_id || null,
       payment_model: req.body.payment_model || 'restaurant',
-      ...planLimits
+      ...(activateSubscription ? planLimits : { order_limit: null, menu_item_limit: null, staff_limit: null })
     };
 
     // 하위 호환: adminAction 없이 managerId만 전송된 경우 admin_name 조회
@@ -1113,12 +1124,7 @@ router.post('/', authenticateToken, requireRole(
 
     // Auto-generate first POS subscription invoice for restaurants with subscription info (non-blocking).
     // Creates invoice for both 'active' and 'trial' statuses — trial users see their upcoming invoice.
-    //
-    // `activate_subscription` flag (default true for backward compat):
-    //   false → skip invoice generation. Use case: hardware-only customer,
-    //           admin wants to create restaurant record without forcing subscription billing.
-    //           Subscription can be activated later via PUT (which triggers sync).
-    const activateSubscription = req.body.activate_subscription !== false;
+    // activate_subscription=false skips this entirely — see self-managed mode at top of handler.
     if (activateSubscription && restaurant.subscription_start && restaurant.plan_type) {
       try {
         const { createInitialInvoice } = require('../services/subscriptionInvoiceService');
@@ -1345,6 +1351,25 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       updateData.auto_renew = req.body.autoRenew !== undefined ? req.body.autoRenew : req.body.auto_renew;
     }
 
+    // Self-managed mode: activate_subscription=false → wipe plan/billing/period to NULL.
+    // Used when reverting a restaurant to data-only management. Bypasses divertToPending below.
+    const wipeSubscription = req.body.activate_subscription === false;
+    if (wipeSubscription) {
+      updateData.plan_type = null;
+      updateData.plan_amount = null;
+      updateData.billing_cycle = null;
+      updateData.subscription_start = null;
+      updateData.subscription_end = null;
+      updateData.subscription_snapshot = null;
+      updateData.auto_renew = false;
+      updateData.trial_end_date = null;
+      updateData.plan_change_date = null;
+      updateData.plan_change_type = null;
+      updateData.pending_plan_type = null;
+      updateData.pending_plan_amount = null;
+      updateData.pending_billing_cycle = null;
+    }
+
     // Phase A (Restaurant-Contract-Plan linking): Brand General / Foodcourt General cannot
     // change POS plan fields immediately — the change is deferred to the next billing cycle
     // via pending_* fields. The existing invoiceScheduler.applyPendingPlanChanges() daily job
@@ -1355,7 +1380,7 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     const planTypeChanged = updateData.plan_type !== undefined && String(updateData.plan_type) !== String(restaurant.plan_type || '');
     const planAmountChanged = updateData.plan_amount !== undefined && Number(updateData.plan_amount) !== Number(restaurant.plan_amount || 0);
     const billingCycleChanged = updateData.billing_cycle !== undefined && String(updateData.billing_cycle) !== String(restaurant.billing_cycle || '');
-    const divertToPending = !isPlatformAdmin && (planTypeChanged || planAmountChanged || billingCycleChanged);
+    const divertToPending = !isPlatformAdmin && !wipeSubscription && (planTypeChanged || planAmountChanged || billingCycleChanged);
 
     let pendingLogEntry = null;
     if (divertToPending && restaurant.subscription_start) {
@@ -1414,7 +1439,7 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     // Rule: Monthly = start + 1 month - 1 day. Annual = start + 1 year - 1 day.
     const effectiveStart = updateData.subscription_start || restaurant.subscription_start;
     const effectiveCycle = updateData.billing_cycle || restaurant.billing_cycle;
-    if (effectiveStart && effectiveCycle && (updateData.subscription_start !== undefined || updateData.billing_cycle !== undefined)) {
+    if (!wipeSubscription && effectiveStart && effectiveCycle && (updateData.subscription_start !== undefined || updateData.billing_cycle !== undefined)) {
       const startDate = new Date(effectiveStart);
       if (effectiveCycle === 'annual') {
         startDate.setFullYear(startDate.getFullYear() + 1);

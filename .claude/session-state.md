@@ -1,14 +1,26 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-08
-**버전:** **v3.27** (2026-05-08 운영 배포 — Subscription Form 통일 + 5 역할 walkthrough + FG 온보딩 + 데모 데이터 정합)
-**작업 상태:** 완료
+**마지막 업데이트:** 2026-05-10
+**버전:** **v3.27** (2026-05-08 운영 배포 — backstage cleanup 누적 미배포)
+**작업 상태:** 완료 (Self-managed Restaurant 모드 — 미배포)
 
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션)
+### 완료된 작업 (2026-05-10 세션)
+
+**Self-managed Restaurant 모드 (backstage cleanup, 버전 미상승)**
+- POST `/api/restaurants` 에서 `activate_subscription:false` 시 plan_type/plan_amount/billing_cycle/subscription_start/subscription_end/subscription_snapshot/limits 모두 NULL 명시 저장 (Restaurant 모델 default 자동 할당 회피)
+- PUT 핸들러에 `wipeSubscription` 분기 추가 — 활성 → self-managed 전환 시 plan/billing/period + pending_* + plan_change_* 모두 NULL wipe + divertToPending 우회
+- Frontend RestaurantsPage Add/Edit 모달의 plan/billing/period/auto-renew/trial 토글 섹션을 `activateSubscription` conditional 로 hide. Self-managed banner (회색 info box) 추가. 토글 텍스트에서 ⚠️ 이모지 제거
+- Edit 모달에 `activateSubscription` 토글 추가 + plan_type 없는 매장 진입 시 OFF 자동 표시
+- 목록 매장 row 에 `Self-managed` 배지 (plan_type IS NULL 일 때 회색 배지)
+- i18n 4언어 6개 키 추가 (`restaurantsPage.activateSubscription.*`, `restaurantsPage.selfManaged.*`)
+- 검증: API 실호출 18/18 통과 (POST/GET/PUT 활성↔self-managed 양방향 + invoice 자동 생성↔skip + DB raw NULL 확인). health-check 73/73 통과
+- 의도: BG/FG/Owner 가 본인 산하 매장을 시스템에 등록할 때 POS 구독 강제 없이 데이터 관리 전용으로 등록 가능. 추후 Edit 으로 구독 활성화
+
+### 이전 세션 완료 작업 (v3.27, 2026-05-08)
 
 **Sprint 1 — FG 온보딩 + Walkthrough 시스템 신규**
 - User.tutorial_progress JSON 컬럼 + GET/PUT API

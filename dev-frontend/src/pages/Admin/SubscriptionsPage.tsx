@@ -161,14 +161,14 @@ const PlanBadge = styled.span<{ planType: string }>`
   font-weight: 600;
   white-space: nowrap;
   background: ${props => {
-    const pt = props.planType.toLowerCase();
+    const pt = (props.planType || '').toLowerCase();
     if (pt.includes('basic')) return '#DBEAFE';
     if (pt.includes('professional')) return '#E4E7FF';
     if (pt.includes('enterprise')) return '#FEF3C7';
     return '#F3F4F6';
   }};
   color: ${props => {
-    const pt = props.planType.toLowerCase();
+    const pt = (props.planType || '').toLowerCase();
     if (pt.includes('basic')) return '#1E40AF';
     if (pt.includes('professional')) return '#635BFF';
     if (pt.includes('enterprise')) return '#D97706';
