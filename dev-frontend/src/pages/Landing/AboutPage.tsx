@@ -62,28 +62,29 @@ const HeroSubtitle = styled.p`
 `;
 
 const ContentSection = styled.section`
-  max-width: 900px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 60px 20px;
+  padding: 72px 24px;
 
   @media (max-width: 768px) {
-    padding: 40px 20px;
+    padding: 48px 16px;
   }
 `;
 
 const Section = styled.section`
   background: white;
-  border-radius: 16px;
-  padding: 40px;
-  margin-bottom: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-radius: 20px;
+  padding: 56px 48px;
+  margin-bottom: 28px;
+  box-shadow: 0 6px 24px rgba(10, 37, 64, 0.04);
 
   &:last-child {
     margin-bottom: 0;
   }
 
   @media (max-width: 768px) {
-    padding: 24px;
+    padding: 32px 24px;
+    border-radius: 16px;
   }
 `;
 
@@ -130,66 +131,105 @@ const PainDesc = styled.p`
   margin: 0;
 `;
 
-const SolutionGrid = styled.div`
+const SolutionStack = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 32px;
+`;
+
+const SolutionCard = styled.div<{ tinted?: boolean }>`
+  background: ${p => p.tinted ? 'linear-gradient(135deg, #FAFBFF 0%, #F4F2FF 100%)' : 'white'};
+  border: 1px solid #E6EBF1;
+  border-radius: 16px;
+  padding: 36px 40px;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-top: 24px;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 32px;
+  align-items: start;
 
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
+    padding: 24px;
+    gap: 16px;
   }
 `;
 
-const SolutionCard = styled.div`
-  background: #FAFBFC;
-  border: 1px solid #E6EBF1;
-  border-radius: 12px;
-  padding: 24px;
+const SolutionLeft = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+`;
+
+const SolutionNumber = styled.div`
+  font-size: 56px;
+  font-weight: 800;
+  color: #635BFF;
+  line-height: 1;
+  letter-spacing: -2px;
+  opacity: 0.85;
+
+  @media (max-width: 640px) { font-size: 40px; }
 `;
 
 const SolutionRole = styled.div`
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: #635BFF;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
 `;
 
 const SolutionTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   color: #0A2540;
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.3;
+  letter-spacing: -0.3px;
+
+  @media (max-width: 640px) { font-size: 19px; }
+`;
+
+const SolutionRight = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+`;
+
+const SolutionBlock = styled.div<{ variant: 'pain' | 'win' }>`
+  border-left: 3px solid ${p => p.variant === 'pain' ? '#EF4444' : '#10B981'};
+  padding-left: 14px;
 `;
 
 const SolutionPainLabel = styled.div`
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: #EF4444;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
-`;
-
-const SolutionLine = styled.p`
-  font-size: 14px;
-  color: #6B7C93;
-  line-height: 1.6;
-  margin: 0;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
 `;
 
 const SolutionWinLabel = styled.div`
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   color: #10B981;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 4px;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+`;
+
+const SolutionLine = styled.p`
+  font-size: 15px;
+  color: #4A5568;
+  line-height: 1.65;
+  margin: 0;
 `;
 
 const WhyGrid = styled.div`
@@ -372,22 +412,27 @@ const AboutPage: React.FC = () => {
             <SectionEyebrow>{t('landing:aboutPage.solutions.eyebrow')}</SectionEyebrow>
             <SectionTitle>{t('landing:aboutPage.solutions.title')}</SectionTitle>
             <Paragraph>{t('landing:aboutPage.solutions.lead')}</Paragraph>
-            <SolutionGrid>
-              {(['singleStore', 'brand', 'foodcourt', 'owner', 'supplier'] as const).map(key => (
-                <SolutionCard key={key}>
-                  <SolutionRole>{t(`landing:aboutPage.solutions.${key}.role`)}</SolutionRole>
-                  <SolutionTitle>{t(`landing:aboutPage.solutions.${key}.title`)}</SolutionTitle>
-                  <div>
-                    <SolutionPainLabel>{t('landing:aboutPage.solutions.painLabel')}</SolutionPainLabel>
-                    <SolutionLine>{t(`landing:aboutPage.solutions.${key}.problem`)}</SolutionLine>
-                  </div>
-                  <div>
-                    <SolutionWinLabel>{t('landing:aboutPage.solutions.winLabel')}</SolutionWinLabel>
-                    <SolutionLine>{t(`landing:aboutPage.solutions.${key}.solution`)}</SolutionLine>
-                  </div>
+            <SolutionStack>
+              {(['singleStore', 'brand', 'foodcourt', 'owner', 'supplier'] as const).map((key, idx) => (
+                <SolutionCard key={key} tinted={idx % 2 === 1}>
+                  <SolutionLeft>
+                    <SolutionNumber>{String(idx + 1).padStart(2, '0')}</SolutionNumber>
+                    <SolutionRole>{t(`landing:aboutPage.solutions.${key}.role`)}</SolutionRole>
+                    <SolutionTitle>{t(`landing:aboutPage.solutions.${key}.title`)}</SolutionTitle>
+                  </SolutionLeft>
+                  <SolutionRight>
+                    <SolutionBlock variant="pain">
+                      <SolutionPainLabel>{t('landing:aboutPage.solutions.painLabel')}</SolutionPainLabel>
+                      <SolutionLine>{t(`landing:aboutPage.solutions.${key}.problem`)}</SolutionLine>
+                    </SolutionBlock>
+                    <SolutionBlock variant="win">
+                      <SolutionWinLabel>{t('landing:aboutPage.solutions.winLabel')}</SolutionWinLabel>
+                      <SolutionLine>{t(`landing:aboutPage.solutions.${key}.solution`)}</SolutionLine>
+                    </SolutionBlock>
+                  </SolutionRight>
                 </SolutionCard>
               ))}
-            </SolutionGrid>
+            </SolutionStack>
           </Section>
 
           {/* SECTION 3 — Why PurpleHere */}
