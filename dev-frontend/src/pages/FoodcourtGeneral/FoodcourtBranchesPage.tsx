@@ -483,10 +483,20 @@ const UnitNumberingSection = styled.div`
   background: #FAFBFC;
   border: 1px solid #E6EBF1;
   border-radius: 10px;
+
+  @media (max-width: 768px) {
+    padding: 12px 16px;
+  }
 `;
 const SectionHeader = styled.div`
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 16px; margin-bottom: 16px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 const SectionHeaderText = styled.div`flex: 1;`;
 const SectionTitle = styled.div`
@@ -521,12 +531,21 @@ const ZoneCard = styled.div`
   padding: 14px 16px; background: white; border: 1px solid #E6EBF1; border-radius: 8px;
   transition: border-color 0.15s;
   &:hover { border-color: #D1D9E0; }
+
+  @media (max-width: 768px) {
+    padding: 12px;
+  }
 `;
 const ZoneRow1 = styled.div`
   display: grid; grid-template-columns: 1fr 40px; gap: 12px; align-items: end;
 `;
 const ZoneRow2 = styled.div`
   display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 10px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 `;
 const PrefixToggleRow = styled.div`margin-bottom: 2px;`;
 const NumberTextarea = styled.textarea`
@@ -566,6 +585,12 @@ const PreviewCard = styled.div`
 const PreviewHead = styled.div`
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px; border-bottom: 1px solid #E6EBF1;
+  flex-wrap: wrap; gap: 8px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 const PreviewTitle = styled.div`
   font-size: 11px; font-weight: 600; color: #6B7C93;

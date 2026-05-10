@@ -120,6 +120,11 @@ const PlansGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   gap: 24px;
   margin-bottom: 32px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 `;
 
 const PlanCard = styled.div<{ isPopular?: boolean; isActive?: boolean }>`
@@ -156,6 +161,11 @@ const PlanCard = styled.div<{ isPopular?: boolean; isActive?: boolean }>`
       letter-spacing: 0.5px;
     }
   `}
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    min-height: auto;
+  }
 `;
 
 const PlanHeader = styled.div`
@@ -225,6 +235,12 @@ const PlanStats = styled.div`
   padding-bottom: 16px;
   border-top: 1px solid #E6EBF1;
   border-bottom: 1px solid #E6EBF1;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    gap: 8px;
+  }
 `;
 
 const StatItem = styled.div`
@@ -283,6 +299,13 @@ const ActionButtons = styled.div`
   display: flex;
   gap: 12px;
   margin-top: 16px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
 `;
 
 const PlanButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
@@ -363,6 +386,11 @@ const PricingRow = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 `;
 
 const CheckboxGroup = styled.div`
@@ -391,7 +419,14 @@ const DetailRow = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
   &:last-child { margin-bottom: 0; }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const DetailLabel = styled.span`
@@ -444,7 +479,14 @@ const RestaurantItem = styled.div<{ isAssigned?: boolean }>`
   padding: 12px 16px;
   border-bottom: 1px solid #F3F4F6;
   background: ${props => props.isAssigned ? '#F0FDF4' : 'white'};
+  flex-wrap: wrap;
+  gap: 8px;
   &:last-child { border-bottom: none; }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 // ============================================

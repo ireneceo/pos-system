@@ -66,6 +66,10 @@ const Container = styled.div`
   background: ${theme.colors.background};
   min-height: 100vh;
   padding: ${theme.spacing.lg};
+
+  @media (max-width: 768px) {
+    padding: 12px 16px;
+  }
 `;
 
 const Header = styled.div`
@@ -73,6 +77,14 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: ${theme.spacing['2xl']};
+  flex-wrap: wrap;
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+  }
 `;
 
 const HeaderCenter = styled.div`
@@ -117,6 +129,11 @@ const OrdersGrid = styled.div`
   gap: ${theme.spacing.lg};
   max-width: 1200px;
   margin: 0 auto;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 `;
 
 const OrderCard = styled.div<{ status: string; isNew?: boolean }>`
@@ -124,7 +141,7 @@ const OrderCard = styled.div<{ status: string; isNew?: boolean }>`
   border-radius: ${theme.borderRadius.xl};
   padding: ${theme.spacing.xl};
   box-shadow: ${theme.shadows.md};
-  border: 3px solid ${props => 
+  border: 3px solid ${props =>
     props.status === 'ready' ? theme.colors.status.success :
     props.status === 'preparing' ? theme.colors.status.warning :
     theme.colors.border
@@ -140,6 +157,10 @@ const OrderCard = styled.div<{ status: string; isNew?: boolean }>`
   ${props => props.status === 'ready' && css`
     animation: ${pulse} 2s infinite;
   `}
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
 `;
 
 const PickupNumberSection = styled.div`

@@ -57,6 +57,14 @@ const SectionHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const SectionTitle = styled.h3`
@@ -68,6 +76,7 @@ const SectionTitle = styled.h3`
 const SectionActions = styled.div`
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 `;
 
 const BackupGrid = styled.div`
@@ -82,6 +91,12 @@ const BackupCard = styled.div<{ status?: string }>`
   padding: 24px;
   border-bottom: 1px solid #E6EBF1;
   transition: all 0.2s;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
 
   ${props => props.status === 'failed' && `
     background: #FEF2F2;
@@ -168,6 +183,12 @@ const BackupActions = styled.div`
   flex-direction: column;
   gap: 8px;
   align-items: flex-end;
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
 `;
 
 const StatusBadge = styled.span<{ status: string }>`

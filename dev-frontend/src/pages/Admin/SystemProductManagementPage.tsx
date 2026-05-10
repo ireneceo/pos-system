@@ -108,6 +108,11 @@ const ProductsGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
   margin-top: 24px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 `;
 
 const ProductCard = styled.div<{ isActive?: boolean; isHighlighted?: boolean }>`
@@ -128,6 +133,10 @@ const ProductCard = styled.div<{ isActive?: boolean; isHighlighted?: boolean }>`
       : '0 4px 12px rgba(0, 0, 0, 0.08)'};
     transform: translateY(-2px);
     border-color: #635BFF;
+  }
+
+  @media (max-width: 768px) {
+    padding: 16px;
   }
 `;
 
@@ -193,9 +202,16 @@ const DetailRow = styled.div`
   align-items: center;
   margin-bottom: 8px;
   font-size: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
 
   &:last-child {
     margin-bottom: 0;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
   }
 `;
 
@@ -219,6 +235,13 @@ const ProductActions = styled.div`
   gap: 8px;
   padding-top: 12px;
   border-top: 1px solid #E6EBF1;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
 `;
 
 const ActionButton = styled.button<{ variant?: 'danger' }>`
@@ -370,9 +393,15 @@ const CategoryCard = styled.div<{ isActive?: boolean }>`
   transition: all 0.2s;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   opacity: ${props => props.isActive !== false ? 1 : 0.6};
+  flex-wrap: wrap;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    align-items: stretch;
   }
 `;
 
@@ -519,6 +548,10 @@ const OptionCard = styled.div`
   &:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
 `;
 
 const OptionCardHeader = styled.div`
@@ -526,6 +559,13 @@ const OptionCardHeader = styled.div`
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const OptionCardInfo = styled.div`
@@ -615,6 +655,13 @@ const OptionFormInput = styled.input`
 const OptionFormCheckboxGroup = styled.div`
   display: flex;
   gap: 16px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
 `;
 
 const OptionFormCheckboxLabel = styled.label`

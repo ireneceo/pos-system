@@ -54,6 +54,14 @@ const SectionHeader = styled.div`
   display: flex;
   justify-content: between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+  }
 `;
 
 const SectionTitle = styled.h3`
@@ -75,13 +83,17 @@ const EventItem = styled.div`
   padding: 20px 24px;
   border-bottom: 1px solid #F3F4F6;
   transition: background 0.2s;
-  
+
   &:hover {
     background: #FAFBFC;
   }
-  
+
   &:last-child {
     border-bottom: none;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 16px;
   }
 `;
 
@@ -90,6 +102,13 @@ const EventHeader = styled.div`
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const EventInfo = styled.div`
@@ -173,6 +192,8 @@ const PolicyItem = styled.div<{ enabled?: boolean }>`
   border-bottom: 1px solid #E6EBF1;
   transition: all 0.2s;
   opacity: ${props => props.enabled ? 1 : 0.6};
+  flex-wrap: wrap;
+  gap: 12px;
 
   &:hover {
     background: #FAFBFC;
@@ -180,6 +201,12 @@ const PolicyItem = styled.div<{ enabled?: boolean }>`
 
   &:last-child {
     border-bottom: none;
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
   }
 `;
 
@@ -283,6 +310,10 @@ const PolicyMeta = styled.div`
 
 const ConfigForm = styled.div`
   margin-top: 24px;
+
+  @media (max-width: 768px) {
+    margin-top: 16px;
+  }
 `;
 
 const FormGroup = styled.div`

@@ -184,7 +184,11 @@
       "Bash(awk 'NR>1 {print $1}')",
       "Bash(awk '{print $1, $2}')",
       "Bash(awk '{print $1}')",
-      "Bash(awk '{print $4, $10, $14}')"
+      "Bash(awk '{print $4, $10, $14}')",
+      "Bash(awk '/Smoke[ ]+test|Step 9|Health/,/passed|failed/' /tmp/claude-1000/-var-www/fd5f2bba-d2e1-4068-8d40-fd0b93a69530/tasks/bihhzg5u7.output)",
+      "Bash(echo \"dev: $\\(curl -s https://dev.purplehere.com/)",
+      "Bash(awk '{print \"size:\", $5}')",
+      "Bash(find /var/www/dev-frontend/src/pages/Brand* -name \"*Sub*\")"
     ],
     "deny": [],
     "ask": []
