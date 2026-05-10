@@ -15,44 +15,50 @@ const HeroSection = styled.section`
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 40px 20px;
-  min-height: 160px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 80px 24px 88px;
+  background: linear-gradient(120deg, #635BFF 0%, #8775FF 60%, #B49EFF 100%);
   color: white;
 
-  @media (max-width: 768px) {
-    padding: 32px 20px;
-    min-height: 140px;
+  @media (max-width: 640px) {
+    padding: 56px 16px 64px;
   }
+`;
+
+const HeroBadge = styled.div`
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-bottom: 18px;
 `;
 
 const HeroTitle = styled.h1`
-  font-size: 36px;
+  font-size: 44px;
   font-weight: 700;
-  margin: 0;
-  line-height: 1.2;
+  letter-spacing: -1px;
+  margin: 0 0 18px;
+  line-height: 1.15;
+  max-width: 760px;
   word-break: keep-all;
   overflow-wrap: break-word;
 
-  @media (max-width: 768px) {
-    font-size: 28px;
-    padding: 0 8px;
-  }
+  @media (max-width: 640px) { font-size: 32px; }
 `;
 
 const HeroSubtitle = styled.p`
-  font-size: 16px;
-  opacity: 0.9;
-  max-width: 600px;
-  margin: 6px auto 0;
-  line-height: 1.5;
+  font-size: 17px;
+  max-width: 640px;
+  margin: 0 auto 28px;
+  opacity: 0.92;
+  line-height: 1.6;
   word-break: keep-all;
   overflow-wrap: break-word;
 
-  @media (max-width: 768px) {
-    font-size: 14px;
-    padding: 0 8px;
-  }
+  @media (max-width: 640px) { font-size: 15px; }
 `;
 
 const ContentSection = styled.section`
@@ -332,9 +338,10 @@ const AboutPage: React.FC = () => {
       <PageContainer>
         {/* HERO */}
         <HeroSection>
+          <HeroBadge>{t('landing:aboutPage.hero.badge')}</HeroBadge>
           <HeroTitle>{t('landing:aboutPage.hero.title')}</HeroTitle>
           <HeroSubtitle>{t('landing:aboutPage.hero.subtitle')}</HeroSubtitle>
-          <CTAButtonRow style={{ marginTop: 20 }}>
+          <CTAButtonRow>
             <CTAButton onClick={() => navigate('/signup')}>
               {t('landing:aboutPage.hero.ctaPrimary')}
             </CTAButton>

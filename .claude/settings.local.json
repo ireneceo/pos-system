@@ -189,7 +189,8 @@
       "Bash(echo \"dev: $\\(curl -s https://dev.purplehere.com/)",
       "Bash(awk '{print \"size:\", $5}')",
       "Bash(find /var/www/dev-frontend/src/pages/Brand* -name \"*Sub*\")",
-      "Bash(echo \"운영: $\\(curl -s https://purplehere.com/)"
+      "Bash(echo \"운영: $\\(curl -s https://purplehere.com/)",
+      "Bash(echo \"운영 hash: $\\(curl -s https://purplehere.com/)"
     ],
     "deny": [],
     "ask": []
