@@ -239,6 +239,7 @@ const storeRouter = require('./routes/store');
 const siteSettingsRouter = require('./routes/siteSettings');
 const addonModulesRouter = require('./routes/addon-modules');
 const notificationSettingsRouter = require('./routes/notification-settings');
+const pushRouter = require('./routes/push');
 const brandsRouter = require('./routes/brands');
 const foodcourtsRouter = require('./routes/foodcourts');
 const recipesRouter = require('./routes/recipes');
@@ -363,6 +364,7 @@ app.use('/api/staff', staffRouter);
 app.use('/api/store', storeRouter);
 app.use('/api/site-settings', siteSettingsRouter);
 app.use('/api/notification-settings', notificationSettingsRouter);
+app.use('/api/push', pushRouter);
 app.use('/api', brandProductsRouter);  // Brand products routes (must be before /api/brands to handle /api/brands/:id/product-categories)
 app.use('/api/brands', brandsRouter);
 app.use('/api/foodcourts', foodcourtsRouter);
@@ -491,6 +493,7 @@ async function startServer() {
 
     // Make io available globally for routes
     app.set('io', io);
+    module.exports.io = io;
 
     // Start invoice scheduler
     invoiceScheduler.start();

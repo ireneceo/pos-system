@@ -100,6 +100,38 @@ function initSocketServer(server) {
     });
   });
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Notifications namespace (v3.28+) — JWT-authenticated, scoped rooms.
+  // Server pushes events here in parallel with web push for in-app toasters.
+  // ────────────────────────────────────────────────────────────────────────
+  const jwt = require('jsonwebtoken');
+  io.of('/notifications').use((socket, next) => {
+    try {
+      const token = (socket.handshake.auth && socket.handshake.auth.token) ||
+                    socket.handshake.headers?.authorization?.replace(/^Bearer\s+/, '');
+      if (!token) return next(new Error('auth: token missing'));
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.data.user = decoded;
+      next();
+    } catch (err) {
+      next(new Error('auth: invalid'));
+    }
+  });
+  io.of('/notifications').on('connection', (socket) => {
+    socket.on('join', (payload = {}) => {
+      const auth = socket.data.user || {};
+      // Trust ONLY the authenticated identity. Ignore any spoofed payload fields.
+      const userId = auth.id;
+      if (userId) socket.join(`user:${userId}`);
+      if (auth.restaurant_id) socket.join(`restaurant:${auth.restaurant_id}`);
+      if (auth.brand_id) socket.join(`brand:${auth.brand_id}`);
+      if (auth.foodcourt_id) socket.join(`foodcourt:${auth.foodcourt_id}`);
+      if (auth.supplier_company_id) socket.join(`supplier:${auth.supplier_company_id}`);
+      if (auth.role === 'System Admin') socket.join('role:system_admin');
+    });
+    socket.on('error', (e) => console.error('[Socket.IO] /notifications error:', e?.message));
+  });
+
   // Checkout Display namespace — POS → 고객 결제 화면
   io.of('/checkout-display').on('connection', (socket) => {
     socket.on('join-restaurant', (restaurantId) => {

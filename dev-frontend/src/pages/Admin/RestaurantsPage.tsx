@@ -2941,71 +2941,75 @@ const RestaurantsPage: React.FC = () => {
                     </FormGroup>
                   )}
 
-                  {/* Subscription Discount */}
-                  <div style={{gridColumn: '1 / -1', marginTop: '16px', marginBottom: '6px'}}>
-                    <h4 style={{margin: 0, fontSize: '15px', fontWeight: '600', color: '#0A2540'}}>
-                      Subscription Discount
-                    </h4>
-                    <p style={{margin: '4px 0 0', fontSize: '12px', color: '#6B7280'}}>
-                      Applied automatically to System Admin subscription invoices
-                    </p>
-                  </div>
+                  {editingRestaurant.activateSubscription && (
+                    <>
+                      {/* Subscription Discount */}
+                      <div style={{gridColumn: '1 / -1', marginTop: '16px', marginBottom: '6px'}}>
+                        <h4 style={{margin: 0, fontSize: '15px', fontWeight: '600', color: '#0A2540'}}>
+                          Subscription Discount
+                        </h4>
+                        <p style={{margin: '4px 0 0', fontSize: '12px', color: '#6B7280'}}>
+                          Applied automatically to System Admin subscription invoices
+                        </p>
+                      </div>
 
-                  <FormGroup>
-                    <FormLabel>{t('admin:restaurantsPage.discountType')}</FormLabel>
-                    <FormSelect
-                      value={editingRestaurant.discount_type || 'none'}
-                      onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_type: e.target.value as any, discount_value: e.target.value === 'none' ? 0 : editingRestaurant.discount_value})}
-                    >
-                      <option value="none">{t('admin:restaurantsPage.none')}</option>
-                      <option value="percentage">Percentage (%)</option>
-                      <option value="fixed">{t('admin:restaurantsPage.fixedAmount')}</option>
-                    </FormSelect>
-                  </FormGroup>
+                      <FormGroup>
+                        <FormLabel>{t('admin:restaurantsPage.discountType')}</FormLabel>
+                        <FormSelect
+                          value={editingRestaurant.discount_type || 'none'}
+                          onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_type: e.target.value as any, discount_value: e.target.value === 'none' ? 0 : editingRestaurant.discount_value})}
+                        >
+                          <option value="none">{t('admin:restaurantsPage.none')}</option>
+                          <option value="percentage">Percentage (%)</option>
+                          <option value="fixed">{t('admin:restaurantsPage.fixedAmount')}</option>
+                        </FormSelect>
+                      </FormGroup>
 
-                  {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (
-                    <FormGroup>
-                      <FormLabel>Discount Value {editingRestaurant.discount_type === 'percentage' ? '(%)' : '(Amount)'}</FormLabel>
-                      <FormInput
-                        type="number"
-                        min="0"
-                        max={editingRestaurant.discount_type === 'percentage' ? '100' : undefined}
-                        step="0.01"
-                        value={editingRestaurant.discount_value || ''}
-                        onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_value: parseFloat(e.target.value) || 0})}
-                        placeholder={editingRestaurant.discount_type === 'percentage' ? 'e.g. 10' : 'e.g. 5.00'}
-                      />
-                    </FormGroup>
-                  )}
-
-                  {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (
-                    <FormGroup style={{gridColumn: '1 / -1'}}>
-                      <FormLabel>{t('admin:restaurantsPage.discountReason')}</FormLabel>
-                      <FormInput
-                        type="text"
-                        value={editingRestaurant.discount_reason || ''}
-                        onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_reason: e.target.value})}
-                        placeholder="e.g. Early bird discount, Loyalty discount"
-                      />
-                    </FormGroup>
-                  )}
-
-                  <div style={{gridColumn: '1 / -1', padding: '16px', background: '#F3F4F6', borderRadius: '8px', marginTop: '10px'}}>
-                    <div style={{fontSize: '14px', color: '#6B7280', marginBottom: '8px'}}>
-                      <strong>Summary:</strong>
-                    </div>
-                    <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
-                      {editingRestaurant.planType || 'Basic Plan'} - {formatCurrency(parseFloat(editingRestaurant.planAmount || '0'), editingRestaurant.currency || 'MYR')} ({editingRestaurant.billingCycle || 'monthly'})
-                      {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (editingRestaurant.discount_value || 0) > 0 && (
-                        <span style={{color: '#15803D', fontSize: '14px', marginLeft: '8px'}}>
-                          (-{editingRestaurant.discount_type === 'percentage' ? `${editingRestaurant.discount_value}%` : formatCurrency(editingRestaurant.discount_value || 0, editingRestaurant.currency || 'MYR')})
-                        </span>
+                      {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (
+                        <FormGroup>
+                          <FormLabel>Discount Value {editingRestaurant.discount_type === 'percentage' ? '(%)' : '(Amount)'}</FormLabel>
+                          <FormInput
+                            type="number"
+                            min="0"
+                            max={editingRestaurant.discount_type === 'percentage' ? '100' : undefined}
+                            step="0.01"
+                            value={editingRestaurant.discount_value || ''}
+                            onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_value: parseFloat(e.target.value) || 0})}
+                            placeholder={editingRestaurant.discount_type === 'percentage' ? 'e.g. 10' : 'e.g. 5.00'}
+                          />
+                        </FormGroup>
                       )}
-                    </div>
-                    <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
-                      Paid by: {editingRestaurant.paymentModel === 'brand_manager' ? 'Brand Manager' : editingRestaurant.paymentModel === 'foodcourt_manager' ? 'Foodcourt Manager' : 'Restaurant Admin'}
-                    </div>
-                  </div>
+
+                      {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (
+                        <FormGroup style={{gridColumn: '1 / -1'}}>
+                          <FormLabel>{t('admin:restaurantsPage.discountReason')}</FormLabel>
+                          <FormInput
+                            type="text"
+                            value={editingRestaurant.discount_reason || ''}
+                            onChange={(e) => setEditingRestaurant({...editingRestaurant, discount_reason: e.target.value})}
+                            placeholder="e.g. Early bird discount, Loyalty discount"
+                          />
+                        </FormGroup>
+                      )}
+
+                      <div style={{gridColumn: '1 / -1', padding: '16px', background: '#F3F4F6', borderRadius: '8px', marginTop: '10px'}}>
+                        <div style={{fontSize: '14px', color: '#6B7280', marginBottom: '8px'}}>
+                          <strong>Summary:</strong>
+                        </div>
+                        <div style={{fontSize: '16px', fontWeight: '600', color: '#0A2540'}}>
+                          {editingRestaurant.planType || 'Basic Plan'} - {formatCurrency(parseFloat(editingRestaurant.planAmount || '0'), editingRestaurant.currency || 'MYR')} ({editingRestaurant.billingCycle || 'monthly'})
+                          {editingRestaurant.discount_type && editingRestaurant.discount_type !== 'none' && (editingRestaurant.discount_value || 0) > 0 && (
+                            <span style={{color: '#15803D', fontSize: '14px', marginLeft: '8px'}}>
+                              (-{editingRestaurant.discount_type === 'percentage' ? `${editingRestaurant.discount_value}%` : formatCurrency(editingRestaurant.discount_value || 0, editingRestaurant.currency || 'MYR')})
+                            </span>
+                          )}
+                        </div>
+                        <div style={{fontSize: '12px', color: '#6B7280', marginTop: '4px'}}>
+                          Paid by: {editingRestaurant.paymentModel === 'brand_manager' ? 'Brand Manager' : editingRestaurant.paymentModel === 'foodcourt_manager' ? 'Foodcourt Manager' : 'Restaurant Admin'}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </FormGrid>
                 {editModalWarning && (
                   <ModalWarning>{editModalWarning}</ModalWarning>

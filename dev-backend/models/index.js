@@ -120,6 +120,10 @@ const PaymentCustomer = require('./PaymentCustomer');
 const Subscription = require('./Subscription');
 const WebhookEvent = require('./WebhookEvent');
 
+// Web Push notifications (v3.28+)
+const PushSubscription = require('./PushSubscription');
+const PushLog = require('./PushLog');
+
 // Define associations
 // Brand - Restaurant associations
 Brand.hasMany(Restaurant, { foreignKey: 'brand_id', as: 'restaurants' });
@@ -783,6 +787,14 @@ Invoice.hasMany(ReferralCommission, { foreignKey: 'invoice_id', as: 'referralCom
 
 // Payment gateway associations (v3.24+)
 Invoice.belongsTo(Subscription, { foreignKey: 'subscription_id', as: 'subscription', constraints: false });
+
+// Web Push notifications (v3.28+)
+User.hasMany(PushSubscription, { foreignKey: 'user_id', as: 'pushSubscriptions' });
+PushSubscription.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+User.hasMany(PushLog, { foreignKey: 'user_id', as: 'pushLogs' });
+PushLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+PushSubscription.hasMany(PushLog, { foreignKey: 'subscription_id', as: 'logs' });
+PushLog.belongsTo(PushSubscription, { foreignKey: 'subscription_id', as: 'subscription' });
 Subscription.hasMany(Invoice, { foreignKey: 'subscription_id', as: 'invoices', constraints: false });
 
 // Wallet Transaction — wallet ledger
@@ -930,5 +942,8 @@ module.exports = {
   // Payment gateway (v3.24+)
   PaymentCustomer,
   Subscription,
-  WebhookEvent
+  WebhookEvent,
+  // Web Push notifications (v3.28+)
+  PushSubscription,
+  PushLog
 };

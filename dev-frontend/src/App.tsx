@@ -16,7 +16,11 @@ import CookieConsentBanner from './components/Common/CookieConsentBanner';
 import PosLayout from './components/Layout/PosLayout';
 // Landing Pages (keep static - first load)
 import HomePage from './pages/Landing/HomePage';
+import InstallPage from './pages/Landing/InstallPage';
 import AboutPage from './pages/Landing/AboutPage';
+import { PwaInstallProvider } from './contexts/PwaInstallContext';
+import NotificationToaster from './components/Common/NotificationToaster';
+import PwaInstallBanner from './components/Common/PwaInstallBanner';
 import FeaturesPage from './pages/Landing/FeaturesPage';
 import PricingPage from './pages/Landing/PricingPage';
 import PackagesPage from './pages/Landing/PackagesPage';
@@ -456,12 +460,16 @@ function App() {
                   <StaffProvider>
                     <MenuProvider>
                       <PaymentStatusProvider>
+                      <PwaInstallProvider>
                         <ScrollToTop />
                         <CookieConsentBanner />
+                        <NotificationToaster />
+                        <PwaInstallBanner />
                       <Suspense fallback={<PageLoader />}>
                       <Routes>
                       {/* ===== PUBLIC ROUTES (No MainLayout) ===== */}
                       <Route path="/" element={<HomePage />} />
+                      <Route path="/install" element={<InstallPage />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/features" element={<FeaturesPage />} />
                       <Route path="/service" element={<Navigate to="/features" replace />} />
@@ -1419,6 +1427,7 @@ function App() {
                       </Route>{/* End PosLayout */}
                     </Routes>
                     </Suspense>
+                      </PwaInstallProvider>
                       </PaymentStatusProvider>
                     </MenuProvider>
                   </StaffProvider>

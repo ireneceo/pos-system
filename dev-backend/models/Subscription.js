@@ -20,7 +20,7 @@ const Subscription = database.sequelize.define('Subscription', {
     allowNull: true
   },
   payer_type: {
-    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt'),
+    type: DataTypes.ENUM('restaurant', 'brand', 'foodcourt', 'supplier'),
     allowNull: false
   },
   payer_id: {

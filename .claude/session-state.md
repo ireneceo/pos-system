@@ -1,9 +1,46 @@
 # Purple POS — 개발 세션 상태
 
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-05-10
+**마지막 업데이트:** 2026-05-10 08:38
 **버전:** **v3.27** (2026-05-08 운영 배포 — backstage cleanup 누적 미배포)
-**작업 상태:** 완료 (Self-managed Restaurant 모드 — 미배포)
+**작업 상태:** 중단 (이어서 재개 예정)
+
+---
+
+## ⚡ 빠른 재개 (새 세션에서 이것만 붙여넣기)
+
+```
+session-state.md 읽고 이어서 개발해.
+```
+
+---
+
+## 🔖 지금 중단 지점
+
+**마지막 작업:** Self-managed Restaurant 모드 구현 + 10단계 검증 모두 통과 (health-check 73/73). 커밋 `2ee2f3ac` 완료, 미배포.
+
+**바로 다음 작업:**
+- 후보 1: 운영 배포 (`/배포`) — 이번 sprint + 직전 v3.27 backstage cleanup 누적 함께 가능
+- 후보 2: 1차 조사에서 발견된 Supplier 자체 구독 흐름 미완 fix (getPlanTarget 매핑 + Subscription.payer_type ENUM)
+- 후보 3: 운영 demo 시드 ID 파라미터화 (FC44→FC1 등) 후 운영 적용
+
+**맥락 유지할 것:**
+- DB 모델 변경 없이 기존 nullable 컬럼 + activate_subscription 분기로 self-managed 구현 (일 안 키움)
+- Add/Edit 모달 토글 OFF → plan 섹션 hide + Self-managed 회색 banner + 목록 회색 배지
+- 검증 중 발견한 NULL guard 부재 2곳 (`restaurants-subscription.js:243` + `SubscriptionsPage.tsx:164,171`) 같이 수정
+
+---
+
+## 📦 이번 세션 작업 요약
+
+- BG/FG/Supplier 단독 사용 모드 광범위 조사 (Restaurant 추가 시 구독 강제 = 핵심 차단점 식별)
+- Self-managed Restaurant 모드 구현 (Backend POST/PUT 분기 + Frontend Add/Edit 모달 + 목록 배지 + i18n 4언어 6키)
+- NULL guard 부재 2곳 추가 fix (subscriptions list 렌더링 안전망)
+- 검증 10단계 + health-check 73/73 모두 통과
+
+**커밋:** `2ee2f3ac` chore: 세션 중간 저장 - Self-managed Restaurant 모드 (backstage cleanup, 미배포)
+
+---
 
 ### 진행 중인 작업
 - 없음

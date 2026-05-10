@@ -45,7 +45,8 @@ function getPlanTarget(role) {
     'Restaurant Admin': 'restaurant',
     'Brand General': 'brand',
     'Foodcourt General': 'foodcourt',
-    'Restaurant Owner': 'owner'
+    'Restaurant Owner': 'owner',
+    'Supplier Admin': 'supplier'
   };
   return map[role] || null;
 }
@@ -137,7 +138,7 @@ async function getCurrentSubscription(user) {
     };
   }
 
-  // Brand General, Foodcourt General, Restaurant Owner → users table
+  // Brand General, Foodcourt General, Restaurant Owner, Supplier Admin → users table
   const dbUser = await User.findByPk(user.id);
   if (!dbUser) return null;
 

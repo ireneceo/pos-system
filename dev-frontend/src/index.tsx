@@ -34,6 +34,16 @@ class ErrorBoundary extends React.Component<
 // 단일 fetch 인터셉터 설치 (API_BASE_URL 프리픽스 + POS 토큰 주입 + 401 자동 로그아웃)
 installFetchInterceptor();
 
+// Register service worker for PWA + Web Push (v3.28+).
+// Errors are non-fatal: app degrades to in-app socket toaster only.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
+      console.warn('[SW] Registration failed:', err);
+    });
+  });
+}
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );

@@ -26,7 +26,14 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'monthly_soa', label: 'Monthly Statement of Account', description: 'Monthly summary of trade invoices for monthly_soa contracts', section: 'Supply Chain', roles: ['Restaurant Admin', 'Restaurant Owner', 'Brand General', 'Brand Manager', 'Foodcourt General', 'Foodcourt Manager'] },
   // Phase 3 — Referral Program
   { key: 'referral_commission', label: 'Referral Commission', description: 'When a commission is credited to your wallet (referrer) or a referral signs up', section: 'Referrals', roles: ['all'] },
-  { key: 'referral_payout', label: 'Referral Payout Updates', description: 'Payout request status updates (approved / paid / rejected)', section: 'Referrals', roles: ['all'] }
+  { key: 'referral_payout', label: 'Referral Payout Updates', description: 'Payout request status updates (approved / paid / rejected)', section: 'Referrals', roles: ['all'] },
+
+  // POS operations push categories (v3.28+) — push/in-app only, no email
+  { key: 'order_new', label: 'New Order', description: 'When a new order is placed at your restaurant', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
+  { key: 'order_status', label: 'Order Status Changes', description: 'When an order is paid, cancelled, or refunded', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
+  { key: 'kitchen_alert', label: 'Kitchen Time Alert', description: 'When an order exceeds the kitchen station prep time', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
+  { key: 'inventory_low', label: 'Low Stock Alert', description: 'When inventory drops below the configured threshold', section: 'POS Operations', roles: ['Restaurant Admin', 'Brand General', 'Foodcourt General'], push_only: true },
+  { key: 'staff_call', label: 'Staff Call from Customer', description: 'When a customer presses the call-staff button at the table', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true }
 ];
 
 // GET - User notification preferences

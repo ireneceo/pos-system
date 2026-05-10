@@ -324,6 +324,22 @@ User.init({
   bank_account_holder: {
     type: DataTypes.STRING(100),
     allowNull: true
+  },
+  push_enabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    comment: 'Master toggle for OS-level web push notifications'
+  },
+  push_preferences: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: '{ "categories": { "order_new": true, "kitchen_alert": true, ... } } — null = ALL_ON defaults'
+  },
+  push_muted_hours: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: '{ "enabled": true, "start": 22, "end": 8, "timezone": "Asia/Kuala_Lumpur" } — OS push only, in-app socket still emits'
   }
 }, {
   sequelize: database.sequelize,

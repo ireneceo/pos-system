@@ -492,6 +492,7 @@ const AdminStaffManagementPage: React.FC = () => {
               
               return {
                 id: user.id.toString(),
+                username: user.username || '',
                 name: user.full_name || user.username || 'Unknown',
                 email: user.email,
                 phone: user.phone || '+60 12-345-6789',
