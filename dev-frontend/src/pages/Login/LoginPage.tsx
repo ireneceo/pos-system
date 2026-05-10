@@ -87,10 +87,10 @@ const Container = styled.div`
 `;
 
 const LanguageBar = styled.div`
-  position: fixed;
+  position: absolute;
   top: 16px;
-  right: 24px;
-  z-index: 100;
+  right: 16px;
+  z-index: 10;
 
   @media (max-width: 480px) {
     top: 12px;
@@ -99,6 +99,7 @@ const LanguageBar = styled.div`
 `;
 
 const LoginBox = styled.div`
+  position: relative;
   background: white;
   border-radius: 20px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -106,7 +107,7 @@ const LoginBox = styled.div`
   max-width: 1200px;
   display: flex;
   overflow: hidden;
-  
+
   @media (max-width: 968px) {
     flex-direction: column;
     max-width: 500px;
@@ -562,10 +563,10 @@ const LoginPage: React.FC = () => {
 
   return (
     <Container>
-      <LanguageBar>
-        <LanguageSelector variant="globe" />
-      </LanguageBar>
       <LoginBox>
+        <LanguageBar>
+          <LanguageSelector variant="globe" />
+        </LanguageBar>
         <LeftSection>
           {brandLogo && (
             <LogoImage src={brandLogo} alt="Brand Logo" />
