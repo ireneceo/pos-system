@@ -2,8 +2,8 @@
 
 ## 현재 작업 상태
 **마지막 업데이트:** 2026-05-10 (Irene 자리 비움 — 2시간 후 재개)
-**버전:** v3.27 + WIP v3.28 (PWA push notifications 80% 구현)
-**작업 상태:** 중단 (PWA push 시스템 구현 중, 빌드/검증 전)
+**버전:** **v3.28** (2026-05-10 운영 배포 — PWA Push Notifications + Self-managed Restaurant + Supplier 구독 + Staff username + 모바일 반응형)
+**작업 상태:** 완료 (운영 배포 완료, smoke 10/10)
 
 ---
 

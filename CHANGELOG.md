@@ -8,6 +8,53 @@
 
 ---
 
+## [v3.28] — 2026-05-10 배포
+
+### PWA Push Notifications — 데스크탑/모바일 앱 설치 + Web Push (2026-05-10)
+- **PWA 설치 가능** — 같은 React 빌드 한 벌로 데스크탑(Chrome/Edge/Safari dock) + 모바일(Android 홈 / iOS 16.4+ Safari "홈 화면에 추가") 모두 "앱처럼" 설치
+- **Web Push API 백엔드** — `web-push` npm + VAPID 키 + `routes/push.js` 8 endpoints (vapid-public-key / subscribe / unsubscribe / preferences GET·PUT / test / admin/stats / admin/logs)
+- **Service Worker** (`public/sw.js`) — push event + same-origin notificationclick + Badge API + pushsubscriptionchange
+- **Socket.IO `/notifications` namespace** 신규 — JWT auth + scoped room (user / restaurant / brand / foodcourt / supplier)
+- **NotificationToaster** 우상단 in-app 토스트 + Web Audio chime (G5+D6) + 200ms ping debounce
+- **PwaInstallBanner** 우하단 — Android `Install` CTA + iOS 가이드 + localStorage 7일 dismiss
+- **`/install` 페이지** — UA 분기 가이드 (Android/iOS/macOS/Windows/Desktop) + iOS 16 미만 푸시 경고
+- **NotificationSettings 의 PushPreferencesCard** — 마스터 토글 + 카테고리(POS Operations 5개) + muted hours + 테스트 푸시
+- **5 PlanQ 결함 처음부터 개선 적용**: rate-limit (`/test` 5/min/user) / endpoint host 화이트리스트 (FCM/Mozilla/APNs/Windows) / endpoint reassign soft-delete / PushLog 운영 로깅 / 권한 회수 자동 감지
+
+### Self-managed Restaurant 모드 (2026-05-10)
+- **Restaurant 추가 시 구독 강제 제거** — Add 모달의 `Activate Subscription` 토글 OFF 시 plan/billing/period 섹션 hide + DB plan_type/plan_amount/billing_cycle/subscription_start/end 모두 NULL 명시 저장 (Restaurant 모델 default 자동 할당 회피)
+- **Edit 모달 wipeSubscription 분기** — 활성 → self-managed 전환 시 plan + pending_* + plan_change_* 모두 NULL wipe + divertToPending 우회
+- **Self-managed 안내 banner** (회색 info box) + 목록 회색 배지 (plan_type IS NULL)
+- **활성 전환** — Edit 토글 ON → plan 입력 → invoice 자동 생성 (`syncPendingInvoice` / `createInitialInvoice`)
+- 의도: BG/FG/Owner 가 본인 산하 매장을 시스템에 등록할 때 POS 구독 강제 없이 데이터 관리 전용으로 등록 가능
+
+### Supplier 자체 구독 흐름 보완 (2026-05-10)
+- `routes/subscriptions.js` `getPlanTarget(role)` 매핑에 `'Supplier Admin': 'supplier'` 추가 — Supplier Admin 의 GET `/api/subscriptions/my-plan` 이전 403 → 200 정상 응답
+- `models/Subscription.js` `payer_type` ENUM 에 `'supplier'` 추가 (모델 정의만, DB 레거시 그대로)
+
+### Staff Manager username 표시 fix (2026-05-10)
+- `StaffManagementPage.tsx` 의 `fetchStaff` 매핑에서 `username` 필드 누락 → Edit Staff Member 모달의 `Staff ID (Username)` 빈 값 + 카드의 `username • email` 라인 깨짐. `username: user.username || ''` 한 줄 추가로 복구
+
+### 모바일 반응형 보강 (2026-05-10)
+- 신규 공통 컴포넌트 `components/UI/FormGrid.tsx` — `<FormGrid2/3/4>` 반응형 grid (모바일 1col 자동 stack)
+- Supplier 모달 폼 7 곳 inline `gridTemplateColumns: '1fr 1fr'` / `'1fr 1fr 1fr 1fr'` → FormGrid 교체 (ProductsTab / ProductOptionsTab / SystemInquiryPage)
+- IncomingOrdersView 의 header summary 3-col → FormGrid3 (5 역할 영향)
+- DataTable 자체 1024px 카드 변환 + FilterBar 600px column stack 확인 — 추가 fix 불필요
+
+### 로그인 페이지 언어 셀렉터 위치 정합 (2026-05-10)
+- LoginBox 모서리에 어중간하게 걸치던 LanguageBar 를 LoginBox 우상단 안쪽 absolute 로 정합화 (viewport 무관 동일 위치)
+
+### 검증
+- API 실호출 14/14 + 회귀 4/4 + Socket.IO 5 역할 7/7 + 주문 파이프라인 10/10 = **35 시나리오 통과**
+- health-check 73/73 PASS
+- i18n 4언어 35 신규 키 (errors=0)
+- 빌드 hash main.18ff5bf3.js (1.45MB)
+
+### 운영 배포 시 운영 .env 별도 키 생성 (필수)
+- 운영 VAPID 키는 dev 와 분리 — `node -e "console.log(require('web-push').generateVAPIDKeys())"` 으로 운영 서버에서 별도 생성 후 `production-backend/.env` 에 추가
+
+---
+
 ## [v3.27] — 2026-05-08 배포
 
 ### Subscription Form 통일 + Discount 전 역할 적용 (2026-05-08)

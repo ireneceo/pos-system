@@ -183,7 +183,8 @@
       "Bash(awk -F: '{print $2}')",
       "Bash(awk 'NR>1 {print $1}')",
       "Bash(awk '{print $1, $2}')",
-      "Bash(awk '{print $1}')"
+      "Bash(awk '{print $1}')",
+      "Bash(awk '{print $4, $10, $14}')"
     ],
     "deny": [],
     "ask": []

@@ -1,9 +1,9 @@
 # Purple POS - 개발 진행 현황
 
-> **최종 업데이트:** 2026-05-10 (Self-managed Restaurant 모드 — backstage cleanup, 버전 미상승)
+> **최종 업데이트:** 2026-05-10 (v3.28 운영 배포 — PWA Push + Self-managed Restaurant + 모바일 반응형)
 > **데이터베이스:** purple_dev_db (MySQL) · purple_production_db (프로덕션)
 > **프로젝트:** 구독 기반 POS 시스템 with 모듈 관리
-> **현재 버전:** **v3.27** (2026-05-08 운영 배포 + backstage cleanup 누적 미배포)
+> **현재 버전:** **v3.28** (2026-05-10 운영 배포)
 
 ## ✅ 완료: Self-managed Restaurant 모드 (2026-05-10, 미배포 / 버전 미상승)
 
