@@ -458,7 +458,13 @@ const ReferralLandingPage: React.FC = () => {
           </Result>
         </SimWrap>
         <Footer>
-          {t('landing.footer.alreadyUser', 'Already a Purple POS user?')}<a href="/referral/dashboard">{t('landing.footer.openDashboard', 'Open your referral dashboard →')}</a>
+          {t('landing.footer.alreadyUser', 'Already a Purple POS user?')}{' '}
+          <a
+            href="/referral/dashboard"
+            onClick={(e) => { e.preventDefault(); navigate('/referral/dashboard'); }}
+          >
+            {t('landing.footer.openDashboard', 'Open your referral dashboard →')}
+          </a>
         </Footer>
       </Section>
     </LandingLayout>
